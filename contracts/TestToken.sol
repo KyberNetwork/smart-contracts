@@ -179,11 +179,13 @@ contract TestToken is StandardToken {
   string public name = "Test";
   string public symbol = "TST";
   uint public decimals = 0;
-  uint public INITIAL_SUPPLY = 100000000000;
+  uint public INITIAL_SUPPLY = 10**50;
   
-  function TestToken() {
+  function TestToken(string _name, string _symbol) {
     totalSupply = INITIAL_SUPPLY;
     balances[msg.sender] = INITIAL_SUPPLY;
+    name = _name;
+    symbol = _symbol;
   }
 
 }

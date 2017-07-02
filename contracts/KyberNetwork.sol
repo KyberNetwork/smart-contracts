@@ -27,6 +27,14 @@ contract KyberNetwork {
         KyberReserve reserve;    
     }
     
+    function getNumReserves() constant returns(uint){
+        return reserves.length;    
+    }
+    
+    function getRate( ERC20 source, ERC20 dest, uint reserveIndex ) constant returns(uint rate, uint expBlock, uint balance){
+        (rate,expBlock, balance) = reserves[reserveIndex].getPairInfo(source,dest);
+    }
+    
     function findBestRate( ERC20 source, ERC20 dest ) internal constant returns(KyberReservePairInfo) {
     
         uint bestRate;
@@ -37,10 +45,11 @@ contract KyberNetwork {
         KyberReserve bestReserve = KyberReserve(0);
         
         for( uint i = 0 ; i < numReserves ; i++ ) {
-            uint[3] memory info = reserves[i].getPairInfo(source,dest);
+            var (rate,expBlock,balance) = reserves[i].getPairInfo(source,dest); 
+            /*uint[3] memory info = 
             uint rate = info[0];
             uint expBlock = info[1];
-            uint balance = info[2];
+            uint balance = info[2];*/
         
             
             if( (expBlock >= block.number) && (balance > 0) && (rate > bestRate ) ) {

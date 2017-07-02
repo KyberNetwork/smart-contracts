@@ -278,13 +278,14 @@ contract KyberReserve {
     ////////////////////////////////////////////////////////////////////////////
     
     // returns (rate, block expiration, balance of dest)    
-    function getPairInfo( ERC20 source, ERC20 dest ) constant returns(uint[3]) {
+    function getPairInfo( ERC20 source, ERC20 dest ) constant returns(uint rate, uint expBlock, uint balance) {
         ConversionRate memory rateInfo = pairConversionRate[sha3(source,dest)];
-        uint balance;
+        balance = 0;
         if( dest == ETH_TOKEN_ADDRESS ) balance = this.balance;
         else balance = dest.balanceOf(this);
         
-        return [rateInfo.rate, rateInfo.expirationBlock, balance];
+        expBlock = rateInfo.expirationBlock;
+        rate = rateInfo.rate;
     }
     
     function getBalance( ERC20 token ) constant returns(uint){
