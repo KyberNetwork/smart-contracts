@@ -11,10 +11,10 @@ addresses = 0xdee50257770afe2a63d1d1e8f0506b1cabbd17c4, 0xcb5332a9bd3b1c46258f06
 reserve address (don't think it matters to you): 0x04538b371812D928f49Bc49cDa6384Ae3b7749F3
 
 
-token_i => eth (wei) rate = 2^{i+1} * (10**18), for i = 0,1,2
-eth (wei) => token_i rate = (10**18)/2^{i+1}.
+token_i => eth (wei) rate = 2^{i+1} * (10^18), for i = 0,1,2
+eth (wei) => token_i rate = (10^18)/2^{i+1}.
 
-reserve has many (10**40) tokens now, but very few ethers.
+reserve has many (10^40) tokens now, but very few ethers.
 
 function:
 =====
