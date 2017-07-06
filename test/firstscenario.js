@@ -1,7 +1,10 @@
 var TestToken = artifacts.require("./TestToken.sol");
 var Reserve = artifacts.require("./KyberReserve.sol");
 var Network = artifacts.require("./KyberNetwork.sol");
+var Wallet = artifacts.require("./KyberWallet.sol");
 var BigNumber = require('bignumber.js');
+
+var wallet;
 
 var token0;
 var tokenAddress0;
@@ -292,6 +295,113 @@ contract('Scenario One', function(accounts) {
         console.log(result.toString(10));    
     });
   });
+
+  it("get rate info", function() {
+    var rate;
+    var expBlock;
+    var balance;
+  
+    return network.getRate( tokenAddress0, ethAddress, 0 ).then(function(result){
+        rate = result[0];
+        expBlock = result[1];
+        balance = result[2];
+        assert.equal(conversionRate0.toString(10), rate.toString(10), "conversion rate 0 is not as expected");
+        
+        return network.getRate( tokenAddress1, ethAddress, 0 );
+    }).then(function(result){
+        rate = result[0];
+        assert.equal(conversionRate1.toString(10), rate.toString(10), "conversion rate 1 is not as expected");
+        return network.getRate( tokenAddress2, ethAddress, 0 );                
+    }).then(function(result){
+        rate = result[0];
+        assert.equal(conversionRate2.toString(10), rate.toString(10), "conversion rate 2 is not as expected");
+        return network.getRate( ethAddress, tokenAddress0, 0 );                
+    }).then(function(result){
+        rate = result[0];
+        assert.equal(counterConversionRate0.toString(10), rate.toString(10), "counter conversion rate 0 is not as expected");
+        return network.getRate( ethAddress, tokenAddress1, 0 );                
+    }).then(function(result){
+        rate = result[0];
+        assert.equal(counterConversionRate1.toString(10), rate.toString(10), "counter conversion rate 1 is not as expected");
+        return network.getRate( ethAddress, tokenAddress2, 0 );                
+    }).then(function(result){
+        rate = result[0];
+        assert.equal(counterConversionRate2.toString(10), rate.toString(10), "counter conversion rate 1 is not as expected");                
+    });
+    
+   });
+
+   it("make kyber wallet", function() {
+     return Wallet.new( network.address, {from:accounts[4]}).then(function(result){
+        wallet = result;
+        // deposit ether
+        return wallet.recieveEther({value: 100000});                 
+     });
+   });
+    
+   it("basic trade ETH=>token0 with transfer", function() {
+     return wallet.convertAndCall( ethAddress, 10000,
+                                   tokenAddress0, 100000000000000,
+                                   counterConversionRate0,
+                                   wallet.address, // send to self
+                                   "", // empty data
+                                   false, // do actual transfer
+                                   false // throw on fail
+                                   , {from:accounts[4]}).then(function(result){
+        // get balance
+        return token0.balanceOf(wallet.address);
+     }).then(function(balance){
+        assert.equal(balance.toString(10), "5000", "unexpected balance");
+     });
+   });
+
+   it("trade ETH=>token1 with approve", function() {
+     abi = [{"constant":true,"inputs":[],"name":"ETH_TOKEN_ADDRESS","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"srcToken","type":"address"},{"name":"srcAmount","type":"uint256"},{"name":"destToken","type":"address"},{"name":"maxDestAmount","type":"uint256"},{"name":"minRate","type":"uint256"},{"name":"destination","type":"address"},{"name":"destinationData","type":"bytes"},{"name":"onlyApproveTokens","type":"bool"},{"name":"throwOnFail","type":"bool"}],"name":"convertAndCall","outputs":[],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"network","type":"address"}],"name":"setKyberNetwork","outputs":[],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"token","type":"address"},{"name":"from","type":"address"},{"name":"amount","type":"uint256"}],"name":"recieveTokens","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"recieveEther","outputs":[],"payable":true,"type":"function"},{"constant":true,"inputs":[],"name":"kyberNetwork","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"inputs":[{"name":"_kyberNetwork","type":"address"}],"payable":false,"type":"constructor"},{"payable":true,"type":"fallback"},{"anonymous":false,"inputs":[{"indexed":true,"name":"origin","type":"address"},{"indexed":false,"name":"error","type":"uint256"},{"indexed":false,"name":"errorInfo","type":"uint256"}],"name":"ErrorReport","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":false,"name":"kyberNetwork","type":"address"}],"name":"NewWallet","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"sender","type":"address"},{"indexed":false,"name":"network","type":"address"}],"name":"SetKyberNetwork","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"sender","type":"address"},{"indexed":false,"name":"amountInWei","type":"uint256"}],"name":"IncomingEther","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"from","type":"address"},{"indexed":false,"name":"token","type":"address"},{"indexed":false,"name":"amount","type":"uint256"}],"name":"IncomingTokens","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"sender","type":"address"},{"indexed":false,"name":"destination","type":"address"},{"indexed":false,"name":"destAmount","type":"uint256"}],"name":"ConvertAndCall","type":"event"}];
+     var Web3 = require('web3');
+     var web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+     var contractClass = web3.eth.contract(abi);
+     var contractInstance = contractClass.at( wallet.address );
+     var data = contractInstance.recieveTokens.getData( tokenAddress1, wallet.address, 2500);
+     //console.log(data);               
+
+     return wallet.convertAndCall( ethAddress, 10000,
+                                   tokenAddress1, 100000000000000,
+                                   counterConversionRate1,
+                                   wallet.address, // send to self
+                                   data,
+                                   true, // do approve
+                                   false // throw on fail
+                                   , {from:accounts[4]}).then(function(result){
+        return token1.allowance(wallet.address, wallet.address);         
+     }).then(function(balance){                                   
+        assert.equal(balance.toString(10), "0", "unexpected allowance");
+        return token1.balanceOf(wallet.address);         
+     }).then(function(balance){
+        assert.equal(balance.toString(10), "2500", "unexpected balance");
+     });
+   });
+
+
+   it("trade token1=>ETH", function() {
+     abi = [{"constant":true,"inputs":[],"name":"ETH_TOKEN_ADDRESS","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"srcToken","type":"address"},{"name":"srcAmount","type":"uint256"},{"name":"destToken","type":"address"},{"name":"maxDestAmount","type":"uint256"},{"name":"minRate","type":"uint256"},{"name":"destination","type":"address"},{"name":"destinationData","type":"bytes"},{"name":"onlyApproveTokens","type":"bool"},{"name":"throwOnFail","type":"bool"}],"name":"convertAndCall","outputs":[],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"network","type":"address"}],"name":"setKyberNetwork","outputs":[],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"token","type":"address"},{"name":"from","type":"address"},{"name":"amount","type":"uint256"}],"name":"recieveTokens","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"recieveEther","outputs":[],"payable":true,"type":"function"},{"constant":true,"inputs":[],"name":"kyberNetwork","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"inputs":[{"name":"_kyberNetwork","type":"address"}],"payable":false,"type":"constructor"},{"payable":true,"type":"fallback"},{"anonymous":false,"inputs":[{"indexed":true,"name":"origin","type":"address"},{"indexed":false,"name":"error","type":"uint256"},{"indexed":false,"name":"errorInfo","type":"uint256"}],"name":"ErrorReport","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":false,"name":"kyberNetwork","type":"address"}],"name":"NewWallet","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"sender","type":"address"},{"indexed":false,"name":"network","type":"address"}],"name":"SetKyberNetwork","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"sender","type":"address"},{"indexed":false,"name":"amountInWei","type":"uint256"}],"name":"IncomingEther","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"from","type":"address"},{"indexed":false,"name":"token","type":"address"},{"indexed":false,"name":"amount","type":"uint256"}],"name":"IncomingTokens","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"sender","type":"address"},{"indexed":false,"name":"destination","type":"address"},{"indexed":false,"name":"destAmount","type":"uint256"}],"name":"ConvertAndCall","type":"event"}];
+     var Web3 = require('web3');
+     var web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+     var contractClass = web3.eth.contract(abi);
+     var contractInstance = contractClass.at( wallet.address );
+     var data = contractInstance.recieveEther.getData();
+     //console.log(data);               
+
+     return wallet.convertAndCall( tokenAddress1, 2500,
+                                   ethAddress, 100000000000000,
+                                   conversionRate1,
+                                   wallet.address, // send to self
+                                   data,
+                                   true, // do approve - but not relevant
+                                   false // throw on fail
+                                   , {from:accounts[4]}).then(function(result){
+        });
+   });
+
 
   
 });

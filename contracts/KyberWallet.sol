@@ -35,8 +35,23 @@ contract KyberWallet {
     
     event IncomingEther( address sender, uint amountInWei );
     function() payable {
-        IncomingEther( msg.sender, msg.value );
+        return recieveEther();
     }
+    
+    function recieveEther() payable {
+        IncomingEther( msg.sender, msg.value );    
+    }
+    
+    event IncomingTokens( address from, ERC20 token, uint amount );
+    function recieveTokens( ERC20 token, address from, uint amount ) {
+        if( ! token.transferFrom(from, this, amount ) ) {
+            ErrorReport( msg.sender, 0x8a00000, uint(owner) );
+            return;            
+        }
+        
+        IncomingTokens( from, token, amount );
+    }
+    
     
     event ConvertAndCall( address indexed sender, address destination, uint destAmount );
     function convertAndCall( ERC20 srcToken, uint srcAmount,
@@ -44,10 +59,14 @@ contract KyberWallet {
                              uint minRate,
                              address destination,
                              bytes   destinationData,
-                             bool throwOnFail,
-                             bool validate ) {
+                             bool onlyApproveTokens,
+                             bool throwOnFail ) {
+        if( msg.sender != owner ) {
+            ErrorReport( msg.sender, 0x8a0000f, uint(owner) );
+            return;
+        }
                                  
-        if( validate ) {
+        if( true ) {
             if( srcToken == ETH_TOKEN_ADDRESS ) {
                 if( this.balance < srcAmount ) {
                     // balance < srcAmount
@@ -88,8 +107,11 @@ contract KyberWallet {
         if( destToken == ETH_TOKEN_ADDRESS ) {
             valueForCall = destAmount;
         }
-        else {
+        else if( onlyApproveTokens ) {
             destToken.approve(destination, destAmount);
+        }
+        else {
+            destToken.transfer(destination, destAmount);
         }
         
         if( ! destination.call.value(valueForCall)(destinationData) ) {
