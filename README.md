@@ -44,3 +44,28 @@ reserveIndex should be 0.
 returns three numbers (guessing in web3 it is an array of size 3. it is like that in truffle).
 rate, expiration block and balance (how many tokens reserve has).
 
+
+# Kyber wallet contract
+Kyber wallet integrates with existing kyber network.
+User needs to deploy [this](https://github.com/KyberNetwork/smart-contracts/blob/master/contracts/KyberWallet.sol) contract with c'tor param
+`_kyberNetwork = 0x2a5cfc611c26ae1332ed4b33bbeb0b4179b478f5`.
+Then user should send ether and/or tokens to the contract. It can be in standard way (just `send` or `transfer` ether or tokens to contract address).
+
+Function to call is 
+```
+    function convertAndCall( ERC20 srcToken, uint srcAmount,
+                             ERC20 destToken, uint maxDestAmount,
+                             uint minRate,
+                             address destination,
+                             bytes   destinationData,
+                             bool onlyApproveTokens,
+                             bool throwOnFail ) {
+```
+If `onlyApproveTokens = true` and `destToken` is not ether, then function does not transfer tokens to destination, instead it is just appoving it.
+If `destinationData` is an empty array, then then default function is called in destination (and destination could also be a standard account).
+It is probably better to first try with empty data.
+An example to non-empty data can be found [here](https://github.com/KyberNetwork/smart-contracts/blob/master/test/firstscenario.js#L364) and [here](https://github.com/KyberNetwork/smart-contracts/blob/master/test/firstscenario.js#L391).
+
+For basic testing, it is possible to set the wallet as destination address and make the transfer ivoke `recieveEther` and `recieveTokens`.
+
+ 
