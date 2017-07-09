@@ -95,18 +95,18 @@ var update = function(callback) {
     for ( i = 0 ; i < tokens.length ; i++ ) {
         sources.push(tokens[i]);
         dests.push(ether);
-        rates.push( new BigNumber( parseInt(priceChange * baseRate[i] * (10 ** 18)).toString() ) );
+        rates.push( new BigNumber( parseInt(priceChange * baseRate[i] * (Math.pow(10,18))).toString() ) );
     }
 
     for ( i = 0 ; i < tokens.length ; i++ ) {
         sources.push(ether);
         dests.push(tokens[i]);
-        rates.push( new BigNumber(parseInt((10 ** 18)/(priceChange * baseRate[i])).toString()) );
+        rates.push( new BigNumber(parseInt((Math.pow(10,18))/(priceChange * baseRate[i])).toString()) );
     }
 
     for( var i = 0 ; i < tokens.length ; i++ ){
-        console.log(reserve.getPairInfo( new BigNumber(tokens[i]), ether ) );
-        console.log(reserve.getPairInfo( ether, new BigNumber(tokens[i]) ) );        
+        console.log(reserve.getPairInfo( tokens[i], ether ) );
+        console.log(reserve.getPairInfo( ether, tokens[i] ) );        
     } 
     
     console.log(counter);
