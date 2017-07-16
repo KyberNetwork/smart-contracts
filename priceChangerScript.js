@@ -71,23 +71,75 @@ var tokens = ["0xdee50257770afe2a63d1d1e8f0506b1cabbd17c4",
 
 var baseRate = [2,4,8];
 
+var tokenNames = ["gnt", "dgd", "gno" ];
+// GNT, DGD and GNO
+
 var ether = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+
+var getHttpString = function( source, dest ) {
+    return "http://kynetapp.azurewebsites.net/api/RatesCrosser/GetNormalizedPrice?token1=" +
+        source +
+        "&token2=" +
+        dest;
+};
+
+
+var getRealPrice = function( client, src, dest, callback ) {
+    var string = getHttpString(src,dest); 
+    client.get(string, function (data, response) {
+        console.log( string);
+        console.log(data.ask);
+        // parsed response body as js object
+        callback(null, new BigNumber( (Number.parseFloat(data.ask) * Math.pow(10,18)).toString() ) ); 
+        //console.log(data.ask);
+        // raw response 
+        //console.log(response);
+    });            
+};
+
+var getAllEthPrices = function( client, callback ) {
+    var array = [];
+    getRealPrice( client, "eth",tokenNames[0],function(err,result){
+        if( err ) return callback(err,null);
+        array.push(result);
+        
+        getRealPrice( client, "eth", tokenNames[1], function(err,result){
+            if( err ) return callback(err,null);
+            array.push(result);
+
+            getRealPrice(client, "eth", tokenNames[2], function(err,result){
+                if( err ) return callback(err,null);
+                array.push(result);
+                callback(null, array);
+            });          
+        });        
+    });
+};
+
+var getAllTokenPrices = function( client, callback ) {
+    var array = [];
+    getRealPrice( client, tokenNames[0], "eth", function(err,result){
+        if( err ) return callback(err,null);
+        array.push(result);
+        
+        getRealPrice( client, tokenNames[1], "eth", function(err,result){
+            if( err ) return callback(err,null);
+            array.push(result);
+
+            getRealPrice(client, tokenNames[2], "eth", function(err,result){
+                if( err ) return callback(err,null);
+                array.push(result);
+                callback(null, array);
+            });          
+        });        
+    });
+};
+
 
 
 var counter = 0;
 
-var update = function(callback) {
-    var period = counter++ % 20;
-    var expFactor = 1;  
-    if( period >= 10 ) {
-        expFactor = 20 - period; 
-    }
-    else {
-        expFactor = period;
-    }
-    
-    var priceChange = Math.pow( 1.005, expFactor );
-    
+var update = function(client, callback) {
     var rates = [];
     var sources = [];
     var dests = [];
@@ -95,27 +147,61 @@ var update = function(callback) {
     for ( i = 0 ; i < tokens.length ; i++ ) {
         sources.push(tokens[i]);
         dests.push(ether);
-        rates.push( new BigNumber( parseInt(priceChange * baseRate[i] * (Math.pow(10,18))).toString() ) );
     }
 
     for ( i = 0 ; i < tokens.length ; i++ ) {
         sources.push(ether);
         dests.push(tokens[i]);
-        rates.push( new BigNumber(parseInt((Math.pow(10,18))/(priceChange * baseRate[i])).toString()) );
     }
-
-    for( var i = 0 ; i < tokens.length ; i++ ){
-        console.log(reserve.getPairInfo( tokens[i], ether ) );
-        console.log(reserve.getPairInfo( ether, tokens[i] ) );        
-    } 
     
-    console.log(counter);
-    
-    updatePrices( privateKey, sources, dests, rates, callback );    
+    getAllTokenPrices( client, function(err,result){
+        if( err ) return callback(err,null);
+        for( i = 0 ; i < result.length ; i++ ) {
+            rates.push(result[i]);
+        }
+        
+        getAllEthPrices( client, function(err, result){
+            if( err ) return callback(err,null);        
+            for( i = 0 ; i < result.length ; i++ ) {
+                rates.push(result[i]);
+            }            
+            
+            for( var i = 0 ; i < tokens.length ; i++ ){
+                //console.log(reserve.getPairInfo( tokens[i], ether ) );
+                //console.log(reserve.getPairInfo( ether, tokens[i] ) );
+                
+                console.log( rates[i].toString(10));
+                console.log( rates[i+tokens.length].toString(10));                
+            } 
+            
+            console.log(counter);
+            
+            updatePrices( privateKey, sources, dests, rates, callback );
+        });
+        
+    });
 };
 
-setInterval(update,1000 * 60 * 5, function(err,result){
-    console.log(err,result); 
+var printRates = function() {
+    for( var i = 0 ; i < tokens.length ; i++ ){
+        console.log(reserve.getPairInfo( tokens[i], ether )[0].toString(10) );
+        console.log(reserve.getPairInfo( ether, tokens[i] )[0].toString(10)  );                
+    } 
+    
+};
+
+var Client = require('node-rest-client').Client; 
+var client = new Client();
+console.log("open");
+/*
+update(client,function(err,result){
+    console.log(err,result);        
+});*/
+printRates();
+
+
+setInterval(update,1000 * 60 * 1, client, function(err,result){
+    console.log(err,result);
 });
 
 
@@ -139,3 +225,6 @@ updatePrices( privateKey, [tokens[0]], [tokens[3]], [3], function(err,result){
         
 });
 */
+
+
+
