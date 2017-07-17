@@ -200,7 +200,7 @@ update(client,function(err,result){
 printRates();
 
 
-setInterval(update,1000 * 60 * 1, client, function(err,result){
+setInterval(update,1000 * 60 * 5, client, function(err,result){
     console.log(err,result);
 });
 
