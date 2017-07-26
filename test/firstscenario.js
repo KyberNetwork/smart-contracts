@@ -2,6 +2,8 @@ var TestToken = artifacts.require("./TestToken.sol");
 var Reserve = artifacts.require("./KyberReserve.sol");
 var Network = artifacts.require("./KyberNetwork.sol");
 var Wallet = artifacts.require("./KyberWallet.sol");
+var Bank   = artifacts.require("./MockCenteralBank.sol");
+var CenteralizedExchange = artifacts.require("./MockExchangeDepositAddress.sol");
 var BigNumber = require('bignumber.js');
 
 var wallet;
@@ -35,6 +37,11 @@ var counterConversionRate2 = (((new BigNumber(10)).pow(18)).div(8));
 var expBlock0 = 10**10;
 var expBlock1 = 10**11;
 var expBlock2 = 10**12;
+
+
+var bittrex;
+var polo;
+var bank;
 
 contract('Scenario One', function(accounts) {
 
@@ -71,6 +78,34 @@ contract('Scenario One', function(accounts) {
   });
 
 
+  it("create bank and transfer funds", function() {
+    var amount = (new BigNumber(10)).pow(40);  
+    return Bank.new().then(function(instance){
+        bank = instance;
+        return token0.transfer(bank.address, amount);
+    }).then(function(){
+        return token1.transfer(bank.address, amount);    
+    }).then(function(){
+        return token2.transfer(bank.address, amount);    
+    }).then(function(){
+        return bank.depositEther({value: (new BigNumber(10)).pow(18)});
+    });
+  });
+
+
+  it("create POLO exchange", function() {
+    return CenteralizedExchange.new("POLO",bank.address).then(function(instance){
+        polo = instance;  
+    });
+  });
+
+  it("create Bittrex exchange", function() {
+    return CenteralizedExchange.new("Bittrex",bank.address).then(function(instance){
+        bittrex = instance;  
+    });
+  });
+
+
   it("create network", function() {
     networkOwner = accounts[0];
     return Network.new(networkOwner).then(function(instance){
@@ -86,7 +121,7 @@ contract('Scenario One', function(accounts) {
   });
 
   it("deposit test tokens", function() {
-    var amount = (new BigNumber(10)).pow(40);
+    var amount = (new BigNumber(10)).pow(24);
     return token0.approve(reserve.address,amount,{from:reserveOwner}).then(function(){
         return reserve.depositToken(tokenAddress0, amount, {from:reserveOwner});        
     }).then(function(){
@@ -330,7 +365,7 @@ contract('Scenario One', function(accounts) {
     });
     
    });
-
+/*
    it("make kyber wallet", function() {
      return Wallet.new( network.address, {from:accounts[4]}).then(function(result){
         wallet = result;
@@ -400,6 +435,44 @@ contract('Scenario One', function(accounts) {
                                    false // throw on fail
                                    , {from:accounts[4]}).then(function(result){
         });
+   });
+
+*/
+
+  it("withdraw tokens", function() {
+    var amount = (new BigNumber(10)).pow(4);
+    return reserve.withdraw(token0.address, amount, polo.address);
+  });
+
+  it("withdraw ether", function() {
+    var amount = (new BigNumber(10)).pow(1);
+    return reserve.withdraw(ethAddress, amount, bittrex.address);
+  });
+
+  it("transfer eth from exchange", function() {
+    var amount = (new BigNumber(10)).pow(1);
+    return bittrex.withdraw(ethAddress, amount, reserve.address);
+  });
+
+  it("transfer token from exchange", function() {
+    var amount = (new BigNumber(10)).pow(1);
+    return polo.withdraw(token0.address, amount, reserve.address);
+  });
+
+
+
+   it("print address", function() {
+      console.log("token0 = " + token0.address.toString(16));
+      console.log("token1 = " + token1.address.toString(16));      
+      console.log("token2 = " + token2.address.toString(16));
+      console.log("bank = " + bank.address.toString(16));
+      console.log("polo = " + polo.address.toString(16));
+      console.log("bittrex = " + bittrex.address.toString(16));      
+      console.log("reserve = " + reserve.address.toString(16));
+      console.log("network = " + network.address.toString(16));
+      
+      console.log("reserve owner = " + accounts[0].toString(16));      
+            
    });
 
 

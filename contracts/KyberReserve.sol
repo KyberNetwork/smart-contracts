@@ -3,8 +3,8 @@ pragma solidity ^0.4.8;
 import "./ERC20Interface.sol";
 
 contract KyberReserve {
-    address reserveOwner;
-    address kyberNetwork;
+    address public reserveOwner;
+    address public kyberNetwork;
     ERC20 constant public ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
     uint  constant PRECISION = (10**18);
     bool public tradeEnabled;
@@ -211,7 +211,11 @@ contract KyberReserve {
     }
 
     event DepositToken( ERC20 token, uint amount );
+    function() payable {
+        DepositToken( ETH_TOKEN_ADDRESS, msg.value );        
+    }
     function depositEther( ) payable returns(bool) {
+        /*
         if( msg.sender != reserveOwner ) {
             // sender must be reserve owner
             ErrorReport( tx.origin, 0x840000000, uint(msg.sender) );
@@ -219,7 +223,7 @@ contract KyberReserve {
                 if( ! msg.sender.send(msg.value) ) throw;
             }
             return false;
-        }
+        }*/
         
         ErrorReport( tx.origin, 0, 0 );        
         
@@ -228,11 +232,12 @@ contract KyberReserve {
     }
     
     function depositToken( ERC20 token, uint amount ) returns(bool) {
+        /*
         if( msg.sender != reserveOwner ) {
             // sender must be reserve owner
             ErrorReport( tx.origin, 0x850000000, uint(msg.sender) );
             return false;
-        }
+        }*/
 
         if( token.allowance( msg.sender, this ) < amount ) {
             // allowence is smaller then amount
@@ -251,8 +256,8 @@ contract KyberReserve {
     }
     
     
-    event Withdraw( ERC20 token, uint amount );
-    function withdraw( ERC20 token, uint amount ) returns(bool) {
+    event Withdraw( ERC20 token, uint amount, address destination );
+    function withdraw( ERC20 token, uint amount, address destination ) returns(bool) {
         if( msg.sender != reserveOwner ) {
             // sender must be reserve owner
             ErrorReport( tx.origin, 0x860000000, uint(msg.sender) );
@@ -260,16 +265,16 @@ contract KyberReserve {
         }
         
         if( token == ETH_TOKEN_ADDRESS ) {
-            if( ! reserveOwner.send(amount) ) throw;
+            if( ! destination.send(amount) ) throw;
         }
-        else if( ! token.transfer(reserveOwner,amount) ) {
+        else if( ! token.transfer(destination,amount) ) {
             // transfer to reserve owner failed
             ErrorReport( tx.origin, 0x860000001, uint(token) );
             return false;
         }
         
         ErrorReport( tx.origin, 0, 0 );
-        Withdraw( token, amount );
+        Withdraw( token, amount, destination );
     }
     
     

@@ -254,6 +254,7 @@ contract KyberNetwork {
     
     function upgrade( address newAddress ) {
         // TODO
+        newAddress; // unused warning
         throw;
     }
     
