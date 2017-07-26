@@ -1,14 +1,14 @@
 # Things to know
 
 everything on kovan testnet
-kyber network address = [0x2a5cfc611c26ae1332ed4b33bbeb0b4179b478f5](https://kovan.etherscan.io/address/0x2a5cfc611c26ae1332ed4b33bbeb0b4179b478f5)
+kyber network address = [0x11542d7807dfb2b44937f756b9092c76e814f8ed](https://kovan.etherscan.io/address/0x11542d7807dfb2b44937f756b9092c76e814f8ed)
 
 kyber network abi = https://github.com/KyberNetwork/smart-contracts/blob/master/contracts/KyberNetwork.abi
 
 Three test tokens: 0,1,2. Each is called "Test i", symbol "TSTi" for i =0,1,2
-addresses = 0xdee50257770afe2a63d1d1e8f0506b1cabbd17c4, 0xcb5332a9bd3b1c46258f062a6d981c4f89b679cd, 0xbedf3c5c45f38ce7f0a6d43e729cf0ab3538c2d9
+addresses = 0xbb9c28a16654a0cd510f5b0a250255c4a07211f2, 0x950b87923d52b09b1050abda589f91521e17e606, 0x2c018fc6c9bb2b7653136dc7c5b7b588f2d11986
 
-reserve address (don't think it matters to you): 0x04538b371812D928f49Bc49cDa6384Ae3b7749F3
+reserve address (don't think it matters to you): 0x60860ce9688f4200e87e61b9a9a171cee1dc5f65
 
 
 token_i => eth (wei) rate = 2^{i+1} * (10^18), for i = 0,1,2
@@ -48,7 +48,7 @@ rate, expiration block and balance (how many tokens reserve has).
 # Kyber wallet contract
 Kyber wallet integrates with existing kyber network.
 User needs to deploy [this](https://github.com/KyberNetwork/smart-contracts/blob/master/contracts/KyberWallet.sol) contract with c'tor param
-`_kyberNetwork = 0x2a5cfc611c26ae1332ed4b33bbeb0b4179b478f5`.
+`_kyberNetwork = 0x11542d7807dfb2b44937f756b9092c76e814f8ed`.
 Then user should send ether and/or tokens to the contract. It can be in standard way (just `send` or `transfer` ether or tokens to contract address).
 
 Function to call is 
