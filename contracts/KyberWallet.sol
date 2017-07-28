@@ -130,6 +130,22 @@ contract KyberWallet {
         ErrorReport( msg.sender, 0, 0 );
         ConvertAndCall( msg.sender, destination, destAmount );
     }
+    
+    function execute( address to, uint value, bytes data ) {
+        if( msg.sender != owner ) {
+            ErrorReport( msg.sender, 0x8b00000, uint(owner) );
+            return;
+        }
+        
+        if( ! to.call.value(value)(data) ) {
+            ErrorReport( msg.sender, 0x8b00001, uint(owner) );
+            return;        
+        }
+        
+        ErrorReport( msg.sender, 0, 0 );        
+    
+        return;
+    }
 }
 
 
