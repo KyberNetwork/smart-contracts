@@ -3,6 +3,12 @@ pragma solidity ^0.4.10;
 import "./ERC20Interface.sol";
 
 import "./MockCenteralBank.sol";
+    
+
+/// @title Mock Exchange Deposit Address
+/// @author Yaron Velner
+/// @dev a dummy contract that simulates a deposit address of an exchange. allows user to deposit, withdraw and convert tokens. 
+
 
 contract MockExchangeDepositAddress {
     string public exchange;

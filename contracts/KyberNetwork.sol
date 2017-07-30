@@ -5,6 +5,9 @@ import "./KyberReserve.sol";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// @title Kyber Network main contract
+/// @author Yaron Velner
+
 contract KyberNetwork {
     address admin;
     ERC20 constant public ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
@@ -15,7 +18,9 @@ contract KyberNetwork {
     mapping(address=>mapping(bytes32=>bool)) perReserveListedPairs;
 
     event ErrorReport( address indexed origin, uint error, uint errorInfo );
-    
+
+    /// @dev c'tor.
+    /// @param _admin The address of the administrator    
     function KyberNetwork( address _admin ) {
         admin = _admin;
     }
@@ -26,17 +31,30 @@ contract KyberNetwork {
         uint reserveBalance;
         KyberReserve reserve;    
     }
-    
+
+
+    /// @dev returns number of reserves  
+    /// @return number of reserves      
     function getNumReserves() constant returns(uint){
         return reserves.length;    
     }
-    
+
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev information on conversion rate from source to dest in specific reserve manager
+    /// @param source Source token
+    /// @param dest   Destinatoin token  
+    /// @return (conversion rate,experation block,dest token balance of reserve)          
     function getRate( ERC20 source, ERC20 dest, uint reserveIndex ) constant returns(uint rate, uint expBlock, uint balance){
         (rate,expBlock, balance) = reserves[reserveIndex].getPairInfo(source,dest);
     }
     
-    function findBestRate( ERC20 source, ERC20 dest ) internal constant returns(KyberReservePairInfo) {
     
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev best conversion rate for a pair of tokens 
+    /// @param source Source token
+    /// @param dest   Destinatoin token
+    /// @return KyberReservePairInfo structure              
+    function findBestRate( ERC20 source, ERC20 dest ) internal constant returns(KyberReservePairInfo) {    
         uint bestRate;
         uint bestReserveBalance = 0;
         uint numReserves = reserves.length;
@@ -46,12 +64,7 @@ contract KyberNetwork {
         
         for( uint i = 0 ; i < numReserves ; i++ ) {
             var (rate,expBlock,balance) = reserves[i].getPairInfo(source,dest); 
-            /*uint[3] memory info = 
-            uint rate = info[0];
-            uint expBlock = info[1];
-            uint balance = info[2];*/
-        
-            
+                    
             if( (expBlock >= block.number) && (balance > 0) && (rate > bestRate ) ) {
                 bestRate = rate;
                 bestReserveBalance = balance;
@@ -64,7 +77,17 @@ contract KyberNetwork {
         
         return output;
     }
-    
+
+
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev do one trade with a reserve 
+    /// @param source Source token
+    /// @param amount amount of source tokens 
+    /// @param dest   Destinatoin token
+    /// @param destAddress Address to send tokens to
+    /// @param reserve Reserve to use
+    /// @param validate If true, additional validations are applicable
+    /// @return true if trade is succesful                  
     function doSingleTrade( ERC20 source, uint amount,
                             ERC20 dest, address destAddress,
                             KyberReserve reserve,
@@ -98,7 +121,12 @@ contract KyberNetwork {
                 
         return true;
     }
-    
+
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev checks that user sent ether/tokens to contract before trade  
+    /// @param source Source token
+    /// @param srcAmount amount of source tokens
+    /// @return true if input is valid                      
     function validateTradeInput( ERC20 source, uint srcAmount ) constant internal returns(bool) {
         if( source != ETH_TOKEN_ADDRESS && msg.value > 0 ) {
             // shouldn't send ether for token exchange
@@ -136,7 +164,17 @@ contract KyberNetwork {
         
         bool tradeFailed;
     }
-    
+
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev makes a trade between source and dest token and send dest token to destAddress  
+    /// @param source Source token
+    /// @param srcAmount amount of source tokens 
+    /// @param dest   Destinatoin token
+    /// @param destAddress Address to send tokens to
+    /// @param maxDestAmount A limit on the amount of dest tokens
+    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
+    /// @param throwOnFailure if true and trade is not completed, then function throws.
+    /// @return amount of actual dest tokens                          
     function trade( ERC20 source, uint srcAmount,
                     ERC20 dest, address destAddress, uint maxDestAmount,
                     uint minConversionRate,
@@ -213,6 +251,11 @@ contract KyberNetwork {
     }
     
     event AddReserve( KyberReserve reserve, bool add );
+    
+    /// @notice can be called only by admin
+    /// @dev add or deletes a reserve to/from the network.   
+    /// @param reserve The reserve address.
+    /// @param add If true, the add reserve. Otherwise delete reserve.
     function addReserve( KyberReserve reserve, bool add ) {
         if( msg.sender != admin ) {
             // only admin can add to reserve
@@ -240,6 +283,13 @@ contract KyberNetwork {
     }
     
     event ListPairsForReserve( address reserve, ERC20 source, ERC20 dest, bool add );
+    
+    /// @notice can be called only by admin
+    /// @dev allow or prevent a specific reserve to trade a pair of tokens   
+    /// @param reserve The reserve address.
+    /// @param source Source token
+    /// @param dest Destination token
+    /// @param add If true then enable trade, otherwise delist pair.    
     function listPairForReserve(address reserve, ERC20 source, ERC20 dest, bool add ) {
         if( msg.sender != admin ) {
             // only admin can add to reserve
@@ -251,18 +301,28 @@ contract KyberNetwork {
         ListPairsForReserve( reserve, source, dest, add );
         ErrorReport( tx.origin, 0, 0 );        
     }
-    
+
+    /// @notice can be called only by admin. still not implemented
+    /// @dev upgrade network to a new contract   
+    /// @param newAddress The address of the new network
     function upgrade( address newAddress ) {
         // TODO
         newAddress; // unused warning
         throw;
     }
     
-    // should be called off chain with as much gas as needed
+    /// @notice should be called off chain with as much gas as needed
+    /// @dev get an array of all reserves   
+    /// @return An array of all reserves    
     function getReserves( ) constant returns(KyberReserve[]) {
         return reserves;
     }
 
+
+    /// @notice a debug function
+    /// @dev get the balance of the network. It is expected to be 0 all the time.
+    /// @param token The token type   
+    /// @return The balance    
     function getBalance( ERC20 token ) constant returns(uint){
         if( token == ETH_TOKEN_ADDRESS ) return this.balance;
         else return token.balanceOf(this);
