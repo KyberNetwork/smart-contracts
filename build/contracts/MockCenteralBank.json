@@ -1,0 +1,69 @@
+{
+  "contract_name": "MockCenteralBank",
+  "abi": [
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "withdrawEther",
+      "outputs": [],
+      "payable": false,
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "depositEther",
+      "outputs": [],
+      "payable": true,
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "withdrawToken",
+      "outputs": [],
+      "payable": false,
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "payable": false,
+      "type": "constructor"
+    },
+    {
+      "payable": true,
+      "type": "fallback"
+    }
+  ],
+  "unlinked_binary": "0x6060604052341561000c57fe5b5b60008054600160a060020a03191633600160a060020a03161790555b5b6101e0806100396000396000f300606060405236156100465763ffffffff60e060020a6000350416633bed33ce811461004f5780638da5cb5b1461006457806398ea5fca146100905780639e281a981461009a575b61004d5b5b565b005b341561005757fe5b61004d6004356100bb565b005b341561006c57fe5b610074610108565b60408051600160a060020a039092168252519081900360200190f35b61004d61004a565b005b34156100a257fe5b61004d600160a060020a036004351660243561011a565b005b60005432600160a060020a039081169116146100d75760006000fd5b604051600160a060020a0333169082156108fc029083906000818181858888f19350505050151561010457fe5b5b50565b600054600160a060020a031681565b5b565b60005432600160a060020a039081169116146101365760006000fd5b81600160a060020a031663a9059cbb33836000604051602001526040518363ffffffff1660e060020a0281526004018083600160a060020a0316600160a060020a0316815260200182815260200192505050602060405180830381600087803b151561019e57fe5b6102c65a03f115156101ac57fe5b5050505b50505600a165627a7a7230582028e365c08e7cce1a665f5ebe8c12654755aba19ef670036cf6f17327540cbc770029",
+  "networks": {},
+  "schema_version": "0.0.5",
+  "updated_at": 1501096617688
+}
