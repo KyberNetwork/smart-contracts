@@ -20,7 +20,8 @@ eth (wei) => token_i rate = (10^18)/2^{i+1}.
 
 reserve has many (10^40) tokens now, but very few ethers.
 
-function:
+## Main functions:
+### Trade function
 =====
 ```
     function trade( ERC20 source, uint srcAmount,
@@ -40,7 +41,7 @@ If source is token, then you need to call token.approve(kyber network address, a
 
 Important notice: any value below 1000 wei/tokens is considered 0. Deals must be over 1000 wei (1000 tokens).
 
-# getRate function
+### getRate function
 ```
     function getRate( ERC20 source, ERC20 dest, uint reserveIndex ) constant returns(uint rate, uint expBlock, uint balance);
 ```
@@ -54,7 +55,7 @@ A user needs to deploy [this](https://github.com/KyberNetwork/smart-contracts/bl
 `_kyberNetwork = 0x11542d7807dfb2b44937f756b9092c76e814f8ed`.
 Then user should send ether and/or tokens to the contract. It can be in a standard way (just `send` or `transfer` ether or tokens to contract address).
 
-Function to call is 
+The function to call is 
 ```
     function convertAndCall( ERC20 srcToken, uint srcAmount,
                              ERC20 destToken, uint maxDestAmount,
