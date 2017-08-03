@@ -20,9 +20,9 @@ eth (wei) => token_i rate = (10^18)/2^{i+1}.
 
 reserve has many (10^40) tokens now, but very few ethers.
 
-## Main functions:
+## Main functions
+We describe the main functions of the Kyber contract as below.
 ### Trade function
-=====
 ```
     function trade( ERC20 source, uint srcAmount,
                     ERC20 dest, address destAddress, uint maxDestAmount,
