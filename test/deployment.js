@@ -3,6 +3,7 @@ var Reserve = artifacts.require("./KyberReserve.sol");
 var Network = artifacts.require("./KyberNetwork.sol");
 var Wallet = artifacts.require("./KyberWallet.sol");
 var Bank   = artifacts.require("./MockCenteralBank.sol");
+var Wrapper   = artifacts.require("./Wrapper.sol");
 var CenteralizedExchange = artifacts.require("./MockExchangeDepositAddress.sol");
 var BigNumber = require('bignumber.js');
 
@@ -33,6 +34,7 @@ var exchanges = ["Bittrex", "Liqui", "Poloniex", "Binance", "Bitfinex"];
 var exchangesInstance = [];
 
 var bank;
+var wrapper;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -228,10 +230,12 @@ contract('Deployment', function(accounts) {
     });
   });
 
-  it("create reserve", function() {
+  it("create reserve and deposit tokens", function() {
     reserveOwner = accounts[0];
     return Reserve.new(network.address, reserveOwner).then(function(instance){
         reserve = instance;
+        var amount = (new BigNumber(10)).pow(20);
+        return depositTokensToReserve( tokenOwner, reserve, amount );
     });
 
     // TODO deposit ether
@@ -245,6 +249,30 @@ contract('Deployment', function(accounts) {
     return listTokens( tokenOwner, reserve, network, expBlock, conversionRate, counterConversionRate );
   });
 
+  it("create wrapper", function() {
+    var balance0;
+    var balance1;
+    return Wrapper.new().then(function(instance){
+      wrapper = instance;
+      return wrapper.getBalances( reserve.address, [tokenInstance[0].address,
+                                                    tokenInstance[1].address] );
+    }).then(function(result){
+      balance0 = result[0];
+      balance1 = result[1];
+      return tokenInstance[0].balanceOf(reserve.address);
+    }).then(function(result){
+      assert.equal(balance0.valueOf(), result.valueOf(), "unexpeted balance 0");
+      return tokenInstance[1].balanceOf(reserve.address);
+    }).then(function(result){
+      assert.equal(balance1.valueOf(), result.valueOf(), "unexpeted balance 1");
+      return wrapper.getPrices( reserve.address, [tokenInstance[0].address,
+                                tokenInstance[1].address], [ethAddress, ethAddress]);
+    }).then(function(result){
+      console.log(result);
+    });
+  });
+
+
   it("print addresses", function() {
     console.log("\ntokens");
     for( var i = 0 ; i < tokenSymbol.length ; i++ ) {
@@ -257,6 +285,7 @@ contract('Deployment', function(accounts) {
     console.log("\nbank : " + bank.address );
     console.log("reserve : " + reserve.address );
     console.log("network : " + network.address );
+    console.log("wrapper : " + wrapper.address );
   });
 
 /*
