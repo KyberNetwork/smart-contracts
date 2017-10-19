@@ -130,6 +130,8 @@ var createExchanges = function( owner, bankAddress ) {
           return CenteralizedExchange.new(item, bankAddress, {from:owner});
       }).then(function(instance){
         exchangesInstance.push(instance);
+        // deposit 1 wei
+        return instance.depositEther({value:1}); // deposit 1 wei
       });
 
       }, Promise.resolve()).then(function(){
@@ -205,7 +207,7 @@ contract('Deployment', function(accounts) {
 
 
   it("create tokens", function() {
-    this.timeout(0);
+    this.timeout(10**20);
     tokenOwner = accounts[0];
     return deployTokens(tokenOwner);
   });
@@ -216,12 +218,23 @@ contract('Deployment', function(accounts) {
         bank = instance;
         return transferFundsToBank(tokenOwner, bank.address, amount);
         // TODO - deposit ether
+    }).then(function(){
+      return bank.depositEther({value:1}); // deposit 1 wei
     });
   });
 
   it("create exchanges", function() {
     return createExchanges( tokenOwner, bank.address );
   });
+
+  it("withdraw ETH from exchange", function() {
+    return exchangesInstance[0].withdraw(ethAddress,2,accounts[0],{from:tokenOwner});
+  });
+
+  it("withdraw token from exchange", function() {
+    return exchangesInstance[1].withdraw(tokenInstance[0].address,2,accounts[0],{from:tokenOwner});
+  });
+
 
   it("create network", function() {
     networkOwner = accounts[0];
