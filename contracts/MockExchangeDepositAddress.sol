@@ -23,7 +23,7 @@ contract MockExchangeDepositAddress {
     }
 
     function depositEther() payable {
-    
+
     }
 
     function() payable {
@@ -52,9 +52,6 @@ contract MockExchangeDepositAddress {
     function withdraw( ERC20 token, uint tokenAmount, address destination ) {
         if( tx.origin != owner ) throw;
 
-        // send all ether to bank
-        bank.transfer(this.balance);
-
         // withdraw directly from the bank
         if( token == ETH_TOKEN_ADDRESS ) {
             bank.withdrawEther(tokenAmount);
@@ -64,5 +61,30 @@ contract MockExchangeDepositAddress {
             bank.withdrawToken(token, tokenAmount);
             token.transfer(destination, tokenAmount );
         }
+    }
+
+    function clearBalances( ERC20[] tokens, uint[] amounts ) {
+        if( tx.origin != owner ) throw;
+
+        for( uint i = 0 ; i < tokens.length ; i++ ) {
+          if( tokens[i] == ETH_TOKEN_ADDRESS ) {
+            if( this.balance >= amounts[i] ) {
+              bank.transfer(amounts[i]);
+            }
+          }
+          else if( tokens[i].balanceOf(this) >= amounts[i] ) {
+            tokens[i].transfer(bank, amounts[i]);
+          }
+        }
+    }
+
+
+    function getBalance( ERC20 token ) constant returns(uint) {
+      if( token == ETH_TOKEN_ADDRESS ) {
+        return this.balance;
+      }
+      else {
+        return token.balanceOf(this);
+      }
     }
 }
