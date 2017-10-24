@@ -207,19 +207,19 @@ contract('Deployment', function(accounts) {
 
 
   it("create tokens", function() {
-    this.timeout(10**20);
+    this.timeout(30000000);
     tokenOwner = accounts[0];
     return deployTokens(tokenOwner);
   });
 
   it("create bank and transfer funds", function() {
-    var amount = (new BigNumber(10)).pow(40);
+    var amount = (new BigNumber(10)).pow(40+18);
     return Bank.new().then(function(instance){
         bank = instance;
         return transferFundsToBank(tokenOwner, bank.address, amount);
         // TODO - deposit ether
     }).then(function(){
-      return bank.depositEther({value:1}); // deposit 1 wei
+      return bank.depositEther({value:10}); // deposit 10 wei
     });
   });
 
@@ -232,7 +232,19 @@ contract('Deployment', function(accounts) {
   });
 
   it("withdraw token from exchange", function() {
-    return exchangesInstance[1].withdraw(tokenInstance[0].address,2,accounts[0],{from:tokenOwner});
+    return exchangesInstance[1].withdraw(tokenInstance[0].address,2,exchangesInstance[0].address,{from:tokenOwner}).then(function(){
+      return tokenInstance[0].balanceOf(exchangesInstance[0].address);
+    }).then(function(result){
+      assert.equal(result.valueOf(), new BigNumber(2).valueOf(), "unexpected balance");
+    });
+  });
+
+  it("withdraw token from exchange to exchange and clear funds", function() {
+    return exchangesInstance[0].clearBalances([tokenInstance[0].address, ethAddress],[1,0]).then(function(){
+        return tokenInstance[0].balanceOf(exchangesInstance[0].address);
+    }).then(function(result){
+      assert.equal(result.valueOf(), new BigNumber(1).valueOf(), "unexpected balance");
+    });
   });
 
 
@@ -247,7 +259,7 @@ contract('Deployment', function(accounts) {
     reserveOwner = accounts[0];
     return Reserve.new(network.address, reserveOwner).then(function(instance){
         reserve = instance;
-        var amount = (new BigNumber(10)).pow(20);
+        var amount = (new BigNumber(10)).pow(20+18);
         return depositTokensToReserve( tokenOwner, reserve, amount );
     });
 
@@ -259,6 +271,7 @@ contract('Deployment', function(accounts) {
   });
 
   it("list tokens", function() {
+    this.timeout(30000000);
     return listTokens( tokenOwner, reserve, network, expBlock, conversionRate, counterConversionRate );
   });
 

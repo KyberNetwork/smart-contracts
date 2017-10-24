@@ -106,7 +106,7 @@ contract BasicToken is ERC20Basic {
   mapping(address => uint) balances;
 
   /*
-   * Fix for the ERC20 short address attack  
+   * Fix for the ERC20 short address attack
    */
   modifier onlyPayloadSize(uint size) {
      if(msg.data.length < size + 4) {
@@ -124,7 +124,7 @@ contract BasicToken is ERC20Basic {
   function balanceOf(address _owner) constant returns (uint balance) {
     return balances[_owner];
   }
-  
+
 }
 
 
@@ -142,7 +142,7 @@ contract StandardToken is BasicToken, ERC20 {
   mapping (address => mapping (address => uint)) allowed;
 
   function transferFrom(address _from, address _to, uint _value) {
-    
+
     var _allowance = allowed[_from][msg.sender];
 
     // Check is not needed because sub(_allowance, _value) will already throw if this condition is not met
@@ -178,9 +178,9 @@ contract TestToken is StandardToken {
 
   string public name = "Test";
   string public symbol = "TST";
-  uint public decimals = 0;
-  uint public INITIAL_SUPPLY = 10**50;
-  
+  uint public decimals = 18;
+  uint public INITIAL_SUPPLY = 10**(50+18);
+
   function TestToken(string _name, string _symbol) {
     totalSupply = INITIAL_SUPPLY;
     balances[msg.sender] = INITIAL_SUPPLY;
