@@ -107,7 +107,7 @@ var depositTokensToReserve = function( owner, reserveInstance, amount ) {
       return promise.then(function () {
           return item.decimals();
       }).then(function(decimals){
-          actualAmount = new BigNumber(amount).mul(decimals);
+          actualAmount = new BigNumber(amount).mul(new BigNumber(10).pow(decimals));
           return item.approve(reserveInstance.address, actualAmount, {from:owner});
       }).then(function(){
         return reserve.depositToken(item.address, actualAmount, {from:owner})
