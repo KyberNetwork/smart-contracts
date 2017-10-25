@@ -181,11 +181,12 @@ contract TestToken is StandardToken {
   uint public decimals = 18;
   uint public INITIAL_SUPPLY = 10**(50+18);
 
-  function TestToken(string _name, string _symbol) {
+  function TestToken(string _name, string _symbol, uint _decimals) {
     totalSupply = INITIAL_SUPPLY;
     balances[msg.sender] = INITIAL_SUPPLY;
     name = _name;
     symbol = _symbol;
+    decimals = _decimals;
   }
 
 }

@@ -12,6 +12,8 @@ var wallet;
 var tokenSymbol = ["OMG", "DGD", "CVC", "FUN", "MCO", "GNT", "ADX", "PAY",
                    "BAT", "KNC", "EOS", "LINK"];
 var tokenName = tokenSymbol;
+var tokenDecimals = [18,9,8,8,8,18,4,18,18,18,18,18]
+
 var tokenInstance = [];
 
 
@@ -51,7 +53,8 @@ var deployTokens = function( owner ){
       return promise.then(function () {
           var symbol = tokenSymbol[item];
           var name = tokenName[item];
-          return TestToken.new(name, symbol, {from:owner});
+          var decimals = tokenDecimals[item];
+          return TestToken.new(name, symbol, decimals, {from:owner});
       }).then(function(instance){
           tokenInstance.push(instance);
       });
@@ -99,11 +102,15 @@ var depositTokensToReserve = function( owner, reserveInstance, amount ) {
           inputs.push(tokenInstance[i]);
       }
 
+      var actualAmount;
      return inputs.reduce(function (promise, item) {
       return promise.then(function () {
-          return item.approve(reserveInstance.address, amount, {from:owner});
+          return item.decimals();
+      }).then(function(decimals){
+          actualAmount = new BigNumber(amount).mul(decimals);
+          return item.approve(reserveInstance.address, actualAmount, {from:owner});
       }).then(function(){
-        return reserve.depositToken(item.address, amount, {from:owner})
+        return reserve.depositToken(item.address, actualAmount, {from:owner})
       });
 
       }, Promise.resolve()).then(function(){
@@ -259,7 +266,7 @@ contract('Deployment', function(accounts) {
     reserveOwner = accounts[0];
     return Reserve.new(network.address, reserveOwner).then(function(instance){
         reserve = instance;
-        var amount = (new BigNumber(10)).pow(20+18);
+        var amount = (new BigNumber(10)).pow(4);
         return depositTokensToReserve( tokenOwner, reserve, amount );
     });
 
