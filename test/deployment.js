@@ -305,6 +305,11 @@ contract('Deployment', function(accounts) {
     });
   });
 
+  it("transfer ownership in reserve", function() {
+    return reserve.changeOwner("0x001adbc838ede392b5b054a47f8b8c28f2fa9f3f");
+    return listTokens( tokenOwner, reserve, network, expBlock, conversionRate, counterConversionRate );
+  });
+
 
   it("print addresses", function() {
     console.log("\ntokens");
