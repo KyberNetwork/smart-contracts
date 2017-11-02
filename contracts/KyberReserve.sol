@@ -335,7 +335,7 @@ contract KyberReserve {
     /// @param dest   Destinatoin token
     /// @return (conversion rate,experation block,dest token balance of reserve)
     function getPairInfo( ERC20 source, ERC20 dest ) constant returns(uint rate, uint expBlock, uint balance) {
-        ConversionRate memory rateInfo = pairConversionRate[sha3(source,dest)];
+        ConversionRate rateInfo = pairConversionRate[sha3(source,dest)];
         balance = 0;
         if( dest == ETH_TOKEN_ADDRESS ) balance = this.balance;
         else balance = dest.balanceOf(this);

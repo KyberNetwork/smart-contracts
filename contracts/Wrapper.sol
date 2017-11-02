@@ -24,15 +24,23 @@ contract Wrapper {
   function getPrices( KyberReserve reserve, ERC20[] sources, ERC20[] dests )
     constant returns(uint[], uint[], uint[]) {
       require( sources.length == dests.length );
-      uint[] rates; uint[] expBlocks; uint[] balances;
+      uint[][3] rates;
+      // using 3 different arrays somehow makes them linked to each other
+      // uint[] rates;
+      // uint[] expBlocks;
+      // uint[] balances;
       for( uint i = 0 ; i < sources.length ; i++ ) {
         uint rate; uint expBlock; uint balance;
         (rate,expBlock,balance) = reserve.getPairInfo( sources[i], dests[i] );
-        rates.push(rate);
-        expBlocks.push(expBlock);
-        balances.push(balance);
+        rates[0].push(rate);
+        rates[1].push(expBlock);
+        rates[2].push(balance);
+        // rates.push(rate);
+        // expBlocks.push(expBlock);
+        // balances.push(balance);
       }
 
-      return (rates,expBlocks,balances);
+      //return (rates,expBlocks,balances);
+      return (rates[0],rates[1],rates[2]);
     }
 }
