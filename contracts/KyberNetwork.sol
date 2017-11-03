@@ -57,7 +57,7 @@ contract KyberNetwork {
     function getPrice( ERC20 source, ERC20 dest ) constant returns(uint) {
       uint rate; uint expBlock; uint balance;
       (rate, expBlock, balance) = getRate( source, dest, 0 );
-      if( expBlock >= block.number ) return 0; // TODO - consider add 1
+      if( expBlock <= block.number ) return 0; // TODO - consider add 1
       if( balance == 0 ) return 0; // TODO - decide on minimal qty
       return rate;
     }
@@ -77,6 +77,7 @@ contract KyberNetwork {
 
         for( uint i = 0 ; i < numReserves ; i++ ) {
             var (rate,expBlock,balance) = reserves[i].getPairInfo(source,dest);
+            rate = (rate * dest.decimals()) / source.decimals(); 
 
             if( (expBlock >= block.number) && (balance > 0) && (rate > bestRate ) ) {
                 bestRate = rate;

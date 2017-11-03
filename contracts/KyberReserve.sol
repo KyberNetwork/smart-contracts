@@ -342,6 +342,7 @@ contract KyberReserve {
 
         expBlock = rateInfo.expirationBlock;
         rate = rateInfo.rate;
+        rate = (rate * dest.decimals()) / source.decimals();        
     }
 
     /// @notice a debug function
