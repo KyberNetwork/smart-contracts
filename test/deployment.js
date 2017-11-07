@@ -214,6 +214,8 @@ contract('Deployment', function(accounts) {
 
 
   it("create tokens", function() {
+    console.log(accounts[0]);
+    
     this.timeout(30000000);
     tokenOwner = accounts[0];
     return deployTokens(tokenOwner);
@@ -301,7 +303,9 @@ contract('Deployment', function(accounts) {
       return wrapper.getPrices( reserve.address, [tokenInstance[0].address,
                                 tokenInstance[1].address], [ethAddress, ethAddress]);
     }).then(function(result){
+      console.log("===");
       console.log(result);
+      console.log("===");
     });
   });
 
@@ -325,177 +329,4 @@ contract('Deployment', function(accounts) {
     console.log("network : " + network.address );
     console.log("wrapper : " + wrapper.address );
   });
-
-/*
-
-  it("do trade token 0", function() {
-    return token0.approve(network.address, 2000, {from:tokenOwner, gas:4000000}).then(function(result){
-        return network.trade( tokenAddress0, 2000, ethAddress, tokenOwner, 0xFFFFFFFF, conversionRate0, false);
-    }).then(function(result){
-        return token0.balanceOf(reserve.address);
-    }).then(function(result){
-        console.log(result.toString(10));
-        return reserve.getBalance(ethAddress);
-    }).then(function(result){
-        console.log(result.toString(10));
-        return network.getBalance(ethAddress);
-    }).then(function(result){
-        console.log(result.toString(10));
-    });
-  });
-
-  it("do revese trade token 0", function() {
-    return network.trade( ethAddress, 1001, tokenAddress0, tokenOwner, 0xFFFFFFFF, counterConversionRate0, false,{value:1001}).then(function(result){
-    }).then(function(result){
-        return token0.balanceOf(reserve.address);
-    }).then(function(result){
-        console.log(result.toString(10));
-        return reserve.getBalance(ethAddress);
-    }).then(function(result){
-        console.log(result.toString(10));
-        return network.getBalance(ethAddress);
-    }).then(function(result){
-        console.log(result.toString(10));
-    });
-  });
-
-
-  it("do trade token 1", function() {
-    return token1.approve(network.address, 2000, {from:tokenOwner, gas:4000000}).then(function(result){
-        return network.trade( tokenAddress1, 2000, ethAddress, tokenOwner, 0xFFFFFFFF, conversionRate1, false);
-    }).then(function(result){
-        //assert.equal(true,false,"mg");
-        return token1.balanceOf(reserve.address);
-    }).then(function(result){
-        console.log(result.toString(10));
-        return reserve.getBalance(ethAddress);
-    }).then(function(result){
-        console.log(result.toString(10));
-        return network.getBalance(ethAddress);
-    }).then(function(result){
-        console.log(result.toString(10));
-    });
-  });
-
-  it("do revese trade token 1", function() {
-    return network.trade( ethAddress, 1001, tokenAddress1, tokenOwner, 0xFFFFFFFF, counterConversionRate1, false,{value:1001}).then(function(result){
-    }).then(function(result){
-        return token1.balanceOf(reserve.address);
-    }).then(function(result){
-        console.log(result.toString(10));
-        return reserve.getBalance(ethAddress);
-    }).then(function(result){
-        console.log(result.toString(10));
-        return network.getBalance(ethAddress);
-    }).then(function(result){
-        console.log(result.toString(10));
-    });
-  });
-
-  it("do trade token 2", function() {
-    return token2.approve(network.address, 2000, {from:tokenOwner, gas:4000000}).then(function(result){
-        return network.trade( tokenAddress2, 2000, ethAddress, tokenOwner, 0xFFFFFFFF, conversionRate2, false);
-    }).then(function(result){
-        //assert.equal(true,false,"mg");
-        return token2.balanceOf(reserve.address);
-    }).then(function(result){
-        console.log(result.toString(10));
-        return reserve.getBalance(ethAddress);
-    }).then(function(result){
-        console.log(result.toString(10));
-        return network.getBalance(ethAddress);
-    }).then(function(result){
-        console.log(result.toString(10));
-    });
-  });
-
-  it("do revese trade token 2", function() {
-    return network.trade( ethAddress, 1001, tokenAddress2, tokenOwner, 0xFFFFFFFF, counterConversionRate2, false,{value:1001}).then(function(result){
-    }).then(function(result){
-        return token2.balanceOf(reserve.address);
-    }).then(function(result){
-        console.log(result.toString(10));
-        return reserve.getBalance(ethAddress);
-    }).then(function(result){
-        console.log(result.toString(10));
-        return network.getBalance(ethAddress);
-    }).then(function(result){
-        console.log(result.toString(10));
-    });
-  });
-
-  it("get rate info", function() {
-    var rate;
-    var expBlock;
-    var balance;
-
-    return network.getRate( tokenAddress0, ethAddress, 0 ).then(function(result){
-        rate = result[0];
-        expBlock = result[1];
-        balance = result[2];
-        assert.equal(conversionRate0.toString(10), rate.toString(10), "conversion rate 0 is not as expected");
-
-        return network.getRate( tokenAddress1, ethAddress, 0 );
-    }).then(function(result){
-        rate = result[0];
-        assert.equal(conversionRate1.toString(10), rate.toString(10), "conversion rate 1 is not as expected");
-        return network.getRate( tokenAddress2, ethAddress, 0 );
-    }).then(function(result){
-        rate = result[0];
-        assert.equal(conversionRate2.toString(10), rate.toString(10), "conversion rate 2 is not as expected");
-        return network.getRate( ethAddress, tokenAddress0, 0 );
-    }).then(function(result){
-        rate = result[0];
-        assert.equal(counterConversionRate0.toString(10), rate.toString(10), "counter conversion rate 0 is not as expected");
-        return network.getRate( ethAddress, tokenAddress1, 0 );
-    }).then(function(result){
-        rate = result[0];
-        assert.equal(counterConversionRate1.toString(10), rate.toString(10), "counter conversion rate 1 is not as expected");
-        return network.getRate( ethAddress, tokenAddress2, 0 );
-    }).then(function(result){
-        rate = result[0];
-        assert.equal(counterConversionRate2.toString(10), rate.toString(10), "counter conversion rate 1 is not as expected");
-    });
-
-   });
-
-
-  it("withdraw tokens", function() {
-    var amount = (new BigNumber(10)).pow(4);
-    return reserve.withdraw(token0.address, amount, polo.address);
-  });
-
-  it("withdraw ether", function() {
-    var amount = (new BigNumber(10)).pow(1);
-    return reserve.withdraw(ethAddress, amount, bittrex.address);
-  });
-
-  it("transfer eth from exchange", function() {
-    var amount = (new BigNumber(10)).pow(1);
-    return bittrex.withdraw(ethAddress, amount, reserve.address);
-  });
-
-  it("transfer token from exchange", function() {
-    var amount = (new BigNumber(10)).pow(1);
-    return polo.withdraw(token0.address, amount, reserve.address);
-  });
-
-
-
-   it("print address", function() {
-      console.log("token0 = " + token0.address.toString(16));
-      console.log("token1 = " + token1.address.toString(16));
-      console.log("token2 = " + token2.address.toString(16));
-      console.log("bank = " + bank.address.toString(16));
-      console.log("polo = " + polo.address.toString(16));
-      console.log("bittrex = " + bittrex.address.toString(16));
-      console.log("reserve = " + reserve.address.toString(16));
-      console.log("network = " + network.address.toString(16));
-
-      console.log("reserve owner = " + accounts[0].toString(16));
-
-   });
-*/
-
-
 });

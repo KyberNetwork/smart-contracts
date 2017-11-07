@@ -66,7 +66,7 @@ contract KyberNetwork {
       if( token == ETH_TOKEN_ADDRESS ) return 18;
       return token.decimals();
     }
-    
+
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev best conversion rate for a pair of tokens
     /// @param source Source token
@@ -89,8 +89,6 @@ contract KyberNetwork {
                 bestReserve = reserves[i];
             }
         }
-
-        bestRate = (bestRate * (10 ** getDecimals(dest))) / (10**getDecimals(source));
 
         output.rate = bestRate;
         output.reserveBalance = bestReserveBalance;
@@ -244,6 +242,9 @@ contract KyberNetwork {
                 ErrorReport( tx.origin, 0x86000001, tradeInfo.remainedSourceAmount );
                 break;
             }
+
+            reserveInfo.rate = (reserveInfo.rate * (10 ** getDecimals(dest))) /
+                                                      (10**getDecimals(source));            
 
             uint actualSrcAmount = tradeInfo.remainedSourceAmount;
             // TODO - overflow check
