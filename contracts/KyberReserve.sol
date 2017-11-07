@@ -46,15 +46,21 @@ contract KyberReserve {
     /// @param dest Destination token
     /// @param blockNumber Current block number
     /// @return conversion rate with PRECISION precision
+
     function getConversionRate( ERC20 source, ERC20 dest, uint blockNumber ) internal constant returns(uint) {
         ConversionRate memory rateInfo = pairConversionRate[sha3(source,dest)];
         if( rateInfo.rate == 0 ) return 0;
         if( rateInfo.expirationBlock < blockNumber ) return 0;
-        return rateInfo.rate;
+        return rateInfo.rate * (10 ** getDecimals(dest)) / (10**getDecimals(source));
     }
 
     event ErrorReport( address indexed origin, uint error, uint errorInfo );
     event DoTrade( address indexed origin, address source, uint sourceAmount, address destToken, uint destAmount, address destAddress );
+
+    function getDecimals( ERC20 token ) constant returns(uint) {
+      if( token == ETH_TOKEN_ADDRESS ) return 18;
+      return token.decimals();
+    }
 
     /// @dev do a trade
     /// @param sourceToken Source token

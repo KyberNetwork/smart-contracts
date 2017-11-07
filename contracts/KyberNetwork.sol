@@ -244,7 +244,7 @@ contract KyberNetwork {
             }
 
             reserveInfo.rate = (reserveInfo.rate * (10 ** getDecimals(dest))) /
-                                                      (10**getDecimals(source));            
+                                                      (10**getDecimals(source));
 
             uint actualSrcAmount = tradeInfo.remainedSourceAmount;
             // TODO - overflow check

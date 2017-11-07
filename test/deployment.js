@@ -215,7 +215,7 @@ contract('Deployment', function(accounts) {
 
   it("create tokens", function() {
     console.log(accounts[0]);
-    
+
     this.timeout(30000000);
     tokenOwner = accounts[0];
     return deployTokens(tokenOwner);
@@ -313,6 +313,27 @@ contract('Deployment', function(accounts) {
     return reserve.changeOwner("0x001adbc838ede392b5b054a47f8b8c28f2fa9f3f");
     return listTokens( tokenOwner, reserve, network, expBlock, conversionRate, counterConversionRate );
   });
+
+  it("do a single exchange", function() {
+    var dgdAddress = tokenInstance[1].address;
+    var ethAmount = 10**18;
+    var expectedDgd = (ethAmount * counterConversionRate / 10**18) / (10**18 / 10**tokenDecimals[1]);
+    var destAddress = "0x001adbc838ede392b5b054a47f8b8c28f2fa9f3c";
+
+    return network.trade(ethAddress,
+                         ethAmount,
+                         dgdAddress,
+                         destAddress,
+                         new BigNumber(2).pow(255),
+                         0x6eccddb2eeb8000,
+                         true,{value:10**18}).then(function(){
+
+       return tokenInstance[1].balanceOf(destAddress);
+    }).then(function(result){
+      assert.equal(result.valueOf(), expectedDgd.valueOf(), "unexpected dgd balance");
+    });
+  });
+
 
 
   it("print addresses", function() {
