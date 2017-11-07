@@ -1,3 +1,8 @@
+KOVAN
+-----
+
+kyber network : 0x238af69207153506873c8f2e717a4fd1753a04ce
+
 tokens
 OMG : 0x6b662ffde8f1d2240eb4eefa211463be0eb258a1
 DGD : 0xd27763c026260bb8cfcf47a3d2ca18f03cb9da55
@@ -21,5 +26,37 @@ Bitfinex : 0x511fec5e775e7ab486e507230d2c3fd289a44e41
 
 bank : 0xbf6b2070264b37fd527bf3d393280d7b0401f447
 reserve : 0xc9f8edc40f8b5369a3144bb29d7465b632fdb563
-network : 0x238af69207153506873c8f2e717a4fd1753a04ce
 wrapper : 0x9624ec965ff9bf947a90d5b66392d41c53777c3d
+
+
+========================================================
+
+RINKEBY (not maintained)
+-----------------------
+
+kyber network : 0xc488bdc4d9646503327305d3d0ef6e7f72937bc0
+
+tokens
+OMG : 0xecdf71ad6819238bdf7ff79cc42285d545fbb800
+DGD : 0x62377e0fdb31709c945fc2846155c8aed70f676d
+CVC : 0x037d442eb08ab5b11e7f05c1ba338a626d890466
+FUN : 0xbbf5d75ba80f321638e1e99dbf6f707d4516ccb5
+MCO : 0x75f22f53718d1b22ecb77b099c0e9e4a8356febe
+GNT : 0xc8c18dbccd4d764ab9a4197de552a37727dbe9c8
+ADX : 0x096205a84d7a3b22be78b993e81fe7a810df8416
+PAY : 0x41ad0f70ccd8ca7167927b48916d860bf2ffaf84
+BAT : 0xa0bdb980886dd5fd297fe3dbf1565b9bfad031ab
+KNC : 0xe795fa0cd7d69a775e06799b402e282adfd6d66d
+EOS : 0xbab08c0327dd5c2f949074b646c584c6203f4a17
+LINK : 0x190dbf239dee2a3e4f5c3bd77b8bbff5a71523bd
+
+exchanges
+Bittrex : 0xc88864c54ab0a37c523a7a57324a339bb8d24a49
+Liqui : 0xa575fc353db6d5bc884bf7f51168f860de69dace
+Poloniex : 0x70324ad6fda8cfcebc31969c840e174113ce95a9
+Binance : 0x5cf2a2c1069869cea9dd77aab939db995e6da223
+Bitfinex : 0x3b046daa124d70921f9e303fb72e8461e4f77621
+
+bank : 0x6bbe8a65eeb1dd1a5834918d04a1086999f366a7
+reserve : 0x302f6fb9afe53319971cfc7966d5b3de8d458c7d
+wrapper : 0x7af1cc5f2809b4658a7c51316b9006e6e8ff7b54
