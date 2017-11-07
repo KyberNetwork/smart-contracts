@@ -12,7 +12,7 @@ contract KyberNetwork {
     address admin;
     ERC20 constant public ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
     uint  constant PRECISION = (10**18);
-    uint  constant EPSILON = (1000);
+    uint  constant EPSILON = (10);
     KyberReserve[] public reserves;
 
     mapping(address=>mapping(bytes32=>bool)) perReserveListedPairs;
@@ -62,6 +62,11 @@ contract KyberNetwork {
       return rate;
     }
 
+    function getDecimals( ERC20 token ) constant returns(uint) {
+      if( token == ETH_TOKEN_ADDRESS ) return 18;
+      return token.decimals();
+    }
+    
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev best conversion rate for a pair of tokens
     /// @param source Source token
@@ -77,7 +82,6 @@ contract KyberNetwork {
 
         for( uint i = 0 ; i < numReserves ; i++ ) {
             var (rate,expBlock,balance) = reserves[i].getPairInfo(source,dest);
-            rate = (rate * dest.decimals()) / source.decimals(); 
 
             if( (expBlock >= block.number) && (balance > 0) && (rate > bestRate ) ) {
                 bestRate = rate;
@@ -85,6 +89,9 @@ contract KyberNetwork {
                 bestReserve = reserves[i];
             }
         }
+
+        bestRate = (bestRate * (10 ** getDecimals(dest))) / (10**getDecimals(source));
+
         output.rate = bestRate;
         output.reserveBalance = bestReserveBalance;
         output.reserve = bestReserve;
