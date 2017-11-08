@@ -206,6 +206,9 @@ contract KyberNetwork {
     }
 
 
+    function isNegligable( uint currentValue, uint originalValue ) constant returns(bool){
+      return currentValue < (originalValue / 100000);
+    }
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev makes a trade between source and dest token and send dest token to destAddress
     /// @param source Source token
@@ -233,7 +236,8 @@ contract KyberNetwork {
 
         TradeInfo memory tradeInfo = TradeInfo(0,srcAmount,false);
 
-        while( (tradeInfo.convertedDestAmount + EPSILON < maxDestAmount) && (tradeInfo.remainedSourceAmount > EPSILON) ) {
+        while( !isNegligable(maxDestAmount-tradeInfo.convertedDestAmount, maxDestAmount)
+               && !isNegligable(tradeInfo.remainedSourceAmount, srcAmount)) {
             KyberReservePairInfo memory reserveInfo = findBestRate(source,dest);
 
             if( reserveInfo.rate == 0 || reserveInfo.rate < minConversionRate ) {

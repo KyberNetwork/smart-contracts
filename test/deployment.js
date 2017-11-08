@@ -308,16 +308,24 @@ contract('Deployment', function(accounts) {
       console.log("===");
     });
   });
+  it("set eth to dgd rate", function() {
+    return reserve.setRate([ethAddress],
+                           [tokenInstance[1].address],
+                           [0x47d40a969bd7c0021],
+                           [10**18],
+                           true, {from:reserveOwner});
+  });
 
   it("transfer ownership in reserve", function() {
     return reserve.changeOwner("0x001adbc838ede392b5b054a47f8b8c28f2fa9f3f");
-    return listTokens( tokenOwner, reserve, network, expBlock, conversionRate, counterConversionRate );
   });
+
 
   it("do a single exchange", function() {
     var dgdAddress = tokenInstance[1].address;
-    var ethAmount = 10**18;
-    var expectedDgd = (ethAmount * counterConversionRate / 10**18) / (10**18 / 10**tokenDecimals[1]);
+    var ethAmount = 1 * 10**16;
+    var rate = 0x47d40a969bd7c0021;
+    var expectedDgd = (ethAmount * rate / 10**18) / (10**18 / 10**tokenDecimals[1]);
     var destAddress = "0x001adbc838ede392b5b054a47f8b8c28f2fa9f3c";
 
     return network.trade(ethAddress,
@@ -325,12 +333,17 @@ contract('Deployment', function(accounts) {
                          dgdAddress,
                          destAddress,
                          new BigNumber(2).pow(255),
-                         0x6eccddb2eeb8000,
-                         true,{value:10**18}).then(function(){
+                         rate,
+                         false,{value:ethAmount}).then(function(){
 
        return tokenInstance[1].balanceOf(destAddress);
     }).then(function(result){
-      assert.equal(result.valueOf(), expectedDgd.valueOf(), "unexpected dgd balance");
+      if( result.valueOf() > expectedDgd.valueOf() + 10 ) {
+        assert.fail("unexpected dgd balacne", result.valueOf(), expectedDgd.valueOf() );
+      }
+      if( result.valueOf() < expectedDgd.valueOf() - 10 ) {
+        assert.fail("unexpected dgd balacne", result.valueOf(), expectedDgd.valueOf() );
+      }
     });
   });
 
