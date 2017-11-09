@@ -11,7 +11,9 @@ var wallet;
 
 var tokenSymbol = ["OMG", "DGD", "CVC", "FUN", "MCO", "GNT", "ADX", "PAY",
                    "BAT", "KNC", "EOS", "LINK"];
-var tokenName = tokenSymbol;
+var tokenName = [ "OmiseGO", "Digix", "Civic", "FunFair", "Monaco", "Golem",
+"Adex", "TenX", "BasicAttention", "KyberNetwork", "Eos", "ChainLink" ];
+
 var tokenDecimals = [18,9,8,8,8,18,4,18,18,18,18,18]
 
 var tokenInstance = [];
@@ -37,6 +39,10 @@ var exchangesInstance = [];
 
 var bank;
 var wrapper;
+
+
+var duc = "0xc6bc2f7b73da733366985f5f5b485262b45a77a3";
+var victor = "0x760d30979eb313a2d23c53e4fb55986183b0ffd9";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -148,6 +154,31 @@ var createExchanges = function( owner, bankAddress ) {
       });
   });
 };
+
+////////////////////////////////////////////////////////////////////////////////
+
+var transferOwneshipInExchanges = function( owner, newOwner ) {
+  return new Promise(function (fulfill, reject){
+
+      var inputs = [];
+
+      for (var i = 0 ; i < exchanges.length ; i++ ) {
+          inputs.push(i);
+      }
+
+     return inputs.reduce(function (promise, item) {
+      return promise.then(function () {
+          return exchangesInstance[item].changeOwner(newOwner);
+      });
+
+      }, Promise.resolve()).then(function(){
+          fulfill(true);
+      }).catch(function(err){
+          reject(err);
+      });
+  });
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -317,8 +348,21 @@ contract('Deployment', function(accounts) {
   });
 
   it("transfer ownership in reserve", function() {
-    return reserve.changeOwner("0x001adbc838ede392b5b054a47f8b8c28f2fa9f3f");
+    return reserve.changeOwner(victor);
   });
+
+  it("transfer ownership in exchanges", function() {
+
+    return transferOwneshipInExchanges(tokenOwner,duc).then(function(){
+    return exchangesInstance[1].owner();
+  }).then(function(result){
+    assert.equal(result.valueOf(),duc.valueOf(), "unexpected owner address");
+  });
+});
+
+it("transfer ownership in bank", function() {
+  return bank.changeOwner(duc);
+});
 
 
   it("do a single exchange", function() {
@@ -350,17 +394,31 @@ contract('Deployment', function(accounts) {
 
 
   it("print addresses", function() {
+    tokensDict = {};
     console.log("\ntokens");
     for( var i = 0 ; i < tokenSymbol.length ; i++ ) {
       console.log(tokenSymbol[i] + " : " + tokenInstance[i].address );
+      tokenDict = {"address" : tokenInstance[i].address, "name" : tokenName[i]};
+      tokensDict[tokenSymbol[i]] = tokenDict;
     }
+    exchagesDict = {};
     console.log("\nexchanges");
     for( var i = 0 ; i < exchanges.length ; i++ ) {
       console.log( exchanges[i] + " : " + exchangesInstance[i].address );
+      exchagesDict[exchanges[i]] = exchangesInstance[i].address;
     }
+
+    dict = { "tokens" : tokensDict, "exchanges" : exchagesDict };
+    dict["bank"] = bank.address;
+    dict["reserve"] = reserve.address;
+    dict["network"] = network.address;
+    dict["wrapper"] = wrapper.address;
+
     console.log("\nbank : " + bank.address );
     console.log("reserve : " + reserve.address );
     console.log("network : " + network.address );
     console.log("wrapper : " + wrapper.address );
+
+    console.log(JSON.stringify(dict, null, 2));
   });
 });

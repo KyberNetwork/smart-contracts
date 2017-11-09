@@ -13,7 +13,7 @@ import "./MockCenteralBank.sol";
 contract MockExchangeDepositAddress {
     string public exchange;
     MockCenteralBank public bank;
-    address owner;
+    address public owner;
     ERC20 constant public ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
     function MockExchangeDepositAddress( string _exchange, MockCenteralBank _bank ){
@@ -86,5 +86,10 @@ contract MockExchangeDepositAddress {
       else {
         return token.balanceOf(this);
       }
+    }
+
+    function changeOwner( address newOwner ) {
+      if( msg.sender != owner ) throw;
+      owner = newOwner;
     }
 }
