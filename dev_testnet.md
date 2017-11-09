@@ -18,3 +18,4 @@ truffle test ./test/ethdistribution.js
 ```
 truffle test ./test/deployment.js
 ```
+A json dictionary with all the new addresses is logged to screen.
