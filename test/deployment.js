@@ -41,7 +41,7 @@ var bank;
 var wrapper;
 
 
-var duc = "0xc6bc2f7b73da733366985f5f5b485262b45a77a3";
+var nam = "0xc6bc2f7b73da733366985f5f5b485262b45a77a3";
 var victor = "0x760d30979eb313a2d23c53e4fb55986183b0ffd9";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,15 +353,15 @@ contract('Deployment', function(accounts) {
 
   it("transfer ownership in exchanges", function() {
 
-    return transferOwneshipInExchanges(tokenOwner,duc).then(function(){
+    return transferOwneshipInExchanges(tokenOwner,nam).then(function(){
     return exchangesInstance[1].owner();
   }).then(function(result){
-    assert.equal(result.valueOf(),duc.valueOf(), "unexpected owner address");
+    assert.equal(result.valueOf(),nam.valueOf(), "unexpected owner address");
   });
 });
 
 it("transfer ownership in bank", function() {
-  return bank.changeOwner(duc);
+  return bank.changeOwner(nam);
 });
 
 
