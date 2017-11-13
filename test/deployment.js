@@ -43,6 +43,7 @@ var wrapper;
 
 var nam = "0xc6bc2f7b73da733366985f5f5b485262b45a77a3";
 var victor = "0x760d30979eb313a2d23c53e4fb55986183b0ffd9";
+var duc = "0x25B8b1F2c21A70B294231C007e834Ad2de04f51F";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -117,6 +118,9 @@ var depositTokensToReserve = function( owner, reserveInstance, amount ) {
           return item.approve(reserveInstance.address, actualAmount, {from:owner});
       }).then(function(){
         return reserve.depositToken(item.address, actualAmount, {from:owner})
+      }).then(function(){
+        // send some tokens to duc
+        return item.transfer(duc, actualAmount,{from:owner});
       });
 
       }, Promise.resolve()).then(function(){
@@ -242,7 +246,15 @@ contract('Deployment', function(accounts) {
   afterEach(function(done){
     done();
   });
-
+/*
+  it("read parameters from file", function() {
+    var fs = require("fs");
+    console.log("\n *START* \n");
+    var content = fs.readFileSync("content.txt");
+    console.log("Output Content : \n"+ content);
+    console.log("\n *EXIT* \n");
+  });
+*/
 
   it("create tokens", function() {
     console.log(accounts[0]);
@@ -299,7 +311,7 @@ contract('Deployment', function(accounts) {
     reserveOwner = accounts[0];
     return Reserve.new(network.address, reserveOwner).then(function(instance){
         reserve = instance;
-        var amount = (new BigNumber(10)).pow(4);
+        var amount = (new BigNumber(10)).pow(6);
         return depositTokensToReserve( tokenOwner, reserve, amount );
     });
 
@@ -398,7 +410,9 @@ it("transfer ownership in bank", function() {
     console.log("\ntokens");
     for( var i = 0 ; i < tokenSymbol.length ; i++ ) {
       console.log(tokenSymbol[i] + " : " + tokenInstance[i].address );
-      tokenDict = {"address" : tokenInstance[i].address, "name" : tokenName[i]};
+      tokenDict = {"address" : tokenInstance[i].address,
+                   "name" : tokenName[i],
+                   "decimals" : tokenDecimals[i]};
       tokensDict[tokenSymbol[i]] = tokenDict;
     }
     exchagesDict = {};
