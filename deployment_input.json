@@ -1,0 +1,72 @@
+{
+  "tokens": {
+    "OMG": {
+      "name": "OmiseGO",
+      "decimals": 18
+    },
+    "DGD": {
+      "name": "Digix",
+      "decimals": 9
+    },
+    "CVC": {
+      "name": "Civic",
+      "decimals": 8
+    },
+    "FUN": {
+      "name": "FunFair",
+      "decimals": 8
+    },
+    "MCO": {
+      "name": "Monaco",
+      "decimals": 8
+    },
+    "GNT": {
+      "name": "Golem",
+      "decimals": 18
+    },
+    "ADX": {
+      "name": "Adex",
+      "decimals": 4
+    },
+    "PAY": {
+      "name": "TenX",
+      "decimals": 18
+    },
+    "BAT": {
+      "name": "BasicAttention",
+      "decimals": 18
+    },
+    "KNC": {
+      "name": "KyberNetwork",
+      "decimals": 18,
+      "reserve balance" : 999999
+    },
+    "EOS": {
+      "name": "Eos",
+      "decimals": 18
+    },
+    "LINK": {
+      "name": "ChainLink",
+      "decimals": 18
+    }
+  },
+  "exchanges": [
+    "bittrex",
+    "liqui",
+    "poloniex",
+    "binance",
+    "bitfinex"
+  ],
+
+  "default reserve balances" : { "token" : 1000000, "ether" : 10 },
+
+  "special addresses" : {"nam":"0xc6bc2f7b73da733366985f5f5b485262b45a77a3",
+                         "victor" : "0x760d30979eb313a2d23c53e4fb55986183b0ffd9",
+                         "duc" : "0x25B8b1F2c21A70B294231C007e834Ad2de04f51F",
+			 "andrew" : "0x9f1a678b0079773b5c4f5aa8573132d2b8bcb1e7",
+			 "spyrus" : "0x98AFFE24F6AE0e4826489516A0000Ed7c2fa58f2" },
+
+
+  "output filename" : "deployment_dev.json"
+}
+

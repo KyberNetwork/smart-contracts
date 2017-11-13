@@ -9,12 +9,16 @@ var BigNumber = require('bignumber.js');
 
 var wallet;
 
-var tokenSymbol = ["OMG", "DGD", "CVC", "FUN", "MCO", "GNT", "ADX", "PAY",
-                   "BAT", "KNC", "EOS", "LINK"];
-var tokenName = [ "OmiseGO", "Digix", "Civic", "FunFair", "Monaco", "Golem",
-"Adex", "TenX", "BasicAttention", "KyberNetwork", "Eos", "ChainLink" ];
+var tokenSymbol = [];//["OMG", "DGD", "CVC", "FUN", "MCO", "GNT", "ADX", "PAY",
+                   //"BAT", "KNC", "EOS", "LINK"];
+var tokenName = [];//[ "OmiseGO", "Digix", "Civic", "FunFair", "Monaco", "Golem",
+//"Adex", "TenX", "BasicAttention", "KyberNetwork", "Eos", "ChainLink" ];
 
-var tokenDecimals = [18,9,8,8,8,18,4,18,18,18,18,18]
+var tokenDecimals = [];//[18,9,8,8,8,18,4,18,18,18,18,18]
+
+var tokenInitialReserveBalance = [];
+
+var reserveInitialEth;
 
 var tokenInstance = [];
 
@@ -34,16 +38,77 @@ var reserveOwner;
 
 var ethAddress = new BigNumber("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
 
-var exchanges = ["Bittrex", "Liqui", "Poloniex", "Binance", "Bitfinex"];
+var exchanges = [];// ["Bittrex", "Liqui", "Poloniex", "Binance", "Bitfinex"];
 var exchangesInstance = [];
 
 var bank;
 var wrapper;
 
 
-var nam = "0xc6bc2f7b73da733366985f5f5b485262b45a77a3";
-var victor = "0x760d30979eb313a2d23c53e4fb55986183b0ffd9";
-var duc = "0x25B8b1F2c21A70B294231C007e834Ad2de04f51F";
+var nam;// = "0xc6bc2f7b73da733366985f5f5b485262b45a77a3";
+var victor;// = "0x760d30979eb313a2d23c53e4fb55986183b0ffd9";
+var duc;// = "0x25B8b1F2c21A70B294231C007e834Ad2de04f51F";
+
+
+var outputFileName;
+
+////////////////////////////////////////////////////////////////////////////////
+
+var getNetwork = function(){
+  var id = web3.version.network;
+  if(id == 1510568910159){
+    return "testrpc";
+  }
+  else if( id == 17 || id == 4447) {
+    return "dev";
+  }
+  else if( id == 42 ) {
+    return "kovan";
+  }
+  else {
+    return "unknown";
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+
+var parseInput = function( jsonInput ) {
+    // tokens
+    var tokenInfo = jsonInput["tokens"];
+    Object.keys(tokenInfo).forEach(function(key) {
+      var val = tokenInfo[key];
+      var symbol = key;
+      var name = val["name"];
+      var decimals = val["decimals"];
+      var initialBalance = val["reserve balance"];
+      if( initialBalance === undefined ) {
+        initialBalance = jsonInput["default reserve balances"]["token"];
+      }
+
+      tokenSymbol.push(key);
+      tokenName.push(name);
+      tokenDecimals.push(decimals);
+      tokenInitialReserveBalance.push(initialBalance);
+    });
+
+    // exchanges
+    var exchangeInfo = jsonInput["exchanges"];
+    exchangeInfo.forEach(function(exchange) {
+      exchanges.push(exchange);
+    });
+
+    // special addresses
+    var specialAddresses = jsonInput["special addresses"];
+    victor = specialAddresses["victor"];
+    nam = specialAddresses["nam"];
+    duc = specialAddresses["duc"];
+
+    // output file name
+    outputFileName = jsonInput["output filename"];
+
+    // reserve initial ether
+    reserveInitialEth = jsonInput["default reserve balances"]["ether"];
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -100,27 +165,29 @@ var transferFundsToBank = function( owner, bankAddress, amount ) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-var depositTokensToReserve = function( owner, reserveInstance, amount ) {
+var depositTokensToReserve = function( owner, reserveInstance ) {
   return new Promise(function (fulfill, reject){
 
       var inputs = [];
 
       for (var i = 0 ; i < tokenInstance.length ; i++ ) {
-          inputs.push(tokenInstance[i]);
+          inputs.push(i);
       }
 
       var actualAmount;
      return inputs.reduce(function (promise, item) {
+       var token = tokenInstance[item];
+       var amount = tokenInitialReserveBalance[item];
       return promise.then(function () {
-          return item.decimals();
+          return token.decimals();
       }).then(function(decimals){
           actualAmount = new BigNumber(amount).mul(new BigNumber(10).pow(decimals));
-          return item.approve(reserveInstance.address, actualAmount, {from:owner});
+          return token.approve(reserveInstance.address, actualAmount, {from:owner});
       }).then(function(){
-        return reserve.depositToken(item.address, actualAmount, {from:owner})
+        return reserve.depositToken(token.address, actualAmount, {from:owner})
       }).then(function(){
         // send some tokens to duc
-        return item.transfer(duc, actualAmount,{from:owner});
+        return token.transfer(duc, actualAmount,{from:owner});
       });
 
       }, Promise.resolve()).then(function(){
@@ -235,6 +302,21 @@ var listTokens = function( owner, reserve, network, expBlock, rate, convRate ) {
   });
 };
 
+////////////////////////////////////////////////////////////////////////////////
+
+var sendEtherWithPromise = function( sender, recv, amount ) {
+    return new Promise(function(fulfill, reject){
+            web3.eth.sendTransaction({to: recv, from: sender, value: amount}, function(error, result){
+            if( error ) {
+                return reject(error);
+            }
+            else {
+                return fulfill(true);
+            }
+        });
+    });
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -246,15 +328,34 @@ contract('Deployment', function(accounts) {
   afterEach(function(done){
     done();
   });
-/*
+
+  it("check network", function() {
+    var networkId = getNetwork();
+    if( networkId == "kovan" || networkId == "testrpc" || networkId == "dev" ) {
+      console.log("network", networkId);
+    }
+    else {
+      console.log("unsuppoted network", networkId);
+      assert.fail("unsuppoted netowrk", networkId);
+    }
+  });
+
+
+
+
   it("read parameters from file", function() {
     var fs = require("fs");
-    console.log("\n *START* \n");
-    var content = fs.readFileSync("content.txt");
-    console.log("Output Content : \n"+ content);
-    console.log("\n *EXIT* \n");
+    try{
+      var content = JSON.parse(fs.readFileSync("deployment_input.json", 'utf8'));
+      parseInput(content);
+    }
+    catch(err) {
+      console.log(err);
+      assert.fail(err.toString());
+    }
+
   });
-*/
+
 
   it("create tokens", function() {
     console.log(accounts[0]);
@@ -311,11 +412,14 @@ contract('Deployment', function(accounts) {
     reserveOwner = accounts[0];
     return Reserve.new(network.address, reserveOwner).then(function(instance){
         reserve = instance;
-        var amount = (new BigNumber(10)).pow(6);
-        return depositTokensToReserve( tokenOwner, reserve, amount );
+        return depositTokensToReserve( tokenOwner, reserve );
+    }).then(function(){
+      if( getNetwork() == "dev" ) {
+        console.log("depositing " + reserveInitialEth.toString() + " ether to reserve");
+        var amount = new BigNumber(reserveInitialEth).mul(10**18);
+        return sendEtherWithPromise(accounts[0],reserve.address,amount);
+      }
     });
-
-    // TODO deposit ether
   });
 
   it("add reserve to network", function() {
@@ -346,9 +450,9 @@ contract('Deployment', function(accounts) {
       return wrapper.getPrices( reserve.address, [tokenInstance[0].address,
                                 tokenInstance[1].address], [ethAddress, ethAddress]);
     }).then(function(result){
-      console.log("===");
-      console.log(result);
-      console.log("===");
+      //console.log("===");
+      //console.log(result);
+      //console.log("===");
     });
   });
   it("set eth to dgd rate", function() {
@@ -409,16 +513,16 @@ it("transfer ownership in bank", function() {
     tokensDict = {};
     console.log("\ntokens");
     for( var i = 0 ; i < tokenSymbol.length ; i++ ) {
-      console.log(tokenSymbol[i] + " : " + tokenInstance[i].address );
+      //console.log(tokenSymbol[i] + " : " + tokenInstance[i].address );
       tokenDict = {"address" : tokenInstance[i].address,
                    "name" : tokenName[i],
                    "decimals" : tokenDecimals[i]};
       tokensDict[tokenSymbol[i]] = tokenDict;
     }
     exchagesDict = {};
-    console.log("\nexchanges");
+    //console.log("\nexchanges");
     for( var i = 0 ; i < exchanges.length ; i++ ) {
-      console.log( exchanges[i] + " : " + exchangesInstance[i].address );
+      //console.log( exchanges[i] + " : " + exchangesInstance[i].address );
       exchagesDict[exchanges[i]] = exchangesInstance[i].address;
     }
 
@@ -428,11 +532,19 @@ it("transfer ownership in bank", function() {
     dict["network"] = network.address;
     dict["wrapper"] = wrapper.address;
 
-    console.log("\nbank : " + bank.address );
-    console.log("reserve : " + reserve.address );
-    console.log("network : " + network.address );
-    console.log("wrapper : " + wrapper.address );
+    //console.log("\nbank : " + bank.address );
+    //console.log("reserve : " + reserve.address );
+    //console.log("network : " + network.address );
+    //console.log("wrapper : " + wrapper.address );
 
-    console.log(JSON.stringify(dict, null, 2));
+    var json = JSON.stringify(dict, null, 2);
+
+    console.log(json);
+
+    // writefilesync.js
+    var fs = require('fs');
+    fs.writeFileSync(outputFileName, json);
+
+    console.log("json file is saved in " + outputFileName);
   });
 });
