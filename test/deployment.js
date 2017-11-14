@@ -56,7 +56,7 @@ var outputFileName;
 
 var getNetwork = function(){
   var id = web3.version.network;
-  if(id == 1510568910159){
+  if(id >= 1500000000000){
     return "testrpc";
   }
   else if( id == 17 || id == 4447) {
@@ -512,6 +512,7 @@ it("transfer ownership in bank", function() {
   it("print addresses", function() {
     tokensDict = {};
     console.log("\ntokens");
+    tokensDict["ETH"] = {"address" : "0x" + ethAddress.toString(16), "name" : "Ethereum", "decimals" : 18 };
     for( var i = 0 ; i < tokenSymbol.length ; i++ ) {
       //console.log(tokenSymbol[i] + " : " + tokenInstance[i].address );
       tokenDict = {"address" : tokenInstance[i].address,
