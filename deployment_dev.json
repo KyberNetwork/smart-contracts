@@ -1,0 +1,80 @@
+{
+  "tokens": {
+    "ETH": {
+      "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "name": "Ethereum",
+      "decimals": 18
+    },
+    "OMG": {
+      "address": "0xfb33413fb4087edc579ad348d1450dd463f56414",
+      "name": "OmiseGO",
+      "decimals": 18
+    },
+    "DGD": {
+      "address": "0x30d8b67884da2ace12ce0a97e5db314c376c9365",
+      "name": "Digix",
+      "decimals": 9
+    },
+    "CVC": {
+      "address": "0x362f93b49584d6d2ab85bec8779f07f3b50f5e4e",
+      "name": "Civic",
+      "decimals": 8
+    },
+    "FUN": {
+      "address": "0x78002d9c677c5fb2c4e1b0a0e989854b57ae9f4a",
+      "name": "FunFair",
+      "decimals": 8
+    },
+    "MCO": {
+      "address": "0xef8839b7bfce256646d18850031fab49ddd4cf2f",
+      "name": "Monaco",
+      "decimals": 8
+    },
+    "GNT": {
+      "address": "0x7fd0af0d77d0465932fad0ec8b621a5b46f98d05",
+      "name": "Golem",
+      "decimals": 18
+    },
+    "ADX": {
+      "address": "0x870fac5af64634c0ad6b16df838a1d36b02e69f0",
+      "name": "Adex",
+      "decimals": 4
+    },
+    "PAY": {
+      "address": "0xfb6183e92a08d3cb527f1c0925b51d02d8b94b6a",
+      "name": "TenX",
+      "decimals": 18
+    },
+    "BAT": {
+      "address": "0x7d165b2f980e3ea3bcfa49b089ed9274733ca3ae",
+      "name": "BasicAttention",
+      "decimals": 18
+    },
+    "KNC": {
+      "address": "0x166bd330747c1ad6715651f65c19090fcaae8404",
+      "name": "KyberNetwork",
+      "decimals": 18
+    },
+    "EOS": {
+      "address": "0x8b18a4651697096c8c7152ae3489f7da076823c8",
+      "name": "Eos",
+      "decimals": 18
+    },
+    "LINK": {
+      "address": "0xba729c02d35c3d3d4e0749a7832d0c945351a920",
+      "name": "ChainLink",
+      "decimals": 18
+    }
+  },
+  "exchanges": {
+    "bittrex": "0xd22a4f5af66c0a326d101ccdc98bbf0e228ef7c4",
+    "liqui": "0x8416bb810b8fa3dc503269fb91f7379e9192babf",
+    "poloniex": "0xbcb9f893f0e766a37d1841846459bdbdf1ac6b47",
+    "binance": "0xab7c5b0e2572c5933a4421be8a37755f7e8aba51",
+    "bitfinex": "0x04256cf0e2f2b90d2bba12ea0fb4a85a342ceb84"
+  },
+  "bank": "0xea59c9d0fd2f74443670b72cbcc22bc80f6eb963",
+  "reserve": "0xec5622b24473ecaf0e8b948a4e962d729cf522e6",
+  "network": "0xcc0476d6f1446608c92f82f44d23abb364d4a7da",
+  "wrapper": "0x7bcde6b889f6548c9ccfd48471d9fbfc59fa7b26"
+}
