@@ -13,6 +13,13 @@ module.exports = {
       gasPrice: 4000000000,
       network_id: 4,
       gas: 4612388 // Gas limit used for deploys
+    },
+    simulation: {
+      host: "blockchain", // Connect to geth on the specified
+      port: 8545,
+      gasPrice: 4000000000,
+      network_id: 4,
+      gas: 4612388 // Gas limit used for deploys
     }
   }
 };
