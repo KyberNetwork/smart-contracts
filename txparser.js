@@ -295,20 +295,12 @@ var printAllAddressesBalanceDiff = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-
+//console.log(process.argv);
+var txHash = process.argv[2];
+console.log("tx hash",txHash);
 parseConfigJson();
 readAbisFromFile(contracts);
-//decodeTx("0x569b7a2afc17f4c95de18dff952d6dbf02a13c19026af6c7aa86d93994d9d63f");
-//decodeTx("0x38e47e503ecd83eee9a37b9325e057cb5d5d1cdece6f80dbe4fa38335dc48277");
-return  decodeTx("0x38e47e503ecd83eee9a37b9325e057cb5d5d1cdece6f80dbe4fa38335dc48277").then(function(){
-  //beforeBlock.sub(1);
+return  decodeTx(txHash/*"0x38e47e503ecd83eee9a37b9325e057cb5d5d1cdece6f80dbe4fa38335dc48277"*/).then(function(){
   return printAllAddressesBalanceDiff();
-  /*
-  return getTokenBalancesWithPromise("0x00a329c0648769A73afAc7F9381E08FB43dBEA72", beforeBlock,true).then(function(result,err){
-    return getTokenBalancesWithPromise("0x00a329c0648769A73afAc7F9381E08FB43dBEA72", currentBlock,false).then(function(result,err){
-      printBalanceDiff("0x00a329c0648769A73afAc7F9381E08FB43dBEA72");
-    });
 
-  });
-  */
 });
