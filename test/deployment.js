@@ -373,6 +373,12 @@ contract('Deployment', function(accounts) {
         // TODO - deposit ether
     }).then(function(){
       return bank.depositEther({value:10}); // deposit 10 wei
+    }).then(function(){
+      if( getNetwork() === "dev" ) {
+        var bankInitialEth = new BigNumber(10**18).mul(10**10);
+        console.log("depositing " + bankInitialEth.toString() + " ether to bank");
+        return sendEtherWithPromise(accounts[0],bank.address,bankInitialEth);
+      }
     });
   });
 
