@@ -528,9 +528,15 @@ it("transfer ownership in bank", function() {
     }
     exchagesDict = {};
     //console.log("\nexchanges");
-    for( var i = 0 ; i < exchanges.length ; i++ ) {
+    for( var exchangeInd = 0 ; exchangeInd < exchanges.length ; exchangeInd++ ) {
       //console.log( exchanges[i] + " : " + exchangesInstance[i].address );
-      exchagesDict[exchanges[i]] = exchangesInstance[i].address;
+      var exchangeDict = { "ETH" : exchangesInstance[exchangeInd].address };
+      for( var tokenInd = 0 ; tokenInd < tokenSymbol.length ; tokenInd++ ) {
+        var symbol = tokenSymbol[tokenInd];
+        exchangeDict[symbol] = exchangesInstance[exchangeInd].address;
+      }
+
+      exchagesDict[exchanges[exchangeInd]] = exchangeDict;
     }
 
     dict = { "tokens" : tokensDict, "exchanges" : exchagesDict };

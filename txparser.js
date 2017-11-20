@@ -123,11 +123,11 @@ var configJson = JSON.parse(fs.readFileSync(configFile, 'utf8'));
 
 var parseConfigJson = function() {
   var tokenInfo = configJson["tokens"];
-  var keys = Object.keys(tokenInfo);
-  for( var i = 0 ; i < keys.length ; i++ ) {
-    decimals[keys[i]] = tokenInfo[keys[i]].decimals;
-    var address = web3.utils.toChecksumAddress(tokenInfo[keys[i]].address);
-    importantAddressNames[address] = keys[i];
+  var tokenSymbols = Object.keys(tokenInfo);
+  for( var i = 0 ; i < tokenSymbols.length ; i++ ) {
+    decimals[tokenSymbols[i]] = tokenInfo[tokenSymbols[i]].decimals;
+    var address = web3.utils.toChecksumAddress(tokenInfo[tokenSymbols[i]].address);
+      importantAddressNames[address] = tokenSymbols[i];
   }
 
 
@@ -136,8 +136,12 @@ var parseConfigJson = function() {
   var exchanges = Object.keys(exchageInfo);
   for( var i = 0 ; i < exchanges.length ; i++ ) {
     var name = exchanges[i];
-    var address = web3.utils.toChecksumAddress(exchageInfo[name]);
-    importantAddressNames[address] = name;
+    var exchange = exchageInfo[name];
+    for( var tokenInd = 0 ; tokenInd < tokenSymbols.length ; tokenInd++ ) {
+      var symbol = tokenSymbols[tokenInd];
+      var address = web3.utils.toChecksumAddress(exchange[symbol]);
+      importantAddressNames[address] = name + "_" + symbol;
+    }
   }
 
   // get other items
