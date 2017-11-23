@@ -228,19 +228,27 @@ var createExchanges = function( owner, bankAddress ) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-var transferOwneshipInExchanges = function( owner, newOwners ) {
+var transferOwneshipInExchangesAndBank = function( owner, newOwners ) {
   return new Promise(function (fulfill, reject){
 
       var inputs = [];
+      function OwnerAndExchange( owner, exchangesInstance) {
+        this.owner = owner;
+        this.exchangesInstance = exchangesInstance;
+      }
 
       for (var i = 0 ; i < exchanges.length ; i++ ) {
-          inputs.push(i);
+        for( var j = 0 ; j < newOwners.length ; j++ ) {
+          inputs.push(new OwnerAndExchange(newOwners[j],exchangesInstance[i]));
+        }
       }
 
      return inputs.reduce(function (promise, item) {
       return promise.then(function () {
 
-          return exchangesInstance[item].changeOwner(newOwners[item]);
+          return item.exchangesInstance.addOwner(item.owner);
+      }).then(function(){
+        return bank.addOwner(item.owner);
       });
 
       }, Promise.resolve()).then(function(){
@@ -476,16 +484,13 @@ contract('Deployment', function(accounts) {
 
   it("transfer ownership in exchanges", function() {
 
-    return transferOwneshipInExchanges(tokenOwner,nam).then(function(){
-    return exchangesInstance[1].owner();
+    return transferOwneshipInExchangesAndBank(tokenOwner,nam).then(function(){
+    return exchangesInstance[1].owners(nam[1]);
   }).then(function(result){
-    assert.equal(result.valueOf(),nam[1].valueOf(), "unexpected owner address");
+    assert.equal(result.valueOf(),true.valueOf(), "unexpected owner address");
   });
 });
 
-it("transfer ownership in bank", function() {
-  return bank.changeOwner(nam[0]);
-});
 
 
   it("do a single exchange", function() {

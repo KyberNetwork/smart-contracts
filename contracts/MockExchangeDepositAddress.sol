@@ -13,13 +13,13 @@ import "./MockCenteralBank.sol";
 contract MockExchangeDepositAddress {
     string public exchange;
     MockCenteralBank public bank;
-    address public owner;
+    mapping(address=>bool) public owners;
     ERC20 constant public ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
     function MockExchangeDepositAddress( string _exchange, MockCenteralBank _bank ){
         exchange = _exchange;
         bank = _bank;
-        owner = msg.sender;
+        owners[msg.sender] = true;
     }
 
     function depositEther() payable {
@@ -31,7 +31,7 @@ contract MockExchangeDepositAddress {
     }
 
     function convert( ERC20 src, uint srcAmount, ERC20 dest, uint destAmount ) {
-        if( tx.origin != owner ) throw;
+        if( ! owners[tx.origin] ) throw;
 
         if( src == ETH_TOKEN_ADDRESS ) {
             bank.transfer(srcAmount);
@@ -50,7 +50,7 @@ contract MockExchangeDepositAddress {
     }
 
     function withdraw( ERC20 token, uint tokenAmount, address destination ) {
-        if( tx.origin != owner ) throw;
+        if( ! owners[tx.origin] ) throw;
 
         // withdraw directly from the bank
         if( token == ETH_TOKEN_ADDRESS ) {
@@ -64,7 +64,7 @@ contract MockExchangeDepositAddress {
     }
 
     function clearBalances( ERC20[] tokens, uint[] amounts ) {
-        if( tx.origin != owner ) throw;
+        if( ! owners[tx.origin] ) throw;
 
         for( uint i = 0 ; i < tokens.length ; i++ ) {
           if( tokens[i] == ETH_TOKEN_ADDRESS ) {
@@ -88,8 +88,8 @@ contract MockExchangeDepositAddress {
       }
     }
 
-    function changeOwner( address newOwner ) {
-      if( msg.sender != owner ) throw;
-      owner = newOwner;
+    function addOwner( address newOwner ) {
+      if( ! owners[tx.origin] ) throw;
+      owners[newOwner] = true;
     }
 }

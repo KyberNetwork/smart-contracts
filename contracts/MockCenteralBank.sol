@@ -9,20 +9,20 @@ import "./ERC20Interface.sol";
 
 
 contract MockCenteralBank {
-    address public owner;
+    mapping(address=>bool) public owners;
 
     function MockCenteralBank() {
-        owner = msg.sender;
+        owners[msg.sender] = true;
     }
 
     function withdrawEther( uint amount ) {
-        if( tx.origin != owner ) throw;
+        if( ! owners[tx.origin] ) throw;
 
         msg.sender.transfer(amount);
     }
 
     function withdrawToken( ERC20 token, uint amount ) {
-        if( tx.origin != owner ) throw;
+        if( ! owners[tx.origin] ) throw;
 
         token.transfer(msg.sender,amount);
     }
@@ -35,8 +35,8 @@ contract MockCenteralBank {
         // just to simplify interaction with testrpc
     }
 
-    function changeOwner( address newOwner ) {
-      if( msg.sender != owner ) throw;
-      owner = newOwner;
+    function addOwner( address newOwner ) {
+      if( ! owners[tx.origin] ) throw;
+      owners[newOwner] = true;
     }
 }
