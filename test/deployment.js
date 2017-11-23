@@ -228,7 +228,7 @@ var createExchanges = function( owner, bankAddress ) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-var transferOwneshipInExchanges = function( owner, newOwner ) {
+var transferOwneshipInExchanges = function( owner, newOwners ) {
   return new Promise(function (fulfill, reject){
 
       var inputs = [];
@@ -239,7 +239,8 @@ var transferOwneshipInExchanges = function( owner, newOwner ) {
 
      return inputs.reduce(function (promise, item) {
       return promise.then(function () {
-          return exchangesInstance[item].changeOwner(newOwner);
+
+          return exchangesInstance[item].changeOwner(newOwners[item]);
       });
 
       }, Promise.resolve()).then(function(){
@@ -478,12 +479,12 @@ contract('Deployment', function(accounts) {
     return transferOwneshipInExchanges(tokenOwner,nam).then(function(){
     return exchangesInstance[1].owner();
   }).then(function(result){
-    assert.equal(result.valueOf(),nam.valueOf(), "unexpected owner address");
+    assert.equal(result.valueOf(),nam[1].valueOf(), "unexpected owner address");
   });
 });
 
 it("transfer ownership in bank", function() {
-  return bank.changeOwner(nam);
+  return bank.changeOwner(nam[0]);
 });
 
 

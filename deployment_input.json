@@ -60,7 +60,11 @@
 
   "default reserve balances" : { "token" : 1000000, "ether" : 10 },
 
-  "special addresses" : {"nam":"0xc6bc2f7b73da733366985f5f5b485262b45a77a3",
+  "special addresses" : {"nam":["0xc6bc2f7b73da733366985f5f5b485262b45a77a3",
+                                "0xc6bc2f7b73da733366985f5f5b485262b45a77a4",
+                                "0xc6bc2f7b73da733366985f5f5b485262b45a77a5",
+                                "0xc6bc2f7b73da733366985f5f5b485262b45a77a6",
+                                "0xc6bc2f7b73da733366985f5f5b485262b45a77a7"],
                          "victor" : "0x760d30979eb313a2d23c53e4fb55986183b0ffd9",
                          "duc" : "0x25B8b1F2c21A70B294231C007e834Ad2de04f51F",
 			 "andrew" : "0x9f1a678b0079773b5c4f5aa8573132d2b8bcb1e7",
@@ -69,4 +73,3 @@
 
   "output filename" : "deployment_dev.json"
 }
-
