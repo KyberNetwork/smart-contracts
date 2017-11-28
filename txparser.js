@@ -317,6 +317,9 @@ if( command == "--txhash" ) {
   });
 }
 else if( command == "--getbalance"){
+  if( process.argv.length > 3 ) {
+    importantAddressNames[web3.utils.toChecksumAddress(process.argv[3])] = "user address";
+  }
   return web3.eth.getBlockNumber().then(function(blockNumber) {
     currentBlock = web3.utils.toBN(blockNumber);
     return printAllAddressesBalanceDiff(true);
