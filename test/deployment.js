@@ -424,6 +424,7 @@ contract('Deployment', function(accounts) {
   });
 
   it("create reserve and deposit tokens", function() {
+    this.timeout(30000000);
     reserveOwner = accounts[0];
     return Reserve.new(network.address, reserveOwner).then(function(instance){
         reserve = instance;
@@ -483,7 +484,7 @@ contract('Deployment', function(accounts) {
   });
 
   it("transfer ownership in exchanges", function() {
-
+    this.timeout(30000000);
     return transferOwneshipInExchangesAndBank(tokenOwner,nam).then(function(){
     return exchangesInstance[1].owners(nam[1]);
   }).then(function(result){
