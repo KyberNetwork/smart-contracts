@@ -75,6 +75,7 @@ kyber network.
 
 # Current testnet deployment
 The contract is currently depolyed on kovan testnet, and unofficially also at rinkeby.
-The addresses can be found [here](https://github.com/KyberNetwork/smart-contracts/blob/master/deployment.txt).
+The kovan addresses can be found [here](https://github.com/KyberNetwork/smart-contracts/blob/master/deployment_kovan.json).
 
-The contracts source code and abi are also available at kovan (rinkeby) etherscan.
+The contracts source code and abi are also available at kovan etherscan.
+For rinkeby deployment, please contact us by email.
