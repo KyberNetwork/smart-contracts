@@ -252,11 +252,13 @@ var fromTokenWei = function( amount, symbol ) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var printBalanceDiff = function( userAddress ) {
-  var tokens = Object.keys(balancesBefore[userAddress]);
+  var tokens = Object.keys(balancesAfter[userAddress]);
   for( var i = 0 ; i < tokens.length ; i++ ) {
     var symbol = tokens[i];
-
-    var balanceBefore = balancesBefore[userAddress][symbol];
+    var balanceBefore = web3.utils.toBN(0);
+    if( balancesBefore[userAddress] ) {
+        balancesBefore = balancesBefore[userAddress][symbol]; 
+    }
     var balanceAfter  = balancesAfter[userAddress][symbol];
 
     if( symbol == "ETH" &&
@@ -277,13 +279,13 @@ var printBalanceDiff = function( userAddress ) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-var printAllAddressesBalanceDiff = function() {
+var printAllAddressesBalanceDiff = function(fromScratch) {
   return new Promise(function (fulfill, reject){
     var beforeBlock = currentBlock.sub(web3.utils.toBN(1));
     var importantAddresses = Object.keys(importantAddressNames);
     return importantAddresses.reduce(function (promise, item) {
      return promise.then(function () {
-         return getTokenBalancesWithPromise(item, beforeBlock,true);
+         return getTokenBalancesWithPromise(item, beforeBlock,true && (!fromScratch));
      }).then(function(){
        return getTokenBalancesWithPromise(item, currentBlock,false);
      }).then(function(){
@@ -300,11 +302,23 @@ var printAllAddressesBalanceDiff = function() {
 
 ////////////////////////////////////////////////////////////////////////////////
 //console.log(process.argv);
-var txHash = process.argv[2];
-console.log("tx hash",txHash);
+
 parseConfigJson();
 readAbisFromFile(contracts);
-return  decodeTx(txHash/*"0x38e47e503ecd83eee9a37b9325e057cb5d5d1cdece6f80dbe4fa38335dc48277"*/).then(function(){
-  return printAllAddressesBalanceDiff();
 
-});
+var command = process.argv[2];
+var txHash;
+if( command == "--txhash" ) {
+  txHash = process.argv[3];
+  console.log("tx hash",txHash);
+  return  decodeTx(txHash/*"0x38e47e503ecd83eee9a37b9325e057cb5d5d1cdece6f80dbe4fa38335dc48277"*/).then(function(){
+    return printAllAddressesBalanceDiff(false);
+
+  });
+}
+else if( command == "--getbalance"){
+  return web3.eth.getBlockNumber().then(function(blockNumber) {
+    currentBlock = web3.utils.toBN(blockNumber);
+    return printAllAddressesBalanceDiff(true);
+  });
+}
