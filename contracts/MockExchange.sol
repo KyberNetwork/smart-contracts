@@ -28,24 +28,22 @@ contract MockExchange {
         _;
     }
 
-    function withdraw(  ERC20 token, uint tokenAmount, address destination ) public
-        onlyOwner()
+    function withdraw( ERC20 token, uint tokenAmount, address destination ) public
+        onlyOwner
     {
         require(tokenDepositAddresses[token] != address(0));
-
         // withdraw from mockDepositaddress. which withdraws from bank
         tokenDepositAddresses[token].withdraw(tokenAmount, destination);
     }
 
     function clearBalances( ERC20[] tokens, uint[] amounts ) public
-        onlyOwner()
+        onlyOwner
     {
         for( uint i = 0 ; i < tokens.length ; i++ ) {
             if ( tokenDepositAddresses[tokens[i]] == address(0)) continue;
             tokenDepositAddresses[tokens[i]].clearBalance(amounts[i]);
         }
     }
-
 
     function getBalance( ERC20 token ) public view returns(uint) {
         if( token == ETH_TOKEN_ADDRESS ) {
@@ -56,17 +54,17 @@ contract MockExchange {
         }
     }
 
-
     function addOwner( address newOwner ) public
-        onlyOwner()
+        onlyOwner
     {
         owners[newOwner] = true;
     }
 
-    function addMockDepositAddress( ERC20 token, MockDepositAddress depositAddress) public
-        onlyOwner()
+    function addMockDepositAddress( ERC20 token ) public
+        onlyOwner
     {
-        tokenDepositAddresses[token] = depositAddress;
+        tokenDepositAddresses[token] = new MockDepositAddress(token, bank, this);
+        bank.addOwner(tokenDepositAddresses[token]);
     }
 
     function () public payable {
