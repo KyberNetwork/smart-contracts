@@ -1,8 +1,7 @@
 pragma solidity ^0.4.10;
 
-import "./ERC20.sol";
+import "./ERC20Interface.sol";
 import "./MockCenteralBank.sol";
-
 
 /// @title Mock Deposit Address
 /// @author Ilan Doron
@@ -24,14 +23,14 @@ contract MockDepositAddress {
         bank = _bank;
     }
 
-    modifier onlyBy( address _account )
+    modifier onlyOwner( )
     {
-        require(msg.sender == _account);
+        require(msg.sender == owner);
         _;
     }
 
     function withdraw( uint tokenAmount, address destination ) public
-        onlyBy(owner)
+        onlyOwner()
     {
         // withdraw directly from the bank
         if( token == ETH_TOKEN_ADDRESS ) {
@@ -45,7 +44,7 @@ contract MockDepositAddress {
     }
 
     function clearBalance( uint amount ) public
-        onlyBy(owner)
+        onlyOwner()
     {
         if( token == ETH_TOKEN_ADDRESS ) {
             if( this.balance >= amount ) {
