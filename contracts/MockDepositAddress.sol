@@ -17,8 +17,8 @@ contract MockDepositAddress {
     /// @dev Ctor of this
     /// @param _token - the token type this deposit address handles
     /// @param _bank bank address to work with for deposit and withdraw
-    function MockDepositAddress( ERC20 _token, MockCenteralBank _bank ) public{
-        owner = msg.sender;
+    function MockDepositAddress( ERC20 _token, MockCenteralBank _bank, address _owner ) public{
+        owner = _owner;
         token = _token;
         bank = _bank;
     }
@@ -30,7 +30,7 @@ contract MockDepositAddress {
     }
 
     function withdraw( uint tokenAmount, address destination ) public
-        onlyOwner()
+        onlyOwner
     {
         // withdraw directly from the bank
         if( token == ETH_TOKEN_ADDRESS ) {
@@ -44,7 +44,7 @@ contract MockDepositAddress {
     }
 
     function clearBalance( uint amount ) public
-        onlyOwner()
+        onlyOwner
     {
         if( token == ETH_TOKEN_ADDRESS ) {
             if( this.balance >= amount ) {

@@ -21,39 +21,18 @@ module.exports = async function (deployer, network, accounts) {
                            token2.transfer(bank.address, supply) ,
                            token3.transfer(bank.address, supply)]);
         let balance = await token1.balanceOf(bank.address);
-//        assert.equal(supply, balance, "bank balance should be " + supply + " but it is " + balance);
 
         /* now mock deposit address and mock exchange */
         /**********************************************/
         await deployer.link(MockCenteralBank, [MockDepositAddress, MockExchange]);
-        await deployer.deploy(MockDepositAddress, token1.address, bank.address);
-        await deployer.link(MockDepositAddress, MockExchange);
+
         await deployer.deploy(MockExchange, "exchange", bank.address);
-
-        let [mockAdd1, mockAdd2, mockAdd3] = await Promise.all([MockDepositAddress.deployed(),
-                                                MockDepositAddress.new(token2.address, bank.address),
-                                                MockDepositAddress.new(token3.address, bank.address)]);
-
-        let tokenInMock = await mockAdd2.token();
-        console.log ("tokenInMock " + tokenInMock + ".  actual token " + token2.address);
         let exchange = await MockExchange.deployed();
-        let name =  await exchange.exchange();
-        console.log("connected to exchange: " + name);
 
-        console.log("adding token1 " + token1.address + " to mockExchange.");
-        await Promise.all([exchange.addMockDepositAddress(token1.address, mockAdd1.address),
-                           exchange.addMockDepositAddress(token2.address, mockAdd2.address),
-                           exchange.addMockDepositAddress(token3.address, mockAdd3.address)]);
+        await Promise.all([exchange.addMockDepositAddress(token1.address),
+                           exchange.addMockDepositAddress(token2.address),
+                           exchange.addMockDepositAddress(token3.address)]);
 
-        /* add mock deposit address as bank owners */
-        await Promise.all([bank.addOwner(mockAdd1.address),
-                           bank.addOwner(mockAdd2.address),
-                           bank.addOwner(mockAdd3.address)]);
-
-        /* add exchange as mock addrees owner */
-        await Promise.all([mockAdd1.addOwner(exchange.address),
-                           mockAdd2.addOwner(exchange.address),
-                           mockAdd3.addOwner(exchange.address)]);
 //        await sendEtherWithPromise (accounts[0], bank.address, 5);
     });
 
