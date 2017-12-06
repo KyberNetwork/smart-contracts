@@ -10,30 +10,28 @@ import "./MockDepositAddress.sol";
 
 contract MockExchange {
 
-    string public exchange = "no name";
+    string public exchangeName;
     MockCenteralBank public bank;
     mapping(address=>bool) public owners;
     mapping(address=>MockDepositAddress) public MapTokenDepositAddresses;
     ERC20 constant public ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
-    function MockExchange( string _exchange, MockCenteralBank _bank) public{
+    function MockExchange( string _exchange, MockCenteralBank _bank) public {
         exchange = _exchange;
         bank = _bank;
         owners[msg.sender] = true;
     }
 
-
-    function withdraw( ERC20 token, uint tokenAmount, address destination ) external {
-        if( ! owners[msg.sender] ) revert();
-        if (MapTokenDepositAddresses[token] == address(0)) revert();
+    function withdraw(  ERC20 token, uint tokenAmount, address destination ) public {
+        require(owners[msg.sender]);
+        require(MapTokenDepositAddresses[token] != address(0));
 
         // withdraw from mockDepositaddress. which withdraws from bank
         MapTokenDepositAddresses[token].withdraw(tokenAmount, destination);
     }
 
-
-    function clearBalances( ERC20[] tokens, uint[] amounts ) external {
-        if( ! owners[msg.sender] ) revert();
+    function clearBalances( ERC20[] tokens, uint[] amounts ) public {
+        require(owners[msg.sender]);
 
         for( uint i = 0 ; i < tokens.length ; i++ ) {
             if ( MapTokenDepositAddresses[tokens[i]] == address(0)) continue;
@@ -42,7 +40,7 @@ contract MockExchange {
     }
 
 
-    function getBalance( ERC20 token ) public constant returns(uint) {
+    function getBalance( ERC20 token ) public view returns(uint) {
         if( token == ETH_TOKEN_ADDRESS ) {
             return this.balance;
         }
@@ -52,15 +50,17 @@ contract MockExchange {
     }
 
 
-    function addOwner( address newOwner ) external {
-        if( ! owners[msg.sender] ) revert();
+    function addOwner( address newOwner ) public {
+        require(owners[msg.sender]);
         owners[newOwner] = true;
     }
 
-
-    function addMockDepositAddress(ERC20 token, MockDepositAddress depositAddress) external{
-        if( owners[msg.sender] != true ) revert();
-
+    function addMockDepositAddress( ERC20 token, MockDepositAddress depositAddress) public {
+        require(owners[msg.sender]);
         MapTokenDepositAddresses[token] = depositAddress;
+    }
+
+    function () public payable {
+
     }
 }
