@@ -1,6 +1,6 @@
 pragma solidity ^0.4.10;
 
-import "./ERC20.sol";
+import "./ERC20Interface.sol";
 import "./MockCenteralBank.sol";
 import "./MockDepositAddress.sol";
 
@@ -13,29 +13,36 @@ contract MockExchange {
     string public exchangeName;
     MockCenteralBank public bank;
     mapping(address=>bool) public owners;
-    mapping(address=>MockDepositAddress) public MapTokenDepositAddresses;
+    mapping(address=>MockDepositAddress) public tokenDepositAddresses;
     ERC20 constant public ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
-    function MockExchange( string _exchange, MockCenteralBank _bank) public {
-        exchange = _exchange;
+    function MockExchange( string _exchangeName, MockCenteralBank _bank) public {
+        exchangeName = _exchangeName;
         bank = _bank;
         owners[msg.sender] = true;
     }
 
-    function withdraw(  ERC20 token, uint tokenAmount, address destination ) public {
+    modifier onlyOwner( )
+    {
         require(owners[msg.sender]);
-        require(MapTokenDepositAddresses[token] != address(0));
-
-        // withdraw from mockDepositaddress. which withdraws from bank
-        MapTokenDepositAddresses[token].withdraw(tokenAmount, destination);
+        _;
     }
 
-    function clearBalances( ERC20[] tokens, uint[] amounts ) public {
-        require(owners[msg.sender]);
+    function withdraw(  ERC20 token, uint tokenAmount, address destination ) public
+        onlyOwner()
+    {
+        require(tokenDepositAddresses[token] != address(0));
 
+        // withdraw from mockDepositaddress. which withdraws from bank
+        tokenDepositAddresses[token].withdraw(tokenAmount, destination);
+    }
+
+    function clearBalances( ERC20[] tokens, uint[] amounts ) public
+        onlyOwner()
+    {
         for( uint i = 0 ; i < tokens.length ; i++ ) {
-            if ( MapTokenDepositAddresses[tokens[i]] == address(0)) continue;
-            MapTokenDepositAddresses[tokens[i]].clearBalance(amounts[i]);
+            if ( tokenDepositAddresses[tokens[i]] == address(0)) continue;
+            tokenDepositAddresses[tokens[i]].clearBalance(amounts[i]);
         }
     }
 
@@ -50,14 +57,16 @@ contract MockExchange {
     }
 
 
-    function addOwner( address newOwner ) public {
-        require(owners[msg.sender]);
+    function addOwner( address newOwner ) public
+        onlyOwner()
+    {
         owners[newOwner] = true;
     }
 
-    function addMockDepositAddress( ERC20 token, MockDepositAddress depositAddress) public {
-        require(owners[msg.sender]);
-        MapTokenDepositAddresses[token] = depositAddress;
+    function addMockDepositAddress( ERC20 token, MockDepositAddress depositAddress) public
+        onlyOwner()
+    {
+        tokenDepositAddresses[token] = depositAddress;
     }
 
     function () public payable {
