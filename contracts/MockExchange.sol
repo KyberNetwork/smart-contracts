@@ -2,7 +2,8 @@ pragma solidity ^0.4.10;
 
 import "./ERC20Interface.sol";
 import "./MockCenteralBank.sol";
-import "./MockDepositAddress.sol";
+import "./MockDepositAddressEther.sol";
+import "./MockDepositAddressToken.sol";
 
 /// @title Mock Exchange Deposit Address
 /// @author Ilan Doron
@@ -46,12 +47,7 @@ contract MockExchange {
     }
 
     function getBalance( ERC20 token ) public view returns(uint) {
-        if( token == ETH_TOKEN_ADDRESS ) {
-            return this.balance;
-        }
-        else {
-            return token.balanceOf(this);
-        }
+        return tokenDepositAddresses[token].getBalance();
     }
 
     function addOwner( address newOwner ) public
@@ -63,7 +59,11 @@ contract MockExchange {
     function addMockDepositAddress( ERC20 token ) public
         onlyOwner
     {
-        tokenDepositAddresses[token] = new MockDepositAddress(token, bank, this);
+        if (token == ETH_TOKEN_ADDRESS)
+            tokenDepositAddresses[token] = new MockDepositAddressEther(bank, this);
+        else
+            tokenDepositAddresses[token] = new MockDepositAddressToken(token, bank, this);
+
         bank.addOwner(tokenDepositAddresses[token]);
     }
 

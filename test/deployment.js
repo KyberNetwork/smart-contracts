@@ -4,7 +4,7 @@ var Network = artifacts.require("./KyberNetwork.sol");
 var Wallet = artifacts.require("./KyberWallet.sol");
 var Bank   = artifacts.require("./MockCenteralBank.sol");
 var Wrapper   = artifacts.require("./Wrapper.sol");
-var CenteralizedExchange = artifacts.require("./MockExchangeDepositAddress.sol");
+var CentralizedExchange = artifacts.require("./MockExchange.sol");
 var BigNumber = require('bignumber.js');
 
 var wallet;
@@ -40,6 +40,7 @@ var ethAddress = new BigNumber("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
 
 var exchanges = [];// ["Bittrex", "Liqui", "Poloniex", "Binance", "Bitfinex"];
 var exchangesInstance = [];
+var exchageDepositAddresess = [];
 
 var bank;
 var wrapper;
@@ -198,33 +199,70 @@ var depositTokensToReserve = function( owner, reserveInstance ) {
   });
 };
 
+
+
 ////////////////////////////////////////////////////////////////////////////////
 
 var createExchanges = function( owner, bankAddress ) {
-  return new Promise(function (fulfill, reject){
+    return new Promise(function (fulfill, reject){
 
-      var inputs = [];
+        var inputs = [];
 
-      for (var i = 0 ; i < exchanges.length ; i++ ) {
+        for (var i = 0 ; i < exchanges.length ; i++ ) {
           inputs.push(exchanges[i]);
-      }
+        }
 
-     return inputs.reduce(function (promise, item) {
-      return promise.then(function () {
-          return CenteralizedExchange.new(item, bankAddress, {from:owner});
-      }).then(function(instance){
-        exchangesInstance.push(instance);
-        // deposit 1 wei
-        return instance.depositEther({value:1}); // deposit 1 wei
-      });
-
-      }, Promise.resolve()).then(function(){
-          fulfill(true);
-      }).catch(function(err){
-          reject(err);
-      });
-  });
+        return inputs.reduce(function (promise, item) {
+            return promise.then(function () {
+                return CentralizedExchange.new(item, bankAddress, {from:owner});
+            }).then(function(instance){
+                exchangesInstance.push(instance);
+                return addDepositAddressToExchange(instance, owner);
+            });
+        }, Promise.resolve()).then(function(){
+            fulfill(true);
+        }).catch(function(err){
+            reject(err);
+        });
+    });
 };
+
+/////////////////////////////////////////////////////////////////
+
+
+var addDepositAddressToExchange = function( exchange, owner ) {
+    return new Promise(function (fulfill, reject){
+
+        var tokens = [];
+        var depositAddressess = {}; //dict (JS object) of deposit address per token for this exchange
+
+        //create array of tokens
+        for (var i = 0 ; i < tokenInstance.length ; i++ ) {
+            tokens.push(i);
+        }
+
+        return tokens.reduce(function (promise, item) {
+            return promise.then(function () {
+                return exchange.addMockDepositAddress( tokenInstance[item].address, {from:owner});
+            }).then(function(){
+                return exchange.tokenDepositAddresses(tokenInstance[item].address)
+            }).then (function (mockDepositAddress){
+                depositAddressess[tokenSymbol[item]] = mockDepositAddress;
+            });
+        }, Promise.resolve()).then(function(){
+            return exchange.addMockDepositAddress(ethAddress, {from:owner});
+        }).then(function(){
+            return exchange.tokenDepositAddresses(ethAddress);
+        }).then(function(depositAddress) {
+            depositAddressess["ETH"] = depositAddress;
+            exchageDepositAddresess.push(depositAddressess);
+            fulfill(true);
+        }).catch(function(err){
+          reject(err);
+        });
+    });
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -245,7 +283,6 @@ var transferOwneshipInExchangesAndBank = function( owner, newOwners ) {
 
      return inputs.reduce(function (promise, item) {
       return promise.then(function () {
-
           return item.exchangesInstance.addOwner(item.owner);
       }).then(function(){
         return bank.addOwner(item.owner);
@@ -344,13 +381,10 @@ contract('Deployment', function(accounts) {
       console.log("network", networkId);
     }
     else {
-      console.log("unsuppoted network", networkId);
-      assert.fail("unsuppoted netowrk", networkId);
+      console.log("unsupported network", networkId);
+      assert.fail("unsupported netowrk", networkId);
     }
   });
-
-
-
 
   it("read parameters from file", function() {
     var fs = require("fs");
@@ -362,9 +396,7 @@ contract('Deployment', function(accounts) {
       console.log(err);
       assert.fail(err.toString());
     }
-
   });
-
 
   it("create tokens", function() {
     console.log(accounts[0]);
@@ -396,25 +428,26 @@ contract('Deployment', function(accounts) {
   });
 
   it("withdraw ETH from exchange", function() {
-    return exchangesInstance[0].withdraw(ethAddress,2,accounts[0],{from:tokenOwner});
+    return exchangesInstance[0].withdraw(ethAddress,1,accounts[0],{from:tokenOwner});
   });
 
   it("withdraw token from exchange", function() {
-    return exchangesInstance[1].withdraw(tokenInstance[0].address,2,exchangesInstance[0].address,{from:tokenOwner}).then(function(){
-      return tokenInstance[0].balanceOf(exchangesInstance[0].address);
+    var depositAddress = exchageDepositAddresess[0][tokenSymbol[0]];
+    return exchangesInstance[1].withdraw(tokenInstance[0].address,2,depositAddress,{from:tokenOwner}).then(function(){
+      return tokenInstance[0].balanceOf(depositAddress);
     }).then(function(result){
       assert.equal(result.valueOf(), new BigNumber(2).valueOf(), "unexpected balance");
     });
   });
 
   it("withdraw token from exchange to exchange and clear funds", function() {
+    var depositAddress = exchageDepositAddresess[0][tokenSymbol[0]];
     return exchangesInstance[0].clearBalances([tokenInstance[0].address, ethAddress],[1,0]).then(function(){
-        return tokenInstance[0].balanceOf(exchangesInstance[0].address);
+        return tokenInstance[0].balanceOf(depositAddress);
     }).then(function(result){
       assert.equal(result.valueOf(), new BigNumber(1).valueOf(), "unexpected balance");
     });
   });
-
 
   it("create network", function() {
     networkOwner = accounts[0];
@@ -471,6 +504,7 @@ contract('Deployment', function(accounts) {
       //console.log("===");
     });
   });
+
   it("set eth to dgd rate", function() {
     return reserve.setRate([ethAddress],
                            [tokenInstance[1].address],
@@ -491,7 +525,6 @@ contract('Deployment', function(accounts) {
     assert.equal(result.valueOf(),true.valueOf(), "unexpected owner address");
   });
 });
-
 
 
   it("do a single exchange", function() {
@@ -521,7 +554,6 @@ contract('Deployment', function(accounts) {
   });
 
 
-
   it("print addresses", function() {
     tokensDict = {};
     console.log("\ntokens");
@@ -537,13 +569,8 @@ contract('Deployment', function(accounts) {
     //console.log("\nexchanges");
     for( var exchangeInd = 0 ; exchangeInd < exchanges.length ; exchangeInd++ ) {
       //console.log( exchanges[i] + " : " + exchangesInstance[i].address );
-      var exchangeDict = { "ETH" : exchangesInstance[exchangeInd].address };
-      for( var tokenInd = 0 ; tokenInd < tokenSymbol.length ; tokenInd++ ) {
-        var symbol = tokenSymbol[tokenInd];
-        exchangeDict[symbol] = exchangesInstance[exchangeInd].address;
-      }
 
-      exchagesDict[exchanges[exchangeInd]] = exchangeDict;
+      exchagesDict[exchanges[exchangeInd]] = exchageDepositAddresess[exchangeInd];
     }
 
     dict = { "tokens" : tokensDict, "exchanges" : exchagesDict };
