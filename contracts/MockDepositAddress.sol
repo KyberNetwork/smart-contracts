@@ -9,17 +9,15 @@ import "./MockCenteralBank.sol";
 
 
 contract MockDepositAddress {
+
     MockCenteralBank public bank;
-    ERC20 public token;
     address public owner;
-    ERC20 constant public ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
     /// @dev Ctor of this
-    /// @param _token - the token type this deposit address handles
     /// @param _bank bank address to work with for deposit and withdraw
-    function MockDepositAddress( ERC20 _token, MockCenteralBank _bank, address _owner ) public{
+    /// @param _owner owner address for this contract.
+    function MockDepositAddress( MockCenteralBank _bank, address _owner ) public{
         owner = _owner;
-        token = _token;
         bank = _bank;
     }
 
@@ -29,34 +27,11 @@ contract MockDepositAddress {
         _;
     }
 
-    function withdraw( uint tokenAmount, address destination ) public
-        onlyOwner
-    {
-        // withdraw directly from the bank
-        if( token == ETH_TOKEN_ADDRESS ) {
-            bank.withdrawEther(tokenAmount);
-            destination.transfer(tokenAmount);
-        }
-        else {
-            bank.withdrawToken(token, tokenAmount);
-            token.transfer(destination, tokenAmount );
-        }
-    }
+    event Withdraw(uint amount , address destianation);
 
-    function clearBalance( uint amount ) public
-        onlyOwner
-    {
-        if( token == ETH_TOKEN_ADDRESS ) {
-            if( this.balance >= amount ) {
-                bank.transfer(amount);
-            }
-        }
-        else if( token.balanceOf(this) >= amount ) {
-            token.transfer(bank, amount);
-        }
-    }
+    function withdraw( uint tokenAmount, address destination ) public;
 
-    function () public payable {
+    function clearBalance( uint amount ) public;
 
-    }
+    function getBalance( ) public view returns (uint);
 }
