@@ -61,7 +61,7 @@ library SafeMath {
 
   function assert(bool assertion) internal {
     if (!assertion) {
-      throw;
+      revert();
     }
   }
 }
@@ -110,7 +110,7 @@ contract BasicToken is ERC20Basic {
    */
   modifier onlyPayloadSize(uint size) {
      if(msg.data.length < size + 4) {
-       throw;
+       revert();
      }
      _;
   }
@@ -145,8 +145,8 @@ contract StandardToken is BasicToken, ERC20 {
 
     var _allowance = allowed[_from][msg.sender];
 
-    // Check is not needed because sub(_allowance, _value) will already throw if this condition is not met
-    if (_value > _allowance) throw;
+    // Check is not needed because sub(_allowance, _value) will already revert if this condition is not met
+    if (_value > _allowance) revert();
 
     balances[_to] = balances[_to].add(_value);
     balances[_from] = balances[_from].sub(_value);
