@@ -66,8 +66,4 @@ contract MockExchange {
 
         bank.addOwner(tokenDepositAddresses[token]);
     }
-
-    function () public payable {
-
-    }
 }
