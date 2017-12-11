@@ -144,7 +144,7 @@ contract KyberWallet {
         if( ! destination.call.value(valueForCall)(destinationData) ) {
             // call to function
             ErrorReport( msg.sender, 0x8a00003, 0 );
-            if( throwOnFail ) throw;
+            if( throwOnFail ) revert();
             // this address cannot be trusted
             destToken.approve(destination, 0);
             return;

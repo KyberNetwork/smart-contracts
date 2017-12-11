@@ -23,7 +23,7 @@ contract KyberReserve {
     /// @dev c'tor.
     /// @param _kyberNetwork The address of kyber network
     /// @param _reserveOwner Address of the reserve owner
-    function KyberReserve( address _kyberNetwork, address _reserveOwner ) {
+    function KyberReserve( address _kyberNetwork, address _reserveOwner ) public {
         kyberNetwork = _kyberNetwork;
         reserveOwner = _reserveOwner;
         tradeEnabled = true;
@@ -36,7 +36,7 @@ contract KyberReserve {
     /// @param blockNumber Current block number
     /// @return true iff pair is listed
     function isPairListed( ERC20 source, ERC20 dest, uint blockNumber ) internal constant returns(bool) {
-        ConversionRate memory rateInfo = pairConversionRate[sha3(source,dest)];
+        ConversionRate memory rateInfo = pairConversionRate[keccak256(source,dest)];
         if( rateInfo.rate == 0 ) return false;
         return rateInfo.expirationBlock >= blockNumber;
     }
@@ -48,7 +48,7 @@ contract KyberReserve {
     /// @return conversion rate with PRECISION precision
 
     function getConversionRate( ERC20 source, ERC20 dest, uint blockNumber ) internal constant returns(uint) {
-        ConversionRate memory rateInfo = pairConversionRate[sha3(source,dest)];
+        ConversionRate memory rateInfo = pairConversionRate[keccak256(source,dest)];
         if( rateInfo.rate == 0 ) return 0;
         if( rateInfo.expirationBlock < blockNumber ) return 0;
         return rateInfo.rate * (10 ** getDecimals(dest)) / (10**getDecimals(source));
@@ -57,7 +57,7 @@ contract KyberReserve {
     event ErrorReport( address indexed origin, uint error, uint errorInfo );
     event DoTrade( address indexed origin, address source, uint sourceAmount, address destToken, uint destAmount, address destAddress );
 
-    function getDecimals( ERC20 token ) constant returns(uint) {
+    function getDecimals( ERC20 token ) public constant returns(uint) {
       if( token == ETH_TOKEN_ADDRESS ) return 18;
       return token.decimals();
     }
@@ -170,13 +170,13 @@ contract KyberReserve {
                     uint sourceAmount,
                     ERC20 destToken,
                     address destAddress,
-                    bool validate ) payable returns(bool) {
+                    bool validate ) public payable returns(bool) {
 
         if( ! tradeEnabled ) {
             // trade is not enabled
             ErrorReport( tx.origin, 0x810000000, 0 );
             if( msg.value > 0 ) {
-                if( ! msg.sender.send(msg.value) ) throw;
+                if( ! msg.sender.send(msg.value) ) revert();
             }
             return false;
         }
@@ -185,7 +185,7 @@ contract KyberReserve {
             // sender must be kyber network
             ErrorReport( tx.origin, 0x810000001, uint(msg.sender) );
             if( msg.value > 0 ) {
-                if( ! msg.sender.send(msg.value) ) throw;
+                if( ! msg.sender.send(msg.value) ) revert();
             }
 
             return false;
@@ -195,7 +195,7 @@ contract KyberReserve {
             // do trade failed
             ErrorReport( tx.origin, 0x810000002, 0 );
             if( msg.value > 0 ) {
-                if( ! msg.sender.send(msg.value) ) throw;
+                if( ! msg.sender.send(msg.value) ) revert();
             }
             return false;
         }
@@ -214,7 +214,14 @@ contract KyberReserve {
     /// @param expiryBlocks array of expiration blocks
     /// @param validate If true, additional validations are applicable
     /// @return true iff trade is succesful
-    function setRate( ERC20[] sources, ERC20[] dests, uint[] conversionRates, uint[] expiryBlocks, bool validate ) returns(bool) {
+    function setRate(
+        ERC20[] sources,
+        ERC20[] dests,
+        uint[] conversionRates,
+        uint[] expiryBlocks,
+        bool validate )
+        public returns(bool)
+    {
         if( msg.sender != reserveOwner ) {
             // sender must be reserve owner
             ErrorReport( tx.origin, 0x820000000, uint(msg.sender) );
@@ -233,7 +240,7 @@ contract KyberReserve {
 
         for( uint i = 0 ; i < sources.length ; i++ ) {
             SetRate( sources[i], dests[i], conversionRates[i], expiryBlocks[i] );
-            pairConversionRate[sha3(sources[i],dests[i])] = ConversionRate( conversionRates[i], expiryBlocks[i] );
+            pairConversionRate[keccak256(sources[i],dests[i])] = ConversionRate( conversionRates[i], expiryBlocks[i] );
         }
 
         ErrorReport( tx.origin, 0, 0 );
@@ -246,7 +253,7 @@ contract KyberReserve {
     /// @dev enable of disable trade
     /// @param enable if true trade is enabled, otherwise disabled
     /// @return true iff trade is succesful
-    function enableTrade( bool enable ) returns(bool){
+    function enableTrade( bool enable ) public returns(bool){
         if( msg.sender != reserveOwner ) {
             // sender must be reserve owner
             ErrorReport( tx.origin, 0x830000000, uint(msg.sender) );
@@ -261,14 +268,14 @@ contract KyberReserve {
     }
 
     event DepositToken( ERC20 token, uint amount );
-    function() payable {
+    function() payable public {
         DepositToken( ETH_TOKEN_ADDRESS, msg.value );
     }
 
     /// @notice ether could also be deposited without calling this function
-    /// @dev an auxilary function that allows ether deposits
-    /// @return true iff deposit is succesful
-    function depositEther( ) payable returns(bool) {
+    /// @dev an auxiliary function that allows ether deposits
+    /// @return true if deposit is successful
+    function depositEther( ) public payable returns(bool) {
         ErrorReport( tx.origin, 0, 0 );
 
         DepositToken( ETH_TOKEN_ADDRESS, msg.value );
@@ -276,11 +283,11 @@ contract KyberReserve {
     }
 
     /// @notice tokens could also be deposited without calling this function
-    /// @dev an auxilary function that allows token deposits
+    /// @dev an auxiliary function that allows token deposits
     /// @param token Token address
     /// @param amount Amount of tokens to deposit
-    /// @return true iff deposit is succesful
-    function depositToken( ERC20 token, uint amount ) returns(bool) {
+    /// @return true iff deposit is successful
+    function depositToken( ERC20 token, uint amount ) public returns(bool) {
         if( token.allowance( msg.sender, this ) < amount ) {
             // allowence is smaller then amount
             ErrorReport( tx.origin, 0x850000001, token.allowance( msg.sender, this ) );
@@ -306,7 +313,7 @@ contract KyberReserve {
     /// @param amount Amount of tokens to deposit
     /// @param destination address that get withdrewed funds
     /// @return true iff withdrawal is succesful
-    function withdraw( ERC20 token, uint amount, address destination ) returns(bool) {
+    function withdraw( ERC20 token, uint amount, address destination ) public returns(bool) {
         if( msg.sender != reserveOwner ) {
             // sender must be reserve owner
             ErrorReport( tx.origin, 0x860000000, uint(msg.sender) );
@@ -314,7 +321,7 @@ contract KyberReserve {
         }
 
         if( token == ETH_TOKEN_ADDRESS ) {
-            if( ! destination.send(amount) ) throw;
+            if( ! destination.send(amount) ) revert();
         }
         else if( ! token.transfer(destination,amount) ) {
             // transfer to reserve owner failed
@@ -326,8 +333,8 @@ contract KyberReserve {
         Withdraw( token, amount, destination );
     }
 
-    function changeOwner( address newOwner ) {
-      if( msg.sender != reserveOwner ) throw;
+    function changeOwner( address newOwner ) public {
+      if( msg.sender != reserveOwner ) revert();
       reserveOwner = newOwner;
     }
 
@@ -340,8 +347,8 @@ contract KyberReserve {
     /// @param source Source token
     /// @param dest   Destinatoin token
     /// @return (conversion rate,experation block,dest token balance of reserve)
-    function getPairInfo( ERC20 source, ERC20 dest ) constant returns(uint rate, uint expBlock, uint balance) {
-        ConversionRate memory rateInfo = pairConversionRate[sha3(source,dest)];
+    function getPairInfo( ERC20 source, ERC20 dest ) public constant returns(uint rate, uint expBlock, uint balance) {
+        ConversionRate memory rateInfo = pairConversionRate[keccak256(source,dest)];
         balance = 0;
         if( dest == ETH_TOKEN_ADDRESS ) balance = this.balance;
         else balance = dest.balanceOf(this);
@@ -354,7 +361,7 @@ contract KyberReserve {
     /// @dev get the balance of the reserve
     /// @param token The token type
     /// @return The balance
-    function getBalance( ERC20 token ) constant returns(uint){
+    function getBalance( ERC20 token ) public constant returns(uint){
         if( token == ETH_TOKEN_ADDRESS ) return this.balance;
         else return token.balanceOf(this);
     }

@@ -16,13 +16,13 @@ contract MockCenteralBank {
     }
 
     function withdrawEther( uint amount ) {
-        if( ! owners[tx.origin] ) throw;
+        if( ! owners[tx.origin] ) revert();
 
         msg.sender.transfer(amount);
     }
 
     function withdrawToken( ERC20 token, uint amount ) {
-        if( ! owners[tx.origin] ) throw;
+        if( ! owners[tx.origin] ) revert();
 
         token.transfer(msg.sender,amount);
     }
@@ -36,7 +36,7 @@ contract MockCenteralBank {
     }
 
     function addOwner( address newOwner ) {
-      if( ! owners[tx.origin] ) throw;
+      if( ! owners[tx.origin] ) revert;
       owners[newOwner] = true;
     }
 }
