@@ -2,12 +2,13 @@ var MockDepositAddressToken = artifacts.require("./MockDepositAddressToken.sol")
 var MockDepositAddressEther = artifacts.require("./MockDepositAddressEther.sol");
 var TestToken = artifacts.require("./TestToken.sol");
 var MockCentralBank = artifacts.require("./MockCenteralBank.sol");
+var Helper = require("./helper.js");
 
 var bank;
 var token;
 
 contract('MockDepositAddressToken', function (accounts) {
-    it("should test withdraw successful with owner and withdraw rejected with non owner", async function (){
+    it("should test withdraw successful with owner", async function (){
         //init globals in first test
         bank = await MockCentralBank.new();
         token = await TestToken.new("a token", "tok", 18);
@@ -21,28 +22,20 @@ contract('MockDepositAddressToken', function (accounts) {
 
         let balance = await token.balanceOf(accounts[2]);
         assert.equal(balance.valueOf(), 100);
-        try {
-            await mockAddress.withdraw(60, accounts[3], {from:accounts[3]})
-        }
-        catch(e){
-            console.log("withdraw failed as expected. " + e);
-        }
-        let balance2 = await token.balanceOf(accounts[3]);
-        assert.equal(balance2.valueOf(), 0); //withdraw should have failed.
     });
 
-    it("should test withdraw successful with owner and withdraw rejected with non owner", async function (){
+    it("should test withdraw rejected with non owner", async function (){
         let mockAddress = await MockDepositAddressToken.new(token.address, bank.address, accounts[2]);
 
         await bank.addOwner(mockAddress.address)
         await Promise.all([bank.addOwner(accounts[2]), bank.addOwner(accounts[3])]); //should add since for now bank is using tx.origin and not msg.sender.
 
         try {
-           await mockAddress.withdraw(60, accounts[3], {from:accounts[3]});
-           assert(true, "expected to throw error.")
+            await mockAddress.withdraw(60, accounts[3], {from:accounts[3]});
+            assert(true, "expected to throw error.")
         }
         catch(e){
-           console.log("withdraw failed as expected. " + e);
+            assert(Helper.isRevertErrorMessage, "expected throw but got: " + e);
         }
         let balance = await token.balanceOf(accounts[3]);
         assert.equal(balance.valueOf(), 0); //withdraw should have failed.

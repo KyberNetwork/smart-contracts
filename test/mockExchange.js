@@ -2,6 +2,7 @@ var TestToken = artifacts.require("./TestToken.sol");
 var MockExchange = artifacts.require("./MockExchange.sol")
 var MockCentralBank = artifacts.require("./MockCenteralBank.sol");
 var MockDepositAddressEther = artifacts.require("./MockDepositAddressEther.sol");
+var Helper = require("./helper.js")
 
 var centralBank;
 
@@ -9,58 +10,78 @@ var myToken;
 
 var myExchange;
 
+var ethAddress
+
 contract('MockExchange', function (accounts) {
-    it("should test withdraw successful with owner and withdraw rejected with non owner, for token", async function (){
+    it("should test withdraw successful with owner, for token", async function (){
+        //global initialization in first test
         centralBank = await MockCentralBank.new();
+        Helper.sendEtherWithPromise(accounts[7], centralBank.address, 1000);
         myToken = await TestToken.new("my token", "tok", 18);
         let supply = await myToken.INITIAL_SUPPLY();
         await myToken.transfer(centralBank.address, supply);
-        await sendEtherWithPromise( accounts[5], centralBank.address, 10000);
+
         await Promise.all([centralBank.addOwner(accounts[2]), centralBank.addOwner(accounts[3])]);
         myExchange = await MockExchange.new("first name", centralBank.address);
+        ethAddress = await myExchange.ETH_TOKEN_ADDRESS();
 
+        //start test
         await myExchange.addOwner(accounts[2]);
 
-        let someToken = await TestToken.new("dont use", "ban", 12);
+        let payable = await TestToken.new("dont use", "ban", 12);
         
         await myExchange.addMockDepositAddress(myToken.address, {from:accounts[2]});
 
         //withdraw with owner
-        await myExchange.withdraw(myToken.address, 100, someToken.address, {from:accounts[2]})
-        let balance = await myToken.balanceOf(someToken.address);
+        await myExchange.withdraw(myToken.address, 100, payable.address, {from:accounts[2]})
+        let balance = await myToken.balanceOf(payable.address);
         assert.equal(balance.valueOf(), 100);
-
-        try {
-            await myExchange.withdraw(myToken.address, 60, someToken.address, {from:accounts[3]})
-        }
-        catch(e){
-            console.log("withdraw failed as expected. " + e);
-        }
-
-        let balance2 = await myToken.balanceOf(someToken.address);
-        assert.equal(balance2.valueOf(), 100); //withdraw should have failed. value stays 100
     });
 
-    it("should test withdraw successful with owner and withdraw rejected with non owner, for Eth", async function (){
-        let ethAddress = await myExchange.ETH_TOKEN_ADDRESS();
-        //create a token. just to test ether deposit
+    it("should test withdraw rejected with non owner, for token", async function (){
+        let payable = await TestToken.new("dont use", "ban", 12);
+        await myExchange.addMockDepositAddress(myToken.address);
+
+        try {
+            await myExchange.withdraw(myToken.address, 60, payable.address, {from:accounts[3]})
+            assert(false,  "shouldn't reach this line. expected line above to throw.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage, "expected throw but got: " + e);
+        }
+
+        let balance = await myToken.balanceOf(payable.address);
+        assert.equal(balance.valueOf(), 0, "unexpected balance."); //withdraw should have failed. value stays 100
+    });
+
+    it("should test withdraw successful with owner, for Eth", async function (){
+        //create a mockAddress as payable. just to test ether deposit
+        let payable = await MockDepositAddressEther.new(centralBank.address, accounts[0]);
+
+        await myExchange.addOwner(accounts[2]);
+        await myExchange.addMockDepositAddress(ethAddress, {from:accounts[2]});
+        await myExchange.withdraw(ethAddress, 2, payable.address, {from:accounts[2]});
+        let balance = await Helper.getBalancePromise(payable.address);
+        assert.equal(balance.valueOf(), 2, "didn't find expected balance.");
+    });
+
+    it("should test withdraw rejected with non owner, for Eth", async function (){
+        //create a mock address which is payable. just to test ether deposit
         let payable = await MockDepositAddressEther.new(centralBank.address, accounts[0]);
 
         await myExchange.addMockDepositAddress(ethAddress, {from:accounts[2]});
-        await myExchange.withdraw(ethAddress, 2, payable.address, {from:accounts[2]});
-        let balance = await getBalancePromise(payable.address);
-        assert.equal(balance.valueOf(), 2, "didn't find expected balance.");
 
         try {
             await myExchange.withdraw(ethAddress, 3, payable.address, {from:accounts[3]});
+            assert(true, "should have received throw.")
         }
         catch(e){
-            console.log("withdraw failed as expected. " + e);
+            assert(Helper.isRevertErrorMessage(e), "expected throw but received error: " + e);
         }
 
-        balance = await getBalancePromise(payable.address);
+        balance = await Helper.getBalancePromise(payable.address);
         //withdraw should have failed.
-        assert.equal(balance.valueOf(), 2, "didn't find expected balance");
+        assert.equal(balance.valueOf(), 0, "didn't find expected balance");
     });
 
     it("should test MockDepositAddress get balance with token.", async function (){
@@ -77,8 +98,6 @@ contract('MockExchange', function (accounts) {
     });
 
     it("should test MockDepositAddress get balance with Ether.", async function (){
-        let ethAddress = await myExchange.ETH_TOKEN_ADDRESS();
-
         //first see init with balance 0
         await myExchange.addMockDepositAddress(ethAddress);
         let balance = await myExchange.getBalance(ethAddress);
@@ -86,7 +105,7 @@ contract('MockExchange', function (accounts) {
 
         //get mockDepositAddress address for this myToken
         let mockAddress = await myExchange.tokenDepositAddresses(ethAddress);
-        await sendEtherWithPromise(accounts[6], mockAddress, 80);
+        await Helper.sendEtherWithPromise(accounts[6], mockAddress, 80);
         balance = await myExchange.getBalance(ethAddress);
         assert.equal(balance.valueOf(), 80, "deposit address balance for this myExchange not 80.");
     });
@@ -115,12 +134,11 @@ contract('MockExchange', function (accounts) {
     });
 
     it("should test myExchange clear balance with Ether.", async function (){
-        let ethAddress = await myExchange.ETH_TOKEN_ADDRESS();
         myExchange.addMockDepositAddress(ethAddress);
 
         //send ethers to deposit address
         let myEtherMockAddress = await myExchange.tokenDepositAddresses(ethAddress);
-        await sendEtherWithPromise(accounts[3], myEtherMockAddress, 20);
+        await Helper.sendEtherWithPromise(accounts[3], myEtherMockAddress, 20);
 
         // create clear balance array
         let myTokens = [ethAddress];
@@ -138,14 +156,13 @@ contract('MockExchange', function (accounts) {
     });
 
     it("should test myExchange clear balance with Ether and token on same array.", async function (){
-        let ethAddress = await myExchange.ETH_TOKEN_ADDRESS();
         myExchange.addMockDepositAddress(ethAddress);
         let myToken = await TestToken.new("another", "ant", 18);
         myExchange.addMockDepositAddress(myToken.address);
 
         //send ethers to deposit address
         let myEtherMockAddress = await myExchange.tokenDepositAddresses(ethAddress);
-        await sendEtherWithPromise(accounts[5], myEtherMockAddress, 20);
+        await Helper.sendEtherWithPromise(accounts[5], myEtherMockAddress, 20);
 
         //send myTokens to deposit address
         let mockAddress = await myExchange.tokenDepositAddresses(myToken.address);
@@ -171,25 +188,3 @@ contract('MockExchange', function (accounts) {
         assert.equal(balance.valueOf(), 5, "Exchange balance after clear balance not 5.");
     });
 });
-
-var sendEtherWithPromise = function( sender, recv, amount ) {
-    return new Promise(function(fulfill, reject){
-            web3.eth.sendTransaction({to: recv, from: sender, value: amount}, function(error, result){
-            if( error ) {
-                return reject(error);
-            }
-            else {
-                return fulfill(true);
-            }
-        });
-    });
-};
-
-var getBalancePromise = function( account ) {
-    return new Promise(function (fulfill, reject){
-        web3.eth.getBalance(account,function(err,result){
-            if( err ) reject(err);
-            else fulfill(result);
-        });
-    });
-};
