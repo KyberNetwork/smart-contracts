@@ -199,8 +199,6 @@ var depositTokensToReserve = function( owner, reserveInstance ) {
   });
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 
 var createExchanges = function( owner, bankAddress ) {
@@ -263,7 +261,6 @@ var addDepositAddressToExchange = function( exchange, owner ) {
     });
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 
 var transferOwneshipInExchangesAndBank = function( owner, newOwners ) {
@@ -295,7 +292,6 @@ var transferOwneshipInExchangesAndBank = function( owner, newOwners ) {
       });
   });
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -362,7 +358,6 @@ var sendEtherWithPromise = function( sender, recv, amount ) {
         });
     });
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -91,25 +91,24 @@ contract('MockExchange', function (accounts) {
         assert.equal(balance.valueOf(), 80, "deposit address balance for this myExchange not 80.");
     });
 
-    it("should test myExchange clear balance with myToken.", async function (){
+    it("should test myExchange clear balance with token.", async function (){
         let myToken = await TestToken.new("another", "ant", 18);
         myExchange.addMockDepositAddress(myToken.address);
 
         //send myTokens to deposit address
         let mockAddress = await myExchange.tokenDepositAddresses(myToken.address);
         myToken.transfer(mockAddress, 20);
-        let balance = await myExchange.getBalance(myToken.address);
 
         // create clear balance array
         let myTokens = [myToken.address];
         let amounts = [30]
-        myExchange.clearBalances(myTokens, amounts);
+        await myExchange.clearBalances(myTokens, amounts);
 
         balance = await myExchange.getBalance(myToken.address);
         assert.equal(balance.valueOf(), 20, "myExchange balance not 20.");
 
         let amounts1 = [15];
-        myExchange.clearBalances(myTokens, amounts1);
+        await myExchange.clearBalances(myTokens, amounts1);
 
         balance = await myExchange.getBalance(myToken.address);
         assert.equal(balance.valueOf(), 5, "Exchange balance after clear balance not 5.");
@@ -119,23 +118,56 @@ contract('MockExchange', function (accounts) {
         let ethAddress = await myExchange.ETH_TOKEN_ADDRESS();
         myExchange.addMockDepositAddress(ethAddress);
 
-        //send myTokens to deposit address
-        let myTokenAddress = await myExchange.tokenDepositAddresses(ethAddress);
-        await sendEtherWithPromise(accounts[3], myTokenAddress, 20);
-        let balance = await myExchange.getBalance(ethAddress);
+        //send ethers to deposit address
+        let myEtherMockAddress = await myExchange.tokenDepositAddresses(ethAddress);
+        await sendEtherWithPromise(accounts[3], myEtherMockAddress, 20);
 
         // create clear balance array
         let myTokens = [ethAddress];
         let amounts = [30]
-        myExchange.clearBalances(myTokens, amounts);
+        await myExchange.clearBalances(myTokens, amounts);
 
         balance = await myExchange.getBalance(ethAddress);
         assert.equal(balance.valueOf(), 20, "myExchange balance not 20.");
 
         let amounts1 = [15];
-        myExchange.clearBalances(myTokens, amounts1);
+        await myExchange.clearBalances(myTokens, amounts1);
 
         balance = await myExchange.getBalance(ethAddress);
+        assert.equal(balance.valueOf(), 5, "Exchange balance after clear balance not 5.");
+    });
+
+    it("should test myExchange clear balance with Ether and token on same array.", async function (){
+        let ethAddress = await myExchange.ETH_TOKEN_ADDRESS();
+        myExchange.addMockDepositAddress(ethAddress);
+        let myToken = await TestToken.new("another", "ant", 18);
+        myExchange.addMockDepositAddress(myToken.address);
+
+        //send ethers to deposit address
+        let myEtherMockAddress = await myExchange.tokenDepositAddresses(ethAddress);
+        await sendEtherWithPromise(accounts[5], myEtherMockAddress, 20);
+
+        //send myTokens to deposit address
+        let mockAddress = await myExchange.tokenDepositAddresses(myToken.address);
+        myToken.transfer(mockAddress, 20);
+
+        // create clear balance array
+        let myTokens = [ethAddress, myToken.address];
+        let amounts = [30, 30]
+        await myExchange.clearBalances(myTokens, amounts);
+
+        balance = await myExchange.getBalance(ethAddress);
+        assert.equal(balance.valueOf(), 20, "myExchange balance not 20.");
+
+        balance = await myExchange.getBalance(myToken.address);
+        assert.equal(balance.valueOf(), 20, "myExchange balance not 20.");
+
+        let amounts1 = [15, 15];
+        await myExchange.clearBalances(myTokens, amounts1);
+
+        balance = await myExchange.getBalance(ethAddress);
+        assert.equal(balance.valueOf(), 5, "Exchange balance after clear balance not 5.");
+        balance = await myExchange.getBalance(myToken.address);
         assert.equal(balance.valueOf(), 5, "Exchange balance after clear balance not 5.");
     });
 });
