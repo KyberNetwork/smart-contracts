@@ -55,16 +55,16 @@ contract KyberNetwork {
     /// @return rate. If not available returns 0.
 
     function getPrice( ERC20 source, ERC20 dest ) constant returns(uint) {
-      uint rate; uint expBlock; uint balance;
-      (rate, expBlock, balance) = getRate( source, dest, 0 );
-      if( expBlock <= block.number ) return 0; // TODO - consider add 1
-      if( balance == 0 ) return 0; // TODO - decide on minimal qty
-      return rate;
+        uint rate; uint expBlock; uint balance;
+        (rate, expBlock, balance) = getRate( source, dest, 0 );
+        if( expBlock <= block.number ) return 0; // TODO - consider add 1
+        if( balance == 0 ) return 0; // TODO - decide on minimal qty
+        return rate;
     }
 
     function getDecimals( ERC20 token ) constant returns(uint) {
-      if( token == ETH_TOKEN_ADDRESS ) return 18;
-      return token.decimals();
+        if( token == ETH_TOKEN_ADDRESS ) return 18;
+        return token.decimals();
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
