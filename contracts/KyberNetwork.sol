@@ -1,4 +1,4 @@
-pragma solidity ^0.4.8;
+pragma solidity ^0.4.18;
 
 import "./ERC20Interface.sol";
 import "./KyberReserve.sol";
@@ -36,16 +36,16 @@ contract KyberNetwork {
 
     /// @dev returns number of reserves
     /// @return number of reserves
-    function getNumReserves() public constant returns(uint){
+    function getNumReserves() public view returns(uint){
         return reserves.length;
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev information on conversion rate from source to dest in specific reserve manager
     /// @param source Source token
-    /// @param dest   Destinatoin token
-    /// @return (conversion rate,experation block,dest token balance of reserve)
-    function getRate( ERC20 source, ERC20 dest, uint reserveIndex ) public constant
+    /// @param dest Destination token
+    /// @return (conversion rate,expiration block,dest token balance of reserve)
+    function getRate( ERC20 source, ERC20 dest, uint reserveIndex ) public view
         returns(uint rate, uint expBlock, uint balance)
     {
         (rate,expBlock, balance) = reserves[reserveIndex].getPairInfo(source,dest);
@@ -54,28 +54,30 @@ contract KyberNetwork {
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev information on conversion rate to a front end application
     /// @param source Source token
-    /// @param dest   Destinatoin token
+    /// @param dest Destination token
     /// @return rate. If not available returns 0.
 
-    function getPrice( ERC20 source, ERC20 dest ) public constant returns(uint) {
-      uint rate; uint expBlock; uint balance;
-      (rate, expBlock, balance) = getRate( source, dest, 0 );
-      if( expBlock <= block.number ) return 0; // TODO - consider add 1
-      if( balance == 0 ) return 0; // TODO - decide on minimal qty
-      return rate;
+    function getPrice( ERC20 source, ERC20 dest ) public view returns(uint) {
+        uint rate;
+        uint expBlock;
+        uint balance;
+        (rate, expBlock, balance) = getRate( source, dest, 0 );
+        if( expBlock <= block.number ) return 0; // TODO - consider add 1
+        if( balance == 0 ) return 0; // TODO - decide on minimal qty
+        return rate;
     }
 
-    function getDecimals( ERC20 token ) public constant returns(uint) {
-      if( token == ETH_TOKEN_ADDRESS ) return 18;
-      return token.decimals();
+    function getDecimals( ERC20 token ) public view returns(uint) {
+        if( token == ETH_TOKEN_ADDRESS ) return 18;
+        return token.decimals();
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev best conversion rate for a pair of tokens
     /// @param source Source token
-    /// @param dest   Destinatoin token
+    /// @param dest Destination token
     /// @return KyberReservePairInfo structure
-    function findBestRate( ERC20 source, ERC20 dest ) internal constant returns(KyberReservePairInfo) {
+    function findBestRate( ERC20 source, ERC20 dest ) internal view returns(KyberReservePairInfo) {
         uint bestRate;
         uint bestReserveBalance = 0;
         uint numReserves = reserves.length;
@@ -105,16 +107,20 @@ contract KyberNetwork {
     /// @dev do one trade with a reserve
     /// @param source Source token
     /// @param amount amount of source tokens
-    /// @param dest   Destinatoin token
+    /// @param dest   Destination token
     /// @param destAddress Address to send tokens to
     /// @param reserve Reserve to use
     /// @param validate If true, additional validations are applicable
-    /// @return true if trade is succesful
-    function doSingleTrade( ERC20 source, uint amount,
-                            ERC20 dest, address destAddress,
-                            KyberReserve reserve,
-                            bool validate ) internal returns(bool) {
-
+    /// @return true if trade is successful
+    function doSingleTrade(
+        ERC20 source,
+        uint amount,
+        ERC20 dest,
+        address destAddress,
+        KyberReserve reserve,
+        bool validate )
+        internal returns(bool)
+    {
         uint callValue = 0;
         if( source == ETH_TOKEN_ADDRESS ) callValue = amount;
         else {
@@ -128,10 +134,10 @@ contract KyberNetwork {
         if( ! reserve.trade.value(callValue)(source, amount, dest, destAddress, validate ) ) {
             if( source != ETH_TOKEN_ADDRESS ) {
                 // reset tokens for reserve
-                if( ! source.approve( reserve, 0) ) revert();
+                require( source.approve( reserve, 0) );
 
                 // send tokens back to sender
-                if( ! source.transfer(msg.sender, amount) ) revert();
+                source.transfer(msg.sender, amount);
             }
 
             return false;
@@ -162,7 +168,7 @@ contract KyberNetwork {
         }
         else if( source != ETH_TOKEN_ADDRESS ) {
             if( source.allowance(msg.sender,this) < srcAmount ) {
-                // insufficient allowane
+                // insufficient allowance
                 ErrorReport( tx.origin, 0x85000002, msg.value );
                 return false;
             }
@@ -192,7 +198,7 @@ contract KyberNetwork {
     /// destAddress and record wallet id for later payment
     /// @param source Source token
     /// @param srcAmount amount of source tokens
-    /// @param dest   Destinatoin token
+    /// @param dest   Destination token
     /// @param destAddress Address to send tokens to
     /// @param maxDestAmount A limit on the amount of dest tokens
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
@@ -205,11 +211,12 @@ contract KyberNetwork {
         address destAddress,
         uint maxDestAmount,
         uint minConversionRate,
-        bool throwOnFailure)
-//        bytes32 walletId )
+        bool throwOnFailure,
+        bytes32 walletId )
         public payable returns(uint)
     {
        // TODO - log wallet id
+       walletId;
        return trade( source, srcAmount, dest, destAddress, maxDestAmount,
                      minConversionRate, throwOnFailure );
     }
@@ -222,22 +229,27 @@ contract KyberNetwork {
     /// @dev makes a trade between source and dest token and send dest token to destAddress
     /// @param source Source token
     /// @param srcAmount amount of source tokens
-    /// @param dest   Destinatoin token
+    /// @param dest   Destination token
     /// @param destAddress Address to send tokens to
     /// @param maxDestAmount A limit on the amount of dest tokens
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
     /// @param throwOnFailure if true and trade is not completed, then function throws.
     /// @return amount of actual dest tokens
-    function trade( ERC20 source, uint srcAmount,
-                    ERC20 dest, address destAddress, uint maxDestAmount,
-                    uint minConversionRate,
-                    bool throwOnFailure ) public payable returns(uint) {
-
+    function trade(
+        ERC20 source,
+        uint srcAmount,
+        ERC20 dest,
+        address destAddress,
+        uint maxDestAmount,
+        uint minConversionRate,
+        bool throwOnFailure )
+        public payable returns(uint)
+    {
         if( ! validateTradeInput( source, srcAmount ) ) {
             // invalid input
             ErrorReport( tx.origin, 0x86000000, 0 );
             if( msg.value > 0 ) {
-                if( ! msg.sender.send(msg.value) ) revert();
+                msg.sender.transfer(msg.value);
             }
             if( throwOnFailure ) revert();
             return 0;
@@ -286,9 +298,9 @@ contract KyberNetwork {
         }
 
         if( tradeInfo.tradeFailed ) {
-            if( throwOnFailure ) revert();
+            assert( throwOnFailure );
             if( msg.value > 0 ) {
-                if( ! msg.sender.send(msg.value) ) revert();
+                msg.sender.transfer(msg.value);
             }
 
             return 0;
@@ -296,10 +308,8 @@ contract KyberNetwork {
         else {
             ErrorReport( tx.origin, 0, 0 );
             if( tradeInfo.remainedSourceAmount > 0 && source == ETH_TOKEN_ADDRESS ) {
-                if( ! msg.sender.send(tradeInfo.remainedSourceAmount) ) revert();
+                msg.sender.transfer(tradeInfo.remainedSourceAmount); //will throw on failure
             }
-
-
 
             ErrorReport( tx.origin, 0, 0 );
             Trade( msg.sender, source, dest, srcAmount-tradeInfo.remainedSourceAmount, tradeInfo.convertedDestAmount );
@@ -371,7 +381,7 @@ contract KyberNetwork {
     /// @notice should be called off chain with as much gas as needed
     /// @dev get an array of all reserves
     /// @return An array of all reserves
-    function getReserves( ) public constant returns(KyberReserve[]) {
+    function getReserves( ) public view returns(KyberReserve[]) {
         return reserves;
     }
 
@@ -380,7 +390,7 @@ contract KyberNetwork {
     /// @dev get the balance of the network. It is expected to be 0 all the time.
     /// @param token The token type
     /// @return The balance
-    function getBalance( ERC20 token ) public constant returns(uint){
+    function getBalance( ERC20 token ) public view returns(uint){
         if( token == ETH_TOKEN_ADDRESS ) return this.balance;
         else return token.balanceOf(this);
     }
