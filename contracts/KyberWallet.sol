@@ -21,7 +21,7 @@ contract KyberWallet {
     
     /// @dev c'tor.
     /// @param _kyberNetwork The address of kyber network        
-    function KyberWallet( KyberNetwork _kyberNetwork ) {
+    function KyberWallet( KyberNetwork _kyberNetwork ) public {
         owner = msg.sender;
         kyberNetwork = _kyberNetwork;
         NewWallet( msg.sender, kyberNetwork );
@@ -31,7 +31,7 @@ contract KyberWallet {
     /// @notice can be called only by owner    
     /// @dev change kyber network to a new address
     /// @param network The address of the new kyber network            
-    function setKyberNetwork( KyberNetwork network ) {
+    function setKyberNetwork( KyberNetwork network ) public {
         if( msg.sender != owner ) {
             ErrorReport( msg.sender, 0x8900000, uint(owner) );
             return;
@@ -43,23 +43,23 @@ contract KyberWallet {
     }
     
     event IncomingEther( address sender, uint amountInWei );
-    function() payable {
-        return recieveEther();
+    function() payable public {
+        return receiveEther();
     }
 
     /// @notice it is possible to deposit ether also without this function    
-    /// @dev an auxilary function that allow user to recieve ether    
-    function recieveEther() payable {
+    /// @dev an auxiliary function that allow user to recieve ether
+    function receiveEther() public payable {
         IncomingEther( msg.sender, msg.value );    
     }
     
     event IncomingTokens( address from, ERC20 token, uint amount );
     /// @notice it is possible to deposit tokens also without this function    
-    /// @dev an auxilary function that allow user to recieve tokens
+    /// @dev an auxiliary function that allow user to recieve tokens
     /// @param token Token type
     /// @param from Sender address
     /// @param amount Amount of sent tokens        
-    function recieveTokens( ERC20 token, address from, uint amount ) {
+    function recieveTokens( ERC20 token, address from, uint amount ) public {
         if( ! token.transferFrom(from, this, amount ) ) {
             ErrorReport( msg.sender, 0x8a00000, uint(owner) );
             return;            
@@ -81,13 +81,17 @@ contract KyberWallet {
     /// @param destinationData Data that is associated to the destination contract call
     /// @param onlyApproveTokens If true, do not transfer tokens to dest address, instead just approve tokens to dest contract.
     /// @param throwOnFail if true, then function throws upon failure            
-    function convertAndCall( ERC20 srcToken, uint srcAmount,
-                             ERC20 destToken, uint maxDestAmount,
-                             uint minRate,
-                             address destination,
-                             bytes   destinationData,
-                             bool onlyApproveTokens,
-                             bool throwOnFail ) {
+    function convertAndCall(
+        ERC20 srcToken,
+        uint srcAmount,
+        ERC20 destToken,
+        uint maxDestAmount,
+        uint minRate,
+        address destination,
+        bytes   destinationData,
+        bool onlyApproveTokens,
+        bool throwOnFail ) public
+    {
         if( msg.sender != owner ) {
             ErrorReport( msg.sender, 0x8a0000f, uint(owner) );
             return;
@@ -163,7 +167,7 @@ contract KyberWallet {
     /// @param to Destination address
     /// @param value Ether value to send (when sending tokens should be 0)
     /// @param data Data that is associated to the call
-    function execute( address to, uint value, bytes data ) {
+    function execute( address to, uint value, bytes data ) public {
         if( msg.sender != owner ) {
             ErrorReport( msg.sender, 0x8b00000, uint(owner) );
             return;

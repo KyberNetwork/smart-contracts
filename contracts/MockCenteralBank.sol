@@ -11,32 +11,32 @@ import "./ERC20Interface.sol";
 contract MockCenteralBank {
     mapping(address=>bool) public owners;
 
-    function MockCenteralBank() {
+    function MockCenteralBank() public {
         owners[msg.sender] = true;
     }
 
-    function withdrawEther( uint amount ) {
+    function withdrawEther( uint amount ) public {
         if( ! owners[tx.origin] ) revert();
 
         msg.sender.transfer(amount);
     }
 
-    function withdrawToken( ERC20 token, uint amount ) {
+    function withdrawToken( ERC20 token, uint amount ) public {
         if( ! owners[tx.origin] ) revert();
 
         token.transfer(msg.sender,amount);
     }
 
-    function() payable {
+    function() payable public {
 
     }
 
-    function depositEther() payable {
+    function depositEther() public payable {
         // just to simplify interaction with testrpc
     }
 
-    function addOwner( address newOwner ) {
-      if( ! owners[tx.origin] ) revert;
+    function addOwner( address newOwner ) public {
+      if( ! owners[tx.origin] ) revert();
       owners[newOwner] = true;
     }
 }
