@@ -45,7 +45,9 @@ contract KyberNetwork {
     /// @param source Source token
     /// @param dest   Destinatoin token
     /// @return (conversion rate,experation block,dest token balance of reserve)
-    function getRate( ERC20 source, ERC20 dest, uint reserveIndex ) public constant returns(uint rate, uint expBlock, uint balance){
+    function getRate( ERC20 source, ERC20 dest, uint reserveIndex ) public constant
+        returns(uint rate, uint expBlock, uint balance)
+    {
         (rate,expBlock, balance) = reserves[reserveIndex].getPairInfo(source,dest);
     }
 
