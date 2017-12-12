@@ -1,6 +1,6 @@
 var TestToken = artifacts.require("./TestToken.sol");
 var MockExchange = artifacts.require("./MockExchange.sol")
-var MockCentralBank = artifacts.require("./MockCenteralBank.sol");
+var MockCentralBank = artifacts.require("./MockCentralBank.sol");
 var MockDepositAddressEther = artifacts.require("./MockDepositAddressEther.sol");
 var Helper = require("./helper.js")
 
@@ -47,7 +47,7 @@ contract('MockExchange', function (accounts) {
             assert(false,  "shouldn't reach this line. expected line above to throw.")
         }
         catch(e){
-            assert(Helper.isRevertErrorMessage, "expected throw but got: " + e);
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         let balance = await myToken.balanceOf(payable.address);

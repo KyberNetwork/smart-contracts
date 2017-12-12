@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
 import "./ERC20Interface.sol";
-import "./MockCenteralBank.sol";
+import "./MockCentralBank.sol";
 
 /// @title Mock Deposit Address
 /// @author Ilan Doron
@@ -10,13 +10,13 @@ import "./MockCenteralBank.sol";
 
 contract MockDepositAddress {
 
-    MockCenteralBank public bank;
+    MockCentralBank public bank;
     address public owner;
 
     /// @dev Ctor of this
     /// @param _bank bank address to work with for deposit and withdraw
     /// @param _owner owner address for this contract.
-    function MockDepositAddress( MockCenteralBank _bank, address _owner ) public {
+    function MockDepositAddress( MockCentralBank _bank, address _owner ) public {
         owner = _owner;
         bank = _bank;
     }

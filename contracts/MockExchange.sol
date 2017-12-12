@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
 import "./ERC20Interface.sol";
-import "./MockCenteralBank.sol";
+import "./MockCentralBank.sol";
 import "./MockDepositAddressEther.sol";
 import "./MockDepositAddressToken.sol";
 
@@ -12,12 +12,12 @@ import "./MockDepositAddressToken.sol";
 contract MockExchange {
 
     string public exchangeName;
-    MockCenteralBank public bank;
+    MockCentralBank public bank;
     mapping(address=>bool) public owners;
     mapping(address=>MockDepositAddress) public tokenDepositAddresses;
     ERC20 constant public ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
-    function MockExchange( string _exchangeName, MockCenteralBank _bank) public {
+    function MockExchange( string _exchangeName, MockCentralBank _bank) public {
         exchangeName = _exchangeName;
         bank = _bank;
         owners[msg.sender] = true;
