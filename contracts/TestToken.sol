@@ -19,51 +19,51 @@ pragma solidity ^0.4.8;
  * Math operations with safety checks
  */
 library SafeMath {
-  function mul(uint a, uint b) internal returns (uint) {
-    uint c = a * b;
-    assert(a == 0 || c / a == b);
-    return c;
-  }
-
-  function div(uint a, uint b) internal returns (uint) {
-    assert(b > 0);
-    uint c = a / b;
-    assert(a == b * c + a % b);
-    return c;
-  }
-
-  function sub(uint a, uint b) internal returns (uint) {
-    assert(b <= a);
-    return a - b;
-  }
-
-  function add(uint a, uint b) internal returns (uint) {
-    uint c = a + b;
-    assert(c >= a);
-    return c;
-  }
-
-  function max64(uint64 a, uint64 b) internal constant returns (uint64) {
-    return a >= b ? a : b;
-  }
-
-  function min64(uint64 a, uint64 b) internal constant returns (uint64) {
-    return a < b ? a : b;
-  }
-
-  function max256(uint256 a, uint256 b) internal constant returns (uint256) {
-    return a >= b ? a : b;
-  }
-
-  function min256(uint256 a, uint256 b) internal constant returns (uint256) {
-    return a < b ? a : b;
-  }
-
-  function assert(bool assertion) internal {
-    if (!assertion) {
-      revert();
+    function mul(uint a, uint b) internal pure returns (uint) {
+        uint c = a * b;
+        assert(a == 0 || c / a == b);
+        return c;
     }
-  }
+
+    function div(uint a, uint b) internal pure returns (uint) {
+        assert(b > 0);
+        uint c = a / b;
+        assert(a == b * c + a % b);
+        return c;
+    }
+
+    function sub(uint a, uint b) internal pure returns (uint) {
+        assert(b <= a);
+        return a - b;
+    }
+
+    function add(uint a, uint b) internal pure returns (uint) {
+        uint c = a + b;
+        assert(c >= a);
+        return c;
+    }
+
+    function max64(uint64 a, uint64 b) internal pure returns (uint64) {
+        return a >= b ? a : b;
+    }
+
+    function min64(uint64 a, uint64 b) internal pure returns (uint64) {
+        return a < b ? a : b;
+    }
+
+    function max256(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a >= b ? a : b;
+    }
+
+    function min256(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
+    }
+
+    function assert(bool assertion) internal pure {
+        if (!assertion) {
+            revert();
+        }
+    }
 }
 
 
@@ -75,10 +75,10 @@ library SafeMath {
  * see https://github.com/ethereum/EIPs/issues/20
  */
 contract ERC20Basic {
-  uint public totalSupply;
-  function balanceOf(address who) constant returns (uint);
-  function transfer(address to, uint value);
-  event Transfer(address indexed from, address indexed to, uint value);
+    uint public totalSupply;
+    function balanceOf(address who) public constant returns (uint);
+    function transfer(address to, uint value) public;
+    event Transfer(address indexed from, address indexed to, uint value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,10 +88,10 @@ contract ERC20Basic {
  * see https://github.com/ethereum/EIPs/issues/20
  */
 contract ERC20 is ERC20Basic {
-  function allowance(address owner, address spender) constant returns (uint);
-  function transferFrom(address from, address to, uint value);
-  function approve(address spender, uint value);
-  event Approval(address indexed owner, address indexed spender, uint value);
+    function allowance(address owner, address spender) public constant returns (uint);
+    function transferFrom(address from, address to, uint value) public;
+    function approve(address spender, uint value) public;
+    event Approval(address indexed owner, address indexed spender, uint value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,30 +101,29 @@ contract ERC20 is ERC20Basic {
  * Basic version of StandardToken, with no allowances
  */
 contract BasicToken is ERC20Basic {
-  using SafeMath for uint;
+    using SafeMath for uint;
 
-  mapping(address => uint) balances;
+    mapping(address => uint) balances;
 
-  /*
-   * Fix for the ERC20 short address attack
-   */
-  modifier onlyPayloadSize(uint size) {
-     if(msg.data.length < size + 4) {
-       revert();
-     }
-     _;
-  }
+    /*
+     * Fix for the ERC20 short address attack
+     */
+    modifier onlyPayloadSize(uint size) {
+        if(msg.data.length < size + 4) {
+         revert();
+        }
+        _;
+    }
 
-  function transfer(address _to, uint _value) onlyPayloadSize(2 * 32) {
-    balances[msg.sender] = balances[msg.sender].sub(_value);
-    balances[_to] = balances[_to].add(_value);
-    Transfer(msg.sender, _to, _value);
-  }
+    function transfer(address _to, uint _value)  public onlyPayloadSize(2 * 32) {
+        balances[msg.sender] = balances[msg.sender].sub(_value);
+        balances[_to] = balances[_to].add(_value);
+        Transfer(msg.sender, _to, _value);
+    }
 
-  function balanceOf(address _owner) constant returns (uint balance) {
-    return balances[_owner];
-  }
-
+    function balanceOf(address _owner) public constant returns (uint balance) {
+      return balances[_owner];
+    }
 }
 
 
@@ -139,30 +138,29 @@ contract BasicToken is ERC20Basic {
  */
 contract StandardToken is BasicToken, ERC20 {
 
-  mapping (address => mapping (address => uint)) allowed;
+    mapping (address => mapping (address => uint)) allowed;
 
-  function transferFrom(address _from, address _to, uint _value) {
+    function transferFrom(address _from, address _to, uint _value) public {
 
-    var _allowance = allowed[_from][msg.sender];
+        var _allowance = allowed[_from][msg.sender];
 
-    // Check is not needed because sub(_allowance, _value) will already revert if this condition is not met
-    if (_value > _allowance) revert();
+        // Check is not needed because sub(_allowance, _value) will already revert if this condition is not met
+        if (_value > _allowance) revert();
 
-    balances[_to] = balances[_to].add(_value);
-    balances[_from] = balances[_from].sub(_value);
-    allowed[_from][msg.sender] = _allowance.sub(_value);
-    Transfer(_from, _to, _value);
-  }
+        balances[_to] = balances[_to].add(_value);
+        balances[_from] = balances[_from].sub(_value);
+        allowed[_from][msg.sender] = _allowance.sub(_value);
+        Transfer(_from, _to, _value);
+    }
 
-  function approve(address _spender, uint _value) {
-    allowed[msg.sender][_spender] = _value;
-    Approval(msg.sender, _spender, _value);
-  }
+    function approve(address _spender, uint _value) public {
+        allowed[msg.sender][_spender] = _value;
+        Approval(msg.sender, _spender, _value);
+    }
 
-  function allowance(address _owner, address _spender) constant returns (uint remaining) {
-    return allowed[_owner][_spender];
-  }
-
+    function allowance(address _owner, address _spender) public constant returns (uint remaining) {
+        return allowed[_owner][_spender];
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,17 +174,16 @@ contract StandardToken is BasicToken, ERC20 {
  */
 contract TestToken is StandardToken {
 
-  string public name = "Test";
-  string public symbol = "TST";
-  uint public decimals = 18;
-  uint public INITIAL_SUPPLY = 10**(50+18);
+    string public name = "Test";
+    string public symbol = "TST";
+    uint public decimals = 18;
+    uint public INITIAL_SUPPLY = 10**(50+18);
 
-  function TestToken(string _name, string _symbol, uint _decimals) {
-    totalSupply = INITIAL_SUPPLY;
-    balances[msg.sender] = INITIAL_SUPPLY;
-    name = _name;
-    symbol = _symbol;
-    decimals = _decimals;
-  }
-
+    function TestToken(string _name, string _symbol, uint _decimals) public {
+        totalSupply = INITIAL_SUPPLY;
+        balances[msg.sender] = INITIAL_SUPPLY;
+        name = _name;
+        symbol = _symbol;
+        decimals = _decimals;
+    }
 }
