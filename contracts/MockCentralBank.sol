@@ -3,15 +3,15 @@ pragma solidity ^0.4.18;
 import "./ERC20Interface.sol";
 
 
-/// @title Mock Ceneteral Bank
+/// @title Mock Central Bank
 /// @author Yaron Velner
-/// @dev a dummy contract that simulates a bank that holds tokens and ether. centeralized exchanges can convert tokens here.
+/// @dev a dummy contract that simulates a bank that holds tokens and ether. centralized exchanges can convert tokens here.
 
 
-contract MockCenteralBank {
+contract MockCentralBank {
     mapping(address=>bool) public owners;
 
-    function MockCenteralBank() public {
+    function MockCentralBank() public {
         owners[msg.sender] = true;
     }
 

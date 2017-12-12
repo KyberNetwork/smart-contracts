@@ -2,8 +2,8 @@ var TestToken = artifacts.require("./TestToken.sol");
 var Reserve = artifacts.require("./KyberReserve.sol");
 var Network = artifacts.require("./KyberNetwork.sol");
 var Wallet = artifacts.require("./KyberWallet.sol");
-var Bank   = artifacts.require("./MockCenteralBank.sol");
-var CenteralizedExchange = artifacts.require("./MockExchangeDepositAddress.sol");
+var Bank   = artifacts.require("./MockCentralBank.sol");
+var CentralizedExchange = artifacts.require("./MockExchangeDepositAddress.sol");
 var BigNumber = require('bignumber.js');
 
 var wallet;
@@ -94,13 +94,13 @@ contract('Scenario One', function(accounts) {
 
 
   it("create POLO exchange", function() {
-    return CenteralizedExchange.new("POLO",bank.address).then(function(instance){
+    return CentralizedExchange.new("POLO",bank.address).then(function(instance){
         polo = instance;  
     });
   });
 
   it("create Bittrex exchange", function() {
-    return CenteralizedExchange.new("Bittrex",bank.address).then(function(instance){
+    return CentralizedExchange.new("Bittrex",bank.address).then(function(instance){
         bittrex = instance;  
     });
   });

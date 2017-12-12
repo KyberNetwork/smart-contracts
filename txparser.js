@@ -13,7 +13,7 @@ var erc20Abi = [{"constant":false,"inputs":[{"name":"_spender","type":"address"}
 ////////////////////////////////////////////////////////////////////////////////
 
 var allAbis = [erc20Abi];
-var contracts = ["KyberReserve", "KyberNetwork", "MockCenteralBank", "MockExchangeDepositAddress"];
+var contracts = ["KyberReserve", "KyberNetwork", "MockCentralBank", "MockExchangeDepositAddress"];
 var configFile = "deployment_dev.json";
 
 ////////////////////////////////////////////////////////////////////////////////

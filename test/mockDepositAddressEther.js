@@ -1,7 +1,7 @@
 var MockDepositAddressToken = artifacts.require("./MockDepositAddressToken.sol");
 var MockDepositAddressEther = artifacts.require("./MockDepositAddressEther.sol");
 var TestToken = artifacts.require("./TestToken.sol");
-var MockCentralBank = artifacts.require("./MockCenteralBank.sol");
+var MockCentralBank = artifacts.require("./MockCentralBank.sol");
 var Helper = require("./helper.js");
 
 var bank;
@@ -47,7 +47,7 @@ contract('MockDepositAddressToken', function (accounts) {
             assert(true, "expected throw but didn't get one.")
         }
         catch(e){
-            assert(Helper.isRevertErrorMessage, "expected throw but got other error: " + e);
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
         }
 
         balance = await Helper.getBalancePromise(payable.address);

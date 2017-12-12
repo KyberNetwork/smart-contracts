@@ -141,11 +141,7 @@ contract KyberReserve {
 
         // send dest tokens
         if( destToken == ETH_TOKEN_ADDRESS ) {
-            if( ! destAddress.send(destAmount) ) {
-                // transfer ether to dest failed
-                ErrorReport( tx.origin, 0x800000009, uint(destAddress) );
-                return false;
-            }
+            destAddress.transfer(destAmount);
         }
         else {
             if( ! destToken.transfer(destAddress, destAmount) ) {
