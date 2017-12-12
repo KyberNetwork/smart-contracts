@@ -1,4 +1,4 @@
-pragma solidity ^0.4.8;
+pragma solidity ^0.4.18;
 
 
 /* all this file is based on code from open zepplin
@@ -58,12 +58,6 @@ library SafeMath {
     function min256(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
     }
-
-    function assert(bool assertion) internal pure {
-        if (!assertion) {
-            revert();
-        }
-    }
 }
 
 
@@ -76,7 +70,7 @@ library SafeMath {
  */
 contract ERC20Basic {
     uint public totalSupply;
-    function balanceOf(address who) public constant returns (uint);
+    function balanceOf(address who) public view returns (uint);
     function transfer(address to, uint value) public;
     event Transfer(address indexed from, address indexed to, uint value);
 }
@@ -88,7 +82,7 @@ contract ERC20Basic {
  * see https://github.com/ethereum/EIPs/issues/20
  */
 contract ERC20 is ERC20Basic {
-    function allowance(address owner, address spender) public constant returns (uint);
+    function allowance(address owner, address spender) public view returns (uint);
     function transferFrom(address from, address to, uint value) public;
     function approve(address spender, uint value) public;
     event Approval(address indexed owner, address indexed spender, uint value);
@@ -121,7 +115,7 @@ contract BasicToken is ERC20Basic {
         Transfer(msg.sender, _to, _value);
     }
 
-    function balanceOf(address _owner) public constant returns (uint balance) {
+    function balanceOf(address _owner) public view returns (uint balance) {
       return balances[_owner];
     }
 }
@@ -158,7 +152,7 @@ contract StandardToken is BasicToken, ERC20 {
         Approval(msg.sender, _spender, _value);
     }
 
-    function allowance(address _owner, address _spender) public constant returns (uint remaining) {
+    function allowance(address _owner, address _spender) public view returns (uint remaining) {
         return allowed[_owner][_spender];
     }
 }
