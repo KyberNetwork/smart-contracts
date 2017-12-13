@@ -298,7 +298,7 @@ contract KyberNetwork {
         }
 
         if( tradeInfo.tradeFailed ) {
-            assert( throwOnFailure );
+            if( throwOnFailure ) revert();
             if( msg.value > 0 ) {
                 msg.sender.transfer(msg.value);
             }
