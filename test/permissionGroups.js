@@ -1,5 +1,5 @@
 
-var Permissions = artifacts.require("./PermissionLevels.sol");
+var Permissions = artifacts.require("./PermissionGroups.sol");
 var MockPermission = artifacts.require("./mockContracts/MockPermission.sol");
 
 var Helper = require("./helper.js");

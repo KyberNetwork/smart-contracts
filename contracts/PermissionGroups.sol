@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
 
-contract PermissionLevels {
+contract PermissionGroups {
 
     address public admin;
     address public pendingAdmin;
@@ -10,7 +10,7 @@ contract PermissionLevels {
     address[] public operatorsGroup;
     address[] public alertersGroup;
 
-    function PermissionLevels() public {
+    function PermissionGroups() public {
         admin = msg.sender;
     }
 
@@ -42,27 +42,30 @@ contract PermissionLevels {
         pendingAdmin = newAdmin;
     }
 
-    event ClaimedAdmin( address newAdmin, address previousAdmin);
+    event ClaimAdmin( address newAdmin, address previousAdmin);
 
     /**
      * @dev Allows the pendingAdmin address to finalize the change admin process.
      */
     function claimAdmin() public {
         require(pendingAdmin == msg.sender);
-        ClaimedAdmin(pendingAdmin, admin);
+        ClaimAdmin(pendingAdmin, admin);
         admin = pendingAdmin;
         pendingAdmin = address(0);
     }
+
+    event AddAlerter ( address newAlerter );
 
     function addAlerter( address newAlerter ) public
         onlyAdmin
     {
         require(!alerters[newAlerter]); // prevent duplicates.
+        AddAlerter(newAlerter);
         alerters[newAlerter] = true;
         alertersGroup.push(newAlerter);
     }
 
-    event RemovedAlerter ( address alerter );
+    event RemoveAlerter ( address alerter );
 
     function removeAlerter ( address alerter ) public
         onlyAdmin
@@ -75,21 +78,24 @@ contract PermissionLevels {
             {
                 alertersGroup[i] = alertersGroup[alertersGroup.length - 1];
                 alertersGroup.length -= 1;
-                RemovedAlerter(alerter);
+                RemoveAlerter(alerter);
                 break;
             }
         }
     }
 
+    event AddOperator( address newOperator );
+
     function addOperator( address newOperator ) public
         onlyAdmin
     {
         require(!operators[newOperator]); // prevent duplicates.
+        AddOperator(newOperator);
         operators[newOperator] = true;
         operatorsGroup.push(newOperator);
     }
 
-    event RemovedOperator ( address operator );
+    event RemoveOperator ( address operator );
 
     function removeOperator ( address operator ) public
         onlyAdmin
@@ -102,7 +108,7 @@ contract PermissionLevels {
             {
                 operatorsGroup[i] = operatorsGroup[operatorsGroup.length - 1];
                 operatorsGroup.length -= 1;
-                RemovedOperator(operator);
+                RemoveOperator(operator);
                 break;
             }
         }
