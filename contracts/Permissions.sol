@@ -43,6 +43,7 @@ contract Permissions {
     function addAlerter( address newAlerter ) public
         onlyAdmin
     {
+        require(!Alerters[newAlerter]); // prevent duplicates.
         Alerters[newAlerter] = true;
         AlertersGroup.push(newAlerter);
     }
@@ -68,6 +69,7 @@ contract Permissions {
     function addOperator( address newOperator ) public
         onlyAdmin
     {
+        require(!Operators[newOperator]); // prevent duplicates.
         Operators[newOperator] = true;
         OperatorsGroup.push(newOperator);
     }
