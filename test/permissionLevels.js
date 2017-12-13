@@ -1,5 +1,5 @@
 
-var Permissions = artifacts.require("./Permissions.sol");
+var Permissions = artifacts.require("./PermissionLevels.sol");
 var MockPermission = artifacts.require("./mockContracts/MockPermission.sol");
 
 var Helper = require("./helper.js");
@@ -7,14 +7,14 @@ var Helper = require("./helper.js");
 var permissionsInst;
 var mockPermissionsInst;
 
-contract('Permissions', function(accounts) {
-    it("should test request ownership transfer is rejected for non admin.", async function () {
+contract('PermissionLevels', function(accounts) {
+    it("should test request admin change is rejected for non admin.", async function () {
         // global inits in first test
         permissionsInst = await Permissions.new();
         mockPermissionsInst = await MockPermission.new();
 
         try {
-            await permissionsInst.requestOwnershipTransfer(accounts[1], {from:accounts[1]});
+            await permissionsInst.transferAdmin(accounts[1], {from:accounts[1]});
             assert(true, "throw was expected in line above.")
         }
         catch(e){
@@ -22,9 +22,9 @@ contract('Permissions', function(accounts) {
         }
     });
 
-    it("should test accept ownership is rejected for unrelevant address.", async function () {
+    it("should test claim admin is rejected for unrelevant address.", async function () {
         try {
-            await permissionsInst.acceptOwnerShip();
+            await permissionsInst.claimAdmin();
             assert(true, "throw was expected in line above.")
         }
         catch(e){
@@ -32,11 +32,11 @@ contract('Permissions', function(accounts) {
         }
     });
 
-    it("should test successful ownership transfer.", async function () {
-        await permissionsInst.requestOwnershipTransfer(accounts[1], {from:accounts[0]});
-        await permissionsInst.acceptOwnerShip({from:accounts[1]});
-        await permissionsInst.requestOwnershipTransfer(accounts[0], {from:accounts[1]});
-        await permissionsInst.acceptOwnerShip({from:accounts[0]});
+    it("should test successful admin change.", async function () {
+        await permissionsInst.transferAdmin(accounts[1], {from:accounts[0]});
+        await permissionsInst.claimAdmin({from:accounts[1]});
+        await permissionsInst.transferAdmin(accounts[0], {from:accounts[1]});
+        await permissionsInst.claimAdmin({from:accounts[0]});
     });
 
     it("should test add alerter is rejected for non admin.", async function () {
@@ -65,7 +65,7 @@ contract('Permissions', function(accounts) {
     });
 
     it("should test get operators success.", async function () {
-        var operators = await permissionsInst.getOperators();
+        var operators = await permissionsInst.operatorsGroup();
         assert.equal(operators.length, 2, "bad number of operators.")
         assert.equal(accounts[1], operators[0]);
         assert.equal(accounts[2], operators[1]);
@@ -96,7 +96,6 @@ contract('Permissions', function(accounts) {
 
     it("should test stop trade is rejected for non alerter.", async function () {
         await mockPermissionsInst.addAlerter(accounts[8]);
-        await mockPermissionsInst.addOperator(accounts[2]);
 
         //activate trade - operator can do it.
         await mockPermissionsInst.activateTrade({from:accounts[2]});
@@ -112,7 +111,7 @@ contract('Permissions', function(accounts) {
         }
 
         tradeActive = await mockPermissionsInst.tradeActive();
-        assert(tradeActive, "trade should have been activate.")
+        assert(tradeActive, "trade should have been active.")
     });
 
     it("should test stop trade success for Alerter.", async function () {
@@ -147,7 +146,7 @@ contract('Permissions', function(accounts) {
 
     it("should test remove operator success.", async function () {
         await permissionsInst.removeOperator(accounts[2]);
-        var operators = await permissionsInst.getOperators();
+        var operators = await permissionsInst.operatorsGroup();
         assert.equal(operators.length, 1, "bad number of operators.")
         assert.equal(accounts[1], operators[0]);
     });
@@ -158,7 +157,7 @@ contract('Permissions', function(accounts) {
     });
 
     it("should test get alerters success.", async function () {
-        var alerters = await permissionsInst.getAlerters();
+        var alerters = await permissionsInst.alertersGroup();
         assert.equal(alerters.length, 2, "bad number of operators.")
         assert.equal(accounts[3], alerters[0]);
         assert.equal(accounts[4], alerters[1]);
@@ -186,7 +185,7 @@ contract('Permissions', function(accounts) {
 
     it("should test remove alerter success.", async function () {
         await permissionsInst.removeAlerter(accounts[3]);
-        var alerters = await permissionsInst.getAlerters();
+        var alerters = await permissionsInst.alertersGroup();
         assert.equal(alerters.length, 1, "bad number of alerters.")
         assert.equal(accounts[4], alerters[0]);
     });

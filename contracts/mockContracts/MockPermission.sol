@@ -1,14 +1,14 @@
 pragma solidity ^0.4.18;
 
-import "../Permissions.sol";
+import "../PermissionLevels.sol";
 
 
-contract MockPermission is Permissions {
+contract MockPermission is PermissionLevels {
     uint public price;
     bool public tradeActive = true;
 
     function MockPermission () public
-        Permissions()
+        PermissionLevels()
     {
     }
 
