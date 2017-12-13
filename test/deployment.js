@@ -40,11 +40,7 @@ var ethAddress = new BigNumber("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
 
 var exchanges = [];// ["Bittrex", "Liqui", "Poloniex", "Binance", "Bitfinex"];
 var exchangesInstance = [];
-<<<<<<< HEAD
-var exchageDepositAddresess = [];
-=======
 var exchangeDepositAddresses = [];
->>>>>>> 61ba938a8f314bc171a5bfc8afd26d0dbd9a18ed
 
 var bank;
 var wrapper;
