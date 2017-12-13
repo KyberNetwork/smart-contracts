@@ -7,24 +7,24 @@ contract MockPermission is Permissions {
     uint public price;
     bool public tradeActive = true;
 
-    function MockPermission()
+    function MockPermission () public
         Permissions()
     {
     }
 
-    function setPrice ( uint newPrice )
+    function setPrice ( uint newPrice ) public
         onlyOperator
     {
         price = newPrice;
     }
 
-    function stopTrade ()
+    function stopTrade () public
         onlyAlerter
     {
         tradeActive = false;
     }
 
-    function activateTrade ()
+    function activateTrade () public
         onlyOperator
     {
         tradeActive = true;

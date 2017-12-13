@@ -1,6 +1,6 @@
 
 var Permissions = artifacts.require("./Permissions.sol");
-var MockPermission = artifacts.require("./mockContracts/MockPermissions.sol");
+var MockPermission = artifacts.require("./mockContracts/MockPermission.sol");
 
 var Helper = require("./helper.js");
 
@@ -85,22 +85,23 @@ contract('Permissions', function(accounts) {
         }
 
         let price = await mockPermissionsInst.price();
-        assert.equal(price.valueOf, 0, "price should be as initialized.")
+        assert.equal(price.valueOf(), 0, "price should be as initialized.")
     });
 
     it("should test set price success for operator.", async function () {
         await mockPermissionsInst.setPrice(9, {from:accounts[2]});
         let price = await mockPermissionsInst.price();
-        assert.equal(price.valueOf, 9, "price should be as initialized.")
+        assert.equal(price.valueOf(), 9, "price should be as initialized.")
     });
 
     it("should test stop trade is rejected for non alerter.", async function () {
         await mockPermissionsInst.addAlerter(accounts[8]);
+        await mockPermissionsInst.addOperator(accounts[2]);
 
         //activate trade - operator can do it.
-        await mockPermissionsInst.activateTrade();
-        let tradeActive = mockPermissionsInst.tradeActive();
-        assert(!tradeActive, "trade should have been activated.")
+        await mockPermissionsInst.activateTrade({from:accounts[2]});
+        let tradeActive = await mockPermissionsInst.tradeActive();
+        assert(tradeActive, "trade should have been activated.")
 
         try {
             await mockPermissionsInst.stopTrade({from:accounts[6]});
@@ -110,20 +111,19 @@ contract('Permissions', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        tradeActive = mockPermissionsInst.tradeActive();
-        assert(!tradeActive, "trade should have been activated.")
+        tradeActive = await mockPermissionsInst.tradeActive();
+        assert(tradeActive, "trade should have been activate.")
     });
 
     it("should test stop trade success for Alerter.", async function () {
-        let tradeActive = mockPermissionsInst.tradeActive();
-        assert(!tradeActive, "trade should have been activated.")
+        let tradeActive = await mockPermissionsInst.tradeActive();
+        assert(tradeActive, "trade should have been active.")
 
         await mockPermissionsInst.stopTrade({from:accounts[8]});
 
-        tradeActive = mockPermissionsInst.tradeActive();
-        assert(tradeActive, "trade should have been stopped.")
+        tradeActive = await mockPermissionsInst.tradeActive();
+        assert(!tradeActive, "trade should have been stopped.")
     });
-
 
     it("should test remove operator is rejected for non admin.", async function () {
         try {
