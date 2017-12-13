@@ -40,7 +40,11 @@ var ethAddress = new BigNumber("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
 
 var exchanges = [];// ["Bittrex", "Liqui", "Poloniex", "Binance", "Bitfinex"];
 var exchangesInstance = [];
+<<<<<<< HEAD
 var exchageDepositAddresess = [];
+=======
+var exchangeDepositAddresses = [];
+>>>>>>> 61ba938a8f314bc171a5bfc8afd26d0dbd9a18ed
 
 var bank;
 var wrapper;
@@ -232,7 +236,7 @@ var addDepositAddressToExchange = function( exchange, owner ) {
     return new Promise(function (fulfill, reject){
 
         var tokens = [];
-        var depositAddressess = {}; //dict (JS object) of deposit address per token for this exchange
+        var depositAddresses = {}; //dict (JS object) of deposit address per token for this exchange
 
         //create array of tokens
         for (var i = 0 ; i < tokenInstance.length ; i++ ) {
@@ -245,15 +249,15 @@ var addDepositAddressToExchange = function( exchange, owner ) {
             }).then(function(){
                 return exchange.tokenDepositAddresses(tokenInstance[item].address)
             }).then (function (mockDepositAddress){
-                depositAddressess[tokenSymbol[item]] = mockDepositAddress;
+                depositAddresses[tokenSymbol[item]] = mockDepositAddress;
             });
         }, Promise.resolve()).then(function(){
             return exchange.addMockDepositAddress(ethAddress, {from:owner});
         }).then(function(){
             return exchange.tokenDepositAddresses(ethAddress);
         }).then(function(depositAddress) {
-            depositAddressess["ETH"] = depositAddress;
-            exchageDepositAddresess.push(depositAddressess);
+            depositAddresses["ETH"] = depositAddress;
+            exchangeDepositAddresses.push(depositAddresses);
             fulfill(true);
         }).catch(function(err){
           reject(err);
@@ -263,7 +267,7 @@ var addDepositAddressToExchange = function( exchange, owner ) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-var transferOwneshipInExchangesAndBank = function( owner, newOwners ) {
+var transferOwnershipInExchangesAndBank = function( owner, newOwners ) {
   return new Promise(function (fulfill, reject){
 
       var inputs = [];
@@ -377,7 +381,7 @@ contract('Deployment', function(accounts) {
     }
     else {
       console.log("unsupported network", networkId);
-      assert.fail("unsupported netowrk", networkId);
+      assert.fail("unsupported network", networkId);
     }
   });
 
@@ -394,7 +398,7 @@ contract('Deployment', function(accounts) {
   });
 
   it("create tokens", function() {
-    console.log(accounts[0]);
+//    console.log(accounts[0]);
 
     this.timeout(30000000);
     tokenOwner = accounts[0];
@@ -427,7 +431,7 @@ contract('Deployment', function(accounts) {
   });
 
   it("withdraw token from exchange", function() {
-    var depositAddress = exchageDepositAddresess[0][tokenSymbol[0]];
+    var depositAddress = exchangeDepositAddresses[0][tokenSymbol[0]];
     return exchangesInstance[1].withdraw(tokenInstance[0].address,2,depositAddress,{from:tokenOwner}).then(function(){
       return tokenInstance[0].balanceOf(depositAddress);
     }).then(function(result){
@@ -436,7 +440,7 @@ contract('Deployment', function(accounts) {
   });
 
   it("withdraw token from exchange to exchange and clear funds", function() {
-    var depositAddress = exchageDepositAddresess[0][tokenSymbol[0]];
+    var depositAddress = exchangeDepositAddresses[0][tokenSymbol[0]];
     return exchangesInstance[0].clearBalances([tokenInstance[0].address, ethAddress],[1,0]).then(function(){
         return tokenInstance[0].balanceOf(depositAddress);
     }).then(function(result){
@@ -487,10 +491,10 @@ contract('Deployment', function(accounts) {
       balance1 = result[1];
       return tokenInstance[0].balanceOf(reserve.address);
     }).then(function(result){
-      assert.equal(balance0.valueOf(), result.valueOf(), "unexpeted balance 0");
+      assert.equal(balance0.valueOf(), result.valueOf(), "unexpected balance 0");
       return tokenInstance[1].balanceOf(reserve.address);
     }).then(function(result){
-      assert.equal(balance1.valueOf(), result.valueOf(), "unexpeted balance 1");
+      assert.equal(balance1.valueOf(), result.valueOf(), "unexpected balance 1");
       return wrapper.getPrices( reserve.address, [tokenInstance[0].address,
                                 tokenInstance[1].address], [ethAddress, ethAddress]);
     }).then(function(result){
@@ -514,7 +518,7 @@ contract('Deployment', function(accounts) {
 
   it("transfer ownership in exchanges", function() {
     this.timeout(30000000);
-    return transferOwneshipInExchangesAndBank(tokenOwner,nam).then(function(){
+    return transferOwnershipInExchangesAndBank(tokenOwner,nam).then(function(){
     return exchangesInstance[1].owners(nam[1]);
   }).then(function(result){
     assert.equal(result.valueOf(),true.valueOf(), "unexpected owner address");
@@ -560,15 +564,17 @@ contract('Deployment', function(accounts) {
                    "decimals" : tokenDecimals[i]};
       tokensDict[tokenSymbol[i]] = tokenDict;
     }
-    exchagesDict = {};
+    exchangesDepositAddressesDict = {};
+    exchangesAddressDict = {};
     //console.log("\nexchanges");
     for( var exchangeInd = 0 ; exchangeInd < exchanges.length ; exchangeInd++ ) {
       //console.log( exchanges[i] + " : " + exchangesInstance[i].address );
 
-      exchagesDict[exchanges[exchangeInd]] = exchageDepositAddresess[exchangeInd];
+      exchangesAddressDict[exchanges[exchangeInd]] = exchangesInstance[exchangeInd].address;
+      exchangesDepositAddressesDict[exchanges[exchangeInd]] = exchangeDepositAddresses[exchangeInd];
     }
 
-    dict = { "tokens" : tokensDict, "exchanges" : exchagesDict };
+    dict = { "tokens" : tokensDict, "exchangesAddress" : exchangesAddressDict, "exchangesDeposit" : exchangesDepositAddressesDict };
     dict["bank"] = bank.address;
     dict["reserve"] = reserve.address;
     dict["network"] = network.address;

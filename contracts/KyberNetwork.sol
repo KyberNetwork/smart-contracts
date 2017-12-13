@@ -67,7 +67,6 @@ contract KyberNetwork {
         return rate;
     }
 
-
     function getDecimals( ERC20 token ) public view returns(uint) {
         if( token == ETH_TOKEN_ADDRESS ) return 18;
         return token.decimals();
