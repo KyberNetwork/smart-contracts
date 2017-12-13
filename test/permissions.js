@@ -1,13 +1,18 @@
 
 var Permissions = artifacts.require("./Permissions.sol");
+var MockPermission = artifacts.require("./mockContracts/MockPermissions.sol");
 
 var Helper = require("./helper.js");
 
 var permissionsInst;
+var mockPermissionsInst;
 
 contract('Permissions', function(accounts) {
     it("should test request ownership transfer is rejected for non admin.", async function () {
+        // global inits in first test
         permissionsInst = await Permissions.new();
+        mockPermissionsInst = await MockPermission.new();
+
         try {
             await permissionsInst.requestOwnershipTransfer(accounts[1], {from:accounts[1]});
             assert(true, "throw was expected in line above.")
@@ -65,6 +70,60 @@ contract('Permissions', function(accounts) {
         assert.equal(accounts[1], operators[0]);
         assert.equal(accounts[2], operators[1]);
     });
+
+    it("should test set price is rejected for non operator.", async function () {
+        mockPermissionsInst = await MockPermission.new();
+        await mockPermissionsInst.addOperator(accounts[2]);
+        await mockPermissionsInst.addOperator(accounts[3]);
+
+        try {
+            await mockPermissionsInst.setPrice(9, {from:accounts[6]});
+            assert(true, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        let price = await mockPermissionsInst.price();
+        assert.equal(price.valueOf, 0, "price should be as initialized.")
+    });
+
+    it("should test set price success for operator.", async function () {
+        await mockPermissionsInst.setPrice(9, {from:accounts[2]});
+        let price = await mockPermissionsInst.price();
+        assert.equal(price.valueOf, 9, "price should be as initialized.")
+    });
+
+    it("should test stop trade is rejected for non alerter.", async function () {
+        await mockPermissionsInst.addAlerter(accounts[8]);
+
+        //activate trade - operator can do it.
+        await mockPermissionsInst.activateTrade();
+        let tradeActive = mockPermissionsInst.tradeActive();
+        assert(!tradeActive, "trade should have been activated.")
+
+        try {
+            await mockPermissionsInst.stopTrade({from:accounts[6]});
+            assert(true, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        tradeActive = mockPermissionsInst.tradeActive();
+        assert(!tradeActive, "trade should have been activated.")
+    });
+
+    it("should test stop trade success for Alerter.", async function () {
+        let tradeActive = mockPermissionsInst.tradeActive();
+        assert(!tradeActive, "trade should have been activated.")
+
+        await mockPermissionsInst.stopTrade({from:accounts[8]});
+
+        tradeActive = mockPermissionsInst.tradeActive();
+        assert(tradeActive, "trade should have been stopped.")
+    });
+
 
     it("should test remove operator is rejected for non admin.", async function () {
         try {

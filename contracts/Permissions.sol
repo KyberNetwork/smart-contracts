@@ -19,7 +19,7 @@ contract Permissions {
         _;
     }
 
-    modifier onlylOperator() {
+    modifier onlyOperator() {
         require (Operators[msg.sender]);
         _;
     }
