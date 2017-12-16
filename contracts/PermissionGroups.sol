@@ -77,7 +77,7 @@ contract PermissionGroups {
             if (alertersGroup[i] == alerter)
             {
                 alertersGroup[i] = alertersGroup[alertersGroup.length - 1];
-                alertersGroup.length -= 1;
+                alertersGroup.length--;
                 RemoveAlerter(alerter);
                 break;
             }
