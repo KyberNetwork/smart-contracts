@@ -6,145 +6,152 @@
       "decimals": 18
     },
     "OMG": {
-      "address": "0x09c10574d8ac11881c8dc9515ceaafa24545b2a9",
+      "address": "0xb2f252f05c3f757bc520ca197229722cf5986525",
       "name": "OmiseGO",
       "decimals": 18
     },
     "DGD": {
-      "address": "0x30259a1ccd011282eea73d4651862108191dc966",
+      "address": "0x3a307e7eb241326567ac41a1b1ccfda19c97b6dd",
       "name": "Digix",
       "decimals": 9
     },
     "CVC": {
-      "address": "0xe2a24e6511b4b2ac38d2da54b8a25edbe71434a4",
+      "address": "0x5e78355e8aa3486de82ca92ddc54c7f37a4a6f56",
       "name": "Civic",
       "decimals": 8
     },
     "FUN": {
-      "address": "0x81e04d90bfeed3e15e0842d64193afe069c5fd8f",
+      "address": "0xee4da43b54cda1ffa506a10b9eec5162752d232e",
       "name": "FunFair",
       "decimals": 8
     },
     "MCO": {
-      "address": "0xf2d45d2e7d7737669cf78603f5f7f311db93aae2",
+      "address": "0x42fbbcb2f7a4c7ac39676b7b7f908d9e3fdc6400",
       "name": "Monaco",
       "decimals": 8
     },
     "GNT": {
-      "address": "0x013c2cdc8e87bfded9a3b3d41fb54c64732cf04d",
+      "address": "0xf814e2d68cd0d157048434a52b495bbd01922d5a",
       "name": "Golem",
       "decimals": 18
     },
     "ADX": {
-      "address": "0x28e0f7bc5568a6c7a1f73cf568ca63de777526db",
+      "address": "0x81898e7d928ededdf07b34572294e59db46b4e22",
       "name": "Adex",
       "decimals": 4
     },
     "PAY": {
-      "address": "0x90004348b09ee70e0316c80ffab2083bb4cc14fc",
+      "address": "0x762ad3b25b3448404157ca3877747f79b332187f",
       "name": "TenX",
       "decimals": 18
     },
     "BAT": {
-      "address": "0x6c98d8984fe68d3e5ebc1497c49cf428c10f6aa2",
+      "address": "0x28648923b983de4d6149961b22e4d2eb11a55648",
       "name": "BasicAttention",
       "decimals": 18
     },
     "KNC": {
-      "address": "0x04a34cc2b0f0fed3f05c1e010af48df7df2e11fb",
+      "address": "0x9f0e10bb59d337273bf6689662348a09a5961155",
       "name": "KyberNetwork",
       "decimals": 18
     },
     "EOS": {
-      "address": "0x3cf4f47cc5ea571c31033443025b55d8c0e7ed30",
+      "address": "0xe6ad019d2f107a0466817f29f8c2d40b4132d1ab",
       "name": "Eos",
       "decimals": 18
     },
     "LINK": {
-      "address": "0x7ad011e955e6a0f8d4bef64afffda14483209406",
+      "address": "0x828977d8332ca4ea51326a140d8fd87f637293a2",
       "name": "ChainLink",
       "decimals": 18
     }
   },
+  "exchangesAddress": {
+    "bittrex": "0x0a98881bdf5c51fdc7524cf7839d81bc7ea68f5f",
+    "liqui": "0x814ef8c9a0113ca2c4b19719799efec1269192c6",
+    "poloniex": "0x1066cb67d81412d74ca5270e2208d1ef9aade62c",
+    "binance": "0x67b66181dd9145845615654b3344b812e01b01f4",
+    "bitfinex": "0xafce6ace4b5f645938c7c4a1c82d6b14b3b735cf"
+  },
   "exchanges": {
     "bittrex": {
-      "ETH": "0xf373fc60ff602d5efa050fdb4d06919c6e57ece7",
-      "OMG": "0xf373fc60ff602d5efa050fdb4d06919c6e57ece7",
-      "DGD": "0xf373fc60ff602d5efa050fdb4d06919c6e57ece7",
-      "CVC": "0xf373fc60ff602d5efa050fdb4d06919c6e57ece7",
-      "FUN": "0xf373fc60ff602d5efa050fdb4d06919c6e57ece7",
-      "MCO": "0xf373fc60ff602d5efa050fdb4d06919c6e57ece7",
-      "GNT": "0xf373fc60ff602d5efa050fdb4d06919c6e57ece7",
-      "ADX": "0xf373fc60ff602d5efa050fdb4d06919c6e57ece7",
-      "PAY": "0xf373fc60ff602d5efa050fdb4d06919c6e57ece7",
-      "BAT": "0xf373fc60ff602d5efa050fdb4d06919c6e57ece7",
-      "KNC": "0xf373fc60ff602d5efa050fdb4d06919c6e57ece7",
-      "EOS": "0xf373fc60ff602d5efa050fdb4d06919c6e57ece7",
-      "LINK": "0xf373fc60ff602d5efa050fdb4d06919c6e57ece7"
+      "OMG": "0x45cb9a93f0f877536b8f9f7fdfeb4d9adb9a89f6",
+      "DGD": "0xafe2e64845e46d185028fbacc59b4fc966d4794b",
+      "CVC": "0xd4973642ac140479d1aa5706d1e55233e892724b",
+      "FUN": "0x85630603e15743a5ad2a15ee0f132b0588176e3e",
+      "MCO": "0x059f50be1a7820e056cc779d4015607f651acfd6",
+      "GNT": "0xc538b0d63606cdad83eabb4f33a554552ed4175f",
+      "ADX": "0x891f27bca0e9c10c3f332ad6f6b48ac4d5c15f3f",
+      "PAY": "0xc76e89ea58317b9cb8c0c10d9293460a2c50db78",
+      "BAT": "0xed9fb96b99e1c40d9b2fd1e965554d32a45e6994",
+      "KNC": "0xdcaf544e7e12ae5999b7e8ba2537bdff4f742b1a",
+      "EOS": "0xc38946ba041f4f038fe4515e3636209e56ff259a",
+      "LINK": "0x22cbeceb2b2d55031d73ddd16ff6e90476a608ef",
+      "ETH": "0x07a8008a49abc76b38499e93e1aa2acfc0b87be5"
     },
     "liqui": {
-      "ETH": "0x43ff47742c36deeeec056b6b0c55269f1892f0f0",
-      "OMG": "0x43ff47742c36deeeec056b6b0c55269f1892f0f0",
-      "DGD": "0x43ff47742c36deeeec056b6b0c55269f1892f0f0",
-      "CVC": "0x43ff47742c36deeeec056b6b0c55269f1892f0f0",
-      "FUN": "0x43ff47742c36deeeec056b6b0c55269f1892f0f0",
-      "MCO": "0x43ff47742c36deeeec056b6b0c55269f1892f0f0",
-      "GNT": "0x43ff47742c36deeeec056b6b0c55269f1892f0f0",
-      "ADX": "0x43ff47742c36deeeec056b6b0c55269f1892f0f0",
-      "PAY": "0x43ff47742c36deeeec056b6b0c55269f1892f0f0",
-      "BAT": "0x43ff47742c36deeeec056b6b0c55269f1892f0f0",
-      "KNC": "0x43ff47742c36deeeec056b6b0c55269f1892f0f0",
-      "EOS": "0x43ff47742c36deeeec056b6b0c55269f1892f0f0",
-      "LINK": "0x43ff47742c36deeeec056b6b0c55269f1892f0f0"
+      "OMG": "0x5e49f43efcddd6566b21bc70ff2cb5d61b85ffcb",
+      "DGD": "0x19b6cf2258181dc0e1e1d1495a9a703c45d5df17",
+      "CVC": "0x82cc2cd500ca4af9d62f4d56a06fbff7260f35c0",
+      "FUN": "0x8a98d7f4a44b97604d276ffcff9cda38ed524e14",
+      "MCO": "0x36d1a80c51904a9ccad5e3d6833addbd7ab4bfce",
+      "GNT": "0x1a7638760378e83866c32222507934a74a61c9c5",
+      "ADX": "0x4cc365c4e41f10a66c782dda521007f0dde788f2",
+      "PAY": "0x51d66139d73e89093988fc0cfc38137c2541fba8",
+      "BAT": "0x5fe3e0f1e31e8aeec90d5506255964c96b5a13c6",
+      "KNC": "0x4d910a68f1fb04f143f6e1c4c8fbb90c53c2594c",
+      "EOS": "0x88704479e4bdc82d9da3d6b9dcf4fe6dd0aeb673",
+      "LINK": "0x3bfdfe2a40d61bcf9dd91ae31c87a83355852fdd",
+      "ETH": "0xb78f35a6ab6146a6a8ceacde57f99f6500e1cb12"
     },
     "poloniex": {
-      "ETH": "0x42ec1af72a41cc6dd8a52ba3fc569f011937a7d1",
-      "OMG": "0x42ec1af72a41cc6dd8a52ba3fc569f011937a7d1",
-      "DGD": "0x42ec1af72a41cc6dd8a52ba3fc569f011937a7d1",
-      "CVC": "0x42ec1af72a41cc6dd8a52ba3fc569f011937a7d1",
-      "FUN": "0x42ec1af72a41cc6dd8a52ba3fc569f011937a7d1",
-      "MCO": "0x42ec1af72a41cc6dd8a52ba3fc569f011937a7d1",
-      "GNT": "0x42ec1af72a41cc6dd8a52ba3fc569f011937a7d1",
-      "ADX": "0x42ec1af72a41cc6dd8a52ba3fc569f011937a7d1",
-      "PAY": "0x42ec1af72a41cc6dd8a52ba3fc569f011937a7d1",
-      "BAT": "0x42ec1af72a41cc6dd8a52ba3fc569f011937a7d1",
-      "KNC": "0x42ec1af72a41cc6dd8a52ba3fc569f011937a7d1",
-      "EOS": "0x42ec1af72a41cc6dd8a52ba3fc569f011937a7d1",
-      "LINK": "0x42ec1af72a41cc6dd8a52ba3fc569f011937a7d1"
+      "OMG": "0xc84d4f9de145c859b18ae819baea9412e38a8b97",
+      "DGD": "0xe1479d088ae8915b52e1e000015aaa13ecfb4d52",
+      "CVC": "0xfb27cb778db8da00e224aad09ed3821e139d97a6",
+      "FUN": "0x805ae0c068e47b529cad014710ce354acf492384",
+      "MCO": "0xf54707102f961fe5d5106e4b50e9cf3bd235c86a",
+      "GNT": "0xbf00b9835491897cd4414866e3ede0583725c1d5",
+      "ADX": "0x905a61aa207c2fed5d552e80396dbdb9ffe19a7f",
+      "PAY": "0x28a711b6478b4a70b36912d6c8845c2e2e4c8673",
+      "BAT": "0xf07090aa254a778f81c9876a5b8a955c2ca02d4f",
+      "KNC": "0x3a384ca0dce6cc06100d8bd5deca7064e1dc26d8",
+      "EOS": "0xa3b03bc7e0fa482541f81634b019cc06a154caa8",
+      "LINK": "0x1b62fa7ce625855e3decb1357ba2fb4dfcf3dca5",
+      "ETH": "0x6b2251a0ff2afd82899756783d5ebe8f1f943292"
     },
     "binance": {
-      "ETH": "0x7eabcce25875a0cd00a9dfa8a563f973ba069c76",
-      "OMG": "0x7eabcce25875a0cd00a9dfa8a563f973ba069c76",
-      "DGD": "0x7eabcce25875a0cd00a9dfa8a563f973ba069c76",
-      "CVC": "0x7eabcce25875a0cd00a9dfa8a563f973ba069c76",
-      "FUN": "0x7eabcce25875a0cd00a9dfa8a563f973ba069c76",
-      "MCO": "0x7eabcce25875a0cd00a9dfa8a563f973ba069c76",
-      "GNT": "0x7eabcce25875a0cd00a9dfa8a563f973ba069c76",
-      "ADX": "0x7eabcce25875a0cd00a9dfa8a563f973ba069c76",
-      "PAY": "0x7eabcce25875a0cd00a9dfa8a563f973ba069c76",
-      "BAT": "0x7eabcce25875a0cd00a9dfa8a563f973ba069c76",
-      "KNC": "0x7eabcce25875a0cd00a9dfa8a563f973ba069c76",
-      "EOS": "0x7eabcce25875a0cd00a9dfa8a563f973ba069c76",
-      "LINK": "0x7eabcce25875a0cd00a9dfa8a563f973ba069c76"
+      "OMG": "0xfe0b56461b37b83369b6052300795e8f3118bd53",
+      "DGD": "0xe5140de0f9a00d1baa7af2f0e7b46c2fa2487383",
+      "CVC": "0x5142d80fc446912ea6d932035d5bb5780cea3051",
+      "FUN": "0xe6acafdf48aee6fbb6601173447af216b561f892",
+      "MCO": "0xbbfbcacff5a2dc2ca66d891742d04e01ba3cba6e",
+      "GNT": "0x88cec5f5a44b54d51e495c02b3c45f1d2a3861da",
+      "ADX": "0x00dd2b2d30113ed20746ed69a1b18b223f389bfd",
+      "PAY": "0xd40e3e449a803283dbd60c4e01c33b8b16ff76e6",
+      "BAT": "0xec91db467216987ae4676d24bfd9f938a6f2cd64",
+      "KNC": "0x14bf539c4262406e4a112c3079f5dbb7b7d80b20",
+      "EOS": "0xb1a464a96f1d855fd4dd9263eeec89ad924397c3",
+      "LINK": "0xa7368d0edaf9a3a76bc03ac143c124d70b6380bf",
+      "ETH": "0x18ae669da6a58c9dfece276f12055074694c651e"
     },
     "bitfinex": {
-      "ETH": "0xc6d6db0070dceb4261e3fb025ed99e4b069aaa55",
-      "OMG": "0xc6d6db0070dceb4261e3fb025ed99e4b069aaa55",
-      "DGD": "0xc6d6db0070dceb4261e3fb025ed99e4b069aaa55",
-      "CVC": "0xc6d6db0070dceb4261e3fb025ed99e4b069aaa55",
-      "FUN": "0xc6d6db0070dceb4261e3fb025ed99e4b069aaa55",
-      "MCO": "0xc6d6db0070dceb4261e3fb025ed99e4b069aaa55",
-      "GNT": "0xc6d6db0070dceb4261e3fb025ed99e4b069aaa55",
-      "ADX": "0xc6d6db0070dceb4261e3fb025ed99e4b069aaa55",
-      "PAY": "0xc6d6db0070dceb4261e3fb025ed99e4b069aaa55",
-      "BAT": "0xc6d6db0070dceb4261e3fb025ed99e4b069aaa55",
-      "KNC": "0xc6d6db0070dceb4261e3fb025ed99e4b069aaa55",
-      "EOS": "0xc6d6db0070dceb4261e3fb025ed99e4b069aaa55",
-      "LINK": "0xc6d6db0070dceb4261e3fb025ed99e4b069aaa55"
+      "OMG": "0x68430d4d67ce4f9914c395f18c687c067fd36025",
+      "DGD": "0x4d7b9598f7b793eb59d84535838801e796f218b6",
+      "CVC": "0xf219dfe5316cce20e4af6fcd4643dd4bd8973143",
+      "FUN": "0x0f70abaae6f0897fcc9f1452e2a129762af2d2ff",
+      "MCO": "0xb661d7c6577b30424fafa80bd24b3dbc32ea2c92",
+      "GNT": "0x87a5109e72c0a39efc7b042694bc0925ef76c03f",
+      "ADX": "0x06c4b445668232f7fcb7290f02a499bbe8913f63",
+      "PAY": "0x3bf9755e4a287524e361b3744a67365f73bf9aed",
+      "BAT": "0x1888af588bc08aff9a3e90ef4a3b9c47d47a3be3",
+      "KNC": "0xbedd77808ed8e220b5a2e8b20e2b820041a61436",
+      "EOS": "0xd2b76ae68fabfdfbbb620e523474770829898308",
+      "LINK": "0xadafaa5b9d19fb8a6967ed439e37de0c5552fefd",
+      "ETH": "0x0c707aeee98f7e19e01ab0e58318d636faa020a2"
     }
   },
-  "bank": "0x4d8bd3234a0be4e3b74ed9c11bd5c2ad65e4109e",
-  "reserve": "0xd3bd959f16be00d5eda27b3afe56e1b7cadb6723",
-  "network": "0x0efb209ba78087eed1eccb1219f161dfcbe7882a",
-  "wrapper": "0xe1cc2370aecbfeab7ed2367ac2a1209497b8df59"
+  "bank": "0x761f8637e6b9485e986834e89fdc667cbf532921",
+  "reserve": "0x87e8e2b96d3961e394307ec91c7c8f48bb8d4f7c",
+  "network": "0x879bb8c9f6e40cf3b2efa1122af2c3c9675272a1",
+  "wrapper": "0xee4f7a8c955c542890e51e57a8b7cb906e4103f1"
 }
