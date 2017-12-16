@@ -13,7 +13,8 @@ var erc20Abi = [{"constant":false,"inputs":[{"name":"_spender","type":"address"}
 ////////////////////////////////////////////////////////////////////////////////
 
 var allAbis = [erc20Abi];
-var contracts = ["KyberReserve", "KyberNetwork", "MockCentralBank", "MockExchangeDepositAddress"];
+var contracts = ["KyberReserve", "KyberNetwork", "MockCentralBank", "MockDepositAddressToken",
+"MockDepositAddressEther", "MockExchange"];
 var configFile = "deployment_dev.json";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,6 +138,10 @@ var parseConfigJson = function() {
   for( var i = 0 ; i < exchanges.length ; i++ ) {
     var name = exchanges[i];
     var exchange = exchageInfo[name];
+
+    var exchangeAddress = configJson["exchangesAddress"];
+    importantAddressNames[exchangeAddress[name]] = name;
+
     for( var tokenInd = 0 ; tokenInd < tokenSymbols.length ; tokenInd++ ) {
       var symbol = tokenSymbols[tokenInd];
       var address = web3.utils.toChecksumAddress(exchange[symbol]);
@@ -257,7 +262,7 @@ var printBalanceDiff = function( userAddress ) {
     var symbol = tokens[i];
     var balanceBefore = web3.utils.toBN(0);
     if( balancesBefore[userAddress] ) {
-        balancesBefore = balancesBefore[userAddress][symbol]; 
+        balancesBefore = balancesBefore[userAddress][symbol];
     }
     var balanceAfter  = balancesAfter[userAddress][symbol];
 
