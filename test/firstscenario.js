@@ -3,7 +3,7 @@ var Reserve = artifacts.require("./KyberReserve.sol");
 var Network = artifacts.require("./KyberNetwork.sol");
 var Wallet = artifacts.require("./KyberWallet.sol");
 var Bank   = artifacts.require("./MockCentralBank.sol");
-var CentralizedExchange = artifacts.require("./MockExchangeDepositAddress.sol");
+var CentralizedExchange = artifacts.require("./MockExchange.sol");
 var BigNumber = require('bignumber.js');
 
 var wallet;
