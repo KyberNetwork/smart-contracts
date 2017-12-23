@@ -232,7 +232,7 @@ var addDepositAddressToExchange = function( exchange, owner ) {
     return new Promise(function (fulfill, reject){
 
         var tokens = [];
-        var depositAddressess = {}; //dict (JS object) of deposit address per token for this exchange
+        var depositAddresses = {}; //dict (JS object) of deposit address per token for this exchange
 
         //create array of tokens
         for (var i = 0 ; i < tokenInstance.length ; i++ ) {
@@ -245,15 +245,15 @@ var addDepositAddressToExchange = function( exchange, owner ) {
             }).then(function(){
                 return exchange.tokenDepositAddresses(tokenInstance[item].address)
             }).then (function (mockDepositAddress){
-                depositAddressess[tokenSymbol[item]] = mockDepositAddress;
+                depositAddresses[tokenSymbol[item]] = mockDepositAddress;
             });
         }, Promise.resolve()).then(function(){
             return exchange.addMockDepositAddress(ethAddress, {from:owner});
         }).then(function(){
             return exchange.tokenDepositAddresses(ethAddress);
         }).then(function(depositAddress) {
-            depositAddressess["ETH"] = depositAddress;
-            exchangeDepositAddresses.push(depositAddressess);
+            depositAddresses["ETH"] = depositAddress;
+            exchangeDepositAddresses.push(depositAddresses);
             fulfill(true);
         }).catch(function(err){
           reject(err);
@@ -263,7 +263,7 @@ var addDepositAddressToExchange = function( exchange, owner ) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-var transferOwneshipInExchangesAndBank = function( owner, newOwners ) {
+var transferOwnershipInExchangesAndBank = function( owner, newOwners ) {
   return new Promise(function (fulfill, reject){
 
       var inputs = [];
@@ -377,7 +377,7 @@ contract('Deployment', function(accounts) {
     }
     else {
       console.log("unsupported network", networkId);
-      assert.fail("unsupported netowrk", networkId);
+      assert.fail("unsupported network", networkId);
     }
   });
 
@@ -514,7 +514,7 @@ contract('Deployment', function(accounts) {
 
   it("transfer ownership in exchanges", function() {
     this.timeout(30000000);
-    return transferOwneshipInExchangesAndBank(tokenOwner,nam).then(function(){
+    return transferOwnershipInExchangesAndBank(tokenOwner,nam).then(function(){
     return exchangesInstance[1].owners(nam[1]);
   }).then(function(result){
     assert.equal(result.valueOf(),true.valueOf(), "unexpected owner address");
