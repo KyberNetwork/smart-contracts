@@ -2,13 +2,14 @@ pragma solidity ^0.4.18;
 
 import "./ERC20Interface.sol";
 import "./KyberReserve.sol";
+import "./KyberConstants.sol";
 
-contract Wrapper {
+contract Wrapper is KyberConstants {
     function getBalances( address reserve, ERC20[] tokens ) public constant returns(uint[]){
         uint[] memory result = new uint[](tokens.length);
         for( uint i = 0 ; i < tokens.length ; i++ ) {
             uint balance = 0;
-            if( tokens[i] == ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee) ) {
+            if( tokens[i] == ETH_TOKEN_ADDRESS ) {
                 balance = reserve.balance;
             }
             else {
@@ -36,6 +37,6 @@ contract Wrapper {
             balances[i] = balance;
         }
 
-        return (rates,expBlocks,balances);
+        return (rates, expBlocks, balances);
     }
 }
