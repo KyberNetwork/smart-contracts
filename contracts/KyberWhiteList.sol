@@ -5,7 +5,7 @@ import "./PermissionGroups.sol";
 
 contract KyberWhiteList is PermissionGroups {
 
-    uint sgdToEthRate; //singapore dollar to wei rate
+    uint sgdToWeiRate; //singapore dollar to wei rate
     mapping (address=>uint) userCategory; // each user has a category that defines cap on trade amount. 0 will be standard
     mapping (uint=>uint)    categoryCap;  // will define cap on trade amount per category in singapore Dollar.
 
@@ -14,26 +14,29 @@ contract KyberWhiteList is PermissionGroups {
         admin = _admin;
     }
 
-    function setUserCategory( address user, uint category ) external {
+    event SetUserCategory( address user, uint category);
+
+    function setUserCategory( address user, uint category ) public onlyOperator {
         userCategory[user] = category;
+        SetUserCategory(user, category);
     }
 
     event SetCategoryCap ( uint category, uint sgdCap );
 
-    function setCategoryCap( uint category, uint sgdCap ) external {
+    function setCategoryCap( uint category, uint sgdCap ) public onlyOperator {
         categoryCap[category] = sgdCap;
         SetCategoryCap (category, sgdCap);
     }
 
-    event SetSgdToEthRate ( uint rate );
+    event SetSgdToWeiRate ( uint rate );
 
-    function setSgdToEthRate( uint sgdToEtherRate ) external {
-        sgdToEthRate = sgdToEtherRate;
-        SetSgdToEthRate(sgdToEtherRate);
+    function setSgdToEthRate( uint _sgdToWeiRate ) public onlyOperator {
+        sgdToWeiRate = _sgdToWeiRate;
+        SetSgdToWeiRate(sgdToWeiRate);
     }
 
     function getUserCapInWei( address user ) external view returns ( uint userCapWei ) {
         uint category = userCategory[user];
-        return categoryCap[category];
+        return (categoryCap[category] * sgdToWeiRate);
     }
 }
