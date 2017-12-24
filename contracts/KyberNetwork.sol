@@ -1,5 +1,6 @@
 pragma solidity ^0.4.18;
 
+
 import "./ERC20Interface.sol";
 import "./KyberReserve.sol";
 import "./Withdrawable.sol";
@@ -10,7 +11,6 @@ import "./ExpectedRate.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 /// @title Kyber Network main contract
 /// @author Yaron Velner
 contract KyberNetwork is Withdrawable, KyberConstants {
