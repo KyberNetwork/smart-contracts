@@ -2,6 +2,7 @@ pragma solidity ^0.4.18;
 
 import "./ERC20Interface.sol";
 import "./KyberReserve.sol";
+import "./KyberConstants.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -9,10 +10,8 @@ import "./KyberReserve.sol";
 /// @title Kyber Network main contract
 /// @author Yaron Velner
 
-contract KyberNetwork {
+contract KyberNetwork is KyberConstants {
     address admin;
-    ERC20 constant public ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
-    uint  constant PRECISION = (10**18);
     uint  constant EPSILON = (10);
     KyberReserve[] public reserves;
 
@@ -86,7 +85,7 @@ contract KyberNetwork {
         KyberReserve bestReserve = KyberReserve(0);
 
         for( uint i = 0 ; i < numReserves ; i++ ) {
-            var (rate,expBlock,balance) = reserves[i].getPairInfo(source,dest);
+            var (rate, expBlock, balance) = reserves[i].getPairInfo(source, dest);
 
             if( (expBlock >= block.number) && (balance > 0) && (rate > bestRate ) ) {
                 bestRate = rate;
@@ -134,7 +133,7 @@ contract KyberNetwork {
         if( ! reserve.trade.value(callValue)(source, amount, dest, destAddress, validate ) ) {
             if( source != ETH_TOKEN_ADDRESS ) {
                 // reset tokens for reserve
-                require( source.approve( reserve, 0) );
+                require( source.approve(reserve, 0) );
 
                 // send tokens back to sender
                 source.transfer(msg.sender, amount);
