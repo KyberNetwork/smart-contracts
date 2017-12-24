@@ -1,16 +1,6 @@
 pragma solidity ^0.4.18;
 
 
-interface PermissionGroupsInterface {
-    function transferAdmin(address newAdmin) public;
-    function claimAdmin() public;
-    function addAlerter( address newAlerter ) public;
-    function removeAlerter ( address alerter ) public;
-    function addOperator( address newOperator ) public;
-    function removeOperator ( address operator ) public;
-}
-
-
 contract PermissionGroups {
 
     address public admin;
@@ -34,7 +24,7 @@ contract PermissionGroups {
         _;
     }
 
-    modifier onlyAlerter() {
+    modifier onlyAlerter {
         require (alerters[msg.sender]);
         _;
     }
