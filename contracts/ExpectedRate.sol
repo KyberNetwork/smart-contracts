@@ -35,6 +35,10 @@ contract ExpectedRate is PermissionGroups {
         return (bestPrice, slippagePrice);
     }
 
+    function setKyberNetwork ( KyberNetwork _kyberNetwork ) public onlyAdmin {
+        kyberNetwork = _kyberNetwork;
+    }
+
     function setQuantityFactor ( uint _factor ) public onlyOperator {
         quantityFactor = _factor;
     }
