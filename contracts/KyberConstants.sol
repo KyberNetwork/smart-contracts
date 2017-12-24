@@ -3,6 +3,8 @@ pragma solidity ^0.4.18;
 
 import "./ERC20Interface.sol";
 
+/// @title Kyber constants contract
+/// @author Ilan Doron
 
 contract KyberConstants {
 
