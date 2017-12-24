@@ -19,6 +19,10 @@ contract ExpectedRate is PermissionGroups {
     KyberNetwork kyberNetwork;
     uint quantityFactor;
 
+    function ExpectedRate ( KyberNetwork _kyberNetwork ) public {
+        kyberNetwork = _kyberNetwork;
+    }
+
     function getExpectedRate ( ERC20 source, ERC20 dest, uint destQuantity ) public view
         returns ( uint bestPrice, uint slippagePrice )
     {
@@ -29,10 +33,6 @@ contract ExpectedRate is PermissionGroups {
         slippagePrice = kyberNetwork.getBestRate(source, dest, (destQuantity * quantityFactor));
 
         return (bestPrice, slippagePrice);
-    }
-
-    function setKyberNetwork ( KyberNetwork _kyberNetwork ) public onlyAdmin {
-        kyberNetwork = _kyberNetwork;
     }
 
     function setQuantityFactor ( uint _factor ) public onlyOperator {
