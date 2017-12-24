@@ -79,7 +79,7 @@ contract KyberNetwork is KyberConstants, PermissionGroups {
     /// @param source Source token
     /// @param dest Destination token
     /// @return KyberReservePairInfo structure
-    function findBestRate( ERC20 source, ERC20 dest ) internal view returns(KyberReservePairInfo) {
+    function findBestRate( ERC20 source, ERC20 dest ) public view returns(KyberReservePairInfo) {
         uint bestRate;
         uint bestReserveBalance = 0;
         uint numReserves = reserves.length;
@@ -104,6 +104,11 @@ contract KyberNetwork is KyberConstants, PermissionGroups {
         return output;
     }
 
+    function getBestRate ( ERC20 source, ERC20 dest, uint destQuantity ) public view returns ( uint bestRate ) {
+        KyberReservePairInfo memory pairInfo = findBestRate(source, dest);
+        destQuantity;
+        return pairInfo.rate;
+    }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev do one trade with a reserve
