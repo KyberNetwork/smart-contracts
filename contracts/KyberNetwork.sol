@@ -5,6 +5,7 @@ import "./KyberReserve.sol";
 import "./KyberConstants.sol";
 import "./PermissionGroups.sol";
 import "./KyberWhiteList.sol";
+import "./ExpectedRate.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -13,10 +14,10 @@ import "./KyberWhiteList.sol";
 /// @author Yaron Velner
 
 contract KyberNetwork is KyberConstants, PermissionGroups {
-    address admin;
     uint  constant EPSILON = (10);
     KyberReserve[] public reserves;
     KyberWhiteList kyberWhiteList;
+    ExpectedRateInterface expectedRate;
 
     mapping(address=>mapping(bytes32=>bool)) perReserveListedPairs;
 
@@ -418,5 +419,14 @@ contract KyberNetwork is KyberConstants, PermissionGroups {
 
     function setKyberWhiteList ( KyberWhiteList whiteList ) public onlyAdmin {
         kyberWhiteList = whiteList;
+    }
+
+    function setExpectedRateContract ( ExpectedRateInterface _expectedRate ) public {
+        expectedRate = _expectedRate;
+    }
+
+    function getExpectedRate ( ERC20 source, ERC20 dest, uint destQuantity ) public view
+        returns ( uint bestPrice, uint slippagePrice ) {
+        return expectedRate.getExpectedRate (source, dest, destQuantity);
     }
 }
