@@ -24,7 +24,7 @@ contract PermissionGroups {
         _;
     }
 
-    modifier onlyAlerter() {
+    modifier onlyAlerter {
         require (alerters[msg.sender]);
         _;
     }
