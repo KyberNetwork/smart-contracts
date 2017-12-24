@@ -8,8 +8,4 @@ contract KyberConstants {
 
     ERC20 constant public ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
     uint  constant PRECISION = (10**18);
-
-    function KyberConstants() public {
-
-    }
 }
