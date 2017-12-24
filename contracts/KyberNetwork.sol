@@ -85,6 +85,11 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         return (bestReserve, bestRate);
     }
 
+    function getBestRate ( ERC20 source, ERC20 dest, uint destQuantity ) public view returns ( uint bestRate ) {
+        KyberReservePairInfo memory pairInfo = findBestRate(source, dest);
+        destQuantity;
+        return pairInfo.rate;
+    }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev do one trade with a reserve
