@@ -13,23 +13,25 @@ import "./PermissionGroups.sol";
  */
 contract Withdrawable is PermissionGroups {
 
-    event WithdrawToken ( ERC20 token, uint balance, address sendTo );
+    event WithdrawToken ( ERC20 token, uint amount, address sendTo );
     /**
      * @dev Withdraw all ERC20 compatible tokens
      * @param token ERC20 The address of the token contract
      */
-    function withdrawToken( ERC20 token, address sendTo ) external onlyAdmin {
+    function withdrawToken( ERC20 token, uint amount, address sendTo ) external onlyAdmin {
         uint balance = token.balanceOf(this);
-        token.transfer(sendTo, balance);
+        require (amount >= balance);
+        assert(token.transfer(sendTo, balance));
         WithdrawToken(token, balance, sendTo);
     }
 
-    event WithdrawEther ( uint balance, address sendTo );
+    event WithdrawEther ( uint amount, address sendTo );
     /**
      * @dev Withdraw Ethers
      */
-    function withdrawEther ( address sendTo ) external onlyAdmin {
+    function withdrawEther ( uint amount, address sendTo ) external onlyAdmin {
         uint balance = this.balance;
+        require (amount >= balance);
         sendTo.transfer(balance);
         WithdrawEther(balance, sendTo);
     }
