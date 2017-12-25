@@ -1,12 +1,15 @@
 pragma solidity ^0.4.18;
 
+
 import "./ERC20Interface.sol";
 import "./PermissionGroups.sol";
 
+
 interface VolumeImbalanceRecorderInterface {
-  function getImbalance( ERC20 token, uint priceUpdateBlock, uint currentBlock)
-    public view returns(int totalImbalance, int currentBlockImbalance);
+    function getImbalance( ERC20 token, uint priceUpdateBlock, uint currentBlock)
+        public view returns(int totalImbalance, int currentBlockImbalance);
 }
+
 
 contract VolumeImbalanceRecorder is PermissionGroups, VolumeImbalanceRecorderInterface {
 
@@ -106,7 +109,6 @@ contract VolumeImbalanceRecorder is PermissionGroups, VolumeImbalanceRecorderInt
     currentBlockImbalance *= resolution;
   }
 
-
   function addImbalance( ERC20 token,
                          int buyAmount,
                          uint priceUpdateBlock,
@@ -147,6 +149,4 @@ contract VolumeImbalanceRecorder is PermissionGroups, VolumeImbalanceRecorderInt
 
     tokenImbalanceData[token][currentBlockIndex] = currentBlockData;
   }
-
-
 }

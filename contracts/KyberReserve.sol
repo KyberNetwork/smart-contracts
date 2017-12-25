@@ -2,16 +2,17 @@ pragma solidity ^0.4.18;
 
 
 import "./ERC20Interface.sol";
+import "./KyberConstants.sol";
 import "./Withdrawable.sol";
 
 /// @title Kyber Reserve contract
 /// @author Yaron Velner
 
-contract KyberReserve is Withdrawable {
+
+contract KyberReserve is Withdrawable, KyberConstants {
+
     address public reserveOwner;
     address public kyberNetwork;
-    ERC20 constant public ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
-    uint  constant PRECISION = (10**18);
     bool public tradeEnabled;
 
     struct ConversionRate {
@@ -99,7 +100,7 @@ contract KyberReserve is Withdrawable {
             }
             else if( sourceToken.allowance(msg.sender, this ) < sourceAmount ) {
                 // allowance is not enough
-                ErrorReport( tx.origin, 0x800000004, sourceToken.allowance(msg.sender, this ) );
+                ErrorReport( tx.origin, 0x800000004, sourceToken.allowance(msg.sender, this) );
                 return false;
             }
         }
