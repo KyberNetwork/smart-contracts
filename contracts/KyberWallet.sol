@@ -3,6 +3,7 @@ pragma solidity ^0.4.18;
 import "./ERC20Interface.sol";
 import "./KyberReserve.sol";
 import "./KyberNetwork.sol";
+import "./Withdrawable.sol";
 import "./KyberConstants.sol";
 
 
@@ -11,7 +12,9 @@ import "./KyberConstants.sol";
 /// @title Kyber Wallet contract
 /// @author Yaron Velner
 
-contract KyberWallet is KyberConstants {
+
+contract KyberWallet is Withdrawable, KyberConstants {
+
     address public owner;
     KyberNetwork public kyberNetwork;
 

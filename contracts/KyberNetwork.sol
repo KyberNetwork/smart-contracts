@@ -2,6 +2,7 @@ pragma solidity ^0.4.18;
 
 import "./ERC20Interface.sol";
 import "./KyberReserve.sol";
+import "./Withdrawable.sol";
 import "./KyberConstants.sol";
 import "./PermissionGroups.sol";
 import "./KyberWhiteList.sol";
@@ -12,7 +13,9 @@ import "./KyberWhiteList.sol";
 /// @title Kyber Network main contract
 /// @author Yaron Velner
 
-contract KyberNetwork is KyberConstants, PermissionGroups {
+
+contract KyberNetwork is Withdrawable, KyberConstants {
+
     address admin;
     uint  constant EPSILON = (10);
     KyberReserve[] public reserves;
