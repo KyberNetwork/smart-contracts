@@ -3,6 +3,8 @@ pragma solidity ^0.4.18;
 import "./ERC20Interface.sol";
 import "./KyberReserve.sol";
 import "./KyberConstants.sol";
+import "./PermissionGroups.sol";
+import "./KyberWhiteList.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -10,10 +12,11 @@ import "./KyberConstants.sol";
 /// @title Kyber Network main contract
 /// @author Yaron Velner
 
-contract KyberNetwork is KyberConstants {
+contract KyberNetwork is KyberConstants, PermissionGroups {
     address admin;
     uint  constant EPSILON = (10);
     KyberReserve[] public reserves;
+    KyberWhiteList kyberWhiteList;
 
     mapping(address=>mapping(bytes32=>bool)) perReserveListedPairs;
 
@@ -244,6 +247,7 @@ contract KyberNetwork is KyberConstants {
         bool throwOnFailure )
         public payable returns(uint)
     {
+        require (kyberWhiteList != address(0));
         if( ! validateTradeInput( source, srcAmount ) ) {
             // invalid input
             ErrorReport( tx.origin, 0x86000000, 0 );
@@ -283,8 +287,21 @@ contract KyberNetwork is KyberConstants {
             // TODO - check overflow
             actualSrcAmount = (actualDestAmount * PRECISION)/reserveInfo.rate;
 
+            // verify trade size is smaller then user cap
+            if (source == ETH_TOKEN_ADDRESS) {
+                if (actualSrcAmount > kyberWhiteList.getUserCapInWei(destAddress)) {
+                    revert();
+                }
+            }
+            else
+            {
+                if (actualDestAmount > kyberWhiteList.getUserCapInWei(destAddress)) {
+                    revert();
+                }
+            }
+
             // do actual trade
-            if( ! doSingleTrade( source,actualSrcAmount, dest, destAddress, reserveInfo.reserve, true ) ) {
+            if( ! doSingleTrade(source, actualSrcAmount, dest, destAddress, reserveInfo.reserve, true) ) {
                 tradeInfo.tradeFailed = true;
                 // trade failed in reserve
                 ErrorReport( tx.origin, 0x86000002, tradeInfo.remainedSourceAmount );
@@ -392,5 +409,9 @@ contract KyberNetwork is KyberConstants {
     function getBalance( ERC20 token ) public view returns(uint){
         if( token == ETH_TOKEN_ADDRESS ) return this.balance;
         else return token.balanceOf(this);
+    }
+
+    function setKyberWhiteList ( KyberWhiteList whiteList ) public onlyAdmin {
+        kyberWhiteList = whiteList;
     }
 }
