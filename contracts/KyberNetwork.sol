@@ -2,6 +2,7 @@ pragma solidity ^0.4.18;
 
 import "./ERC20Interface.sol";
 import "./KyberReserve.sol";
+import "./Withdrawable.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -9,7 +10,7 @@ import "./KyberReserve.sol";
 /// @title Kyber Network main contract
 /// @author Yaron Velner
 
-contract KyberNetwork {
+contract KyberNetwork is Withdrawable {
     address admin;
     ERC20 constant public ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
     uint  constant PRECISION = (10**18);

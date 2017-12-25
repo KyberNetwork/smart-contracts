@@ -1,12 +1,13 @@
 pragma solidity ^0.4.18;
 
-import "./ERC20Interface.sol";
 
+import "./ERC20Interface.sol";
+import "./Withdrawable.sol";
 
 /// @title Kyber Reserve contract
 /// @author Yaron Velner
 
-contract KyberReserve {
+contract KyberReserve is Withdrawable {
     address public reserveOwner;
     address public kyberNetwork;
     ERC20 constant public ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
