@@ -33,6 +33,6 @@ contract Withdrawable is PermissionGroups {
         uint balance = this.balance;
         require (amount <= balance);
         sendTo.transfer(amount);
-        WithdrawEther(am, sendTo);
+        WithdrawEther(amount, sendTo);
     }
 }
