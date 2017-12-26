@@ -83,9 +83,9 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         return (bestReserve, bestRate);
     }
 
-    function getBestRate ( ERC20 source, ERC20 dest, uint destQuantity ) public view returns ( uint bestRate ) {
+    function getBestRate ( ERC20 source, ERC20 dest, uint srcQuantity ) public view returns ( uint bestRate ) {
         KyberReservePairInfo memory pairInfo = findBestRate(source, dest);
-        destQuantity;
+        srcQuantity;
         return pairInfo.rate;
     }
 
@@ -345,8 +345,8 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         expectedRate = _expectedRate;
     }
 
-    function getExpectedRate ( ERC20 source, ERC20 dest, uint destQuantity ) public view
+    function getExpectedRate ( ERC20 source, ERC20 dest, uint srcQuantity ) public view
         returns ( uint bestPrice, uint slippagePrice ) {
-        return expectedRate.getExpectedRate (source, dest, destQuantity);
+        return expectedRate.getExpectedRate (source, dest, srcQuantity);
     }
 }

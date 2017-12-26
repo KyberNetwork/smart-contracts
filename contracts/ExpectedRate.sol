@@ -23,14 +23,14 @@ contract ExpectedRate is PermissionGroups {
         kyberNetwork = _kyberNetwork;
     }
 
-    function getExpectedRate ( ERC20 source, ERC20 dest, uint destQuantity ) public view
+    function getExpectedRateSourceQuantity ( ERC20 source, ERC20 dest, uint srcQuantity ) public view
         returns ( uint bestPrice, uint slippagePrice )
     {
         require (quantityFactor != 0);
         require (kyberNetwork != address (0));
 
-        bestPrice = kyberNetwork.getBestRate(source, dest, destQuantity);
-        slippagePrice = kyberNetwork.getBestRate(source, dest, (destQuantity * quantityFactor));
+        bestPrice = kyberNetwork.getBestRate(source, dest, srcQuantity);
+        slippagePrice = kyberNetwork.getBestRate(source, dest, (srcQuantity * quantityFactor));
 
         return (bestPrice, slippagePrice);
     }
