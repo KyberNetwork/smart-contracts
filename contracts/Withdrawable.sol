@@ -19,8 +19,6 @@ contract Withdrawable is PermissionGroups {
      * @param token ERC20 The address of the token contract
      */
     function withdrawToken( ERC20 token, uint amount, address sendTo ) external onlyAdmin {
-        uint balance = token.balanceOf(this);
-        require (amount <= balance);
         assert(token.transfer(sendTo, amount));
         WithdrawToken(token, amount, sendTo);
     }
@@ -30,8 +28,6 @@ contract Withdrawable is PermissionGroups {
      * @dev Withdraw Ethers
      */
     function withdrawEther ( uint amount, address sendTo ) external onlyAdmin {
-        uint balance = this.balance;
-        require (amount <= balance);
         sendTo.transfer(amount);
         WithdrawEther(amount, sendTo);
     }

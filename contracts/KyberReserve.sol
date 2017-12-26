@@ -11,13 +11,14 @@ import "./VolumeImbalanceRecorder.sol";
 /// @author Yaron Velner
 
 
-contract KyberReserve is Withdrawable, KyberConstants, Pricing {
+contract KyberReserve is KyberConstants, Pricing {
 
     address public kyberNetwork;
     bool public tradeEnabled;
 
-    function KyberReserve( address _kyberNetwork ) public {
+    function KyberReserve( address _kyberNetwork, address _admin ) public {
         kyberNetwork = _kyberNetwork;
+        admin = _admin;
         tradeEnabled = true;
     }
 
@@ -36,7 +37,6 @@ contract KyberReserve is Withdrawable, KyberConstants, Pricing {
       // TODO - check overflow
       return PRECISION * dstQty * (10**getDecimals(source)) / (rate*(10 ** getDecimals(dest)));
     }
-
 
     function getConversionRate( ERC20 source, ERC20 dest, uint srcQty, uint blockNumber ) public view returns(uint) {
         ERC20 token;
@@ -62,7 +62,6 @@ contract KyberReserve is Withdrawable, KyberConstants, Pricing {
         return price;
     }
 
-    event ErrorReport( address indexed origin, uint error, uint errorInfo );
     event DoTrade( address indexed origin, address source, uint sourceAmount, address destToken, uint destAmount, address destAddress );
 
     /// @dev do a trade
@@ -149,7 +148,6 @@ contract KyberReserve is Withdrawable, KyberConstants, Pricing {
 
     function enableTrade( ) public onlyAdmin returns(bool){
         tradeEnabled = true;
-        ErrorReport( tx.origin, 0, 0 );
         EnableTrade( true );
 
         return true;
@@ -157,7 +155,6 @@ contract KyberReserve is Withdrawable, KyberConstants, Pricing {
 
     function disableTrade( ) public onlyAlerter returns(bool){
         tradeEnabled = false;
-        ErrorReport( tx.origin, 0, 0 );
         EnableTrade( false );
 
         return true;
@@ -168,39 +165,6 @@ contract KyberReserve is Withdrawable, KyberConstants, Pricing {
     function() payable public {
         DepositToken( ETH_TOKEN_ADDRESS, msg.value );
     }
-
-    /// @notice ether could also be deposited without calling this function
-    /// @dev an auxiliary function that allows ether deposits
-    /// @return true iff deposit is successful
-    function depositEther( ) public payable returns(bool) {
-        ErrorReport( tx.origin, 0, 0 );
-
-        DepositToken( ETH_TOKEN_ADDRESS, msg.value );
-        return true;
-    }
-
-    /// @notice tokens could also be deposited without calling this function
-    /// @dev an auxiliary function that allows token deposits
-    /// @param token Token address
-    /// @param amount Amount of tokens to deposit
-    /// @return true iff deposit is successful
-    function depositToken( ERC20 token, uint amount ) public returns(bool) {
-        if( token.allowance( msg.sender, this ) < amount ) {
-            // allowance is smaller then amount
-            ErrorReport( tx.origin, 0x850000001, token.allowance( msg.sender, this ) );
-            return false;
-        }
-
-        if( ! token.transferFrom(msg.sender, this, amount ) ) {
-            // transfer from failed
-            ErrorReport( tx.origin, 0x850000002, uint(token) );
-            return false;
-        }
-
-        DepositToken( token, amount );
-        return true;
-    }
-
 
     event Withdraw( ERC20 token, uint amount, address destination );
 
@@ -217,11 +181,9 @@ contract KyberReserve is Withdrawable, KyberConstants, Pricing {
         }
         else if( ! token.transfer(destination,amount) ) {
             // transfer to reserve owner failed
-            ErrorReport( tx.origin, 0x860000001, uint(token) );
             return false;
         }
 
-        ErrorReport( tx.origin, 0, 0 );
         Withdraw( token, amount, destination );
     }
 

@@ -19,7 +19,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     address admin;
     uint  constant EPSILON = (10);
     KyberReserve[] public reserves;
-    KyberWhiteList kyberWhiteList;
+    KyberWhiteList public kyberWhiteList;
 
     mapping(address=>mapping(bytes32=>bool)) perReserveListedPairs;
 
@@ -71,9 +71,10 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         uint bestRate = 0;
         uint bestReserve = 0;
         uint numReserves = reserves.length;
-
         uint rate = 0;
         for( uint i = 0 ; i < numReserves ; i++ ) {
+            if( ! (perReserveListedPairs[reserves[i]])[keccak256(source,dest)] ) continue;
+
             rate = reserves[i].getConversionRate( source, dest, srcQty, block.number );
             if( rate > bestRate ) {
                 bestRate = rate;
@@ -195,7 +196,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
        return trade( source, srcAmount, dest, destAddress, maxDestAmount,
                      minConversionRate );
     }
-
 
     function isNegligable( uint currentValue, uint originalValue ) public pure returns(bool){
       return (currentValue < (originalValue / 1000)) || (currentValue == 0);
