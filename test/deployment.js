@@ -1,13 +1,11 @@
 var TestToken = artifacts.require("./TestToken.sol");
 var Reserve = artifacts.require("./KyberReserve.sol");
 var Network = artifacts.require("./KyberNetwork.sol");
-var Wallet = artifacts.require("./KyberWallet.sol");
 var Bank   = artifacts.require("./MockCentralBank.sol");
+var Whitelist  = artifacts.require("./KyberWhiteList.sol");
 var Wrapper   = artifacts.require("./Wrapper.sol");
 var CentralizedExchange = artifacts.require("./MockExchange.sol");
 var BigNumber = require('bignumber.js');
-
-var wallet;
 
 var tokenSymbol = [];//["OMG", "DGD", "CVC", "FUN", "MCO", "GNT", "ADX", "PAY",
                    //"BAT", "KNC", "EOS", "LINK"];
@@ -44,6 +42,8 @@ var exchangeDepositAddresses = [];
 
 var bank;
 var wrapper;
+
+var whitelist;
 
 
 var nam;// = "0xc6bc2f7b73da733366985f5f5b485262b45a77a3";
@@ -183,9 +183,10 @@ var depositTokensToReserve = function( owner, reserveInstance ) {
           return token.decimals();
       }).then(function(decimals){
           actualAmount = new BigNumber(amount).mul(new BigNumber(10).pow(decimals));
-          return token.approve(reserveInstance.address, actualAmount, {from:owner});
-      }).then(function(){
-        return reserve.depositToken(token.address, actualAmount, {from:owner})
+          return token.transfer(reserveInstance.address, actualAmount, {from:owner});
+          //return token.approve(reserveInstance.address, actualAmount, {from:owner});
+      //}).then(function(){
+        //return reserve.depositToken(token.address, actualAmount, {from:owner})
       }).then(function(){
         // send some tokens to duc
         return token.transfer(duc, actualAmount,{from:owner});
@@ -311,17 +312,40 @@ var listTokens = function( owner, reserve, network, expBlock, rate, convRate ) {
           // list (token=>eth) in reserve
           // list (eth=>token) in network
           // list (token=>eth) in network
-          return reserve.setRate([tokenAddress],
-                                 [ethAddress],
-                                 [rate],
-                                 [expBlock],
-                                 true, {from:reserveOwner});
+          return reserve.addToken( tokenAddress );
       }).then(function(){
-        return reserve.setRate([ethAddress],
-                               [tokenAddress],
-                               [convRate],
-                               [expBlock],
-                               true, {from:reserveOwner});
+        return item.decimals();
+      }).then(function(decimals){
+          return reserve.setTokenControlInfo( tokenAddress,
+                                              10**(decimals-2),
+                                              (10 ** decimals) * 10000,
+                                              (10 ** decimals) * 1000000 );
+      }).then(function(){
+          return reserve.enableTokenTrade( tokenAddress );
+      }).then(function(){
+          var x = [0];
+          var y = [0];
+          return reserve.setQtyStepFunction(tokenAddress,
+                                            x,
+                                            y,
+                                            x,
+                                            y );
+      }).then(function(){
+        var x = [0];
+        var y = [0];
+        return reserve.setImbalanceStepFunction(tokenAddress,
+                                          x,
+                                          y,
+                                          x,
+                                          y );
+      }).then(function(){
+        return reserve.setBasePrice( [tokenAddress],
+                                     [convRate],
+                                     [rate],
+                                     [0/*,2,3,4,5,6,7,8,9,10,11,12,13,14*/],
+                                     [0/*,2,3,4,5,6,7,8,9,10,11,12,13,14*/],
+                                     web3.eth.blockNumber,
+                                     [0] );
       }).then(function(){
         return network.listPairForReserve(reserve.address,
                                           tokenAddress,
@@ -444,18 +468,35 @@ contract('Deployment', function(accounts) {
     });
   });
 
+  it("create whitelist", function() {
+    return Whitelist.new(accounts[0]).then(function(instance){
+        whitelist = instance;
+        return whitelist.addOperator(accounts[0]);
+    }).then(function(){
+        return whitelist.setCategoryCap(0,5000);
+    }).then(function(){
+      return whitelist.setSgdToEthRate((new BigNumber(10).pow(15)).mul(2));
+    });
+  });
+
   it("create network", function() {
     networkOwner = accounts[0];
-    return Network.new(networkOwner).then(function(instance){
+    return Network.new(networkOwner,{gas:6000000}).then(function(instance){
         network = instance;
+        // set whitelist
+        return network.setKyberWhiteList(whitelist.address);
     });
   });
 
   it("create reserve and deposit tokens", function() {
     this.timeout(30000000);
     reserveOwner = accounts[0];
-    return Reserve.new(network.address, reserveOwner).then(function(instance){
+    return Reserve.new(network.address, reserveOwner,{gas:6000000}).then(function(instance){
         reserve = instance;
+        return reserve.addOperator(accounts[0]);
+    }).then(function(){
+        return reserve.setValidPriceDurationInBlocks(new BigNumber(100));
+    }).then(function(){
         return depositTokensToReserve( tokenOwner, reserve );
     }).then(function(){
       if( getNetwork() == "dev" ) {
@@ -491,8 +532,8 @@ contract('Deployment', function(accounts) {
       return tokenInstance[1].balanceOf(reserve.address);
     }).then(function(result){
       assert.equal(balance1.valueOf(), result.valueOf(), "unexpected balance 1");
-      return wrapper.getPrices( reserve.address, [tokenInstance[0].address,
-                                tokenInstance[1].address], [ethAddress, ethAddress]);
+      //return wrapper.getPrices( reserve.address, [tokenInstance[0].address,
+      //                          tokenInstance[1].address], [ethAddress, ethAddress]);
     }).then(function(result){
       //console.log("===");
       //console.log(result);
@@ -501,15 +542,17 @@ contract('Deployment', function(accounts) {
   });
 
   it("set eth to dgd rate", function() {
-    return reserve.setRate([ethAddress],
-                           [tokenInstance[1].address],
-                           [0x47d40a969bd7c0021],
-                           [10**18],
-                           true, {from:reserveOwner});
+    return reserve.setBasePrice( [tokenInstance[1].address],
+                                 [0x47d40a969bd7c0021],
+                                 [conversionRate],
+                                 [0],
+                                 [0],
+                                 web3.eth.blockNumber,
+                                 [0] );
   });
 
-  it("transfer ownership in reserve", function() {
-    return reserve.changeOwner(victor);
+  it("add operator in reserve", function() {
+    return reserve.addOperator(victor);
   });
 
   it("transfer ownership in exchanges", function() {
@@ -534,8 +577,10 @@ contract('Deployment', function(accounts) {
                          dgdAddress,
                          destAddress,
                          new BigNumber(2).pow(255),
-                         rate,
-                         false,{value:ethAmount}).then(function(){
+                         rate,{value:ethAmount}).then(function(result){
+       //for( var i = 0 ; i < result.receipt.logs.length ; i++ )
+       //console.log(result.receipt.logs[i].data);
+
 
        return tokenInstance[1].balanceOf(destAddress);
     }).then(function(result){

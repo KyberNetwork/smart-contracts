@@ -5,7 +5,7 @@ import "./PermissionGroups.sol";
 import "./VolumeImbalanceRecorder.sol";
 
 
-contract Pricing is VolumeImbalanceRecorderInterface, PermissionGroups {
+contract Pricing is VolumeImbalanceRecorder {
   struct StepFunction {
     int[] x;
     int[] y;
@@ -98,44 +98,43 @@ contract Pricing is VolumeImbalanceRecorderInterface, PermissionGroups {
     // calculate actual price
     int extraBps;
     int8 priceUpdate;
+    uint price;
     if( buy ) {
       // start with base price
-      uint buyPrice = tokenData[token].baseBuyPrice;
+      price = tokenData[token].baseBuyPrice;
 
       // add qty overhead
       extraBps = executeStepFunction(tokenData[token].buyPriceQtyStepFunction,int(qty));
-      buyPrice = addBps( buyPrice, extraBps );
+      price = addBps( price, extraBps );
 
       // add imbalance overhead
       extraBps = executeStepFunction(tokenData[token].buyPriceImbalanceStepFunction,totalImbalance);
-      buyPrice = addBps( buyPrice, extraBps );
+      price = addBps( price, extraBps );
 
       // add price update
       priceUpdate = int8(compactData.buy[tokenData[token].compactDataFieldIndex]);
       extraBps = priceUpdate * 10;
-      buyPrice = addBps( buyPrice, extraBps );
-
-      return buyPrice;
+      price = addBps( price, extraBps );
     }
     else {
       // start with base price
-      uint sellPrice = tokenData[token].baseSellPrice;
+      price = tokenData[token].baseSellPrice;
 
       // add qty overhead
       extraBps = executeStepFunction(tokenData[token].sellPriceQtyStepFunction,int(qty));
-      sellPrice = addBps( sellPrice, extraBps );
+      price = addBps( price, extraBps );
 
       // add imbalance overhead
       extraBps = executeStepFunction(tokenData[token].sellPriceImbalanceStepFunction,totalImbalance);
-      sellPrice = addBps( sellPrice, extraBps );
+      price = addBps( price, extraBps );
 
       // add price update
       priceUpdate = int8(compactData.sell[tokenData[token].compactDataFieldIndex]);
       extraBps = priceUpdate * 10;
-      sellPrice = addBps( sellPrice, extraBps );
-
-      return sellPrice;
+      price = addBps( price, extraBps );
     }
+
+    return price;
   }
 
   function setCompactData( bytes14[] buy, bytes14[] sell, uint blockNumber, uint[] indices )
@@ -215,5 +214,10 @@ contract Pricing is VolumeImbalanceRecorderInterface, PermissionGroups {
             fieldOffset,
             tokenPricesCompactData[arrayIndex].buy[fieldOffset],
             tokenPricesCompactData[arrayIndex].sell[fieldOffset]);
+  }
+
+  function getPriceUpdateBlock( ERC20 token ) public view returns(uint) {
+    TokenPricesCompactData memory compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];
+    return uint(compactData.blockNumber);
   }
 }

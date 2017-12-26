@@ -22,6 +22,7 @@ contract Wrapper is KyberConstants {
         return result;
     }
 
+/*
     function getPrices( KyberReserve reserve, ERC20[] sources, ERC20[] dests )
         public constant returns(uint[], uint[], uint[])
     {
@@ -38,5 +39,5 @@ contract Wrapper is KyberConstants {
         }
 
         return (rates, expBlocks, balances);
-    }
+    }*/
 }

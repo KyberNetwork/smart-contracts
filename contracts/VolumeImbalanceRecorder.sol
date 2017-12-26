@@ -5,16 +5,7 @@ import "./ERC20Interface.sol";
 import "./PermissionGroups.sol";
 
 
-interface VolumeImbalanceRecorderInterface {
-  function getImbalance( ERC20 token, uint priceUpdateBlock, uint currentBlock)
-    public view returns(int totalImbalance, int currentBlockImbalance);
-
-  function getMaxPerBlockImbalance( ERC20 token ) public view returns(uint);
-  function getMaxTotalImbalance( ERC20 token ) public view returns(uint);
-}
-
-
-contract VolumeImbalanceRecorder is PermissionGroups, VolumeImbalanceRecorderInterface {
+contract VolumeImbalanceRecorder is PermissionGroups {
 
   uint public constant SLIDING_WINDOW_SIZE = 10;
 
