@@ -26,7 +26,6 @@ contract ExpectedRate is PermissionGroups {
     function getExpectedRateSourceQuantity ( ERC20 source, ERC20 dest, uint srcQuantity ) public view
         returns ( uint bestPrice, uint slippagePrice )
     {
-<<<<<<< HEAD
         uint bestReserve;
         require (quantityFactor != 0);
         require (kyberNetwork != address (0));
@@ -42,17 +41,5 @@ contract ExpectedRate is PermissionGroups {
     function setQuantityFactor ( uint newFactor ) public onlyOperator {
         SetQuantityFactor(quantityFactor, newFactor, msg.sender);
         quantityFactor = newFactor;
-=======
-        require (quantityFactor != 0);
-        require (kyberNetwork != address (0));
-
-        bestPrice = kyberNetwork.getBestRate(source, dest, srcQuantity);
-        slippagePrice = kyberNetwork.getBestRate(source, dest, (srcQuantity * quantityFactor));
-        return (bestPrice, slippagePrice);
-    }
-
-    function setQuantityFactor ( uint _factor ) public onlyOperator {
-        quantityFactor = _factor;
->>>>>>> ddf94e8f0eed140d12b4d8a43ad09ab216fed97b
     }
 }

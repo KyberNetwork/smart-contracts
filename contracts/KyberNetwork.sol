@@ -340,8 +340,9 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     }
 
     function getExpectedRate ( ERC20 source, ERC20 dest, uint srcQuantity ) public view
-        returns ( uint bestPrice, uint slippagePrice ) {
-        
+        returns ( uint bestPrice, uint slippagePrice )
+    {
+        require(expectedRate != address(0));
         return expectedRate.getExpectedRate (source, dest, srcQuantity);
     }
 }
