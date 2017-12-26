@@ -50,6 +50,7 @@ contract Pricing is VolumeImbalanceRecorder {
   mapping(address=>TokenData) tokenData;
   TokenPricesCompactData[] tokenPricesCompactData;
   uint public numTokensInCurrentCompactData = 0;
+  address public reserveContract;
 
   function addToken( ERC20 token ) public onlyAdmin {
     require(!tokenData[token].listed);
@@ -219,5 +220,22 @@ contract Pricing is VolumeImbalanceRecorder {
   function getPriceUpdateBlock( ERC20 token ) public view returns(uint) {
     TokenPricesCompactData memory compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];
     return uint(compactData.blockNumber);
+  }
+
+  function setReserveAddress( address reserve ) public onlyAdmin {
+    reserveContract = reserve;
+  }
+
+  function recoredImbalance( ERC20 token,
+                             int buyAmount,
+                             uint priceUpdateBlock,
+                             uint currentBlock ) public {
+    require(msg.sender == reserveContract);
+
+    return addImbalance(token,buyAmount,priceUpdateBlock,currentBlock);
+  }
+
+  function Pricing( address _admin ) public {
+    admin = _admin;
   }
 }

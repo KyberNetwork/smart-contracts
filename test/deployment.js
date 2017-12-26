@@ -1,6 +1,7 @@
 var TestToken = artifacts.require("./TestToken.sol");
 var Reserve = artifacts.require("./KyberReserve.sol");
 var Network = artifacts.require("./KyberNetwork.sol");
+var Pricing = artifacts.require("./Pricing.sol");
 var Bank   = artifacts.require("./MockCentralBank.sol");
 var Whitelist  = artifacts.require("./KyberWhiteList.sol");
 var Wrapper   = artifacts.require("./Wrapper.sol");
@@ -44,6 +45,7 @@ var bank;
 var wrapper;
 
 var whitelist;
+var pricing;
 
 
 var nam;// = "0xc6bc2f7b73da733366985f5f5b485262b45a77a3";
@@ -312,20 +314,20 @@ var listTokens = function( owner, reserve, network, expBlock, rate, convRate ) {
           // list (token=>eth) in reserve
           // list (eth=>token) in network
           // list (token=>eth) in network
-          return reserve.addToken( tokenAddress );
+          return pricing.addToken( tokenAddress );
       }).then(function(){
         return item.decimals();
       }).then(function(decimals){
-          return reserve.setTokenControlInfo( tokenAddress,
+          return pricing.setTokenControlInfo( tokenAddress,
                                               10**(decimals-2),
                                               (10 ** decimals) * 10000,
                                               (10 ** decimals) * 1000000 );
       }).then(function(){
-          return reserve.enableTokenTrade( tokenAddress );
+          return pricing.enableTokenTrade( tokenAddress );
       }).then(function(){
           var x = [0];
           var y = [0];
-          return reserve.setQtyStepFunction(tokenAddress,
+          return pricing.setQtyStepFunction(tokenAddress,
                                             x,
                                             y,
                                             x,
@@ -333,13 +335,13 @@ var listTokens = function( owner, reserve, network, expBlock, rate, convRate ) {
       }).then(function(){
         var x = [0];
         var y = [0];
-        return reserve.setImbalanceStepFunction(tokenAddress,
+        return pricing.setImbalanceStepFunction(tokenAddress,
                                           x,
                                           y,
                                           x,
                                           y );
       }).then(function(){
-        return reserve.setBasePrice( [tokenAddress],
+        return pricing.setBasePrice( [tokenAddress],
                                      [convRate],
                                      [rate],
                                      [0/*,2,3,4,5,6,7,8,9,10,11,12,13,14*/],
@@ -488,14 +490,24 @@ contract('Deployment', function(accounts) {
     });
   });
 
+  it("create pricing", function() {
+    return Pricing.new(accounts[0],{gas:6000000}).then(function(instance){
+        pricing = instance;
+        return pricing.addOperator(victor,{from:accounts[0]});
+    }).then(function(result){
+        return pricing.addOperator(accounts[0],{from:accounts[0]});
+    });
+  });
+
   it("create reserve and deposit tokens", function() {
     this.timeout(30000000);
     reserveOwner = accounts[0];
-    return Reserve.new(network.address, reserveOwner,{gas:6000000}).then(function(instance){
+    return Reserve.new(network.address,pricing.address, reserveOwner,{gas:6000000}).then(function(instance){
         reserve = instance;
-        return reserve.addOperator(accounts[0]);
     }).then(function(){
-        return reserve.setValidPriceDurationInBlocks(new BigNumber(100));
+        return pricing.setValidPriceDurationInBlocks(new BigNumber(100));
+    }).then(function(){
+        return pricing.setReserveAddress(reserve.address);
     }).then(function(){
         return depositTokensToReserve( tokenOwner, reserve );
     }).then(function(){
@@ -542,7 +554,7 @@ contract('Deployment', function(accounts) {
   });
 
   it("set eth to dgd rate", function() {
-    return reserve.setBasePrice( [tokenInstance[1].address],
+    return pricing.setBasePrice( [tokenInstance[1].address],
                                  [0x47d40a969bd7c0021],
                                  [conversionRate],
                                  [0],
@@ -607,10 +619,7 @@ contract('Deployment', function(accounts) {
     }
     exchangesDepositAddressesDict = {};
     exchangesAddressDict = {};
-    //console.log("\nexchanges");
     for( var exchangeInd = 0 ; exchangeInd < exchanges.length ; exchangeInd++ ) {
-      //console.log( exchanges[i] + " : " + exchangesInstance[i].address );
-
       exchangesAddressDict[exchanges[exchangeInd]] = exchangesInstance[exchangeInd].address;
       exchangesDepositAddressesDict[exchanges[exchangeInd]] = exchangeDepositAddresses[exchangeInd];
     }
@@ -618,13 +627,9 @@ contract('Deployment', function(accounts) {
     dict = { "tokens" : tokensDict, "exchangesAddress" : exchangesAddressDict, "exchangesDeposit" : exchangesDepositAddressesDict };
     dict["bank"] = bank.address;
     dict["reserve"] = reserve.address;
+    dict["pricing"] = pricing.address;
     dict["network"] = network.address;
     dict["wrapper"] = wrapper.address;
-
-    //console.log("\nbank : " + bank.address );
-    //console.log("reserve : " + reserve.address );
-    //console.log("network : " + network.address );
-    //console.log("wrapper : " + wrapper.address );
 
     var json = JSON.stringify(dict, null, 2);
 

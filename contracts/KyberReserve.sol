@@ -11,13 +11,15 @@ import "./VolumeImbalanceRecorder.sol";
 /// @author Yaron Velner
 
 
-contract KyberReserve is KyberConstants, Pricing {
+contract KyberReserve is Withdrawable, KyberConstants {
 
     address public kyberNetwork;
     bool public tradeEnabled;
+    Pricing public pricingContract;
 
-    function KyberReserve( address _kyberNetwork, address _admin ) public {
+    function KyberReserve( address _kyberNetwork, Pricing _pricingContract, address _admin ) public {
         kyberNetwork = _kyberNetwork;
+        pricingContract = _pricingContract;
         admin = _admin;
         tradeEnabled = true;
     }
@@ -46,7 +48,7 @@ contract KyberReserve is KyberConstants, Pricing {
         if( ETH_TOKEN_ADDRESS == source ) {
           buy = true;
           token = dest;
-          tokenQty = getDestQty( source,dest,srcQty,getBasicPrice(token,true));
+          tokenQty = getDestQty( source,dest,srcQty,pricingContract.getBasicPrice(token,true));
         }
         else if( ETH_TOKEN_ADDRESS == dest ){
           buy = false;
@@ -55,7 +57,7 @@ contract KyberReserve is KyberConstants, Pricing {
         }
         else return 0; // pair is not listed
 
-        uint price = getPrice( token, blockNumber, buy, tokenQty );
+        uint price = pricingContract.getPrice( token, blockNumber, buy, tokenQty );
         uint destQty = getDestQty( source,dest,srcQty,price);
         if( getBalance(dest) < destQty ) return 0;
 
@@ -104,10 +106,10 @@ contract KyberReserve is KyberConstants, Pricing {
           token = sourceToken;
         }
 
-        addImbalance( token,
-                      buy,
-                      getPriceUpdateBlock(token),
-                      block.number );
+        pricingContract.recoredImbalance( token,
+                                          buy,
+                                          pricingContract.getPriceUpdateBlock(token),
+                                          block.number );
 
         // collect source tokens
         if( sourceToken != ETH_TOKEN_ADDRESS ) {
