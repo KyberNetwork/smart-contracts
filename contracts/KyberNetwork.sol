@@ -16,18 +16,16 @@ import "./KyberWhiteList.sol";
 
 contract KyberNetwork is Withdrawable, KyberConstants {
 
-    address admin;
     uint  constant EPSILON = (10);
     KyberReserve[] public reserves;
     KyberWhiteList public kyberWhiteList;
 
     mapping(address=>mapping(bytes32=>bool)) perReserveListedPairs;
 
-    event ErrorReport( address indexed origin, uint error, uint errorInfo );
-
     /// @dev c'tor.
     /// @param _admin The address of the administrator
     function KyberNetwork( address _admin ) public {
+        // this call overriders the value set by base contract PermissionGroups
         admin = _admin;
     }
 
@@ -67,7 +65,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @param source Source token
     /// @param dest Destination token
     /// @return KyberReservePairInfo structure
-    function findBestRate( ERC20 source, ERC20 dest, uint srcQty ) public view returns(uint,uint) {
+    function findBestRate( ERC20 source, ERC20 dest, uint srcQty ) public view returns(uint, uint) {
         uint bestRate = 0;
         uint bestReserve = 0;
         uint numReserves = reserves.length;
@@ -112,64 +110,22 @@ contract KyberNetwork is Withdrawable, KyberConstants {
             source.transferFrom(msg.sender, this, amount);
 
             // let reserve use network tokens
-            source.approve( reserve, amount);
+            source.approve(reserve, amount);
         }
 
         // reserve send tokens/eth to network. network sends it to destination
         assert( reserve.trade.value(callValue)(source, amount, dest, this, validate ) );
 
         if( dest == ETH_TOKEN_ADDRESS ) {
-          destAddress.transfer(expectedDestAmount);
+            destAddress.transfer(expectedDestAmount);
         }
         else {
-          assert(dest.transfer(destAddress,expectedDestAmount));
+            assert(dest.transfer(destAddress,expectedDestAmount));
         }
 
         return true;
     }
 
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev checks that user sent ether/tokens to contract before trade
-    /// @param source Source token
-    /// @param srcAmount amount of source tokens
-    /// @return true if input is valid
-    function validateTradeInput( ERC20 source, uint srcAmount ) internal returns(bool) {
-        if( source != ETH_TOKEN_ADDRESS && msg.value > 0 ) {
-            // shouldn't send ether for token exchange
-            ErrorReport( tx.origin, 0x85000000, 0 );
-            return false;
-        }
-        else if( source == ETH_TOKEN_ADDRESS && msg.value != srcAmount ) {
-            // amount of sent ether is wrong
-            ErrorReport( tx.origin, 0x85000001, msg.value );
-            return false;
-        }
-        else if( source != ETH_TOKEN_ADDRESS ) {
-            if( source.allowance(msg.sender,this) < srcAmount ) {
-                // insufficient allowance
-                ErrorReport( tx.origin, 0x85000002, msg.value );
-                return false;
-            }
-        }
-
-        return true;
-
-    }
-
-    event Trade( address indexed sender, ERC20 source, ERC20 dest, uint actualSrcAmount, uint actualDestAmount );
-
-    struct ReserveTokenInfo {
-        uint rate;
-        KyberReserve reserve;
-        uint reserveBalance;
-    }
-
-    struct TradeInfo {
-        uint convertedDestAmount;
-        uint remainedSourceAmount;
-
-        bool tradeFailed;
-    }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev makes a trade between source and dest token and send dest token to
@@ -189,17 +145,18 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         uint maxDestAmount,
         uint minConversionRate,
         bytes32 walletId )
-        public payable returns(uint)
+    public payable returns(uint)
     {
-       // TODO - log wallet id
-       walletId;
-       return trade( source, srcAmount, dest, destAddress, maxDestAmount,
-                     minConversionRate );
+        // TODO - log wallet id
+        walletId;
+        return trade( source, srcAmount, dest, destAddress, maxDestAmount,
+            minConversionRate );
     }
 
-    function isNegligable( uint currentValue, uint originalValue ) public pure returns(bool){
-      return (currentValue < (originalValue / 1000)) || (currentValue == 0);
+    function isNegligable( uint currentValue, uint originalValue ) public pure returns(bool) {
+        return (currentValue < (originalValue / 1000)) || (currentValue == 0);
     }
+
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev makes a trade between source and dest token and send dest token to destAddress
     /// @param source Source token
@@ -216,13 +173,13 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         address destAddress,
         uint maxDestAmount,
         uint minConversionRate )
-        public payable returns(uint)
+    public payable returns(uint)
     {
         require (kyberWhiteList != address(0));
-        require( validateTradeInput( source, srcAmount ) );
+        require (validateTradeInput( source, srcAmount));
 
         uint reserveInd; uint rate;
-        (reserveInd,rate) = findBestRate(source,dest,srcAmount);
+        (reserveInd,rate) = findBestRate(source, dest, srcAmount);
         KyberReserve theReserve = reserves[reserveInd];
         assert(rate > 0 );
         assert(rate >= minConversionRate );
@@ -230,28 +187,27 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         uint actualSourceAmount = srcAmount;
         uint actualDestAmount = theReserve.getDestQty( source, dest, actualSourceAmount, rate );
         if( actualDestAmount > maxDestAmount ) {
-          actualDestAmount = maxDestAmount;
-          actualSourceAmount = theReserve.getSrcQty( source, dest, actualDestAmount, rate );
+            actualDestAmount = maxDestAmount;
+            actualSourceAmount = theReserve.getSrcQty( source, dest, actualDestAmount, rate );
         }
 
         // do the trade
         // verify trade size is smaller then user cap
         if (source == ETH_TOKEN_ADDRESS) {
-          require (actualSourceAmount <= kyberWhiteList.getUserCapInWei(destAddress));
+            require (actualSourceAmount <= kyberWhiteList.getUserCapInWei(destAddress));
         }
         else {
-          require (actualDestAmount <= kyberWhiteList.getUserCapInWei(destAddress));
+            require (actualDestAmount <= kyberWhiteList.getUserCapInWei(destAddress));
         }
 
         assert( doSingleTrade(source,
-                              actualSourceAmount,
-                              dest,
-                              destAddress,
-                              actualDestAmount,
-                              theReserve,
-                              true) );
+            actualSourceAmount,
+            dest,
+            destAddress,
+            actualDestAmount,
+            theReserve,
+            true) );
 
-        ErrorReport( tx.origin, 0, 0 );
         Trade( msg.sender, source, dest, actualSourceAmount, actualDestAmount );
         return actualDestAmount;
     }
@@ -262,30 +218,23 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
     /// @param add If true, the add reserve. Otherwise delete reserve.
-    function addReserve( KyberReserve reserve, bool add ) public {
-        if( msg.sender != admin ) {
-            // only admin can add to reserve
-            ErrorReport( msg.sender, 0x87000000, 0 );
-            return;
-        }
+    function addReserve( KyberReserve reserve, bool add ) public onlyAdmin {
 
         if( add ) {
             reserves.push(reserve);
             AddReserve( reserve, true );
         }
         else {
-            // will have truble if more than 50k reserves...
-            for( uint i = 0 ; i < reserves.length ; i++ ) {
-                if( reserves[i] == reserve ) {
-                    if( reserves.length == 0 ) return;
+            // will have trouble if more than 50k reserves...
+            for(uint i = 0 ; i < reserves.length ; i++) {
+                if(reserves[i] == reserve) {
+                    if(reserves.length == 0) return;
                     reserves[i] = reserves[--reserves.length];
-                    AddReserve( reserve, false );
+                    AddReserve(reserve, false);
                     break;
                 }
             }
         }
-
-        ErrorReport( msg.sender, 0, 0 );
     }
 
     event ListPairsForReserve( address reserve, ERC20 source, ERC20 dest, bool add );
@@ -296,16 +245,10 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @param source Source token
     /// @param dest Destination token
     /// @param add If true then enable trade, otherwise delist pair.
-    function listPairForReserve( address reserve, ERC20 source, ERC20 dest, bool add ) public {
-        if( msg.sender != admin ) {
-            // only admin can add to reserve
-            ErrorReport( msg.sender, 0x88000000, 0 );
-            return;
-        }
+    function listPairForReserve( address reserve, ERC20 source, ERC20 dest, bool add ) public onlyAdmin {
 
         (perReserveListedPairs[reserve])[keccak256(source,dest)] = add;
-        ListPairsForReserve( reserve, source, dest, add );
-        ErrorReport( tx.origin, 0, 0 );
+        ListPairsForReserve(reserve, source, dest, add);
     }
 
     /// @notice can be called only by admin. still not implemented
@@ -324,7 +267,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         return reserves;
     }
 
-
     /// @notice a debug function
     /// @dev get the balance of the network. It is expected to be 0 all the time.
     /// @param token The token type
@@ -336,5 +278,38 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
     function setKyberWhiteList ( KyberWhiteList whiteList ) public onlyAdmin {
         kyberWhiteList = whiteList;
+    }
+
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev checks that user sent ether/tokens to contract before trade
+    /// @param source Source token
+    /// @param srcAmount amount of source tokens
+    /// @return true if input is valid otherwise revert
+    function validateTradeInput( ERC20 source, uint srcAmount ) internal view returns(bool) {
+        if (source == ETH_TOKEN_ADDRESS) {
+            // wrong amount of sent ether
+            require (msg.value == srcAmount);
+        }
+        else {
+            require (msg.value == 0);
+            require (source.allowance(msg.sender, this) >= srcAmount);
+        }
+
+        return true;
+    }
+
+    event Trade( address indexed sender, ERC20 source, ERC20 dest, uint actualSrcAmount, uint actualDestAmount );
+
+    struct ReserveTokenInfo {
+        uint rate;
+        KyberReserve reserve;
+        uint reserveBalance;
+    }
+
+    struct TradeInfo {
+        uint convertedDestAmount;
+        uint remainedSourceAmount;
+
+        bool tradeFailed;
     }
 }
