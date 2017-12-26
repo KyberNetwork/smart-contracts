@@ -46,29 +46,14 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev information on conversion rate from source to dest in specific reserve manager
-    /// @param source Source token
-    /// @param dest Destination token
-    /// @return (conversion rate,expiration block,dest token balance of reserve)
-    function getRate( ERC20 source, ERC20 dest, uint reserveIndex ) public view
-        returns(uint rate, uint expBlock, uint balance)
-    {
-        (rate,expBlock, balance) = reserves[reserveIndex].getPairInfo(source,dest);
-    }
-
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev information on conversion rate to a front end application
     /// @param source Source token
     /// @param dest Destination token
     /// @return rate. If not available returns 0.
 
-    function getPrice( ERC20 source, ERC20 dest ) public view returns(uint) {
-        uint rate;
-        uint expBlock;
-        uint balance;
-        (rate, expBlock, balance) = getRate( source, dest, 0 );
-        if( expBlock <= block.number ) return 0; // TODO - consider add 1
-        if( balance == 0 ) return 0; // TODO - decide on minimal qty
+    function getPrice( ERC20 source, ERC20 dest, uint srcQty ) public view returns(uint) {
+        uint reserve; uint rate;
+        (reserve,rate) = findBestRate( source, dest, srcQty );
         return rate;
     }
 
@@ -82,29 +67,21 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @param source Source token
     /// @param dest Destination token
     /// @return KyberReservePairInfo structure
-    function findBestRate( ERC20 source, ERC20 dest ) internal view returns(KyberReservePairInfo) {
-        uint bestRate;
-        uint bestReserveBalance = 0;
+    function findBestRate( ERC20 source, ERC20 dest, uint srcQty ) public view returns(uint,uint) {
+        uint bestRate = 0;
+        uint bestReserve = 0;
         uint numReserves = reserves.length;
 
-        KyberReservePairInfo memory output;
-        KyberReserve bestReserve = KyberReserve(0);
-
+        uint rate = 0;
         for( uint i = 0 ; i < numReserves ; i++ ) {
-            var (rate, expBlock, balance) = reserves[i].getPairInfo(source, dest);
-
-            if( (expBlock >= block.number) && (balance > 0) && (rate > bestRate ) ) {
+            rate = reserves[i].getConversionRate( source, dest, srcQty, block.number );
+            if( rate > bestRate ) {
                 bestRate = rate;
-                bestReserveBalance = balance;
-                bestReserve = reserves[i];
+                bestReserve = i;
             }
         }
 
-        output.rate = bestRate;
-        output.reserveBalance = bestReserveBalance;
-        output.reserve = bestReserve;
-
-        return output;
+        return (bestReserve, bestRate);
     }
 
 
@@ -122,6 +99,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         uint amount,
         ERC20 dest,
         address destAddress,
+        uint expectedDestAmount,
         KyberReserve reserve,
         bool validate )
         internal returns(bool)
@@ -136,20 +114,14 @@ contract KyberNetwork is Withdrawable, KyberConstants {
             source.approve( reserve, amount);
         }
 
-        if( ! reserve.trade.value(callValue)(source, amount, dest, destAddress, validate ) ) {
-            if( source != ETH_TOKEN_ADDRESS ) {
-                // reset tokens for reserve
-                require( source.approve(reserve, 0) );
+        // reserve send tokens/eth to network. network sends it to destination
+        assert( reserve.trade.value(callValue)(source, amount, dest, this, validate ) );
 
-                // send tokens back to sender
-                source.transfer(msg.sender, amount);
-            }
-
-            return false;
+        if( dest == ETH_TOKEN_ADDRESS ) {
+          destAddress.transfer(expectedDestAmount);
         }
-
-        if( source != ETH_TOKEN_ADDRESS ) {
-            source.approve( reserve, 0);
+        else {
+          assert(dest.transfer(destAddress,expectedDestAmount));
         }
 
         return true;
@@ -207,7 +179,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @param destAddress Address to send tokens to
     /// @param maxDestAmount A limit on the amount of dest tokens
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
-    /// @param throwOnFailure if true and trade is not completed, then function throws.
     /// @return amount of actual dest tokens
     function walletTrade(
         ERC20 source,
@@ -216,14 +187,13 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         address destAddress,
         uint maxDestAmount,
         uint minConversionRate,
-        bool throwOnFailure,
         bytes32 walletId )
         public payable returns(uint)
     {
        // TODO - log wallet id
        walletId;
        return trade( source, srcAmount, dest, destAddress, maxDestAmount,
-                     minConversionRate, throwOnFailure );
+                     minConversionRate );
     }
 
 
@@ -238,7 +208,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @param destAddress Address to send tokens to
     /// @param maxDestAmount A limit on the amount of dest tokens
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
-    /// @param throwOnFailure if true and trade is not completed, then function throws.
     /// @return amount of actual dest tokens
     function trade(
         ERC20 source,
@@ -246,94 +215,45 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         ERC20 dest,
         address destAddress,
         uint maxDestAmount,
-        uint minConversionRate,
-        bool throwOnFailure )
+        uint minConversionRate )
         public payable returns(uint)
     {
         require (kyberWhiteList != address(0));
-        if( ! validateTradeInput( source, srcAmount ) ) {
-            // invalid input
-            ErrorReport( tx.origin, 0x86000000, 0 );
-            if( msg.value > 0 ) {
-                msg.sender.transfer(msg.value);
-            }
-            if( throwOnFailure ) revert();
-            return 0;
+        require( validateTradeInput( source, srcAmount ) );
+
+        uint reserveInd; uint rate;
+        (reserveInd,rate) = findBestRate(source,dest,srcAmount);
+        KyberReserve theReserve = reserves[reserveInd];
+        assert(rate > 0 );
+        assert(rate >= minConversionRate );
+
+        uint actualSourceAmount = srcAmount;
+        uint actualDestAmount = theReserve.getDestQty( source, dest, actualSourceAmount, rate );
+        if( actualDestAmount > maxDestAmount ) {
+          actualDestAmount = maxDestAmount;
+          actualSourceAmount = theReserve.getSrcQty( source, dest, actualDestAmount, rate );
         }
 
-        TradeInfo memory tradeInfo = TradeInfo(0,srcAmount,false);
-
-        while( !isNegligable(maxDestAmount-tradeInfo.convertedDestAmount, maxDestAmount)
-               && !isNegligable(tradeInfo.remainedSourceAmount, srcAmount)) {
-            KyberReservePairInfo memory reserveInfo = findBestRate(source,dest);
-
-            if( reserveInfo.rate == 0 || reserveInfo.rate < minConversionRate ) {
-                tradeInfo.tradeFailed = true;
-                // no more available funds
-                ErrorReport( tx.origin, 0x86000001, tradeInfo.remainedSourceAmount );
-                break;
-            }
-
-            reserveInfo.rate = (reserveInfo.rate * (10 ** getDecimals(dest))) /
-                                                      (10**getDecimals(source));
-
-            uint actualSrcAmount = tradeInfo.remainedSourceAmount;
-            // TODO - overflow check
-            uint actualDestAmount = (actualSrcAmount * reserveInfo.rate) / PRECISION;
-            if( actualDestAmount > reserveInfo.reserveBalance ) {
-                actualDestAmount = reserveInfo.reserveBalance;
-            }
-            if( actualDestAmount + tradeInfo.convertedDestAmount > maxDestAmount ) {
-                actualDestAmount = maxDestAmount - tradeInfo.convertedDestAmount;
-            }
-
-            // TODO - check overflow
-            actualSrcAmount = (actualDestAmount * PRECISION)/reserveInfo.rate;
-
-            // verify trade size is smaller then user cap
-            if (source == ETH_TOKEN_ADDRESS) {
-                if (actualSrcAmount > kyberWhiteList.getUserCapInWei(destAddress)) {
-                    revert();
-                }
-            }
-            else
-            {
-                if (actualDestAmount > kyberWhiteList.getUserCapInWei(destAddress)) {
-                    revert();
-                }
-            }
-
-            // do actual trade
-            if( ! doSingleTrade(source, actualSrcAmount, dest, destAddress, reserveInfo.reserve, true) ) {
-                tradeInfo.tradeFailed = true;
-                // trade failed in reserve
-                ErrorReport( tx.origin, 0x86000002, tradeInfo.remainedSourceAmount );
-                break;
-            }
-
-            // todo - check overflow
-            tradeInfo.remainedSourceAmount -= actualSrcAmount;
-            tradeInfo.convertedDestAmount += actualDestAmount;
-        }
-
-        if( tradeInfo.tradeFailed ) {
-            if( throwOnFailure ) revert();
-            if( msg.value > 0 ) {
-                msg.sender.transfer(msg.value);
-            }
-
-            return 0;
+        // do the trade
+        // verify trade size is smaller then user cap
+        if (source == ETH_TOKEN_ADDRESS) {
+          require (actualSourceAmount <= kyberWhiteList.getUserCapInWei(destAddress));
         }
         else {
-            ErrorReport( tx.origin, 0, 0 );
-            if( tradeInfo.remainedSourceAmount > 0 && source == ETH_TOKEN_ADDRESS ) {
-                msg.sender.transfer(tradeInfo.remainedSourceAmount); //will throw on failure
-            }
-
-            ErrorReport( tx.origin, 0, 0 );
-            Trade( msg.sender, source, dest, srcAmount-tradeInfo.remainedSourceAmount, tradeInfo.convertedDestAmount );
-            return tradeInfo.convertedDestAmount;
+          require (actualDestAmount <= kyberWhiteList.getUserCapInWei(destAddress));
         }
+
+        assert( doSingleTrade(source,
+                              actualSourceAmount,
+                              dest,
+                              destAddress,
+                              actualDestAmount,
+                              theReserve,
+                              true) );
+
+        ErrorReport( tx.origin, 0, 0 );
+        Trade( msg.sender, source, dest, actualSourceAmount, actualDestAmount );
+        return actualDestAmount;
     }
 
     event AddReserve( KyberReserve reserve, bool add );

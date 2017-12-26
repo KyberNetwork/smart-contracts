@@ -4,64 +4,66 @@ pragma solidity ^0.4.18;
 import "./ERC20Interface.sol";
 import "./KyberConstants.sol";
 import "./Withdrawable.sol";
+import "./Pricing.sol";
+import "./VolumeImbalanceRecorder.sol";
 
 /// @title Kyber Reserve contract
 /// @author Yaron Velner
 
 
-contract KyberReserve is Withdrawable, KyberConstants {
+contract KyberReserve is Withdrawable, KyberConstants, Pricing {
 
-    address public reserveOwner;
     address public kyberNetwork;
     bool public tradeEnabled;
 
-    struct ConversionRate {
-        uint rate;
-        uint expirationBlock;
-    }
-
-    mapping(bytes32=>ConversionRate) pairConversionRate;
-
-    /// @dev c'tor.
-    /// @param _kyberNetwork The address of kyber network
-    /// @param _reserveOwner Address of the reserve owner
-    function KyberReserve( address _kyberNetwork, address _reserveOwner ) public {
+    function KyberReserve( address _kyberNetwork ) public {
         kyberNetwork = _kyberNetwork;
-        reserveOwner = _reserveOwner;
         tradeEnabled = true;
     }
 
-
-    /// @dev check if a pair is listed for trading.
-    /// @param source Source token
-    /// @param dest Destination token
-    /// @param blockNumber Current block number
-    /// @return true iff pair is listed
-    function isPairListed( ERC20 source, ERC20 dest, uint blockNumber ) internal view returns(bool) {
-        ConversionRate memory rateInfo = pairConversionRate[keccak256(source,dest)];
-        if( rateInfo.rate == 0 ) return false;
-        return rateInfo.expirationBlock >= blockNumber;
-    }
-
-    /// @dev get current conversion rate
-    /// @param source Source token
-    /// @param dest Destination token
-    /// @param blockNumber Current block number
-    /// @return conversion rate with PRECISION precision
-    function getConversionRate( ERC20 source, ERC20 dest, uint blockNumber ) internal view returns(uint) {
-        ConversionRate memory rateInfo = pairConversionRate[keccak256(source,dest)];
-        if( rateInfo.rate == 0 ) return 0;
-        if( rateInfo.expirationBlock < blockNumber ) return 0;
-        return rateInfo.rate * (10 ** getDecimals(dest)) / (10**getDecimals(source));
-    }
-
-    event ErrorReport( address indexed origin, uint error, uint errorInfo );
-    event DoTrade( address indexed origin, address source, uint sourceAmount, address destToken, uint destAmount, address destAddress );
 
     function getDecimals( ERC20 token ) public view returns(uint) {
       if( token == ETH_TOKEN_ADDRESS ) return 18;
       return token.decimals();
     }
+
+    function getDestQty( ERC20 source, ERC20 dest, uint srcQty, uint rate ) public view returns(uint){
+      // TODO - check overflow
+      return (srcQty * rate * (10 ** getDecimals(dest)) / (10**getDecimals(source))) / PRECISION;
+    }
+
+    function getSrcQty( ERC20 source, ERC20 dest, uint dstQty, uint rate ) public view returns(uint){
+      // TODO - check overflow
+      return PRECISION * dstQty * (10**getDecimals(source)) / (rate*(10 ** getDecimals(dest)));
+    }
+
+
+    function getConversionRate( ERC20 source, ERC20 dest, uint srcQty, uint blockNumber ) public view returns(uint) {
+        ERC20 token;
+        bool  buy;
+        uint  tokenQty;
+
+        if( ETH_TOKEN_ADDRESS == source ) {
+          buy = true;
+          token = dest;
+          tokenQty = getDestQty( source,dest,srcQty,getBasicPrice(token,true));
+        }
+        else if( ETH_TOKEN_ADDRESS == dest ){
+          buy = false;
+          token = source;
+          tokenQty = srcQty;
+        }
+        else return 0; // pair is not listed
+
+        uint price = getPrice( token, blockNumber, buy, tokenQty );
+        uint destQty = getDestQty( source,dest,srcQty,price);
+        if( getBalance(dest) < destQty ) return 0;
+
+        return price;
+    }
+
+    event ErrorReport( address indexed origin, uint error, uint errorInfo );
+    event DoTrade( address indexed origin, address source, uint sourceAmount, address destToken, uint destAmount, address destAddress );
 
     /// @dev do a trade
     /// @param sourceToken Source token
@@ -78,67 +80,39 @@ contract KyberReserve is Withdrawable, KyberConstants {
         bool validate )
         internal returns(bool)
     {
+        uint conversionRate = getConversionRate( sourceToken, destToken, sourceAmount,  block.number );
         // can skip validation if done at kyber network level
         if( validate ) {
-            if( ! isPairListed( sourceToken, destToken, block.number ) ) {
-                // pair is not listed
-                ErrorReport( tx.origin, 0x800000001, 0 );
-                return false;
-
-            }
-            if( sourceToken == ETH_TOKEN_ADDRESS ) {
-                if( msg.value != sourceAmount ) {
-                    // msg.value != sourceAmmount
-                    ErrorReport( tx.origin, 0x800000002, msg.value );
-                    return false;
-                }
-            }
-            else if( msg.value > 0 ) {
-                // msg.value must be 0
-                ErrorReport( tx.origin, 0x800000003, msg.value );
-                return false;
-            }
-            else if( sourceToken.allowance(msg.sender, this ) < sourceAmount ) {
-                // allowance is not enough
-                ErrorReport( tx.origin, 0x800000004, sourceToken.allowance(msg.sender, this) );
-                return false;
-            }
+            require(conversionRate > 0);
+            if( sourceToken == ETH_TOKEN_ADDRESS ) require( msg.value == sourceAmount );
+            else require( msg.value == 0 );
         }
 
-        uint conversionRate = getConversionRate( sourceToken, destToken, block.number );
-        // TODO - safe multiplication
-        uint destAmount = (conversionRate * sourceAmount) / PRECISION;
+        uint destAmount = getDestQty( sourceToken, destToken, sourceAmount, conversionRate );
 
         // sanity check
-        if( destAmount == 0 ) {
-            // unexpected error: dest amount is 0
-            ErrorReport( tx.origin, 0x800000005, 0 );
-            return false;
-        }
+        require( destAmount > 0 );
 
-        // check for sufficient balance
-        if( destToken == ETH_TOKEN_ADDRESS ) {
-            if( this.balance < destAmount ) {
-                // insufficient ether balance
-                ErrorReport( tx.origin, 0x800000006, destAmount );
-                return false;
-            }
+        // add to imbalance
+        ERC20 token;
+        int buy;
+        if( sourceToken == ETH_TOKEN_ADDRESS ) {
+          buy = int(destAmount);
+          token = destToken;
         }
         else {
-            if( destToken.balanceOf(this) < destAmount ) {
-                // insufficient token balance
-                ErrorReport( tx.origin, 0x800000007, uint(destToken) );
-                return false;
-            }
+          buy = -1 * int(destAmount);
+          token = sourceToken;
         }
+
+        addImbalance( token,
+                      buy,
+                      getPriceUpdateBlock(token),
+                      block.number );
 
         // collect source tokens
         if( sourceToken != ETH_TOKEN_ADDRESS ) {
-            if( ! sourceToken.transferFrom(msg.sender,this,sourceAmount) ) {
-                // transfer from source token failed
-                ErrorReport( tx.origin, 0x800000008, uint(sourceToken) );
-                return false;
-            }
+            assert( sourceToken.transferFrom(msg.sender,this,sourceAmount) );
         }
 
         // send dest tokens
@@ -146,11 +120,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
             destAddress.transfer(destAmount);
         }
         else {
-            if( ! destToken.transfer(destAddress, destAmount) ) {
-                // transfer token to dest failed
-                ErrorReport( tx.origin, 0x80000000a, uint(destAddress) );
-                return false;
-            }
+            assert( destToken.transfer(destAddress, destAmount) );
         }
 
         DoTrade( tx.origin, sourceToken, sourceAmount, destToken, destAmount, destAddress );
@@ -158,13 +128,6 @@ contract KyberReserve is Withdrawable, KyberConstants {
         return true;
     }
 
-    /// @dev trade
-    /// @param sourceToken Source token
-    /// @param sourceAmount Amount of source token
-    /// @param destToken Destination token
-    /// @param destAddress Destination address to send tokens to
-    /// @param validate If true, additional validations are applicable
-    /// @return true iff trade is successful
     function trade(
         ERC20 sourceToken,
         uint sourceAmount,
@@ -173,100 +136,33 @@ contract KyberReserve is Withdrawable, KyberConstants {
         bool validate )
         public payable returns(bool)
     {
-        if( ! tradeEnabled ) {
-            // trade is not enabled
-            ErrorReport( tx.origin, 0x810000000, 0 );
-            if( msg.value > 0 ) {
-                msg.sender.transfer(msg.value);
-            }
-            return false;
-        }
+        require( tradeEnabled );
+        require( msg.sender == kyberNetwork );
 
-        if( msg.sender != kyberNetwork ) {
-            // sender must be kyber network
-            ErrorReport( tx.origin, 0x810000001, uint(msg.sender) );
-            if( msg.value > 0 ) {
-                msg.sender.transfer(msg.value);
-            }
+        assert( doTrade( sourceToken, sourceAmount, destToken, destAddress, validate ) );
 
-            return false;
-        }
-
-        if( ! doTrade( sourceToken, sourceAmount, destToken, destAddress, validate ) ) {
-            // do trade failed
-            ErrorReport( tx.origin, 0x810000002, 0 );
-            if( msg.value > 0 ) {
-                msg.sender.transfer(msg.value);
-            }
-            return false;
-        }
-
-        ErrorReport( tx.origin, 0, 0 );
         return true;
     }
 
-    event SetRate( ERC20 source, ERC20 dest, uint rate, uint expiryBlock );
-
-    /// @notice can be called only by owner
-    /// @dev set rate of pair of tokens
-    /// @param sources an array contain source tokens
-    /// @param dests an array contain dest tokens
-    /// @param conversionRates an array with rates
-    /// @param expiryBlocks array of expiration blocks
-    /// @param validate If true, additional validations are applicable
-    /// @return true iff trade is successful
-    function setRate(
-        ERC20[] sources,
-        ERC20[] dests,
-        uint[] conversionRates,
-        uint[] expiryBlocks,
-        bool validate )
-        public returns(bool)
-    {
-        if( msg.sender != reserveOwner ) {
-            // sender must be reserve owner
-            ErrorReport( tx.origin, 0x820000000, uint(msg.sender) );
-            return false;
-        }
-
-        if( validate ) {
-            if( ( sources.length != dests.length ) ||
-                ( sources.length != conversionRates.length ) ||
-                ( sources.length != expiryBlocks.length ) ) {
-                // arrays length are not identical
-                ErrorReport( tx.origin, 0x820000001, 0 );
-                return false;
-            }
-        }
-
-        for( uint i = 0 ; i < sources.length ; i++ ) {
-            SetRate( sources[i], dests[i], conversionRates[i], expiryBlocks[i] );
-            pairConversionRate[keccak256(sources[i],dests[i])] = ConversionRate( conversionRates[i], expiryBlocks[i] );
-        }
-
-        ErrorReport( tx.origin, 0, 0 );
-        return true;
-    }
 
     event EnableTrade( bool enable );
 
-    /// @notice can be called only by owner
-    /// @dev enable of disable trade
-    /// @param enable if true trade is enabled, otherwise disabled
-    /// @return true iff trade is successful
-    function enableTrade( bool enable ) public returns(bool){
-        if( msg.sender != reserveOwner ) {
-            // sender must be reserve owner
-            ErrorReport( tx.origin, 0x830000000, uint(msg.sender) );
-            return false;
-        }
-
-        tradeEnabled = enable;
+    function enableTrade( ) public onlyAdmin returns(bool){
+        tradeEnabled = true;
         ErrorReport( tx.origin, 0, 0 );
-        EnableTrade( enable );
+        EnableTrade( true );
 
         return true;
     }
+
+    function disableTrade( ) public onlyAlerter returns(bool){
+        tradeEnabled = false;
+        ErrorReport( tx.origin, 0, 0 );
+        EnableTrade( false );
+
+        return true;
+    }
+
 
     event DepositToken( ERC20 token, uint amount );
     function() payable public {
@@ -314,12 +210,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
     /// @param amount Amount of tokens to deposit
     /// @param destination address that gets withdrawn funds
     /// @return true iff withdrawal is successful
-    function withdraw( ERC20 token, uint amount, address destination ) public returns(bool) {
-        if( msg.sender != reserveOwner ) {
-            // sender must be reserve owner
-            ErrorReport( tx.origin, 0x860000000, uint(msg.sender) );
-            return false;
-        }
+    function withdraw( ERC20 token, uint amount, address destination ) public onlyOperator returns(bool) {
 
         if( token == ETH_TOKEN_ADDRESS ) {
             destination.transfer(amount);
@@ -334,34 +225,10 @@ contract KyberReserve is Withdrawable, KyberConstants {
         Withdraw( token, amount, destination );
     }
 
-    function changeOwner( address newOwner ) public {
-      if( msg.sender != reserveOwner ) revert();
-      reserveOwner = newOwner;
-    }
-
     ////////////////////////////////////////////////////////////////////////////
     /// status functions ///////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev information on conversion rate from source to dest
-    /// @param source Source token
-    /// @param dest Destination token
-    /// @return (conversion rate, expirationas block,dest token balance of reserve)
-    function getPairInfo( ERC20 source, ERC20 dest ) public view returns(uint rate, uint expBlock, uint balance) {
-        ConversionRate memory rateInfo = pairConversionRate[keccak256(source,dest)];
-        balance = 0;
-        if( dest == ETH_TOKEN_ADDRESS ) balance = this.balance;
-        else balance = dest.balanceOf(this);
-
-        expBlock = rateInfo.expirationBlock;
-        rate = rateInfo.rate;
-    }
-
-    /// @notice a debug function
-    /// @dev get the balance of the reserve
-    /// @param token The token type
-    /// @return The balance
     function getBalance( ERC20 token ) public view returns(uint){
         if( token == ETH_TOKEN_ADDRESS ) return this.balance;
         else return token.balanceOf(this);
