@@ -3,6 +3,8 @@ pragma solidity ^0.4.18;
 import "./ERC20Interface.sol";
 import "./KyberReserve.sol";
 import "./KyberNetwork.sol";
+import "./Withdrawable.sol";
+import "./KyberConstants.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -10,10 +12,11 @@ import "./KyberNetwork.sol";
 /// @title Kyber Wallet contract
 /// @author Yaron Velner
 
-contract KyberWallet {
+
+contract KyberWallet is Withdrawable, KyberConstants {
+
     address public owner;
     KyberNetwork public kyberNetwork;
-    ERC20 constant public ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);    
 
     event ErrorReport( address indexed origin, uint error, uint errorInfo );
     
