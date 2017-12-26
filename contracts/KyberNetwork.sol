@@ -82,7 +82,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
         return (bestReserve, bestRate);
     }
-    
+
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev do one trade with a reserve
     /// @param source Source token
@@ -341,6 +341,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
     function getExpectedRate ( ERC20 source, ERC20 dest, uint srcQuantity ) public view
         returns ( uint bestPrice, uint slippagePrice ) {
+        
         return expectedRate.getExpectedRate (source, dest, srcQuantity);
     }
 }
