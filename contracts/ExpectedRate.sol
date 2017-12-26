@@ -31,7 +31,6 @@ contract ExpectedRate is PermissionGroups {
 
         bestPrice = kyberNetwork.getBestRate(source, dest, srcQuantity);
         slippagePrice = kyberNetwork.getBestRate(source, dest, (srcQuantity * quantityFactor));
-
         return (bestPrice, slippagePrice);
     }
 
