@@ -1,15 +1,16 @@
 pragma solidity ^0.4.18;
 
+
 import "./ERC20Interface.sol";
 import "./KyberReserve.sol";
 import "./Withdrawable.sol";
 import "./KyberConstants.sol";
 import "./PermissionGroups.sol";
 import "./KyberWhiteList.sol";
+import "./ExpectedRate.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 /// @title Kyber Network main contract
 /// @author Yaron Velner
 
@@ -20,6 +21,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     uint  constant EPSILON = (10);
     KyberReserve[] public reserves;
     KyberWhiteList kyberWhiteList;
+    ExpectedRateInterface expectedRate;
 
     mapping(address=>mapping(bytes32=>bool)) perReserveListedPairs;
 
@@ -82,7 +84,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @param source Source token
     /// @param dest Destination token
     /// @return KyberReservePairInfo structure
-    function findBestRate( ERC20 source, ERC20 dest ) internal view returns(KyberReservePairInfo) {
+    function findBestRate( ERC20 source, ERC20 dest ) public view returns(KyberReservePairInfo) {
         uint bestRate;
         uint bestReserveBalance = 0;
         uint numReserves = reserves.length;
@@ -107,6 +109,11 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         return output;
     }
 
+    function getBestRate ( ERC20 source, ERC20 dest, uint srcQuantity ) public view returns ( uint bestRate ) {
+        KyberReservePairInfo memory pairInfo = findBestRate(source, dest);
+        srcQuantity;
+        return pairInfo.rate;
+    }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev do one trade with a reserve
@@ -416,5 +423,15 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
     function setKyberWhiteList ( KyberWhiteList whiteList ) public onlyAdmin {
         kyberWhiteList = whiteList;
+    }
+
+    function setExpectedRateContract ( ExpectedRateInterface _expectedRate ) public {
+        expectedRate = _expectedRate;
+    }
+
+    function getExpectedRate ( ERC20 source, ERC20 dest, uint srcQuantity ) public view
+        returns ( uint bestPrice, uint slippagePrice ) {
+        return expectedRate.getExpectedRate (source, dest, srcQuantity);
+
     }
 }
