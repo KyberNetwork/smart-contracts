@@ -7,13 +7,12 @@ import "./KyberConstants.sol";
 import "./PermissionGroups.sol";
 import "./KyberWhiteList.sol";
 import "./ExpectedRate.sol";
+import "./FeeBurner.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// @title Kyber Network main contract
-/// @author Yaron Velner
-
 
 contract KyberNetwork is Withdrawable, KyberConstants {
 
@@ -22,6 +21,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     KyberReserve[] public reserves;
     KyberWhiteList public kyberWhiteList;
     ExpectedRateInterface public expectedRateContract;
+    FeeBurnerInterface    public feeBurnerContract;
 
     mapping(address=>mapping(bytes32=>bool)) perReserveListedPairs;
 
@@ -32,14 +32,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     function KyberNetwork( address _admin ) public {
         admin = _admin;
     }
-
-
-    struct KyberReservePairInfo {
-        uint rate;
-        uint reserveBalance;
-        KyberReserve reserve;
-    }
-
 
     /// @dev returns number of reserves
     /// @return number of reserves
@@ -68,7 +60,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @dev best conversion rate for a pair of tokens
     /// @param source Source token
     /// @param dest Destination token
-    /// @return KyberReservePairInfo structure
     function findBestRate( ERC20 source, ERC20 dest, uint srcQty ) public view returns(uint,uint) {
         uint bestRate = 0;
         uint bestReserve = 0;
@@ -157,19 +148,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
     event Trade( address indexed sender, ERC20 source, ERC20 dest, uint actualSrcAmount, uint actualDestAmount );
 
-    struct ReserveTokenInfo {
-        uint rate;
-        KyberReserve reserve;
-        uint reserveBalance;
-    }
-
-    struct TradeInfo {
-        uint convertedDestAmount;
-        uint remainedSourceAmount;
-
-        bool tradeFailed;
-    }
-
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev makes a trade between source and dest token and send dest token to
     /// destAddress and record wallet id for later payment
@@ -187,13 +165,11 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         address destAddress,
         uint maxDestAmount,
         uint minConversionRate,
-        bytes32 walletId )
+        address walletId )
         public payable returns(uint)
     {
-       // TODO - log wallet id
-       walletId;
        return trade( source, srcAmount, dest, destAddress, maxDestAmount,
-                     minConversionRate );
+                     minConversionRate, walletId );
     }
 
     function isNegligable( uint currentValue, uint originalValue ) public pure returns(bool){
@@ -214,10 +190,12 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         ERC20 dest,
         address destAddress,
         uint maxDestAmount,
-        uint minConversionRate )
+        uint minConversionRate,
+        address walletId )
         public payable returns(uint)
     {
         require (kyberWhiteList != address(0));
+        require (feeBurnerContract != address(0));
         require( validateTradeInput( source, srcAmount ) );
 
         uint reserveInd; uint rate;
@@ -235,12 +213,15 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
         // do the trade
         // verify trade size is smaller then user cap
+        uint ethAmount;
         if (source == ETH_TOKEN_ADDRESS) {
-          require (actualSourceAmount <= kyberWhiteList.getUserCapInWei(destAddress));
+          ethAmount = actualSourceAmount;
         }
         else {
-          require (actualDestAmount <= kyberWhiteList.getUserCapInWei(destAddress));
+          ethAmount = actualDestAmount;
         }
+
+        require(ethAmount<=kyberWhiteList.getUserCapInWei(msg.sender));
 
         assert( doSingleTrade(source,
                               actualSourceAmount,
@@ -249,6 +230,8 @@ contract KyberNetwork is Withdrawable, KyberConstants {
                               actualDestAmount,
                               theReserve,
                               true) );
+
+        assert( feeBurnerContract.handleFees(ethAmount,theReserve,walletId) );
 
         ErrorReport( tx.origin, 0, 0 );
         Trade( msg.sender, source, dest, actualSourceAmount, actualDestAmount );
@@ -302,15 +285,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         ListPairsForReserve( reserve, source, dest, add );
     }
 
-    /// @notice can be called only by admin. still not implemented
-    /// @dev upgrade network to a new contract
-    /// @param newAddress The address of the new network
-    function upgrade( address newAddress ) public pure {
-        // TODO
-        newAddress; // unused warning
-        revert();
-    }
-
     /// @notice should be called off chain with as much gas as needed
     /// @dev get an array of all reserves
     /// @return An array of all reserves
@@ -328,12 +302,13 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         else return token.balanceOf(this);
     }
 
-    function setKyberWhiteList ( KyberWhiteList whiteList ) public onlyAdmin {
-        kyberWhiteList = whiteList;
-    }
-
-    function setExpectedRateContract ( ExpectedRateInterface _expectedRate ) onlyAdmin public {
+    function setContractInterfaces( KyberWhiteList        _whiteList,
+                                    ExpectedRateInterface _expectedRate,
+                                    FeeBurnerInterface    _feeBurner ) public onlyAdmin {
+        kyberWhiteList = _whiteList;
         expectedRateContract = _expectedRate;
+        feeBurnerContract = _feeBurner;
+
     }
 
     function getExpectedRate ( ERC20 source, ERC20 dest, uint srcQuantity ) public view
