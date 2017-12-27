@@ -90,8 +90,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
                 }
             }
 
-            if (numRelevantReserves > 1)
-            {
+            if (numRelevantReserves > 1) {
                 //when encountering small price diff from bestRate. draw from relevant reserves
                 random = uint(block.blockhash(block.number-1)) % numRelevantReserves;
             }
