@@ -17,7 +17,7 @@ import "./FeeBurner.sol";
 contract KyberNetwork is Withdrawable, KyberConstants {
 
     address admin;
-    uint  constant EPSILON = (10);
+    uint public smallPriceDiffBps = 10; // basic price steps will be in 0.01%
     KyberReserve[] public reserves;
     KyberWhiteList public kyberWhiteList;
     ExpectedRateInterface public expectedRateContract;
@@ -47,7 +47,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
     function getPrice( ERC20 source, ERC20 dest, uint srcQty ) public view returns(uint) {
         uint reserve; uint rate;
-        (reserve,rate) = findBestRate( source, dest, srcQty );
+        (reserve, rate) = findBestRate( source, dest, srcQty );
         return rate;
     }
 
@@ -57,27 +57,50 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev best conversion rate for a pair of tokens
+    /// @dev best conversion rate for a pair of tokens, if number of reserves have small differences. randomize
     /// @param source Source token
     /// @param dest Destination token
     function findBestRate( ERC20 source, ERC20 dest, uint srcQty ) public view returns(uint,uint) {
         uint bestRate = 0;
         uint bestReserve = 0;
+        uint numRelevantReserves = 0;
         uint numReserves = reserves.length;
-        uint rate = 0;
+        uint[] memory rates = new uint[](numReserves);
+        uint[] memory reserveCandidates = new uint[](numReserves);
+
         for( uint i = 0 ; i < numReserves ; i++ ) {
+            //list all reserves that have this token.
             if( ! (perReserveListedPairs[reserves[i]])[keccak256(source,dest)] ) continue;
 
-            rate = reserves[i].getConversionRate( source, dest, srcQty, block.number );
-            if( rate > bestRate ) {
-                bestRate = rate;
-                bestReserve = i;
+            rates[i] = reserves[i].getConversionRate( source, dest, srcQty, block.number );
+            if( rates[i] > bestRate ) {
+                //best rate is highest rate
+                bestRate = rates[i];
             }
+        }
+
+        if (bestRate > 0) {
+            uint random = 0;
+            uint smallestRelevantRate = (bestRate * 10000) / (10000 + smallPriceDiffBps);
+
+            for ( i = 0; i < numReserves; i++){
+                if (rates[i] >= smallestRelevantRate){
+                    reserveCandidates[numRelevantReserves] = i;
+                    ++numRelevantReserves;
+                }
+            }
+
+            if (numRelevantReserves > 1) {
+                //when encountering small price diff from bestRate. draw from relevant reserves
+                random = uint(block.blockhash(block.number-1)) % numRelevantReserves;
+            }
+
+            bestReserve = reserveCandidates[random];
+            bestRate = rates[bestReserve];
         }
 
         return (bestReserve, bestRate);
     }
-
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev do one trade with a reserve
@@ -309,6 +332,10 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         expectedRateContract = _expectedRate;
         feeBurnerContract = _feeBurner;
 
+    }
+
+    function setSmallPriceDiffValue ( uint smallDiff ) public onlyOperator {
+        smallPriceDiffBps = smallDiff;
     }
 
     function getExpectedRate ( ERC20 source, ERC20 dest, uint srcQuantity ) public view
