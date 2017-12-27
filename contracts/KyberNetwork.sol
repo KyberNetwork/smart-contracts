@@ -64,14 +64,50 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         uint bestRate = 0;
         uint bestReserve = 0;
         uint numReserves = reserves.length;
-        uint rate = 0;
-        for( uint i = 0 ; i < numReserves ; i++ ) {
-            if( ! (perReserveListedPairs[reserves[i]])[keccak256(source,dest)] ) continue;
+        uint [] memory rates = new uint[](numReserves);
+        uint numRelevantReserves = 0;
 
-            rate = reserves[i].getConversionRate( source, dest, srcQty, block.number );
-            if( rate > bestRate ) {
-                bestRate = rate;
+        for( uint i = 0 ; i < numReserves ; i++ ) {
+            //list all reserves that have this token.
+            if( ! (perReserveListedPairs[reserves[i]])[keccak256(source,dest)] )
+            {
+                rates[i] = 0;
+                continue;
+            }
+
+            rates[i] = reserves[i].getConversionRate( source, dest, srcQty, block.number );
+            if( rates[i] > bestRate ) {
+                bestRate = rates[i];
                 bestReserve = i;
+            }
+            ++numRelevantReserves;
+        }
+
+        for ( i = 0; i < numReserves; i++)
+        {
+            //unlist reserves that are more then EPSILON distance from best rate.
+            if (rates[i] != 0 && rates[i] - rates[bestReserve] > EPSILON)
+            {
+                rates[i] = 0;
+                --numRelevantReserves;
+            }
+        }
+
+        //random to choose from remaining reserve.
+        uint random_number = uint(block.blockhash(block.number-1)) % numRelevantReserves;
+
+        for ( i = 0; i < numReserves; i++)
+        {
+            //find the randomized reserve.
+            if (rates[i] != 0)
+            {
+                if (random_number == 0)
+                {
+                    bestReserve = i;
+                    bestRate = rates[i];
+                    break;
+                }
+                --random_number;
             }
         }
 
