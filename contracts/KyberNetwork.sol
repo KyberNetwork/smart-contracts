@@ -17,7 +17,7 @@ import "./FeeBurner.sol";
 contract KyberNetwork is Withdrawable, KyberConstants {
 
     address admin;
-    uint public smallPriceDiffBps = 10; // basic price steps will be in 0.01%
+    uint public negligiblePriceDiff = 10; // basic price steps will be in 0.01%
     KyberReserve[] public reserves;
     KyberWhiteList public kyberWhiteList;
     ExpectedRateInterface public expectedRateContract;
@@ -25,8 +25,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     uint                  public maxGasPrice = 50 * 1000 * 1000 * 1000; // 50 gwei
 
     mapping(address=>mapping(bytes32=>bool)) perReserveListedPairs;
-
-    event ErrorReport( address indexed origin, uint error, uint errorInfo );
 
     /// @dev c'tor.
     /// @param _admin The address of the administrator
@@ -82,7 +80,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
         if (bestRate > 0) {
             uint random = 0;
-            uint smallestRelevantRate = (bestRate * 10000) / (10000 + smallPriceDiffBps);
+            uint smallestRelevantRate = (bestRate * 10000) / (10000 + negligiblePriceDiff);
 
             for ( i = 0; i < numReserves; i++){
                 if (rates[i] >= smallestRelevantRate){
@@ -147,23 +145,12 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @param source Source token
     /// @param srcAmount amount of source tokens
     /// @return true if input is valid
-    function validateTradeInput( ERC20 source, uint srcAmount ) internal returns(bool) {
-        if( source != ETH_TOKEN_ADDRESS && msg.value > 0 ) {
-            // shouldn't send ether for token exchange
-            ErrorReport( tx.origin, 0x85000000, 0 );
-            return false;
-        }
-        else if( source == ETH_TOKEN_ADDRESS && msg.value != srcAmount ) {
-            // amount of sent ether is wrong
-            ErrorReport( tx.origin, 0x85000001, msg.value );
-            return false;
-        }
-        else if( source != ETH_TOKEN_ADDRESS ) {
-            if( source.allowance(msg.sender,this) < srcAmount ) {
-                // insufficient allowance
-                ErrorReport( tx.origin, 0x85000002, msg.value );
-                return false;
-            }
+    function validateTradeInput( ERC20 source, uint srcAmount ) internal view returns(bool) {
+        if(source == ETH_TOKEN_ADDRESS)
+            require (msg.value == srcAmount);
+        else {
+            require (msg.value == 0);
+            require (source.allowance(msg.sender,this) >= srcAmount );
         }
 
         return true;
@@ -196,9 +183,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
                      minConversionRate, walletId );
     }
 
-    function isNegligable( uint currentValue, uint originalValue ) public pure returns(bool){
-      return (currentValue < (originalValue / 1000)) || (currentValue == 0);
-    }
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev makes a trade between source and dest token and send dest token to destAddress
     /// @param source Source token
@@ -259,7 +243,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
         assert( feeBurnerContract.handleFees(ethAmount,theReserve,walletId) );
 
-        ErrorReport( tx.origin, 0, 0 );
         Trade( msg.sender, source, dest, actualSourceAmount, actualDestAmount );
         return actualDestAmount;
     }
@@ -339,8 +322,8 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
     }
 
-    function setSmallPriceDiffValue ( uint smallDiff ) public onlyOperator {
-        smallPriceDiffBps = smallDiff;
+    function setNegligiblePriceDiffValue ( uint negligibleDiff ) public onlyOperator {
+        negligiblePriceDiff = negligibleDiff;
     }
 
     function getExpectedRate ( ERC20 source, ERC20 dest, uint srcQuantity ) public view
