@@ -7,16 +7,17 @@ import "./PermissionGroups.sol";
 
 
 interface ExpectedRateInterface {
-    function getExpectedRate ( ERC20 source, ERC20 dest, uint srcQty ) public view
-        returns ( uint expectedPrice, uint slippagePrice );
+
+    function getExpectedRate ( ERC20 source, ERC20 dest, uint srcQuantity ) public view
+        returns ( uint bestPrice, uint slippagePrice );
+    function setQuantityFactor ( uint factor ) public;
 }
 
 
-contract ExpectedRate is PermissionGroups, ExpectedRateInterface {
+contract ExpectedRate is PermissionGroups {
 
     KyberNetwork kyberNetwork;
     uint quantityFactor = 2;
-
     function ExpectedRate ( KyberNetwork _kyberNetwork ) public {
         kyberNetwork = _kyberNetwork;
     }

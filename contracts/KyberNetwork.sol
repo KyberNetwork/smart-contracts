@@ -1,5 +1,6 @@
 pragma solidity ^0.4.18;
 
+
 import "./ERC20Interface.sol";
 import "./KyberReserve.sol";
 import "./Withdrawable.sol";
@@ -10,14 +11,10 @@ import "./ExpectedRate.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 /// @title Kyber Network main contract
 /// @author Yaron Velner
-
-
 contract KyberNetwork is Withdrawable, KyberConstants {
 
-    address admin;
     uint  constant EPSILON = (10);
     KyberReserve[] public reserves;
     KyberWhiteList public kyberWhiteList;
@@ -86,7 +83,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
         return (bestReserve, bestRate);
     }
-
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev do one trade with a reserve

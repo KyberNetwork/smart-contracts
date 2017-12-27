@@ -6,6 +6,7 @@ var Bank   = artifacts.require("./MockCentralBank.sol");
 var Whitelist  = artifacts.require("./KyberWhiteList.sol");
 var Wrapper   = artifacts.require("./Wrapper.sol");
 var CentralizedExchange = artifacts.require("./MockExchange.sol");
+var ExpectedRate = artifacts.require("./ExpectedRate.sol");
 var BigNumber = require('bignumber.js');
 
 var tokenSymbol = [];//["OMG", "DGD", "CVC", "FUN", "MCO", "GNT", "ADX", "PAY",
@@ -46,6 +47,7 @@ var wrapper;
 
 var whitelist;
 var pricing;
+var expectedRate;
 
 
 var nam;// = "0xc6bc2f7b73da733366985f5f5b485262b45a77a3";
@@ -496,6 +498,15 @@ contract('Deployment', function(accounts) {
         return pricing.addOperator(victor,{from:accounts[0]});
     }).then(function(result){
         return pricing.addOperator(accounts[0],{from:accounts[0]});
+    });
+  });
+
+  it("create expected rate", function() {
+    return ExpectedRate.new(network.address,{gas:6000000}).then(function(instance){
+        expectedRate = instance;
+        return network.setExpectedRateContract(expectedRate.address,{from:accounts[0]});
+    }).then(function(result){
+        return expectedRate.addOperator(accounts[0],{from:accounts[0]});
     });
   });
 
