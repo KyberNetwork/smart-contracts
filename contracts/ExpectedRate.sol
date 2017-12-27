@@ -7,9 +7,8 @@ import "./PermissionGroups.sol";
 
 
 interface ExpectedRateInterface {
-    function getExpectedRate ( ERC20 source, ERC20 dest, uint destQuantity ) public view
+    function getExpectedRateSourceQuantity ( ERC20 source, ERC20 dest, uint srcQuantity ) public view
         returns ( uint bestPrice, uint slippagePrice );
-    function setKyberNetwork ( KyberNetwork kyberNetwork ) public;
     function setQuantityFactor ( uint factor ) public;
 }
 
