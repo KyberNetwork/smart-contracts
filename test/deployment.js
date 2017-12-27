@@ -129,7 +129,7 @@ var deployTokens = function( owner ){
           var symbol = tokenSymbol[item];
           var name = tokenName[item];
           var decimals = tokenDecimals[item];
-          return TestToken.new(name, symbol, decimals, {from:owner});
+          return TestToken.new(name, symbol, decimals, {from:owner, gas:6000000});
       }).then(function(instance){
           tokenInstance.push(instance);
       });
