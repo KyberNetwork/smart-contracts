@@ -81,7 +81,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
         if (bestRate > 0) {
             uint random = 0;
-            uint smallestRelevantRate = (bestRate * 10000) / 10000 + smallPriceDiffBps;
+            uint smallestRelevantRate = (bestRate * 10000) / (10000 + smallPriceDiffBps);
 
             for ( i = 0; i < numReserves; i++){
                 if (rates[i] >= smallestRelevantRate){
@@ -95,7 +95,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
                 //when encountering small price diff from bestRate. draw from relevant reserves
                 random = uint(block.blockhash(block.number-1)) % numRelevantReserves;
             }
-            
+
             bestReserve = reserveCandidates[random];
             bestRate = rates[bestReserve];
         }
