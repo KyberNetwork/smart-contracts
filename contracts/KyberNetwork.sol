@@ -17,8 +17,9 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
     uint  constant EPSILON = (10);
     KyberReserve[] public reserves;
-    KyberWhiteList kyberWhiteList;
-    ExpectedRateInterface expectedRate;
+    KyberWhiteList public kyberWhiteList;
+    ExpectedRateInterface public expectedRateContract;
+
     mapping(address=>mapping(bytes32=>bool)) perReserveListedPairs;
 
     event ErrorReport( address indexed origin, uint error, uint errorInfo );
@@ -107,9 +108,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         else {
             // take source tokens to this contract
             source.transferFrom(msg.sender, this, amount);
-
-            // let reserve use network tokens
-            source.approve( reserve, amount);
         }
 
         // reserve send tokens/eth to network. network sends it to destination
@@ -259,19 +257,13 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
     /// @param add If true, the add reserve. Otherwise delete reserve.
-    function addReserve( KyberReserve reserve, bool add ) public {
-        if( msg.sender != admin ) {
-            // only admin can add to reserve
-            ErrorReport( msg.sender, 0x87000000, 0 );
-            return;
-        }
-
+    function addReserve( KyberReserve reserve, bool add ) public onlyAdmin {
         if( add ) {
             reserves.push(reserve);
             AddReserve( reserve, true );
         }
         else {
-            // will have truble if more than 50k reserves...
+            // will have trouble if more than 50k reserves...
             for( uint i = 0 ; i < reserves.length ; i++ ) {
                 if( reserves[i] == reserve ) {
                     if( reserves.length == 0 ) return;
@@ -281,8 +273,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
                 }
             }
         }
-
-        ErrorReport( msg.sender, 0, 0 );
     }
 
     event ListPairsForReserve( address reserve, ERC20 source, ERC20 dest, bool add );
@@ -293,16 +283,19 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @param source Source token
     /// @param dest Destination token
     /// @param add If true then enable trade, otherwise delist pair.
-    function listPairForReserve( address reserve, ERC20 source, ERC20 dest, bool add ) public {
-        if( msg.sender != admin ) {
-            // only admin can add to reserve
-            ErrorReport( msg.sender, 0x88000000, 0 );
-            return;
+    function listPairForReserve( address reserve, ERC20 source, ERC20 dest, bool add ) public onlyAdmin {
+        (perReserveListedPairs[reserve])[keccak256(source,dest)] = add;
+
+        if( source != ETH_TOKEN_ADDRESS ) {
+          if( add ) {
+            source.approve(reserve, 2**255); // approve infinity
+          }
+          else {
+            source.approve(reserve, 0);
+          }
         }
 
-        (perReserveListedPairs[reserve])[keccak256(source,dest)] = add;
         ListPairsForReserve( reserve, source, dest, add );
-        ErrorReport( tx.origin, 0, 0 );
     }
 
     /// @notice can be called only by admin. still not implemented
@@ -335,14 +328,13 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         kyberWhiteList = whiteList;
     }
 
-    function setExpectedRateContract ( ExpectedRateInterface _expectedRate ) public {
-        expectedRate = _expectedRate;
+    function setExpectedRateContract ( ExpectedRateInterface _expectedRate ) onlyAdmin public {
+        expectedRateContract = _expectedRate;
     }
 
     function getExpectedRate ( ERC20 source, ERC20 dest, uint srcQuantity ) public view
-        returns ( uint bestPrice, uint slippagePrice )
-    {
-        require(expectedRate != address(0));
-        return expectedRate.getExpectedRate (source, dest, srcQuantity);
+        returns ( uint bestPrice, uint slippagePrice ) {
+        require(expectedRateContract != address(0));
+        return expectedRateContract.getExpectedRate(source, dest, srcQuantity);
     }
 }
