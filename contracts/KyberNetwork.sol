@@ -249,7 +249,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @notice can be called only by admin
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
-    /// @param add If true, the add reserve. Otherwisהשe delete reserve.
+    /// @param add If true, the add reserve. Otherwise delete reserve.
     function addReserve( KyberReserve reserve, bool add ) public onlyAdmin {
         if( add ) {
             reserves.push(reserve);
@@ -317,8 +317,8 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
     }
 
-    function setNegligiblePriceDiffValue ( uint smallDiff ) public onlyOperator {
-        negligiblePriceDiff = smallDiff;
+    function setNegligiblePriceDiffValue ( uint negligibleDiff ) public onlyOperator {
+        negligiblePriceDiff = negligibleDiff;
     }
 
     function getExpectedRate ( ERC20 source, ERC20 dest, uint srcQuantity ) public view
