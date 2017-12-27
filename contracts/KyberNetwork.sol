@@ -203,7 +203,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         public payable returns(uint)
     {
         require(tx.gasprice <= maxGasPrice);
-
         require (kyberWhiteList != address(0));
         require (feeBurnerContract != address(0));
         require( validateTradeInput( source, srcAmount ) );
@@ -311,19 +310,17 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         else return token.balanceOf(this);
     }
 
-    function setContractInterfaces( KyberWhiteList        _whiteList,
-                                    ExpectedRateInterface _expectedRate,
-                                    FeeBurnerInterface    _feeBurner,
-                                    uint                  _maxGasPrice ) public onlyAdmin {
+    function setParams( KyberWhiteList        _whiteList,
+                        ExpectedRateInterface _expectedRate,
+                        FeeBurnerInterface    _feeBurner,
+                        uint                  _maxGasPrice,
+                        uint                  _negligibleDiff ) public onlyAdmin {
         kyberWhiteList = _whiteList;
         expectedRateContract = _expectedRate;
         feeBurnerContract = _feeBurner;
         maxGasPrice = _maxGasPrice;
+        negligiblePriceDiff = _negligibleDiff;
 
-    }
-
-    function setNegligiblePriceDiffValue ( uint negligibleDiff ) public onlyOperator {
-        negligiblePriceDiff = negligibleDiff;
     }
 
     function getExpectedRate ( ERC20 source, ERC20 dest, uint srcQuantity ) public view
