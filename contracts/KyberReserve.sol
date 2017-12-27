@@ -16,6 +16,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
     address public kyberNetwork;
     bool public tradeEnabled;
     Pricing public pricingContract;
+    mapping(bytes32=>bool) public approvedWithdrawAddresses; // sha3(token,address)=>bool
 
     function KyberReserve( address _kyberNetwork, Pricing _pricingContract, address _admin ) public {
         kyberNetwork = _kyberNetwork;
@@ -168,15 +169,16 @@ contract KyberReserve is Withdrawable, KyberConstants {
         DepositToken( ETH_TOKEN_ADDRESS, msg.value );
     }
 
+    event ApproveWithdrawAddress( ERC20 token, address addr, bool approve );
+    function approveWithdrawAddress( ERC20 token, address addr, bool approve ) public onlyAdmin {
+      approvedWithdrawAddresses[keccak256(token,addr)] = approve;
+      ApproveWithdrawAddress(token,addr,approve);
+    }
+
     event Withdraw( ERC20 token, uint amount, address destination );
 
-    /// @notice can only be called by owner.
-    /// @dev withdraw tokens or ether from contract
-    /// @param token Token address
-    /// @param amount Amount of tokens to deposit
-    /// @param destination address that gets withdrawn funds
-    /// @return true iff withdrawal is successful
     function withdraw( ERC20 token, uint amount, address destination ) public onlyOperator returns(bool) {
+        require(approvedWithdrawAddresses[keccak256(token,destination)]);
 
         if( token == ETH_TOKEN_ADDRESS ) {
             destination.transfer(amount);
