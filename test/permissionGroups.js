@@ -7,7 +7,7 @@ var Helper = require("./helper.js");
 var permissionsInst;
 var mockPermissionsInst;
 
-contract('PermissionLevels', function(accounts) {
+contract('PermissionGroups', function(accounts) {
     it("should test request admin change is rejected for non admin.", async function () {
         // global inits in first test
         permissionsInst = await Permissions.new();
