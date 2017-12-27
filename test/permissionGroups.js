@@ -66,7 +66,7 @@ contract('PermissionLevels', function(accounts) {
 
     it("should test get operators success.", async function () {
         try{
-        var operators = await permissionsInst.operatorsGroup();
+        var operators = await permissionsInst.getOperators();
         assert.equal(operators.length, 2, "bad number of operators.")
         assert.equal(accounts[1], operators[0]);
         assert.equal(accounts[2], operators[1]);
@@ -80,7 +80,7 @@ contract('PermissionLevels', function(accounts) {
         mockPermissionsInst = await MockPermission.new();
         await mockPermissionsInst.addOperator(accounts[2]);
         await mockPermissionsInst.addOperator(accounts[3]);
-        var operators = await permissionsInst.operatorsGroup();
+        var operators = await permissionsInst.getOperators();
 
         try {
             await mockPermissionsInst.setPrice(9, {from:accounts[6]});
@@ -152,7 +152,7 @@ contract('PermissionLevels', function(accounts) {
 
     it("should test remove operator success.", async function () {
         await permissionsInst.removeOperator(accounts[2]);
-        var operators = await permissionsInst.operatorsGroup();
+        var operators = await permissionsInst.getOperators();
         assert.equal(operators.length, 1, "bad number of operators.")
         assert.equal(accounts[1], operators[0]);
     });
@@ -163,7 +163,7 @@ contract('PermissionLevels', function(accounts) {
     });
 
     it("should test get alerters success.", async function () {
-        var alerters = await permissionsInst.alertersGroup();
+        var alerters = await permissionsInst.getAlerters();
         assert.equal(alerters.length, 2, "bad number of operators.")
         assert.equal(accounts[3], alerters[0]);
         assert.equal(accounts[4], alerters[1]);
@@ -191,7 +191,7 @@ contract('PermissionLevels', function(accounts) {
 
     it("should test remove alerter success.", async function () {
         await permissionsInst.removeAlerter(accounts[3]);
-        var alerters = await permissionsInst.alertersGroup();
+        var alerters = await permissionsInst.getAlerters();
         assert.equal(alerters.length, 1, "bad number of alerters.")
         assert.equal(accounts[4], alerters[0]);
     });
