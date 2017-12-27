@@ -22,6 +22,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     KyberWhiteList public kyberWhiteList;
     ExpectedRateInterface public expectedRateContract;
     FeeBurnerInterface    public feeBurnerContract;
+    uint                  public maxGasPrice = 50 * 1000 * 1000 * 1000; // 50 gwei
 
     mapping(address=>mapping(bytes32=>bool)) perReserveListedPairs;
 
@@ -217,6 +218,8 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         address walletId )
         public payable returns(uint)
     {
+        require(tx.gasprice <= maxGasPrice);
+
         require (kyberWhiteList != address(0));
         require (feeBurnerContract != address(0));
         require( validateTradeInput( source, srcAmount ) );
@@ -327,10 +330,12 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
     function setContractInterfaces( KyberWhiteList        _whiteList,
                                     ExpectedRateInterface _expectedRate,
-                                    FeeBurnerInterface    _feeBurner ) public onlyAdmin {
+                                    FeeBurnerInterface    _feeBurner,
+                                    uint                  _maxGasPrice ) public onlyAdmin {
         kyberWhiteList = _whiteList;
         expectedRateContract = _expectedRate;
         feeBurnerContract = _feeBurner;
+        maxGasPrice = _maxGasPrice;
 
     }
 
