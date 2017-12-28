@@ -4,6 +4,8 @@ var Network = artifacts.require("./KyberNetwork.sol");
 var Pricing = artifacts.require("./Pricing.sol");
 var Bank   = artifacts.require("./MockCentralBank.sol");
 var Whitelist  = artifacts.require("./KyberWhiteList.sol");
+var FeeBurner = artifacts.require("./FeeBurner.sol");
+var ExpectedRate = artifacts.require("./ExpectedRate.sol");
 var Wrapper   = artifacts.require("./Wrapper.sol");
 var CentralizedExchange = artifacts.require("./MockExchange.sol");
 var BigNumber = require('bignumber.js');
@@ -422,7 +424,7 @@ contract('Deployment', function(accounts) {
   it("create tokens", function() {
 //    console.log(accounts[0]);
 
-    this.timeout(30000000);
+    this.timeout(31000000);
     tokenOwner = accounts[0];
     return deployTokens(tokenOwner);
   });
@@ -486,7 +488,7 @@ contract('Deployment', function(accounts) {
     return Network.new(networkOwner,{gas:6000000}).then(function(instance){
         network = instance;
         // set whitelist
-        return network.setKyberWhiteList(whitelist.address);
+        return network.setParams(whitelist.address,0,0,50*10**9,15);
     });
   });
 
@@ -563,6 +565,11 @@ contract('Deployment', function(accounts) {
                                  [0] );
   });
 
+  it("add operator in pricing", function() {
+    return pricing.addOperator(victor);
+  });
+
+
   it("add operator in reserve", function() {
     return reserve.addOperator(victor);
   });
@@ -589,7 +596,7 @@ contract('Deployment', function(accounts) {
                          dgdAddress,
                          destAddress,
                          new BigNumber(2).pow(255),
-                         rate,{value:ethAmount}).then(function(result){
+                         rate,0,{value:ethAmount}).then(function(result){
        //for( var i = 0 ; i < result.receipt.logs.length ; i++ )
        //console.log(result.receipt.logs[i].data);
 
