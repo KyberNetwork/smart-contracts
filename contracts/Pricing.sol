@@ -96,6 +96,8 @@ contract Pricing is VolumeImbalanceRecorder {
     if( abs(totalImbalance + imbalanceQty) >= getMaxTotalImbalance(token) ) return 0;
     if( abs(blockImbalance + imbalanceQty) >= getMaxPerBlockImbalance(token) ) return 0;
 
+    totalImbalance += imbalanceQty;
+
     // calculate actual price
     int extraBps;
     int8 priceUpdate;
