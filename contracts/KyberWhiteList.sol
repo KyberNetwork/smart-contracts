@@ -1,14 +1,14 @@
 pragma solidity ^0.4.18;
 
-import "./PermissionGroups.sol";
+
+import "./Withdrawable.sol";
 
 
-contract KyberWhiteList is PermissionGroups {
+contract KyberWhiteList is Withdrawable {
 
     uint sgdToWeiRate; //singapore dollar to wei rate
     mapping (address=>uint) userCategory; // each user has a category that defines cap on trade amount. 0 will be standard
     mapping (uint=>uint)    categoryCap;  // will define cap on trade amount per category in singapore Dollar.
-
 
     function KyberWhiteList( address _admin ) public {
         admin = _admin;

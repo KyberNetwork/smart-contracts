@@ -7,7 +7,7 @@ var Helper = require("./helper.js");
 var bank;
 var token;
 
-contract('MockDepositAddressToken', function (accounts) {
+contract('MockDepositAddressEther', function (accounts) {
     it("should test withdraw successful with owner.", async function (){
         //init globals on first test
         bank = await MockCentralBank.new();

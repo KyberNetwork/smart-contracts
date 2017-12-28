@@ -44,9 +44,7 @@ contract PermissionGroups {
      * @dev Allows the current admin to set the pendingAdmin address.
      * @param newAdmin The address to transfer ownership to.
      */
-    function transferAdmin(address newAdmin) public
-        onlyAdmin
-    {
+    function transferAdmin(address newAdmin) public onlyAdmin {
         require(newAdmin !=  address(0));
         TransferAdmin(pendingAdmin);
         pendingAdmin = newAdmin;
@@ -64,22 +62,16 @@ contract PermissionGroups {
         pendingAdmin = address(0);
     }
 
-    event AddAlerter ( address newAlerter );
+    event AddAlerter ( address newAlerter, bool isAdd );
 
-    function addAlerter( address newAlerter ) public
-        onlyAdmin
-    {
+    function addAlerter( address newAlerter ) public onlyAdmin {
         require(!alerters[newAlerter]); // prevent duplicates.
-        AddAlerter(newAlerter);
+        AddAlerter(newAlerter, true);
         alerters[newAlerter] = true;
         alertersGroup.push(newAlerter);
     }
 
-    event RemoveAlerter ( address alerter );
-
-    function removeAlerter ( address alerter ) public
-        onlyAdmin
-    {
+    function removeAlerter ( address alerter ) public onlyAdmin {
         if (!alerters[alerter]) revert();
 
         for (uint i = 0; i < alertersGroup.length; ++i)
@@ -88,28 +80,26 @@ contract PermissionGroups {
             {
                 alertersGroup[i] = alertersGroup[alertersGroup.length - 1];
                 alertersGroup.length--;
-                RemoveAlerter(alerter);
+                AddAlerter(alerter, false);
                 break;
             }
         }
     }
 
-    event AddOperator( address newOperator );
+    function getAlerters() public view returns (address[]) {
+        return alertersGroup;
+    }
 
-    function addOperator( address newOperator ) public
-        onlyAdmin
-    {
+    event AddOperator( address newOperator, bool isAdd );
+
+    function addOperator( address newOperator ) public onlyAdmin {
         require(!operators[newOperator]); // prevent duplicates.
-        AddOperator(newOperator);
+        AddOperator(newOperator, true);
         operators[newOperator] = true;
         operatorsGroup.push(newOperator);
     }
 
-    event RemoveOperator ( address operator );
-
-    function removeOperator ( address operator ) public
-        onlyAdmin
-    {
+    function removeOperator ( address operator ) public onlyAdmin {
         if (!operators[operator]) revert();
 
         for (uint i = 0; i < operatorsGroup.length; ++i)
@@ -118,9 +108,13 @@ contract PermissionGroups {
             {
                 operatorsGroup[i] = operatorsGroup[operatorsGroup.length - 1];
                 operatorsGroup.length -= 1;
-                RemoveOperator(operator);
+                AddOperator(operator, false);
                 break;
             }
         }
+    }
+
+    function getOperators() public view returns (address[]) {
+        return operatorsGroup;
     }
 }
