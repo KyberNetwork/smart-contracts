@@ -131,4 +131,24 @@ contract('FeeBurner', function(accounts) {
         }
     });
 
+    it("should test that when knc wallet (we burn from) is empty the handle fee is reverted.", async function () {
+        var initialWalletbalance = await kncToken.balanceOf(mockKNCWallet);
+
+        //create trade size that will cause fee be bigger then wallet balance.
+        var tradeSizeWei = 1 + (initialWalletbalance / (kncPerEtherRate * burnFeeInBPS / totalBPS));
+        var feeSize = tradeSizeWei * kncPerEtherRate * burnFeeInBPS / totalBPS;
+
+        assert(feeSize > tradeSizeWei, "required larger fee size ");
+
+        try {
+            await feeBurnerInst.handleFees(tradeSizeWei, mockReserve, 0, {from: mockKyberNetwork});
+            assert(false, "expected throw in line above..")
+        }
+            catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
+        }
+
+        balance = await kncToken.balanceOf(mockKNCWallet);
+        assert.equal(balance.valueOf(), initialWalletbalance.valueOf(), "unexpected wallet balance.");
+    });
 });
