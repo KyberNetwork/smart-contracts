@@ -73,7 +73,7 @@ contract('MockExchange', function (accounts) {
 
         try {
             await myExchange.withdraw(ethAddress, 3, payable.address, {from:accounts[3]});
-            assert(true, "should have received throw.")
+            assert(false, "should have received throw.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but received error: " + e);

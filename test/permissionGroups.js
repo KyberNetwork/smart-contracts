@@ -15,7 +15,7 @@ contract('PermissionGroups', function(accounts) {
 
         try {
             await permissionsInst.transferAdmin(accounts[1], {from:accounts[1]});
-            assert(true, "throw was expected in line above.")
+            assert(false, "throw was expected in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -25,7 +25,7 @@ contract('PermissionGroups', function(accounts) {
     it("should test claim admin is rejected for unrelevant address.", async function () {
         try {
             await permissionsInst.claimAdmin();
-            assert(true, "throw was expected in line above.")
+            assert(false, "throw was expected in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -42,7 +42,7 @@ contract('PermissionGroups', function(accounts) {
     it("should test add alerter is rejected for non admin.", async function () {
         try {
             await permissionsInst.addAlerter(accounts[2], {from:accounts[2]});
-            assert(true, "throw was expected in line above.")
+            assert(false, "throw was expected in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -52,7 +52,7 @@ contract('PermissionGroups', function(accounts) {
     it("should test add operator is rejected for non admin.", async function () {
         try {
             await permissionsInst.addOperator(accounts[2], {from:accounts[2]});
-            assert(true, "throw was expected in line above.")
+            assert(false, "throw was expected in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -66,10 +66,10 @@ contract('PermissionGroups', function(accounts) {
 
     it("should test get operators success.", async function () {
         try{
-        var operators = await permissionsInst.getOperators();
-        assert.equal(operators.length, 2, "bad number of operators.")
-        assert.equal(accounts[1], operators[0]);
-        assert.equal(accounts[2], operators[1]);
+            var operators = await permissionsInst.getOperators();
+            assert.equal(operators.length, 2, "bad number of operators.")
+            assert.equal(accounts[1], operators[0]);
+            assert.equal(accounts[2], operators[1]);
         }
         catch(e){
             console.log("oops " + e);
@@ -84,7 +84,7 @@ contract('PermissionGroups', function(accounts) {
 
         try {
             await mockPermissionsInst.setPrice(9, {from:accounts[6]});
-            assert(true, "throw was expected in line above.")
+            assert(false, "throw was expected in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -110,7 +110,7 @@ contract('PermissionGroups', function(accounts) {
 
         try {
             await mockPermissionsInst.stopTrade({from:accounts[6]});
-            assert(true, "throw was expected in line above.")
+            assert(false, "throw was expected in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -133,7 +133,7 @@ contract('PermissionGroups', function(accounts) {
     it("should test remove operator is rejected for non admin.", async function () {
         try {
             await permissionsInst.removeOperator(accounts[2], {from:accounts[2]});
-            assert(true, "throw was expected in line above.")
+            assert(false, "throw was expected in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -143,7 +143,7 @@ contract('PermissionGroups', function(accounts) {
     it("should test remove operator for non existing operator is reverted.", async function () {
         try {
             await permissionsInst.removeOperator(accounts[4]);
-            assert(true, "throw was expected in line above.")
+            assert(false, "throw was expected in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -172,7 +172,7 @@ contract('PermissionGroups', function(accounts) {
     it("should test remove alerter is rejected for non admin.", async function () {
         try {
             await permissionsInst.removeAlerter(accounts[3], {from:accounts[2]});
-            assert(true, "throw was expected in line above.")
+            assert(false, "throw was expected in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -182,7 +182,7 @@ contract('PermissionGroups', function(accounts) {
     it("should test remove alerter for non existing alerter is reverted.", async function () {
         try {
             await permissionsInst.removeAlerter(accounts[7]);
-            assert(true, "throw was expected in line above.")
+            assert(false, "throw was expected in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
