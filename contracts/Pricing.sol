@@ -69,7 +69,7 @@ contract Pricing is VolumeImbalanceRecorder {
         uint32 blockNumber32bits = uint32(blockNumber);
 
         for(uint i = 0; i < indices.length; i++) {
-            tokenPricesCompactData[indices[i]] = TokenPricesCompactData(buy[i],sell[i],blockNumber32bits);
+            tokenPricesCompactData[indices[i]] = TokenPricesCompactData(buy[i], sell[i], blockNumber32bits);
         }
     }
 
@@ -96,7 +96,7 @@ contract Pricing is VolumeImbalanceRecorder {
             tokenData[tokens[ind]].baseSellPrice = baseSell[ind];
         }
 
-        setCompactData(buy,sell,blockNumber,indices);
+        setCompactData(buy, sell, blockNumber, indices);
     }
 
     function setQtyStepFunction(

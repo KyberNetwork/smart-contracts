@@ -79,14 +79,14 @@ contract KyberReserve is Withdrawable, KyberConstants {
     event ApproveWithdrawAddress(ERC20 token, address addr, bool approve);
 
     function approveWithdrawAddress(ERC20 token, address addr, bool approve) public onlyAdmin {
-        approvedWithdrawAddresses[keccak256(token,addr)] = approve;
-        ApproveWithdrawAddress(token,addr,approve);
+        approvedWithdrawAddresses[keccak256(token, addr)] = approve;
+        ApproveWithdrawAddress(token, addr, approve);
     }
 
     event Withdraw(ERC20 token, uint amount, address destination);
 
     function withdraw(ERC20 token, uint amount, address destination) public onlyOperator returns(bool) {
-        require(approvedWithdrawAddresses[keccak256(token,destination)]);
+        require(approvedWithdrawAddresses[keccak256(token, destination)]);
 
         if(token == ETH_TOKEN_ADDRESS) {
             destination.transfer(amount);

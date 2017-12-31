@@ -22,11 +22,11 @@ contract SanityPricing is SanityPricingInterface, Withdrawable {
         require(dests.length == rates.length);
 
         for(uint i = 0; i < sources.length; i++) {
-            prices[keccak256(sources[i],dests[i])] = rates[i];
+            prices[keccak256(sources[i], dests[i])] = rates[i];
         }
     }
 
     function getSanityPrice(ERC20 src, ERC20 dest) view public returns(uint) {
-        return prices[keccak256(src,dest)];
+        return prices[keccak256(src, dest)];
     }
 }

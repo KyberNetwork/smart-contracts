@@ -160,7 +160,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @param dest Destination token
     /// @param add If true then enable trade, otherwise delist pair.
     function listPairForReserve(address reserve, ERC20 source, ERC20 dest, bool add) public onlyAdmin {
-        (perReserveListedPairs[reserve])[keccak256(source,dest)] = add;
+        (perReserveListedPairs[reserve])[keccak256(source, dest)] = add;
 
         if(source != ETH_TOKEN_ADDRESS) {
             if(add) {
@@ -227,7 +227,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
         for(uint i = 0; i < numReserves; i++) {
             //list all reserves that have this token.
-            if(!(perReserveListedPairs[reserves[i]])[keccak256(source,dest)]) continue;
+            if(!(perReserveListedPairs[reserves[i]])[keccak256(source, dest)]) continue;
 
             rates[i] = reserves[i].getConversionRate(source, dest, srcQty, block.number);
 
