@@ -183,7 +183,7 @@ contract TestToken is StandardToken {
 
     event Burn(address indexed _burner, uint _value);
 
-    function burn(uint _value) public returns (bool){
+    function burn(uint _value) public returns (bool) {
         balances[msg.sender] = balances[msg.sender].sub(_value);
         totalSupply = totalSupply.sub(_value);
         Burn(msg.sender, _value);

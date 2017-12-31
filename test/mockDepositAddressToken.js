@@ -32,7 +32,7 @@ contract('MockDepositAddressToken', function (accounts) {
 
         try {
             await mockAddress.withdraw(60, accounts[3], {from:accounts[3]});
-            assert(true, "expected to throw error in line above.")
+            assert(false, "expected to throw error in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);

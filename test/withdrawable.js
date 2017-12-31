@@ -34,7 +34,7 @@ contract('Withdrawable', function(accounts) {
         try {
             // withdraw the tokens from withdrawableInst
             await withdrawableInst.withdrawToken(token.address, 60, accounts[2], {from: accounts[2]});
-            assert(true, "expected to throw error in line above.")
+            assert(false, "expected to throw error in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
@@ -53,7 +53,7 @@ contract('Withdrawable', function(accounts) {
         try {
             // withdraw the tokens from withdrawableInst
             await withdrawableInst.withdrawToken(token.address, 130, accounts[3]);
-            assert(true, "expected to throw error in line above.")
+            assert(false, "expected to throw error in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
@@ -81,7 +81,7 @@ contract('Withdrawable', function(accounts) {
         try {
             // withdraw the tokens from withdrawableInst
             await mockWithdrawableInst.withdrawEther(7, accounts[7], {from: accounts[7]});
-            assert(true, "expected to throw error in line above.")
+            assert(false, "expected to throw error in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
@@ -98,7 +98,7 @@ contract('Withdrawable', function(accounts) {
         try {
             // withdraw the tokens from withdrawableInst
             await mockWithdrawableInst.withdrawEther(15, accounts[7]);
-            assert(true, "expected to throw error in line above.")
+            assert(false, "expected to throw error in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }

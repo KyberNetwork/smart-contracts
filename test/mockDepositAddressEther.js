@@ -44,7 +44,7 @@ contract('MockDepositAddressEther', function (accounts) {
 
         try {
             await mockAddress.withdraw(60, payable.address, {from:accounts[3]})
-            assert(true, "expected throw but didn't get one.")
+            assert(false, "expected throw in line above..")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);

@@ -1,11 +1,8 @@
-var Withdrawable = artifacts.require("./Withdrawable.sol");
-var TestToken = artifacts.require("./TestToken.sol");
 var KyberWhiteList = artifacts.require("./KyberWhiteList.sol")
 
 var Helper = require("./helper.js");
 var BigNumber = require('bignumber.js');
 
-var token;
 var whiteListInst;
 var sgdToEthRateInWei;
 var defaultUserCapSgd = 1000;
