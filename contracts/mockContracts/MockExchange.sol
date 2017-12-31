@@ -1,11 +1,11 @@
 pragma solidity ^0.4.18;
 
 
-import "./ERC20Interface.sol";
+import "../ERC20Interface.sol";
 import "./MockCentralBank.sol";
 import "./MockDepositAddressEther.sol";
 import "./MockDepositAddressToken.sol";
-import "./KyberConstants.sol";
+import "../KyberConstants.sol";
 
 
 /// @title Mock Exchange Deposit Address

@@ -1,5 +1,5 @@
 var MockImbalanceRecorder = artifacts.require("./mockContracts/MockImbalanceRecorder.sol");
-var TestToken = artifacts.require("./TestToken.sol");
+var TestToken = artifacts.require("./mockContracts/TestToken.sol");
 
 var Helper = require("./helper.js");
 var BigNumber = require('bignumber.js');

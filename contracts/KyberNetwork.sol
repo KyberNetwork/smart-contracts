@@ -102,64 +102,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         return (bestReserve, bestRate);
     }
 
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev do one trade with a reserve
-    /// @param source Source token
-    /// @param amount amount of source tokens
-    /// @param dest   Destination token
-    /// @param destAddress Address to send tokens to
-    /// @param reserve Reserve to use
-    /// @param validate If true, additional validations are applicable
-    /// @return true if trade is successful
-    function doSingleTrade(
-        ERC20 source,
-        uint amount,
-        ERC20 dest,
-        address destAddress,
-        uint expectedDestAmount,
-        KyberReserve reserve,
-        bool validate
-    )
-        internal
-        returns(bool)
-    {
-        uint callValue = 0;
-
-        if(source == ETH_TOKEN_ADDRESS) {
-            callValue = amount;
-        } else {
-            // take source tokens to this contract
-            source.transferFrom(msg.sender, this, amount);
-        }
-
-        // reserve send tokens/eth to network. network sends it to destination
-        assert(reserve.trade.value(callValue)(source, amount, dest, this, validate));
-
-        if(dest == ETH_TOKEN_ADDRESS) {
-            destAddress.transfer(expectedDestAmount);
-        } else {
-            assert(dest.transfer(destAddress,expectedDestAmount));
-        }
-
-        return true;
-    }
-
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev checks that user sent ether/tokens to contract before trade
-    /// @param source Source token
-    /// @param srcAmount amount of source tokens
-    /// @return true if input is valid
-    function validateTradeInput(ERC20 source, uint srcAmount) internal view returns(bool) {
-        if(source == ETH_TOKEN_ADDRESS) {
-            require (msg.value == srcAmount);
-        } else {
-            require (msg.value == 0);
-            require (source.allowance(msg.sender,this) >= srcAmount );
-        }
-
-        return true;
-    }
-
     event Trade(address indexed sender, ERC20 source, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
@@ -345,5 +287,63 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     {
         require(expectedRateContract != address(0));
         return expectedRateContract.getExpectedRate(source, dest, srcQuantity);
+    }
+
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev do one trade with a reserve
+    /// @param source Source token
+    /// @param amount amount of source tokens
+    /// @param dest   Destination token
+    /// @param destAddress Address to send tokens to
+    /// @param reserve Reserve to use
+    /// @param validate If true, additional validations are applicable
+    /// @return true if trade is successful
+    function doSingleTrade(
+        ERC20 source,
+        uint amount,
+        ERC20 dest,
+        address destAddress,
+        uint expectedDestAmount,
+        KyberReserve reserve,
+        bool validate
+    )
+        internal
+        returns(bool)
+    {
+        uint callValue = 0;
+
+        if(source == ETH_TOKEN_ADDRESS) {
+            callValue = amount;
+        } else {
+            // take source tokens to this contract
+            source.transferFrom(msg.sender, this, amount);
+        }
+
+        // reserve send tokens/eth to network. network sends it to destination
+        assert(reserve.trade.value(callValue)(source, amount, dest, this, validate));
+
+        if(dest == ETH_TOKEN_ADDRESS) {
+            destAddress.transfer(expectedDestAmount);
+        } else {
+            assert(dest.transfer(destAddress,expectedDestAmount));
+        }
+
+        return true;
+    }
+
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev checks that user sent ether/tokens to contract before trade
+    /// @param source Source token
+    /// @param srcAmount amount of source tokens
+    /// @return true if input is valid
+    function validateTradeInput(ERC20 source, uint srcAmount) internal view returns(bool) {
+        if(source == ETH_TOKEN_ADDRESS) {
+            require (msg.value == srcAmount);
+        } else {
+            require (msg.value == 0);
+            require (source.allowance(msg.sender,this) >= srcAmount );
+        }
+
+        return true;
     }
 }

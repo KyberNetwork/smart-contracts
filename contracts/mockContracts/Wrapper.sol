@@ -1,9 +1,9 @@
 pragma solidity ^0.4.18;
 
-import "./ERC20Interface.sol";
-import "./KyberReserve.sol";
-import "./KyberConstants.sol";
-import "./Pricing.sol";
+import "../ERC20Interface.sol";
+import "../KyberReserve.sol";
+import "../KyberConstants.sol";
+import "../Pricing.sol";
 
 contract Wrapper is KyberConstants {
     function getBalances( address reserve, ERC20[] tokens ) public constant returns(uint[]){

@@ -178,8 +178,8 @@ contract KyberReserve is Withdrawable, KyberConstants {
         address destAddress,
         bool validate
     )
-    internal
-    returns(bool)
+        internal
+        returns(bool)
     {
         uint conversionRate = getConversionRate(sourceToken, destToken, sourceAmount,  block.number);
 

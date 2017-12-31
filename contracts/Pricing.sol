@@ -71,71 +71,6 @@ contract Pricing is VolumeImbalanceRecorder {
         else return uint(x);
     }
 
-    function getPrice(ERC20 token, uint currentBlockNumber, bool buy, uint qty) public view returns(uint) {
-        // check if trade is enabled
-        if(!tokenData[token].enabled) return 0;
-
-        // get price update block
-        TokenPricesCompactData memory compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];
-
-        uint updatePriceBlock = uint(compactData.blockNumber);
-        if( currentBlockNumber >= updatePriceBlock + validPriceDurationInBlocks ) return 0; // price is expired
-
-         // check imbalance
-        int totalImbalance;
-        int blockImbalance;
-        (totalImbalance, blockImbalance) = getImbalance(token, updatePriceBlock, currentBlockNumber);
-
-        int imbalanceQty = int(qty);
-        if(!buy) imbalanceQty *= -1;
-
-        if(abs(totalImbalance + imbalanceQty) >= getMaxTotalImbalance(token)) return 0;
-        if(abs(blockImbalance + imbalanceQty) >= getMaxPerBlockImbalance(token)) return 0;
-
-        totalImbalance += imbalanceQty;
-
-        // calculate actual price
-        int extraBps;
-        int8 priceUpdate;
-        uint price;
-
-        if(buy) {
-            // start with base price
-            price =  tokenData[token].baseBuyPrice;
-
-            // add qty overhead
-            extraBps = executeStepFunction(tokenData[token].buyPriceQtyStepFunction,int(qty));
-            price = addBps( price, extraBps );
-
-            // add imbalance overhead
-            extraBps = executeStepFunction(tokenData[token].buyPriceImbalanceStepFunction,totalImbalance);
-            price = addBps( price, extraBps );
-
-            // add price update
-            priceUpdate = int8(compactData.buy[tokenData[token].compactDataFieldIndex]);
-            extraBps = priceUpdate * 10;
-            price = addBps( price, extraBps );
-        } else {
-            // start with base price
-            price = tokenData[token].baseSellPrice;
-
-            // add qty overhead
-            extraBps = executeStepFunction(tokenData[token].sellPriceQtyStepFunction,int(qty));
-            price = addBps( price, extraBps );
-
-            // add imbalance overhead
-            extraBps = executeStepFunction(tokenData[token].sellPriceImbalanceStepFunction,totalImbalance);
-            price = addBps(price, extraBps);
-
-            // add price update
-            priceUpdate = int8(compactData.sell[tokenData[token].compactDataFieldIndex]);
-            extraBps = priceUpdate * 10;
-            price = addBps( price, extraBps );
-        }
-
-        return price;
-    }
-
     function setCompactData(bytes14[] buy, bytes14[] sell, uint blockNumber, uint[] indices) public onlyOperator {
 
         require(buy.length == sell.length);
@@ -214,28 +149,6 @@ contract Pricing is VolumeImbalanceRecorder {
         tokenData[token].enabled = false;
     }
 
-    function getBasicPrice(ERC20 token, bool buy) public view returns(uint) {
-        if(buy) return tokenData[token].baseBuyPrice;
-        else return tokenData[token].baseSellPrice;
-    }
-
-    function getCompactData(ERC20 token) public view returns(uint, uint, byte, byte) {
-        uint arrayIndex = tokenData[token].compactDataArrayIndex;
-        uint fieldOffset = tokenData[token].compactDataFieldIndex;
-
-        return (
-            arrayIndex,
-            fieldOffset,
-            tokenPricesCompactData[arrayIndex].buy[fieldOffset],
-            tokenPricesCompactData[arrayIndex].sell[fieldOffset]
-        );
-    }
-
-    function getPriceUpdateBlock(ERC20 token) public view returns(uint) {
-        TokenPricesCompactData memory compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];
-        return uint(compactData.blockNumber);
-    }
-
     function setReserveAddress(address reserve) public onlyAdmin {
         reserveContract = reserve;
     }
@@ -251,6 +164,93 @@ contract Pricing is VolumeImbalanceRecorder {
         require(msg.sender == reserveContract);
 
         return addImbalance(token,buyAmount,priceUpdateBlock,currentBlock);
+    }
+
+    function getPrice(ERC20 token, uint currentBlockNumber, bool buy, uint qty) public view returns(uint) {
+        // check if trade is enabled
+        if(!tokenData[token].enabled) return 0;
+
+        // get price update block
+        TokenPricesCompactData memory compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];
+
+        uint updatePriceBlock = uint(compactData.blockNumber);
+        if( currentBlockNumber >= updatePriceBlock + validPriceDurationInBlocks ) return 0; // price is expired
+
+        // check imbalance
+        int totalImbalance;
+        int blockImbalance;
+        (totalImbalance, blockImbalance) = getImbalance(token, updatePriceBlock, currentBlockNumber);
+
+        int imbalanceQty = int(qty);
+        if(!buy) imbalanceQty *= -1;
+
+        if(abs(totalImbalance + imbalanceQty) >= getMaxTotalImbalance(token)) return 0;
+        if(abs(blockImbalance + imbalanceQty) >= getMaxPerBlockImbalance(token)) return 0;
+
+        totalImbalance += imbalanceQty;
+
+        // calculate actual price
+        int extraBps;
+        int8 priceUpdate;
+        uint price;
+
+        if(buy) {
+            // start with base price
+            price =  tokenData[token].baseBuyPrice;
+
+            // add qty overhead
+            extraBps = executeStepFunction(tokenData[token].buyPriceQtyStepFunction,int(qty));
+            price = addBps( price, extraBps );
+
+            // add imbalance overhead
+            extraBps = executeStepFunction(tokenData[token].buyPriceImbalanceStepFunction,totalImbalance);
+            price = addBps( price, extraBps );
+
+            // add price update
+            priceUpdate = int8(compactData.buy[tokenData[token].compactDataFieldIndex]);
+            extraBps = priceUpdate * 10;
+            price = addBps( price, extraBps );
+        } else {
+            // start with base price
+            price = tokenData[token].baseSellPrice;
+
+            // add qty overhead
+            extraBps = executeStepFunction(tokenData[token].sellPriceQtyStepFunction,int(qty));
+            price = addBps( price, extraBps );
+
+            // add imbalance overhead
+            extraBps = executeStepFunction(tokenData[token].sellPriceImbalanceStepFunction,totalImbalance);
+            price = addBps(price, extraBps);
+
+            // add price update
+            priceUpdate = int8(compactData.sell[tokenData[token].compactDataFieldIndex]);
+            extraBps = priceUpdate * 10;
+            price = addBps( price, extraBps );
+        }
+
+        return price;
+    }
+
+    function getBasicPrice(ERC20 token, bool buy) public view returns(uint) {
+        if(buy) return tokenData[token].baseBuyPrice;
+        else return tokenData[token].baseSellPrice;
+    }
+
+    function getCompactData(ERC20 token) public view returns(uint, uint, byte, byte) {
+        uint arrayIndex = tokenData[token].compactDataArrayIndex;
+        uint fieldOffset = tokenData[token].compactDataFieldIndex;
+
+        return (
+        arrayIndex,
+        fieldOffset,
+        tokenPricesCompactData[arrayIndex].buy[fieldOffset],
+        tokenPricesCompactData[arrayIndex].sell[fieldOffset]
+        );
+    }
+
+    function getPriceUpdateBlock(ERC20 token) public view returns(uint) {
+        TokenPricesCompactData memory compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];
+        return uint(compactData.blockNumber);
     }
 
     function executeStepFunction( StepFunction f, int x ) pure internal returns(int) {
