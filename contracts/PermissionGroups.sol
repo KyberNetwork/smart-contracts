@@ -75,6 +75,7 @@ contract PermissionGroups {
     function removeAlerter (address alerter) public onlyAdmin {
 
         require(alerters[alerter]);
+        alerters[alerter] = false;
 
         for (uint i = 0; i < alertersGroup.length; ++i)
         {
@@ -104,6 +105,7 @@ contract PermissionGroups {
     function removeOperator (address operator) public onlyAdmin {
 
         require (operators[operator]);
+        operators[operator] = false;
 
         for (uint i = 0; i < operatorsGroup.length; ++i)
         {
