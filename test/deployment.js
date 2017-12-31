@@ -176,6 +176,19 @@ var transferFundsToBank = function( owner, bankAddress, amount ) {
   });
 };
 
+var getBlockNumberWithPromise = function( ) {
+    return new Promise(function(fulfill, reject){
+            web3.eth.getBlockNumber(function(error, result){
+            if( error ) {
+                return reject(error);
+            }
+            else {
+                return fulfill(result);
+            }
+        });
+    });
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 
 var depositTokensToReserve = function( owner, reserveInstance ) {
@@ -509,7 +522,7 @@ contract('Deployment', function(accounts) {
 
   it("create pricing", function() {
     this.timeout(31000000);
-    return Pricing.new(accounts[0],{gas:4710000}).then(function(instance){
+    return Pricing.new(accounts[0],{gas:4700000}).then(function(instance){
         pricing = instance;
         return pricing.addOperator(accounts[0],{from:accounts[0]});
     });
@@ -602,15 +615,7 @@ contract('Deployment', function(accounts) {
     });
   });
 
-  it("set eth to dgd rate", function() {
-    return pricing.setBasePrice( [tokenInstance[1].address],
-                                 [0x47d40a969bd7c0021],
-                                 [conversionRate],
-                                 [0],
-                                 [0],
-                                 web3.eth.blockNumber,
-                                 [0] );
-  });
+
 
   it("add operator in pricing", function() {
     this.timeout(31000000);
@@ -633,14 +638,16 @@ contract('Deployment', function(accounts) {
 });
 
 it("set eth to dgd rate", function() {
-  this.timeout(31000000);
-  return pricing.setBasePrice( [tokenInstance[1].address],
-                               [0x47d40a969bd7c0021],
-                               [conversionRate],
-                               [0],
-                               [0],
-                               web3.eth.blockNumber,
-                               [0] );
+  return getBlockNumberWithPromise().then(function(blockNumber){
+    console.log(blockNumber.valueOf());
+    return pricing.setBasePrice( [tokenInstance[1].address],
+                                 [0x47d40a969bd7c0021],
+                                 [conversionRate],
+                                 [0],
+                                 [0],
+                                 blockNumber,
+                                 [0] );
+  });
 });
 
   it("do a single exchange", function() {
@@ -656,7 +663,7 @@ it("set eth to dgd rate", function() {
                          dgdAddress,
                          destAddress,
                          new BigNumber(2).pow(255),
-                         rate,0,{value:ethAmount}).then(function(result){
+                         rate,0,{value:ethAmount, gasPrice:49* 10**9}).then(function(result){
        //for( var i = 0 ; i < result.receipt.logs.length ; i++ )
        //console.log(result.receipt.logs[i].data);
 

@@ -97,7 +97,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
     }
 
     function getImbalance(ERC20 token, uint priceUpdateBlock, uint currentBlock)
-        public view
+        internal view
         returns(int totalImbalance, int currentBlockImbalance)
     {
 
