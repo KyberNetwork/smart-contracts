@@ -22,7 +22,7 @@ var tokenInitialReserveBalance = [];
 var reserveInitialEth;
 
 var tokenInstance = [];
-
+var kncInstance;
 
 var conversionRate = (((new BigNumber(10)).pow(18)).mul(2));
 var counterConversionRate = (((new BigNumber(10)).pow(18)).div(2));
@@ -48,7 +48,8 @@ var wrapper;
 
 var whitelist;
 var pricing;
-
+var feeBurner;
+var expectedRate;
 
 var nam;// = "0xc6bc2f7b73da733366985f5f5b485262b45a77a3";
 var victor;// = "0x760d30979eb313a2d23c53e4fb55986183b0ffd9";
@@ -69,6 +70,9 @@ var getNetwork = function(){
   }
   else if( id == 42 ) {
     return "kovan";
+  }
+  else if( id == 3 ) {
+    return "ropsten";
   }
   else {
     return "unknown";
@@ -131,8 +135,12 @@ var deployTokens = function( owner ){
           var symbol = tokenSymbol[item];
           var name = tokenName[item];
           var decimals = tokenDecimals[item];
-          return TestToken.new(name, symbol, decimals, {from:owner, gas:6000000});
+          return TestToken.new(name, symbol, decimals, {from:owner});
       }).then(function(instance){
+          if( tokenSymbol[item] === "KNC" ) {
+            console.log("found knc");
+            kncInstance = instance;
+          }
           tokenInstance.push(instance);
       });
 
@@ -400,7 +408,7 @@ contract('Deployment', function(accounts) {
 
   it("check network", function() {
     var networkId = getNetwork();
-    if( networkId == "kovan" || networkId == "testrpc" || networkId == "dev" ) {
+    if( networkId == "kovan" || networkId == "testrpc" || networkId == "dev" || networkId == "ropsten" ) {
       console.log("network", networkId);
     }
     else {
@@ -430,6 +438,7 @@ contract('Deployment', function(accounts) {
   });
 
   it("create bank and transfer funds", function() {
+    this.timeout(31000000);
     var amount = (new BigNumber(10)).pow(40+18);
     return Bank.new().then(function(instance){
         bank = instance;
@@ -447,14 +456,17 @@ contract('Deployment', function(accounts) {
   });
 
   it("create exchanges", function() {
+    this.timeout(31000000);
     return createExchanges( tokenOwner, bank.address );
   });
 
   it("withdraw ETH from exchange", function() {
+    this.timeout(31000000);
     return exchangesInstance[0].withdraw(ethAddress,1,accounts[0],{from:tokenOwner});
   });
 
   it("withdraw token from exchange", function() {
+    this.timeout(31000000);
     var depositAddress = exchangeDepositAddresses[0][tokenSymbol[0]];
     return exchangesInstance[1].withdraw(tokenInstance[0].address,2,depositAddress,{from:tokenOwner}).then(function(){
       return tokenInstance[0].balanceOf(depositAddress);
@@ -464,6 +476,7 @@ contract('Deployment', function(accounts) {
   });
 
   it("withdraw token from exchange to exchange and clear funds", function() {
+    this.timeout(31000000);
     var depositAddress = exchangeDepositAddresses[0][tokenSymbol[0]];
     return exchangesInstance[0].clearBalances([tokenInstance[0].address, ethAddress],[1,0]).then(function(){
         return tokenInstance[0].balanceOf(depositAddress);
@@ -473,6 +486,7 @@ contract('Deployment', function(accounts) {
   });
 
   it("create whitelist", function() {
+    this.timeout(31000000);
     return Whitelist.new(accounts[0]).then(function(instance){
         whitelist = instance;
         return whitelist.addOperator(accounts[0]);
@@ -484,8 +498,9 @@ contract('Deployment', function(accounts) {
   });
 
   it("create network", function() {
+    this.timeout(31000000);
     networkOwner = accounts[0];
-    return Network.new(networkOwner,{gas:6000000}).then(function(instance){
+    return Network.new(networkOwner,{gas:4700000}).then(function(instance){
         network = instance;
         // set whitelist
         return network.setParams(whitelist.address,0,0,50*10**9,15);
@@ -493,10 +508,9 @@ contract('Deployment', function(accounts) {
   });
 
   it("create pricing", function() {
-    return Pricing.new(accounts[0],{gas:6000000}).then(function(instance){
+    this.timeout(31000000);
+    return Pricing.new(accounts[0],{gas:4710000}).then(function(instance){
         pricing = instance;
-        return pricing.addOperator(victor,{from:accounts[0]});
-    }).then(function(result){
         return pricing.addOperator(accounts[0],{from:accounts[0]});
     });
   });
@@ -504,7 +518,7 @@ contract('Deployment', function(accounts) {
   it("create reserve and deposit tokens", function() {
     this.timeout(30000000);
     reserveOwner = accounts[0];
-    return Reserve.new(network.address,pricing.address, reserveOwner,{gas:6000000}).then(function(instance){
+    return Reserve.new(network.address,pricing.address, reserveOwner,{gas:4700000}).then(function(instance){
         reserve = instance;
     }).then(function(){
         return pricing.setValidPriceDurationInBlocks(new BigNumber(100));
@@ -521,7 +535,39 @@ contract('Deployment', function(accounts) {
     });
   });
 
+  it("create burning fees", function() {
+    this.timeout(31000000);
+    return FeeBurner.new(accounts[0],kncInstance.address).then(function(instance){
+        feeBurner = instance;
+        return feeBurner.addOperator(accounts[0],{from:accounts[0]});
+    }).then(function(result){
+      return kncInstance.approve(feeBurner.address, new BigNumber(10**18).mul(10000),{from:accounts[0]});
+    }).then(function(){
+      // set fees for reserve
+      // 0.25% from accounts
+      return feeBurner.setReserveData(reserve.address,25, accounts[0]);
+    }).then(function(){
+      // set kyber network
+      return feeBurner.setKyberNetwork(network.address);
+    });
+  });
+
+  it("create expected rate", function() {
+    this.timeout(31000000);
+    return ExpectedRate.new(network.address).then(function(instance){
+        expectedRate = instance;
+    });
+  });
+
+  it("set network params", function() {
+    this.timeout(31000000);
+
+    // set whitelist
+    return network.setParams(whitelist.address,expectedRate.address,feeBurner.address,50*10**9,15);
+  });
+
   it("add reserve to network", function() {
+    this.timeout(31000000);
     return network.addReserve(reserve.address, true, {from:networkOwner});
   });
 
@@ -531,6 +577,7 @@ contract('Deployment', function(accounts) {
   });
 
   it("create wrapper", function() {
+    this.timeout(31000000);
     var balance0;
     var balance1;
     return Wrapper.new().then(function(instance){
@@ -566,11 +613,13 @@ contract('Deployment', function(accounts) {
   });
 
   it("add operator in pricing", function() {
+    this.timeout(31000000);
     return pricing.addOperator(victor);
   });
 
 
   it("add operator in reserve", function() {
+    this.timeout(31000000);
     return reserve.addOperator(victor);
   });
 
@@ -583,8 +632,19 @@ contract('Deployment', function(accounts) {
   });
 });
 
+it("set eth to dgd rate", function() {
+  this.timeout(31000000);
+  return pricing.setBasePrice( [tokenInstance[1].address],
+                               [0x47d40a969bd7c0021],
+                               [conversionRate],
+                               [0],
+                               [0],
+                               web3.eth.blockNumber,
+                               [0] );
+});
 
   it("do a single exchange", function() {
+    this.timeout(31000000);
     var dgdAddress = tokenInstance[1].address;
     var ethAmount = 1 * 10**16;
     var rate = 0x47d40a969bd7c0021;

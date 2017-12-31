@@ -1,22 +1,11 @@
 pragma solidity ^0.4.18;
 
-
-interface PermissionGroupsInterface {
-    function transferAdmin(address newAdmin) public;
-    function claimAdmin() public;
-    function addAlerter(address newAlerter) public;
-    function removeAlerter(address alerter) public;
-    function addOperator(address newOperator) public;
-    function removeOperator(address operator) public;
-}
-
-
 contract PermissionGroups {
 
     address public admin;
     address public pendingAdmin;
-    mapping(address=>bool) public operators;
-    mapping(address=>bool) public alerters;
+    mapping(address=>bool) operators;
+    mapping(address=>bool) alerters;
     address[] public operatorsGroup;
     address[] public alertersGroup;
 
@@ -113,13 +102,5 @@ contract PermissionGroups {
                 break;
             }
         }
-    }
-
-    function getOperators() public view returns (address[]) {
-        return operatorsGroup;
-    }
-
-    function getAlerters() public view returns (address[]) {
-        return alertersGroup;
     }
 }

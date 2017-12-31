@@ -43,8 +43,8 @@ contract Pricing is VolumeImbalanceRecorder {
     address public reserveContract;
     uint constant NUM_TOKENS_IN_COMPACT_DATA = 14;
 
-    function Pricing(address _admin) public {
-        admin = _admin;
+    function Pricing(address _admin) public VolumeImbalanceRecorder(_admin) {
+
     }
 
     function addToken(ERC20 token) public onlyAdmin {
@@ -252,12 +252,12 @@ contract Pricing is VolumeImbalanceRecorder {
         return f.y[len-1];
     }
 
-    function addBps(uint price, int bps) internal pure returns(uint) {
+    function addBps(uint price, int bps) pure internal returns(uint) {
         uint maxBps = 100 * 100;
         return (price * uint(int(maxBps) + bps)) / maxBps;
     }
 
-    function abs(int x) internal pure returns(uint) {
+    function abs(int x) pure internal returns(uint) {
         if(x < 0) return uint(-1 * x);
         else return uint(x);
     }
