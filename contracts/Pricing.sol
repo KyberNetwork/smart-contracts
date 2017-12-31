@@ -43,7 +43,7 @@ contract Pricing is VolumeImbalanceRecorder {
     address public reserveContract;
     uint constant public NUM_TOKENS_IN_COMPACT_DATA = 14;
 
-    function Pricing( address _admin ) public {
+    function Pricing(address _admin) public {
         admin = _admin;
     }
 

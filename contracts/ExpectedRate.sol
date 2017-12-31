@@ -17,12 +17,20 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface {
     KyberNetwork kyberNetwork;
     uint quantityFactor = 2;
 
-    function ExpectedRate(KyberNetwork _kyberNetwork) public {
+    function ExpectedRate(KyberNetwork _kyberNetwork, address _admin) public {
         kyberNetwork = _kyberNetwork;
+        admin = _admin;
+    }
+
+    event SetQuantityFactor (uint newFactor, uint oldFactor, address sender);
+
+    function setQuantityFactor(uint newFactor) public onlyOperator {
+        SetQuantityFactor(quantityFactor, newFactor, msg.sender);
+        quantityFactor = newFactor;
     }
 
     function getExpectedRate(ERC20 source, ERC20 dest, uint srcQty) public view
-        returns ( uint expectedPrice, uint slippagePrice )
+    returns ( uint expectedPrice, uint slippagePrice )
     {
         uint bestReserve;
         require (quantityFactor != 0);
@@ -32,12 +40,5 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface {
         (bestReserve, slippagePrice) = kyberNetwork.findBestRate(source, dest, (srcQty * quantityFactor));
 
         return (expectedPrice, slippagePrice);
-    }
-
-    event SetQuantityFactor (uint newFactor, uint oldFactor, address sender);
-
-    function setQuantityFactor(uint newFactor) public onlyOperator {
-        SetQuantityFactor(quantityFactor, newFactor, msg.sender);
-        quantityFactor = newFactor;
     }
 }

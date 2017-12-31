@@ -89,10 +89,6 @@ contract PermissionGroups {
         }
     }
 
-    function getAlerters() public view returns (address[]) {
-        return alertersGroup;
-    }
-
     event AddOperator(address newOperator, bool isAdd);
 
     function addOperator(address newOperator) public onlyAdmin {
@@ -121,5 +117,9 @@ contract PermissionGroups {
 
     function getOperators() public view returns (address[]) {
         return operatorsGroup;
+    }
+
+    function getAlerters() public view returns (address[]) {
+        return alertersGroup;
     }
 }

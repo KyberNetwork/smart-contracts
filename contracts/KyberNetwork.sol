@@ -31,77 +31,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         admin = _admin;
     }
 
-    /// @dev returns number of reserves
-    /// @return number of reserves
-    function getNumReserves() public view returns(uint) {
-        return reserves.length;
-    }
-
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev information on conversion rate to a front end application
-    /// @param source Source token
-    /// @param dest Destination token
-    /// @return rate. If not available returns 0.
-
-    function getPrice(ERC20 source, ERC20 dest, uint srcQty) public view returns(uint) {
-        uint reserve;
-        uint rate;
-        (reserve, rate) = findBestRate(source, dest, srcQty);
-        return rate;
-    }
-
-    function getDecimals(ERC20 token) public view returns(uint) {
-        if(token == ETH_TOKEN_ADDRESS) return 18;
-        return token.decimals();
-    }
-
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev best conversion rate for a pair of tokens, if number of reserves have small differences. randomize
-    /// @param source Source token
-    /// @param dest Destination token
-    function findBestRate(ERC20 source, ERC20 dest, uint srcQty) public view returns(uint, uint) {
-        uint bestRate = 0;
-        uint bestReserve = 0;
-        uint numRelevantReserves = 0;
-        uint numReserves = reserves.length;
-        uint[] memory rates = new uint[](numReserves);
-        uint[] memory reserveCandidates = new uint[](numReserves);
-
-        for( uint i = 0 ; i < numReserves ; i++ ) {
-            //list all reserves that have this token.
-            if(!(perReserveListedPairs[reserves[i]])[keccak256(source,dest)]) continue;
-
-            rates[i] = reserves[i].getConversionRate(source, dest, srcQty, block.number);
-
-            if(rates[i] > bestRate) {
-                //best rate is highest rate
-                bestRate = rates[i];
-            }
-        }
-
-        if (bestRate > 0) {
-            uint random = 0;
-            uint smallestRelevantRate = (bestRate * 10000) / (10000 + negligiblePriceDiff);
-
-            for (i = 0; i < numReserves; i++) {
-                if (rates[i] >= smallestRelevantRate) {
-                    reserveCandidates[numRelevantReserves] = i;
-                    ++numRelevantReserves;
-                }
-            }
-
-            if (numRelevantReserves > 1) {
-                //when encountering small price diff from bestRate. draw from relevant reserves
-                random = uint(block.blockhash(block.number-1)) % numRelevantReserves;
-            }
-
-            bestReserve = reserveCandidates[random];
-            bestRate = rates[bestReserve];
-        }
-
-        return (bestReserve, bestRate);
-    }
-
     event Trade(address indexed sender, ERC20 source, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
@@ -246,23 +175,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         ListPairsForReserve(reserve, source, dest, add);
     }
 
-    /// @notice should be called off chain with as much gas as needed
-    /// @dev get an array of all reserves
-    /// @return An array of all reserves
-    function getReserves() public view returns(KyberReserve[]) {
-        return reserves;
-    }
-
-
-    /// @notice a debug function
-    /// @dev get the balance of the network. It is expected to be 0 all the time.
-    /// @param token The token type
-    /// @return The balance
-    function getBalance(ERC20 token) public view returns(uint){
-        if(token == ETH_TOKEN_ADDRESS) return this.balance;
-        else return token.balanceOf(this);
-    }
-
     function setParams(
         KyberWhiteList        _whiteList,
         ExpectedRateInterface _expectedRate,
@@ -279,6 +191,93 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         maxGasPrice = _maxGasPrice;
         negligiblePriceDiff = _negligibleDiff;
 
+    }
+
+    /// @dev returns number of reserves
+    /// @return number of reserves
+    function getNumReserves() public view returns(uint) {
+        return reserves.length;
+    }
+
+    /// @notice should be called off chain with as much gas as needed
+    /// @dev get an array of all reserves
+    /// @return An array of all reserves
+    function getReserves() public view returns(KyberReserve[]) {
+        return reserves;
+    }
+
+    /// @notice a debug function
+    /// @dev get the balance of the network. It is expected to be 0 all the time.
+    /// @param token The token type
+    /// @return The balance
+    function getBalance(ERC20 token) public view returns(uint){
+        if(token == ETH_TOKEN_ADDRESS) return this.balance;
+        else return token.balanceOf(this);
+    }
+
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev information on conversion rate to a front end application
+    /// @param source Source token
+    /// @param dest Destination token
+    /// @return rate. If not available returns 0.
+
+    function getPrice(ERC20 source, ERC20 dest, uint srcQty) public view returns(uint) {
+        uint reserve;
+        uint rate;
+        (reserve, rate) = findBestRate(source, dest, srcQty);
+        return rate;
+    }
+
+    function getDecimals(ERC20 token) public view returns(uint) {
+        if(token == ETH_TOKEN_ADDRESS) return 18;
+        return token.decimals();
+    }
+
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev best conversion rate for a pair of tokens, if number of reserves have small differences. randomize
+    /// @param source Source token
+    /// @param dest Destination token
+    function findBestRate(ERC20 source, ERC20 dest, uint srcQty) public view returns(uint, uint) {
+        uint bestRate = 0;
+        uint bestReserve = 0;
+        uint numRelevantReserves = 0;
+        uint numReserves = reserves.length;
+        uint[] memory rates = new uint[](numReserves);
+        uint[] memory reserveCandidates = new uint[](numReserves);
+
+        for( uint i = 0 ; i < numReserves ; i++ ) {
+            //list all reserves that have this token.
+            if(!(perReserveListedPairs[reserves[i]])[keccak256(source,dest)]) continue;
+
+            rates[i] = reserves[i].getConversionRate(source, dest, srcQty, block.number);
+
+            if(rates[i] > bestRate) {
+                //best rate is highest rate
+                bestRate = rates[i];
+            }
+        }
+
+        if (bestRate > 0) {
+            uint random = 0;
+            uint smallestRelevantRate = (bestRate * 10000) / (10000 + negligiblePriceDiff);
+
+            for (i = 0; i < numReserves; i++) {
+                if (rates[i] >= smallestRelevantRate) {
+                    reserveCandidates[numRelevantReserves] = i;
+                    ++numRelevantReserves;
+                }
+            }
+
+            if (numRelevantReserves > 1) {
+                //when encountering small price diff from bestRate. draw from relevant reserves
+                random = uint(block.blockhash(block.number-1)) % numRelevantReserves;
+            }
+
+            bestReserve = reserveCandidates[random];
+            bestRate = rates[bestReserve];
+        }
+
+        return (bestReserve, bestRate);
     }
 
     function getExpectedRate(ERC20 source, ERC20 dest, uint srcQuantity)

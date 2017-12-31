@@ -28,6 +28,10 @@ contract VolumeImbalanceRecorder is Withdrawable {
 
     mapping(address => mapping(uint=>TokenImbalanceData)) tokenImbalanceData;
 
+    function VolumeImbalanceRecorder(address _admin) public {
+        admin = _admin;
+    }
+
     event SetTokenControlInfo( ERC20 token,
                                uint minimalRecordResolution,
                                uint maxPerBlockImbalance,
@@ -118,6 +122,14 @@ contract VolumeImbalanceRecorder is Withdrawable {
         currentBlockImbalance *= resolution;
     }
 
+    function getMaxPerBlockImbalance(ERC20 token) public view returns(uint) {
+        return tokenControlInfo[token].maxPerBlockImbalance;
+    }
+
+    function getMaxTotalImbalance(ERC20 token) public view returns(uint) {
+        return tokenControlInfo[token].maxTotalImbalance;
+    }
+
     function addImbalance(
         ERC20 token,
         int buyAmount,
@@ -158,13 +170,5 @@ contract VolumeImbalanceRecorder is Withdrawable {
         }
 
         tokenImbalanceData[token][currentBlockIndex] = currentBlockData;
-    }
-
-    function getMaxPerBlockImbalance(ERC20 token) public view returns(uint) {
-        return tokenControlInfo[token].maxPerBlockImbalance;
-    }
-
-    function getMaxTotalImbalance(ERC20 token) public view returns(uint) {
-        return tokenControlInfo[token].maxTotalImbalance;
     }
 }

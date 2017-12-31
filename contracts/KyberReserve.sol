@@ -32,51 +32,6 @@ contract KyberReserve is Withdrawable, KyberConstants {
         DepositToken(ETH_TOKEN_ADDRESS, msg.value);
     }
 
-    function getDecimals(ERC20 token) public view returns(uint) {
-        if(token == ETH_TOKEN_ADDRESS) return 18;
-        return token.decimals();
-    }
-
-    function getDestQty(ERC20 source, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {
-        // TODO - check overflow
-        return (srcQty * rate * (10 ** getDecimals(dest)) / (10**getDecimals(source))) / PRECISION;
-    }
-
-    function getSrcQty(ERC20 source, ERC20 dest, uint dstQty, uint rate) public view returns(uint) {
-        // TODO - check overflow
-        return PRECISION * dstQty * (10**getDecimals(source)) / (rate*(10 ** getDecimals(dest)));
-    }
-
-    function getConversionRate(ERC20 source, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
-        ERC20 token;
-        bool  buy;
-        uint  tokenQty;
-
-        if(ETH_TOKEN_ADDRESS == source) {
-            buy = true;
-            token = dest;
-            tokenQty = getDestQty( source,dest,srcQty,pricingContract.getBasicPrice(token,true));
-        } else if(ETH_TOKEN_ADDRESS == dest) {
-            buy = false;
-            token = source;
-            tokenQty = srcQty;
-        } else {
-            return 0; // pair is not listed
-        }
-
-        uint price = pricingContract.getPrice(token, blockNumber, buy, tokenQty);
-        uint destQty = getDestQty(source, dest, srcQty, price);
-
-        if(getBalance(dest) < destQty) return 0;
-
-        if(sanityPricingContract != address(0)) {
-            uint sanityPrice = sanityPricingContract.getSanityPrice(source,dest);
-            if(price > sanityPrice) return 0;
-        }
-
-        return price;
-    }
-
     event DoTrade(
         address indexed origin,
         address source,
@@ -162,6 +117,51 @@ contract KyberReserve is Withdrawable, KyberConstants {
     function getBalance(ERC20 token) public view returns(uint) {
         if(token == ETH_TOKEN_ADDRESS) return this.balance;
         else return token.balanceOf(this);
+    }
+
+    function getDecimals(ERC20 token) public view returns(uint) {
+        if(token == ETH_TOKEN_ADDRESS) return 18;
+        return token.decimals();
+    }
+
+    function getDestQty(ERC20 source, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {
+        // TODO - check overflow
+        return (srcQty * rate * (10 ** getDecimals(dest)) / (10**getDecimals(source))) / PRECISION;
+    }
+
+    function getSrcQty(ERC20 source, ERC20 dest, uint dstQty, uint rate) public view returns(uint) {
+        // TODO - check overflow
+        return PRECISION * dstQty * (10**getDecimals(source)) / (rate*(10 ** getDecimals(dest)));
+    }
+
+    function getConversionRate(ERC20 source, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
+        ERC20 token;
+        bool  buy;
+        uint  tokenQty;
+
+        if(ETH_TOKEN_ADDRESS == source) {
+            buy = true;
+            token = dest;
+            tokenQty = getDestQty( source,dest,srcQty,pricingContract.getBasicPrice(token,true));
+        } else if(ETH_TOKEN_ADDRESS == dest) {
+            buy = false;
+            token = source;
+            tokenQty = srcQty;
+        } else {
+            return 0; // pair is not listed
+        }
+
+        uint price = pricingContract.getPrice(token, blockNumber, buy, tokenQty);
+        uint destQty = getDestQty(source, dest, srcQty, price);
+
+        if(getBalance(dest) < destQty) return 0;
+
+        if(sanityPricingContract != address(0)) {
+            uint sanityPrice = sanityPricingContract.getSanityPrice(source,dest);
+            if(price > sanityPrice) return 0;
+        }
+
+        return price;
     }
 
     /// @dev do a trade

@@ -12,6 +12,7 @@ interface SanityPricingInterface {
 
 contract SanityPricing is SanityPricingInterface, Withdrawable {
     mapping(bytes32=>uint) prices;
+
     function SanityPricing(address _admin) public {
         admin = _admin;
     }
