@@ -225,7 +225,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         uint[] memory rates = new uint[](numReserves);
         uint[] memory reserveCandidates = new uint[](numReserves);
 
-        for( uint i = 0 ; i < numReserves ; i++ ) {
+        for(uint i = 0; i < numReserves; i++) {
             //list all reserves that have this token.
             if(!(perReserveListedPairs[reserves[i]])[keccak256(source,dest)]) continue;
 
@@ -319,7 +319,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
             require (msg.value == srcAmount);
         } else {
             require (msg.value == 0);
-            require (source.allowance(msg.sender,this) >= srcAmount );
+            require (source.allowance(msg.sender,this) >= srcAmount);
         }
 
         return true;

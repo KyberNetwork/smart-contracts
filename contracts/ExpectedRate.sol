@@ -8,7 +8,7 @@ import "./Withdrawable.sol";
 
 interface ExpectedRateInterface {
     function getExpectedRate(ERC20 source, ERC20 dest, uint srcQty) public view
-        returns ( uint expectedPrice, uint slippagePrice );
+        returns (uint expectedPrice, uint slippagePrice);
 }
 
 
@@ -29,8 +29,10 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface {
         quantityFactor = newFactor;
     }
 
-    function getExpectedRate(ERC20 source, ERC20 dest, uint srcQty) public view
-    returns ( uint expectedPrice, uint slippagePrice ) {
+    function getExpectedRate(ERC20 source, ERC20 dest, uint srcQty)
+        public view
+        returns (uint expectedPrice, uint slippagePrice)
+    {
         require (quantityFactor != 0);
         require (kyberNetwork != address (0));
 
