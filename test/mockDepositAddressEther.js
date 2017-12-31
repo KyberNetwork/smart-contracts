@@ -1,13 +1,13 @@
-var MockDepositAddressToken = artifacts.require("./MockDepositAddressToken.sol");
-var MockDepositAddressEther = artifacts.require("./MockDepositAddressEther.sol");
-var TestToken = artifacts.require("./TestToken.sol");
-var MockCentralBank = artifacts.require("./MockCentralBank.sol");
+var MockDepositAddressToken = artifacts.require("./mockContracts/MockDepositAddressToken.sol");
+var MockDepositAddressEther = artifacts.require("./mockContracts/MockDepositAddressEther.sol");
+var TestToken = artifacts.require("./mockContracts/TestToken.sol");
+var MockCentralBank = artifacts.require("./mockContracts/MockCentralBank.sol");
 var Helper = require("./helper.js");
 
 var bank;
 var token;
 
-contract('MockDepositAddressToken', function (accounts) {
+contract('MockDepositAddressEther', function (accounts) {
     it("should test withdraw successful with owner.", async function (){
         //init globals on first test
         bank = await MockCentralBank.new();
@@ -44,7 +44,7 @@ contract('MockDepositAddressToken', function (accounts) {
 
         try {
             await mockAddress.withdraw(60, payable.address, {from:accounts[3]})
-            assert(true, "expected throw but didn't get one.")
+            assert(false, "expected throw in line above..")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);

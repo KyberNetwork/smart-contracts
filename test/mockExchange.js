@@ -1,7 +1,7 @@
-var TestToken = artifacts.require("./TestToken.sol");
-var MockExchange = artifacts.require("./MockExchange.sol")
-var MockCentralBank = artifacts.require("./MockCentralBank.sol");
-var MockDepositAddressEther = artifacts.require("./MockDepositAddressEther.sol");
+var TestToken = artifacts.require("./mockContracts/TestToken.sol");
+var MockExchange = artifacts.require("./mockContracts/MockExchange.sol")
+var MockCentralBank = artifacts.require("./mockContracts/MockCentralBank.sol");
+var MockDepositAddressEther = artifacts.require("./mockContracts/MockDepositAddressEther.sol");
 var Helper = require("./helper.js")
 
 var centralBank;
@@ -73,7 +73,7 @@ contract('MockExchange', function (accounts) {
 
         try {
             await myExchange.withdraw(ethAddress, 3, payable.address, {from:accounts[3]});
-            assert(true, "should have received throw.")
+            assert(false, "should have received throw.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but received error: " + e);

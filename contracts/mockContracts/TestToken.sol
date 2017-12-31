@@ -5,14 +5,12 @@ pragma solidity ^0.4.18;
  * https://github.com/OpenZeppelin/zeppelin-solidity/tree/master/contracts/token */
 
 
-
 /**
  * Standard ERC20 token
  *
  * Based on code by FirstBlood:
  * https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
  */
-
 
 
 /**
@@ -179,5 +177,21 @@ contract TestToken is StandardToken {
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
+    }
+
+    event Burn(address indexed _burner, uint _value);
+
+    function burn(uint _value) public returns (bool) {
+        balances[msg.sender] = balances[msg.sender].sub(_value);
+        totalSupply = totalSupply.sub(_value);
+        Burn(msg.sender, _value);
+        Transfer(msg.sender, address(0x0), _value);
+        return true;
+    }
+
+    // save some gas by making only one contract call
+    function burnFrom(address _from, uint256 _value) public returns (bool) {
+        transferFrom( _from, msg.sender, _value );
+        return burn(_value);
     }
 }
