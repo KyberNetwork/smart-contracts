@@ -4,10 +4,10 @@ pragma solidity ^0.4.18;
 interface PermissionGroupsInterface {
     function transferAdmin(address newAdmin) public;
     function claimAdmin() public;
-    function addAlerter( address newAlerter ) public;
-    function removeAlerter ( address alerter ) public;
-    function addOperator( address newOperator ) public;
-    function removeOperator ( address operator ) public;
+    function addAlerter(address newAlerter) public;
+    function removeAlerter(address alerter) public;
+    function addOperator(address newOperator) public;
+    function removeOperator(address operator) public;
 }
 
 
@@ -39,7 +39,8 @@ contract PermissionGroups {
         _;
     }
 
-    event TransferAdmin( address pendingAdmin );
+    event TransferAdmin(address pendingAdmin);
+
     /**
      * @dev Allows the current admin to set the pendingAdmin address.
      * @param newAdmin The address to transfer ownership to.
@@ -62,17 +63,18 @@ contract PermissionGroups {
         pendingAdmin = address(0);
     }
 
-    event AddAlerter ( address newAlerter, bool isAdd );
+    event AddAlerter (address newAlerter, bool isAdd);
 
-    function addAlerter( address newAlerter ) public onlyAdmin {
+    function addAlerter(address newAlerter) public onlyAdmin {
         require(!alerters[newAlerter]); // prevent duplicates.
         AddAlerter(newAlerter, true);
         alerters[newAlerter] = true;
         alertersGroup.push(newAlerter);
     }
 
-    function removeAlerter ( address alerter ) public onlyAdmin {
-        if (!alerters[alerter]) revert();
+    function removeAlerter (address alerter) public onlyAdmin {
+
+        require(alerters[alerter]);
 
         for (uint i = 0; i < alertersGroup.length; ++i)
         {
@@ -90,17 +92,18 @@ contract PermissionGroups {
         return alertersGroup;
     }
 
-    event AddOperator( address newOperator, bool isAdd );
+    event AddOperator(address newOperator, bool isAdd);
 
-    function addOperator( address newOperator ) public onlyAdmin {
+    function addOperator(address newOperator) public onlyAdmin {
         require(!operators[newOperator]); // prevent duplicates.
         AddOperator(newOperator, true);
         operators[newOperator] = true;
         operatorsGroup.push(newOperator);
     }
 
-    function removeOperator ( address operator ) public onlyAdmin {
-        if (!operators[operator]) revert();
+    function removeOperator (address operator) public onlyAdmin {
+
+        require (operators[operator]);
 
         for (uint i = 0; i < operatorsGroup.length; ++i)
         {

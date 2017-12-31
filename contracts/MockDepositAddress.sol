@@ -29,9 +29,9 @@ contract MockDepositAddress {
 
     event Withdraw(uint amount , address destianation);
 
-    function withdraw( uint tokenAmount, address destination ) public;
+    function withdraw(uint tokenAmount, address destination) public;
 
-    function clearBalance( uint amount ) public;
+    function clearBalance(uint amount) public;
 
-    function getBalance( ) public view returns (uint);
+    function getBalance() public view returns (uint);
 }

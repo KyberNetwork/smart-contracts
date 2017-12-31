@@ -17,39 +17,39 @@ interface FeeBurnerInterface {
 
 
 contract FeeBurner is Withdrawable, FeeBurnerInterface {
-    function FeeBurner( address _admin, BurnableToken KNCToken ) public {
-          admin = _admin;
-          KNC = KNCToken;
-    }
 
     mapping(address=>uint) reserveFeesInBps;
     mapping(address=>address) reserveKNCWallet;
     mapping(address=>uint) walletFeesInBps;
-
     BurnableToken KNC;
     address public kyberNetwork;
     uint public KNCPerETHRate = 300;
 
-    function setReserveData( address reserve, uint feesInBps, address kncWallet ) public onlyAdmin {
+    function FeeBurner(address _admin, BurnableToken KNCToken) public {
+        admin = _admin;
+        KNC = KNCToken;
+    }
+
+    function setReserveData(address reserve, uint feesInBps, address kncWallet) public onlyAdmin {
         require(feesInBps < 100); // make sure it is always < 1%
         reserveFeesInBps[reserve] = feesInBps;
         reserveKNCWallet[reserve] = kncWallet;
     }
 
-    function setWalletFees( address wallet, uint feesInBps ) public onlyAdmin {
+    function setWalletFees(address wallet, uint feesInBps) public onlyAdmin {
         require(feesInBps < 10000);
         walletFeesInBps[wallet] = feesInBps;
     }
 
-    function setKyberNetwork( address network ) public onlyAdmin {
+    function setKyberNetwork(address network) public onlyAdmin {
         kyberNetwork = network;
     }
 
-    function setKNCRate( uint rate ) public onlyAdmin {
+    function setKNCRate(uint rate) public onlyAdmin {
         KNCPerETHRate = rate;
     }
 
-    event HandleFees ( uint burnFee, uint walletFee, address walletAddress);
+    event HandleFees(uint burnFee, uint walletFee, address walletAddress);
 
     function handleFees(uint tradeWeiAmount, address reserve, address wallet) public returns(bool) {
         require(msg.sender == kyberNetwork);
