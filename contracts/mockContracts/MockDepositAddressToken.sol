@@ -10,28 +10,27 @@ contract MockDepositAddressToken is MockDepositAddress{
 
     ERC20 public token;
 
-    function MockDepositAddressToken( ERC20 _token, MockCentralBank _bank, address _owner )
-        MockDepositAddress(_bank, _owner) public
+    function MockDepositAddressToken(ERC20 _token, MockCentralBank _bank, address _owner)
+        MockDepositAddress(_bank, _owner)
+        public
     {
         token = _token;
     }
 
-    function withdraw( uint tokenAmount, address destination ) public
-        onlyOwner
-    {
+    function withdraw(uint tokenAmount, address destination) public onlyOwner {
         bank.withdrawToken(token, tokenAmount);
         token.transfer(destination, tokenAmount);
     }
 
-    function clearBalance( uint amount ) public
+    function clearBalance(uint amount) public
         onlyOwner
     {
-        if( token.balanceOf(this) >= amount ) {
+        if(token.balanceOf(this) >= amount) {
             token.transfer(bank, amount);
         }
     }
 
-    function getBalance( ) public view returns (uint){
+    function getBalance() public view returns (uint) {
         return token.balanceOf(this);
     }
 }

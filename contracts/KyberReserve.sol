@@ -8,9 +8,8 @@ import "./Pricing.sol";
 import "./VolumeImbalanceRecorder.sol";
 import "./SanityPricing.sol";
 
-/// @title Kyber Reserve contract
-/// @author Yaron Velner
 
+/// @title Kyber Reserve contract
 
 contract KyberReserve is Withdrawable, KyberConstants {
 
@@ -20,59 +19,151 @@ contract KyberReserve is Withdrawable, KyberConstants {
     SanityPricingInterface public sanityPricingContract;
     mapping(bytes32=>bool) public approvedWithdrawAddresses; // sha3(token,address)=>bool
 
-    function KyberReserve( address _kyberNetwork, Pricing _pricingContract, address _admin ) public {
+    function KyberReserve(address _kyberNetwork, Pricing _pricingContract, address _admin) public {
         kyberNetwork = _kyberNetwork;
         pricingContract = _pricingContract;
         admin = _admin;
         tradeEnabled = true;
     }
 
+    event DepositToken(ERC20 token, uint amount);
 
-    function getDecimals( ERC20 token ) public view returns(uint) {
-      if( token == ETH_TOKEN_ADDRESS ) return 18;
-      return token.decimals();
+    function() payable public {
+        DepositToken(ETH_TOKEN_ADDRESS, msg.value);
     }
 
-    function getDestQty( ERC20 source, ERC20 dest, uint srcQty, uint rate ) public view returns(uint){
-      // TODO - check overflow
-      return (srcQty * rate * (10 ** getDecimals(dest)) / (10**getDecimals(source))) / PRECISION;
+    event DoTrade(
+        address indexed origin,
+        address source,
+        uint sourceAmount,
+        address destToken,
+        uint destAmount,
+        address destAddress
+    );
+
+    function trade(
+        ERC20 sourceToken,
+        uint sourceAmount,
+        ERC20 destToken,
+        address destAddress,
+        bool validate
+    )
+        public
+        payable
+        returns(bool)
+    {
+        require(tradeEnabled);
+        require(msg.sender == kyberNetwork);
+
+        assert(doTrade(sourceToken, sourceAmount, destToken, destAddress, validate));
+
+        return true;
     }
 
-    function getSrcQty( ERC20 source, ERC20 dest, uint dstQty, uint rate ) public view returns(uint){
-      // TODO - check overflow
-      return PRECISION * dstQty * (10**getDecimals(source)) / (rate*(10 ** getDecimals(dest)));
+    event EnableTrade(bool enable);
+
+    function enableTrade() public onlyAdmin returns(bool) {
+        tradeEnabled = true;
+        EnableTrade(true);
+
+        return true;
     }
 
-    function getConversionRate( ERC20 source, ERC20 dest, uint srcQty, uint blockNumber ) public view returns(uint) {
+    function disableTrade() public onlyAlerter returns(bool) {
+        tradeEnabled = false;
+        EnableTrade(false);
+
+        return true;
+    }
+
+    event ApproveWithdrawAddress(ERC20 token, address addr, bool approve);
+
+    function approveWithdrawAddress(ERC20 token, address addr, bool approve) public onlyAdmin {
+        approvedWithdrawAddresses[keccak256(token,addr)] = approve;
+        ApproveWithdrawAddress(token,addr,approve);
+    }
+
+    event Withdraw(ERC20 token, uint amount, address destination);
+
+    function withdraw(ERC20 token, uint amount, address destination) public onlyOperator returns(bool) {
+        require(approvedWithdrawAddresses[keccak256(token,destination)]);
+
+        if(token == ETH_TOKEN_ADDRESS) {
+            destination.transfer(amount);
+        } else {
+            assert(token.transfer(destination, amount));
+        }
+
+        Withdraw( token, amount, destination );
+
+        return true;
+    }
+
+    function setContracts(address _kyberNetwork, Pricing _pricing, SanityPricingInterface _sanityPricing)
+        public
+        onlyAdmin
+    {
+        require(_kyberNetwork != address(0));
+        require(_pricing != address(0));
+
+        kyberNetwork = _kyberNetwork;
+        pricingContract = _pricing;
+        sanityPricingContract = _sanityPricing;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// status functions ///////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+
+    function getBalance(ERC20 token) public view returns(uint) {
+        if(token == ETH_TOKEN_ADDRESS) return this.balance;
+        else return token.balanceOf(this);
+    }
+
+    function getDecimals(ERC20 token) public view returns(uint) {
+        if(token == ETH_TOKEN_ADDRESS) return 18;
+        return token.decimals();
+    }
+
+    function getDestQty(ERC20 source, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {
+        // TODO - check overflow
+        return (srcQty * rate * (10 ** getDecimals(dest)) / (10**getDecimals(source))) / PRECISION;
+    }
+
+    function getSrcQty(ERC20 source, ERC20 dest, uint dstQty, uint rate) public view returns(uint) {
+        // TODO - check overflow
+        return PRECISION * dstQty * (10**getDecimals(source)) / (rate*(10 ** getDecimals(dest)));
+    }
+
+    function getConversionRate(ERC20 source, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
         ERC20 token;
         bool  buy;
         uint  tokenQty;
 
-        if( ETH_TOKEN_ADDRESS == source ) {
-          buy = true;
-          token = dest;
-          tokenQty = getDestQty( source,dest,srcQty,pricingContract.getBasicPrice(token,true));
+        if(ETH_TOKEN_ADDRESS == source) {
+            buy = true;
+            token = dest;
+            tokenQty = getDestQty( source,dest,srcQty,pricingContract.getBasicPrice(token,true));
+        } else if(ETH_TOKEN_ADDRESS == dest) {
+            buy = false;
+            token = source;
+            tokenQty = srcQty;
+        } else {
+            return 0; // pair is not listed
         }
-        else if( ETH_TOKEN_ADDRESS == dest ){
-          buy = false;
-          token = source;
-          tokenQty = srcQty;
-        }
-        else return 0; // pair is not listed
 
-        uint price = pricingContract.getPrice( token, blockNumber, buy, tokenQty );
-        uint destQty = getDestQty( source,dest,srcQty,price);
-        if( getBalance(dest) < destQty ) return 0;
+        uint price = pricingContract.getPrice(token, blockNumber, buy, tokenQty);
+        uint destQty = getDestQty(source, dest, srcQty, price);
 
-        if( sanityPricingContract != address(0) ) {
-          uint sanityPrice = sanityPricingContract.getSanityPrice(source,dest);
-          if( price > sanityPrice ) return 0;
+        if(getBalance(dest) < destQty) return 0;
+
+        if(sanityPricingContract != address(0)) {
+            uint sanityPrice = sanityPricingContract.getSanityPrice(source,dest);
+            if(price > sanityPrice) return 0;
         }
 
         return price;
     }
-
-    event DoTrade( address indexed origin, address source, uint sourceAmount, address destToken, uint destAmount, address destAddress );
 
     /// @dev do a trade
     /// @param sourceToken Source token
@@ -86,134 +177,56 @@ contract KyberReserve is Withdrawable, KyberConstants {
         uint sourceAmount,
         ERC20 destToken,
         address destAddress,
-        bool validate )
-        internal returns(bool)
+        bool validate
+    )
+        internal
+        returns(bool)
     {
-        uint conversionRate = getConversionRate( sourceToken, destToken, sourceAmount,  block.number );
+        uint conversionRate = getConversionRate(sourceToken, destToken, sourceAmount,  block.number);
+
         // can skip validation if done at kyber network level
-        if( validate ) {
+        if(validate) {
             require(conversionRate > 0);
-            if( sourceToken == ETH_TOKEN_ADDRESS ) require( msg.value == sourceAmount );
-            else require( msg.value == 0 );
+            if(sourceToken == ETH_TOKEN_ADDRESS) require(msg.value == sourceAmount);
+            else require(msg.value == 0);
         }
 
-        uint destAmount = getDestQty( sourceToken, destToken, sourceAmount, conversionRate );
-
+        uint destAmount = getDestQty(sourceToken, destToken, sourceAmount, conversionRate);
         // sanity check
-        require( destAmount > 0 );
+        require(destAmount > 0);
 
         // add to imbalance
         ERC20 token;
         int buy;
-        if( sourceToken == ETH_TOKEN_ADDRESS ) {
-          buy = int(destAmount);
-          token = destToken;
-        }
-        else {
-          buy = -1 * int(destAmount);
-          token = sourceToken;
+        if(sourceToken == ETH_TOKEN_ADDRESS) {
+            buy = int(destAmount);
+            token = destToken;
+        } else {
+            buy = -1 * int(destAmount);
+            token = sourceToken;
         }
 
-        pricingContract.recoredImbalance( token,
-                                          buy,
-                                          pricingContract.getPriceUpdateBlock(token),
-                                          block.number );
+        pricingContract.recoredImbalance(
+            token,
+            buy,
+            pricingContract.getPriceUpdateBlock(token),
+            block.number
+        );
 
         // collect source tokens
-        if( sourceToken != ETH_TOKEN_ADDRESS ) {
-            assert( sourceToken.transferFrom(msg.sender,this,sourceAmount) );
+        if(sourceToken != ETH_TOKEN_ADDRESS) {
+            assert(sourceToken.transferFrom(msg.sender,this,sourceAmount));
         }
 
         // send dest tokens
-        if( destToken == ETH_TOKEN_ADDRESS ) {
+        if(destToken == ETH_TOKEN_ADDRESS) {
             destAddress.transfer(destAmount);
-        }
-        else {
-            assert( destToken.transfer(destAddress, destAmount) );
-        }
-
-        DoTrade( tx.origin, sourceToken, sourceAmount, destToken, destAmount, destAddress );
-
-        return true;
-    }
-
-    function trade(
-        ERC20 sourceToken,
-        uint sourceAmount,
-        ERC20 destToken,
-        address destAddress,
-        bool validate )
-        public payable returns(bool)
-    {
-        require( tradeEnabled );
-        require( msg.sender == kyberNetwork );
-
-        assert( doTrade( sourceToken, sourceAmount, destToken, destAddress, validate ) );
-
-        return true;
-    }
-
-
-    event EnableTrade( bool enable );
-
-    function enableTrade( ) public onlyAdmin returns(bool){
-        tradeEnabled = true;
-        EnableTrade( true );
-
-        return true;
-    }
-
-    function disableTrade( ) public onlyAlerter returns(bool){
-        tradeEnabled = false;
-        EnableTrade( false );
-
-        return true;
-    }
-
-
-    event DepositToken( ERC20 token, uint amount );
-    function() payable public {
-        DepositToken( ETH_TOKEN_ADDRESS, msg.value );
-    }
-
-    event ApproveWithdrawAddress( ERC20 token, address addr, bool approve );
-    function approveWithdrawAddress( ERC20 token, address addr, bool approve ) public onlyAdmin {
-      approvedWithdrawAddresses[keccak256(token,addr)] = approve;
-      ApproveWithdrawAddress(token,addr,approve);
-    }
-
-    event Withdraw( ERC20 token, uint amount, address destination );
-
-    function withdraw( ERC20 token, uint amount, address destination ) public onlyOperator returns(bool) {
-        require(approvedWithdrawAddresses[keccak256(token,destination)]);
-
-        if( token == ETH_TOKEN_ADDRESS ) {
-            destination.transfer(amount);
-        }
-        else if( ! token.transfer(destination,amount) ) {
-            // transfer to reserve owner failed
-            return false;
+        } else {
+            assert(destToken.transfer(destAddress, destAmount));
         }
 
-        Withdraw( token, amount, destination );
-    }
+        DoTrade(tx.origin, sourceToken, sourceAmount, destToken, destAmount, destAddress);
 
-    function setContracts( address _kyberNetwork, Pricing _pricing, SanityPricingInterface _sanityPricing ) public onlyAdmin {
-      require(_kyberNetwork != address(0));
-      require(_pricing != address(0));
-
-      kyberNetwork = _kyberNetwork;
-      pricingContract = _pricing;
-      sanityPricingContract = _sanityPricing;
-    }
-
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// status functions ///////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////
-
-    function getBalance( ERC20 token ) public view returns(uint){
-        if( token == ETH_TOKEN_ADDRESS ) return this.balance;
-        else return token.balanceOf(this);
+        return true;
     }
 }

@@ -9,30 +9,25 @@ import "./MockDepositAddress.sol";
 ///         allows reserve manager to deposit and withdraw
 contract MockDepositAddressEther is MockDepositAddress{
 
-    function MockDepositAddressEther( MockCentralBank _bank, address _owner )
-        MockDepositAddress(_bank, _owner) public
-    { }
+    function MockDepositAddressEther(MockCentralBank _bank, address _owner)
+        MockDepositAddress(_bank, _owner)
+        public
+    {}
 
-    function withdraw( uint etherAmount, address destination ) public
-        onlyOwner
-    {
+    function () public payable {}
+
+    function withdraw(uint etherAmount, address destination) public onlyOwner {
         bank.withdrawEther(etherAmount);
         destination.transfer(etherAmount);
     }
 
-    function clearBalance( uint amount ) public
-        onlyOwner
-    {
-        if( this.balance >= amount ) {
+    function clearBalance( uint amount ) public onlyOwner {
+        if(this.balance >= amount) {
             bank.transfer(amount);
         }
     }
 
-    function getBalance( ) public view returns (uint){
+    function getBalance() public view returns (uint) {
         return this.balance;
-    }
-
-    function () public payable {
-
     }
 }

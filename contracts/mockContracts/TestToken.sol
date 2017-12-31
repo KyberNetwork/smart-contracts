@@ -5,14 +5,12 @@ pragma solidity ^0.4.18;
  * https://github.com/OpenZeppelin/zeppelin-solidity/tree/master/contracts/token */
 
 
-
 /**
  * Standard ERC20 token
  *
  * Based on code by FirstBlood:
  * https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
  */
-
 
 
 /**

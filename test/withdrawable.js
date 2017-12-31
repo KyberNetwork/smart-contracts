@@ -1,7 +1,7 @@
 var Permissions = artifacts.require("./PermissionGroups.sol");
 var Withdrawable = artifacts.require("./Withdrawable.sol");
-var TestToken = artifacts.require("./TestToken.sol");
-var MockWithdrawable = artifacts.require("./MockWithdrawable.sol");
+var TestToken = artifacts.require("./mockContracts/TestToken.sol");
+var MockWithdrawable = artifacts.require("./mockContracts/MockWithdrawable.sol");
 
 var Helper = require("./helper.js");
 
