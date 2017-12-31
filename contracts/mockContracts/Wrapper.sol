@@ -8,7 +8,7 @@ import "../Pricing.sol";
 contract Wrapper is KyberConstants {
     function getBalances(address reserve, ERC20[] tokens) public constant returns(uint[]) {
         uint[] memory result = new uint[](tokens.length);
-        for(uint i = 0 ; i < tokens.length ; i++) {
+        for(uint i = 0; i < tokens.length; i++) {
             uint balance = 0;
             if(tokens[i] == ETH_TOKEN_ADDRESS) {
                 balance = reserve.balance;
@@ -48,7 +48,7 @@ contract Wrapper is KyberConstants {
         int8[] memory compactSell = new int8[](tokenList.length);
         uint[] memory updateBlock = new uint[](tokenList.length);
 
-        for(uint i = 0 ;  i < tokenList.length ; i++) {
+        for(uint i = 0;  i < tokenList.length; i++) {
             buyBases[i] = pricingContract.getBasicPrice(tokenList[i],true);
             sellBases[i] = pricingContract.getBasicPrice(tokenList[i],false);
 
@@ -62,7 +62,7 @@ contract Wrapper is KyberConstants {
         uint[] memory bulkIndices = new uint[](tokenList.length);
         uint[] memory tokenIndexInBulk = new uint[](tokenList.length);
 
-        for(uint i = 0 ; i < tokenList.length ; i++) {
+        for(uint i = 0; i < tokenList.length; i++) {
             uint bulkIndex; uint index; byte buy; byte sell;
             (bulkIndex, index, buy, sell) = pricingContract.getCompactData(tokenList[i]);
 
@@ -82,7 +82,7 @@ contract Wrapper is KyberConstants {
         uint[] memory rates = new uint[](sources.length);
         uint[] memory expBlocks = new uint[](sources.length);
         uint[] memory balances = new uint[](sources.length);
-        for( uint i = 0 ; i < sources.length ; i++ ) {
+        for( uint i = 0; i < sources.length; i++ ) {
             uint rate; uint expBlock; uint balance;
             (rate,expBlock,balance) = reserve.getPairInfo( sources[i], dests[i] );
             rates[i] = rate;

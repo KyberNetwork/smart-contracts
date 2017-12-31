@@ -68,7 +68,7 @@ contract Pricing is VolumeImbalanceRecorder {
 
         uint32 blockNumber32bits = uint32(blockNumber);
 
-        for(uint i = 0 ; i < indices.length ; i++) {
+        for(uint i = 0; i < indices.length; i++) {
             tokenPricesCompactData[indices[i]] = TokenPricesCompactData(buy[i],sell[i],blockNumber32bits);
         }
     }
@@ -91,7 +91,7 @@ contract Pricing is VolumeImbalanceRecorder {
         require(tokens.length == sell.length);
         require(tokens.length == indices.length);
 
-        for(uint ind = 0 ; ind < tokens.length ; ind++) {
+        for(uint ind = 0; ind < tokens.length; ind++) {
             tokenData[tokens[ind]].baseBuyPrice = baseBuy[ind];
             tokenData[tokens[ind]].baseSellPrice = baseSell[ind];
         }
@@ -245,7 +245,7 @@ contract Pricing is VolumeImbalanceRecorder {
 
     function executeStepFunction(StepFunction f, int x) pure internal returns(int) {
         uint len = f.y.length;
-        for(uint ind = 0 ; ind < len ; ind++) {
+        for(uint ind = 0; ind < len; ind++) {
             if(x <= f.x[ind]) return f.y[ind];
         }
 

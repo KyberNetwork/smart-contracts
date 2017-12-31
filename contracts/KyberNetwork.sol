@@ -140,7 +140,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
             AddReserve(reserve, true);
         } else {
             // will have trouble if more than 50k reserves...
-            for(uint i = 0 ; i < reserves.length ; i++) {
+            for(uint i = 0; i < reserves.length; i++) {
                 if(reserves[i] == reserve) {
                     if(reserves.length == 0) return;
                     reserves[i] = reserves[--reserves.length];

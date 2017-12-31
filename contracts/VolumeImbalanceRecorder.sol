@@ -61,7 +61,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
 
         buyImbalance = 0;
 
-        for(uint windowInd = 0 ; windowInd < SLIDING_WINDOW_SIZE ; windowInd++) {
+        for(uint windowInd = 0; windowInd < SLIDING_WINDOW_SIZE; windowInd++) {
             TokenImbalanceData memory perBlockData = tokenImbalanceData[token][windowInd];
 
             if(perBlockData.lastBlock <= endBlock && perBlockData.lastBlock >= startBlock) {
@@ -78,7 +78,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
         currentBlockImbalance = 0;
         uint64 latestBlock = uint64(0);
 
-        for(uint windowInd = 0 ; windowInd < SLIDING_WINDOW_SIZE ; windowInd++) {
+        for(uint windowInd = 0; windowInd < SLIDING_WINDOW_SIZE; windowInd++) {
             TokenImbalanceData memory perBlockData = tokenImbalanceData[token][windowInd];
 
             if(uint(perBlockData.lastPriceUpdateBlock) != priceUpdateBlock) continue;

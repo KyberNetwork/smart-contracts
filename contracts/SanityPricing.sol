@@ -21,7 +21,7 @@ contract SanityPricing is SanityPricingInterface, Withdrawable {
         require(sources.length == dests.length);
         require(dests.length == rates.length);
 
-        for(uint i = 0 ; i < sources.length ; i++) {
+        for(uint i = 0; i < sources.length; i++) {
             prices[keccak256(sources[i],dests[i])] = rates[i];
         }
     }
