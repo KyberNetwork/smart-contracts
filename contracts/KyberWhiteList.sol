@@ -6,9 +6,9 @@ import "./Withdrawable.sol";
 
 contract KyberWhiteList is Withdrawable {
 
-    uint sgdToWeiRate; //singapore dollar to wei rate
-    mapping (address=>uint) userCategory; // each user has a category that defines cap on trade amount. 0 will be standard
-    mapping (uint=>uint)    categoryCap;  // will define cap on trade amount per category in singapore Dollar.
+    uint public weiPerSgd; // amount of weis in 1 singapore dollar
+    mapping (address=>uint) public userCategory; // each user has a category that defines cap on trade amount. 0 will be standard
+    mapping (uint=>uint)    public categoryCap;  // will define cap on trade amount per category in singapore Dollar.
 
     function KyberWhiteList(address _admin) public {
         admin = _admin;
@@ -31,12 +31,12 @@ contract KyberWhiteList is Withdrawable {
     event SetSgdToWeiRate (uint rate);
 
     function setSgdToEthRate(uint _sgdToWeiRate) public onlyOperator {
-        sgdToWeiRate = _sgdToWeiRate;
-        SetSgdToWeiRate(sgdToWeiRate);
+        weiPerSgd = _sgdToWeiRate;
+        SetSgdToWeiRate(_sgdToWeiRate);
     }
 
     function getUserCapInWei(address user) external view returns (uint userCapWei) {
         uint category = userCategory[user];
-        return (categoryCap[category] * sgdToWeiRate);
+        return (categoryCap[category] * weiPerSgd);
     }
 }

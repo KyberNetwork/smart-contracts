@@ -10,7 +10,7 @@ import "./SanityPricing.sol";
 
 
 /// @title Kyber Reserve contract
-/// @author Yaron Velner
+
 contract KyberReserve is Withdrawable, KyberConstants {
 
     address public kyberNetwork;
@@ -90,12 +90,13 @@ contract KyberReserve is Withdrawable, KyberConstants {
 
         if(token == ETH_TOKEN_ADDRESS) {
             destination.transfer(amount);
-        } else if(!token.transfer(destination, amount)) {
-            // transfer to reserve owner failed
-            return false;
+        } else {
+            assert(token.transfer(destination, amount));
         }
 
         Withdraw( token, amount, destination );
+
+        return true;
     }
 
     function setContracts(address _kyberNetwork, Pricing _pricing, SanityPricingInterface _sanityPricing)

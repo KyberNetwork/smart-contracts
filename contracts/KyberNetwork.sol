@@ -25,8 +25,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     uint                  public maxGasPrice = 50 * 1000 * 1000 * 1000; // 50 gwei
     mapping(address=>mapping(bytes32=>bool)) perReserveListedPairs;
 
-    /// @dev c'tor.
-    /// @param _admin The address of the administrator
     function KyberNetwork(address _admin) public {
         admin = _admin;
     }
@@ -111,7 +109,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
             ethAmount = actualDestAmount;
         }
 
-        require(ethAmount<=kyberWhiteList.getUserCapInWei(msg.sender));
+        require(ethAmount <= kyberWhiteList.getUserCapInWei(msg.sender));
 
         assert(doSingleTrade(
             source,
@@ -216,24 +214,6 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev information on conversion rate to a front end application
-    /// @param source Source token
-    /// @param dest Destination token
-    /// @return rate. If not available returns 0.
-
-    function getPrice(ERC20 source, ERC20 dest, uint srcQty) public view returns(uint) {
-        uint reserve;
-        uint rate;
-        (reserve, rate) = findBestRate(source, dest, srcQty);
-        return rate;
-    }
-
-    function getDecimals(ERC20 token) public view returns(uint) {
-        if(token == ETH_TOKEN_ADDRESS) return 18;
-        return token.decimals();
-    }
-
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev best conversion rate for a pair of tokens, if number of reserves have small differences. randomize
     /// @param source Source token
     /// @param dest Destination token
@@ -263,8 +243,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
             for (i = 0; i < numReserves; i++) {
                 if (rates[i] >= smallestRelevantRate) {
-                    reserveCandidates[numRelevantReserves] = i;
-                    ++numRelevantReserves;
+                    reserveCandidates[numRelevantReserves++] = i;
                 }
             }
 

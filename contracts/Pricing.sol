@@ -36,12 +36,12 @@ contract Pricing is VolumeImbalanceRecorder {
         uint32 blockNumber;
     }
 
-    uint validPriceDurationInBlocks = 10; // prices are valid for this amount of blocks
+    uint public validPriceDurationInBlocks = 10; // prices are valid for this amount of blocks
     mapping(address=>TokenData) tokenData;
     TokenPricesCompactData[] tokenPricesCompactData;
     uint public numTokensInCurrentCompactData = 0;
     address public reserveContract;
-    uint constant public NUM_TOKENS_IN_COMPACT_DATA = 14;
+    uint constant NUM_TOKENS_IN_COMPACT_DATA = 14;
 
     function Pricing(address _admin) public {
         admin = _admin;
@@ -59,16 +59,6 @@ contract Pricing is VolumeImbalanceRecorder {
         tokenData[token].compactDataFieldIndex = numTokensInCurrentCompactData;
 
         numTokensInCurrentCompactData = (numTokensInCurrentCompactData + 1) % NUM_TOKENS_IN_COMPACT_DATA;
-    }
-
-    function addBps(uint price, int bps) public pure returns(uint) {
-        uint maxBps = 100 * 100;
-        return (price * uint(int(maxBps) + bps)) / maxBps;
-    }
-
-    function abs(int x) public pure returns(uint) {
-        if(x < 0) return uint(-1 * x);
-        else return uint(x);
     }
 
     function setCompactData(bytes14[] buy, bytes14[] sell, uint blockNumber, uint[] indices) public onlyOperator {
@@ -260,5 +250,15 @@ contract Pricing is VolumeImbalanceRecorder {
         }
 
         return f.y[len-1];
+    }
+
+    function addBps(uint price, int bps) internal pure returns(uint) {
+        uint maxBps = 100 * 100;
+        return (price * uint(int(maxBps) + bps)) / maxBps;
+    }
+
+    function abs(int x) internal pure returns(uint) {
+        if(x < 0) return uint(-1 * x);
+        else return uint(x);
     }
 }

@@ -30,11 +30,11 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface {
     }
 
     function getExpectedRate(ERC20 source, ERC20 dest, uint srcQty) public view
-    returns ( uint expectedPrice, uint slippagePrice )
-    {
-        uint bestReserve;
+    returns ( uint expectedPrice, uint slippagePrice ) {
         require (quantityFactor != 0);
         require (kyberNetwork != address (0));
+
+        uint bestReserve;
 
         (bestReserve, expectedPrice) = kyberNetwork.findBestRate(source, dest, srcQty);
         (bestReserve, slippagePrice) = kyberNetwork.findBestRate(source, dest, (srcQty * quantityFactor));

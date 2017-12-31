@@ -7,7 +7,7 @@ import "./Withdrawable.sol";
 
 contract VolumeImbalanceRecorder is Withdrawable {
 
-    uint public constant SLIDING_WINDOW_SIZE = 10;
+    uint constant SLIDING_WINDOW_SIZE = 10;
 
     struct TokenControlInfo {
         uint minimalRecordResolution; // can be roughly 1 cent
@@ -32,11 +32,6 @@ contract VolumeImbalanceRecorder is Withdrawable {
         admin = _admin;
     }
 
-    event SetTokenControlInfo( ERC20 token,
-                               uint minimalRecordResolution,
-                               uint maxPerBlockImbalance,
-                               uint maxTotalImbalance );
-
     function setTokenControlInfo(
         ERC20 token,
         uint minimalRecordResolution,
@@ -52,13 +47,6 @@ contract VolumeImbalanceRecorder is Withdrawable {
                 maxPerBlockImbalance,
                 maxTotalImbalance
             );
-
-        SetTokenControlInfo(
-            token,
-            minimalRecordResolution,
-            maxPerBlockImbalance,
-            maxTotalImbalance
-        );
     }
 
     function getTokenControlInfo(ERC20 token) public view returns(uint, uint, uint) {
@@ -67,7 +55,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
                 tokenControlInfo[token].maxTotalImbalance);
     }
 
-    function getImbalanceInRange(ERC20 token, uint startBlock, uint endBlock) public view returns(int buyImbalance) {
+    function getImbalanceInRange(ERC20 token, uint startBlock, uint endBlock) internal view returns(int buyImbalance) {
         // check the imbalance in the sliding window
         require(startBlock <= endBlock);
 
@@ -83,7 +71,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
     }
 
     function getImbalanceSincePriceUpdate(ERC20 token, uint priceUpdateBlock, uint currentBlock)
-        public view
+        internal view
         returns(int buyImbalance, int currentBlockImbalance)
     {
         buyImbalance = 0;
@@ -122,11 +110,11 @@ contract VolumeImbalanceRecorder is Withdrawable {
         currentBlockImbalance *= resolution;
     }
 
-    function getMaxPerBlockImbalance(ERC20 token) public view returns(uint) {
+    function getMaxPerBlockImbalance(ERC20 token) internal view returns(uint) {
         return tokenControlInfo[token].maxPerBlockImbalance;
     }
 
-    function getMaxTotalImbalance(ERC20 token) public view returns(uint) {
+    function getMaxTotalImbalance(ERC20 token) internal view returns(uint) {
         return tokenControlInfo[token].maxTotalImbalance;
     }
 

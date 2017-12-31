@@ -12,16 +12,16 @@ interface BurnableToken {
 
 
 interface FeeBurnerInterface {
-    function handleFees ( uint tradeWeiAmount, address reserve, address wallet ) public returns(bool);
+    function handleFees (uint tradeWeiAmount, address reserve, address wallet) public returns(bool);
 }
 
 
 contract FeeBurner is Withdrawable, FeeBurnerInterface {
 
-    mapping(address=>uint) reserveFeesInBps;
-    mapping(address=>address) reserveKNCWallet;
-    mapping(address=>uint) walletFeesInBps;
-    BurnableToken KNC;
+    mapping(address=>uint) public reserveFeesInBps;
+    mapping(address=>address) public reserveKNCWallet;
+    mapping(address=>uint) public walletFeesInBps;
+    BurnableToken public KNC;
     address public kyberNetwork;
     uint public KNCPerETHRate = 300;
 
@@ -37,7 +37,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
     }
 
     function setWalletFees(address wallet, uint feesInBps) public onlyAdmin {
-        require(feesInBps < 10000);
+        require(feesInBps < 10000); // under 100%
         walletFeesInBps[wallet] = feesInBps;
     }
 
@@ -58,17 +58,18 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
         uint fee = kncAmount * reserveFeesInBps[reserve] / 10000;
 
         uint walletFee = fee * walletFeesInBps[wallet] / 10000;
+        assert(fee >= walletFee);
+        uint feeToBurn = fee - walletFee;
 
         if( walletFee > 0 ) {
             assert(KNC.transferFrom(reserveKNCWallet[reserve],wallet,walletFee));
         }
 
-        uint feeToBurn = fee - walletFee;
-        HandleFees(feeToBurn, walletFee, wallet);
-
         if( feeToBurn > 0 ) {
             assert(KNC.burnFrom(reserveKNCWallet[reserve], feeToBurn));
         }
+
+        HandleFees(feeToBurn, walletFee, wallet);
 
         return true;
     }
