@@ -525,6 +525,8 @@ contract('Deployment', function(accounts) {
     return Pricing.new(accounts[0],{gas:4700000}).then(function(instance){
         pricing = instance;
         return pricing.addOperator(accounts[0],{from:accounts[0]});
+    }).then(function(){
+      return pricing.setValidPriceDurationInBlocks(10000);
     });
   });
 
