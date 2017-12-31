@@ -6,6 +6,7 @@ import "./KyberConstants.sol";
 import "./Withdrawable.sol";
 import "./Pricing.sol";
 import "./VolumeImbalanceRecorder.sol";
+import "./SanityPricing.sol";
 
 /// @title Kyber Reserve contract
 /// @author Yaron Velner
@@ -16,6 +17,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
     address public kyberNetwork;
     bool public tradeEnabled;
     Pricing public pricingContract;
+    SanityPricingInterface public sanityPricingContract;
     mapping(bytes32=>bool) public approvedWithdrawAddresses; // sha3(token,address)=>bool
 
     function KyberReserve( address _kyberNetwork, Pricing _pricingContract, address _admin ) public {
@@ -61,6 +63,11 @@ contract KyberReserve is Withdrawable, KyberConstants {
         uint price = pricingContract.getPrice( token, blockNumber, buy, tokenQty );
         uint destQty = getDestQty( source,dest,srcQty,price);
         if( getBalance(dest) < destQty ) return 0;
+
+        if( sanityPricingContract != address(0) ) {
+          uint sanityPrice = sanityPricingContract.getSanityPrice(source,dest);
+          if( price > sanityPrice ) return 0;
+        }
 
         return price;
     }
@@ -190,6 +197,16 @@ contract KyberReserve is Withdrawable, KyberConstants {
 
         Withdraw( token, amount, destination );
     }
+
+    function setContracts( address _kyberNetwork, Pricing _pricing, SanityPricingInterface _sanityPricing ) public onlyAdmin {
+      require(_kyberNetwork != address(0));
+      require(_pricing != address(0));
+
+      kyberNetwork = _kyberNetwork;
+      pricingContract = _pricing;
+      sanityPricingContract = _sanityPricing;
+    }
+
 
     ////////////////////////////////////////////////////////////////////////////
     /// status functions ///////////////////////////////////////////////////////
