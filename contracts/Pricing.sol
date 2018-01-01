@@ -68,8 +68,8 @@ contract Pricing is VolumeImbalanceRecorder {
 
         uint32 blockNumber32bits = uint32(blockNumber);
 
-        for(uint i = 0 ; i < indices.length ; i++) {
-            tokenPricesCompactData[indices[i]] = TokenPricesCompactData(buy[i],sell[i],blockNumber32bits);
+        for(uint i = 0; i < indices.length; i++) {
+            tokenPricesCompactData[indices[i]] = TokenPricesCompactData(buy[i], sell[i], blockNumber32bits);
         }
     }
 
@@ -91,12 +91,12 @@ contract Pricing is VolumeImbalanceRecorder {
         require(tokens.length == sell.length);
         require(tokens.length == indices.length);
 
-        for( uint ind = 0 ; ind < tokens.length ; ind++ ) {
+        for(uint ind = 0; ind < tokens.length; ind++) {
             tokenData[tokens[ind]].baseBuyPrice = baseBuy[ind];
             tokenData[tokens[ind]].baseSellPrice = baseSell[ind];
         }
 
-        setCompactData(buy,sell,blockNumber,indices);
+        setCompactData(buy, sell, blockNumber, indices);
     }
 
     function setQtyStepFunction(
@@ -109,8 +109,8 @@ contract Pricing is VolumeImbalanceRecorder {
         public
         onlyOperator
     {
-        tokenData[token].buyPriceQtyStepFunction = StepFunction( xBuy, yBuy );
-        tokenData[token].sellPriceQtyStepFunction = StepFunction( xSell, ySell );
+        tokenData[token].buyPriceQtyStepFunction = StepFunction(xBuy, yBuy);
+        tokenData[token].sellPriceQtyStepFunction = StepFunction(xSell, ySell);
     }
 
     function setImbalanceStepFunction(
@@ -153,7 +153,7 @@ contract Pricing is VolumeImbalanceRecorder {
     {
         require(msg.sender == reserveContract);
 
-        return addImbalance(token,buyAmount,priceUpdateBlock,currentBlock);
+        return addImbalance(token, buyAmount, priceUpdateBlock, currentBlock);
     }
 
     function getPrice(ERC20 token, uint currentBlockNumber, bool buy, uint qty) public view returns(uint) {
@@ -164,7 +164,7 @@ contract Pricing is VolumeImbalanceRecorder {
         TokenPricesCompactData memory compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];
 
         uint updatePriceBlock = uint(compactData.blockNumber);
-        if( currentBlockNumber >= updatePriceBlock + validPriceDurationInBlocks ) return 0; // price is expired
+        if(currentBlockNumber >= updatePriceBlock + validPriceDurationInBlocks) return 0; // price is expired
 
         // check imbalance
         int totalImbalance;
@@ -189,33 +189,33 @@ contract Pricing is VolumeImbalanceRecorder {
             price =  tokenData[token].baseBuyPrice;
 
             // add qty overhead
-            extraBps = executeStepFunction(tokenData[token].buyPriceQtyStepFunction,int(qty));
-            price = addBps( price, extraBps );
+            extraBps = executeStepFunction(tokenData[token].buyPriceQtyStepFunction, int(qty));
+            price = addBps(price, extraBps);
 
             // add imbalance overhead
-            extraBps = executeStepFunction(tokenData[token].buyPriceImbalanceStepFunction,totalImbalance);
-            price = addBps( price, extraBps );
+            extraBps = executeStepFunction(tokenData[token].buyPriceImbalanceStepFunction, totalImbalance);
+            price = addBps(price, extraBps);
 
             // add price update
             priceUpdate = int8(compactData.buy[tokenData[token].compactDataFieldIndex]);
             extraBps = priceUpdate * 10;
-            price = addBps( price, extraBps );
+            price = addBps(price, extraBps);
         } else {
             // start with base price
             price = tokenData[token].baseSellPrice;
 
             // add qty overhead
-            extraBps = executeStepFunction(tokenData[token].sellPriceQtyStepFunction,int(qty));
-            price = addBps( price, extraBps );
+            extraBps = executeStepFunction(tokenData[token].sellPriceQtyStepFunction, int(qty));
+            price = addBps(price, extraBps);
 
             // add imbalance overhead
-            extraBps = executeStepFunction(tokenData[token].sellPriceImbalanceStepFunction,totalImbalance);
+            extraBps = executeStepFunction(tokenData[token].sellPriceImbalanceStepFunction, totalImbalance);
             price = addBps(price, extraBps);
 
             // add price update
             priceUpdate = int8(compactData.sell[tokenData[token].compactDataFieldIndex]);
             extraBps = priceUpdate * 10;
-            price = addBps( price, extraBps );
+            price = addBps(price, extraBps);
         }
 
         return price;
@@ -231,10 +231,10 @@ contract Pricing is VolumeImbalanceRecorder {
         uint fieldOffset = tokenData[token].compactDataFieldIndex;
 
         return (
-        arrayIndex,
-        fieldOffset,
-        tokenPricesCompactData[arrayIndex].buy[fieldOffset],
-        tokenPricesCompactData[arrayIndex].sell[fieldOffset]
+            arrayIndex,
+            fieldOffset,
+            tokenPricesCompactData[arrayIndex].buy[fieldOffset],
+            tokenPricesCompactData[arrayIndex].sell[fieldOffset]
         );
     }
 
@@ -243,9 +243,9 @@ contract Pricing is VolumeImbalanceRecorder {
         return uint(compactData.blockNumber);
     }
 
-    function executeStepFunction( StepFunction f, int x ) pure internal returns(int) {
+    function executeStepFunction(StepFunction f, int x) pure internal returns(int) {
         uint len = f.y.length;
-        for( uint ind = 0 ; ind < len ; ind++ ) {
+        for(uint ind = 0; ind < len; ind++) {
             if(x <= f.x[ind]) return f.y[ind];
         }
 

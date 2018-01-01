@@ -61,11 +61,11 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
         assert(fee >= walletFee);
         uint feeToBurn = fee - walletFee;
 
-        if( walletFee > 0 ) {
+        if(walletFee > 0) {
             assert(KNC.transferFrom(reserveKNCWallet[reserve],wallet,walletFee));
         }
 
-        if( feeToBurn > 0 ) {
+        if(feeToBurn > 0) {
             assert(KNC.burnFrom(reserveKNCWallet[reserve], feeToBurn));
         }
 

@@ -79,14 +79,14 @@ contract KyberReserve is Withdrawable, KyberConstants {
     event ApproveWithdrawAddress(ERC20 token, address addr, bool approve);
 
     function approveWithdrawAddress(ERC20 token, address addr, bool approve) public onlyAdmin {
-        approvedWithdrawAddresses[keccak256(token,addr)] = approve;
-        ApproveWithdrawAddress(token,addr,approve);
+        approvedWithdrawAddresses[keccak256(token, addr)] = approve;
+        ApproveWithdrawAddress(token, addr, approve);
     }
 
     event Withdraw(ERC20 token, uint amount, address destination);
 
     function withdraw(ERC20 token, uint amount, address destination) public onlyOperator returns(bool) {
-        require(approvedWithdrawAddresses[keccak256(token,destination)]);
+        require(approvedWithdrawAddresses[keccak256(token, destination)]);
 
         if(token == ETH_TOKEN_ADDRESS) {
             destination.transfer(amount);
@@ -94,7 +94,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
             assert(token.transfer(destination, amount));
         }
 
-        Withdraw( token, amount, destination );
+        Withdraw(token, amount, destination);
 
         return true;
     }
@@ -143,7 +143,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
         if(ETH_TOKEN_ADDRESS == source) {
             buy = true;
             token = dest;
-            tokenQty = getDestQty( source,dest,srcQty,pricingContract.getBasicPrice(token,true));
+            tokenQty = getDestQty(source, dest, srcQty, pricingContract.getBasicPrice(token,true));
         } else if(ETH_TOKEN_ADDRESS == dest) {
             buy = false;
             token = source;
@@ -158,7 +158,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
         if(getBalance(dest) < destQty) return 0;
 
         if(sanityPricingContract != address(0)) {
-            uint sanityPrice = sanityPricingContract.getSanityPrice(source,dest);
+            uint sanityPrice = sanityPricingContract.getSanityPrice(source, dest);
             if(price > sanityPrice) return 0;
         }
 

@@ -140,7 +140,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
             AddReserve(reserve, true);
         } else {
             // will have trouble if more than 50k reserves...
-            for(uint i = 0 ; i < reserves.length ; i++) {
+            for(uint i = 0; i < reserves.length; i++) {
                 if(reserves[i] == reserve) {
                     if(reserves.length == 0) return;
                     reserves[i] = reserves[--reserves.length];
@@ -160,7 +160,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @param dest Destination token
     /// @param add If true then enable trade, otherwise delist pair.
     function listPairForReserve(address reserve, ERC20 source, ERC20 dest, bool add) public onlyAdmin {
-        (perReserveListedPairs[reserve])[keccak256(source,dest)] = add;
+        (perReserveListedPairs[reserve])[keccak256(source, dest)] = add;
 
         if(source != ETH_TOKEN_ADDRESS) {
             if(add) {
@@ -225,9 +225,9 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         uint[] memory rates = new uint[](numReserves);
         uint[] memory reserveCandidates = new uint[](numReserves);
 
-        for( uint i = 0 ; i < numReserves ; i++ ) {
+        for(uint i = 0; i < numReserves; i++) {
             //list all reserves that have this token.
-            if(!(perReserveListedPairs[reserves[i]])[keccak256(source,dest)]) continue;
+            if(!(perReserveListedPairs[reserves[i]])[keccak256(source, dest)]) continue;
 
             rates[i] = reserves[i].getConversionRate(source, dest, srcQty, block.number);
 
@@ -319,7 +319,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
             require (msg.value == srcAmount);
         } else {
             require (msg.value == 0);
-            require (source.allowance(msg.sender,this) >= srcAmount );
+            require (source.allowance(msg.sender,this) >= srcAmount);
         }
 
         return true;
