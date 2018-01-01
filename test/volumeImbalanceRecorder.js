@@ -301,7 +301,7 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         assert.equal((imbalanceInRange.valueOf() * newRecordResolution), totalImbalanceInRange, "unexpected total imbalance.");
     });
 
-    it("should test record resolution influence under un convinient conditions.", async function() {
+    it("should test record resolution influence when trades always below resolution.", async function() {
         var trade = 16;
         var currentBlock = priceUpdateBlock = 20000;
         var totalImbalanceSinceUpdate = 0;
@@ -313,7 +313,7 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         newRecordResolution = 17; //trade + 1
         await imbalanceInst2.setTokenControlInfo(token.address, newRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
 
-        for (var i = 0; i < 100; ++i) {
+        for (var i = 0; i < 20; ++i) {
             await imbalanceInst2.addTrade(token.address, trade, priceUpdateBlock, currentBlock ++);
 
             totalImbalanceSinceUpdate += trade;
@@ -321,10 +321,6 @@ contract('VolumeImbalanceRecorder', function(accounts) {
 
         var imbalanceArr = await imbalanceInst2.getMockImbalance(token.address, priceUpdateBlock, currentBlock);
 
-        console.log("reported imbalance: " + imbalanceArr[0].valueOf() + "accurate imbalance: " + totalImbalanceSinceUpdate);
-
-        assert(((imbalanceArr[0].valueOf() < totalImbalanceSinceUpdate + newRecordResolution) &&
-                (imbalanceArr[0].valueOf() > totalImbalanceSinceUpdate - newRecordResolution)), "unexpected total imbalance.");
-    });
-
+        assert.equal(imbalanceArr[0].valueOf(), 0, "unexpected total imbalance.");
+    }); 
 });
