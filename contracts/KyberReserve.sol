@@ -46,6 +46,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
         uint sourceAmount,
         ERC20 destToken,
         address destAddress,
+        uint conversionRate,
         bool validate
     )
         public
@@ -55,7 +56,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
         require(tradeEnabled);
         require(msg.sender == kyberNetwork);
 
-        assert(doTrade(sourceToken, sourceAmount, destToken, destAddress, validate));
+        assert(doTrade(sourceToken, sourceAmount, destToken, destAddress, conversionRate, validate));
 
         return true;
     }
@@ -158,6 +159,8 @@ contract KyberReserve is Withdrawable, KyberConstants {
         bool  buy;
         uint  tokenQty;
 
+
+
         if(ETH_TOKEN_ADDRESS == source) {
             buy = true;
             token = dest;
@@ -195,13 +198,12 @@ contract KyberReserve is Withdrawable, KyberConstants {
         uint sourceAmount,
         ERC20 destToken,
         address destAddress,
+        uint conversionRate,
         bool validate
     )
         internal
         returns(bool)
     {
-        uint conversionRate = getConversionRate(sourceToken, destToken, sourceAmount,  block.number);
-
         // can skip validation if done at kyber network level
         if(validate) {
             require(conversionRate > 0);

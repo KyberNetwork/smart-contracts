@@ -151,6 +151,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
             destAddress,
             actualDestAmount,
             theReserve,
+            rate,
             true)
         );
 
@@ -315,6 +316,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         address destAddress,
         uint expectedDestAmount,
         KyberReserve reserve,
+        uint conversionRate,
         bool validate
     )
         internal
@@ -330,7 +332,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         }
 
         // reserve send tokens/eth to network. network sends it to destination
-        assert(reserve.trade.value(callValue)(source, amount, dest, this, validate));
+        assert(reserve.trade.value(callValue)(source, amount, dest, this, conversionRate, validate));
 
         if(dest == ETH_TOKEN_ADDRESS) {
             destAddress.transfer(expectedDestAmount);
