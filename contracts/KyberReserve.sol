@@ -126,13 +126,31 @@ contract KyberReserve is Withdrawable, KyberConstants {
     }
 
     function getDestQty(ERC20 source, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {
-        // TODO - check overflow
-        return (srcQty * rate * (10 ** getDecimals(dest)) / (10**getDecimals(source))) / PRECISION;
+        uint dstDecimals = getDecimals(dest);
+        uint srcDecimals = getDecimals(source);
+
+        if( dstDecimals >= srcDecimals ) {
+            require((dstDecimals-srcDecimals) <= MAX_DECIMALS);
+            return (srcQty * rate * (10**(dstDecimals-srcDecimals))) / PRECISION;
+        }
+        else {
+            require((srcDecimals-dstDecimals) <= MAX_DECIMALS);
+            return (srcQty * rate) / (PRECISION * (10**(srcDecimals-dstDecimals)));
+        }
     }
 
     function getSrcQty(ERC20 source, ERC20 dest, uint dstQty, uint rate) public view returns(uint) {
-        // TODO - check overflow
-        return PRECISION * dstQty * (10**getDecimals(source)) / (rate*(10 ** getDecimals(dest)));
+        uint dstDecimals = getDecimals(dest);
+        uint srcDecimals = getDecimals(source);
+
+        if( srcDecimals >= dstDecimals ) {
+            require((srcDecimals-dstDecimals) <= MAX_DECIMALS);
+            return (PRECISION * dstQty * (10**(srcDecimals - dstDecimals))) / rate;
+        }
+        else {
+            require((dstDecimals-srcDecimals) <= MAX_DECIMALS);
+            return (PRECISION * dstQty) / (rate * (10**(dstDecimals - srcDecimals)));
+        }
     }
 
     function getConversionRate(ERC20 source, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {

@@ -121,6 +121,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         (reserveInd,rate) = findBestRate(source, dest, srcAmount);
         KyberReserve theReserve = reserves[reserveInd];
         assert(rate > 0);
+        assert(rate < MAX_RATE);
         assert(rate >= minConversionRate);
 
         uint actualSourceAmount = srcAmount;
@@ -346,6 +347,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @param srcAmount amount of source tokens
     /// @return true if input is valid
     function validateTradeInput(ERC20 source, uint srcAmount) internal view returns(bool) {
+        require(srcAmount < MAX_QTY );
         if(source == ETH_TOKEN_ADDRESS) {
             require (msg.value == srcAmount);
         } else {
