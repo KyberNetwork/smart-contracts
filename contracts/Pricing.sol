@@ -59,6 +59,8 @@ contract Pricing is VolumeImbalanceRecorder {
         tokenData[token].compactDataFieldIndex = numTokensInCurrentCompactData;
 
         numTokensInCurrentCompactData = (numTokensInCurrentCompactData + 1) % NUM_TOKENS_IN_COMPACT_DATA;
+
+        setGarbageToVolumeRecorder(token);
     }
 
     function setCompactData(bytes14[] buy, bytes14[] sell, uint blockNumber, uint[] indices) public onlyOperator {

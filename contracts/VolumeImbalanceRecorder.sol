@@ -56,6 +56,12 @@ contract VolumeImbalanceRecorder is Withdrawable {
                 tokenControlInfo[token].maxTotalImbalance);
     }
 
+    function setGarbageToVolumeRecorder(ERC20 token) internal {
+        for(uint i = 0 ; i < SLIDING_WINDOW_SIZE ; i++ ) {
+            tokenImbalanceData[token][i] = 0x1;
+        }
+    }
+
     function getImbalanceInRange(ERC20 token, uint startBlock, uint endBlock) internal view returns(int buyImbalance) {
         // check the imbalance in the sliding window
         require(startBlock <= endBlock);
