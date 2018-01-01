@@ -79,6 +79,38 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         payable
         returns(uint)
     {
+        uint userSrcBalanceBefore;
+        uint userSrcBalanceAfter;
+        uint userDestBalanceBefore;
+        uint userDestBalanceAfter;
+
+        userSrcBalanceBefore = getBalance(source, msg.sender);
+        userDestBalanceBefore = getBalance(dest,destAddress);
+
+        assert(doTrade(source,srcAmount,dest,destAddress,maxDestAmount,minConversionRate,walletId) > 0);
+
+        userSrcBalanceAfter = getBalance(source, msg.sender);
+        userDestBalanceAfter = getBalance(dest,destAddress);
+
+        require(userSrcBalanceAfter <= userSrcBalanceBefore);
+        require(userDestBalanceAfter >= userDestBalanceBefore);
+
+        require((userSrcBalanceAfter - userSrcBalanceBefore) * minConversionRate <=
+                (userDestBalanceAfter - userDestBalanceBefore));
+    }
+
+    function doTrade(
+        ERC20 source,
+        uint srcAmount,
+        ERC20 dest,
+        address destAddress,
+        uint maxDestAmount,
+        uint minConversionRate,
+        address walletId
+    )
+        internal
+        returns(uint)
+    {
         require(tx.gasprice <= maxGasPrice);
         require(kyberWhiteList != address(0));
         require(feeBurnerContract != address(0));
@@ -111,7 +143,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
         require(ethAmount <= kyberWhiteList.getUserCapInWei(msg.sender));
 
-        assert(doSingleTrade(
+        assert(doReserveTrade(
             source,
             actualSourceAmount,
             dest,
@@ -204,13 +236,12 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         return reserves;
     }
 
-    /// @notice a debug function
-    /// @dev get the balance of the network. It is expected to be 0 all the time.
+    /// @dev get the balance of a user.
     /// @param token The token type
     /// @return The balance
-    function getBalance(ERC20 token) public view returns(uint){
-        if(token == ETH_TOKEN_ADDRESS) return this.balance;
-        else return token.balanceOf(this);
+    function getBalance(ERC20 token, address user) public view returns(uint){
+        if(token == ETH_TOKEN_ADDRESS) return user.balance;
+        else return token.balanceOf(user);
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
@@ -276,7 +307,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @param reserve Reserve to use
     /// @param validate If true, additional validations are applicable
     /// @return true if trade is successful
-    function doSingleTrade(
+    function doReserveTrade(
         ERC20 source,
         uint amount,
         ERC20 dest,
