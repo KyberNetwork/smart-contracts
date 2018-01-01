@@ -322,5 +322,5 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         var imbalanceArr = await imbalanceInst2.getMockImbalance(token.address, priceUpdateBlock, currentBlock);
 
         assert.equal(imbalanceArr[0].valueOf(), 0, "unexpected total imbalance.");
-    }); 
+    });
 });
