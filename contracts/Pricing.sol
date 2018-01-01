@@ -199,7 +199,7 @@ contract Pricing is VolumeImbalanceRecorder {
 
             // add price update
             priceUpdate = int8(compactData.buy[tokenData[token].compactDataFieldIndex]);
-            extraBps = priceUpdate * 10;
+            extraBps = int(priceUpdate) * 10;
             price = addBps(price, extraBps);
         } else {
             // start with base price
@@ -215,7 +215,7 @@ contract Pricing is VolumeImbalanceRecorder {
 
             // add price update
             priceUpdate = int8(compactData.sell[tokenData[token].compactDataFieldIndex]);
-            extraBps = priceUpdate * 10;
+            extraBps = int(priceUpdate) * 10;
             price = addBps(price, extraBps);
         }
 
