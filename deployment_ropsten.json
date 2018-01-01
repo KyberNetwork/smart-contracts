@@ -1,0 +1,158 @@
+{
+  "tokens": {
+    "ETH": {
+      "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "name": "Ethereum",
+      "decimals": 18
+    },
+    "OMG": {
+      "address": "0x811c9bcfe658b13243a978e2e18dc64b03043978",
+      "name": "OmiseGO",
+      "decimals": 18
+    },
+    "DGD": {
+      "address": "0xb37f3d37e2e489852d96fd0addfcd48c99dca252",
+      "name": "Digix",
+      "decimals": 9
+    },
+    "CVC": {
+      "address": "0xf1b3ec4b84867e43e26cc851973eb304576bd0a4",
+      "name": "Civic",
+      "decimals": 8
+    },
+    "FUN": {
+      "address": "0x131d4984395eb840b44a2c107f7cce4076346837",
+      "name": "FunFair",
+      "decimals": 8
+    },
+    "MCO": {
+      "address": "0x06a128ec883b162a2bba5b233b859e386d8dd579",
+      "name": "Monaco",
+      "decimals": 8
+    },
+    "GNT": {
+      "address": "0xc3a7d0319bcbb18ae9bdb22bce60b170e0273021",
+      "name": "Golem",
+      "decimals": 18
+    },
+    "ADX": {
+      "address": "0xe423b7aa7c517da0e93983f3df44d5fde201364a",
+      "name": "Adex",
+      "decimals": 4
+    },
+    "PAY": {
+      "address": "0x62d1741446661d486c9003ea521b678b8a71fabc",
+      "name": "TenX",
+      "decimals": 18
+    },
+    "BAT": {
+      "address": "0xfd5b85871fbbf61e804374915233ff62dde0ae8f",
+      "name": "BasicAttention",
+      "decimals": 18
+    },
+    "KNC": {
+      "address": "0x25681b30165f829686aef6cdabb57152c1af1b2f",
+      "name": "KyberNetwork",
+      "decimals": 18
+    },
+    "EOS": {
+      "address": "0xfcb08003c06d2c3f55f1b83a29c3ad870e7dc64b",
+      "name": "Eos",
+      "decimals": 18
+    },
+    "LINK": {
+      "address": "0x53df3e6cfa76df94b980283eaffd0e18c4e5350b",
+      "name": "ChainLink",
+      "decimals": 18
+    }
+  },
+  "exchangesAddress": {
+    "bittrex": "0x0c5abdff07e068ff48acca4f721394df1b76b504",
+    "liqui": "0xc0ba307edac7e0dc6780b1bf461fc9cfbc000579",
+    "poloniex": "0xb7dc1eefc400655e308de7e518a703535ff5dca1",
+    "binance": "0x850b752dd4427b9e75cef66c8f30f6b6b125f0fc",
+    "bitfinex": "0x6330cd3eaefb56bdf4725e89846824de1b572e5a"
+  },
+  "exchangesDeposit": {
+    "bittrex": {
+      "OMG": "0xc5389459c8d4845a2b08ce5f49ba312d6371a996",
+      "DGD": "0xe846bc8d04093f916503cdc619ee72ab0e1f0dcb",
+      "CVC": "0x974e33a303bc20dec9ab2ca3bce4e004a4732036",
+      "FUN": "0x6a5b5a68d7821d7d747ba88d74cbbe3c98ba71c0",
+      "MCO": "0x777a6baadaad831694b7fe54c9c04cdd46c8e3cb",
+      "GNT": "0xab60ef17ed7d832bba38d74e4551019153ef5e71",
+      "ADX": "0x66670777f8cf4d62216c82bb8d7e9585fb0ad76f",
+      "PAY": "0x0044e90f217a5039196b49a2cb5bc7f2f1d6aaa1",
+      "BAT": "0x170c3dfb3f9af0f43c4f2322f219f6548b0cbe13",
+      "KNC": "0x5ca0ec925abcbedeee65249a6077c42d376f3b44",
+      "EOS": "0x29e4c60b219065ea7e4b8c513afca0f85a77b716",
+      "LINK": "0x2ffae1ff3f6f8f27e9ce17d85af8fcfac4dc9cf6",
+      "ETH": "0xf0d1157dd2d0cf7b821a91bf6370be9b11cc2d5c"
+    },
+    "liqui": {
+      "OMG": "0x8e223bb4126669174fb305dfe8a593a79be65c05",
+      "DGD": "0x813e42cde05f85373c91e880bece58d5871d7360",
+      "CVC": "0xcad89ee828e577b84daa2641f2b6a7efcfb6715f",
+      "FUN": "0xf6dc251c11cef1ce8ac8e09a760513c97f303715",
+      "MCO": "0x4eab8f7bd0d5470af26ba69b784b8d6cf6797a51",
+      "GNT": "0x39d2b04f4b41bb31a57daa7e971f6471929af048",
+      "ADX": "0x70e8cf1837eb5f9c7a0f3a5dda511843ad7dc150",
+      "PAY": "0xd10bd11395cda83781abc77eeabb6d3cf2222a8f",
+      "BAT": "0x9494ac83108731b06fd75ef7eeb2513fefb94946",
+      "KNC": "0x7d306f8883222921fc14ee5110b3e25cbd8e112a",
+      "EOS": "0x2a92d82b9df58dada6d6181d2a1351b9214492a1",
+      "LINK": "0x682a6f79b2115d0eadeecaac86bf2fdc989b5cf6",
+      "ETH": "0x0825de91048940ecb880d071f44bf534403c27d6"
+    },
+    "poloniex": {
+      "OMG": "0xcc8ce1622c1bcee5e69c139ab9a671313422e6c6",
+      "DGD": "0xd2b2bcbdb63e4fbfa2301dcbde55075565847b91",
+      "CVC": "0x062076ff731829aff03b80cc1f0d16ac6f091217",
+      "FUN": "0xe74ad37a51ed6bc04f1e8e35689fa9991cf04583",
+      "MCO": "0x0fb0ccaf587a2edbaef82df11e99812dcc8d5320",
+      "GNT": "0xf1bec6ca93f26bb14be36a2f85c581e1d057c92e",
+      "ADX": "0xf9d1c4dd41b290d07aff5ea7387b24744729b3fa",
+      "PAY": "0x6fb0755d93d169c914b7726f6b20d85bfef5e989",
+      "BAT": "0x2fe8409ef9f5045cbd9c366f692bc742dff98c89",
+      "KNC": "0x994b461102a80a0c8c9edced11532ff099d281a8",
+      "EOS": "0x3d4d18bbae53a2904da69b5835f0c8e5d2a20ab9",
+      "LINK": "0x14de04daaec66fadf972f4ab8d3aaa7c43d7e740",
+      "ETH": "0x5b6c2cd6de09eef911d63a26c262192c6da9e650"
+    },
+    "binance": {
+      "OMG": "0x0478b40b358ba48f824b067f10f150f3e0806437",
+      "DGD": "0x05ad8c4aed23bb5f6a383e61e23f6c373234689f",
+      "CVC": "0x2be333fe04cf268b1d3dc6a61250ff284555c745",
+      "FUN": "0x2e9c22efa0db6ee0fbe5c4a3563c40dc086c6e54",
+      "MCO": "0x0218a83ad40ede1adb22c4195435d89ea5bcfe15",
+      "GNT": "0x02fd9a13ca9eecd6bef624d221f905beec395d03",
+      "ADX": "0x1568155d8fc2c6b474440956eb743ffde124fc62",
+      "PAY": "0xc8ab4777f2b82c9fca8a623d53fd56f73ebdeed3",
+      "BAT": "0xc7b38b653b8e56dbf2df8e552f97ce833888e241",
+      "KNC": "0xb4d205b342f0369dacf12e5e4bf82c2ca01c7395",
+      "EOS": "0x8ec4b4427c1745f4959d180a0b68f873d81e773f",
+      "LINK": "0x4ddaf2fba53d54c5733975f50e99b91779ba29b1",
+      "ETH": "0x7eade4d3f921f4d0a76e63fe69a3af09b85399ff"
+    },
+    "bitfinex": {
+      "OMG": "0x2614957ad27e370d5f109279c69ce2ab862779dc",
+      "DGD": "0xfbc78b0166b66abbfb6c3c5a12bf08a60a8e2f2f",
+      "CVC": "0x5204caa3fc0663dcd4d08fff18a9c82f18c71b35",
+      "FUN": "0xb5e453454c7cba91defd55f79e5ff3c208cc77c0",
+      "MCO": "0x2bf1487f2a20b79f0303a05505d4074a9f3f5d31",
+      "GNT": "0x8f676e89576a5711bb06a7cc0c9f99b8427c8fcd",
+      "ADX": "0xcea242ac783532f386567d8342e49e23bca515b5",
+      "PAY": "0x26d7ce9efcb2a5039cb8c141dc8699303db67d5f",
+      "BAT": "0xc1e0ce5cf1721e8efab0d1d1097fd55a47d52f63",
+      "KNC": "0xf5218e6c5697f1fdcc58b0240b015bcc17a10335",
+      "EOS": "0x05fd3772f2e1306fc53facb88fe61a1d375e4594",
+      "LINK": "0xfc79d351c4bdc6cfe407cb291c3a1dfc17a876e1",
+      "ETH": "0x7cf27c88d58e44d0e74d827befd723699bac505f"
+    }
+  },
+  "bank": "0xd33ddcfec4075149290a71f9035ee932ed21e949",
+  "reserve": "0x07a8e17f1a0486de7ce4db87dbbe937101afbb4b",
+  "pricing": "0xc0619e992392fafcebf7f1fa4aa50d5f332e686d",
+  "network": "0xc61f615b60b6ff106124c1e776b31d049672a895",
+  "wrapper": "0x4edd42a03c47f65b5aadd94bd26a3303cfdefe86"
+}

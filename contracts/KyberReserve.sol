@@ -46,6 +46,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
         uint sourceAmount,
         ERC20 destToken,
         address destAddress,
+        uint conversionRate,
         bool validate
     )
         public
@@ -55,7 +56,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
         require(tradeEnabled);
         require(msg.sender == kyberNetwork);
 
-        assert(doTrade(sourceToken, sourceAmount, destToken, destAddress, validate));
+        assert(doTrade(sourceToken, sourceAmount, destToken, destAddress, conversionRate, validate));
 
         return true;
     }
@@ -126,19 +127,39 @@ contract KyberReserve is Withdrawable, KyberConstants {
     }
 
     function getDestQty(ERC20 source, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {
-        // TODO - check overflow
-        return (srcQty * rate * (10 ** getDecimals(dest)) / (10**getDecimals(source))) / PRECISION;
+        uint dstDecimals = getDecimals(dest);
+        uint srcDecimals = getDecimals(source);
+
+        if( dstDecimals >= srcDecimals ) {
+            require((dstDecimals-srcDecimals) <= MAX_DECIMALS);
+            return (srcQty * rate * (10**(dstDecimals-srcDecimals))) / PRECISION;
+        }
+        else {
+            require((srcDecimals-dstDecimals) <= MAX_DECIMALS);
+            return (srcQty * rate) / (PRECISION * (10**(srcDecimals-dstDecimals)));
+        }
     }
 
     function getSrcQty(ERC20 source, ERC20 dest, uint dstQty, uint rate) public view returns(uint) {
-        // TODO - check overflow
-        return PRECISION * dstQty * (10**getDecimals(source)) / (rate*(10 ** getDecimals(dest)));
+        uint dstDecimals = getDecimals(dest);
+        uint srcDecimals = getDecimals(source);
+
+        if( srcDecimals >= dstDecimals ) {
+            require((srcDecimals-dstDecimals) <= MAX_DECIMALS);
+            return (PRECISION * dstQty * (10**(srcDecimals - dstDecimals))) / rate;
+        }
+        else {
+            require((dstDecimals-srcDecimals) <= MAX_DECIMALS);
+            return (PRECISION * dstQty) / (rate * (10**(dstDecimals - srcDecimals)));
+        }
     }
 
     function getConversionRate(ERC20 source, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
         ERC20 token;
         bool  buy;
         uint  tokenQty;
+
+
 
         if(ETH_TOKEN_ADDRESS == source) {
             buy = true;
@@ -177,13 +198,12 @@ contract KyberReserve is Withdrawable, KyberConstants {
         uint sourceAmount,
         ERC20 destToken,
         address destAddress,
+        uint conversionRate,
         bool validate
     )
         internal
         returns(bool)
     {
-        uint conversionRate = getConversionRate(sourceToken, destToken, sourceAmount,  block.number);
-
         // can skip validation if done at kyber network level
         if(validate) {
             require(conversionRate > 0);

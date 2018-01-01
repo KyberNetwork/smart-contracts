@@ -79,6 +79,38 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         payable
         returns(uint)
     {
+        uint userSrcBalanceBefore;
+        uint userSrcBalanceAfter;
+        uint userDestBalanceBefore;
+        uint userDestBalanceAfter;
+
+        userSrcBalanceBefore = getBalance(source, msg.sender);
+        userDestBalanceBefore = getBalance(dest,destAddress);
+
+        assert(doTrade(source,srcAmount,dest,destAddress,maxDestAmount,minConversionRate,walletId) > 0);
+
+        userSrcBalanceAfter = getBalance(source, msg.sender);
+        userDestBalanceAfter = getBalance(dest,destAddress);
+
+        require(userSrcBalanceAfter <= userSrcBalanceBefore);
+        require(userDestBalanceAfter >= userDestBalanceBefore);
+
+        require((userSrcBalanceAfter - userSrcBalanceBefore) * minConversionRate <=
+                (userDestBalanceAfter - userDestBalanceBefore));
+    }
+
+    function doTrade(
+        ERC20 source,
+        uint srcAmount,
+        ERC20 dest,
+        address destAddress,
+        uint maxDestAmount,
+        uint minConversionRate,
+        address walletId
+    )
+        internal
+        returns(uint)
+    {
         require(tx.gasprice <= maxGasPrice);
         require(kyberWhiteList != address(0));
         require(feeBurnerContract != address(0));
@@ -89,6 +121,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         (reserveInd,rate) = findBestRate(source, dest, srcAmount);
         KyberReserve theReserve = reserves[reserveInd];
         assert(rate > 0);
+        assert(rate < MAX_RATE);
         assert(rate >= minConversionRate);
 
         uint actualSourceAmount = srcAmount;
@@ -111,13 +144,14 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
         require(ethAmount <= kyberWhiteList.getUserCapInWei(msg.sender));
 
-        assert(doSingleTrade(
+        assert(doReserveTrade(
             source,
             actualSourceAmount,
             dest,
             destAddress,
             actualDestAmount,
             theReserve,
+            rate,
             true)
         );
 
@@ -204,13 +238,12 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         return reserves;
     }
 
-    /// @notice a debug function
-    /// @dev get the balance of the network. It is expected to be 0 all the time.
+    /// @dev get the balance of a user.
     /// @param token The token type
     /// @return The balance
-    function getBalance(ERC20 token) public view returns(uint){
-        if(token == ETH_TOKEN_ADDRESS) return this.balance;
-        else return token.balanceOf(this);
+    function getBalance(ERC20 token, address user) public view returns(uint){
+        if(token == ETH_TOKEN_ADDRESS) return user.balance;
+        else return token.balanceOf(user);
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
@@ -276,13 +309,14 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @param reserve Reserve to use
     /// @param validate If true, additional validations are applicable
     /// @return true if trade is successful
-    function doSingleTrade(
+    function doReserveTrade(
         ERC20 source,
         uint amount,
         ERC20 dest,
         address destAddress,
         uint expectedDestAmount,
         KyberReserve reserve,
+        uint conversionRate,
         bool validate
     )
         internal
@@ -298,7 +332,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         }
 
         // reserve send tokens/eth to network. network sends it to destination
-        assert(reserve.trade.value(callValue)(source, amount, dest, this, validate));
+        assert(reserve.trade.value(callValue)(source, amount, dest, this, conversionRate, validate));
 
         if(dest == ETH_TOKEN_ADDRESS) {
             destAddress.transfer(expectedDestAmount);
@@ -315,6 +349,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     /// @param srcAmount amount of source tokens
     /// @return true if input is valid
     function validateTradeInput(ERC20 source, uint srcAmount) internal view returns(bool) {
+        require(srcAmount < MAX_QTY );
         if(source == ETH_TOKEN_ADDRESS) {
             require (msg.value == srcAmount);
         } else {
