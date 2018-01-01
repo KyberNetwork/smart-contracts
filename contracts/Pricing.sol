@@ -30,8 +30,8 @@ contract Pricing is VolumeImbalanceRecorder {
     }
 
     struct TokenPricesCompactData {
-        bytes14 buy; // change in price of token i frogetMaxTotalImbalancem base price in 10 bps
-        bytes14 sell;  // change from base price in 10 bps
+        bytes14 buy;  // change buy price of token from baseBuyPrice in 10 bps
+        bytes14 sell; // change sell price of token from baseSellPrice in 10 bps
 
         uint32 blockNumber;
     }
@@ -43,9 +43,7 @@ contract Pricing is VolumeImbalanceRecorder {
     address public reserveContract;
     uint constant NUM_TOKENS_IN_COMPACT_DATA = 14;
 
-    function Pricing(address _admin) public VolumeImbalanceRecorder(_admin) {
-
-    }
+    function Pricing(address _admin) public VolumeImbalanceRecorder(_admin) { }
 
     function addToken(ERC20 token) public onlyAdmin {
 
@@ -186,7 +184,7 @@ contract Pricing is VolumeImbalanceRecorder {
 
         if(buy) {
             // start with base price
-            price =  tokenData[token].baseBuyPrice;
+            price = tokenData[token].baseBuyPrice;
 
             // add qty overhead
             extraBps = executeStepFunction(tokenData[token].buyPriceQtyStepFunction, int(qty));

@@ -135,7 +135,8 @@ contract VolumeImbalanceRecorder is Withdrawable {
 
         // first scenario - this is not the first tx in the current block
         if(currentBlockData.lastBlock == currentBlock) {
-            if(uint(currentBlockData.lastPriceUpdateBlock) == priceUpdateBlock) {
+            if(uint(currentBlockData.lastPriceUpdateBlock) == priceUpdateBlock)
+            {
                 // just increase imbalance
                 currentBlockData.lastBlockBuyUnitsImbalance += recordedBuyAmount;
                 currentBlockData.totalBuyUnitsImbalance += recordedBuyAmount;
