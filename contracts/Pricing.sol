@@ -89,9 +89,8 @@ contract Pricing is VolumeImbalanceRecorder {
     {
         require(tokens.length == baseBuy.length);
         require(tokens.length == baseSell.length);
-        require(tokens.length == buy.length);
-        require(tokens.length == sell.length);
-        require(tokens.length == indices.length);
+        require(sell.length == buy.length);
+        require(sell.length == indices.length);
 
         for(uint ind = 0; ind < tokens.length; ind++) {
             tokenData[tokens[ind]].baseBuyPrice = baseBuy[ind];
