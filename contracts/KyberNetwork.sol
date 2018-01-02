@@ -23,6 +23,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     ExpectedRateInterface public expectedRateContract;
     FeeBurnerInterface    public feeBurnerContract;
     uint                  public maxGasPrice = 50 * 1000 * 1000 * 1000; // 50 gwei
+    bool                  public enable = true; // network is enabled
     mapping(address=>mapping(bytes32=>bool)) perReserveListedPairs;
 
     function KyberNetwork(address _admin) public {
@@ -79,6 +80,8 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         payable
         returns(uint)
     {
+        require(enable);
+
         uint userSrcBalanceBefore;
         uint userSrcBalanceAfter;
         uint userDestBalanceBefore;
@@ -223,6 +226,10 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         maxGasPrice = _maxGasPrice;
         negligiblePriceDiff = _negligibleDiff;
 
+    }
+
+    function setEnable(bool _enable) public onlyAdmin {
+        enable = _enable;
     }
 
     /// @dev returns number of reserves
