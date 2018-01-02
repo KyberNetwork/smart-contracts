@@ -49,8 +49,8 @@ contract Wrapper is KyberConstants {
         uint[] memory updateBlock = new uint[](tokenList.length);
 
         for(uint i = 0;  i < tokenList.length; i++) {
-            buyBases[i] = pricingContract.getBasicPrice(tokenList[i],true);
-            sellBases[i] = pricingContract.getBasicPrice(tokenList[i],false);
+            buyBases[i] = pricingContract.getBasicPrice(tokenList[i], true);
+            sellBases[i] = pricingContract.getBasicPrice(tokenList[i], false);
 
             (compactBuy[i],compactSell[i],updateBlock[i]) = getCompactData(pricingContract,tokenList[i]);
         }
