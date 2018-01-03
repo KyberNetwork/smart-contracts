@@ -103,4 +103,12 @@ contract PermissionGroups {
             }
         }
     }
+
+    function getOperators () external view returns(address []) {
+        return operatorsGroup;
+    }
+
+    function getAlerters () external view returns(address []) {
+        return alertersGroup;
+    }
 }

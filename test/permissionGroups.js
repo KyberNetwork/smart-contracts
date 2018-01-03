@@ -65,15 +65,10 @@ contract('PermissionGroups', function(accounts) {
     });
 
     it("should test get operators success.", async function () {
-        try{
-            var operators = await permissionsInst.getOperators();
-            assert.equal(operators.length, 2, "bad number of operators.")
-            assert.equal(accounts[1], operators[0]);
-            assert.equal(accounts[2], operators[1]);
-        }
-        catch(e){
-            console.log("oops " + e);
-        }
+        var operators = await permissionsInst.getOperators();
+        assert.equal(operators.length, 2, "bad number of operators.")
+        assert.equal(accounts[1], operators[0]);
+        assert.equal(accounts[2], operators[1]);
     });
 
     it("should test set price is rejected for non operator.", async function () {
