@@ -78,7 +78,7 @@ contract Pricing is VolumeImbalanceRecorder {
 
         for(uint i = 0; i < indices.length; i++) {
             require(indices[i] < tokenPricesCompactData.length);
-            uint data = uint(buy[i]) | (uint(sell[i]) * bytes14Offset) | (blockNumber * (bytes14Offset*bytes14Offset));
+            uint data = uint(buy[i]) | uint(sell[i]) * bytes14Offset  | (blockNumber * (bytes14Offset*bytes14Offset));
             tokenPricesCompactData[indices[i]] = bytes32(data);
         }
     }
@@ -218,7 +218,7 @@ contract Pricing is VolumeImbalanceRecorder {
             price = addBps(price, extraBps);
 
             // add price update
-            priceUpdate = int8(compactData[tokenData[token].compactDataFieldIndex]);
+            priceUpdate = getPriceByteFromCompactData(compactData,token,true);
             extraBps = int(priceUpdate) * 10;
             price = addBps(price, extraBps);
         } else {
@@ -234,7 +234,7 @@ contract Pricing is VolumeImbalanceRecorder {
             price = addBps(price, extraBps);
 
             // add price update
-            priceUpdate = int8(compactData[NUM_TOKENS_IN_COMPACT_DATA + tokenData[token].compactDataFieldIndex]);
+            priceUpdate = getPriceByteFromCompactData(compactData,token,false);
             extraBps = int(priceUpdate) * 10;
             price = addBps(price, extraBps);
         }
@@ -254,8 +254,8 @@ contract Pricing is VolumeImbalanceRecorder {
         return (
             arrayIndex,
             fieldOffset,
-            tokenPricesCompactData[arrayIndex][fieldOffset],
-            tokenPricesCompactData[arrayIndex][NUM_TOKENS_IN_COMPACT_DATA+fieldOffset]
+            byte(getPriceByteFromCompactData(tokenPricesCompactData[arrayIndex],token,true)),
+            byte(getPriceByteFromCompactData(tokenPricesCompactData[arrayIndex],token,false))
         );
     }
 
@@ -267,6 +267,15 @@ contract Pricing is VolumeImbalanceRecorder {
     function getLast4Bytes(bytes32 b) pure internal returns(uint) {
         // cannot trust compiler with not turning bit operations into EXP opcode
         return uint(b) / (BYTES_14_OFFEST * BYTES_14_OFFEST);
+    }
+
+    function getPriceByteFromCompactData(bytes32 data, ERC20 token, bool buy) view internal returns(int8) {
+        uint fieldOffest = tokenData[token].compactDataFieldIndex;
+        uint byteOffset;
+        if(buy) byteOffset = 32-NUM_TOKENS_IN_COMPACT_DATA+fieldOffest;
+        else byteOffset = 4+fieldOffest;
+
+        return int8(data[byteOffset]);
     }
 
     function executeStepFunction(StepFunction f, int x) pure internal returns(int) {
