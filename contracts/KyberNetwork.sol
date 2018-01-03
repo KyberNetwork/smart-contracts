@@ -98,8 +98,24 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         require(userSrcBalanceAfter <= userSrcBalanceBefore);
         require(userDestBalanceAfter >= userDestBalanceBefore);
 
-        require((userSrcBalanceAfter - userSrcBalanceBefore) * minConversionRate <=
-                (userDestBalanceAfter - userDestBalanceBefore));
+        uint srcDecimals;
+        uint destDecimals;
+
+        if(source == ETH_TOKEN_ADDRESS) {
+            srcDecimals = 18;
+        } else {
+            srcDecimals = source.decimals();
+        }
+
+        if(dest == ETH_TOKEN_ADDRESS) {
+            destDecimals = 18;
+        } else {
+            destDecimals = dest.decimals();
+        }
+
+        // TODO - mitigate potential overflow
+        require(((userSrcBalanceBefore - userSrcBalanceAfter) * minConversionRate) * (10 ** destDecimals) <=
+                (userDestBalanceAfter - userDestBalanceBefore) * (10 ** srcDecimals) * PRECISION );
     }
 
     function doTrade(
@@ -230,6 +246,11 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
     function setEnable(bool _enable) public onlyAdmin {
         enable = _enable;
+    }
+
+    event EtherRecival(address indexed sender, uint amount);
+    function() payable public {
+        EtherRecival(msg.sender,msg.value);
     }
 
     /// @dev returns number of reserves
