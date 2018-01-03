@@ -73,7 +73,6 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         bytes[16] = 3;
         bytes[24] = 4;
         var startInt = bytesToHex(bytes);
-        startInt += p;
         console.log("startInt " + startInt);
         var toStruct = await imbalanceInst.callDecodeTokenImbalanceData(startInt);
 
