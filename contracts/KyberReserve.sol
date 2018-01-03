@@ -133,8 +133,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
         if( dstDecimals >= srcDecimals ) {
             require((dstDecimals-srcDecimals) <= MAX_DECIMALS);
             return (srcQty * rate * (10**(dstDecimals-srcDecimals))) / PRECISION;
-        }
-        else {
+        } else {
             require((srcDecimals-dstDecimals) <= MAX_DECIMALS);
             return (srcQty * rate) / (PRECISION * (10**(srcDecimals-dstDecimals)));
         }
@@ -147,8 +146,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
         if( srcDecimals >= dstDecimals ) {
             require((srcDecimals-dstDecimals) <= MAX_DECIMALS);
             return (PRECISION * dstQty * (10**(srcDecimals - dstDecimals))) / rate;
-        }
-        else {
+        } else {
             require((dstDecimals-srcDecimals) <= MAX_DECIMALS);
             return (PRECISION * dstQty) / (rate * (10**(dstDecimals - srcDecimals)));
         }
@@ -158,8 +156,6 @@ contract KyberReserve is Withdrawable, KyberConstants {
         ERC20 token;
         bool  buy;
         uint  tokenQty;
-
-
 
         if(ETH_TOKEN_ADDRESS == source) {
             buy = true;
@@ -226,7 +222,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
             token = sourceToken;
         }
 
-        pricingContract.recoredImbalance(
+        pricingContract.recordImbalance(
             token,
             buy,
             pricingContract.getPriceUpdateBlock(token),
