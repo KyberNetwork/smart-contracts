@@ -189,16 +189,108 @@ contract('Pricing', function(accounts) {
         assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
     });
 
+    it("should test price updates when compact data has limit values (-128, 127).", async function () {
+        var tokenInd = 7;
+        var token = tokens[tokenInd]; //choose some token
+        var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
+        var buyQty = 5;
+
+        //update compact data
+        indices.length = 0;
+        indices[0] = 0; // we update 1st cell in compact data
+        compactBuyArr1[tokenInd] = -128;
+        var compactHex = bytesToHex(compactBuyArr1);
+        buys.length = 0;
+        buys.push(compactHex);
+        sells.length = 0;
+        compactHex = bytesToHex(compactSellArr1);
+        sells.push(compactHex);
+        pricingInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+
+        // get price without activating quantity step function (small amount).
+
+        var expectedPrice = (new BigNumber(baseBuyPrice));
+        var extraBps = compactBuyArr1[tokenInd] * 10;
+        expectedPrice = addBps(expectedPrice, extraBps);
+
+        var receivedPrice = await pricingInst.getPrice(token, currentBlock, true, buyQty);
+
+        assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
+
+        //update compact data
+        compactBuyArr1[tokenInd] = 127;
+        var compactHex = bytesToHex(compactBuyArr1);
+        buys.length = 0;
+        buys.push(compactHex);
+        pricingInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+
+        // get price without activating quantity step function (small amount).
+
+        var expectedPrice = (new BigNumber(baseBuyPrice));
+        var extraBps = compactBuyArr1[tokenInd] * 10;
+        expectedPrice = addBps(expectedPrice, extraBps);
+
+        var receivedPrice = await pricingInst.getPrice(token, currentBlock, true, buyQty);
+
+        assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
+    });
+
+    it("should test price when updating only 2nd cell compact data.", async function () {
+        var tokenInd = 16;
+        var token = tokens[tokenInd]; //choose some token
+        var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
+        var buyQty = 5;
+
+        //update compact data
+        indices.length = 0;
+        indices[0] = 1; // we update 2nd cell in compact data
+        compactBuyArr2[tokenInd - 14] = -128;
+        var compactHex = bytesToHex(compactBuyArr2);
+        buys.length = 0;
+        buys.push(compactHex);
+        sells.length = 0;
+        compactHex = bytesToHex(compactSellArr2);
+        sells.push(compactHex);
+        pricingInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+
+        // get price without activating quantity step function (small amount).
+
+        var expectedPrice = (new BigNumber(baseBuyPrice));
+        var extraBps = compactBuyArr2[tokenInd - 14] * 10;
+        expectedPrice = addBps(expectedPrice, extraBps);
+
+        var receivedPrice = await pricingInst.getPrice(token, currentBlock, true, buyQty);
+
+        assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
+    });
+
     it("should perform a single buy and see price update with compact data and quantity step.", async function () {
         var tokenInd = 11;
         var token = tokens[tokenInd]; //choose some token
         var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
-        var baseSellPrice = await pricingInst.getBasicPrice(token, false);
 
-        // get price
+        // calculate expected price
         var buyQty = 17;
         var expectedPrice = (new BigNumber(baseBuyPrice));
         var extraBps = compactBuyArr1[tokenInd] * 10;
+        expectedPrice = addBps(expectedPrice, extraBps);
+        extraBps = getExtraBpsForBuyQuantity(buyQty);
+        expectedPrice = addBps(expectedPrice, extraBps);
+
+        var receivedPrice = await pricingInst.getPrice(token, currentBlock, true, buyQty);
+
+        assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
+    });
+
+    it("should test quantity step and compact data update with token index > 14.", async function () {
+        var tokenInd = 15;
+        var token = tokens[tokenInd]; //choose some token
+        var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
+
+        // get price
+        var buyQty = 30;
+        var expectedPrice = (new BigNumber(baseBuyPrice));
+        var extraBps = compactBuyArr2[tokenInd - 14] * 10;
         expectedPrice = addBps(expectedPrice, extraBps);
         extraBps = getExtraBpsForBuyQuantity(buyQty);
         expectedPrice = addBps(expectedPrice, extraBps);
@@ -212,7 +304,6 @@ contract('Pricing', function(accounts) {
         var tokenInd = 16;
         var token = tokens[tokenInd]; //choose some token
         var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
-        var baseSellPrice = await pricingInst.getBasicPrice(token, false);
 
         // get price
         var buyQty = 100;
@@ -227,7 +318,7 @@ contract('Pricing', function(accounts) {
         expectedPrice = addBps(expectedPrice, extraBps);
 
         //record imbalance
-        await pricingInst.recoredImbalance(token, imbalance, currentBlock, currentBlock, {from: reserveAddress});
+        await pricingInst.recordImbalance(token, imbalance, currentBlock, currentBlock, {from: reserveAddress});
 
         var receivedPrice = await pricingInst.getPrice(token, currentBlock, true, buyQty);
 
