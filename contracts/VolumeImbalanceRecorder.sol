@@ -56,6 +56,48 @@ contract VolumeImbalanceRecorder is Withdrawable {
                 tokenControlInfo[token].maxTotalImbalance);
     }
 
+    function addImbalance(
+        ERC20 token,
+        int buyAmount,
+        uint priceUpdateBlock,
+        uint currentBlock
+    )
+        internal
+    {
+        uint currentBlockIndex = currentBlock % SLIDING_WINDOW_SIZE;
+        int64 recordedBuyAmount = int64(buyAmount / int(tokenControlInfo[token].minimalRecordResolution));
+
+        int prevImbalance = 0;
+
+        TokenImbalanceData memory currentBlockData = decodeTokenImbalanceData(tokenImbalanceData[token][currentBlockIndex]);
+
+        // first scenario - this is not the first tx in the current block
+        if(currentBlockData.lastBlock == currentBlock) {
+            if(uint(currentBlockData.lastPriceUpdateBlock) == priceUpdateBlock) {
+                // just increase imbalance
+                currentBlockData.lastBlockBuyUnitsImbalance += recordedBuyAmount;
+                currentBlockData.totalBuyUnitsImbalance += recordedBuyAmount;
+            } else {
+                // imbalance was changed in the middle of the block
+                prevImbalance = getImbalanceInRange(token, priceUpdateBlock, currentBlock);
+                currentBlockData.totalBuyUnitsImbalance = int64(prevImbalance) + recordedBuyAmount;
+                currentBlockData.lastBlockBuyUnitsImbalance += recordedBuyAmount;
+                currentBlockData.lastPriceUpdateBlock = uint64(priceUpdateBlock);
+            }
+        } else {
+            // first tx in the current block
+            int currentBlockImbalance;
+            (prevImbalance, currentBlockImbalance) = getImbalanceSincePriceUpdate(token, priceUpdateBlock, currentBlock);
+
+            currentBlockData.lastBlockBuyUnitsImbalance = recordedBuyAmount;
+            currentBlockData.lastBlock = uint64(currentBlock);
+            currentBlockData.lastPriceUpdateBlock = uint64(priceUpdateBlock);
+            currentBlockData.totalBuyUnitsImbalance = int64(prevImbalance) + recordedBuyAmount;
+        }
+
+        tokenImbalanceData[token][currentBlockIndex] = encodeTokenImbalanceData(currentBlockData);
+    }
+
     function setGarbageToVolumeRecorder(ERC20 token) internal {
         for(uint i = 0 ; i < SLIDING_WINDOW_SIZE ; i++ ) {
             tokenImbalanceData[token][i] = 0x1;
@@ -125,61 +167,23 @@ contract VolumeImbalanceRecorder is Withdrawable {
         return tokenControlInfo[token].maxTotalImbalance;
     }
 
-    function encodeTokenImbalanceData(TokenImbalanceData data) internal pure returns(uint){
+    function encodeTokenImbalanceData(TokenImbalanceData data) internal pure returns(uint)  {
         uint result = uint(data.lastBlockBuyUnitsImbalance) & (POW_2_64 - 1);
         result |= data.lastBlock * POW_2_64;
         result |= (uint(data.totalBuyUnitsImbalance) & (POW_2_64 - 1)) * POW_2_64 * POW_2_64;
         result |= data.lastPriceUpdateBlock * POW_2_64 * POW_2_64 * POW_2_64;
+
+        return result;
     }
 
-    function decodeTokenImbalanceData(uint input) internal pure returns(TokenImbalanceData){
+    function decodeTokenImbalanceData(uint input) internal pure returns(TokenImbalanceData) {
         TokenImbalanceData memory data;
 
         data.lastBlockBuyUnitsImbalance = int64(input & (POW_2_64 - 1));
         data.lastBlock = uint64((input / POW_2_64) & (POW_2_64 - 1));
         data.totalBuyUnitsImbalance = int64( (input / (POW_2_64 * POW_2_64)) & (POW_2_64 - 1) );
         data.lastPriceUpdateBlock = uint64( (input / (POW_2_64 * POW_2_64 * POW_2_64)) );
-    }
 
-    function addImbalance(
-        ERC20 token,
-        int buyAmount,
-        uint priceUpdateBlock,
-        uint currentBlock
-    )
-        internal
-    {
-        uint currentBlockIndex = currentBlock % SLIDING_WINDOW_SIZE;
-        int64 recordedBuyAmount = int64(buyAmount / int(tokenControlInfo[token].minimalRecordResolution));
-
-        int prevImbalance = 0;
-
-        TokenImbalanceData memory currentBlockData = decodeTokenImbalanceData(tokenImbalanceData[token][currentBlockIndex]);
-
-        // first scenario - this is not the first tx in the current block
-        if(currentBlockData.lastBlock == currentBlock) {
-            if(uint(currentBlockData.lastPriceUpdateBlock) == priceUpdateBlock) {
-                // just increase imbalance
-                currentBlockData.lastBlockBuyUnitsImbalance += recordedBuyAmount;
-                currentBlockData.totalBuyUnitsImbalance += recordedBuyAmount;
-            } else {
-                // imbalance was changed in the middle of the block
-                prevImbalance = getImbalanceInRange(token, priceUpdateBlock, currentBlock);
-                currentBlockData.totalBuyUnitsImbalance = int64(prevImbalance) + recordedBuyAmount;
-                currentBlockData.lastBlockBuyUnitsImbalance += recordedBuyAmount;
-                currentBlockData.lastPriceUpdateBlock = uint64(priceUpdateBlock);
-            }
-        } else {
-            // first tx in the current block
-            int currentBlockImbalance;
-            (prevImbalance, currentBlockImbalance) = getImbalanceSincePriceUpdate(token, priceUpdateBlock, currentBlock);
-
-            currentBlockData.lastBlockBuyUnitsImbalance = recordedBuyAmount;
-            currentBlockData.lastBlock = uint64(currentBlock);
-            currentBlockData.lastPriceUpdateBlock = uint64(priceUpdateBlock);
-            currentBlockData.totalBuyUnitsImbalance = int64(prevImbalance) + recordedBuyAmount;
-        }
-
-        tokenImbalanceData[token][currentBlockIndex] = encodeTokenImbalanceData(currentBlockData);
+        return data;
     }
 }
