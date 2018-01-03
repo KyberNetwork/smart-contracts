@@ -36,4 +36,27 @@ contract MockImbalanceRecorder is VolumeImbalanceRecorder {
     function getMaxImbalance(ERC20 token) public view returns(uint) {
         return getMaxTotalImbalance(token);
     }
+
+    function callEncodeTokenImbalanceData(
+        int64 lastBlockBuyUnitsImbalance,
+        uint64 lastBlock,
+        int64 totalBuyUnitsImbalance,
+        uint64 lastPriceUpdateBlock
+    )
+        external pure returns(uint)
+    {
+        TokenImbalanceData memory data =
+            TokenImbalanceData(lastBlockBuyUnitsImbalance, lastBlock, totalBuyUnitsImbalance, lastPriceUpdateBlock);
+        return(encodeTokenImbalanceData(data));
+    }
+
+    function callDecodeTokenImbalanceData(uint input) external pure returns(int64, uint64, int64, uint64) {
+        TokenImbalanceData memory data = (decodeTokenImbalanceData(input));
+        return (
+            data.lastBlockBuyUnitsImbalance,
+            data.lastBlock ,
+            data.totalBuyUnitsImbalance,
+            data.lastPriceUpdateBlock
+        );
+    }
 }
