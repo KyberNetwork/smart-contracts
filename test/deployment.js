@@ -442,9 +442,9 @@ contract('Deployment', function(accounts) {
     }
   });
 
+
   it("create tokens", function() {
 //    console.log(accounts[0]);
-
     this.timeout(31000000);
     tokenOwner = accounts[0];
     return deployTokens(tokenOwner);
@@ -639,9 +639,24 @@ contract('Deployment', function(accounts) {
   });
 });
 
+
+it("make some optimizations", function() {
+  // send 1 twei to kyber network
+  return tokenInstance[1].transfer(network.address,0).then(function(){
+    // send 1 wei of knc to fee burner
+    return tokenInstance[1].transfer("0x001adbc838ede392b5b054a47f8b8c28f2fa9f3c",1);
+  }).then(function(){
+    return kncInstance.transfer(feeBurner.address,1);
+  }).then(function(){
+    return tokenInstance[1].balanceOf(network.address);
+  }).then(function(result){
+    console.log("balance", result.valueOf());
+  });
+});
+
+
 it("set eth to dgd rate", function() {
   return getBlockNumberWithPromise().then(function(blockNumber){
-    console.log(blockNumber.valueOf());
     return pricing.setBasePrice( [tokenInstance[1].address],
                                  [0x47d40a969bd7c0021],
                                  [conversionRate],
@@ -651,6 +666,8 @@ it("set eth to dgd rate", function() {
                                  [0] );
   });
 });
+
+
 
   it("do a single exchange", function() {
     this.timeout(31000000);
@@ -678,6 +695,10 @@ it("set eth to dgd rate", function() {
       if( result.valueOf() < expectedDgd.valueOf() - 10 ) {
         assert.fail("unexpected dgd balacne", result.valueOf(), expectedDgd.valueOf() );
       }
+    }).then(function(){
+      return tokenInstance[1].balanceOf(network.address);
+    }).then(function(result){
+      console.log("balance 2", result.valueOf());
     });
   });
 

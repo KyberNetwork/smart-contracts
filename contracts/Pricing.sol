@@ -31,19 +31,24 @@ contract Pricing is VolumeImbalanceRecorder {
         StepFunction sellPriceImbalanceStepFunction;
     }
 
+    /*
+    this is the data for tokenPricesCompactData
+    but solidity compiler sucks, and cannot write this structure in a single storage write
+    so we represent it as bytes32 and do the byte tricks ourselves.
     struct TokenPricesCompactData {
         bytes14 buy;  // change buy price of token from baseBuyPrice in 10 bps
         bytes14 sell; // change sell price of token from baseSellPrice in 10 bps
 
         uint32 blockNumber;
-    }
+    } */
 
     uint public validPriceDurationInBlocks = 10; // prices are valid for this amount of blocks
     mapping(address=>TokenData) tokenData;
-    TokenPricesCompactData[] tokenPricesCompactData;
+    bytes32[] tokenPricesCompactData;
     uint public numTokensInCurrentCompactData = 0;
     address public reserveContract;
     uint constant NUM_TOKENS_IN_COMPACT_DATA = 14;
+    uint constant BYTES_14_OFFEST = (2 ** (8 * NUM_TOKENS_IN_COMPACT_DATA));
 
     function Pricing(address _admin) public VolumeImbalanceRecorder(_admin) { }
 
@@ -69,11 +74,12 @@ contract Pricing is VolumeImbalanceRecorder {
         require(buy.length == sell.length);
         require(indices.length == buy.length);
 
-        uint32 blockNumber32bits = uint32(blockNumber);
+        uint bytes14Offset = BYTES_14_OFFEST;
 
         for(uint i = 0; i < indices.length; i++) {
             require(indices[i] < tokenPricesCompactData.length);
-            tokenPricesCompactData[indices[i]] = TokenPricesCompactData(buy[i], sell[i], blockNumber32bits);
+            uint data = uint(buy[i]) | (uint(sell[i]) * bytes14Offset) | (blockNumber * (bytes14Offset*bytes14Offset));
+            tokenPricesCompactData[indices[i]] = bytes32(data);
         }
     }
 
@@ -177,11 +183,10 @@ contract Pricing is VolumeImbalanceRecorder {
         if(tokenControlInfo[token].minimalRecordResolution == 0) return 0; // resolution not set
 
         // get price update block
-        TokenPricesCompactData memory compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];
+        bytes32 compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];
 
-        uint updatePriceBlock = uint(compactData.blockNumber);
+        uint updatePriceBlock = getLast4Bytes(compactData);
         if(currentBlockNumber >= updatePriceBlock + validPriceDurationInBlocks) return 0; // price is expired
-
         // check imbalance
         int totalImbalance;
         int blockImbalance;
@@ -213,7 +218,7 @@ contract Pricing is VolumeImbalanceRecorder {
             price = addBps(price, extraBps);
 
             // add price update
-            priceUpdate = int8(compactData.buy[tokenData[token].compactDataFieldIndex]);
+            priceUpdate = int8(compactData[tokenData[token].compactDataFieldIndex]);
             extraBps = int(priceUpdate) * 10;
             price = addBps(price, extraBps);
         } else {
@@ -229,7 +234,7 @@ contract Pricing is VolumeImbalanceRecorder {
             price = addBps(price, extraBps);
 
             // add price update
-            priceUpdate = int8(compactData.sell[tokenData[token].compactDataFieldIndex]);
+            priceUpdate = int8(compactData[NUM_TOKENS_IN_COMPACT_DATA + tokenData[token].compactDataFieldIndex]);
             extraBps = int(priceUpdate) * 10;
             price = addBps(price, extraBps);
         }
@@ -249,14 +254,19 @@ contract Pricing is VolumeImbalanceRecorder {
         return (
             arrayIndex,
             fieldOffset,
-            tokenPricesCompactData[arrayIndex].buy[fieldOffset],
-            tokenPricesCompactData[arrayIndex].sell[fieldOffset]
+            tokenPricesCompactData[arrayIndex][fieldOffset],
+            tokenPricesCompactData[arrayIndex][NUM_TOKENS_IN_COMPACT_DATA+fieldOffset]
         );
     }
 
     function getPriceUpdateBlock(ERC20 token) public view returns(uint) {
-        TokenPricesCompactData memory compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];
-        return uint(compactData.blockNumber);
+        bytes32 compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];
+        return getLast4Bytes(compactData);
+    }
+
+    function getLast4Bytes(bytes32 b) pure internal returns(uint) {
+        // cannot trust compiler with not turning bit operations into EXP opcode
+        return uint(b) / (BYTES_14_OFFEST * BYTES_14_OFFEST);
     }
 
     function executeStepFunction(StepFunction f, int x) pure internal returns(int) {
