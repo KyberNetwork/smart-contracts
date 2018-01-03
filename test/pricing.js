@@ -136,6 +136,7 @@ contract('Pricing', function(accounts) {
 
         await pricingInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
 
+        //get compact data for all tokens and verify as expected
         for (i = 0; i < numTokens; ++i) {
             var arrIndex = Math.floor (i / 14);
             var fieldIndex = i % 14;
@@ -157,17 +158,22 @@ contract('Pricing', function(accounts) {
             assert.equal(compactResArr[2].valueOf(), compactBuy[fieldIndex], "wrong buy: " + i);
             assert.equal(compactResArr[3].valueOf(), compactSell[fieldIndex], "wrong sell: " + i);
         }
+
+        //get block number from compact data and verify
+        var blockNum = await pricingInst.getPriceUpdateBlock(tokens[3]);
+
+        assert.equal(blockNum, currentBlock, "bad block number returned");
     });
 
     it("should set step functions qty and imbalance.", async function () {
         qtyBuyStepX = [15, 30, 70];
         qtyBuyStepY = [0, 30, 70];
         qtySellStepX = [155, 305, 705];
-        qtySellStepY = [0, 32, 70];
+        qtySellStepY = [0, 32, 78];
         imbalanceBuyStepX = [180, 330, 900, 1500];
         imbalanceBuyStepY = [0, 150, 310, 1100];
         imbalanceSellStepX = [1500, 3000, 7000, 30000];
-        imbalanceSellStepY = [0, 150, 310, 1200];
+        imbalanceSellStepY = [0, 190, 360, 1800];
         
         for (var i = 0; i < numTokens; ++i) {
             await pricingInst.setQtyStepFunction(tokens[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
@@ -189,7 +195,7 @@ contract('Pricing', function(accounts) {
         assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
     });
 
-    it("should test price updates when compact data has limit values (-128, 127).", async function () {
+    it("should test price updates when compact data has boundary values (-128, 127).", async function () {
         var tokenInd = 7;
         var token = tokens[tokenInd]; //choose some token
         var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
@@ -300,7 +306,7 @@ contract('Pricing', function(accounts) {
         assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
     });
 
-    it("should add imbalance and perform a single buy and see price update with compact data and quantity step.", async function () {
+    it("should add imbalance get price with with compact data + quantity step + imbalance step.", async function () {
         var tokenInd = 16;
         var token = tokens[tokenInd]; //choose some token
         var baseBuyPrice = await pricingInst.getBasicPrice(token, true);

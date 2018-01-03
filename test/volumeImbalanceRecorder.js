@@ -56,6 +56,36 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         assert.equal(getMaxTotal, maxTotalImbalance, "maxTotalImbalance");
     });
 
+    it("should test encode / decode of token imbalance data.", async function() {
+//        struct TokenImbalanceData {
+//            int64  lastBlockBuyUnitsImbalance;
+//            uint64 lastBlock;
+//
+//            int64  totalBuyUnitsImbalance;
+//            uint64 lastPriceUpdateBlock;
+//        }
+
+        //8 bytes ints./uints each
+        var bytes = [];
+        bytes.length = 32;
+        bytes[0] = 1;
+        bytes[8] = 2;
+        bytes[16] = 3;
+        bytes[24] = 4;
+        var startInt = bytesToHex(bytes);
+        console.log("startInt " + startInt);
+        var toStruct = await imbalanceInst.callDecodeTokenImbalanceData(startInt);
+
+        console.log("toStruct " + toStruct[0].toString(16) + " " + toStruct[1].toString(16) + " " +
+                    toStruct[2].toString(16) + " " + toStruct[3].toString(16));
+
+        var toInt = await imbalanceInst.callEncodeTokenImbalanceData(toStruct[0], toStruct[1], toStruct[2], toStruct[3]);
+
+        console.log("toInt " + toInt.toString(16));
+        //for now only print numbers
+//        assert.equal(startInt.valueOf(), toInt.valueOf(), "conversion failed");
+    });
+
     it("should test correct imbalance calculated on updates without block change and without price updates.", async function() {
         currentBlock = 1000;
         priceUpdateBlock = 990;
@@ -271,12 +301,12 @@ contract('VolumeImbalanceRecorder', function(accounts) {
     });
 
     it("should test get imbalance in range.", async function() {
-        var trades =            [160, 620, 64, -480, -6, 64, 210, 300];
-        var currBlocks =        [6000, 6001, 6001, 6002, 6002, 6002, 6007, 6008];
-        var priceUpdateBlocks = [6000, 6000, 6000, 6000, 6000, 6000, 6000, 6000];
+        var trades =            [160, 620, 64, -480, -6, 64, 210];
+        var currBlocks =        [6000, 6001, 6001, 6002, 6002, 6003, 6004];
+        var priceUpdateBlocks = [6000, 6000, 6000, 6000, 6000, 6000, 6000];
         var totalImbalanceInRange = 0;
         var firstGetBlock = 6001;
-        var lastGetBlock = 6007
+        var lastGetBlock = 6003
 
         assert.equal(trades.length, currBlocks.length, "arrays mismatch");
         assert.equal(trades.length, priceUpdateBlocks.length, "arrays mismatch");
@@ -324,3 +354,15 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         assert.equal(imbalanceArr[0].valueOf(), 0, "unexpected total imbalance.");
     });
 });
+
+function bytesToHex(byteArray) {
+    var strNum = toHexString(byteArray);
+    var num = '0x' + strNum;
+    return num;
+};
+
+function toHexString(byteArray) {
+  return Array.from(byteArray, function(byte) {
+    return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+  }).join('')
+};
