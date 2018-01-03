@@ -19,6 +19,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
     uint public negligiblePriceDiff = 10; // basic price steps will be in 0.01%
     KyberReserve[] public reserves;
+    mapping(address=>bool) public isReserve;
     KyberWhiteList public kyberWhiteList;
     ExpectedRateInterface public expectedRateContract;
     FeeBurnerInterface    public feeBurnerContract;
@@ -98,8 +99,24 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         require(userSrcBalanceAfter <= userSrcBalanceBefore);
         require(userDestBalanceAfter >= userDestBalanceBefore);
 
-        require((userSrcBalanceAfter - userSrcBalanceBefore) * minConversionRate <=
-                (userDestBalanceAfter - userDestBalanceBefore));
+        uint srcDecimals;
+        uint destDecimals;
+
+        if(source == ETH_TOKEN_ADDRESS) {
+            srcDecimals = 18;
+        } else {
+            srcDecimals = source.decimals();
+        }
+
+        if(dest == ETH_TOKEN_ADDRESS) {
+            destDecimals = 18;
+        } else {
+            destDecimals = dest.decimals();
+        }
+
+        // TODO - mitigate potential overflow
+        require(((userSrcBalanceBefore - userSrcBalanceAfter) * minConversionRate) * (10 ** destDecimals) <=
+                (userDestBalanceAfter - userDestBalanceBefore) * (10 ** srcDecimals) * PRECISION );
     }
 
     function doTrade(
@@ -174,8 +191,10 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
         if(add) {
             reserves.push(reserve);
+            isReserve[reserve] = true;
             AddReserve(reserve, true);
         } else {
+            isReserve[reserve] = false;
             // will have trouble if more than 50k reserves...
             for(uint i = 0; i < reserves.length; i++) {
                 if(reserves[i] == reserve) {
@@ -230,6 +249,12 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
     function setEnable(bool _enable) public onlyAdmin {
         enable = _enable;
+    }
+
+    event EtherRecival(address indexed sender, uint amount);
+    function() payable public {
+        require(isReserve[msg.sender]);
+        EtherRecival(msg.sender,msg.value);
     }
 
     /// @dev returns number of reserves

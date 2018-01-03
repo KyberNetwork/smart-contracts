@@ -218,7 +218,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
             buy = int(destAmount);
             token = destToken;
         } else {
-            buy = -1 * int(destAmount);
+            buy = -1 * int(sourceAmount);
             token = sourceToken;
         }
 

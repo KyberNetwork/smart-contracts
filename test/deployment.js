@@ -525,8 +525,6 @@ contract('Deployment', function(accounts) {
     return Pricing.new(accounts[0],{gas:4700000}).then(function(instance){
         pricing = instance;
         return pricing.addOperator(accounts[0],{from:accounts[0]});
-    }).then(function(){
-      return pricing.setValidPriceDurationInBlocks(10000);
     });
   });
 
@@ -536,7 +534,7 @@ contract('Deployment', function(accounts) {
     return Reserve.new(network.address,pricing.address, reserveOwner,{gas:4700000}).then(function(instance){
         reserve = instance;
     }).then(function(){
-        return pricing.setValidPriceDurationInBlocks(new BigNumber(100));
+        return pricing.setValidPriceDurationInBlocks(new BigNumber(1000000));
     }).then(function(){
         return pricing.setReserveAddress(reserve.address);
     }).then(function(){
@@ -547,6 +545,13 @@ contract('Deployment', function(accounts) {
         var amount = new BigNumber(reserveInitialEth).mul(10**18);
         return sendEtherWithPromise(accounts[0],reserve.address,amount);
       }
+      else if( getNetwork() == "testrpc" ) {
+        var initAmount = 5;
+        console.log("depositing " + initAmount.toString() + " ether to reserve");
+        var amount = new BigNumber(initAmount).mul(10**18);
+        return sendEtherWithPromise(accounts[0],reserve.address,amount);
+      }
+
     });
   });
 
@@ -569,7 +574,7 @@ contract('Deployment', function(accounts) {
 
   it("create expected rate", function() {
     this.timeout(31000000);
-    return ExpectedRate.new(network.address).then(function(instance){
+    return ExpectedRate.new(network.address, accounts[0]).then(function(instance){
         expectedRate = instance;
     });
   });
@@ -699,6 +704,27 @@ it("set eth to dgd rate", function() {
       return tokenInstance[1].balanceOf(network.address);
     }).then(function(result){
       console.log("balance 2", result.valueOf());
+    });
+  });
+
+  it("do converse exchange", function() {
+    this.timeout(31000000);
+    var dgdAddress = tokenInstance[1].address;
+    var dgdAmount = 10**tokenDecimals[1];//zelda
+    var rate = conversionRate;
+    var destAddress = "0x001adbc838ede392b5b054a47f8b8c28f2fa9f3c";
+
+    return tokenInstance[1].approve(network.address,dgdAmount).then(function(){
+      return network.trade(dgdAddress,
+                           dgdAmount,
+                           ethAddress,
+                           destAddress,
+                           new BigNumber(2).pow(255),
+                           rate,0,{value:0, gasPrice:49* 10**9});
+    }).then(function(result){
+      for( var i = 0 ; i < result.receipt.logs.length ; i++ ) {
+        console.log(result.receipt.logs[i].data);
+      }
     });
   });
 
