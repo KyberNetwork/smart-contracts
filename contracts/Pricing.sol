@@ -48,7 +48,7 @@ contract Pricing is VolumeImbalanceRecorder {
     uint public numTokensInCurrentCompactData = 0;
     address public reserveContract;
     uint constant NUM_TOKENS_IN_COMPACT_DATA = 14;
-    uint constant BYTES_14_OFFEST = (2 ** (8 * NUM_TOKENS_IN_COMPACT_DATA));
+    uint constant BYTES_14_OFFSET = (2 ** (8 * NUM_TOKENS_IN_COMPACT_DATA));
 
     function Pricing(address _admin) public VolumeImbalanceRecorder(_admin) { }
 
@@ -74,7 +74,7 @@ contract Pricing is VolumeImbalanceRecorder {
         require(buy.length == sell.length);
         require(indices.length == buy.length);
 
-        uint bytes14Offset = BYTES_14_OFFEST;
+        uint bytes14Offset = BYTES_14_OFFSET;
 
         for(uint i = 0; i < indices.length; i++) {
             require(indices[i] < tokenPricesCompactData.length);
@@ -177,10 +177,10 @@ contract Pricing is VolumeImbalanceRecorder {
         return addImbalance(token, buyAmount, priceUpdateBlock, currentBlock);
     }
 
-     function getPrice(ERC20 token, uint currentBlockNumber, bool buy, uint qty) public view returns(uint) {
+    function getPrice(ERC20 token, uint currentBlockNumber, bool buy, uint qty) public view returns(uint) {
         // check if trade is enabled
         if(!tokenData[token].enabled) return 0;
-        if(tokenControlInfo[token].minimalRecordResolution == 0) return 0; // resolution not set
+        if(tokenControlInfo[token].minimalRecordResolution == 0) return 0; // token control info not set
 
         // get price update block
         bytes32 compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];
@@ -254,8 +254,8 @@ contract Pricing is VolumeImbalanceRecorder {
         return (
             arrayIndex,
             fieldOffset,
-            byte(getPriceByteFromCompactData(tokenPricesCompactData[arrayIndex],token,true)),
-            byte(getPriceByteFromCompactData(tokenPricesCompactData[arrayIndex],token,false))
+            byte(getPriceByteFromCompactData(tokenPricesCompactData[arrayIndex], token, true)),
+            byte(getPriceByteFromCompactData(tokenPricesCompactData[arrayIndex],token, false))
         );
     }
 
@@ -266,14 +266,14 @@ contract Pricing is VolumeImbalanceRecorder {
 
     function getLast4Bytes(bytes32 b) pure internal returns(uint) {
         // cannot trust compiler with not turning bit operations into EXP opcode
-        return uint(b) / (BYTES_14_OFFEST * BYTES_14_OFFEST);
+        return uint(b) / (BYTES_14_OFFSET * BYTES_14_OFFSET);
     }
 
     function getPriceByteFromCompactData(bytes32 data, ERC20 token, bool buy) view internal returns(int8) {
-        uint fieldOffest = tokenData[token].compactDataFieldIndex;
+        uint fieldOffset = tokenData[token].compactDataFieldIndex;
         uint byteOffset;
-        if(buy) byteOffset = 32-NUM_TOKENS_IN_COMPACT_DATA+fieldOffest;
-        else byteOffset = 4+fieldOffest;
+        if(buy) byteOffset = 32 - NUM_TOKENS_IN_COMPACT_DATA + fieldOffset;
+        else byteOffset = 4 + fieldOffset;
 
         return int8(data[byteOffset]);
     }
