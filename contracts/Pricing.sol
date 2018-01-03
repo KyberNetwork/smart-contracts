@@ -7,32 +7,34 @@ import "./VolumeImbalanceRecorder.sol";
 
 contract Pricing is VolumeImbalanceRecorder {
 
+    // bps - basic price steps. one step is 1 / 10000 of the price.
     struct StepFunction {
-        int[] x;
-        int[] y;
+        int[] x; // quantity for each step. Quantity of each step includes previous steps.
+        int[] y; // price change per quantity step  in bps.
     }
 
     struct TokenData {
-        bool listed; // was added to reserve
+        bool listed;  // was added to reserve
         bool enabled; // whether trade is enabled
 
         // position in the compact data
         uint compactDataArrayIndex;
         uint compactDataFieldIndex;
 
-        // slowly change data
-        uint baseBuyPrice;
-        uint baseSellPrice;
-        StepFunction buyPriceQtyStepFunction;
-        StepFunction sellPriceQtyStepFunction;
-        StepFunction buyPriceImbalanceStepFunction;
+        // price data. base and changes according to quantity and reserve balance.
+        // generally speaking. Sell price is 1 / buy price i.e. the buy in the other direction.
+        uint baseBuyPrice;  // in PRECISION units. see KyberConstants
+        uint baseSellPrice; // PRECISION units. without (sell / buy) spread it is 1 / baseBuyPrice
+        StepFunction buyPriceQtyStepFunction; // in bps. higher quantity - bigger the price.
+        StepFunction sellPriceQtyStepFunction;// in bps. higher the qua
+        StepFunction buyPriceImbalanceStepFunction; // in BPS. higher reserve imbalance - bigger the price.
         StepFunction sellPriceImbalanceStepFunction;
     }
 
     /*
     this is the data for tokenPricesCompactData
     but solidity compiler sucks, and cannot write this structure in a single storage write
-    so we represent it as bytes32 and do the byte tricks ourself.
+    so we represent it as bytes32 and do the byte tricks ourselves.
     struct TokenPricesCompactData {
         bytes14 buy;  // change buy price of token from baseBuyPrice in 10 bps
         bytes14 sell; // change sell price of token from baseSellPrice in 10 bps
@@ -53,6 +55,7 @@ contract Pricing is VolumeImbalanceRecorder {
     function addToken(ERC20 token) public onlyAdmin {
 
         require(!tokenData[token].listed);
+        tokenData[token].listed = true;
 
         if(numTokensInCurrentCompactData == 0) {
             tokenPricesCompactData.length++; // add new structure
@@ -74,6 +77,7 @@ contract Pricing is VolumeImbalanceRecorder {
         uint bytes14Offset = BYTES_14_OFFEST;
 
         for(uint i = 0; i < indices.length; i++) {
+            require(indices[i] < tokenPricesCompactData.length);
             uint data = uint(buy[i]) | (uint(sell[i]) * bytes14Offset) | (blockNumber * (bytes14Offset*bytes14Offset));
             tokenPricesCompactData[indices[i]] = bytes32(data);
         }
@@ -97,6 +101,7 @@ contract Pricing is VolumeImbalanceRecorder {
         require(sell.length == indices.length);
 
         for(uint ind = 0; ind < tokens.length; ind++) {
+            require(tokenData[tokens[ind]].listed);
             tokenData[tokens[ind]].baseBuyPrice = baseBuy[ind];
             tokenData[tokens[ind]].baseSellPrice = baseSell[ind];
         }
@@ -114,6 +119,10 @@ contract Pricing is VolumeImbalanceRecorder {
         public
         onlyOperator
     {
+        require(xBuy.length == yBuy.length);
+        require(xSell.length == ySell.length);
+        require(tokenData[token].listed);
+
         tokenData[token].buyPriceQtyStepFunction = StepFunction(xBuy, yBuy);
         tokenData[token].sellPriceQtyStepFunction = StepFunction(xSell, ySell);
     }
@@ -128,6 +137,10 @@ contract Pricing is VolumeImbalanceRecorder {
         public
         onlyOperator
     {
+        require(xBuy.length == yBuy.length);
+        require(xSell.length == ySell.length);
+        require(tokenData[token].listed);
+
         tokenData[token].buyPriceImbalanceStepFunction = StepFunction(xBuy, yBuy);
         tokenData[token].sellPriceImbalanceStepFunction = StepFunction(xSell, ySell);
     }
@@ -137,10 +150,13 @@ contract Pricing is VolumeImbalanceRecorder {
     }
 
     function enableTokenTrade(ERC20 token) public onlyAdmin {
+        require(tokenData[token].listed);
+        require(tokenControlInfo[token].minimalRecordResolution != 0);
         tokenData[token].enabled = true;
     }
 
     function disableTokenTrade(ERC20 token) public onlyAlerter {
+        require(tokenData[token].listed);
         tokenData[token].enabled = false;
     }
 
@@ -148,7 +164,7 @@ contract Pricing is VolumeImbalanceRecorder {
         reserveContract = reserve;
     }
 
-    function recoredImbalance(
+    function recordImbalance(
         ERC20 token,
         int buyAmount,
         uint priceUpdateBlock,
@@ -161,9 +177,10 @@ contract Pricing is VolumeImbalanceRecorder {
         return addImbalance(token, buyAmount, priceUpdateBlock, currentBlock);
     }
 
-    function getPrice(ERC20 token, uint currentBlockNumber, bool buy, uint qty) public view returns(uint) {
+     function getPrice(ERC20 token, uint currentBlockNumber, bool buy, uint qty) public view returns(uint) {
         // check if trade is enabled
         if(!tokenData[token].enabled) return 0;
+        if(tokenControlInfo[token].minimalRecordResolution == 0) return 0; // resolution not set
 
         // get price update block
         bytes32 compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];

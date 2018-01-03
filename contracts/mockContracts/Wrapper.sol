@@ -6,7 +6,8 @@ import "../KyberConstants.sol";
 import "../Pricing.sol";
 
 contract Wrapper is KyberConstants {
-    function getBalances(address reserve, ERC20[] tokens) public constant returns(uint[]) {
+
+    function getBalances(address reserve, ERC20[] tokens) public view returns(uint[]) {
         uint[] memory result = new uint[](tokens.length);
         for(uint i = 0; i < tokens.length; i++) {
             uint balance = 0;
@@ -23,19 +24,35 @@ contract Wrapper is KyberConstants {
     }
 
     function getByteFromBytes14(bytes14 x, uint byteInd) public pure returns(byte) {
+        require(byteInd <= 13);
         return x[byteInd];
     }
 
     function getInt8FromByte(bytes14 x, uint byteInd) public pure returns(int8) {
+        require(byteInd <= 13);
         return int8(x[byteInd]);
     }
+
+//    struct TokenPricesCompactData {
+//        bytes14 buy;  // change buy price of token from baseBuyPrice in 10 bps
+//        bytes14 sell; // change sell price of token from baseSellPrice in 10 bps
+//
+//        uint32 blockNumber;
+//    }
+//
+//    function getDataFromCompact(TokenPricesCompactData compact, uint byteInd) public pure
+//        returns(int8 buyByte, int8 sellByte, uint blockNumber)
+//    {
+//        blockNumber = uint(compact.blockNumber);
+////        return (compact.buy[byteInd], compact.sell[byteInd], uint(compact.blockNumber));
+//    }
 
     function getCompactData(Pricing pricingContract, ERC20 token) internal view returns(int8,int8,uint) {
         uint bulkIndex; uint index; byte buy; byte sell; uint updateBlock;
         (bulkIndex, index, buy, sell) = pricingContract.getCompactData(token);
         updateBlock = pricingContract.getPriceUpdateBlock(token);
 
-        return (int8(buy),int8(sell),updateBlock);
+        return (int8(buy), int8(sell), updateBlock);
     }
 
     function getTokenRates(Pricing pricingContract, ERC20[] tokenList)
@@ -52,10 +69,10 @@ contract Wrapper is KyberConstants {
             buyBases[i] = pricingContract.getBasicPrice(tokenList[i], true);
             sellBases[i] = pricingContract.getBasicPrice(tokenList[i], false);
 
-            (compactBuy[i],compactSell[i],updateBlock[i]) = getCompactData(pricingContract,tokenList[i]);
+            (compactBuy[i], compactSell[i], updateBlock[i]) = getCompactData(pricingContract, tokenList[i]);
         }
 
-        return (buyBases,sellBases,compactBuy,compactSell,updateBlock);
+        return (buyBases, sellBases, compactBuy, compactSell, updateBlock);
     }
 
     function getTokenIndicies(Pricing pricingContract, ERC20[] tokenList) public view returns(uint[], uint[]) {
