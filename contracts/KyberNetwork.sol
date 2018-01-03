@@ -19,6 +19,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
     uint public negligiblePriceDiff = 10; // basic price steps will be in 0.01%
     KyberReserve[] public reserves;
+    mapping(address=>bool) public isReserve;
     KyberWhiteList public kyberWhiteList;
     ExpectedRateInterface public expectedRateContract;
     FeeBurnerInterface    public feeBurnerContract;
@@ -190,8 +191,10 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
         if(add) {
             reserves.push(reserve);
+            isReserve[reserve] = true;
             AddReserve(reserve, true);
         } else {
+            isReserve[reserve] = false;
             // will have trouble if more than 50k reserves...
             for(uint i = 0; i < reserves.length; i++) {
                 if(reserves[i] == reserve) {
@@ -250,6 +253,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
 
     event EtherRecival(address indexed sender, uint amount);
     function() payable public {
+        require(isReserve[msg.sender]);
         EtherRecival(msg.sender,msg.value);
     }
 
