@@ -10,7 +10,7 @@ var myToken;
 
 var myExchange;
 
-var ethAddress
+var ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 
 contract('MockExchange', function (accounts) {
     it("should test withdraw successful with owner, for token", async function (){
@@ -23,7 +23,6 @@ contract('MockExchange', function (accounts) {
 
         await Promise.all([centralBank.addOwner(accounts[2]), centralBank.addOwner(accounts[3])]);
         myExchange = await MockExchange.new("first name", centralBank.address);
-        ethAddress = await myExchange.ETH_TOKEN_ADDRESS();
 
         //start test
         await myExchange.addOwner(accounts[2]);

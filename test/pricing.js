@@ -344,15 +344,12 @@ contract('Pricing', function(accounts) {
         var expectedPrice = (new BigNumber(baseSellPrice));
         //calc compact data
         var extraBps = compactSellArr2[tokenInd - 14] * 10;
-        console.log("extra bps compact data " + extraBps);
         expectedPrice = addBps(expectedPrice, extraBps);
         //calc quantity steps
         extraBps = getExtraBpsForSellQuantity(sellQty);
-        console.log("extra bps qty " + extraBps);
         expectedPrice = addBps(expectedPrice, extraBps);
         //calc imbalance steps
         extraBps = getExtraBpsForImbalanceSellQuantity(imbalance);
-        console.log("extra bps imbalance " + extraBps);
         expectedPrice = addBps(expectedPrice, extraBps);
 
         //record imbalance
