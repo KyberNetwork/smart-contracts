@@ -181,7 +181,7 @@ contract('Pricing', function(accounts) {
         }
     });
 
-    it("should perform a single buy and see price updated according to compact data update.", async function () {
+    it("should get buy price with update according to compact data update.", async function () {
         var tokenInd = 7;
         var token = tokens[tokenInd]; //choose some token
         var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
@@ -195,7 +195,7 @@ contract('Pricing', function(accounts) {
         assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
     });
 
-    it("should test price updates when compact data has boundary values (-128, 127).", async function () {
+    it("should get buy price when compact data has boundary values (-128, 127).", async function () {
         var tokenInd = 7;
         var token = tokens[tokenInd]; //choose some token
         var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
@@ -241,7 +241,7 @@ contract('Pricing', function(accounts) {
         assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
     });
 
-    it("should test price when updating only 2nd cell compact data.", async function () {
+    it("should get buy price when updating only 2nd cell compact data.", async function () {
         var tokenInd = 16;
         var token = tokens[tokenInd]; //choose some token
         var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
@@ -270,7 +270,7 @@ contract('Pricing', function(accounts) {
         assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
     });
 
-    it("should perform a single buy and see price update with compact data and quantity step.", async function () {
+    it("should get buy price with compact data and quantity step.", async function () {
         var tokenInd = 11;
         var token = tokens[tokenInd]; //choose some token
         var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
@@ -288,7 +288,7 @@ contract('Pricing', function(accounts) {
         assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
     });
 
-    it("should test quantity step and compact data update with token index > 14.", async function () {
+    it("should test gey buy price quantity step and compact data update with token index > 14.", async function () {
         var tokenInd = 15;
         var token = tokens[tokenInd]; //choose some token
         var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
@@ -306,7 +306,7 @@ contract('Pricing', function(accounts) {
         assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
     });
 
-    it("should add imbalance get price with with compact data + quantity step + imbalance step.", async function () {
+    it("should add imbalance get buy price with with compact data + quantity step + imbalance step.", async function () {
         var tokenInd = 16;
         var token = tokens[tokenInd]; //choose some token
         var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
@@ -317,9 +317,10 @@ contract('Pricing', function(accounts) {
         var expectedPrice = (new BigNumber(baseBuyPrice));
         var extraBps = compactBuyArr2[tokenInd - 14] * 10;
         expectedPrice = addBps(expectedPrice, extraBps);
+        //quantity bps
         extraBps = getExtraBpsForBuyQuantity(buyQty);
         expectedPrice = addBps(expectedPrice, extraBps);
-
+        //imbalance bps
         extraBps = getExtraBpsForImbalanceBuyQuantity(imbalance);
         expectedPrice = addBps(expectedPrice, extraBps);
 
@@ -329,6 +330,39 @@ contract('Pricing', function(accounts) {
         var receivedPrice = await pricingInst.getPrice(token, currentBlock, true, buyQty);
 
         assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
+    });
+
+    it("should add imbalance and get sell price with with compact data + quantity step + imbalance step.", async function () {
+        var tokenInd = 16;
+        var token = tokens[tokenInd]; //choose some token
+        var baseSellPrice = await pricingInst.getBasicPrice(token, false);
+        var acceptedDiff = 1;
+
+        // get price
+        var sellQty = 500;
+        var imbalance = 1800;
+        var expectedPrice = (new BigNumber(baseSellPrice));
+        //calc compact data
+        var extraBps = compactSellArr2[tokenInd - 14] * 10;
+        console.log("extra bps compact data " + extraBps);
+        expectedPrice = addBps(expectedPrice, extraBps);
+        //calc quantity steps
+        extraBps = getExtraBpsForSellQuantity(sellQty);
+        console.log("extra bps qty " + extraBps);
+        expectedPrice = addBps(expectedPrice, extraBps);
+        //calc imbalance steps
+        extraBps = getExtraBpsForImbalanceSellQuantity(imbalance);
+        console.log("extra bps imbalance " + extraBps);
+        expectedPrice = addBps(expectedPrice, extraBps);
+
+        //record imbalance
+        await pricingInst.recordImbalance(token, imbalance, currentBlock, currentBlock, {from: reserveAddress});
+
+        var receivedPrice = await pricingInst.getPrice(token, currentBlock, false, sellQty);
+
+        //round prices a bit
+
+        comparePrices(receivedPrice, expectedPrice);
     });
 });
 
@@ -358,6 +392,13 @@ function getExtraBpsForBuyQuantity(qty) {
     return qtyBuyStepY[qtyBuyStepY.length - 1];
 };
 
+function getExtraBpsForSellQuantity(qty) {
+    for (var i = 0; i < qtySellStepX.length; i++) {
+        if (qty <= qtySellStepX[i]) return qtySellStepY[i];
+    }
+    return qtySellStepY[qtySellStepY.length - 1];
+};
+
 function getExtraBpsForImbalanceBuyQuantity(qty) {
     for (var i = 0; i < imbalanceBuyStepX.length; i++) {
         if (qty <= imbalanceBuyStepX[i]) return imbalanceBuyStepY[i];
@@ -365,6 +406,19 @@ function getExtraBpsForImbalanceBuyQuantity(qty) {
     return (imbalanceBuyStepY[imbalanceBuyStepY.length - 1]);
 };
 
+function getExtraBpsForImbalanceSellQuantity(qty) {
+    for (var i = 0; i < imbalanceSellStepX.length; i++) {
+        if (qty <= imbalanceSellStepX[i]) return imbalanceSellStepY[i];
+    }
+    return (imbalanceSellStepY[imbalanceSellStepY.length - 1]);
+};
+
 function addBps (price, bps) {
     return (price.mul(10000 + bps).div(10000));
+};
+
+function comparePrices (receivedPrice, expectedPrice) {
+    expectedPrice = expectedPrice - (expectedPrice % 10);
+    receivedPrice = receivedPrice - (receivedPrice % 10);
+    assert.equal(expectedPrice, receivedPrice, "different prices");
 };
