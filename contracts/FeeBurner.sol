@@ -86,7 +86,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
         uint burnAmount = reserveFeeToBurn[reserve];
         require(burnAmount > 0);
         reserveFeeToBurn[reserve] = 1; // leave 1 twei to avoid spikes in gas fee
-        KNC.burnFrom(reserveKNCWallet[reserve],burnAmount - 1);
+        assert(KNC.burnFrom(reserveKNCWallet[reserve],burnAmount - 1));
 
         BurnReserveFees(reserve, msg.sender);
     }
@@ -97,7 +97,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
         uint feeAmount = reserveFeeToWallet[reserve][wallet];
         require(feeAmount > 0);
         reserveFeeToWallet[reserve][wallet] = 1; // leave 1 twei to avoid spikes in gas fee
-        KNC.transferFrom(reserveKNCWallet[reserve],wallet,feeAmount - 1);
+        assert(KNC.transferFrom(reserveKNCWallet[reserve],wallet,feeAmount - 1));
 
         SendFeeToWallet(wallet,reserve,msg.sender);
     }
