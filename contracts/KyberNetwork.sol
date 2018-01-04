@@ -162,7 +162,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
             ethAmount = actualDestAmount;
         }
 
-        require(ethAmount <= kyberWhiteList.getUserCapInWei(msg.sender));
+        require(ethAmount <= getUserCapInWei(msg.sender));
 
         assert(doReserveTrade(
             source,
@@ -330,6 +330,10 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     {
         require(expectedRateContract != address(0));
         return expectedRateContract.getExpectedRate(source, dest, srcQuantity);
+    }
+
+    function getUserCapInWei(address user) public view returns(uint) {
+        return kyberWhiteList.getUserCapInWei(user);
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
