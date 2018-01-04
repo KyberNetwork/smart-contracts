@@ -6,8 +6,8 @@ contract PermissionGroups {
     address public pendingAdmin;
     mapping(address=>bool) operators;
     mapping(address=>bool) alerters;
-    address[] public operatorsGroup;
-    address[] public alertersGroup;
+    address[] operatorsGroup;
+    address[] alertersGroup;
 
     function PermissionGroups() public {
         admin = msg.sender;
