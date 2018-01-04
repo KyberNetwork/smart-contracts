@@ -6,24 +6,37 @@ var Helper = require("./helper.js");
 var BigNumber = require('bignumber.js');
 
 //global variables
-var token;
+//////////////////
+
+//permission groups
+var admin;
+var operator;
+var reserveAddress;
+
+//block data
+var priceUpdateBlock;
+var currentBlock = 3000;
+
+//tokens data
+////////////
+var numTokens = 5;
+var tokens = [];
+
+// imbalance data
 var minimalRecordResolution = 2; //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
 var maxPerBlockImbalance = 4000;
 var maxTotalImbalance = maxPerBlockImbalance * 12;
-var admin;
-var priceUpdateBlock;
-var currentBlock = 3000;
-var wrapper;
-var numTokens = 17;
-var tokens = [];
-var operator;
-var reserveAddress;
-var validPriceDurationInBlocks = 1000;
+
+//step buy functions data
 var buys = [];
-var sells = [];
-var indices = [];
+
 var qtyBuyStepX = [];
 var qtyBuyStepY = [];
+
+
+var sells = [];
+var indices = [];
+
 var qtySellStepX = [];
 var qtySellStepY = [];
 var imbalanceBuyStepX = [];
@@ -38,21 +51,7 @@ var compactSellArr2 = [];
 
 
 contract('Pricing', function(accounts) {
-    it("should test bytes14.", async function () {
-        var arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
-        var hexArr = bytesToHex(arr);
-        var byte;
-
-        wrapper = await Wrapper.new();
-
-        for (var i = 0; i < 14; i++) {
-            byte = await wrapper.getInt8FromByte(hexArr, i);
-//            console.log("byte " + i + ": " + byte.valueOf());
-            assert.equal(byte.valueOf(), arr[i], "bad bytes 14. index: " + i);
-        }
-    });
-
-    it("should init Pricing Inst and set general parameters.", async function () {
+    it("should init Pricing Inst, init tokens and add to pricing inst. set basic data per token.", async function () {
         //init contracts
         pricingInst = await Pricing.new(accounts[0], {gas: 5000000});
 
@@ -71,6 +70,64 @@ contract('Pricing', function(accounts) {
         assert.equal(tokens.length, numTokens, "bad number tokens");
 
         // set account addresses
+        admin = accounts[0];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
         operator = accounts[1];
         reserveAddress = accounts[2];
 
