@@ -747,7 +747,7 @@ it("set eth to dgd rate", function() {
       exchangesDepositAddressesDict[exchanges[exchangeInd]] = exchangeDepositAddresses[exchangeInd];
     }
 
-    dict = { "tokens" : tokensDict, "exchangesAddress" : exchangesAddressDict, "exchangesDeposit" : exchangesDepositAddressesDict };
+    dict = { "tokens" : tokensDict, "exchangesAddress" : exchangesAddressDict, "exchanges" : exchangesDepositAddressesDict };
     dict["bank"] = bank.address;
     dict["reserve"] = reserve.address;
     dict["pricing"] = pricing.address;
