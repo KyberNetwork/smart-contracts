@@ -73,7 +73,7 @@
     "binance": "0xe8e0d428b0a8ad7e8542e82c0a27f15edb3cbd31",
     "bitfinex": "0x1a5a5d60233124247e5d4d2a04e1a573e3f457de"
   },
-  "exchangesDeposit": {
+  "exchanges": {
     "bittrex": {
       "OMG": "0x61e74daa8d08ecd0575c359ad96a66bbbfb55fcc",
       "DGD": "0xb94340f54dafae442d35cc7137403fbe7477471e",

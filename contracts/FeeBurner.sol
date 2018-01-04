@@ -21,6 +21,10 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
     mapping(address=>uint) public reserveFeesInBps;
     mapping(address=>address) public reserveKNCWallet;
     mapping(address=>uint) public walletFeesInBps;
+
+    mapping(address=>uint) public reserveFeeToBurn;
+    mapping(address=>mapping(address=>uint)) public reserveFeeToWallet;
+
     BurnableToken public KNC;
     address public kyberNetwork;
     uint public KNCPerETHRate = 300;
@@ -49,7 +53,8 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
         KNCPerETHRate = rate;
     }
 
-    event HandleFees(uint burnFee, uint walletFee, address walletAddress);
+    event AssignFeeToWallet(address reserve, address wallet, uint walletFee);
+    event BurnFees(address reserve, uint burnFee);
 
     function handleFees(uint tradeWeiAmount, address reserve, address wallet) public returns(bool) {
         require(msg.sender == kyberNetwork);
@@ -62,15 +67,38 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
         uint feeToBurn = fee - walletFee;
 
         if(walletFee > 0) {
-            assert(KNC.transferFrom(reserveKNCWallet[reserve],wallet,walletFee));
+            reserveFeeToWallet[reserve][wallet] += walletFee;
+            AssignFeeToWallet(reserve, wallet, walletFee);
         }
 
         if(feeToBurn > 0) {
-            assert(KNC.burnFrom(reserveKNCWallet[reserve], feeToBurn));
+            BurnFees(reserve, feeToBurn);
+            reserveFeeToBurn[reserve] += feeToBurn;
+
         }
 
-        HandleFees(feeToBurn, walletFee, wallet);
-
         return true;
+    }
+
+    // this function is callable by anyone
+    event BurnReserveFees(address indexed reserve, address sender);
+    function burnReserveFees(address reserve) public {
+        uint burnAmount = reserveFeeToBurn[reserve];
+        require(burnAmount > 0);
+        reserveFeeToBurn[reserve] = 1; // leave 1 twei to avoid spikes in gas fee
+        KNC.burnFrom(reserveKNCWallet[reserve],burnAmount - 1);
+
+        BurnReserveFees(reserve, msg.sender);
+    }
+
+    event SendFeeToWallet(address indexed wallet, address reserve, address sender);
+    // this function is callable by anyone
+    function sendFeeToWallet(address wallet, address reserve) public {
+        uint feeAmount = reserveFeeToWallet[reserve][wallet];
+        require(feeAmount > 0);
+        reserveFeeToWallet[reserve][wallet] = 1; // leave 1 twei to avoid spikes in gas fee
+        KNC.transferFrom(reserveKNCWallet[reserve],wallet,feeAmount - 1);
+
+        SendFeeToWallet(wallet,reserve,msg.sender);
     }
 }
