@@ -569,6 +569,8 @@ contract('Deployment', function(accounts) {
     }).then(function(){
       // set kyber network
       return feeBurner.setKyberNetwork(network.address);
+    }).then(function(){
+      return feeBurner.setWalletFees(0,50);      
     });
   });
 
