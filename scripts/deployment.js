@@ -569,6 +569,8 @@ contract('Deployment', function(accounts) {
     }).then(function(){
       // set kyber network
       return feeBurner.setKyberNetwork(network.address);
+    }).then(function(){
+      return feeBurner.setWalletFees(0,50);      
     });
   });
 
@@ -728,6 +730,12 @@ it("set eth to dgd rate", function() {
     });
   });
 
+  it("check time duration block", function() {
+    this.timeout(31000000);
+    return pricing.validPriceDurationInBlocks().then(function(result){
+      assert.equal(result.valueOf(), 1000000, "unexpected valid price duation block");
+    });
+  });
 
   it("print addresses", function() {
     tokensDict = {};
@@ -747,7 +755,7 @@ it("set eth to dgd rate", function() {
       exchangesDepositAddressesDict[exchanges[exchangeInd]] = exchangeDepositAddresses[exchangeInd];
     }
 
-    dict = { "tokens" : tokensDict, "exchangesAddress" : exchangesAddressDict, "exchangesDeposit" : exchangesDepositAddressesDict };
+    dict = { "tokens" : tokensDict, "exchangesAddress" : exchangesAddressDict, "exchanges" : exchangesDepositAddressesDict };
     dict["bank"] = bank.address;
     dict["reserve"] = reserve.address;
     dict["pricing"] = pricing.address;
