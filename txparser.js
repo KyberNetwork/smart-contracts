@@ -10,18 +10,28 @@ var BigNumber = web3.utils.BN;
 
 var erc20Abi = [{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"success","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"totalSupply","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_from","type":"address"},{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"success","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"success","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"},{"name":"_spender","type":"address"}],"name":"allowance","outputs":[{"name":"remaining","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"anonymous":false,"inputs":[{"indexed":true,"name":"_from","type":"address"},{"indexed":true,"name":"_to","type":"address"},{"indexed":false,"name":"_value","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"_owner","type":"address"},{"indexed":true,"name":"_spender","type":"address"},{"indexed":false,"name":"_value","type":"uint256"}],"name":"Approval","type":"event"}];
 
+
+var pricingAbi =
+[{"constant":false,"inputs":[{"name":"alerter","type":"address"}],"name":"removeAlerter","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"token","type":"address"},{"name":"currentBlockNumber","type":"uint256"},{"name":"buy","type":"bool"},{"name":"qty","type":"uint256"}],"name":"getPrice","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"reserve","type":"address"}],"name":"setReserveAddress","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"token","type":"address"}],"name":"disableTokenTrade","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"token","type":"address"}],"name":"enableTokenTrade","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"tokens","type":"address[]"},{"name":"baseBuy","type":"uint256[]"},{"name":"baseSell","type":"uint256[]"},{"name":"buy","type":"bytes14[]"},{"name":"sell","type":"bytes14[]"},{"name":"blockNumber","type":"uint256"},{"name":"indices","type":"uint256[]"}],"name":"setBasePrice","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"pendingAdmin","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"alertersGroup","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"token","type":"address"},{"name":"amount","type":"uint256"},{"name":"sendTo","type":"address"}],"name":"withdrawToken","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"newAlerter","type":"address"}],"name":"addAlerter","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"token","type":"address"}],"name":"getPriceUpdateBlock","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"numTokensInCurrentCompactData","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"validPriceDurationInBlocks","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"buy","type":"bytes14[]"},{"name":"sell","type":"bytes14[]"},{"name":"blockNumber","type":"uint256"},{"name":"indices","type":"uint256[]"}],"name":"setCompactData","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"duration","type":"uint256"}],"name":"setValidPriceDurationInBlocks","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"newAdmin","type":"address"}],"name":"transferAdmin","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[],"name":"claimAdmin","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"token","type":"address"},{"name":"xBuy","type":"int256[]"},{"name":"yBuy","type":"int256[]"},{"name":"xSell","type":"int256[]"},{"name":"ySell","type":"int256[]"}],"name":"setQtyStepFunction","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"token","type":"address"},{"name":"buy","type":"bool"}],"name":"getBasicPrice","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"newOperator","type":"address"}],"name":"addOperator","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"reserveContract","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"operator","type":"address"}],"name":"removeOperator","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"token","type":"address"},{"name":"xBuy","type":"int256[]"},{"name":"yBuy","type":"int256[]"},{"name":"xSell","type":"int256[]"},{"name":"ySell","type":"int256[]"}],"name":"setImbalanceStepFunction","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"token","type":"address"},{"name":"minimalRecordResolution","type":"uint256"},{"name":"maxPerBlockImbalance","type":"uint256"},{"name":"maxTotalImbalance","type":"uint256"}],"name":"setTokenControlInfo","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"token","type":"address"},{"name":"buyAmount","type":"int256"},{"name":"priceUpdateBlock","type":"uint256"},{"name":"currentBlock","type":"uint256"}],"name":"recordImbalance","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"amount","type":"uint256"},{"name":"sendTo","type":"address"}],"name":"withdrawEther","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"token","type":"address"}],"name":"addToken","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"token","type":"address"}],"name":"getCompactData","outputs":[{"name":"","type":"uint256"},{"name":"","type":"uint256"},{"name":"","type":"bytes1"},{"name":"","type":"bytes1"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"token","type":"address"}],"name":"getTokenControlInfo","outputs":[{"name":"","type":"uint256"},{"name":"","type":"uint256"},{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"admin","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"operatorsGroup","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"inputs":[{"name":"_admin","type":"address"}],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"name":"token","type":"address"},{"indexed":false,"name":"amount","type":"uint256"},{"indexed":false,"name":"sendTo","type":"address"}],"name":"WithdrawToken","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"amount","type":"uint256"},{"indexed":false,"name":"sendTo","type":"address"}],"name":"WithdrawEther","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"pendingAdmin","type":"address"}],"name":"TransferAdmin","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"newAdmin","type":"address"},{"indexed":false,"name":"previousAdmin","type":"address"}],"name":"ClaimAdmin","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"newAlerter","type":"address"},{"indexed":false,"name":"isAdd","type":"bool"}],"name":"AddAlerter","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"newOperator","type":"address"},{"indexed":false,"name":"isAdd","type":"bool"}],"name":"AddOperator","type":"event"}]
+
 ////////////////////////////////////////////////////////////////////////////////
 
 var allAbis = [erc20Abi];
-var contracts = ["KyberReserve", "KyberNetwork", "MockCentralBank", "MockExchangeDepositAddress"];
+var contracts = ["KyberReserve", "KyberNetwork", "Pricing"];
+var mockContracts = ["MockCentralBank", "Wrapper"];
 var configFile = "deployment_dev.json";
 
 ////////////////////////////////////////////////////////////////////////////////
 
-var readAbisFromFile = function( abiFileNames ) {
+var readAbisFromFile = function( abiFileNames, mock ) {
+
+  var prefix = "./contracts/abi/";
+  if( mock ) {
+    prefix = "./contracts/mockContracts/abi/";
+  }
 
   for( var i = 0 ; i < abiFileNames.length ; i++ ){
-    var abiString = fs.readFileSync("./contracts/" + abiFileNames[i] + ".abi", 'utf8');
+    var abiString = fs.readFileSync(prefix + abiFileNames[i] + ".abi", 'utf8');
 
     var abiJson = JSON.parse(abiString);
     allAbis.push(abiJson);
@@ -189,6 +199,23 @@ var getTokenBalanceWithPromise = function(userAddress, tokenAddress, blockNumber
   });
 };
 
+
+////////////////////////////////////////////////////////////////////////////////
+
+var getPricingValidBlock = function(contractAddress, abi, blockNumber) {
+  return new Promise(function (fulfill, reject){
+    var pricingInstance = new web3.eth.Contract(abi,contractAddress);
+    var txData = pricingInstance.methods.validPriceDurationInBlocks().encodeABI();
+    web3.eth.call({to:contractAddress, data:txData},blockNumber,function(err,result){
+      if( err ) return reject(err);
+      else {
+        return fulfill(web3.utils.toBN(result));
+      }
+    });
+  });
+};
+
+
 ////////////////////////////////////////////////////////////////////////////////
 
 var getTokenBalancesWithPromise = function(userAddress, blockNumber, before ) {
@@ -257,7 +284,7 @@ var printBalanceDiff = function( userAddress ) {
     var symbol = tokens[i];
     var balanceBefore = web3.utils.toBN(0);
     if( balancesBefore[userAddress] ) {
-        balancesBefore = balancesBefore[userAddress][symbol]; 
+        balancesBefore = balancesBefore[userAddress][symbol];
     }
     var balanceAfter  = balancesAfter[userAddress][symbol];
 
@@ -304,7 +331,8 @@ var printAllAddressesBalanceDiff = function(fromScratch) {
 //console.log(process.argv);
 
 parseConfigJson();
-readAbisFromFile(contracts);
+readAbisFromFile(contracts, false);
+readAbisFromFile(mockContracts, true);
 
 var command = process.argv[2];
 var txHash;
@@ -314,6 +342,14 @@ if( command == "--txhash" ) {
   return  decodeTx(txHash/*"0x38e47e503ecd83eee9a37b9325e057cb5d5d1cdece6f80dbe4fa38335dc48277"*/).then(function(){
     return printAllAddressesBalanceDiff(false);
 
+  });
+}
+else if( command == "--getvalidpricedurationinblocks" ) {
+  var address = process.argv[3];
+  abi = pricingAbi;
+  console.log("pricing address",address);
+  return getPricingValidBlock(address, abi, "latest").then(function(result){
+    console.log(result);
   });
 }
 else if( command == "--getbalance"){
