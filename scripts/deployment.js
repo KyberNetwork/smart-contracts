@@ -506,6 +506,14 @@ contract('Deployment', function(accounts) {
     }).then(function(){
         return whitelist.setCategoryCap(0,5000);
     }).then(function(){
+        return whitelist.setCategoryCap(1,1000);
+    }).then(function(){
+        return whitelist.setCategoryCap(2,0);
+    }).then(function(){
+          return whitelist.setUserCategory("0x089bAa07Eb9097031bABC99DBa4222D85521883E",1);
+    }).then(function(){
+          return whitelist.setUserCategory("0x9f1a678b0079773b5c4f5aa8573132d2b8bcb1e7",2);                        
+    }).then(function(){
       return whitelist.setSgdToEthRate((new BigNumber(10).pow(15)).mul(2));
     });
   });
@@ -570,7 +578,7 @@ contract('Deployment', function(accounts) {
       // set kyber network
       return feeBurner.setKyberNetwork(network.address);
     }).then(function(){
-      return feeBurner.setWalletFees(0,50);      
+      return feeBurner.setWalletFees(0,50);
     });
   });
 
