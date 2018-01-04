@@ -728,6 +728,12 @@ it("set eth to dgd rate", function() {
     });
   });
 
+  it("check time duration block", function() {
+    this.timeout(31000000);
+    return pricing.validPriceDurationInBlocks().then(function(result){
+      assert.equal(result.valueOf(), 1000000, "unexpected valid price duation block");
+    });
+  });
 
   it("print addresses", function() {
     tokensDict = {};
