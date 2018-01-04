@@ -17,7 +17,7 @@ contract MockExchange is KyberConstants {
     MockCentralBank public bank;
     mapping(address=>bool) public owners;
     mapping(address=>MockDepositAddress) public tokenDepositAddresses;
-
+    
     function MockExchange(string _exchangeName, MockCentralBank _bank) public {
         exchangeName = _exchangeName;
         bank = _bank;

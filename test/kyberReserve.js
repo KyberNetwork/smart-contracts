@@ -174,7 +174,7 @@ contract('Pricing', function(accounts) {
         imbalanceBuyStepY = [0, 150, 310, 1100];
         imbalanceSellStepX = [1500, 3000, 7000, 30000];
         imbalanceSellStepY = [0, 190, 360, 1800];
-        
+
         for (var i = 0; i < numTokens; ++i) {
             await pricingInst.setQtyStepFunction(tokens[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             await pricingInst.setImbalanceStepFunction(tokens[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
@@ -344,12 +344,15 @@ contract('Pricing', function(accounts) {
         var expectedPrice = (new BigNumber(baseSellPrice));
         //calc compact data
         var extraBps = compactSellArr2[tokenInd - 14] * 10;
+        console.log("extra bps compact data " + extraBps);
         expectedPrice = addBps(expectedPrice, extraBps);
         //calc quantity steps
         extraBps = getExtraBpsForSellQuantity(sellQty);
+        console.log("extra bps qty " + extraBps);
         expectedPrice = addBps(expectedPrice, extraBps);
         //calc imbalance steps
         extraBps = getExtraBpsForImbalanceSellQuantity(imbalance);
+        console.log("extra bps imbalance " + extraBps);
         expectedPrice = addBps(expectedPrice, extraBps);
 
         //record imbalance

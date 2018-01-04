@@ -18,6 +18,7 @@ contract('KyberWhiteList', function(accounts) {
         // set defaultUserCapSgd SGD cap for category 0 which is the default for all users.
         await whiteListInst.setCategoryCap(0, defaultUserCapSgd, {from : accounts[8]});
     });
+
     it("should verify the default cap for non set user.", async function () {
         var userCap = await whiteListInst.getUserCapInWei(accounts[3]);
         var expectedUserCapWei = sgdToEthRateInWei.mul(defaultUserCapSgd);
@@ -25,19 +26,21 @@ contract('KyberWhiteList', function(accounts) {
         userCap = await whiteListInst.getUserCapInWei(accounts[4]);
         assert.equal(userCap.valueOf(), expectedUserCapWei, "unexpected user cap");
     });
+
     it("should verify the cap for user with unique category.", async function () {
         await whiteListInst.setCategoryCap(17, 2000, {from : accounts[8]});
         await whiteListInst.setUserCategory(accounts[4], 17, {from : accounts[8]});
         userCap = await whiteListInst.getUserCapInWei(accounts[4]);
         var expectedUserCapWei = sgdToEthRateInWei.mul(2000);
-        console.log(" expectedUserCapWei " + expectedUserCapWei);
         assert.equal(userCap.valueOf(), expectedUserCapWei, "unexpected user cap");
     });
+
     it("should verify the cap for user with uninit category is 0.", async function () {
         await whiteListInst.setUserCategory(accounts[4], 25, {from : accounts[8]});
         userCap = await whiteListInst.getUserCapInWei(accounts[4]);
         assert.equal(userCap.valueOf(), 0, "unexpected user cap");
     });
+
     it("should test when sgdtoWei not init, cap is always 0.", async function () {
         var whiteListInst2 = await KyberWhiteList.new(accounts[0]);
         await whiteListInst2.addOperator(accounts[8], {from: accounts[0]});
@@ -51,6 +54,7 @@ contract('KyberWhiteList', function(accounts) {
         userCap = await whiteListInst2.getUserCapInWei(accounts[4]);
         assert.equal(0, userCap.valueOf(), "unexpected user cap");
     });
+
     it("should test when no category is init, cap is always 0.", async function () {
         var whiteListInst2 = await KyberWhiteList.new(accounts[0]);
         await whiteListInst2.addOperator(accounts[8], {from: accounts[0]});
@@ -63,5 +67,4 @@ contract('KyberWhiteList', function(accounts) {
         userCap = await whiteListInst2.getUserCapInWei(accounts[4]);
         assert.equal(0, userCap.valueOf(), "unexpected user cap");
     });
-
 });
