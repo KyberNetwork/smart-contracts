@@ -2,6 +2,7 @@ pragma solidity ^0.4.18;
 
 import "../ERC20Interface.sol";
 import "../KyberReserve.sol";
+import "../KyberNetwork.sol";
 import "../KyberConstants.sol";
 import "../Pricing.sol";
 
@@ -91,22 +92,18 @@ contract Wrapper is KyberConstants {
     }
 
 
-/*
-    function getPrices( KyberReserve reserve, ERC20[] sources, ERC20[] dests )
-        public constant returns(uint[], uint[], uint[])
+    function getExpectedRates( KyberNetwork network, ERC20[] sources, ERC20[] dests, uint[] qty )
+        public view returns(uint[], uint[])
     {
         require( sources.length == dests.length );
+        require( sources.length == qty.length );
+
         uint[] memory rates = new uint[](sources.length);
-        uint[] memory expBlocks = new uint[](sources.length);
-        uint[] memory balances = new uint[](sources.length);
+        uint[] memory slippage = new uint[](sources.length);
         for( uint i = 0; i < sources.length; i++ ) {
-            uint rate; uint expBlock; uint balance;
-            (rate,expBlock,balance) = reserve.getPairInfo( sources[i], dests[i] );
-            rates[i] = rate;
-            expBlocks[i] = expBlock;
-            balances[i] = balance;
+            (rates[i],slippage[i]) = network.getExpectedRate(sources[i],dests[i],qty[i]);
         }
 
-        return (rates, expBlocks, balances);
-    }*/
+        return (rates, slippage);
+    }
 }
