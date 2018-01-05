@@ -124,18 +124,6 @@
       {
         "name": "",
         "type": "uint256[]"
-      },
-      {
-        "name": "",
-        "type": "int8[]"
-      },
-      {
-        "name": "",
-        "type": "int8[]"
-      },
-      {
-        "name": "",
-        "type": "uint256[]"
       }
     ],
     "payable": false,
