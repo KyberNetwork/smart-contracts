@@ -272,6 +272,7 @@ var addDepositAddressToExchange = function( exchange, owner ) {
                 return exchange.tokenDepositAddresses(tokenInstance[item].address)
             }).then (function (mockDepositAddress){
                 depositAddresses[tokenSymbol[item]] = mockDepositAddress;
+                return reserve.approveWithdrawAddress(tokenInstance[item].address, mockDepositAddress, true);
             });
         }, Promise.resolve()).then(function(){
             return exchange.addMockDepositAddress(ethAddress, {from:owner});
@@ -419,6 +420,19 @@ contract('Deployment', function(accounts) {
     done();
   });
 
+  it("create wrapper", function() {
+    this.timeout(31000000);
+    var balance0;
+    var balance1;
+    return Wrapper.new().then(function(instance){
+      wrapper = instance;
+      console.log("wrapper",instance.address);
+    });
+  });
+
+
+
+
   it("check network", function() {
     var networkId = getNetwork();
     if( networkId == "kovan" || networkId == "testrpc" || networkId == "dev" || networkId == "ropsten" ) {
@@ -468,36 +482,6 @@ contract('Deployment', function(accounts) {
     });
   });
 
-  it("create exchanges", function() {
-    this.timeout(31000000);
-    return createExchanges( tokenOwner, bank.address );
-  });
-
-  it("withdraw ETH from exchange", function() {
-    this.timeout(31000000);
-    return exchangesInstance[0].withdraw(ethAddress,1,accounts[0],{from:tokenOwner});
-  });
-
-  it("withdraw token from exchange", function() {
-    this.timeout(31000000);
-    var depositAddress = exchangeDepositAddresses[0][tokenSymbol[0]];
-    return exchangesInstance[1].withdraw(tokenInstance[0].address,2,depositAddress,{from:tokenOwner}).then(function(){
-      return tokenInstance[0].balanceOf(depositAddress);
-    }).then(function(result){
-      assert.equal(result.valueOf(), new BigNumber(2).valueOf(), "unexpected balance");
-    });
-  });
-
-  it("withdraw token from exchange to exchange and clear funds", function() {
-    this.timeout(31000000);
-    var depositAddress = exchangeDepositAddresses[0][tokenSymbol[0]];
-    return exchangesInstance[0].clearBalances([tokenInstance[0].address, ethAddress],[1,0]).then(function(){
-        return tokenInstance[0].balanceOf(depositAddress);
-    }).then(function(result){
-      assert.equal(result.valueOf(), new BigNumber(1).valueOf(), "unexpected balance");
-    });
-  });
-
   it("create whitelist", function() {
     this.timeout(31000000);
     return Whitelist.new(accounts[0]).then(function(instance){
@@ -512,7 +496,7 @@ contract('Deployment', function(accounts) {
     }).then(function(){
           return whitelist.setUserCategory("0x089bAa07Eb9097031bABC99DBa4222D85521883E",1);
     }).then(function(){
-          return whitelist.setUserCategory("0x9f1a678b0079773b5c4f5aa8573132d2b8bcb1e7",2);                        
+          return whitelist.setUserCategory("0x9f1a678b0079773b5c4f5aa8573132d2b8bcb1e7",2);
     }).then(function(){
       return whitelist.setSgdToEthRate((new BigNumber(10).pow(15)).mul(2));
     });
@@ -562,6 +546,38 @@ contract('Deployment', function(accounts) {
 
     });
   });
+
+  it("create exchanges", function() {
+    this.timeout(31000000);
+    return createExchanges( tokenOwner, bank.address );
+  });
+
+  it("withdraw ETH from exchange", function() {
+    this.timeout(31000000);
+    return exchangesInstance[0].withdraw(ethAddress,1,accounts[0],{from:tokenOwner});
+  });
+
+  it("withdraw token from exchange", function() {
+    this.timeout(31000000);
+    var depositAddress = exchangeDepositAddresses[0][tokenSymbol[0]];
+    return exchangesInstance[1].withdraw(tokenInstance[0].address,2,depositAddress,{from:tokenOwner}).then(function(){
+      return tokenInstance[0].balanceOf(depositAddress);
+    }).then(function(result){
+      assert.equal(result.valueOf(), new BigNumber(2).valueOf(), "unexpected balance");
+    });
+  });
+
+  it("withdraw token from exchange to exchange and clear funds", function() {
+    this.timeout(31000000);
+    var depositAddress = exchangeDepositAddresses[0][tokenSymbol[0]];
+    return exchangesInstance[0].clearBalances([tokenInstance[0].address, ethAddress],[1,0]).then(function(){
+        return tokenInstance[0].balanceOf(depositAddress);
+    }).then(function(result){
+      assert.equal(result.valueOf(), new BigNumber(1).valueOf(), "unexpected balance");
+    });
+  });
+
+
 
   it("create burning fees", function() {
     this.timeout(31000000);
