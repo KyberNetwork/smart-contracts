@@ -281,6 +281,7 @@ var addDepositAddressToExchange = function( exchange, owner ) {
         }).then(function(depositAddress) {
             depositAddresses["ETH"] = depositAddress;
             exchangeDepositAddresses.push(depositAddresses);
+	    reserve.approveWithdrawAddress(ethAddress, depositAddress, true);
             fulfill(true);
         }).catch(function(err){
           reject(err);
