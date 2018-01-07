@@ -264,10 +264,10 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         enable = _enable;
     }
 
-    event EtherRecival(address indexed sender, uint amount);
+    event EtherReceival(address indexed sender, uint amount);
     function() payable public {
         require(isReserve[msg.sender]);
-        EtherRecival(msg.sender,msg.value);
+        EtherReceival(msg.sender,msg.value);
     }
 
     /// @dev returns number of reserves

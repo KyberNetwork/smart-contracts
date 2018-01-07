@@ -130,7 +130,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
         uint dstDecimals = getDecimals(dest);
         uint srcDecimals = getDecimals(source);
 
-        return calcDstQty(srcQty,srcDecimals,dstDecimals,rate);
+        return calcDstQty(srcQty, srcDecimals, dstDecimals, rate);
     }
 
     function getSrcQty(ERC20 source, ERC20 dest, uint dstQty, uint rate) public view returns(uint) {
@@ -222,7 +222,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
 
         // collect source tokens
         if(sourceToken != ETH_TOKEN_ADDRESS) {
-            assert(sourceToken.transferFrom(msg.sender,this,sourceAmount));
+            assert(sourceToken.transferFrom(msg.sender, this, sourceAmount));
         }
 
         // send dest tokens

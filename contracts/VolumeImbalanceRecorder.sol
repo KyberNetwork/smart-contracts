@@ -65,7 +65,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
         internal
     {
         uint currentBlockIndex = currentBlock % SLIDING_WINDOW_SIZE;
-        int64 recordedBuyAmount = int64(buyAmount / int(tokenControlInfo[token].minimalRecordResolution));
+        int recordedBuyAmount = int(buyAmount / int(tokenControlInfo[token].minimalRecordResolution));
 
         int prevImbalance = 0;
 
@@ -80,9 +80,9 @@ contract VolumeImbalanceRecorder is Withdrawable {
             } else {
                 // imbalance was changed in the middle of the block
                 prevImbalance = getImbalanceInRange(token, priceUpdateBlock, currentBlock);
-                currentBlockData.totalBuyUnitsImbalance = int64(prevImbalance) + recordedBuyAmount;
+                currentBlockData.totalBuyUnitsImbalance = int(prevImbalance) + recordedBuyAmount;
                 currentBlockData.lastBlockBuyUnitsImbalance += recordedBuyAmount;
-                currentBlockData.lastPriceUpdateBlock = uint64(priceUpdateBlock);
+                currentBlockData.lastPriceUpdateBlock = uint(priceUpdateBlock);
             }
         } else {
             // first tx in the current block
@@ -90,9 +90,9 @@ contract VolumeImbalanceRecorder is Withdrawable {
             (prevImbalance, currentBlockImbalance) = getImbalanceSincePriceUpdate(token, priceUpdateBlock, currentBlock);
 
             currentBlockData.lastBlockBuyUnitsImbalance = recordedBuyAmount;
-            currentBlockData.lastBlock = uint64(currentBlock);
-            currentBlockData.lastPriceUpdateBlock = uint64(priceUpdateBlock);
-            currentBlockData.totalBuyUnitsImbalance = int64(prevImbalance) + recordedBuyAmount;
+            currentBlockData.lastBlock = uint(currentBlock);
+            currentBlockData.lastPriceUpdateBlock = uint(priceUpdateBlock);
+            currentBlockData.totalBuyUnitsImbalance = int(prevImbalance) + recordedBuyAmount;
         }
 
         tokenImbalanceData[token][currentBlockIndex] = encodeTokenImbalanceData(currentBlockData);
@@ -133,17 +133,17 @@ contract VolumeImbalanceRecorder is Withdrawable {
         for(uint windowInd = 0; windowInd < SLIDING_WINDOW_SIZE; windowInd++) {
             TokenImbalanceData memory perBlockData = decodeTokenImbalanceData(tokenImbalanceData[token][windowInd]);
 
-            if(uint(perBlockData.lastPriceUpdateBlock) != priceUpdateBlock) continue;
+            if(perBlockData.lastBlock <= endBlock && perBlockData.lastBlock >= startBlock) {
+                imbalanceInRange += perBlockData.lastBlockBuyUnitsImbalance;
+            }
+
+            if(perBlockData.lastPriceUpdateBlock != priceUpdateBlock) continue;
             if(perBlockData.lastBlock < latestBlock) continue;
 
             latestBlock = perBlockData.lastBlock;
             buyImbalance = perBlockData.totalBuyUnitsImbalance;
             if(uint(perBlockData.lastBlock) == currentBlock) {
                 currentBlockImbalance = perBlockData.lastBlockBuyUnitsImbalance;
-            }
-
-            if(perBlockData.lastBlock <= endBlock && perBlockData.lastBlock >= startBlock) {
-                imbalanceInRange += int(perBlockData.lastBlockBuyUnitsImbalance);
             }
         }
 
@@ -186,10 +186,10 @@ contract VolumeImbalanceRecorder is Withdrawable {
     function decodeTokenImbalanceData(uint input) internal pure returns(TokenImbalanceData) {
         TokenImbalanceData memory data;
 
-        data.lastBlockBuyUnitsImbalance = int(input & (POW_2_64 - 1));
-        data.lastBlock = uint((input / POW_2_64) & (POW_2_64 - 1));
-        data.totalBuyUnitsImbalance = int( (input / (POW_2_64 * POW_2_64)) & (POW_2_64 - 1) );
-        data.lastPriceUpdateBlock = uint( (input / (POW_2_64 * POW_2_64 * POW_2_64)) );
+        data.lastBlockBuyUnitsImbalance = int(int64(input & (POW_2_64 - 1)));
+        data.lastBlock = uint(uint64((input / POW_2_64) & (POW_2_64 - 1)));
+        data.totalBuyUnitsImbalance = int(int64( (input / (POW_2_64 * POW_2_64)) & (POW_2_64 - 1)));
+        data.lastPriceUpdateBlock = uint(uint64((input / (POW_2_64 * POW_2_64 * POW_2_64))));
 
         return data;
     }
