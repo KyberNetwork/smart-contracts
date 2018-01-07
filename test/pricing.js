@@ -35,7 +35,7 @@ var compactBuyArr2 = [];
 var compactSellArr1 = [];
 var compactSellArr2 = [];
 
-
+var pricingInst;
 
 contract('Pricing', function(accounts) {
     it("should test bytes14.", async function () {
@@ -54,7 +54,7 @@ contract('Pricing', function(accounts) {
 
     it("should init Pricing Inst and set general parameters.", async function () {
         //init contracts
-        pricingInst = await Pricing.new(accounts[0], {gas: 5000000});
+        pricingInst = await Pricing.new(accounts[0], {gas: 4700000});
 
         //set pricing general parameters
         pricingInst.setValidPriceDurationInBlocks(validPriceDurationInBlocks);
@@ -86,14 +86,14 @@ contract('Pricing', function(accounts) {
         //buy is ether to token rate. sale is token to ether rate. so sell == 1 / buy. assuming we have no spread.
         var ethToTokenRate;
         var tokenToEthRate;
-        baseBuyRate = 1000;
-        baseSellRate = 1100;
+
         for (i = 0; i < numTokens; ++i) {
             ethToTokenRate = convertRateToPricingRate((i + 1) * 10);
             tokenToEthRate = convertRateToPricingRate(Number((1 / ((i + 1) * 10)).toFixed(13)));
             baseBuy.push(ethToTokenRate);
             baseSell.push(tokenToEthRate);
         }
+
         assert.equal(baseBuy.length, tokens.length);
         assert.equal(baseSell.length, tokens.length);
 
@@ -161,6 +161,10 @@ contract('Pricing', function(accounts) {
 
         //get block number from compact data and verify
         var blockNum = await pricingInst.getPriceUpdateBlock(tokens[3]);
+
+        assert.equal(blockNum, currentBlock, "bad block number returned");
+
+        var blockNum = await pricingInst.getPriceUpdateBlock(tokens[11]);
 
         assert.equal(blockNum, currentBlock, "bad block number returned");
     });
