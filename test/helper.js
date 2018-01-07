@@ -30,3 +30,13 @@ module.exports.getBalancePromise = function( account ) {
         });
     });
 };
+
+
+module.exports.getCurrentBlock = function() {
+    return new Promise(function (fulfill, reject){
+        web3.eth.getBlockNumber(function(err,result){
+            if( err ) reject(err);
+            else fulfill(result);
+        });
+    });
+};

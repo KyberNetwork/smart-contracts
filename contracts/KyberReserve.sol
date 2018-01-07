@@ -130,12 +130,12 @@ contract KyberReserve is Withdrawable, KyberConstants {
         uint dstDecimals = getDecimals(dest);
         uint srcDecimals = getDecimals(source);
 
-        if( dstDecimals >= srcDecimals ) {
+        if(dstDecimals >= srcDecimals) {
             require((dstDecimals-srcDecimals) <= MAX_DECIMALS);
-            return (srcQty * rate * (10**(dstDecimals-srcDecimals))) / PRECISION;
+            return (srcQty * rate * (10**(dstDecimals - srcDecimals))) / PRECISION;
         } else {
             require((srcDecimals-dstDecimals) <= MAX_DECIMALS);
-            return (srcQty * rate) / (PRECISION * (10**(srcDecimals-dstDecimals)));
+            return (srcQty * rate) / (PRECISION * (10**(srcDecimals - dstDecimals)));
         }
     }
 
@@ -231,7 +231,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
 
         // collect source tokens
         if(sourceToken != ETH_TOKEN_ADDRESS) {
-            assert(sourceToken.transferFrom(msg.sender,this,sourceAmount));
+            assert(sourceToken.transferFrom(msg.sender, this, sourceAmount));
         }
 
         // send dest tokens
