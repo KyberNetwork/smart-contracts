@@ -160,7 +160,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
         if(ETH_TOKEN_ADDRESS == source) {
             buy = true;
             token = dest;
-            tokenQty = getDestQty(source, dest, srcQty, pricingContract.getBasicPrice(token,true));
+            tokenQty = getDestQty(source, dest, srcQty, pricingContract.getBasicPrice(token, true));
         } else if(ETH_TOKEN_ADDRESS == dest) {
             buy = false;
             token = source;
