@@ -58,22 +58,28 @@ contract('VolumeImbalanceRecorder', function(accounts) {
 
     it("should test encode / decode of token imbalance data.", async function() {
 //        struct TokenImbalanceData {
-//            int64  lastBlockBuyUnitsImbalance;
-//            uint64 lastBlock;
+//            int  lastBlockBuyUnitsImbalance;
+//            uint lastBlock;
 //
-//            int64  totalBuyUnitsImbalance;
-//            uint64 lastPriceUpdateBlock;
+//            int  totalBuyUnitsImbalance;
+//            uint lastPriceUpdateBlock;
 //        }
 
         //8 bytes ints./uints each
+        var Mask8Byte = 0xffffffffffffffff;
+        var int1 = -5;
+        var int2 = 11;
+        var int3 = -9;
+        var int4 = 20;
         var bytes = [];
         bytes.length = 32;
         bytes[0] = 1;
         bytes[8] = 2;
         bytes[16] = 3;
         bytes[24] = 4;
-        var startInt = bytesToHex(bytes);
-        console.log("startInt " + startInt);
+        var startIntStr = bytesToHex(bytes);
+        var startInt = (new BigNumber(bytesToHex(bytes)));
+        console.log("startInt " + startIntStr);
         var toStruct = await imbalanceInst.callDecodeTokenImbalanceData(startInt);
 
         console.log("toStruct " + toStruct[0].toString(16) + " " + toStruct[1].toString(16) + " " +
@@ -83,7 +89,29 @@ contract('VolumeImbalanceRecorder', function(accounts) {
 
         console.log("toInt " + toInt.toString(16));
         //for now only print numbers
-//        assert.equal(startInt.valueOf(), toInt.valueOf(), "conversion failed");
+        assert.equal(startInt.valueOf(), toInt.valueOf(), "conversion failed");
+
+        //test negative values.
+        for (var i = 0; i < 32; ++i){
+            bytes[i] = 0xff;
+        }
+        bytes[7] = -32;
+        bytes[15] = -15;
+        bytes[23] = -55;
+        bytes[24] = -1002;
+        var startIntStr = bytesToHex(bytes);
+        var startInt = (new BigNumber(bytesToHex(bytes)));
+        console.log("startInt " + startIntStr);
+        var toStruct = await imbalanceInst.callDecodeTokenImbalanceData(startInt);
+
+        console.log("toStruct " + toStruct[0].toString(16) + " " + toStruct[1].toString(16) + " " +
+                    toStruct[2].toString(16) + " " + toStruct[3].toString(16));
+
+        var toInt = await imbalanceInst.callEncodeTokenImbalanceData(toStruct[0], toStruct[1], toStruct[2], toStruct[3]);
+
+        console.log("toInt " + toInt.toString(16));
+        //for now only print numbers
+        assert.equal(startInt.valueOf(), toInt.valueOf(), "conversion failed");
     });
 
     it("should test correct imbalance calculated on updates without block change and without price updates.", async function() {
@@ -105,8 +133,27 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         assert.equal(imbalanceArr[0].valueOf(), totalImbalanceSinceUpdate, "unexpected total imbalance.");
     });
 
-    it("should test correct imbalance calculated on updates with block changes and without price updates.", async function() {
+    it("should test correct negative imbalance calculated on updates without block change and without price updates.", async function() {
+        currentBlock = 1002;
         priceUpdateBlock = 1001;
+        var trades = [-200, -28];
+        var totalBlockImbalance = 0;
+        var totalImbalanceSinceUpdate = 0;
+
+        for (var i = 0; i < trades.length; ++i) {
+            await imbalanceInst.addTrade(token.address, trades[i], priceUpdateBlock, currentBlock);
+            totalBlockImbalance += trades[i];
+        }
+        totalImbalanceSinceUpdate = totalBlockImbalance;
+
+        var imbalanceArr =  await imbalanceInst.getMockImbalance(token.address, priceUpdateBlock, currentBlock);
+
+        assert.equal(imbalanceArr[1].valueOf(), totalBlockImbalance, "unexpected last block imbalance.");
+        assert.equal(imbalanceArr[0].valueOf(), totalImbalanceSinceUpdate, "unexpected total imbalance.");
+    });
+
+    it("should test correct imbalance calculated on updates with block changes and without price updates.", async function() {
+        priceUpdateBlock = 1007;
         var lastBlockImbalance = 0;
         var trades = [300, 700, 80, -200, -96, 22];
         var currBlocks = [1010, 1010, 1011, 1080, 1350, 1350];
@@ -127,7 +174,6 @@ contract('VolumeImbalanceRecorder', function(accounts) {
 
         assert.equal(imbalanceArr[0].valueOf(), totalImbalanceSinceUpdate, "unexpected total imbalance.");
         assert.equal(imbalanceArr[1].valueOf(), lastBlockImbalance, "unexpected last block imbalance.");
-
     });
 
     it("should test correct imbalance calculated on updates with block changes and with price updates.", async function() {
@@ -273,8 +319,9 @@ contract('VolumeImbalanceRecorder', function(accounts) {
                                                             lastPriceUpdateBlock,
                                                             currBlocks[currBlocks.length - 1]);
 
-        assert.equal(imbalanceArr[0].valueOf(), totalImbalanceSinceUpdate.valueOf(), "unexpected total imbalance.");
         assert.equal(imbalanceArr[1].valueOf(), lastBlockImbalance, "unexpected last block imbalance.");
+        assert.equal(imbalanceArr[0].valueOf(), totalImbalanceSinceUpdate.valueOf(), "unexpected total imbalance.");
+
     });
 
     it("should test scenario of crossing max buy imbalance.", async function() {
