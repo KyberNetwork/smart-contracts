@@ -3,9 +3,10 @@ pragma solidity ^0.4.18;
 
 import "./ERC20Interface.sol";
 import "./VolumeImbalanceRecorder.sol";
+import "./KyberConstants.sol";
 
 
-contract Pricing is VolumeImbalanceRecorder {
+contract Pricing is VolumeImbalanceRecorder, KyberConstants {
 
     // bps - basic price steps. one step is 1 / 10000 of the price.
     struct StepFunction {
@@ -192,13 +193,7 @@ contract Pricing is VolumeImbalanceRecorder {
         int blockImbalance;
         (totalImbalance, blockImbalance) = getImbalance(token, updatePriceBlock, currentBlockNumber);
 
-        int imbalanceQty = int(qty);
-        if(!buy) imbalanceQty *= -1;
-
-        if(abs(totalImbalance + imbalanceQty) >= getMaxTotalImbalance(token)) return 0;
-        if(abs(blockImbalance + imbalanceQty) >= getMaxPerBlockImbalance(token)) return 0;
-
-        totalImbalance += imbalanceQty;
+        int imbalanceQty;
 
         // calculate actual price
         int extraBps;
@@ -209,6 +204,16 @@ contract Pricing is VolumeImbalanceRecorder {
             // start with base price
             price = tokenData[token].baseBuyPrice;
 
+            // add price update
+            priceUpdate = getPriceByteFromCompactData(compactData,token,true);
+            extraBps = int(priceUpdate) * 10;
+            price = addBps(price, extraBps);
+
+            // compute token qty
+            qty = getTokenQty(token,price,qty);
+            imbalanceQty = int(qty);
+            totalImbalance += imbalanceQty;
+
             // add qty overhead
             extraBps = executeStepFunction(tokenData[token].buyPriceQtyStepFunction, int(qty));
             price = addBps(price, extraBps);
@@ -217,13 +222,18 @@ contract Pricing is VolumeImbalanceRecorder {
             extraBps = executeStepFunction(tokenData[token].buyPriceImbalanceStepFunction, totalImbalance);
             price = addBps(price, extraBps);
 
-            // add price update
-            priceUpdate = getPriceByteFromCompactData(compactData,token,true);
-            extraBps = int(priceUpdate) * 10;
-            price = addBps(price, extraBps);
         } else {
             // start with base price
             price = tokenData[token].baseSellPrice;
+
+            // add price update
+            priceUpdate = getPriceByteFromCompactData(compactData,token,false);
+            extraBps = int(priceUpdate) * 10;
+            price = addBps(price, extraBps);
+
+            // compute token qty
+            imbalanceQty = -1 * int(qty);
+            totalImbalance += imbalanceQty;
 
             // add qty overhead
             extraBps = executeStepFunction(tokenData[token].sellPriceQtyStepFunction, int(qty));
@@ -233,11 +243,10 @@ contract Pricing is VolumeImbalanceRecorder {
             extraBps = executeStepFunction(tokenData[token].sellPriceImbalanceStepFunction, totalImbalance);
             price = addBps(price, extraBps);
 
-            // add price update
-            priceUpdate = getPriceByteFromCompactData(compactData,token,false);
-            extraBps = int(priceUpdate) * 10;
-            price = addBps(price, extraBps);
         }
+
+        if(abs(totalImbalance + imbalanceQty) >= getMaxTotalImbalance(token)) return 0;
+        if(abs(blockImbalance + imbalanceQty) >= getMaxPerBlockImbalance(token)) return 0;
 
         return price;
     }
@@ -262,6 +271,13 @@ contract Pricing is VolumeImbalanceRecorder {
     function getPriceUpdateBlock(ERC20 token) public view returns(uint) {
         bytes32 compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];
         return getLast4Bytes(compactData);
+    }
+
+    function getTokenQty(ERC20 token, uint ethQty, uint rate) internal view returns(uint) {
+        uint dstDecimals = token.decimals();
+        uint srcDecimals = 18;
+
+        return calcDstQty(ethQty,srcDecimals,dstDecimals,rate);
     }
 
     function getLast4Bytes(bytes32 b) pure internal returns(uint) {

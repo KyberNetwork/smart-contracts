@@ -119,6 +119,19 @@ contract KyberNetwork is Withdrawable, KyberConstants {
                 (userDestBalanceAfter - userDestBalanceBefore) * (10 ** srcDecimals) * PRECISION );
     }
 
+    function getDecimals(ERC20 token) internal view returns(uint) {
+        if(token == ETH_TOKEN_ADDRESS) return 18;
+        return token.decimals();
+    }
+
+    function calcDestAmount(ERC20 source, ERC20 dest, uint srcAmount, uint rate) internal view returns(uint) {
+        return calcDstQty(srcAmount, getDecimals(source), getDecimals(dest),rate);
+    }
+
+    function calcSrcAmount(ERC20 source, ERC20 dest, uint destAmount, uint rate) internal view returns(uint) {
+        return calcSrcQty(destAmount,getDecimals(source), getDecimals(dest),rate);
+    }
+
     function doTrade(
         ERC20 source,
         uint srcAmount,
@@ -145,11 +158,11 @@ contract KyberNetwork is Withdrawable, KyberConstants {
         assert(rate >= minConversionRate);
 
         uint actualSourceAmount = srcAmount;
-        uint actualDestAmount = theReserve.getDestQty(source, dest, actualSourceAmount, rate);
+        uint actualDestAmount = calcDestAmount(source,dest,actualSourceAmount,rate);
 
         if(actualDestAmount > maxDestAmount) {
             actualDestAmount = maxDestAmount;
-            actualSourceAmount = theReserve.getSrcQty(source, dest, actualDestAmount, rate);
+            actualSourceAmount = calcSrcAmount(source,dest,actualDestAmount,rate);
         }
 
         // do the trade
@@ -162,7 +175,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
             ethAmount = actualDestAmount;
         }
 
-        require(ethAmount <= kyberWhiteList.getUserCapInWei(msg.sender));
+        require(ethAmount <= getUserCapInWei(msg.sender));
 
         assert(doReserveTrade(
             source,
@@ -330,6 +343,10 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     {
         require(expectedRateContract != address(0));
         return expectedRateContract.getExpectedRate(source, dest, srcQuantity);
+    }
+
+    function getUserCapInWei(address user) public view returns(uint) {
+        return kyberWhiteList.getUserCapInWei(user);
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether

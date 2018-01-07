@@ -50,7 +50,7 @@ contract MockImbalanceRecorder is VolumeImbalanceRecorder {
         return(encodeTokenImbalanceData(data));
     }
 
-    function callDecodeTokenImbalanceData(uint input) external pure returns(int64, uint64, int64, uint64) {
+    function callDecodeTokenImbalanceData(uint input) external pure returns(int, uint, int, uint) {
         TokenImbalanceData memory data = (decodeTokenImbalanceData(input));
         return (
             data.lastBlockBuyUnitsImbalance,

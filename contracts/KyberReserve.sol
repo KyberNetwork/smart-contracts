@@ -130,13 +130,7 @@ contract KyberReserve is Withdrawable, KyberConstants {
         uint dstDecimals = getDecimals(dest);
         uint srcDecimals = getDecimals(source);
 
-        if(dstDecimals >= srcDecimals) {
-            require((dstDecimals-srcDecimals) <= MAX_DECIMALS);
-            return (srcQty * rate * (10**(dstDecimals - srcDecimals))) / PRECISION;
-        } else {
-            require((srcDecimals-dstDecimals) <= MAX_DECIMALS);
-            return (srcQty * rate) / (PRECISION * (10**(srcDecimals - dstDecimals)));
-        }
+        return calcDstQty(srcQty,srcDecimals,dstDecimals,rate);
     }
 
     function getSrcQty(ERC20 source, ERC20 dest, uint dstQty, uint rate) public view returns(uint) {
@@ -155,21 +149,18 @@ contract KyberReserve is Withdrawable, KyberConstants {
     function getConversionRate(ERC20 source, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
         ERC20 token;
         bool  buy;
-        uint  tokenQty;
 
         if(ETH_TOKEN_ADDRESS == source) {
             buy = true;
             token = dest;
-            tokenQty = getDestQty(source, dest, srcQty, pricingContract.getBasicPrice(token, true));
         } else if(ETH_TOKEN_ADDRESS == dest) {
             buy = false;
             token = source;
-            tokenQty = srcQty;
         } else {
             return 0; // pair is not listed
         }
 
-        uint price = pricingContract.getPrice(token, blockNumber, buy, tokenQty);
+        uint price = pricingContract.getPrice(token, blockNumber, buy, srcQty);
         uint destQty = getDestQty(source, dest, srcQty, price);
 
         if(getBalance(dest) < destQty) return 0;

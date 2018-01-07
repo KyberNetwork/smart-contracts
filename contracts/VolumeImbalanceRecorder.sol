@@ -20,11 +20,11 @@ contract VolumeImbalanceRecorder is Withdrawable {
     mapping(address => TokenControlInfo) tokenControlInfo;
 
     struct TokenImbalanceData {
-        int64  lastBlockBuyUnitsImbalance;
-        uint64 lastBlock;
+        int  lastBlockBuyUnitsImbalance;
+        uint lastBlock;
 
-        int64  totalBuyUnitsImbalance;
-        uint64 lastPriceUpdateBlock;
+        int  totalBuyUnitsImbalance;
+        uint lastPriceUpdateBlock;
     }
 
     mapping(address => mapping(uint=>uint)) tokenImbalanceData;
@@ -125,7 +125,10 @@ contract VolumeImbalanceRecorder is Withdrawable {
     {
         buyImbalance = 0;
         currentBlockImbalance = 0;
-        uint64 latestBlock = uint64(0);
+        uint latestBlock = 0;
+        int imbalanceInRange = 0;
+        uint startBlock = priceUpdateBlock;
+        uint endBlock = currentBlock;
 
         for(uint windowInd = 0; windowInd < SLIDING_WINDOW_SIZE; windowInd++) {
             TokenImbalanceData memory perBlockData = decodeTokenImbalanceData(tokenImbalanceData[token][windowInd]);
@@ -138,10 +141,14 @@ contract VolumeImbalanceRecorder is Withdrawable {
             if(uint(perBlockData.lastBlock) == currentBlock) {
                 currentBlockImbalance = perBlockData.lastBlockBuyUnitsImbalance;
             }
+
+            if(perBlockData.lastBlock <= endBlock && perBlockData.lastBlock >= startBlock) {
+                imbalanceInRange += int(perBlockData.lastBlockBuyUnitsImbalance);
+            }
         }
 
         if(buyImbalance == 0) {
-            buyImbalance = getImbalanceInRange(token, priceUpdateBlock, currentBlock);
+            buyImbalance = imbalanceInRange;
         }
     }
 
@@ -179,10 +186,10 @@ contract VolumeImbalanceRecorder is Withdrawable {
     function decodeTokenImbalanceData(uint input) internal pure returns(TokenImbalanceData) {
         TokenImbalanceData memory data;
 
-        data.lastBlockBuyUnitsImbalance = int64(input & (POW_2_64 - 1));
-        data.lastBlock = uint64((input / POW_2_64) & (POW_2_64 - 1));
-        data.totalBuyUnitsImbalance = int64( (input / (POW_2_64 * POW_2_64)) & (POW_2_64 - 1) );
-        data.lastPriceUpdateBlock = uint64( (input / (POW_2_64 * POW_2_64 * POW_2_64)) );
+        data.lastBlockBuyUnitsImbalance = int(input & (POW_2_64 - 1));
+        data.lastBlock = uint((input / POW_2_64) & (POW_2_64 - 1));
+        data.totalBuyUnitsImbalance = int( (input / (POW_2_64 * POW_2_64)) & (POW_2_64 - 1) );
+        data.lastPriceUpdateBlock = uint( (input / (POW_2_64 * POW_2_64 * POW_2_64)) );
 
         return data;
     }
