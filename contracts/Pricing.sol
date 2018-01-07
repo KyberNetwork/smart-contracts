@@ -210,7 +210,7 @@ contract Pricing is VolumeImbalanceRecorder, KyberConstants {
             price = addBps(price, extraBps);
 
             // compute token qty
-            qty = getTokenQty(token,price,qty);
+            qty = getTokenQty(token, price, qty);
             imbalanceQty = int(qty);
             totalImbalance += imbalanceQty;
 
