@@ -5,13 +5,13 @@ import "../ERC20Interface.sol";
 import "./MockCentralBank.sol";
 import "./MockDepositAddressEther.sol";
 import "./MockDepositAddressToken.sol";
-import "../KyberConstants.sol";
+import "../Utils.sol";
 
 
 /// @title Mock Exchange Deposit Address
 /// @author Ilan Doron
 /// @dev a dummy contract that simulates a deposit address of an exchange. allows user to deposit, withdraw and convert tokens.
-contract MockExchange is KyberConstants {
+contract MockExchange is Utils {
 
     string public exchangeName;
     MockCentralBank public bank;

@@ -3,10 +3,10 @@ pragma solidity ^0.4.18;
 import "../ERC20Interface.sol";
 import "../KyberReserve.sol";
 import "../KyberNetwork.sol";
-import "../KyberConstants.sol";
+import "../Utils.sol";
 import "../Pricing.sol";
 
-contract Wrapper is KyberConstants {
+contract Wrapper is Utils {
 
     function getBalances(address reserve, ERC20[] tokens) public view returns(uint[]) {
         uint[] memory result = new uint[](tokens.length);

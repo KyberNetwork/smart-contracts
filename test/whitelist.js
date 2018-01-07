@@ -1,4 +1,4 @@
-var KyberWhiteList = artifacts.require("./KyberWhiteList.sol")
+var KyberWhiteList = artifacts.require("./WhiteList.sol")
 
 var Helper = require("./helper.js");
 var BigNumber = require('bignumber.js');

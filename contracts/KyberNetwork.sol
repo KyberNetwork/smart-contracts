@@ -4,9 +4,9 @@ pragma solidity ^0.4.18;
 import "./ERC20Interface.sol";
 import "./KyberReserve.sol";
 import "./Withdrawable.sol";
-import "./KyberConstants.sol";
+import "./Utils.sol";
 import "./PermissionGroups.sol";
-import "./KyberWhiteList.sol";
+import "./WhiteList.sol";
 import "./ExpectedRate.sol";
 import "./FeeBurner.sol";
 
@@ -15,12 +15,12 @@ import "./FeeBurner.sol";
 
 /// @title Kyber Network main contract
 
-contract KyberNetwork is Withdrawable, KyberConstants {
+contract KyberNetwork is Withdrawable, Utils {
 
     uint public negligiblePriceDiff = 10; // basic price steps will be in 0.01%
     KyberReserve[] public reserves;
     mapping(address=>bool) public isReserve;
-    KyberWhiteList public kyberWhiteList;
+    WhiteList public kyberWhiteList;
     ExpectedRateInterface public expectedRateContract;
     FeeBurnerInterface    public feeBurnerContract;
     uint                  public maxGasPrice = 50 * 1000 * 1000 * 1000; // 50 gwei
@@ -243,7 +243,7 @@ contract KyberNetwork is Withdrawable, KyberConstants {
     }
 
     function setParams(
-        KyberWhiteList        _whiteList,
+        WhiteList _whiteList,
         ExpectedRateInterface _expectedRate,
         FeeBurnerInterface    _feeBurner,
         uint                  _maxGasPrice,

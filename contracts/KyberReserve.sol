@@ -2,7 +2,7 @@ pragma solidity ^0.4.18;
 
 
 import "./ERC20Interface.sol";
-import "./KyberConstants.sol";
+import "./Utils.sol";
 import "./Withdrawable.sol";
 import "./Pricing.sol";
 import "./VolumeImbalanceRecorder.sol";
@@ -11,7 +11,7 @@ import "./SanityPricing.sol";
 
 /// @title Kyber Reserve contract
 
-contract KyberReserve is Withdrawable, KyberConstants {
+contract KyberReserve is Withdrawable, Utils {
 
     address public kyberNetwork;
     bool public tradeEnabled;

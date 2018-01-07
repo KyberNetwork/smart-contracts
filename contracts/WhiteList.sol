@@ -4,13 +4,13 @@ pragma solidity ^0.4.18;
 import "./Withdrawable.sol";
 
 
-contract KyberWhiteList is Withdrawable {
+contract WhiteList is Withdrawable {
 
     uint public weiPerSgd; // amount of weis in 1 singapore dollar
     mapping (address=>uint) public userCategory; // each user has a category that defines cap on trade amount. 0 will be standard
     mapping (uint=>uint)    public categoryCap;  // will define cap on trade amount per category in singapore Dollar.
 
-    function KyberWhiteList(address _admin) public {
+    function WhiteList(address _admin) public {
         admin = _admin;
     }
 

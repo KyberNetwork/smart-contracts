@@ -3,10 +3,10 @@ pragma solidity ^0.4.18;
 
 import "./ERC20Interface.sol";
 import "./VolumeImbalanceRecorder.sol";
-import "./KyberConstants.sol";
+import "./Utils.sol";
 
 
-contract Pricing is VolumeImbalanceRecorder, KyberConstants {
+contract Pricing is VolumeImbalanceRecorder, Utils {
 
     // bps - basic price steps. one step is 1 / 10000 of the price.
     struct StepFunction {
