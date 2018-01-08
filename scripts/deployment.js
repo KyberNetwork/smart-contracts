@@ -422,19 +422,6 @@ contract('Deployment', function(accounts) {
     done();
   });
 
-  it("create wrapper", function() {
-    this.timeout(31000000);
-    var balance0;
-    var balance1;
-    return Wrapper.new().then(function(instance){
-      wrapper = instance;
-      console.log("wrapper",instance.address);
-    });
-  });
-
-
-
-
   it("check network", function() {
     var networkId = getNetwork();
     if( networkId == "kovan" || networkId == "testrpc" || networkId == "dev" || networkId == "ropsten" ) {
@@ -787,6 +774,7 @@ it("set eth to dgd rate", function() {
     dict["pricing"] = pricing.address;
     dict["network"] = network.address;
     dict["wrapper"] = wrapper.address;
+    dict["feeburner"] = feeBurner.address;
 
     var json = JSON.stringify(dict, null, 2);
 
