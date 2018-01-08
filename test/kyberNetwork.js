@@ -137,9 +137,9 @@ contract('KyberNetwork', function(accounts) {
             tokensPerEther = (new BigNumber(precisionUnits.mul((i + 1) * 3)).floor());
             ethersPerToken = (new BigNumber(precisionUnits.div((i + 1) * 3)).floor());
             baseBuyRate1.push(tokensPerEther.valueOf());
-            baseBuyRate1.push(tokensPerEther.valueOf() + (10 * 1));
+            baseBuyRate2.push(tokensPerEther.valueOf() + (10 * 1));
             baseSellRate1.push(ethersPerToken.valueOf());
-            baseSellRate1.push(ethersPerToken.valueOf() - (10 * 1));
+            baseSellRate2.push(ethersPerToken.valueOf() - (10 * 1));
         }
 //        baseBuyRate1 = [10, 11, 12];
 //        baseBuyRate2 = [10, 12, 14];
@@ -200,13 +200,14 @@ contract('KyberNetwork', function(accounts) {
         //transfer tokens to reserve. each token same wei balance
         for (var i = 0; i < numTokens; ++i) {
             token = tokens[i];
-            var amount = (new BigNumber(reserveEtherInit)).mul(baseBuyRate[i]).div(precisionUnits);
-            await token.transfer(reserve1.address, amount.valueOf());
-            await token.transfer(reserve2.address, amount.valueOf());
+            var amount1 = (new BigNumber(reserveEtherInit)).mul(baseBuyRate1[i]).div(precisionUnits);
+            await token.transfer(reserve1.address, amount1.valueOf());
+            var amount2 = (new BigNumber(reserveEtherInit)).mul(baseBuyRate1[i]).div(precisionUnits);
+            await token.transfer(reserve2.address, amount2.valueOf());
             var balance = await token.balanceOf(reserve1.address);
-            assert.equal(amount.valueOf(), balance.valueOf());
-            reserve1TokenBalance.push(amount);
-            reserve2TokenBalance.push(amount);
+            assert.equal(amount1.valueOf(), balance.valueOf());
+            reserve1TokenBalance.push(amount1);
+            reserve2TokenBalance.push(amount2);
             reserve1TokenImbalance.push(0);
             reserve2TokenImbalance.push(0);
         }
