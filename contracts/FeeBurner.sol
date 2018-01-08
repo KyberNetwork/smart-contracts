@@ -63,7 +63,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
         uint fee = kncAmount * reserveFeesInBps[reserve] / 10000;
 
         uint walletFee = fee * walletFeesInBps[wallet] / 10000;
-        assert(fee >= walletFee);
+        require(fee >= walletFee);
         uint feeToBurn = fee - walletFee;
 
         if(walletFee > 0) {

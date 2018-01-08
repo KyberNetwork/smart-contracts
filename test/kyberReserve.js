@@ -1,4 +1,4 @@
-var Pricing = artifacts.require("./Pricing.sol");
+var ConversionRates = artifacts.require("./ConversionRates.sol");
 var TestToken = artifacts.require("./mockContracts/TestToken.sol");
 var Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
 var Reserve = artifacts.require("./KyberReserve");
@@ -20,16 +20,16 @@ var reserveTokenImbalance = [];
 var admin;
 var operator;
 var network;
-var sanityPricing;
+var sanityRates;
 
 //contracts
-var pricingInst;
+var convRatesInst;
 var reserveInst;
 
 //block data
 var priceUpdateBlock;
 var currentBlock;
-var validPriceDurationInBlocks = 1000;
+var validRateDurationInBlocks = 1000;
 
 //tokens data
 ////////////
@@ -82,7 +82,7 @@ var compactBuyArr = [];
 var compactSellArr = [];
 
 contract('KyberReserve', function(accounts) {
-    it("should init globals. init Pricing Inst, init tokens and add to pricing inst. set basic data per token.", async function () {
+    it("should init globals. init ConversionRates Inst, init tokens and add to pricing inst. set basic data per token.", async function () {
         // set account addresses
         admin = accounts[0];
         operator = accounts[1];
@@ -94,24 +94,24 @@ contract('KyberReserve', function(accounts) {
 
         console.log("current block: " + currentBlock);
         //init contracts
-        pricingInst = await Pricing.new(admin, {gas: 5000000});
+        convRatesInst = await ConversionRates.new(admin, {gas: 4700000});
 
         //set pricing general parameters
-        await pricingInst.setValidPriceDurationInBlocks(validPriceDurationInBlocks);
+        await convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);
 
-        //create and add tokens. actually only addresses...
+        //create and add token addresses...
         for (var i = 0; i < numTokens; ++i) {
             token = await TestToken.new("test" + i, "tst" + i, 18);
             tokens[i] = token;
             tokenAdd[i] = token.address;
-            await pricingInst.addToken(token.address);
-            await pricingInst.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
-            await pricingInst.enableTokenTrade(token.address);
+            await convRatesInst.addToken(token.address);
+            await convRatesInst.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
+            await convRatesInst.enableTokenTrade(token.address);
         }
 
         assert.equal(tokens.length, numTokens, "bad number tokens");
 
-        var result = await pricingInst.addOperator(operator);
+        var result = await convRatesInst.addOperator(operator);
 //        console.log(result.logs[0].args);
     });
 
@@ -131,14 +131,14 @@ contract('KyberReserve', function(accounts) {
 
         buys.length = sells.length = indices.length = 0;
 
-        await pricingInst.setBasePrice(tokenAdd, baseBuyRate, baseSellRate, buys, sells, currentBlock, indices, {from: operator});
+        await convRatesInst.setBaseRate(tokenAdd, baseBuyRate, baseSellRate, buys, sells, currentBlock, indices, {from: operator});
 
         //set compact data
-        compactBuyArr = [0, 0, 0, 0, 0, 06, 07, 08, 09, 10, 11, 12, 13, 14];
+        compactBuyArr = [0, 12, -5, 0, 0, 06, 07, 08, 09, 10, 11, 12, 13, 14];
         var compactBuyHex = bytesToHex(compactBuyArr);
         buys.push(compactBuyHex);
 
-        compactSellArr = [0, 0, 0, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34];
+        compactSellArr = [0, -50, 95, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34];
         var compactSellHex = bytesToHex(compactSellArr);
         sells.push(compactSellHex);
 
@@ -147,18 +147,18 @@ contract('KyberReserve', function(accounts) {
         assert.equal(indices.length, sells.length, "bad sells array size");
         assert.equal(indices.length, buys.length, "bad buys array size");
 
-        await pricingInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
 
         //all start with same step functions.
         for (var i = 0; i < numTokens; ++i) {
-            await pricingInst.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
-            await pricingInst.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            await convRatesInst.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            await convRatesInst.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
         }
     });
 
     it("should init reserve and set all reserve data including balances", async function () {
-        reserveInst = await Reserve.new(network, pricingInst.address, admin);
-        await pricingInst.setReserveAddress(reserveInst.address);
+        reserveInst = await Reserve.new(network, convRatesInst.address, admin);
+        await convRatesInst.setReserveAddress(reserveInst.address);
 
         //set reserve balance. 10000 wei ether + per token 1000 wei ether value according to base price.
         var reserveEtherInit = 5000 * 2;
@@ -433,8 +433,8 @@ function addBps (price, bps) {
     return (price.mul(10000 + bps).div(10000));
 };
 
-function comparePrices (receivedPrice, expectedPrice) {
-    expectedPrice = expectedPrice - (expectedPrice % 10);
-    receivedPrice = receivedPrice - (receivedPrice % 10);
-    assert.equal(expectedPrice, receivedPrice, "different prices");
+function compareRates (receivedRate, expectedRate) {
+    expectedRate = expectedRate - (expectedRate % 10);
+    receivedRate = receivedRate - (receivedRate % 10);
+    assert.equal(expectedRate, receivedRate, "different prices");
 };

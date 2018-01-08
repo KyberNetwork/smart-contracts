@@ -1,4 +1,4 @@
-var Pricing = artifacts.require("./Pricing.sol");
+var ConversionRates = artifacts.require("./ConversionRates.sol");
 var TestToken = artifacts.require("./mockContracts/TestToken.sol");
 var Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
 
@@ -12,14 +12,14 @@ var minimalRecordResolution = 2; //low resolution so I don't lose too much data.
 var maxPerBlockImbalance = 4000;
 var maxTotalImbalance = maxPerBlockImbalance * 12;
 var admin;
-var priceUpdateBlock;
+var rateUpdateBlock;
 var currentBlock = 3000;
 var wrapper;
 var numTokens = 17;
 var tokens = [];
 var operator;
 var reserveAddress;
-var validPriceDurationInBlocks = 1000;
+var validRateDurationInBlocks = 1000;
 var buys = [];
 var sells = [];
 var indices = [];
@@ -36,9 +36,9 @@ var compactBuyArr2 = [];
 var compactSellArr1 = [];
 var compactSellArr2 = [];
 
-var pricingInst;
+var convRatesInst;
 
-contract('Pricing', function(accounts) {
+contract('ConversionRates', function(accounts) {
     it("should test bytes14.", async function () {
         var arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
         var hexArr = bytesToHex(arr);
@@ -53,20 +53,20 @@ contract('Pricing', function(accounts) {
         }
     });
 
-    it("should init Pricing Inst and set general parameters.", async function () {
+    it("should init ConversionRates Inst and set general parameters.", async function () {
         //init contracts
-        pricingInst = await Pricing.new(accounts[0], {gas: 4700000});
+        convRatesInst = await ConversionRates.new(accounts[0], {gas: 4700000});
 
         //set pricing general parameters
-        pricingInst.setValidPriceDurationInBlocks(validPriceDurationInBlocks);
+        convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);
 
         //create and add tokens. actually only addresses...
         for (var i = 0; i < numTokens; ++i) {
             token = await TestToken.new("test" + i, "tst" + i, 18);
             tokens[i] = token.address;
-            await pricingInst.addToken(token.address);
-            await pricingInst.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
-            await pricingInst.enableTokenTrade(token.address);
+            await convRatesInst.addToken(token.address);
+            await convRatesInst.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
+            await convRatesInst.enableTokenTrade(token.address);
         }
 
         assert.equal(tokens.length, numTokens, "bad number tokens");
@@ -75,12 +75,12 @@ contract('Pricing', function(accounts) {
         operator = accounts[1];
         reserveAddress = accounts[2];
 
-        await pricingInst.addOperator(operator);
-        await pricingInst.setReserveAddress(reserveAddress);
+        await convRatesInst.addOperator(operator);
+        await convRatesInst.setReserveAddress(reserveAddress);
     });
 
-    it("should set base prices for all tokens then get and verify.", async function () {
-        // set base price
+    it("should set base rates for all tokens then get and verify.", async function () {
+        // set base rate
         var baseBuy = [];
         var baseSell = [];
 
@@ -100,16 +100,16 @@ contract('Pricing', function(accounts) {
 
         buys.length = sells.length = indices.length = 0;
 
-        await pricingInst.setBasePrice(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
+        await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
 
-        //get base price - validate data
+        //get base rate - validate data
         var thisSell;
         var thisBuy;
         for (i = 0; i < numTokens; ++i) {
-            thisBuy = await pricingInst.getBasicPrice(tokens[i], true);
-            thisSell = await pricingInst.getBasicPrice(tokens[i], false);
-            assert.equal(thisBuy.valueOf(), baseBuy[i], "wrong base buy price.");
-            assert.equal(thisSell.valueOf(), baseSell[i], "wrong base sell price.");
+            thisBuy = await convRatesInst.getBasicRate(tokens[i], true);
+            thisSell = await convRatesInst.getBasicRate(tokens[i], false);
+            assert.equal(thisBuy.valueOf(), baseBuy[i], "wrong base buy rate.");
+            assert.equal(thisSell.valueOf(), baseSell[i], "wrong base sell rate.");
         }
     });
 
@@ -135,13 +135,13 @@ contract('Pricing', function(accounts) {
         assert.equal(indices.length, sells.length, "bad array size");
         assert.equal(indices.length, buys.length, "bad array size");
 
-        await pricingInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
 
         //get compact data for all tokens and verify as expected
         for (i = 0; i < numTokens; ++i) {
             var arrIndex = Math.floor (i / 14);
             var fieldIndex = i % 14;
-            var compactResArr = await pricingInst.getCompactData(tokens[i]);
+            var compactResArr = await convRatesInst.getCompactData(tokens[i]);
             var compactBuy;
             var compactSell;
 
@@ -161,11 +161,11 @@ contract('Pricing', function(accounts) {
         }
 
         //get block number from compact data and verify
-        var blockNum = await pricingInst.getPriceUpdateBlock(tokens[3]);
+        var blockNum = await convRatesInst.getRateUpdateBlock(tokens[3]);
 
         assert.equal(blockNum, currentBlock, "bad block number returned");
 
-        var blockNum = await pricingInst.getPriceUpdateBlock(tokens[11]);
+        var blockNum = await convRatesInst.getRateUpdateBlock(tokens[11]);
 
         assert.equal(blockNum, currentBlock, "bad block number returned");
     });
@@ -181,36 +181,36 @@ contract('Pricing', function(accounts) {
         imbalanceSellStepY = [45, 190, 360, 1800];
         
         for (var i = 0; i < numTokens; ++i) {
-            await pricingInst.setQtyStepFunction(tokens[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
-            await pricingInst.setImbalanceStepFunction(tokens[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            await convRatesInst.setQtyStepFunction(tokens[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            await convRatesInst.setImbalanceStepFunction(tokens[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
         }
     });
 
-    it("should get buy price with update according to compact data update.", async function () {
+    it("should get buy rate with update according to compact data update.", async function () {
         var tokenInd = 7;
         var token = tokens[tokenInd]; //choose some token
-        var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
+        var baseBuyRate = await convRatesInst.getBasicRate(token, true);
 
-        // get price without activating quantity step function (small amount).
+        // get rate without activating quantity step function (small amount).
         var srcQty = 2;
-        var expectedPrice = (new BigNumber(baseBuyPrice));
+        var expectedRate = (new BigNumber(baseBuyRate));
         var extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedPrice = addBps(expectedPrice, extraBps);
-        var dstQty = new BigNumber(srcQty).mul(expectedPrice).div(precisionUnits);
+        expectedRate = addBps(expectedRate, extraBps);
+        var dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
         extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
         extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
 
-        var receivedPrice = await pricingInst.getPrice(token, currentBlock, true, srcQty);
+        var receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
+        assert.equal(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
     });
 
-    it("should get buy price when compact data has boundary values (-128, 127).", async function () {
+    it("should get buy rate when compact data has boundary values (-128, 127).", async function () {
         var tokenInd = 7;
         var token = tokens[tokenInd]; //choose some token
-        var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
+        var baseBuyRate = await convRatesInst.getBasicRate(token, true);
 
         //update compact data
         indices.length = 0;
@@ -222,51 +222,51 @@ contract('Pricing', function(accounts) {
         sells.length = 0;
         compactHex = bytesToHex(compactSellArr1);
         sells.push(compactHex);
-        pricingInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
 
-        // get price with the updated compact data.
+        // get rate with the updated compact data.
         var srcQty = 5;
-        var expectedPrice = (new BigNumber(baseBuyPrice));
+        var expectedRate = (new BigNumber(baseBuyRate));
         var extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedPrice = addBps(expectedPrice, extraBps);
-        var dstQty = new BigNumber(srcQty).mul(expectedPrice).div(precisionUnits);
+        expectedRate = addBps(expectedRate, extraBps);
+        var dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
         extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
         extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
 
 
-        var receivedPrice = await pricingInst.getPrice(token, currentBlock, true, srcQty);
+        var receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
+        assert.equal(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
 
         //update compact data
         compactBuyArr1[tokenInd] = 127;
         var compactHex = bytesToHex(compactBuyArr1);
         buys.length = 0;
         buys.push(compactHex);
-        pricingInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
 
-        // get price without activating quantity step function (small amount).
+        // get rate without activating quantity step function (small amount).
         var srcQty = 11;
-        var expectedPrice = (new BigNumber(baseBuyPrice));
+        var expectedRate = (new BigNumber(baseBuyRate));
         var extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedPrice = addBps(expectedPrice, extraBps);
-        var dstQty = new BigNumber(srcQty).mul(expectedPrice).div(precisionUnits);
+        expectedRate = addBps(expectedRate, extraBps);
+        var dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
         extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
         extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
 
-        var receivedPrice = await pricingInst.getPrice(token, currentBlock, true, srcQty);
+        var receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
+        assert.equal(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
     });
 
-    it("should get buy price when updating only 2nd cell compact data.", async function () {
+    it("should get buy rate when updating only 2nd cell compact data.", async function () {
         var tokenInd = 16;
         var token = tokens[tokenInd]; //choose some token
-        var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
+        var baseBuyRate = await convRatesInst.getBasicRate(token, true);
 
         //update compact data
         indices.length = 0;
@@ -278,122 +278,122 @@ contract('Pricing', function(accounts) {
         sells.length = 0;
         compactHex = bytesToHex(compactSellArr2);
         sells.push(compactHex);
-        pricingInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
 
-        // get price without activating quantity step function (small amount).
+        // get rate without activating quantity step function (small amount).
 
-        // calculate expected price
+        // calculate expected rate
         var srcQty = 21;
-        var expectedPrice = (new BigNumber(baseBuyPrice));
+        var expectedRate = (new BigNumber(baseBuyRate));
         var extraBps = compactBuyArr2[tokenInd - 14] * 10;
-        expectedPrice = addBps(expectedPrice, extraBps);
-        var dstQty = new BigNumber(srcQty).mul(expectedPrice).div(precisionUnits);
+        expectedRate = addBps(expectedRate, extraBps);
+        var dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
         extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
         extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
 
-        var receivedPrice = await pricingInst.getPrice(token, currentBlock, true, srcQty);
+        var receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
+        assert.equal(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
     });
 
-    it("should get buy price with compact data and quantity step.", async function () {
+    it("should get buy rate with compact data and quantity step.", async function () {
         var tokenInd = 11;
         var token = tokens[tokenInd]; //choose some token
-        var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
+        var baseBuyRate = await convRatesInst.getBasicRate(token, true);
 
-        // calculate expected price
+        // calculate expected rate
         var srcQty = 17;
-        var expectedPrice = (new BigNumber(baseBuyPrice));
+        var expectedRate = (new BigNumber(baseBuyRate));
         var extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedPrice = addBps(expectedPrice, extraBps);
-        var dstQty = new BigNumber(srcQty).mul(expectedPrice).div(precisionUnits);
+        expectedRate = addBps(expectedRate, extraBps);
+        var dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
         extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
         extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
 
-        var receivedPrice = await pricingInst.getPrice(token, currentBlock, true, srcQty);
+        var receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
+        assert.equal(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
     });
 
-    it("should get buy price quantity step and compact data update with token index > 14.", async function () {
+    it("should get buy rate quantity step and compact data update with token index > 14.", async function () {
         var tokenInd = 15;
         var token = tokens[tokenInd]; //choose some token
-        var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
+        var baseBuyRate = await convRatesInst.getBasicRate(token, true);
 
-        // get price
+        // get rate
         var srcQty = 24;
-        var expectedPrice = (new BigNumber(baseBuyPrice));
+        var expectedRate = (new BigNumber(baseBuyRate));
         var extraBps = compactBuyArr2[tokenInd - 14] * 10;
-        expectedPrice = addBps(expectedPrice, extraBps);
-        var dstQty = new BigNumber(srcQty).mul(expectedPrice).div(precisionUnits);
+        expectedRate = addBps(expectedRate, extraBps);
+        var dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
         extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
         extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
 
-        var receivedPrice = await pricingInst.getPrice(token, currentBlock, true, srcQty);
+        var receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
+        assert.equal(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
     });
 
-    it("should add imbalance. get buy price with with compact data + quantity step + imbalance step.", async function () {
+    it("should add imbalance. get buy rate with with compact data + quantity step + imbalance step.", async function () {
         var tokenInd = 8;
         var token = tokens[tokenInd]; //choose some token
-        var baseBuyPrice = await pricingInst.getBasicPrice(token, true);
+        var baseBuyRate = await convRatesInst.getBasicRate(token, true);
 
-        // get price
+        // get rate
         var buyQty = 15;
         var imbalance = 95;
-        var expectedPrice = (new BigNumber(baseBuyPrice));
+        var expectedRate = (new BigNumber(baseBuyRate));
         var extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedPrice = addBps(expectedPrice, extraBps);
-        var dstQty = new BigNumber(buyQty).mul(expectedPrice).div(precisionUnits);
+        expectedRate = addBps(expectedRate, extraBps);
+        var dstQty = new BigNumber(buyQty).mul(expectedRate).div(precisionUnits);
         //quantity bps
         extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
         //imbalance bps
         extraBps = getExtraBpsForImbalanceBuyQuantity(imbalance + (dstQty * 1));
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
 
         //record imbalance
-        await pricingInst.recordImbalance(token, imbalance, currentBlock, currentBlock, {from: reserveAddress});
+        await convRatesInst.recordImbalance(token, imbalance, currentBlock, currentBlock, {from: reserveAddress});
 
-        var receivedPrice = await pricingInst.getPrice(token, currentBlock, true, buyQty);
-        assert.equal(expectedPrice.valueOf(), receivedPrice.valueOf(), "bad price");
+        var receivedRate = await convRatesInst.getRate(token, currentBlock, true, buyQty);
+        assert.equal(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
     });
 
-    it("should add imbalance and get sell price with with compact data + quantity step + imbalance step.", async function () {
+    it("should add imbalance and get sell rate with with compact data + quantity step + imbalance step.", async function () {
         var tokenInd = 16;
         var token = tokens[tokenInd]; //choose some token
-        var baseSellPrice = await pricingInst.getBasicPrice(token, false);
+        var baseSellRate = await convRatesInst.getBasicRate(token, false);
         var acceptedDiff = 1;
 
-        // get price
+        // get rate
         var sellQty = 500;
         var imbalance = 1800;
-        var expectedPrice = (new BigNumber(baseSellPrice));
+        var expectedRate = (new BigNumber(baseSellRate));
         //calc compact data
         var extraBps = compactSellArr2[tokenInd - 14] * 10;
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
         //calc quantity steps
         extraBps = getExtraBpsForSellQuantity(sellQty);
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
         //calc imbalance steps
         extraBps = getExtraBpsForImbalanceSellQuantity(imbalance - (sellQty * 1));
-        expectedPrice = addBps(expectedPrice, extraBps);
+        expectedRate = addBps(expectedRate, extraBps);
 
         //record imbalance
-        await pricingInst.recordImbalance(token, imbalance, currentBlock, currentBlock, {from: reserveAddress});
+        await convRatesInst.recordImbalance(token, imbalance, currentBlock, currentBlock, {from: reserveAddress});
 
-        var receivedPrice = await pricingInst.getPrice(token, currentBlock, false, sellQty);
+        var receivedRate = await convRatesInst.getRate(token, currentBlock, false, sellQty);
 
-        //round prices a bit
+        //round rates a bit
 
-        comparePrices(receivedPrice, expectedPrice);
+        compareRates(receivedRate, expectedRate);
     });
 });
 
@@ -444,12 +444,12 @@ function getExtraBpsForImbalanceSellQuantity(qty) {
     return (imbalanceSellStepY[imbalanceSellStepY.length - 1]);
 };
 
-function addBps (price, bps) {
-    return (price.mul(10000 + bps).div(10000));
+function addBps (rate, bps) {
+    return (rate.mul(10000 + bps).div(10000));
 };
 
-function comparePrices (receivedPrice, expectedPrice) {
-    expectedPrice = expectedPrice - (expectedPrice % 10);
-    receivedPrice = receivedPrice - (receivedPrice % 10);
-    assert.equal(expectedPrice, receivedPrice, "different prices");
+function compareRates (receivedRate, expectedRate) {
+    expectedRate = expectedRate - (expectedRate % 10);
+    receivedRate = receivedRate - (receivedRate % 10);
+    assert.equal(expectedRate, receivedRate, "different rates");
 };

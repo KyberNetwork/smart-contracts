@@ -4,9 +4,9 @@ pragma solidity ^0.4.18;
 import "./ERC20Interface.sol";
 import "./Utils.sol";
 import "./Withdrawable.sol";
-import "./Pricing.sol";
+import "./ConversionRates.sol";
 import "./VolumeImbalanceRecorder.sol";
-import "./SanityPricing.sol";
+import "./SanityRates.sol";
 
 
 /// @title Kyber Reserve contract
@@ -15,13 +15,13 @@ contract KyberReserve is Withdrawable, Utils {
 
     address public kyberNetwork;
     bool public tradeEnabled;
-    Pricing public pricingContract;
-    SanityPricingInterface public sanityPricingContract;
+    ConversionRates public ratesContract;
+    SanityRatesInterface public sanityRatesContract;
     mapping(bytes32=>bool) public approvedWithdrawAddresses; // sha3(token,address)=>bool
 
-    function KyberReserve(address _kyberNetwork, Pricing _pricingContract, address _admin) public {
+    function KyberReserve(address _kyberNetwork, ConversionRates _ratesContract, address _admin) public {
         kyberNetwork = _kyberNetwork;
-        pricingContract = _pricingContract;
+        ratesContract = _ratesContract;
         admin = _admin;
         tradeEnabled = true;
     }
@@ -56,7 +56,7 @@ contract KyberReserve is Withdrawable, Utils {
         require(tradeEnabled);
         require(msg.sender == kyberNetwork);
 
-        assert(doTrade(sourceToken, sourceAmount, destToken, destAddress, conversionRate, validate));
+        require(doTrade(sourceToken, sourceAmount, destToken, destAddress, conversionRate, validate));
 
         return true;
     }
@@ -92,7 +92,7 @@ contract KyberReserve is Withdrawable, Utils {
         if(token == ETH_TOKEN_ADDRESS) {
             destination.transfer(amount);
         } else {
-            assert(token.transfer(destination, amount));
+            require(token.transfer(destination, amount));
         }
 
         Withdraw(token, amount, destination);
@@ -100,16 +100,16 @@ contract KyberReserve is Withdrawable, Utils {
         return true;
     }
 
-    function setContracts(address _kyberNetwork, Pricing _pricing, SanityPricingInterface _sanityPricing)
+    function setContracts(address _kyberNetwork, ConversionRates _rates, SanityRatesInterface _sanityRates)
         public
         onlyAdmin
     {
         require(_kyberNetwork != address(0));
-        require(_pricing != address(0));
+        require(_rates != address(0));
 
         kyberNetwork = _kyberNetwork;
-        pricingContract = _pricing;
-        sanityPricingContract = _sanityPricing;
+        ratesContract = _rates;
+        sanityRatesContract = _sanityRates;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -160,17 +160,17 @@ contract KyberReserve is Withdrawable, Utils {
             return 0; // pair is not listed
         }
 
-        uint price = pricingContract.getPrice(token, blockNumber, buy, srcQty);
-        uint destQty = getDestQty(source, dest, srcQty, price);
+        uint rate = ratesContract.getRate(token, blockNumber, buy, srcQty);
+        uint destQty = getDestQty(source, dest, srcQty, rate);
 
         if(getBalance(dest) < destQty) return 0;
 
-        if(sanityPricingContract != address(0)) {
-            uint sanityPrice = sanityPricingContract.getSanityPrice(source, dest);
-            if(price > sanityPrice) return 0;
+        if(sanityRatesContract != address(0)) {
+            uint sanityRate = sanityRatesContract.getSanityRate(source, dest);
+            if(rate > sanityRate) return 0;
         }
 
-        return price;
+        return rate;
     }
 
     /// @dev do a trade
@@ -213,23 +213,23 @@ contract KyberReserve is Withdrawable, Utils {
             token = sourceToken;
         }
 
-        pricingContract.recordImbalance(
+        ratesContract.recordImbalance(
             token,
             buy,
-            pricingContract.getPriceUpdateBlock(token),
+            ratesContract.getRateUpdateBlock(token),
             block.number
         );
 
         // collect source tokens
         if(sourceToken != ETH_TOKEN_ADDRESS) {
-            assert(sourceToken.transferFrom(msg.sender, this, sourceAmount));
+            require(sourceToken.transferFrom(msg.sender, this, sourceAmount));
         }
 
         // send dest tokens
         if(destToken == ETH_TOKEN_ADDRESS) {
             destAddress.transfer(destAmount);
         } else {
-            assert(destToken.transfer(destAddress, destAmount));
+            require(destToken.transfer(destAddress, destAmount));
         }
 
         DoTrade(tx.origin, sourceToken, sourceAmount, destToken, destAmount, destAddress);

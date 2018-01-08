@@ -13,7 +13,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
     struct TokenControlInfo {
         uint minimalRecordResolution; // can be roughly 1 cent
         uint maxPerBlockImbalance; // in twei resolution
-        uint maxTotalImbalance; // max total imbalance (without price updates)
+        uint maxTotalImbalance; // max total imbalance (without rate updates)
                             // before halting trade
     }
 
@@ -24,7 +24,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
         uint lastBlock;
 
         int  totalBuyUnitsImbalance;
-        uint lastPriceUpdateBlock;
+        uint lastRateUpdateBlock;
     }
 
     mapping(address => mapping(uint=>uint)) tokenImbalanceData;
@@ -59,7 +59,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
     function addImbalance(
         ERC20 token,
         int buyAmount,
-        uint priceUpdateBlock,
+        uint rateUpdateBlock,
         uint currentBlock
     )
         internal
@@ -73,25 +73,25 @@ contract VolumeImbalanceRecorder is Withdrawable {
 
         // first scenario - this is not the first tx in the current block
         if(currentBlockData.lastBlock == currentBlock) {
-            if(uint(currentBlockData.lastPriceUpdateBlock) == priceUpdateBlock) {
+            if(uint(currentBlockData.lastRateUpdateBlock) == rateUpdateBlock) {
                 // just increase imbalance
                 currentBlockData.lastBlockBuyUnitsImbalance += recordedBuyAmount;
                 currentBlockData.totalBuyUnitsImbalance += recordedBuyAmount;
             } else {
                 // imbalance was changed in the middle of the block
-                prevImbalance = getImbalanceInRange(token, priceUpdateBlock, currentBlock);
+                prevImbalance = getImbalanceInRange(token, rateUpdateBlock, currentBlock);
                 currentBlockData.totalBuyUnitsImbalance = int(prevImbalance) + recordedBuyAmount;
                 currentBlockData.lastBlockBuyUnitsImbalance += recordedBuyAmount;
-                currentBlockData.lastPriceUpdateBlock = uint(priceUpdateBlock);
+                currentBlockData.lastRateUpdateBlock = uint(rateUpdateBlock);
             }
         } else {
             // first tx in the current block
             int currentBlockImbalance;
-            (prevImbalance, currentBlockImbalance) = getImbalanceSincePriceUpdate(token, priceUpdateBlock, currentBlock);
+            (prevImbalance, currentBlockImbalance) = getImbalanceSinceRateUpdate(token, rateUpdateBlock, currentBlock);
 
             currentBlockData.lastBlockBuyUnitsImbalance = recordedBuyAmount;
             currentBlockData.lastBlock = uint(currentBlock);
-            currentBlockData.lastPriceUpdateBlock = uint(priceUpdateBlock);
+            currentBlockData.lastRateUpdateBlock = uint(rateUpdateBlock);
             currentBlockData.totalBuyUnitsImbalance = int(prevImbalance) + recordedBuyAmount;
         }
 
@@ -119,7 +119,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
         }
     }
 
-    function getImbalanceSincePriceUpdate(ERC20 token, uint priceUpdateBlock, uint currentBlock)
+    function getImbalanceSinceRateUpdate(ERC20 token, uint rateUpdateBlock, uint currentBlock)
         internal view
         returns(int buyImbalance, int currentBlockImbalance)
     {
@@ -127,7 +127,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
         currentBlockImbalance = 0;
         uint latestBlock = 0;
         int imbalanceInRange = 0;
-        uint startBlock = priceUpdateBlock;
+        uint startBlock = rateUpdateBlock;
         uint endBlock = currentBlock;
 
         for(uint windowInd = 0; windowInd < SLIDING_WINDOW_SIZE; windowInd++) {
@@ -137,7 +137,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
                 imbalanceInRange += perBlockData.lastBlockBuyUnitsImbalance;
             }
 
-            if(perBlockData.lastPriceUpdateBlock != priceUpdateBlock) continue;
+            if(perBlockData.lastRateUpdateBlock != rateUpdateBlock) continue;
             if(perBlockData.lastBlock < latestBlock) continue;
 
             latestBlock = perBlockData.lastBlock;
@@ -152,15 +152,15 @@ contract VolumeImbalanceRecorder is Withdrawable {
         }
     }
 
-    function getImbalance(ERC20 token, uint priceUpdateBlock, uint currentBlock)
+    function getImbalance(ERC20 token, uint rateUpdateBlock, uint currentBlock)
         internal view
         returns(int totalImbalance, int currentBlockImbalance)
     {
 
         int resolution = int(tokenControlInfo[token].minimalRecordResolution);
 
-        (totalImbalance,currentBlockImbalance) = getImbalanceSincePriceUpdate(token,
-                                                                              priceUpdateBlock,
+        (totalImbalance,currentBlockImbalance) = getImbalanceSinceRateUpdate(token,
+                                                                              rateUpdateBlock,
                                                                               currentBlock);
         totalImbalance *= resolution;
         currentBlockImbalance *= resolution;
@@ -178,7 +178,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
         uint result = uint(data.lastBlockBuyUnitsImbalance) & (POW_2_64 - 1);
         result |= data.lastBlock * POW_2_64;
         result |= (uint(data.totalBuyUnitsImbalance) & (POW_2_64 - 1)) * POW_2_64 * POW_2_64;
-        result |= data.lastPriceUpdateBlock * POW_2_64 * POW_2_64 * POW_2_64;
+        result |= data.lastRateUpdateBlock * POW_2_64 * POW_2_64 * POW_2_64;
 
         return result;
     }
@@ -189,7 +189,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
         data.lastBlockBuyUnitsImbalance = int(int64(input & (POW_2_64 - 1)));
         data.lastBlock = uint(uint64((input / POW_2_64) & (POW_2_64 - 1)));
         data.totalBuyUnitsImbalance = int(int64( (input / (POW_2_64 * POW_2_64)) & (POW_2_64 - 1)));
-        data.lastPriceUpdateBlock = uint(uint64((input / (POW_2_64 * POW_2_64 * POW_2_64))));
+        data.lastRateUpdateBlock = uint(uint64((input / (POW_2_64 * POW_2_64 * POW_2_64))));
 
         return data;
     }

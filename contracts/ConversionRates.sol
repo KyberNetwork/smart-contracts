@@ -6,12 +6,12 @@ import "./VolumeImbalanceRecorder.sol";
 import "./Utils.sol";
 
 
-contract Pricing is VolumeImbalanceRecorder, Utils {
+contract ConversionRates is VolumeImbalanceRecorder, Utils {
 
-    // bps - basic price steps. one step is 1 / 10000 of the price.
+    // bps - basic rate steps. one step is 1 / 10000 of the rate.
     struct StepFunction {
         int[] x; // quantity for each step. Quantity of each step includes previous steps.
-        int[] y; // price change per quantity step  in bps.
+        int[] y; // rate change per quantity step  in bps.
     }
 
     struct TokenData {
@@ -22,36 +22,36 @@ contract Pricing is VolumeImbalanceRecorder, Utils {
         uint compactDataArrayIndex;
         uint compactDataFieldIndex;
 
-        // price data. base and changes according to quantity and reserve balance.
-        // generally speaking. Sell price is 1 / buy price i.e. the buy in the other direction.
-        uint baseBuyPrice;  // in PRECISION units. see KyberConstants
-        uint baseSellPrice; // PRECISION units. without (sell / buy) spread it is 1 / baseBuyPrice
-        StepFunction buyPriceQtyStepFunction; // in bps. higher quantity - bigger the price.
-        StepFunction sellPriceQtyStepFunction;// in bps. higher the qua
-        StepFunction buyPriceImbalanceStepFunction; // in BPS. higher reserve imbalance - bigger the price.
-        StepFunction sellPriceImbalanceStepFunction;
+        // rate data. base and changes according to quantity and reserve balance.
+        // generally speaking. Sell rate is 1 / buy rate i.e. the buy in the other direction.
+        uint baseBuyRate;  // in PRECISION units. see KyberConstants
+        uint baseSellRate; // PRECISION units. without (sell / buy) spread it is 1 / baseBuyRate
+        StepFunction buyRateQtyStepFunction; // in bps. higher quantity - bigger the rate.
+        StepFunction sellRateQtyStepFunction;// in bps. higher the qua
+        StepFunction buyRateImbalanceStepFunction; // in BPS. higher reserve imbalance - bigger the rate.
+        StepFunction sellRateImbalanceStepFunction;
     }
 
     /*
-    this is the data for tokenPricesCompactData
+    this is the data for tokenRatesCompactData
     but solidity compiler sucks, and cannot write this structure in a single storage write
     so we represent it as bytes32 and do the byte tricks ourselves.
-    struct TokenPricesCompactData {
-        bytes14 buy;  // change buy price of token from baseBuyPrice in 10 bps
-        bytes14 sell; // change sell price of token from baseSellPrice in 10 bps
+    struct TokenRatesCompactData {
+        bytes14 buy;  // change buy rate of token from baseBuyRate in 10 bps
+        bytes14 sell; // change sell rate of token from baseSellRate in 10 bps
 
         uint32 blockNumber;
     } */
 
-    uint public validPriceDurationInBlocks = 10; // prices are valid for this amount of blocks
+    uint public validRateDurationInBlocks = 10; // rates are valid for this amount of blocks
     mapping(address=>TokenData) tokenData;
-    bytes32[] tokenPricesCompactData;
+    bytes32[] tokenRatesCompactData;
     uint public numTokensInCurrentCompactData = 0;
     address public reserveContract;
     uint constant NUM_TOKENS_IN_COMPACT_DATA = 14;
     uint constant BYTES_14_OFFSET = (2 ** (8 * NUM_TOKENS_IN_COMPACT_DATA));
 
-    function Pricing(address _admin) public VolumeImbalanceRecorder(_admin) { }
+    function ConversionRates(address _admin) public VolumeImbalanceRecorder(_admin) { }
 
     function addToken(ERC20 token) public onlyAdmin {
 
@@ -59,10 +59,10 @@ contract Pricing is VolumeImbalanceRecorder, Utils {
         tokenData[token].listed = true;
 
         if(numTokensInCurrentCompactData == 0) {
-            tokenPricesCompactData.length++; // add new structure
+            tokenRatesCompactData.length++; // add new structure
         }
 
-        tokenData[token].compactDataArrayIndex = tokenPricesCompactData.length - 1;
+        tokenData[token].compactDataArrayIndex = tokenRatesCompactData.length - 1;
         tokenData[token].compactDataFieldIndex = numTokensInCurrentCompactData;
 
         numTokensInCurrentCompactData = (numTokensInCurrentCompactData + 1) % NUM_TOKENS_IN_COMPACT_DATA;
@@ -78,13 +78,13 @@ contract Pricing is VolumeImbalanceRecorder, Utils {
         uint bytes14Offset = BYTES_14_OFFSET;
 
         for(uint i = 0; i < indices.length; i++) {
-            require(indices[i] < tokenPricesCompactData.length);
+            require(indices[i] < tokenRatesCompactData.length);
             uint data = uint(buy[i]) | uint(sell[i]) * bytes14Offset  | (blockNumber * (bytes14Offset*bytes14Offset));
-            tokenPricesCompactData[indices[i]] = bytes32(data);
+            tokenRatesCompactData[indices[i]] = bytes32(data);
         }
     }
 
-    function setBasePrice(
+    function setBaseRate(
         ERC20[] tokens,
         uint[] baseBuy,
         uint[] baseSell,
@@ -103,8 +103,8 @@ contract Pricing is VolumeImbalanceRecorder, Utils {
 
         for(uint ind = 0; ind < tokens.length; ind++) {
             require(tokenData[tokens[ind]].listed);
-            tokenData[tokens[ind]].baseBuyPrice = baseBuy[ind];
-            tokenData[tokens[ind]].baseSellPrice = baseSell[ind];
+            tokenData[tokens[ind]].baseBuyRate = baseBuy[ind];
+            tokenData[tokens[ind]].baseSellRate = baseSell[ind];
         }
 
         setCompactData(buy, sell, blockNumber, indices);
@@ -124,8 +124,8 @@ contract Pricing is VolumeImbalanceRecorder, Utils {
         require(xSell.length == ySell.length);
         require(tokenData[token].listed);
 
-        tokenData[token].buyPriceQtyStepFunction = StepFunction(xBuy, yBuy);
-        tokenData[token].sellPriceQtyStepFunction = StepFunction(xSell, ySell);
+        tokenData[token].buyRateQtyStepFunction = StepFunction(xBuy, yBuy);
+        tokenData[token].sellRateQtyStepFunction = StepFunction(xSell, ySell);
     }
 
     function setImbalanceStepFunction(
@@ -142,12 +142,12 @@ contract Pricing is VolumeImbalanceRecorder, Utils {
         require(xSell.length == ySell.length);
         require(tokenData[token].listed);
 
-        tokenData[token].buyPriceImbalanceStepFunction = StepFunction(xBuy, yBuy);
-        tokenData[token].sellPriceImbalanceStepFunction = StepFunction(xSell, ySell);
+        tokenData[token].buyRateImbalanceStepFunction = StepFunction(xBuy, yBuy);
+        tokenData[token].sellRateImbalanceStepFunction = StepFunction(xSell, ySell);
     }
 
-    function setValidPriceDurationInBlocks(uint duration) public onlyAdmin {
-        validPriceDurationInBlocks = duration;
+    function setValidRateDurationInBlocks(uint duration) public onlyAdmin {
+        validRateDurationInBlocks = duration;
     }
 
     function enableTokenTrade(ERC20 token) public onlyAdmin {
@@ -168,92 +168,92 @@ contract Pricing is VolumeImbalanceRecorder, Utils {
     function recordImbalance(
         ERC20 token,
         int buyAmount,
-        uint priceUpdateBlock,
+        uint rateUpdateBlock,
         uint currentBlock
     )
         public
     {
         require(msg.sender == reserveContract);
 
-        return addImbalance(token, buyAmount, priceUpdateBlock, currentBlock);
+        return addImbalance(token, buyAmount, rateUpdateBlock, currentBlock);
     }
 
-    function getPrice(ERC20 token, uint currentBlockNumber, bool buy, uint qty) public view returns(uint) {
+    function getRate(ERC20 token, uint currentBlockNumber, bool buy, uint qty) public view returns(uint) {
         // check if trade is enabled
         if(!tokenData[token].enabled) return 0;
         if(tokenControlInfo[token].minimalRecordResolution == 0) return 0; // token control info not set
 
-        // get price update block
-        bytes32 compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];
+        // get rate update block
+        bytes32 compactData = tokenRatesCompactData[tokenData[token].compactDataArrayIndex];
 
-        uint updatePriceBlock = getLast4Bytes(compactData);
-        if(currentBlockNumber >= updatePriceBlock + validPriceDurationInBlocks) return 0; // price is expired
+        uint updateRateBlock = getLast4Bytes(compactData);
+        if(currentBlockNumber >= updateRateBlock + validRateDurationInBlocks) return 0; // rate is expired
         // check imbalance
         int totalImbalance;
         int blockImbalance;
-        (totalImbalance, blockImbalance) = getImbalance(token, updatePriceBlock, currentBlockNumber);
+        (totalImbalance, blockImbalance) = getImbalance(token, updateRateBlock, currentBlockNumber);
 
         int imbalanceQty;
 
-        // calculate actual price
+        // calculate actual rate
         int extraBps;
-        int8 priceUpdate;
-        uint price;
+        int8 rateUpdate;
+        uint rate;
 
         if(buy) {
-            // start with base price
-            price = tokenData[token].baseBuyPrice;
+            // start with base rate
+            rate = tokenData[token].baseBuyRate;
 
-            // add price update
-            priceUpdate = getPriceByteFromCompactData(compactData,token,true);
-            extraBps = int(priceUpdate) * 10;
-            price = addBps(price, extraBps);
+            // add rate update
+            rateUpdate = getRateByteFromCompactData(compactData,token,true);
+            extraBps = int(rateUpdate) * 10;
+            rate = addBps(rate, extraBps);
 
             // compute token qty
-            qty = getTokenQty(token, price, qty);
+            qty = getTokenQty(token, rate, qty);
             imbalanceQty = int(qty);
             totalImbalance += imbalanceQty;
 
             // add qty overhead
-            extraBps = executeStepFunction(tokenData[token].buyPriceQtyStepFunction, int(qty));
-            price = addBps(price, extraBps);
+            extraBps = executeStepFunction(tokenData[token].buyRateQtyStepFunction, int(qty));
+            rate = addBps(rate, extraBps);
 
             // add imbalance overhead
-            extraBps = executeStepFunction(tokenData[token].buyPriceImbalanceStepFunction, totalImbalance);
-            price = addBps(price, extraBps);
+            extraBps = executeStepFunction(tokenData[token].buyRateImbalanceStepFunction, totalImbalance);
+            rate = addBps(rate, extraBps);
 
         } else {
-            // start with base price
-            price = tokenData[token].baseSellPrice;
+            // start with base rate
+            rate = tokenData[token].baseSellRate;
 
-            // add price update
-            priceUpdate = getPriceByteFromCompactData(compactData,token,false);
-            extraBps = int(priceUpdate) * 10;
-            price = addBps(price, extraBps);
+            // add rate update
+            rateUpdate = getRateByteFromCompactData(compactData,token,false);
+            extraBps = int(rateUpdate) * 10;
+            rate = addBps(rate, extraBps);
 
             // compute token qty
             imbalanceQty = -1 * int(qty);
             totalImbalance += imbalanceQty;
 
             // add qty overhead
-            extraBps = executeStepFunction(tokenData[token].sellPriceQtyStepFunction, int(qty));
-            price = addBps(price, extraBps);
+            extraBps = executeStepFunction(tokenData[token].sellRateQtyStepFunction, int(qty));
+            rate = addBps(rate, extraBps);
 
             // add imbalance overhead
-            extraBps = executeStepFunction(tokenData[token].sellPriceImbalanceStepFunction, totalImbalance);
-            price = addBps(price, extraBps);
+            extraBps = executeStepFunction(tokenData[token].sellRateImbalanceStepFunction, totalImbalance);
+            rate = addBps(rate, extraBps);
 
         }
 
         if(abs(totalImbalance + imbalanceQty) >= getMaxTotalImbalance(token)) return 0;
         if(abs(blockImbalance + imbalanceQty) >= getMaxPerBlockImbalance(token)) return 0;
 
-        return price;
+        return rate;
     }
 
-    function getBasicPrice(ERC20 token, bool buy) public view returns(uint) {
-        if(buy) return tokenData[token].baseBuyPrice;
-        else return tokenData[token].baseSellPrice;
+    function getBasicRate(ERC20 token, bool buy) public view returns(uint) {
+        if(buy) return tokenData[token].baseBuyRate;
+        else return tokenData[token].baseSellRate;
     }
 
     function getCompactData(ERC20 token) public view returns(uint, uint, byte, byte) {
@@ -263,13 +263,13 @@ contract Pricing is VolumeImbalanceRecorder, Utils {
         return (
             arrayIndex,
             fieldOffset,
-            byte(getPriceByteFromCompactData(tokenPricesCompactData[arrayIndex], token, true)),
-            byte(getPriceByteFromCompactData(tokenPricesCompactData[arrayIndex],token, false))
+            byte(getRateByteFromCompactData(tokenRatesCompactData[arrayIndex], token, true)),
+            byte(getRateByteFromCompactData(tokenRatesCompactData[arrayIndex],token, false))
         );
     }
 
-    function getPriceUpdateBlock(ERC20 token) public view returns(uint) {
-        bytes32 compactData = tokenPricesCompactData[tokenData[token].compactDataArrayIndex];
+    function getRateUpdateBlock(ERC20 token) public view returns(uint) {
+        bytes32 compactData = tokenRatesCompactData[tokenData[token].compactDataArrayIndex];
         return getLast4Bytes(compactData);
     }
 
@@ -285,7 +285,7 @@ contract Pricing is VolumeImbalanceRecorder, Utils {
         return uint(b) / (BYTES_14_OFFSET * BYTES_14_OFFSET);
     }
 
-    function getPriceByteFromCompactData(bytes32 data, ERC20 token, bool buy) view internal returns(int8) {
+    function getRateByteFromCompactData(bytes32 data, ERC20 token, bool buy) view internal returns(int8) {
         uint fieldOffset = tokenData[token].compactDataFieldIndex;
         uint byteOffset;
         if(buy) byteOffset = 32 - NUM_TOKENS_IN_COMPACT_DATA + fieldOffset;
@@ -303,9 +303,9 @@ contract Pricing is VolumeImbalanceRecorder, Utils {
         return f.y[len-1];
     }
 
-    function addBps(uint price, int bps) pure internal returns(uint) {
+    function addBps(uint rate, int bps) pure internal returns(uint) {
         uint maxBps = 100 * 100;
-        return (price * uint(int(maxBps) + bps)) / maxBps;
+        return (rate * uint(int(maxBps) + bps)) / maxBps;
     }
 
     function abs(int x) pure internal returns(uint) {

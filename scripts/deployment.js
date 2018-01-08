@@ -1,9 +1,9 @@
 var TestToken = artifacts.require("./TestToken.sol");
 var Reserve = artifacts.require("./KyberReserve.sol");
 var Network = artifacts.require("./KyberNetwork.sol");
-var Pricing = artifacts.require("./Pricing.sol");
+var ConversionRates = artifacts.require("./ConversionRates.sol");
 var Bank   = artifacts.require("./MockCentralBank.sol");
-var Whitelist  = artifacts.require("./KyberWhiteList.sol");
+var Whitelist  = artifacts.require("./WhiteList.sol");
 var FeeBurner = artifacts.require("./FeeBurner.sol");
 var ExpectedRate = artifacts.require("./ExpectedRate.sol");
 var Wrapper   = artifacts.require("./Wrapper.sol");
@@ -47,7 +47,7 @@ var bank;
 var wrapper;
 
 var whitelist;
-var pricing;
+var conversionRates;
 var feeBurner;
 var expectedRate;
 
@@ -340,20 +340,20 @@ var listTokens = function( owner, reserve, network, expBlock, rate, convRate ) {
           // list (token=>eth) in reserve
           // list (eth=>token) in network
           // list (token=>eth) in network
-          return pricing.addToken( tokenAddress );
+          return conversionRates.addToken( tokenAddress );
       }).then(function(){
         return item.decimals();
       }).then(function(decimals){
-          return pricing.setTokenControlInfo( tokenAddress,
+          return conversionRates.setTokenControlInfo( tokenAddress,
                                               10**(decimals-2),
                                               (10 ** decimals) * 10000,
                                               (10 ** decimals) * 1000000 );
       }).then(function(){
-          return pricing.enableTokenTrade( tokenAddress );
+          return conversionRates.enableTokenTrade( tokenAddress );
       }).then(function(){
           var x = [0];
           var y = [0];
-          return pricing.setQtyStepFunction(tokenAddress,
+          return conversionRates.setQtyStepFunction(tokenAddress,
                                             x,
                                             y,
                                             x,
@@ -361,13 +361,13 @@ var listTokens = function( owner, reserve, network, expBlock, rate, convRate ) {
       }).then(function(){
         var x = [0];
         var y = [0];
-        return pricing.setImbalanceStepFunction(tokenAddress,
+        return conversionRates.setImbalanceStepFunction(tokenAddress,
                                           x,
                                           y,
                                           x,
                                           y );
       }).then(function(){
-        return pricing.setBasePrice( [tokenAddress],
+        return conversionRates.setBaseRate( [tokenAddress],
                                      [convRate],
                                      [rate],
                                      [0/*,2,3,4,5,6,7,8,9,10,11,12,13,14*/],
@@ -514,23 +514,23 @@ contract('Deployment', function(accounts) {
     });
   });
 
-  it("create pricing", function() {
+  it("create conversionRates", function() {
     this.timeout(31000000);
-    return Pricing.new(accounts[0],{gas:4700000}).then(function(instance){
-        pricing = instance;
-        return pricing.addOperator(accounts[0],{from:accounts[0]});
+    return ConversionRates.new(accounts[0],{gas:4700000}).then(function(instance){
+        conversionRates = instance;
+        return conversionRates.addOperator(accounts[0],{from:accounts[0]});
     });
   });
 
   it("create reserve and deposit tokens", function() {
     this.timeout(30000000);
     reserveOwner = accounts[0];
-    return Reserve.new(network.address,pricing.address, reserveOwner,{gas:4700000}).then(function(instance){
+    return Reserve.new(network.address, conversionRates.address, reserveOwner,{gas:4700000}).then(function(instance){
         reserve = instance;
     }).then(function(){
-        return pricing.setValidPriceDurationInBlocks(new BigNumber(1000000));
+        return conversionRates.setValidRateDurationInBlocks(new BigNumber(1000000));
     }).then(function(){
-        return pricing.setReserveAddress(reserve.address);
+        return conversionRates.setReserveAddress(reserve.address);
     }).then(function(){
         return depositTokensToReserve( tokenOwner, reserve );
     }).then(function(){
@@ -641,7 +641,7 @@ contract('Deployment', function(accounts) {
       return tokenInstance[1].balanceOf(reserve.address);
     }).then(function(result){
       assert.equal(balance1.valueOf(), result.valueOf(), "unexpected balance 1");
-      //return wrapper.getPrices( reserve.address, [tokenInstance[0].address,
+      //return wrapper.getRates( reserve.address, [tokenInstance[0].address,
       //                          tokenInstance[1].address], [ethAddress, ethAddress]);
     }).then(function(result){
       //console.log("===");
@@ -652,9 +652,9 @@ contract('Deployment', function(accounts) {
 
 
 
-  it("add operator in pricing", function() {
+  it("add operator in conversionRates", function() {
     this.timeout(31000000);
-    return pricing.addOperator(victor);
+    return conversionRates.addOperator(victor);
   });
 
 
@@ -690,7 +690,7 @@ it("make some optimizations", function() {
 
 it("set eth to dgd rate", function() {
   return getBlockNumberWithPromise().then(function(blockNumber){
-    return pricing.setBasePrice( [tokenInstance[1].address],
+    return conversionRates.setBaseRate( [tokenInstance[1].address],
                                  [0x47d40a969bd7c0021],
                                  [conversionRate],
                                  [0],
@@ -723,10 +723,10 @@ it("set eth to dgd rate", function() {
        return tokenInstance[1].balanceOf(destAddress);
     }).then(function(result){
       if( result.valueOf() > expectedDgd.valueOf() + 10 ) {
-        assert.fail("unexpected dgd balacne", result.valueOf(), expectedDgd.valueOf() );
+        assert.fail("unexpected dgd balance", result.valueOf(), expectedDgd.valueOf() );
       }
       if( result.valueOf() < expectedDgd.valueOf() - 10 ) {
-        assert.fail("unexpected dgd balacne", result.valueOf(), expectedDgd.valueOf() );
+        assert.fail("unexpected dgd balance", result.valueOf(), expectedDgd.valueOf() );
       }
     }).then(function(){
       return tokenInstance[1].balanceOf(network.address);
@@ -758,8 +758,8 @@ it("set eth to dgd rate", function() {
 
   it("check time duration block", function() {
     this.timeout(31000000);
-    return pricing.validPriceDurationInBlocks().then(function(result){
-      assert.equal(result.valueOf(), 1000000, "unexpected valid price duation block");
+    return conversionRates.validRateDurationInBlocks().then(function(result){
+      assert.equal(result.valueOf(), 1000000, "unexpected valid rate duration block");
     });
   });
 
@@ -784,7 +784,7 @@ it("set eth to dgd rate", function() {
     dict = { "tokens" : tokensDict, "exchangesAddress" : exchangesAddressDict, "exchanges" : exchangesDepositAddressesDict };
     dict["bank"] = bank.address;
     dict["reserve"] = reserve.address;
-    dict["pricing"] = pricing.address;
+    dict["pricing"] = conversionRates.address;
     dict["network"] = network.address;
     dict["wrapper"] = wrapper.address;
 

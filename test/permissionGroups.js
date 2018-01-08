@@ -71,28 +71,28 @@ contract('PermissionGroups', function(accounts) {
         assert.equal(accounts[2], operators[1]);
     });
 
-    it("should test set price is rejected for non operator.", async function () {
+    it("should test set rate is rejected for non operator.", async function () {
         mockPermissionsInst = await MockPermission.new();
         await mockPermissionsInst.addOperator(accounts[2]);
         await mockPermissionsInst.addOperator(accounts[3]);
         var operators = await permissionsInst.getOperators();
 
         try {
-            await mockPermissionsInst.setPrice(9, {from:accounts[6]});
+            await mockPermissionsInst.setRate(9, {from:accounts[6]});
             assert(false, "throw was expected in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        let price = await mockPermissionsInst.price();
-        assert.equal(price.valueOf(), 0, "price should be as initialized.")
+        let rate = await mockPermissionsInst.rate();
+        assert.equal(rate.valueOf(), 0, "rate should be as initialized.")
     });
 
-    it("should test set price success for operator.", async function () {
-        await mockPermissionsInst.setPrice(9, {from:accounts[2]});
-        let price = await mockPermissionsInst.price();
-        assert.equal(price.valueOf(), 9, "price should be as initialized.")
+    it("should test set rate success for operator.", async function () {
+        await mockPermissionsInst.setRate(9, {from:accounts[2]});
+        let rate = await mockPermissionsInst.rate();
+        assert.equal(rate.valueOf(), 9, "rate should be as initialized.")
     });
 
     it("should test stop trade is rejected for non alerter.", async function () {
