@@ -303,6 +303,10 @@ contract KyberNetwork is Withdrawable, Utils {
                 true)
         );
 
+        if( (actualSourceAmount < srcAmount) && (source == ETH_TOKEN_ADDRESS) ) {
+            msg.sender.transfer(srcAmount-actualSourceAmount);
+        }
+
         require(feeBurnerContract.handleFees(ethAmount,theReserve,walletId));
 
         Trade(msg.sender, source, dest, actualSourceAmount, actualDestAmount);
