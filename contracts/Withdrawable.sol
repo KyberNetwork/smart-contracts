@@ -19,7 +19,7 @@ contract Withdrawable is PermissionGroups {
      * @param token ERC20 The address of the token contract
      */
     function withdrawToken(ERC20 token, uint amount, address sendTo) external onlyAdmin {
-        assert(token.transfer(sendTo, amount));
+        require(token.transfer(sendTo, amount));
         WithdrawToken(token, amount, sendTo);
     }
 

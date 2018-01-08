@@ -4,7 +4,7 @@ import "../PermissionGroups.sol";
 
 
 contract MockPermission is PermissionGroups {
-    uint public price;
+    uint public rate;
     bool public tradeActive = true;
 
     function MockPermission () public
@@ -12,10 +12,10 @@ contract MockPermission is PermissionGroups {
     {
     }
 
-    function setPrice ( uint newPrice ) public
+    function setRate ( uint newRate ) public
         onlyOperator
     {
-        price = newPrice;
+        rate = newRate;
     }
 
     function stopTrade () public

@@ -5,7 +5,7 @@ import "./ERC20Interface.sol";
 
 /// @title Kyber constants contract
 
-contract KyberConstants {
+contract Utils {
 
     ERC20 constant ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
     uint  constant PRECISION = (10**18);

@@ -49,7 +49,7 @@
     "constant": true,
     "inputs": [
       {
-        "name": "pricingContract",
+        "name": "ratesContract",
         "type": "address"
       },
       {
@@ -134,7 +134,7 @@
     "constant": true,
     "inputs": [
       {
-        "name": "pricingContract",
+        "name": "ratesContract",
         "type": "address"
       },
       {

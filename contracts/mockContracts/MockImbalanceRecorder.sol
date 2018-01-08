@@ -7,22 +7,22 @@ import "../VolumeImbalanceRecorder.sol";
 contract MockImbalanceRecorder is VolumeImbalanceRecorder {
     function MockImbalanceRecorder(address _admin) public VolumeImbalanceRecorder(_admin) {}
 
-    function addTrade(ERC20 token, int buyAmount, uint priceUpdateBlock, uint currentBlock) public {
-        addImbalance(token, buyAmount, priceUpdateBlock, currentBlock);
+    function addTrade(ERC20 token, int buyAmount, uint rateUpdateBlock, uint currentBlock) public {
+        addImbalance(token, buyAmount, rateUpdateBlock, currentBlock);
     }
 
-    function getImbalanceSinceUpdate(ERC20 token, uint priceUpdateBlock, uint currentBlock)
+    function getImbalanceSinceUpdate(ERC20 token, uint rateUpdateBlock, uint currentBlock)
         public view
         returns(int buyImbalance, int currentBlockImbalance)
     {
-        return getImbalanceSincePriceUpdate(token, priceUpdateBlock, currentBlock);
+        return getImbalanceSinceRateUpdate(token, rateUpdateBlock, currentBlock);
     }
 
-    function getMockImbalance(ERC20 token, uint priceUpdateBlock, uint currentBlock)
+    function getMockImbalance(ERC20 token, uint rateUpdateBlock, uint currentBlock)
         public view
         returns(int totalImbalance, int currentBlockImbalance)
     {
-       return getImbalance(token, priceUpdateBlock, currentBlock);
+       return getImbalance(token, rateUpdateBlock, currentBlock);
     }
 
     function getMockImbalanceInRange(ERC20 token, uint startBlock, uint endBlock) public view returns(int buyImbalance) {
@@ -41,12 +41,12 @@ contract MockImbalanceRecorder is VolumeImbalanceRecorder {
         int64 lastBlockBuyUnitsImbalance,
         uint64 lastBlock,
         int64 totalBuyUnitsImbalance,
-        uint64 lastPriceUpdateBlock
+        uint64 lastRateUpdateBlock
     )
         external pure returns(uint)
     {
         TokenImbalanceData memory data =
-            TokenImbalanceData(lastBlockBuyUnitsImbalance, lastBlock, totalBuyUnitsImbalance, lastPriceUpdateBlock);
+            TokenImbalanceData(lastBlockBuyUnitsImbalance, lastBlock, totalBuyUnitsImbalance, lastRateUpdateBlock);
         return(encodeTokenImbalanceData(data));
     }
 
@@ -56,7 +56,7 @@ contract MockImbalanceRecorder is VolumeImbalanceRecorder {
             data.lastBlockBuyUnitsImbalance,
             data.lastBlock ,
             data.totalBuyUnitsImbalance,
-            data.lastPriceUpdateBlock
+            data.lastRateUpdateBlock
         );
     }
 }
