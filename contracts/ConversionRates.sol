@@ -175,6 +175,8 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
     {
         require(msg.sender == reserveContract);
 
+        if( rateUpdateBlock == 0 ) rateUpdateBlock = getRateUpdateBlock(token);
+
         return addImbalance(token, buyAmount, rateUpdateBlock, currentBlock);
     }
 

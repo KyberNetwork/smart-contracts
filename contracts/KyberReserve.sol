@@ -216,7 +216,7 @@ contract KyberReserve is Withdrawable, Utils {
         ratesContract.recordImbalance(
             token,
             buy,
-            ratesContract.getRateUpdateBlock(token),
+            0,
             block.number
         );
 
