@@ -97,8 +97,8 @@ contract KyberNetwork is Withdrawable, Utils {
         }
 
         // TODO - mitigate potential overflow
-        require(((userSrcBalanceBefore - userSrcBalanceAfter) * minConversionRate) * (10 ** destDecimals) <=
-                (userDestBalanceAfter - userDestBalanceBefore) * (10 ** srcDecimals) * PRECISION );
+        require(((userSrcBalanceBefore - userSrcBalanceAfter) * minConversionRate / PRECISION) * (10 ** destDecimals) <=
+                (userDestBalanceAfter - userDestBalanceBefore) * (10 ** srcDecimals) );
 
         return actualDestAmount;
     }
