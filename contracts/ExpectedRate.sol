@@ -26,14 +26,14 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface {
     event QuantityFactorSet (uint newFactor, uint oldFactor, address sender);
 
     function setQuantityFactor(uint newFactor) public onlyOperator {
-        SetQuantityFactor(quantityFactor, newFactor, msg.sender);
+        QuantityFactorSet(quantityFactor, newFactor, msg.sender);
         quantityFactor = newFactor;
     }
 
     event MinSlippageFactorSet (uint newMin, uint oldMin, address sender);
 
     function setMinSlippageFactor(uint bps) public onlyOperator {
-        SetMinSlippageFactor(bps, minSlippageFactorInBps, msg.sender);
+        MinSlippageFactorSet(bps, minSlippageFactorInBps, msg.sender);
         minSlippageFactorInBps = bps;
     }
 

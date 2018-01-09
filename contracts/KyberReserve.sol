@@ -76,11 +76,11 @@ contract KyberReserve is Withdrawable, Utils {
         return true;
     }
 
-    event WithdrawAddressApprove(ERC20 token, address addr, bool approve);
+    event WithdrawAddressApproved(ERC20 token, address addr, bool approve);
 
     function approveWithdrawAddress(ERC20 token, address addr, bool approve) public onlyAdmin {
         approvedWithdrawAddresses[keccak256(token, addr)] = approve;
-        ApproveWithdrawAddress(token, addr, approve);
+        WithdrawAddressApproved(token, addr, approve);
     }
 
     event WithdrawFunds(ERC20 token, uint amount, address destination);

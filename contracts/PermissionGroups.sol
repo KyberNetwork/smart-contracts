@@ -56,9 +56,9 @@ contract PermissionGroups {
      */
     function claimAdmin() public {
         require(pendingAdmin == msg.sender);
-        ClaimAdmin(pendingAdmin, admin);
+        AdminClaimed(pendingAdmin, admin);
         admin = pendingAdmin;
-        AdminClaimed = address(0);
+        pendingAdmin = address(0);
     }
 
     event AlerterAdded (address newAlerter, bool isAdd);

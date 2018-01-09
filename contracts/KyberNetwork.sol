@@ -108,7 +108,7 @@ contract KyberNetwork is Withdrawable, Utils {
         if (add) {
             reserves.push(reserve);
             isReserve[reserve] = true;
-            AddReserve(reserve, true);
+            AddReserveToNetwork(reserve, true);
         } else {
             isReserve[reserve] = false;
             // will have trouble if more than 50k reserves...
