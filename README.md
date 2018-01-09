@@ -1,6 +1,38 @@
 This repository has the main contracts in KyberNetwork platform. There are three main components in this repository including  KyberNetwork contract, KyberReserve and KyberWallet contracts. In addition, we have a couple of mock modules that simulate testnet tokens and centralized exchanges.
 This repository is for testing purposes only,  do not use it for real deployment.
 
+# Test
+
+First install dependencies:
+```
+$ npm i
+```
+To run all tests:
+```
+$ npm t
+```
+If you have issues with running tests, try to remove the build folder and try again:
+```
+$ rm -rf ./build
+```
+To avoid recompiling on each test run, you can run in parallel (and continuously):
+```
+$ npm run compile-watch
+```
+To run a specific test file:
+```
+$ npm t -- ./test/kyberNetwork.js
+```
+
+To continuously test on changes:
+```
+$ npm run test-watch
+```
+Or just run a single test file:
+```
+$ npm run test-watch -- ./test/kyberReserve.js
+```
+
 # Testnet deployment
 
 We have a functional deployment running on kovan testnet. The deployed contracts are as below.
@@ -55,7 +87,7 @@ A user needs to deploy [this](https://github.com/KyberNetwork/smart-contracts/bl
 `_kyberNetwork = 0x11542d7807dfb2b44937f756b9092c76e814f8ed`.
 Then user should send ether and/or tokens to the contract. It can be in a standard way (just `send` or `transfer` ether or tokens to contract address).
 
-The function to call is 
+The function to call is
 ```
     function convertAndCall( ERC20 srcToken, uint srcAmount,
                              ERC20 destToken, uint maxDestAmount,
