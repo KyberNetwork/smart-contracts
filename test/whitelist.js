@@ -1,4 +1,4 @@
-var KyberWhiteList = artifacts.require("./WhiteList.sol")
+var WhiteList = artifacts.require("./WhiteList.sol")
 
 var Helper = require("./helper.js");
 var BigNumber = require('bignumber.js');
@@ -8,10 +8,10 @@ var sgdToEthRateInWei;
 var defaultUserCapSgd = 1000;
 var oneSgdToEther = 0.0010352;
 
-contract('KyberWhiteList', function(accounts) {
+contract('WhiteList', function(accounts) {
     it("should init globals.", async function () {
         sgdToEthRateInWei = (((new BigNumber(10)).pow(18)).mul(oneSgdToEther));
-        whiteListInst = await KyberWhiteList.new(accounts[0]);
+        whiteListInst = await WhiteList.new(accounts[0]);
         await whiteListInst.addOperator(accounts[8], {from: accounts[0]});
         await whiteListInst.setSgdToEthRate(sgdToEthRateInWei, {from : accounts[8]});
 
@@ -42,7 +42,7 @@ contract('KyberWhiteList', function(accounts) {
     });
 
     it("should test when sgdtoWei not init, cap is always 0.", async function () {
-        var whiteListInst2 = await KyberWhiteList.new(accounts[0]);
+        var whiteListInst2 = await WhiteList.new(accounts[0]);
         await whiteListInst2.addOperator(accounts[8], {from: accounts[0]});
         //tests unset user
         userCap = await whiteListInst.getUserCapInWei(accounts[4]);
@@ -56,7 +56,7 @@ contract('KyberWhiteList', function(accounts) {
     });
 
     it("should test when no category is init, cap is always 0.", async function () {
-        var whiteListInst2 = await KyberWhiteList.new(accounts[0]);
+        var whiteListInst2 = await WhiteList.new(accounts[0]);
         await whiteListInst2.addOperator(accounts[8], {from: accounts[0]});
         //tests unset user
         userCap = await whiteListInst2.getUserCapInWei(accounts[4]);
