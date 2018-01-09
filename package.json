@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "testrpc": "testrpc",
+    "testrpc": "ganache-cli",
     "test": "truffle test",
     "compile": "truffle compile",
     "compile-watch": "nodemon -w '*.*' -e sol --exec npm run compile",
