@@ -38,7 +38,7 @@ contract MockExchange is Utils {
 
     function clearBalances(ERC20[] tokens, uint[] amounts) public onlyOwner {
 
-        for(uint i = 0; i < tokens.length; i++) {
+        for (uint i = 0; i < tokens.length; i++) {
             if (tokenDepositAddresses[tokens[i]] == address(0)) continue;
             tokenDepositAddresses[tokens[i]].clearBalance(amounts[i]);
         }

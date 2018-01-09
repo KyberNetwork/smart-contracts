@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
 
 
 import "./ERC20Interface.sol";
@@ -13,8 +13,9 @@ interface ExpectedRateInterface {
 
 
 contract ExpectedRate is Withdrawable, ExpectedRateInterface {
+    /* solhint-disable no-simple-event-func-name */
 
-    KyberNetwork kyberNetwork;
+    KyberNetwork internal kyberNetwork;
     uint public quantityFactor = 2;
     uint public minSlippageFactorInBps = 50;
 
@@ -32,8 +33,8 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface {
 
     event SetMinSlippageFactor (uint newMin, uint oldMin, address sender);
 
-    function setMinSlippageFactor( uint bps ) public onlyOperator {
-        SetMinSlippageFactor(bps,minSlippageFactorInBps,msg.sender);    
+    function setMinSlippageFactor(uint bps) public onlyOperator {
+        SetMinSlippageFactor(bps, minSlippageFactorInBps, msg.sender);
         minSlippageFactorInBps = bps;
     }
 
@@ -41,8 +42,8 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface {
         public view
         returns (uint expectedRate, uint slippageRate)
     {
-        require (quantityFactor != 0);
-        require (kyberNetwork != address (0));
+        require(quantityFactor != 0);
+        require(kyberNetwork != address(0));
 
         uint bestReserve;
         uint minSlippage;
@@ -51,7 +52,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface {
         (bestReserve, slippageRate) = kyberNetwork.findBestRate(source, dest, (srcQty * quantityFactor));
 
         minSlippage = ((10000 - minSlippageFactorInBps) * expectedRate) / 10000;
-        if( slippageRate >= minSlippage ) {
+        if (slippageRate >= minSlippage) {
             slippageRate = minSlippage;
         }
 

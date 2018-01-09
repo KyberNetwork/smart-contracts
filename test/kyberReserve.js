@@ -189,8 +189,8 @@ contract('KyberReserve', function(accounts) {
         //verify base rate
         var buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
         var expectedRate = (new BigNumber(baseBuyRate[tokenInd]));
-        var numDestTokens = (new BigNumber(amountWei).mul(baseBuyRate[tokenInd])).div(precisionUnits);
-        var extraBps = getExtraBpsForBuyQuantity(numDestTokens);
+        var destQty = (new BigNumber(amountWei).mul(baseBuyRate[tokenInd])).div(precisionUnits);
+        var extraBps = getExtraBpsForBuyQuantity(destQty);
         expectedRate = addBps(expectedRate, extraBps);
 
         //check correct rate calculated
@@ -236,8 +236,8 @@ contract('KyberReserve', function(accounts) {
             //verify price/rate against set price
             var expectedRate = (new BigNumber(baseBuyRate[tokenInd]));
             //first calculate number of destination tokens according to basic rate
-            var numDestTokens = (new BigNumber(amountWei).mul(baseBuyRate[tokenInd])).div(precisionUnits);
-            var extraBps = getExtraBpsForBuyQuantity(numDestTokens);
+            var destQty = (new BigNumber(amountWei).mul(baseBuyRate[tokenInd])).div(precisionUnits);
+            var extraBps = getExtraBpsForBuyQuantity(destQty);
             expectedRate = addBps(expectedRate, extraBps);
             extraBps = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[token]);
             expectedRate = addBps(expectedRate, extraBps);

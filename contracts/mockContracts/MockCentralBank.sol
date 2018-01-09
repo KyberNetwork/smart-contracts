@@ -18,13 +18,13 @@ contract MockCentralBank {
     function() payable public { }
 
     function withdrawEther(uint amount) public {
-        if(! owners[tx.origin]) revert();
+        if (! owners[tx.origin]) revert();
 
         msg.sender.transfer(amount);
     }
 
     function withdrawToken(ERC20 token, uint amount) public {
-        if(!owners[tx.origin]) revert();
+        if (!owners[tx.origin]) revert();
 
         token.transfer(msg.sender,amount);
     }
@@ -34,7 +34,7 @@ contract MockCentralBank {
     }
 
     function addOwner(address newOwner) public {
-      if( ! owners[tx.origin] ) revert();
+      if ( ! owners[tx.origin] ) revert();
       owners[newOwner] = true;
     }
 }

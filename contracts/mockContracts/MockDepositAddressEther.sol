@@ -22,7 +22,7 @@ contract MockDepositAddressEther is MockDepositAddress{
     }
 
     function clearBalance( uint amount ) public onlyOwner {
-        if(this.balance >= amount) {
+        if (this.balance >= amount) {
             bank.transfer(amount);
         }
     }

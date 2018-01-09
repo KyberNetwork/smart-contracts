@@ -1,41 +1,51 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
+
 
 contract PermissionGroups {
 
+    /* solhint-disable no-simple-event-func-name */
     address public admin;
     address public pendingAdmin;
-    mapping(address=>bool) operators;
-    mapping(address=>bool) alerters;
-    address[] operatorsGroup;
-    address[] alertersGroup;
+    mapping(address=>bool) internal operators;
+    mapping(address=>bool) internal alerters;
+    address[] internal operatorsGroup;
+    address[] internal alertersGroup;
 
     function PermissionGroups() public {
         admin = msg.sender;
     }
 
     modifier onlyAdmin() {
-        require (msg.sender == admin);
+        require(msg.sender == admin);
         _;
     }
 
     modifier onlyOperator() {
-        require (operators[msg.sender]);
+        require(operators[msg.sender]);
         _;
     }
 
     modifier onlyAlerter() {
-        require (alerters[msg.sender]);
+        require(alerters[msg.sender]);
         _;
     }
 
     event TransferAdmin(address pendingAdmin);
+
+    function getOperators () external view returns(address[]) {
+        return operatorsGroup;
+    }
+
+    function getAlerters () external view returns(address[]) {
+        return alertersGroup;
+    }
 
     /**
      * @dev Allows the current admin to set the pendingAdmin address.
      * @param newAdmin The address to transfer ownership to.
      */
     function transferAdmin(address newAdmin) public onlyAdmin {
-        require(newAdmin !=  address(0));
+        require(newAdmin != address(0));
         TransferAdmin(pendingAdmin);
         pendingAdmin = newAdmin;
     }
@@ -62,14 +72,11 @@ contract PermissionGroups {
     }
 
     function removeAlerter (address alerter) public onlyAdmin {
-
         require(alerters[alerter]);
         alerters[alerter] = false;
 
-        for (uint i = 0; i < alertersGroup.length; ++i)
-        {
-            if (alertersGroup[i] == alerter)
-            {
+        for (uint i = 0; i < alertersGroup.length; ++i) {
+            if (alertersGroup[i] == alerter) {
                 alertersGroup[i] = alertersGroup[alertersGroup.length - 1];
                 alertersGroup.length--;
                 AddAlerter(alerter, false);
@@ -88,27 +95,16 @@ contract PermissionGroups {
     }
 
     function removeOperator (address operator) public onlyAdmin {
-
-        require (operators[operator]);
+        require(operators[operator]);
         operators[operator] = false;
 
-        for (uint i = 0; i < operatorsGroup.length; ++i)
-        {
-            if (operatorsGroup[i] == operator)
-            {
+        for (uint i = 0; i < operatorsGroup.length; ++i) {
+            if (operatorsGroup[i] == operator) {
                 operatorsGroup[i] = operatorsGroup[operatorsGroup.length - 1];
                 operatorsGroup.length -= 1;
                 AddOperator(operator, false);
                 break;
             }
         }
-    }
-
-    function getOperators () external view returns(address []) {
-        return operatorsGroup;
-    }
-
-    function getAlerters () external view returns(address []) {
-        return alertersGroup;
     }
 }

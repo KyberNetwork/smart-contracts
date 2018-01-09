@@ -47,42 +47,37 @@ contract('FeeBurner', function(accounts) {
 
     it("should test handle fees success without other wallet fees.", async function () {
         var tradeSizeWei = 500000;
-        var initialWalletbalance = await kncToken.balanceOf(mockKNCWallet);
+        var feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
 
         var feeSize = tradeSizeWei * kncPerEtherRate * burnFeeInBPS / totalBPS;
 
         await feeBurnerInst.handleFees(tradeSizeWei, mockReserve, 0, {from: mockKyberNetwork});
 
-        var expectedBalanceAfterBurn = initialWalletbalance - feeSize;
+        var expectedWaitingFees = (feesWaitingToBurn.valueOf() * 1) + feeSize * 1;
+        feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
 
-        balance = await kncToken.balanceOf(mockKNCWallet);
-        assert.equal(balance.valueOf(), expectedBalanceAfterBurn, "unexpected wallet balance.");
+        assert.equal(feesWaitingToBurn.valueOf(), expectedWaitingFees.valueOf(), "unexpected waiting to burn.");
     });
 
     it("should test handle fees success with other wallet ID fees.", async function () {
         var tradeSizeWei = 800000;
-        var initialWalletbalance = await kncToken.balanceOf(mockKNCWallet);
+        var feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
 
         var feeSize = tradeSizeWei * kncPerEtherRate * burnFeeInBPS / totalBPS;
-
-        //verify other wallet has balance 0
-        balance = await kncToken.balanceOf(someExternalWallet);
-        assert.equal(balance.valueOf(), 0, "unexpected wallet balance.");
 
         //set other wallet fee
         await feeBurnerInst.setWalletFees(someExternalWallet, totalBPS/2);
 
         await feeBurnerInst.handleFees(tradeSizeWei, mockReserve, someExternalWallet, {from: mockKyberNetwork});
 
-        var expectedBalanceAfterBurn = initialWalletbalance - feeSize;
+        var expectedWaitingFees = (feesWaitingToBurn.valueOf() * 1) + feeSize / 2;
+        feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
+        assert.equal(feesWaitingToBurn.valueOf(), expectedWaitingFees.valueOf(), "unexpected waiting to burn.");
 
-        balance = await kncToken.balanceOf(mockKNCWallet);
-        assert.equal(balance.valueOf(), expectedBalanceAfterBurn, "unexpected wallet balance.");
+        var expectedOtherWalletWaitingFees = feeSize / 2;
 
-        var expectedOtherWalletBalanceAfterBurn = feeSize / 2;
-
-        balance = await kncToken.balanceOf(someExternalWallet);
-        assert.equal(balance.valueOf(), expectedOtherWalletBalanceAfterBurn, "unexpected wallet balance.");
+        var waitingWalletFees = await feeBurnerInst.reserveFeeToWallet(mockReserve, someExternalWallet);
+        assert.equal(expectedOtherWalletWaitingFees.valueOf(), waitingWalletFees.valueOf(), "unexpected wallet balance.");
     });
 
     it("should test handle fees rejected with wrong caller.", async function () {
@@ -98,11 +93,6 @@ contract('FeeBurner', function(accounts) {
             catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
         }
-
-        var expectedBalanceAfterBurn = initialWalletbalance;
-
-        balance = await kncToken.balanceOf(mockKNCWallet);
-        assert.equal(balance.valueOf(), expectedBalanceAfterBurn, "unexpected wallet balance.");
     });
 
     it("should test all set set functions rejected for non admin.", async function () {
@@ -131,24 +121,41 @@ contract('FeeBurner', function(accounts) {
         }
     });
 
-    it("should test that when knc wallet (we burn from) is empty the handle fee is reverted.", async function () {
+    it("should test burn fee and handle fee calls success. see see waiting fees zeroed.", async function () {
+        var feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
+        assert(feesWaitingToBurn.valueOf() > 0, "unexpected waiting to burn.");
+
+        await feeBurnerInst.burnReserveFees(mockReserve);
+
+        feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
+        assert(feesWaitingToBurn.valueOf() == 1, "unexpected waiting to burn.");
+
+        var waitingWalletFees = await feeBurnerInst.reserveFeeToWallet(mockReserve, someExternalWallet);
+        assert(waitingWalletFees.valueOf() > 0, "unexpected waiting wallet fees.");
+
+        await feeBurnerInst.sendFeeToWallet(someExternalWallet, mockReserve);
+
+        waitingWalletFees = await feeBurnerInst.reserveFeeToWallet(mockReserve, someExternalWallet);
+        assert(waitingWalletFees.valueOf() == 1, "unexpected waiting wallet fees.");
+    });
+
+    it("should test that when knc wallet (we burn from) is empty burn fee is reverted.", async function () {
         var initialWalletbalance = await kncToken.balanceOf(mockKNCWallet);
 
         //create trade size that will cause fee be bigger then wallet balance.
         var tradeSizeWei = 1 + (initialWalletbalance / (kncPerEtherRate * burnFeeInBPS / totalBPS));
         var feeSize = tradeSizeWei * kncPerEtherRate * burnFeeInBPS / totalBPS;
 
-        assert(feeSize > tradeSizeWei, "required larger fee size ");
+        assert(feeSize > tradeSizeWei, "required fee size bigger then wallet balance.");
+        await feeBurnerInst.handleFees(tradeSizeWei, mockReserve, 0, {from: mockKyberNetwork});
 
+        //now burn
         try {
-            await feeBurnerInst.handleFees(tradeSizeWei, mockReserve, 0, {from: mockKyberNetwork});
+            await feeBurnerInst.burnReserveFees(mockReserve);
             assert(false, "expected throw in line above..")
         }
             catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
         }
-
-        balance = await kncToken.balanceOf(mockKNCWallet);
-        assert.equal(balance.valueOf(), initialWalletbalance.valueOf(), "unexpected wallet balance.");
-    });
+   });
 });

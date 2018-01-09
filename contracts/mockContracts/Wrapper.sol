@@ -10,9 +10,9 @@ contract Wrapper is Utils {
 
     function getBalances(address reserve, ERC20[] tokens) public view returns(uint[]) {
         uint[] memory result = new uint[](tokens.length);
-        for(uint i = 0; i < tokens.length; i++) {
+        for (uint i = 0; i < tokens.length; i++) {
             uint balance = 0;
-            if(tokens[i] == ETH_TOKEN_ADDRESS) {
+            if (tokens[i] == ETH_TOKEN_ADDRESS) {
                 balance = reserve.balance;
             } else {
                 balance = tokens[i].balanceOf(reserve);
@@ -66,7 +66,7 @@ contract Wrapper is Utils {
         int8[] memory compactSell = new int8[](tokenList.length);
         uint[] memory updateBlock = new uint[](tokenList.length);
 
-        for(uint i = 0;  i < tokenList.length; i++) {
+        for (uint i = 0;  i < tokenList.length; i++) {
             buyBases[i] = ratesContract.getBasicRate(tokenList[i], true);
             sellBases[i] = ratesContract.getBasicRate(tokenList[i], false);
 
@@ -80,7 +80,7 @@ contract Wrapper is Utils {
         uint[] memory bulkIndices = new uint[](tokenList.length);
         uint[] memory tokenIndexInBulk = new uint[](tokenList.length);
 
-        for(uint i = 0; i < tokenList.length; i++) {
+        for (uint i = 0; i < tokenList.length; i++) {
             uint bulkIndex; uint index; byte buy; byte sell;
             (bulkIndex, index, buy, sell) = ratesContract.getCompactData(tokenList[i]);
 
@@ -100,7 +100,7 @@ contract Wrapper is Utils {
 
         uint[] memory rates = new uint[](sources.length);
         uint[] memory slippage = new uint[](sources.length);
-        for( uint i = 0; i < sources.length; i++ ) {
+        for ( uint i = 0; i < sources.length; i++ ) {
             (rates[i],slippage[i]) = network.getExpectedRate(sources[i],dests[i],qty[i]);
         }
 
