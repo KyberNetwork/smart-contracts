@@ -75,7 +75,6 @@ contract KyberNetwork is Withdrawable, Utils {
             userSrcBalanceBefore += msg.value;
         userDestBalanceBefore = getBalance(dest, destAddress);
 
-
         uint actualDestAmount = doTrade(source,
                                         srcAmount,
                                         dest,
@@ -91,25 +90,9 @@ contract KyberNetwork is Withdrawable, Utils {
 
         require(userSrcBalanceAfter <= userSrcBalanceBefore);
         require(userDestBalanceAfter >= userDestBalanceBefore);
-
-        uint srcDecimals;
-        uint destDecimals;
-
-        if (source == ETH_TOKEN_ADDRESS) {
-            srcDecimals = 18;
-        } else {
-            srcDecimals = source.decimals();
-        }
-
-        if (dest == ETH_TOKEN_ADDRESS) {
-            destDecimals = 18;
-        } else {
-            destDecimals = dest.decimals();
-        }
-
-        // TODO - mitigate potential overflow
-        require(((userSrcBalanceBefore - userSrcBalanceAfter) * minConversionRate / PRECISION) * (10 ** destDecimals) <=
-                (userDestBalanceAfter - userDestBalanceBefore) * (10 ** srcDecimals));
+        
+        require((userDestBalanceAfter - userDestBalanceBefore) >=
+                 calcDstQty((userSrcBalanceBefore - userSrcBalanceAfter), getDecimals(source), getDecimals(dest), minConversionRate));
 
         return actualDestAmount;
     }
