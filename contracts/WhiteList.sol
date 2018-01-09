@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
 
 
 import "./Withdrawable.sol";
@@ -6,6 +6,7 @@ import "./Withdrawable.sol";
 
 contract WhiteList is Withdrawable {
 
+    /* solhint-disable no-simple-event-func-name */
     uint public weiPerSgd; // amount of weis in 1 singapore dollar
     mapping (address=>uint) public userCategory; // each user has a category defining cap on trade. 0 for standard.
     mapping (uint=>uint)    public categoryCap;  // will define cap on trade amount per category in singapore Dollar.

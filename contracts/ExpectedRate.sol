@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
 
 
 import "./ERC20Interface.sol";
@@ -13,8 +13,9 @@ interface ExpectedRateInterface {
 
 
 contract ExpectedRate is Withdrawable, ExpectedRateInterface {
+    /* solhint-disable no-simple-event-func-name */
 
-    KyberNetwork kyberNetwork;
+    KyberNetwork internal kyberNetwork;
     uint public quantityFactor = 2;
     uint public minSlippageFactorInBps = 50;
 

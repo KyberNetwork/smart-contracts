@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
 
 
 import "./ERC20Interface.sol";
@@ -43,14 +43,15 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
         uint32 blockNumber;
     } */
     uint public validRateDurationInBlocks = 10; // rates are valid for this amount of blocks
-    mapping(address=>TokenData) tokenData;
-    bytes32[] tokenRatesCompactData;
+    mapping(address=>TokenData) internal tokenData;
+    bytes32[] internal tokenRatesCompactData;
     uint public numTokensInCurrentCompactData = 0;
     address public reserveContract;
-    uint constant NUM_TOKENS_IN_COMPACT_DATA = 14;
-    uint constant BYTES_14_OFFSET = (2 ** (8 * NUM_TOKENS_IN_COMPACT_DATA));
+    uint constant internal NUM_TOKENS_IN_COMPACT_DATA = 14;
+    uint constant internal BYTES_14_OFFSET = (2 ** (8 * NUM_TOKENS_IN_COMPACT_DATA));
 
-    function ConversionRates(address _admin) public VolumeImbalanceRecorder(_admin) { }
+    function ConversionRates(address _admin) public VolumeImbalanceRecorder(_admin)
+    { } // solhint-disable-line no-empty-blocks
 
     function addToken(ERC20 token) public onlyAdmin {
 
@@ -179,6 +180,7 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
         return addImbalance(token, buyAmount, rateUpdateBlock, currentBlock);
     }
 
+    /* solhint-disable function-max-lines */
     function getRate(ERC20 token, uint currentBlockNumber, bool buy, uint qty) public view returns(uint) {
         // check if trade is enabled
         if (!tokenData[token].enabled) return 0;
@@ -194,9 +196,8 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
         int blockImbalance;
         (totalImbalance, blockImbalance) = getImbalance(token, updateRateBlock, currentBlockNumber);
 
-        int imbalanceQty;
-
         // calculate actual rate
+        int imbalanceQty;
         int extraBps;
         int8 rateUpdate;
         uint rate;
@@ -222,7 +223,6 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
             // add imbalance overhead
             extraBps = executeStepFunction(tokenData[token].buyRateImbalanceStepFunction, totalImbalance);
             rate = addBps(rate, extraBps);
-
         } else {
             // start with base rate
             rate = tokenData[token].baseSellRate;
@@ -243,7 +243,6 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
             // add imbalance overhead
             extraBps = executeStepFunction(tokenData[token].sellRateImbalanceStepFunction, totalImbalance);
             rate = addBps(rate, extraBps);
-
         }
 
         if (abs(totalImbalance + imbalanceQty) >= getMaxTotalImbalance(token)) return 0;
@@ -251,6 +250,7 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
 
         return rate;
     }
+    /* solhint-enable function-max-lines */
 
     function getBasicRate(ERC20 token, bool buy) public view returns(uint) {
         if (buy)
@@ -283,12 +283,12 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
         return calcDstQty(ethQty, srcDecimals, dstDecimals, rate);
     }
 
-    function getLast4Bytes(bytes32 b) pure internal returns(uint) {
+    function getLast4Bytes(bytes32 b) internal pure returns(uint) {
         // cannot trust compiler with not turning bit operations into EXP opcode
         return uint(b) / (BYTES_14_OFFSET * BYTES_14_OFFSET);
     }
 
-    function getRateByteFromCompactData(bytes32 data, ERC20 token, bool buy) view internal returns(int8) {
+    function getRateByteFromCompactData(bytes32 data, ERC20 token, bool buy) internal view returns(int8) {
         uint fieldOffset = tokenData[token].compactDataFieldIndex;
         uint byteOffset;
         if (buy)
@@ -299,7 +299,7 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
         return int8(data[byteOffset]);
     }
 
-    function executeStepFunction(StepFunction f, int x) pure internal returns(int) {
+    function executeStepFunction(StepFunction f, int x) internal pure returns(int) {
         uint len = f.y.length;
         for (uint ind = 0; ind < len; ind++) {
             if (x <= f.x[ind]) return f.y[ind];
@@ -308,12 +308,12 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
         return f.y[len-1];
     }
 
-    function addBps(uint rate, int bps) pure internal returns(uint) {
+    function addBps(uint rate, int bps) internal pure returns(uint) {
         uint maxBps = 100 * 100;
         return (rate * uint(int(maxBps) + bps)) / maxBps;
     }
 
-    function abs(int x) pure internal returns(uint) {
+    function abs(int x) internal pure returns(uint) {
         if (x < 0)
             return uint(-1 * x);
         else

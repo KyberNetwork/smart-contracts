@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
 
 
 import "./ERC20Interface.sol";
@@ -14,7 +14,7 @@ import "./FeeBurner.sol";
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable, Utils {
-
+    /* solhint-disable no-simple-event-func-name */
 
     uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
     KyberReserve[] public reserves;
@@ -32,10 +32,12 @@ contract KyberNetwork is Withdrawable, Utils {
 
     event EtherReceival(address indexed sender, uint amount);
 
-    function() payable public {
+    /* solhint-disable no-complex-fallback */
+    function() public payable {
         require(isReserve[msg.sender]);
         EtherReceival(msg.sender, msg.value);
     }
+    /* solhint-enable no-complex-fallback */
 
     event Trade(address indexed sender, ERC20 source, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
 
@@ -69,7 +71,10 @@ contract KyberNetwork is Withdrawable, Utils {
         uint userDestBalanceAfter;
 
         userSrcBalanceBefore = getBalance(source, msg.sender);
+        if (source == ETH_TOKEN_ADDRESS)
+            userSrcBalanceBefore += msg.value;
         userDestBalanceBefore = getBalance(dest, destAddress);
+
 
         uint actualDestAmount = doTrade(source,
                                         srcAmount,
@@ -91,7 +96,6 @@ contract KyberNetwork is Withdrawable, Utils {
         uint destDecimals;
 
         if (source == ETH_TOKEN_ADDRESS) {
-            userSrcBalanceBefore += msg.value;
             srcDecimals = 18;
         } else {
             srcDecimals = source.decimals();
@@ -206,6 +210,7 @@ contract KyberNetwork is Withdrawable, Utils {
     /// @dev best conversion rate for a pair of tokens, if number of reserves have small differences. randomize
     /// @param source Source token
     /// @param dest Destination token
+    /* solhint-disable code-complexity */
     function findBestRate(ERC20 source, ERC20 dest, uint srcQty) public view returns(uint, uint) {
         uint bestRate = 0;
         uint bestReserve = 0;
@@ -247,6 +252,7 @@ contract KyberNetwork is Withdrawable, Utils {
 
         return (bestReserve, bestRate);
     }
+    /* solhint-enable code-complexity */
 
     function getExpectedRate(ERC20 source, ERC20 dest, uint srcQuantity)
         public view
@@ -288,7 +294,6 @@ contract KyberNetwork is Withdrawable, Utils {
 
         uint actualSourceAmount = srcAmount;
         uint actualDestAmount = calcDestAmount(source, dest, actualSourceAmount, rate);
-
         if (actualDestAmount > maxDestAmount) {
             actualDestAmount = maxDestAmount;
             actualSourceAmount = calcSrcAmount(source, dest, actualDestAmount, rate);
@@ -304,7 +309,6 @@ contract KyberNetwork is Withdrawable, Utils {
         }
 
         require(ethAmount <= getUserCapInWei(msg.sender));
-
         require(doReserveTrade(
                 source,
                 actualSourceAmount,
@@ -313,8 +317,7 @@ contract KyberNetwork is Withdrawable, Utils {
                 actualDestAmount,
                 theReserve,
                 rate,
-                true)
-        );
+                true));
 
         if ((actualSourceAmount < srcAmount) && (source == ETH_TOKEN_ADDRESS)) {
             msg.sender.transfer(srcAmount-actualSourceAmount);

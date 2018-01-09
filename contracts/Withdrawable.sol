@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
 
 
 import "./ERC20Interface.sol";
@@ -12,7 +12,7 @@ import "./PermissionGroups.sol";
  * This will prevent any accidental loss of tokens.
  */
 contract Withdrawable is PermissionGroups {
-
+    /* solhint-disable no-simple-event-func-name */
     event WithdrawToken(ERC20 token, uint amount, address sendTo);
 
     /**

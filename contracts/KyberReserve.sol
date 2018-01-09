@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
 
 
 import "./ERC20Interface.sol";
@@ -11,7 +11,7 @@ import "./SanityRates.sol";
 
 /// @title Kyber Reserve contract
 contract KyberReserve is Withdrawable, Utils {
-
+    /* solhint-disable no-simple-event-func-name */
     address public kyberNetwork;
     bool public tradeEnabled;
     ConversionRates public ratesContract;
@@ -27,7 +27,7 @@ contract KyberReserve is Withdrawable, Utils {
 
     event DepositToken(ERC20 token, uint amount);
 
-    function() payable public {
+    function() public payable {
         DepositToken(ETH_TOKEN_ADDRESS, msg.value);
     }
 
@@ -62,7 +62,7 @@ contract KyberReserve is Withdrawable, Utils {
 
     event EnableTrade(bool enable);
 
-    function enableTrade() public onlyAdmin returns(bool) {
+    function enableTrade() public onlyAdmin returns(bool) { // solhint-disable-line no-simple-event-func-name
         tradeEnabled = true;
         EnableTrade(true);
 
@@ -236,7 +236,7 @@ contract KyberReserve is Withdrawable, Utils {
             require(destToken.transfer(destAddress, destAmount));
         }
 
-        DoTrade(tx.origin, sourceToken, sourceAmount, destToken, destAmount, destAddress);
+        DoTrade(msg.sender, sourceToken, sourceAmount, destToken, destAmount, destAddress);
 
         return true;
     }

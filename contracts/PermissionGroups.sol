@@ -1,14 +1,15 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
 
 
 contract PermissionGroups {
 
+    /* solhint-disable no-simple-event-func-name */
     address public admin;
     address public pendingAdmin;
-    mapping(address=>bool) operators;
-    mapping(address=>bool) alerters;
-    address[] operatorsGroup;
-    address[] alertersGroup;
+    mapping(address=>bool) internal operators;
+    mapping(address=>bool) internal alerters;
+    address[] internal operatorsGroup;
+    address[] internal alertersGroup;
 
     function PermissionGroups() public {
         admin = msg.sender;

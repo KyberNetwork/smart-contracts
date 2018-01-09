@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
 
 
 import "./ERC20Interface.sol";
@@ -7,13 +7,13 @@ import "./Utils.sol";
 
 
 interface SanityRatesInterface {
-    function getSanityRate(ERC20 src, ERC20 dest) view public returns(uint);
+    function getSanityRate(ERC20 src, ERC20 dest) public view returns(uint);
 }
 
 
 contract SanityRates is SanityRatesInterface, Withdrawable, Utils {
-    mapping(address=>uint) tokenRate;
-    mapping(address=>uint) reasonableDiffInBps;
+    mapping(address=>uint) internal tokenRate;
+    mapping(address=>uint) internal reasonableDiffInBps;
 
     function SanityRates(address _admin) public {
         admin = _admin;
@@ -34,7 +34,7 @@ contract SanityRates is SanityRatesInterface, Withdrawable, Utils {
         }
     }
 
-    function getSanityRate(ERC20 src, ERC20 dest) view public returns(uint) {
+    function getSanityRate(ERC20 src, ERC20 dest) public view returns(uint) {
         if (src != ETH_TOKEN_ADDRESS && dest != ETH_TOKEN_ADDRESS) return 0;
 
         uint rate;

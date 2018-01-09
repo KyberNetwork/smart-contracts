@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
 
 
 import "./ERC20Interface.sol";
@@ -18,6 +18,7 @@ interface FeeBurnerInterface {
 
 contract FeeBurner is Withdrawable, FeeBurnerInterface {
 
+    /* solhint-disable no-simple-event-func-name */
     mapping(address=>uint) public reserveFeesInBps;
     mapping(address=>address) public reserveKNCWallet;
     mapping(address=>uint) public walletFeesInBps;
@@ -25,13 +26,13 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
     mapping(address=>uint) public reserveFeeToBurn;
     mapping(address=>mapping(address=>uint)) public reserveFeeToWallet;
 
-    BurnableToken public KNC;
+    BurnableToken public knc;
     address public kyberNetwork;
-    uint public KNCPerETHRate = 300;
+    uint public kncPerETHRate = 300;
 
-    function FeeBurner(address _admin, BurnableToken KNCToken) public {
+    function FeeBurner(address _admin, BurnableToken kncToken) public {
         admin = _admin;
-        KNC = KNCToken;
+        knc = kncToken;
     }
 
     function setReserveData(address reserve, uint feesInBps, address kncWallet) public onlyAdmin {
@@ -50,7 +51,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
     }
 
     function setKNCRate(uint rate) public onlyAdmin {
-        KNCPerETHRate = rate;
+        kncPerETHRate = rate;
     }
 
     event AssignFeeToWallet(address reserve, address wallet, uint walletFee);
@@ -59,7 +60,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
     function handleFees(uint tradeWeiAmount, address reserve, address wallet) public returns(bool) {
         require(msg.sender == kyberNetwork);
 
-        uint kncAmount = tradeWeiAmount * KNCPerETHRate;
+        uint kncAmount = tradeWeiAmount * kncPerETHRate;
         uint fee = kncAmount * reserveFeesInBps[reserve] / 10000;
 
         uint walletFee = fee * walletFeesInBps[wallet] / 10000;
@@ -86,7 +87,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
         uint burnAmount = reserveFeeToBurn[reserve];
         require(burnAmount > 0);
         reserveFeeToBurn[reserve] = 1; // leave 1 twei to avoid spikes in gas fee
-        assert(KNC.burnFrom(reserveKNCWallet[reserve], burnAmount - 1));
+        require(knc.burnFrom(reserveKNCWallet[reserve], burnAmount - 1));
 
         BurnReserveFees(reserve, msg.sender);
     }
@@ -98,7 +99,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
         uint feeAmount = reserveFeeToWallet[reserve][wallet];
         require(feeAmount > 0);
         reserveFeeToWallet[reserve][wallet] = 1; // leave 1 twei to avoid spikes in gas fee
-        assert(KNC.transferFrom(reserveKNCWallet[reserve], wallet, feeAmount - 1));
+        require(knc.transferFrom(reserveKNCWallet[reserve], wallet, feeAmount - 1));
 
         SendFeeToWallet(wallet, reserve, msg.sender);
     }

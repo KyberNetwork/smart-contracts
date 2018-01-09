@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
 
 
 import "./ERC20Interface.sol";
@@ -7,8 +7,8 @@ import "./Withdrawable.sol";
 
 contract VolumeImbalanceRecorder is Withdrawable {
 
-    uint constant SLIDING_WINDOW_SIZE = 5;
-    uint constant POW_2_64 = 2 ** 64;
+    uint constant internal SLIDING_WINDOW_SIZE = 5;
+    uint constant internal POW_2_64 = 2 ** 64;
 
     struct TokenControlInfo {
         uint minimalRecordResolution; // can be roughly 1 cent
@@ -17,7 +17,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
                             // before halting trade
     }
 
-    mapping(address => TokenControlInfo) tokenControlInfo;
+    mapping(address => TokenControlInfo) internal tokenControlInfo;
 
     struct TokenImbalanceData {
         int  lastBlockBuyUnitsImbalance;
@@ -27,7 +27,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
         uint lastRateUpdateBlock;
     }
 
-    mapping(address => mapping(uint=>uint)) tokenImbalanceData;
+    mapping(address => mapping(uint=>uint)) internal tokenImbalanceData;
 
     function VolumeImbalanceRecorder(address _admin) public {
         admin = _admin;
