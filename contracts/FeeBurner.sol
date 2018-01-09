@@ -66,12 +66,12 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
         require(fee >= walletFee);
         uint feeToBurn = fee - walletFee;
 
-        if(walletFee > 0) {
+        if (walletFee > 0) {
             reserveFeeToWallet[reserve][wallet] += walletFee;
             AssignFeeToWallet(reserve, wallet, walletFee);
         }
 
-        if(feeToBurn > 0) {
+        if (feeToBurn > 0) {
             BurnFees(reserve, feeToBurn);
             reserveFeeToBurn[reserve] += feeToBurn;
 
@@ -82,23 +82,25 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
 
     // this function is callable by anyone
     event BurnReserveFees(address indexed reserve, address sender);
+
     function burnReserveFees(address reserve) public {
         uint burnAmount = reserveFeeToBurn[reserve];
         require(burnAmount > 0);
         reserveFeeToBurn[reserve] = 1; // leave 1 twei to avoid spikes in gas fee
-        assert(KNC.burnFrom(reserveKNCWallet[reserve],burnAmount - 1));
+        assert(KNC.burnFrom(reserveKNCWallet[reserve], burnAmount - 1));
 
         BurnReserveFees(reserve, msg.sender);
     }
 
     event SendFeeToWallet(address indexed wallet, address reserve, address sender);
+
     // this function is callable by anyone
     function sendFeeToWallet(address wallet, address reserve) public {
         uint feeAmount = reserveFeeToWallet[reserve][wallet];
         require(feeAmount > 0);
         reserveFeeToWallet[reserve][wallet] = 1; // leave 1 twei to avoid spikes in gas fee
-        assert(KNC.transferFrom(reserveKNCWallet[reserve],wallet,feeAmount - 1));
+        assert(KNC.transferFrom(reserveKNCWallet[reserve], wallet, feeAmount - 1));
 
-        SendFeeToWallet(wallet,reserve,msg.sender);
+        SendFeeToWallet(wallet, reserve, msg.sender);
     }
 }

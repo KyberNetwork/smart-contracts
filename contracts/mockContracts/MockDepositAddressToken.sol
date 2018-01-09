@@ -25,7 +25,7 @@ contract MockDepositAddressToken is MockDepositAddress{
     function clearBalance(uint amount) public
         onlyOwner
     {
-        if(token.balanceOf(this) >= amount) {
+        if (token.balanceOf(this) >= amount) {
             token.transfer(bank, amount);
         }
     }

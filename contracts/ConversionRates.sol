@@ -42,7 +42,6 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
 
         uint32 blockNumber;
     } */
-
     uint public validRateDurationInBlocks = 10; // rates are valid for this amount of blocks
     mapping(address=>TokenData) tokenData;
     bytes32[] tokenRatesCompactData;
@@ -58,7 +57,7 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
         require(!tokenData[token].listed);
         tokenData[token].listed = true;
 
-        if(numTokensInCurrentCompactData == 0) {
+        if (numTokensInCurrentCompactData == 0) {
             tokenRatesCompactData.length++; // add new structure
         }
 
@@ -77,9 +76,9 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
 
         uint bytes14Offset = BYTES_14_OFFSET;
 
-        for(uint i = 0; i < indices.length; i++) {
+        for (uint i = 0; i < indices.length; i++) {
             require(indices[i] < tokenRatesCompactData.length);
-            uint data = uint(buy[i]) | uint(sell[i]) * bytes14Offset  | (blockNumber * (bytes14Offset*bytes14Offset));
+            uint data = uint(buy[i]) | uint(sell[i]) * bytes14Offset | (blockNumber * (bytes14Offset * bytes14Offset));
             tokenRatesCompactData[indices[i]] = bytes32(data);
         }
     }
@@ -101,7 +100,7 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
         require(sell.length == buy.length);
         require(sell.length == indices.length);
 
-        for(uint ind = 0; ind < tokens.length; ind++) {
+        for (uint ind = 0; ind < tokens.length; ind++) {
             require(tokenData[tokens[ind]].listed);
             tokenData[tokens[ind]].baseBuyRate = baseBuy[ind];
             tokenData[tokens[ind]].baseSellRate = baseSell[ind];
@@ -175,21 +174,21 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
     {
         require(msg.sender == reserveContract);
 
-        if( rateUpdateBlock == 0 ) rateUpdateBlock = getRateUpdateBlock(token);
+        if (rateUpdateBlock == 0) rateUpdateBlock = getRateUpdateBlock(token);
 
         return addImbalance(token, buyAmount, rateUpdateBlock, currentBlock);
     }
 
     function getRate(ERC20 token, uint currentBlockNumber, bool buy, uint qty) public view returns(uint) {
         // check if trade is enabled
-        if(!tokenData[token].enabled) return 0;
-        if(tokenControlInfo[token].minimalRecordResolution == 0) return 0; // token control info not set
+        if (!tokenData[token].enabled) return 0;
+        if (tokenControlInfo[token].minimalRecordResolution == 0) return 0; // token control info not set
 
         // get rate update block
         bytes32 compactData = tokenRatesCompactData[tokenData[token].compactDataArrayIndex];
 
         uint updateRateBlock = getLast4Bytes(compactData);
-        if(currentBlockNumber >= updateRateBlock + validRateDurationInBlocks) return 0; // rate is expired
+        if (currentBlockNumber >= updateRateBlock + validRateDurationInBlocks) return 0; // rate is expired
         // check imbalance
         int totalImbalance;
         int blockImbalance;
@@ -202,12 +201,12 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
         int8 rateUpdate;
         uint rate;
 
-        if(buy) {
+        if (buy) {
             // start with base rate
             rate = tokenData[token].baseBuyRate;
 
             // add rate update
-            rateUpdate = getRateByteFromCompactData(compactData,token,true);
+            rateUpdate = getRateByteFromCompactData(compactData, token, true);
             extraBps = int(rateUpdate) * 10;
             rate = addBps(rate, extraBps);
 
@@ -229,7 +228,7 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
             rate = tokenData[token].baseSellRate;
 
             // add rate update
-            rateUpdate = getRateByteFromCompactData(compactData,token,false);
+            rateUpdate = getRateByteFromCompactData(compactData, token, false);
             extraBps = int(rateUpdate) * 10;
             rate = addBps(rate, extraBps);
 
@@ -247,15 +246,17 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
 
         }
 
-        if(abs(totalImbalance + imbalanceQty) >= getMaxTotalImbalance(token)) return 0;
-        if(abs(blockImbalance + imbalanceQty) >= getMaxPerBlockImbalance(token)) return 0;
+        if (abs(totalImbalance + imbalanceQty) >= getMaxTotalImbalance(token)) return 0;
+        if (abs(blockImbalance + imbalanceQty) >= getMaxPerBlockImbalance(token)) return 0;
 
         return rate;
     }
 
     function getBasicRate(ERC20 token, bool buy) public view returns(uint) {
-        if(buy) return tokenData[token].baseBuyRate;
-        else return tokenData[token].baseSellRate;
+        if (buy)
+            return tokenData[token].baseBuyRate;
+        else
+            return tokenData[token].baseSellRate;
     }
 
     function getCompactData(ERC20 token) public view returns(uint, uint, byte, byte) {
@@ -266,7 +267,7 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
             arrayIndex,
             fieldOffset,
             byte(getRateByteFromCompactData(tokenRatesCompactData[arrayIndex], token, true)),
-            byte(getRateByteFromCompactData(tokenRatesCompactData[arrayIndex],token, false))
+            byte(getRateByteFromCompactData(tokenRatesCompactData[arrayIndex], token, false))
         );
     }
 
@@ -279,7 +280,7 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
         uint dstDecimals = token.decimals();
         uint srcDecimals = 18;
 
-        return calcDstQty(ethQty,srcDecimals,dstDecimals,rate);
+        return calcDstQty(ethQty, srcDecimals, dstDecimals, rate);
     }
 
     function getLast4Bytes(bytes32 b) pure internal returns(uint) {
@@ -290,16 +291,18 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
     function getRateByteFromCompactData(bytes32 data, ERC20 token, bool buy) view internal returns(int8) {
         uint fieldOffset = tokenData[token].compactDataFieldIndex;
         uint byteOffset;
-        if(buy) byteOffset = 32 - NUM_TOKENS_IN_COMPACT_DATA + fieldOffset;
-        else byteOffset = 4 + fieldOffset;
+        if (buy)
+            byteOffset = 32 - NUM_TOKENS_IN_COMPACT_DATA + fieldOffset;
+        else
+            byteOffset = 4 + fieldOffset;
 
         return int8(data[byteOffset]);
     }
 
     function executeStepFunction(StepFunction f, int x) pure internal returns(int) {
         uint len = f.y.length;
-        for(uint ind = 0; ind < len; ind++) {
-            if(x <= f.x[ind]) return f.y[ind];
+        for (uint ind = 0; ind < len; ind++) {
+            if (x <= f.x[ind]) return f.y[ind];
         }
 
         return f.y[len-1];
@@ -311,7 +314,9 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
     }
 
     function abs(int x) pure internal returns(uint) {
-        if(x < 0) return uint(-1 * x);
-        else return uint(x);
+        if (x < 0)
+            return uint(-1 * x);
+        else
+            return uint(x);
     }
 }

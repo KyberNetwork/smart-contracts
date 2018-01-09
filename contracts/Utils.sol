@@ -3,8 +3,8 @@ pragma solidity ^0.4.18;
 
 import "./ERC20Interface.sol";
 
-/// @title Kyber constants contract
 
+/// @title Kyber constants contract
 contract Utils {
 
     ERC20 constant ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
@@ -14,7 +14,7 @@ contract Utils {
     uint  constant MAX_DECIMALS = 18;
 
     function calcDstQty(uint srcQty, uint srcDecimals, uint dstDecimals, uint rate) internal pure returns(uint) {
-        if( dstDecimals >= srcDecimals ) {
+        if (dstDecimals >= srcDecimals) {
             require((dstDecimals-srcDecimals) <= MAX_DECIMALS);
             return (srcQty * rate * (10**(dstDecimals-srcDecimals))) / PRECISION;
         } else {
@@ -24,7 +24,7 @@ contract Utils {
     }
 
     function calcSrcQty(uint dstQty, uint srcDecimals, uint dstDecimals, uint rate) internal pure returns(uint) {
-        if( srcDecimals >= dstDecimals ) {
+        if (srcDecimals >= dstDecimals) {
             require((srcDecimals-dstDecimals) <= MAX_DECIMALS);
             return (PRECISION * dstQty * (10**(srcDecimals - dstDecimals))) / rate;
         } else {

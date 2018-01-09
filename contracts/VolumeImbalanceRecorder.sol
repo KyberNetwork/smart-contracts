@@ -69,11 +69,12 @@ contract VolumeImbalanceRecorder is Withdrawable {
 
         int prevImbalance = 0;
 
-        TokenImbalanceData memory currentBlockData = decodeTokenImbalanceData(tokenImbalanceData[token][currentBlockIndex]);
+        TokenImbalanceData memory currentBlockData =
+            decodeTokenImbalanceData(tokenImbalanceData[token][currentBlockIndex]);
 
         // first scenario - this is not the first tx in the current block
-        if(currentBlockData.lastBlock == currentBlock) {
-            if(uint(currentBlockData.lastRateUpdateBlock) == rateUpdateBlock) {
+        if (currentBlockData.lastBlock == currentBlock) {
+            if (uint(currentBlockData.lastRateUpdateBlock) == rateUpdateBlock) {
                 // just increase imbalance
                 currentBlockData.lastBlockBuyUnitsImbalance += recordedBuyAmount;
                 currentBlockData.totalBuyUnitsImbalance += recordedBuyAmount;
@@ -99,7 +100,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
     }
 
     function setGarbageToVolumeRecorder(ERC20 token) internal {
-        for(uint i = 0 ; i < SLIDING_WINDOW_SIZE ; i++ ) {
+        for (uint i = 0; i < SLIDING_WINDOW_SIZE; i++) {
             tokenImbalanceData[token][i] = 0x1;
         }
     }
@@ -110,10 +111,10 @@ contract VolumeImbalanceRecorder is Withdrawable {
 
         buyImbalance = 0;
 
-        for(uint windowInd = 0; windowInd < SLIDING_WINDOW_SIZE; windowInd++) {
+        for (uint windowInd = 0; windowInd < SLIDING_WINDOW_SIZE; windowInd++) {
             TokenImbalanceData memory perBlockData = decodeTokenImbalanceData(tokenImbalanceData[token][windowInd]);
 
-            if(perBlockData.lastBlock <= endBlock && perBlockData.lastBlock >= startBlock) {
+            if (perBlockData.lastBlock <= endBlock && perBlockData.lastBlock >= startBlock) {
                 buyImbalance += int(perBlockData.lastBlockBuyUnitsImbalance);
             }
         }
@@ -130,24 +131,24 @@ contract VolumeImbalanceRecorder is Withdrawable {
         uint startBlock = rateUpdateBlock;
         uint endBlock = currentBlock;
 
-        for(uint windowInd = 0; windowInd < SLIDING_WINDOW_SIZE; windowInd++) {
+        for (uint windowInd = 0; windowInd < SLIDING_WINDOW_SIZE; windowInd++) {
             TokenImbalanceData memory perBlockData = decodeTokenImbalanceData(tokenImbalanceData[token][windowInd]);
 
-            if(perBlockData.lastBlock <= endBlock && perBlockData.lastBlock >= startBlock) {
+            if (perBlockData.lastBlock <= endBlock && perBlockData.lastBlock >= startBlock) {
                 imbalanceInRange += perBlockData.lastBlockBuyUnitsImbalance;
             }
 
-            if(perBlockData.lastRateUpdateBlock != rateUpdateBlock) continue;
-            if(perBlockData.lastBlock < latestBlock) continue;
+            if (perBlockData.lastRateUpdateBlock != rateUpdateBlock) continue;
+            if (perBlockData.lastBlock < latestBlock) continue;
 
             latestBlock = perBlockData.lastBlock;
             buyImbalance = perBlockData.totalBuyUnitsImbalance;
-            if(uint(perBlockData.lastBlock) == currentBlock) {
+            if (uint(perBlockData.lastBlock) == currentBlock) {
                 currentBlockImbalance = perBlockData.lastBlockBuyUnitsImbalance;
             }
         }
 
-        if(buyImbalance == 0) {
+        if (buyImbalance == 0) {
             buyImbalance = imbalanceInRange;
         }
     }
@@ -159,9 +160,12 @@ contract VolumeImbalanceRecorder is Withdrawable {
 
         int resolution = int(tokenControlInfo[token].minimalRecordResolution);
 
-        (totalImbalance,currentBlockImbalance) = getImbalanceSinceRateUpdate(token,
-                                                                              rateUpdateBlock,
-                                                                              currentBlock);
+        (totalImbalance, currentBlockImbalance) =
+            getImbalanceSinceRateUpdate(
+                token,
+                rateUpdateBlock,
+                currentBlock);
+
         totalImbalance *= resolution;
         currentBlockImbalance *= resolution;
     }
@@ -174,7 +178,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
         return tokenControlInfo[token].maxTotalImbalance;
     }
 
-    function encodeTokenImbalanceData(TokenImbalanceData data) internal pure returns(uint)  {
+    function encodeTokenImbalanceData(TokenImbalanceData data) internal pure returns(uint) {
         uint result = uint(data.lastBlockBuyUnitsImbalance) & (POW_2_64 - 1);
         result |= data.lastBlock * POW_2_64;
         result |= (uint(data.totalBuyUnitsImbalance) & (POW_2_64 - 1)) * POW_2_64 * POW_2_64;
@@ -188,7 +192,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
 
         data.lastBlockBuyUnitsImbalance = int(int64(input & (POW_2_64 - 1)));
         data.lastBlock = uint(uint64((input / POW_2_64) & (POW_2_64 - 1)));
-        data.totalBuyUnitsImbalance = int(int64( (input / (POW_2_64 * POW_2_64)) & (POW_2_64 - 1)));
+        data.totalBuyUnitsImbalance = int(int64((input / (POW_2_64 * POW_2_64)) & (POW_2_64 - 1)));
         data.lastRateUpdateBlock = uint(uint64((input / (POW_2_64 * POW_2_64 * POW_2_64))));
 
         return data;
