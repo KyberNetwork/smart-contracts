@@ -69,12 +69,13 @@ contract KyberNetwork is Withdrawable, Utils {
         uint userDestBalanceAfter;
 
         userSrcBalanceBefore = getBalance(source, msg.sender);
-        userDestBalanceBefore = getBalance(dest,destAddress);
+        userDestBalanceBefore = getBalance(dest, destAddress);
 
-        require(doTrade(source,srcAmount,dest,destAddress,maxDestAmount,minConversionRate,walletId) > 0);
+        uint actualDestAmount = doTrade(source, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, walletId);
+        require(actualDestAmount > 0);
 
         userSrcBalanceAfter = getBalance(source, msg.sender);
-        userDestBalanceAfter = getBalance(dest,destAddress);
+        userDestBalanceAfter = getBalance(dest, destAddress);
 
         require(userSrcBalanceAfter <= userSrcBalanceBefore);
         require(userDestBalanceAfter >= userDestBalanceBefore);
@@ -83,6 +84,7 @@ contract KyberNetwork is Withdrawable, Utils {
         uint destDecimals;
 
         if(source == ETH_TOKEN_ADDRESS) {
+            userSrcBalanceBefore += msg.value;
             srcDecimals = 18;
         } else {
             srcDecimals = source.decimals();
@@ -97,6 +99,8 @@ contract KyberNetwork is Withdrawable, Utils {
         // TODO - mitigate potential overflow
         require(((userSrcBalanceBefore - userSrcBalanceAfter) * minConversionRate) * (10 ** destDecimals) <=
                 (userDestBalanceAfter - userDestBalanceBefore) * (10 ** srcDecimals) * PRECISION );
+
+        return actualDestAmount;
     }
 
     event AddReserve(KyberReserve reserve, bool add);
@@ -256,8 +260,8 @@ contract KyberNetwork is Withdrawable, Utils {
         uint minConversionRate,
         address walletId
     )
-    internal
-    returns(uint)
+        internal
+        returns(uint)
     {
         require(tx.gasprice <= maxGasPrice);
         require(whiteList != address(0));
@@ -266,6 +270,7 @@ contract KyberNetwork is Withdrawable, Utils {
 
         uint reserveInd;
         uint rate;
+
         (reserveInd,rate) = findBestRate(source, dest, srcAmount);
         KyberReserve theReserve = reserves[reserveInd];
         require(rate > 0);
@@ -273,11 +278,11 @@ contract KyberNetwork is Withdrawable, Utils {
         require(rate >= minConversionRate);
 
         uint actualSourceAmount = srcAmount;
-        uint actualDestAmount = calcDestAmount(source,dest,actualSourceAmount,rate);
+        uint actualDestAmount = calcDestAmount(source, dest, actualSourceAmount, rate);
 
         if(actualDestAmount > maxDestAmount) {
             actualDestAmount = maxDestAmount;
-            actualSourceAmount = calcSrcAmount(source,dest,actualDestAmount,rate);
+            actualSourceAmount = calcSrcAmount(source, dest, actualDestAmount, rate);
         }
 
         // do the trade
