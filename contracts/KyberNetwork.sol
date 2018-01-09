@@ -90,9 +90,10 @@ contract KyberNetwork is Withdrawable, Utils {
 
         require(userSrcBalanceAfter <= userSrcBalanceBefore);
         require(userDestBalanceAfter >= userDestBalanceBefore);
-        
+
         require((userDestBalanceAfter - userDestBalanceBefore) >=
-                 calcDstQty((userSrcBalanceBefore - userSrcBalanceAfter), getDecimals(source), getDecimals(dest), minConversionRate));
+            calcDstQty((userSrcBalanceBefore - userSrcBalanceAfter), getDecimals(source), getDecimals(dest),
+                minConversionRate));
 
         return actualDestAmount;
     }
