@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
+pragma solidity 0.4.18;
 
 
 import "./ERC20Interface.sol";
@@ -13,7 +13,6 @@ interface ExpectedRateInterface {
 
 
 contract ExpectedRate is Withdrawable, ExpectedRateInterface {
-    /* solhint-disable no-simple-event-func-name */
 
     KyberNetwork internal kyberNetwork;
     uint public quantityFactor = 2;
@@ -24,14 +23,14 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface {
         admin = _admin;
     }
 
-    event SetQuantityFactor (uint newFactor, uint oldFactor, address sender);
+    event QuantityFactorSet (uint newFactor, uint oldFactor, address sender);
 
     function setQuantityFactor(uint newFactor) public onlyOperator {
         SetQuantityFactor(quantityFactor, newFactor, msg.sender);
         quantityFactor = newFactor;
     }
 
-    event SetMinSlippageFactor (uint newMin, uint oldMin, address sender);
+    event MinSlippageFactorSet (uint newMin, uint oldMin, address sender);
 
     function setMinSlippageFactor(uint bps) public onlyOperator {
         SetMinSlippageFactor(bps, minSlippageFactorInBps, msg.sender);

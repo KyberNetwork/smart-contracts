@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
+pragma solidity 0.4.18;
 
 
 import "./ERC20Interface.sol";
@@ -18,11 +18,9 @@ interface FeeBurnerInterface {
 
 contract FeeBurner is Withdrawable, FeeBurnerInterface {
 
-    /* solhint-disable no-simple-event-func-name */
     mapping(address=>uint) public reserveFeesInBps;
     mapping(address=>address) public reserveKNCWallet;
     mapping(address=>uint) public walletFeesInBps;
-
     mapping(address=>uint) public reserveFeeToBurn;
     mapping(address=>mapping(address=>uint)) public reserveFeeToWallet;
 
@@ -55,7 +53,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
     }
 
     event AssignFeeToWallet(address reserve, address wallet, uint walletFee);
-    event BurnFees(address reserve, uint burnFee);
+    event AssignBurnFees(address reserve, uint burnFee);
 
     function handleFees(uint tradeWeiAmount, address reserve, address wallet) public returns(bool) {
         require(msg.sender == kyberNetwork);
@@ -73,7 +71,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
         }
 
         if (feeToBurn > 0) {
-            BurnFees(reserve, feeToBurn);
+            AssignBurnFees(reserve, feeToBurn);
             reserveFeeToBurn[reserve] += feeToBurn;
         }
 
@@ -81,7 +79,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
     }
 
     // this function is callable by anyone
-    event BurnReserveFees(address indexed reserve, address sender);
+    event BurnAssignedFees(address indexed reserve, address sender);
 
     function burnReserveFees(address reserve) public {
         uint burnAmount = reserveFeeToBurn[reserve];
@@ -89,10 +87,10 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
         reserveFeeToBurn[reserve] = 1; // leave 1 twei to avoid spikes in gas fee
         require(knc.burnFrom(reserveKNCWallet[reserve], burnAmount - 1));
 
-        BurnReserveFees(reserve, msg.sender);
+        BurnAssignedFees(reserve, msg.sender);
     }
 
-    event SendFeeToWallet(address indexed wallet, address reserve, address sender);
+    event SendWalletFees(address indexed wallet, address reserve, address sender);
 
     // this function is callable by anyone
     function sendFeeToWallet(address wallet, address reserve) public {
@@ -101,6 +99,6 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
         reserveFeeToWallet[reserve][wallet] = 1; // leave 1 twei to avoid spikes in gas fee
         require(knc.transferFrom(reserveKNCWallet[reserve], wallet, feeAmount - 1));
 
-        SendFeeToWallet(wallet, reserve, msg.sender);
+        SendWalletFees(wallet, reserve, msg.sender);
     }
 }

@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
+pragma solidity 0.4.18;
 
 
 import "./ERC20Interface.sol";
@@ -11,7 +11,7 @@ import "./SanityRates.sol";
 
 /// @title Kyber Reserve contract
 contract KyberReserve is Withdrawable, Utils {
-    /* solhint-disable no-simple-event-func-name */
+
     address public kyberNetwork;
     bool public tradeEnabled;
     ConversionRates public ratesContract;
@@ -31,7 +31,7 @@ contract KyberReserve is Withdrawable, Utils {
         DepositToken(ETH_TOKEN_ADDRESS, msg.value);
     }
 
-    event DoTrade(
+    event TradeExecute(
         address indexed origin,
         address source,
         uint sourceAmount,
@@ -60,30 +60,30 @@ contract KyberReserve is Withdrawable, Utils {
         return true;
     }
 
-    event EnableTrade(bool enable);
+    event TradeEnabled(bool enable);
 
-    function enableTrade() public onlyAdmin returns(bool) { // solhint-disable-line no-simple-event-func-name
+    function enableTrade() public onlyAdmin returns(bool) {
         tradeEnabled = true;
-        EnableTrade(true);
+        TradeEnabled(true);
 
         return true;
     }
 
     function disableTrade() public onlyAlerter returns(bool) {
         tradeEnabled = false;
-        EnableTrade(false);
+        TradeEnabled(false);
 
         return true;
     }
 
-    event ApproveWithdrawAddress(ERC20 token, address addr, bool approve);
+    event WithdrawAddressApprove(ERC20 token, address addr, bool approve);
 
     function approveWithdrawAddress(ERC20 token, address addr, bool approve) public onlyAdmin {
         approvedWithdrawAddresses[keccak256(token, addr)] = approve;
         ApproveWithdrawAddress(token, addr, approve);
     }
 
-    event Withdraw(ERC20 token, uint amount, address destination);
+    event WithdrawFunds(ERC20 token, uint amount, address destination);
 
     function withdraw(ERC20 token, uint amount, address destination) public onlyOperator returns(bool) {
         require(approvedWithdrawAddresses[keccak256(token, destination)]);
@@ -94,7 +94,7 @@ contract KyberReserve is Withdrawable, Utils {
             require(token.transfer(destination, amount));
         }
 
-        Withdraw(token, amount, destination);
+        WithdrawFunds(token, amount, destination);
 
         return true;
     }
@@ -236,7 +236,7 @@ contract KyberReserve is Withdrawable, Utils {
             require(destToken.transfer(destAddress, destAmount));
         }
 
-        DoTrade(msg.sender, sourceToken, sourceAmount, destToken, destAmount, destAddress);
+        TradeExecute(msg.sender, sourceToken, sourceAmount, destToken, destAmount, destAddress);
 
         return true;
     }

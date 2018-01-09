@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
+pragma solidity 0.4.18;
 
 
 import "./Withdrawable.sol";
@@ -6,7 +6,6 @@ import "./Withdrawable.sol";
 
 contract WhiteList is Withdrawable {
 
-    /* solhint-disable no-simple-event-func-name */
     uint public weiPerSgd; // amount of weis in 1 singapore dollar
     mapping (address=>uint) public userCategory; // each user has a category defining cap on trade. 0 for standard.
     mapping (uint=>uint)    public categoryCap;  // will define cap on trade amount per category in singapore Dollar.
@@ -20,24 +19,24 @@ contract WhiteList is Withdrawable {
         return (categoryCap[category] * weiPerSgd);
     }
 
-    event SetUserCategory(address user, uint category);
+    event UserCategorySet(address user, uint category);
 
     function setUserCategory(address user, uint category) public onlyOperator {
         userCategory[user] = category;
-        SetUserCategory(user, category);
+        UserCategorySet(user, category);
     }
 
-    event SetCategoryCap (uint category, uint sgdCap);
+    event CategoryCapSet (uint category, uint sgdCap);
 
     function setCategoryCap(uint category, uint sgdCap) public onlyOperator {
         categoryCap[category] = sgdCap;
-        SetCategoryCap(category, sgdCap);
+        CategoryCapSet(category, sgdCap);
     }
 
-    event SetSgdToWeiRate (uint rate);
+    event SgdToWeiRateSet (uint rate);
 
     function setSgdToEthRate(uint _sgdToWeiRate) public onlyOperator {
         weiPerSgd = _sgdToWeiRate;
-        SetSgdToWeiRate(_sgdToWeiRate);
+        SgdToWeiRateSet(_sgdToWeiRate);
     }
 }

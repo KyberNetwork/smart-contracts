@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
+pragma solidity 0.4.18;
 
 
 import "./ERC20Interface.sol";
@@ -12,8 +12,8 @@ import "./PermissionGroups.sol";
  * This will prevent any accidental loss of tokens.
  */
 contract Withdrawable is PermissionGroups {
-    /* solhint-disable no-simple-event-func-name */
-    event WithdrawToken(ERC20 token, uint amount, address sendTo);
+
+    event TokenWithdraw(ERC20 token, uint amount, address sendTo);
 
     /**
      * @dev Withdraw all ERC20 compatible tokens
@@ -21,16 +21,16 @@ contract Withdrawable is PermissionGroups {
      */
     function withdrawToken(ERC20 token, uint amount, address sendTo) external onlyAdmin {
         require(token.transfer(sendTo, amount));
-        WithdrawToken(token, amount, sendTo);
+        TokenWithdraw(token, amount, sendTo);
     }
 
-    event WithdrawEther(uint amount, address sendTo);
+    event EtherWithdraw(uint amount, address sendTo);
 
     /**
      * @dev Withdraw Ethers
      */
     function withdrawEther(uint amount, address sendTo) external onlyAdmin {
         sendTo.transfer(amount);
-        WithdrawEther(amount, sendTo);
+        EtherWithdraw(amount, sendTo);
     }
 }
