@@ -74,7 +74,6 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
         if (feeToBurn > 0) {
             BurnFees(reserve, feeToBurn);
             reserveFeeToBurn[reserve] += feeToBurn;
-
         }
 
         return true;
