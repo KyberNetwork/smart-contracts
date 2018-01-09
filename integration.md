@@ -5,25 +5,26 @@ The api we describe should be viewed at this point only as a reference.
 Changes are still expected before the mainnet launch.
 
 A wallet/exchange service interacts with the contract in two ways:
-1. Price query: queries the offered price of, e.g., GNO to ETH conversion.
+1. Rate query: queries the offered price of, e.g., GNO to ETH conversion.
 2. Trade execution: e.g., convert X GNO to Y ETH
 
 We describe the api for each bellow:
 
-## Price query
+## Rate query
 To query the conversion rate, one should call this function
 ```
-function getPrice( ERC20 source, ERC20 dest ) constant returns(uint)
+    function getExpectedRate(ERC20 source, ERC20 dest, uint srcQty) public view
+        returns (uint expectedPrice, uint slippagePrice);
 ```
-The function returns the conversion rate between `source` and `dest` tokens,
+The function returns the expected and worse case conversion rate between `source` and `dest` tokens,
 where `source` and `dest` are 20 bytes addresses.
 Use address `0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee` to denote Ether.
 
 For example, if user wants to sell GNO tokens in return to ETH, he should set
 `source = 0x6810e776880c02933d47db1b9fc05908e5386b96` and
 `dest = 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee`.
-In return to 1 GNO token he will receive
-`getPrice(0x6810e776880c02933d47db1b9fc05908e5386b96,0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee)` ETH.
+In return to 1 GNO token he is expected to recieve
+`expectedPrice / 10**18` ETH, but in the worse case scenario he will get only `slippagePrice/10**18` ETH.
 
 If he wants to buy GNO with ETH, he should set
 `source =  0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee`, and
@@ -31,17 +32,21 @@ If he wants to buy GNO with ETH, he should set
 
 A return value of `0` indicates that an exchange from `source` to `dest` is
 currently not available.
-This could be either because kyber network does not support an exchange between such pair,
-or because the reserve supply is temporarily depleted (this is a rare event).
+A value of `0` in the slippage price indicates that transaction might be reverted and not completed.
+We note that the worst case scenario is always for the transaction to be reverted due to either sudden change in rates or even inventory depletion, but these events are rare.
 
 ## Trade execution
-To make an exchange via wallet application, one should call
+To make an exchange, one should call
 ```
-function walletTrade( ERC20 source, uint srcAmount,
-                ERC20 dest, address destAddress, uint maxDestAmount,
-                uint minConversionRate,
-                bool throwOnFailure,
-                bytes32 walletId ) payable returns(uint)
+    function trade(
+        ERC20 source,
+        uint srcAmount,
+        ERC20 dest,
+        address destAddress,
+        uint maxDestAmount,
+        uint minConversionRate,
+        address walletId
+    )
 ```
 In general, this function convert `source` token to `dest` token and send it
 to `destAddress`.
@@ -63,19 +68,18 @@ to get `maxDestAmount` of `dest` tokens.
 For an exchange application, we recommend to set it to `MAX_UINT` (i.e., `2**256 - 1`).
 6. `minConversionRate`: the minimal conversion rate. If the current rate is too high, then the
 transaction is reverted.
-For an exchange application this value can be set according to the current return value of
-`getPrice`. However, in this case, the execution of the transaction is not guaranteed
-in case of changes in market price before the confirmation of the transaction.
+For an exchange application this value can be set according to the `priceSlippage` return value of
+`getExpectedRate`. However, in this case, the execution of the transaction is not guaranteed
+in case big changes in market price happens before the confirmation of the transaction.
 A value of `1` will execute the trade according to market price in the time
 of the transaction confirmation.
-7. `throwOnFailure`: indicates if transaction is reverted in the case of a failure.
-For an exchange application we recommend to set it to `true`.
-8. `walletId`: the id of the service provider. Should be determined along with
+7. `walletId`: the id of the service provider. Should be determined along with
 kyber network.
 
 # Current testnet deployment
-The contract is currently depolyed on kovan testnet, and unofficially also at rinkeby.
-The kovan addresses can be found [here](https://github.com/KyberNetwork/smart-contracts/blob/master/deployment_kovan.json).
+The contract is currently depolyed on ropsten testnet.
+The ropsten addresses can be found [here](https://github.com/KyberNetwork/smart-contracts/blob/ropsten_deployment/deployment_ropsten.json).
+For wallets the relevant addresses are those of kyber network contract and the token addresses.
+The kyber network contract address can be found [here](https://github.com/KyberNetwork/smart-contracts/blob/ropsten_deployment/deployment_ropsten.json#L156), while the token addresses are [here](https://github.com/KyberNetwork/smart-contracts/blob/ropsten_deployment/deployment_ropsten.json#L9).
 
-The contracts source code and abi are also available at kovan etherscan.
-For rinkeby deployment, please contact us by email.
+The contracts source code and abi are also available at ropsten etherscan.
