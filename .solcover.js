@@ -7,8 +7,6 @@ module.exports = {
     // dir: './secretDirectory', 1684335, 3882390, 5481031, 6092825
     skipFiles: [
       'mockContracts/TestToken.sol',
-      'KyberNetwork.sol',
-      'KyberWallet.sol',
       'mockContracts/MockCentralBank.sol',
       'mockContracts/MockExchangeDepositAddress.sol',
       'mockContracts/MockDepositExchange.sol',
