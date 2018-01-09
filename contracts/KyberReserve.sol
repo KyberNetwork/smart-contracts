@@ -150,6 +150,8 @@ contract KyberReserve is Withdrawable, Utils {
         ERC20 token;
         bool  buy;
 
+        if (!tradeEnabled) return 0;
+
         if(ETH_TOKEN_ADDRESS == source) {
             buy = true;
             token = dest;
