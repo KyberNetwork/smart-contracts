@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
+pragma solidity 0.4.18;
 
 
 import "./ERC20Interface.sol";
@@ -14,7 +14,6 @@ import "./FeeBurner.sol";
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable, Utils {
-    /* solhint-disable no-simple-event-func-name */
 
     uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
     KyberReserve[] public reserves;
@@ -39,7 +38,7 @@ contract KyberNetwork is Withdrawable, Utils {
     }
     /* solhint-enable no-complex-fallback */
 
-    event Trade(address indexed sender, ERC20 source, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
+    event ExecuteTrade(address indexed sender, ERC20 source, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev makes a trade between source and dest token and send dest token to destAddress
@@ -98,7 +97,7 @@ contract KyberNetwork is Withdrawable, Utils {
         return actualDestAmount;
     }
 
-    event AddReserve(KyberReserve reserve, bool add);
+    event AddReserveToNetwork(KyberReserve reserve, bool add);
 
     /// @notice can be called only by admin
     /// @dev add or deletes a reserve to/from the network.
@@ -109,7 +108,7 @@ contract KyberNetwork is Withdrawable, Utils {
         if (add) {
             reserves.push(reserve);
             isReserve[reserve] = true;
-            AddReserve(reserve, true);
+            AddReserveToNetwork(reserve, true);
         } else {
             isReserve[reserve] = false;
             // will have trouble if more than 50k reserves...
@@ -117,14 +116,14 @@ contract KyberNetwork is Withdrawable, Utils {
                 if (reserves[i] == reserve) {
                     if (reserves.length == 0) return;
                     reserves[i] = reserves[--reserves.length];
-                    AddReserve(reserve, false);
+                    AddReserveToNetwork(reserve, false);
                     break;
                 }
             }
         }
     }
 
-    event ListPairsForReserve(address reserve, ERC20 source, ERC20 dest, bool add);
+    event ListReservePairs(address reserve, ERC20 source, ERC20 dest, bool add);
 
     /// @notice can be called only by admin
     /// @dev allow or prevent a specific reserve to trade a pair of tokens
@@ -143,7 +142,7 @@ contract KyberNetwork is Withdrawable, Utils {
             }
         }
 
-        ListPairsForReserve(reserve, source, dest, add);
+        ListReservePairs(reserve, source, dest, add);
     }
 
     function setParams(
@@ -309,7 +308,7 @@ contract KyberNetwork is Withdrawable, Utils {
 
         require(feeBurnerContract.handleFees(ethAmount, theReserve, walletId));
 
-        Trade(msg.sender, source, dest, actualSourceAmount, actualDestAmount);
+        ExecuteTrade(msg.sender, source, dest, actualSourceAmount, actualDestAmount);
         return actualDestAmount;
     }
 

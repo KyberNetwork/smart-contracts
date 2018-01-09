@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18; // solhint-disable-line compiler-fixed
+pragma solidity 0.4.18;
 
 
 import "./ERC20Interface.sol";
@@ -51,7 +51,7 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
     uint constant internal BYTES_14_OFFSET = (2 ** (8 * NUM_TOKENS_IN_COMPACT_DATA));
 
     function ConversionRates(address _admin) public VolumeImbalanceRecorder(_admin)
-    { } // solhint-disable-line no-empty-blocks
+        { } // solhint-disable-line no-empty-blocks
 
     function addToken(ERC20 token) public onlyAdmin {
 
