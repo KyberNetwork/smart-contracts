@@ -30,10 +30,9 @@ var tokens = [];
 var tokenAdd = [];
 
 contract('ExpectedRates', function(accounts) {
-    it("should init kyber network and all its data", async function () {
+    it("should init kyber network and all its components.", async function () {
         var gasPrice = (new BigNumber(10).pow(9).mul(50));
         var precisionUnits = (new BigNumber(10).pow(18));
-
 
         //block data
         var priceUpdateBlock;
@@ -184,17 +183,28 @@ contract('ExpectedRates', function(accounts) {
     });
 
     it("should init expected rates.", async function () {
-        await expectedRates.setQuantityFactor(quantityFactor);
-        await expectedRates.setMinSlippageFactor(minSlippageBps);
+        await expectedRates.addOperator(operator);
+        await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
+        await expectedRates.setMinSlippageFactor(minSlippageBps, {from: operator});
     });
 
     it("should test correct rates calculated.", async function() {
         var tokenInd = 2;
         var qty = 50;
 
-        var myExpectedRate = network.findBestRate(ethAddress, tokens[tokenInd], qty);
-        var mySlippageRate = network.findBestRate(ethAddress, tokens[tokenInd], qty * quantityFactor);
+        var myExpectedRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], qty);
+        var mySlippageRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], (qty * quantityFactor));
 
+        var minSlippage =  ((10000 - minSlippageBps) * myExpectedRate[1].valueOf()) / 10000;
+
+        mySlippageRate = mySlippageRate[1].valueOf() * 1;
+        if (mySlippageRate > minSlippage)
+            mySlippageRate = minSlippage;
+
+        rates = await expectedRates.getExpectedRate(ethAddress, tokenAdd[tokenInd], qty);
+
+        assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
+        assert.equal(rates[1].valueOf(), mySlippageRate, "unexpected rate");
 
     });
  });
