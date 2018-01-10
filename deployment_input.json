@@ -3,62 +3,62 @@
     "OMG": {
       "name": "OmiseGO",
       "decimals": 18,
-      "reserve balance" : 442
+      "reserve balance" : 884
     },
     "DGD": {
       "name": "Digix",
       "decimals": 9,
-      "reserve balance" : 48
+      "reserve balance" : 96
     },
     "CVC": {
       "name": "Civic",
       "decimals": 8,
-      "reserve balance" : 9800
+      "reserve balance" : 19600
     },
     "FUN": {
       "name": "FunFair",
       "decimals": 8,
-      "reserve balance" : 67114
+      "reserve balance" : 134228
     },
     "MCO": {
       "name": "Monaco",
       "decimals": 8,
-      "reserve balance" : 636
+      "reserve balance" : 1272
     },
     "GNT": {
       "name": "Golem",
       "decimals": 18,
-      "reserve balance" : 10989
+      "reserve balance" : 21970
     },
     "ADX": {
       "name": "Adex",
       "decimals": 4,
-      "reserve balance" : 3533
+      "reserve balance" : 7066
     },
     "PAY": {
       "name": "TenX",
       "decimals": 18,
-      "reserve balance" : 2849
+      "reserve balance" : 5698
     },
     "BAT": {
       "name": "BasicAttention",
       "decimals": 18,
-      "reserve balance" : 13513
+      "reserve balance" : 27026
     },
     "KNC": {
       "name": "KyberNetwork",
       "decimals": 18,
-      "reserve balance" : 2008
+      "reserve balance" : 4016
     },
     "EOS": {
       "name": "Eos",
       "decimals": 18,
-      "reserve balance" : 1088
+      "reserve balance" : 2174
     },
     "LINK": {
       "name": "ChainLink",
       "decimals": 18,
-      "reserve balance" : 8771
+      "reserve balance" : 17540
     }
   },
   "exchanges": [
@@ -69,7 +69,7 @@
     "bitfinex"
   ],
 
-  "default reserve balances" : { "token" : 1000000, "ether" : 8 },
+  "default reserve balances" : { "token" : 1000000, "ether" : 16 },
 
   "special addresses" : {"nam":["0x385baa4d78c91e5ce6ccafab9e96fdc83ea4427d",
                                 "0x1d217486cdd98c6f565ef567cba26dc331660fb6",
