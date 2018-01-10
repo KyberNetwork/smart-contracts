@@ -41,7 +41,7 @@ var convRatesInst;
 contract('ConversionRates', function(accounts) {
     it("should test bytes14.", async function () {
         var arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
-        var hexArr = bytesToHex(arr);
+        var hexArr = Helper.bytesToHex(arr);
         var byte;
 
         wrapper = await Wrapper.new();
@@ -55,7 +55,7 @@ contract('ConversionRates', function(accounts) {
 
     it("should init ConversionRates Inst and set general parameters.", async function () {
         //init contracts
-        convRatesInst = await ConversionRates.new(accounts[0], {gas: 4700000});
+        convRatesInst = await ConversionRates.new(accounts[0], {});
 
         //set pricing general parameters
         convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);
@@ -117,16 +117,16 @@ contract('ConversionRates', function(accounts) {
         //set compact data
         compactBuyArr1 = [1, 2, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14];
         compactBuyArr2 = [15, 16, 17, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14];
-        var compactBuyHex = bytesToHex(compactBuyArr1);
+        var compactBuyHex = Helper.bytesToHex(compactBuyArr1);
         buys.push(compactBuyHex);
-        compactBuyHex = bytesToHex(compactBuyArr2);
+        compactBuyHex = Helper.bytesToHex(compactBuyArr2);
         buys.push(compactBuyHex);
 
         compactSellArr1 = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34];
         compactSellArr2 = [35, 36, 37, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34];
-        var compactSellHex = bytesToHex(compactSellArr1);
+        var compactSellHex = Helper.bytesToHex(compactSellArr1);
         sells.push(compactSellHex);
-        compactSellHex = bytesToHex(compactSellArr2);
+        compactSellHex = Helper.bytesToHex(compactSellArr2);
         sells.push(compactSellHex);
 
         indices[0] = 0;
@@ -216,11 +216,11 @@ contract('ConversionRates', function(accounts) {
         indices.length = 0;
         indices[0] = 0; // we update 1st cell in compact data
         compactBuyArr1[tokenInd] = -128;
-        var compactHex = bytesToHex(compactBuyArr1);
+        var compactHex = Helper.bytesToHex(compactBuyArr1);
         buys.length = 0;
         buys.push(compactHex);
         sells.length = 0;
-        compactHex = bytesToHex(compactSellArr1);
+        compactHex = Helper.bytesToHex(compactSellArr1);
         sells.push(compactHex);
         convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
 
@@ -242,7 +242,7 @@ contract('ConversionRates', function(accounts) {
 
         //update compact data
         compactBuyArr1[tokenInd] = 127;
-        var compactHex = bytesToHex(compactBuyArr1);
+        var compactHex = Helper.bytesToHex(compactBuyArr1);
         buys.length = 0;
         buys.push(compactHex);
         convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
@@ -272,11 +272,11 @@ contract('ConversionRates', function(accounts) {
         indices.length = 0;
         indices[0] = 1; // we update 2nd cell in compact data
         compactBuyArr2[tokenInd - 14] = -128;
-        var compactHex = bytesToHex(compactBuyArr2);
+        var compactHex = Helper.bytesToHex(compactBuyArr2);
         buys.length = 0;
         buys.push(compactHex);
         sells.length = 0;
-        compactHex = bytesToHex(compactSellArr2);
+        compactHex = Helper.bytesToHex(compactSellArr2);
         sells.push(compactHex);
         convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
 
@@ -396,18 +396,6 @@ contract('ConversionRates', function(accounts) {
         compareRates(receivedRate, expectedRate);
     });
 });
-
-function bytesToHex(byteArray) {
-    var strNum = toHexString(byteArray);
-    var num = '0x' + strNum;
-    return num;
-};
-
-function toHexString(byteArray) {
-  return Array.from(byteArray, function(byte) {
-    return ('0' + (byte & 0xFF).toString(16)).slice(-2);
-  }).join('')
-};
 
 function convertRateToPricingRate (baseRate) {
 // conversion rate in pricing is in precision units (10 ** 18) so

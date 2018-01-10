@@ -28,6 +28,7 @@ var conversionRate = (((new BigNumber(10)).pow(18)).mul(2));
 var counterConversionRate = (((new BigNumber(10)).pow(18)).div(2));
 
 var expBlock = 10**10;
+var validBlockDuration = 24;
 
 var tokenOwner;
 
@@ -591,6 +592,10 @@ contract('Deployment', function(accounts) {
     this.timeout(31000000);
     return ExpectedRate.new(network.address, accounts[0]).then(function(instance){
         expectedRate = instance;
+    }).then(function(){
+        return expectedRate.addOperator(accounts[0]);
+    }).then(function(){
+        return expectedRate.setMinSlippageFactor(500);
     });
   });
 
@@ -637,13 +642,15 @@ contract('Deployment', function(accounts) {
     });
   });
 
-
-
   it("add operator in conversionRates", function() {
     this.timeout(31000000);
     return conversionRates.addOperator(victor);
   });
 
+  it("add operator in expectedRate", function() {
+    this.timeout(31000000);
+    return expectedRate.addOperator(victor);
+  });
 
   it("add operator in reserve", function() {
     this.timeout(31000000);
@@ -785,5 +792,10 @@ it("set eth to dgd rate", function() {
     fs.writeFileSync(outputFileName, json);
 
     console.log("json file is saved in " + outputFileName);
+  });
+
+  it("reduce valid block duration to: " + validBlockDuration, function() {
+    this.timeout(31000000);
+    return conversionRates.setValidRateDurationInBlocks(validBlockDuration);
   });
 });
