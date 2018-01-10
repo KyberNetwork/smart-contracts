@@ -40,7 +40,7 @@ contract SanityRates is SanityRatesInterface, Withdrawable, Utils {
         uint rate;
         address token;
         if (src == ETH_TOKEN_ADDRESS) {
-            rate = (PRECISION * PRECISION) / tokenRate[dest];
+            rate = (PRECISION*PRECISION)/tokenRate[dest];
             token = dest;
         } else {
             rate = tokenRate[src];
