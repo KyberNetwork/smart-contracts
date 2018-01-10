@@ -94,7 +94,7 @@ contract('KyberReserve', function(accounts) {
 
         console.log("current block: " + currentBlock);
         //init contracts
-        convRatesInst = await ConversionRates.new(admin, {gas: 4700000});
+        convRatesInst = await ConversionRates.new(admin, {});
 
         //set pricing general parameters
         await convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);
@@ -135,11 +135,11 @@ contract('KyberReserve', function(accounts) {
 
         //set compact data
         compactBuyArr = [0, 12, -5, 0, 0, 06, 07, 08, 09, 10, 11, 12, 13, 14];
-        var compactBuyHex = bytesToHex(compactBuyArr);
+        var compactBuyHex = Helper.bytesToHex(compactBuyArr);
         buys.push(compactBuyHex);
 
         compactSellArr = [0, -50, 95, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34];
-        var compactSellHex = bytesToHex(compactSellArr);
+        var compactSellHex = Helper.bytesToHex(compactSellArr);
         sells.push(compactSellHex);
 
         indices[0] = 0;
@@ -381,18 +381,6 @@ contract('KyberReserve', function(accounts) {
 //    it("should perform big buy and sell all bought tokens. see balances return to start balnance." , function () {
 //    });
 });
-
-function bytesToHex(byteArray) {
-    var strNum = toHexString(byteArray);
-    var num = '0x' + strNum;
-    return num;
-};
-
-function toHexString(byteArray) {
-  return Array.from(byteArray, function(byte) {
-    return ('0' + (byte & 0xFF).toString(16)).slice(-2);
-  }).join('')
-};
 
 function convertRateToPricingRate (baseRate) {
 // conversion rate in pricing is in precision units (10 ** 18) so

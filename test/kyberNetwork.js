@@ -1,6 +1,5 @@
 var ConversionRates = artifacts.require("./ConversionRates.sol");
 var TestToken = artifacts.require("./mockContracts/TestToken.sol");
-var Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
 var Reserve = artifacts.require("./KyberReserve.sol");
 var Network = artifacts.require("./KyberNetwork.sol");
 var WhiteList = artifacts.require("./WhiteList.sol");
@@ -114,8 +113,8 @@ contract('KyberNetwork', function(accounts) {
 
         console.log("current block: " + currentBlock);
         //init contracts
-        pricing1 = await ConversionRates.new(admin, {gas: 4700000});
-        pricing2 = await ConversionRates.new(admin, {gas: 4700000});
+        pricing1 = await ConversionRates.new(admin, {});
+        pricing2 = await ConversionRates.new(admin, {});
 
         //set pricing general parameters
         await pricing1.setValidRateDurationInBlocks(validRateDurationInBlocks);
@@ -167,11 +166,11 @@ contract('KyberNetwork', function(accounts) {
 
         //set compact data
         compactBuyArr = [0, 0, 0, 0, 0, 06, 07, 08, 09, 10, 11, 12, 13, 14];
-        var compactBuyHex = bytesToHex(compactBuyArr);
+        var compactBuyHex = Helper.bytesToHex(compactBuyArr);
         buys.push(compactBuyHex);
 
         compactSellArr = [0, 0, 0, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34];
-        var compactSellHex = bytesToHex(compactSellArr);
+        var compactSellHex = Helper.bytesToHex(compactSellArr);
         sells.push(compactSellHex);
 
         indices[0] = 0;
@@ -192,7 +191,7 @@ contract('KyberNetwork', function(accounts) {
     });
 
     it("should init network and 2 reserves and set all reserve data including balances", async function () {
-        network = await Network.new(admin, {gas: 4700000});
+        network = await Network.new(admin, {});
         reserve1 = await Reserve.new(network.address, pricing1.address, admin);
         reserve2 = await Reserve.new(network.address, pricing2.address, admin);
         await pricing1.setReserveAddress(reserve1.address);
@@ -368,38 +367,12 @@ contract('KyberNetwork', function(accounts) {
         await token.transfer(user1, amountTwei);
         await token.approve(network.address, amountTwei, {from:user1})
 
-//        var userSrcBalanceBefore = await token.balanceOf(user1);
-//        var userDestBalanceBefore = await Helper.getBalancePromise(user2);
-//
 
         //perform trade
         var rates = await network.getExpectedRate(tokenAdd[tokenInd], ethAddress, amountTwei);
-//        console.log("rate[0] " + rates[0] + " rate[1] " + rates[1] );
         console.log("sellRAte1: " + sellRate1 + " rate2 " + sellRate2 + " expectedRate " + rates[0].valueOf());
         var destAmount = await network.trade(tokenAdd[tokenInd], amountTwei, ethAddress, user2, 3000, sellRate2, walletId, {from:user1, value:0});
 
-//        console.log(destAmount);
-        console.log("(userDestBalanceAfter - userDestBalanceBefore)" + destAmount.valueOf());
-//        var userSrcBalanceAfter = await token.balanceOf(user1);
-//        var userDestBalanceAfter = await Helper.getBalancePromise(user2);
-//
-//        var srcDiff = new BigNumber(userSrcBalanceBefore).sub(userSrcBalanceAfter);
-//        var destDiff = new BigNumber(userDestBalanceAfter).sub(userDestBalanceBefore);
-//        console.log("src diff: " + srcDiff + " destDiff " + destDiff);
-//
-//        var baseExpectedAmount = new BigNumber(srcDiff).mul(sellRate2);
-//        var actualAmount = new BigNumber(10).pow(18).mul(destDiff);
-//
-//        console.log("expected min: " + baseExpectedAmount + " actual: " + actualAmount);
-//
-//        var baseExpectedAmount = new BigNumber(srcDiff).mul(sellRate2).div(precisionUnits);
-//        var actualAmount = new BigNumber(destDiff);
-//
-//        console.log("expected min: " + baseExpectedAmount + " actual: " + actualAmount);
-
-
-
-//        console.log ("res0 " + result[0] + " res1 " + result[1])
         //check lower ether balance on reserve 2
         var expectedWeiAmount = (new BigNumber(sellRate1)).mul(amountTwei).div(precisionUnits).floor();
         expectedReserve1BalanceWei = (expectedReserve1BalanceWei * 1) - (expectedWeiAmount * 1);
@@ -424,18 +397,6 @@ contract('KyberNetwork', function(accounts) {
 //    it("should see trades stopped with sanity pricing contract.", async function () {
 //    });
 });
-
-function bytesToHex(byteArray) {
-    var strNum = toHexString(byteArray);
-    var num = '0x' + strNum;
-    return num;
-};
-
-function toHexString(byteArray) {
-  return Array.from(byteArray, function(byte) {
-    return ('0' + (byte & 0xFF).toString(16)).slice(-2);
-  }).join('')
-};
 
 function convertRateToConversionRatesRate (baseRate) {
 // conversion rate in pricing is in precision units (10 ** 18) so
