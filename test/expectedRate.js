@@ -242,7 +242,7 @@ contract('ExpectedRates', function(accounts) {
         var qtySlippageRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, (qty * quantityFactor));
 
         var minSlippage = new BigNumber(10000 - minSlippageBps).mul(myExpectedRate[1]).div(10000).floor();
- 
+
         qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
         if (qtySlippageRate > minSlippage) {
             qtySlippageRate = minSlippage;
