@@ -23,7 +23,7 @@ contract KyberNetwork is Withdrawable, Utils {
     FeeBurnerInterface    public feeBurnerContract;
     uint                  public maxGasPrice = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool                  public enable = true; // network is enabled
-    mapping(address=>mapping(bytes32=>bool)) internal perReserveListedPairs;
+    mapping(address=>mapping(bytes32=>bool)) public perReserveListedPairs;
 
     function KyberNetwork(address _admin) public {
         admin = _admin;

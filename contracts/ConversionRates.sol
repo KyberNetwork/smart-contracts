@@ -34,7 +34,7 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
 
     /*
     this is the data for tokenRatesCompactData
-    but solidity compiler sucks, and cannot write this structure in a single storage write
+    but solidity compiler optimizer is sub-optimal, and cannot write this structure in a single storage write
     so we represent it as bytes32 and do the byte tricks ourselves.
     struct TokenRatesCompactData {
         bytes14 buy;  // change buy rate of token from baseBuyRate in 10 bps
