@@ -40,3 +40,15 @@ module.exports.getCurrentBlock = function() {
         });
     });
 };
+
+module.exports.bytesToHex = function (byteArray) {
+    var strNum = toHexString(byteArray);
+    var num = '0x' + strNum;
+    return num;
+};
+
+function toHexString(byteArray) {
+  return Array.from(byteArray, function(byte) {
+    return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+  }).join('')
+};

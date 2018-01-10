@@ -77,8 +77,8 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         bytes[8] = 2;
         bytes[16] = 3;
         bytes[24] = 4;
-        var startIntStr = bytesToHex(bytes);
-        var startInt = (new BigNumber(bytesToHex(bytes)));
+        var startIntStr = Helper.bytesToHex(bytes);
+        var startInt = (new BigNumber(Helper.bytesToHex(bytes)));
         console.log("startInt " + startIntStr);
         var toStruct = await imbalanceInst.callDecodeTokenImbalanceData(startInt);
 
@@ -99,8 +99,8 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         bytes[15] = -15;
         bytes[23] = -55;
         bytes[24] = -1002;
-        var startIntStr = bytesToHex(bytes);
-        var startInt = (new BigNumber(bytesToHex(bytes)));
+        var startIntStr = Helper.bytesToHex(bytes);
+        var startInt = (new BigNumber(Helper.bytesToHex(bytes)));
         console.log("startInt " + startIntStr);
         var toStruct = await imbalanceInst.callDecodeTokenImbalanceData(startInt);
 
@@ -401,15 +401,3 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         assert.equal(imbalanceArr[0].valueOf(), 0, "unexpected total imbalance.");
     });
 });
-
-function bytesToHex(byteArray) {
-    var strNum = toHexString(byteArray);
-    var num = '0x' + strNum;
-    return num;
-};
-
-function toHexString(byteArray) {
-  return Array.from(byteArray, function(byte) {
-    return ('0' + (byte & 0xFF).toString(16)).slice(-2);
-  }).join('')
-};
