@@ -13,7 +13,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
     struct TokenControlInfo {
         uint minimalRecordResolution; // can be roughly 1 cent
         uint maxPerBlockImbalance; // in twei resolution
-        uint maxTotalImbalance; // max total imbalance (without rate updates)
+        uint maxTotalImbalance; // max total imbalance (between rate updates)
                             // before halting trade
     }
 
