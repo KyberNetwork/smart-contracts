@@ -10,6 +10,7 @@ var BigNumber = require('bignumber.js');
 //////////////////
 var precisionUnits = (new BigNumber(10).pow(18));
 var ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+var precision = new BigNumber(10).pow(18);
 
 //balances
 var expectedReserveBalanceWei = 0;
@@ -21,6 +22,7 @@ var admin;
 var operator;
 var network;
 var sanityRates;
+var withDrawAddress;
 
 //contracts
 var convRatesInst;
@@ -89,6 +91,8 @@ contract('KyberReserve', function(accounts) {
         network = accounts[2];
         user1 = accounts[4];
         user2 = accounts[5];
+        withDrawAddress = accounts[6];
+        sanityRates = accounts[7];
 
         currentBlock = priceUpdateBlock = await Helper.getCurrentBlock();
 
@@ -158,6 +162,9 @@ contract('KyberReserve', function(accounts) {
 
     it("should init reserve and set all reserve data including balances", async function () {
         reserveInst = await Reserve.new(network, convRatesInst.address, admin);
+        await reserveInst.setContracts(network, convRatesInst.address, 0);
+
+        await reserveInst.addOperator(operator);
         await convRatesInst.setReserveAddress(reserveInst.address);
 
         //set reserve balance. 10000 wei ether + per token 1000 wei ether value according to base price.
@@ -372,8 +379,90 @@ contract('KyberReserve', function(accounts) {
             assert.equal(reportedBalance.valueOf(), reserveTokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
         }
     });
-//
-//
+
+    it("should approve withdraw address and withdraw. token and ether", async function () {
+        var tokenInd = 1;
+        var amount = 10;
+        var token = tokens[tokenInd];
+
+        // first token
+        await reserveInst.approveWithdrawAddress(tokenAdd[tokenInd], withDrawAddress, true);
+        await reserveInst.withdraw(tokenAdd[tokenInd], amount, withDrawAddress, {from: operator});
+
+        reserveTokenBalance[tokenInd] -= amount;
+        var reportedBalance = await token.balanceOf(reserveInst.address);
+        assert.equal(reportedBalance.valueOf(), reserveTokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
+
+        reportedBalance = await token.balanceOf(withDrawAddress);
+        assert.equal(reportedBalance.valueOf(), amount, "bad token balance on withdraw address");
+
+        //ether
+        await reserveInst.approveWithdrawAddress(ethAddress, withDrawAddress, true);
+        await reserveInst.withdraw(ethAddress, amount, withDrawAddress, {from: operator});
+
+        expectedReserveBalanceWei -= amount;
+        var reportedBalance = await Helper.getBalancePromise(reserveInst.address);
+        assert.equal(reportedBalance.valueOf(), expectedReserveBalanceWei, "bad eth balance on reserve");
+    });
+
+    it ("should test rejected scenarios for withdraw", async function() {
+        var tokenInd = 1;
+        var amount = 10;
+
+        //make sure withdraw rejected from non operator
+        try {
+            await reserveInst.withdraw(tokenAdd[tokenInd], amount, withDrawAddress);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //make sure withdraw rejected to non approved token
+        try {
+            await reserveInst.withdraw(tokenAdd[tokenInd - 1], amount, withDrawAddress, {from: operator});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //make sure withdraw rejected to non approved address
+        try {
+            await reserveInst.withdraw(tokenAdd[tokenInd], amount, accounts[9], {from: operator});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it ("should test get dest qty and get src qty", async function() {
+        var srcQty = 100;
+        var rate = precision.div(2); //1 to 2. in precision units
+
+        var srcDecimal = 10;
+        var dstDecimal = 13;
+
+        var tokenA = await TestToken.new("source", "src", srcDecimal);
+        var tokenB = await TestToken.new("dest", "dst", dstDecimal);
+
+        //get dest QTY
+        var expectedDestQty = (srcQty * rate / precision) * (10 ** (dstDecimal - srcDecimal));
+
+        var reportedDstQty = await reserveInst.getDestQty(tokenA.address, tokenB.address, srcQty, rate);
+
+        assert.equal(expectedDestQty.valueOf(), reportedDstQty.valueOf(), "unexpected dst qty");
+
+        //get src qty
+        var dstQty = 100000;
+        var expectedSrcQty = (((precision / rate)* dstQty * (10**(srcDecimal - dstDecimal))));
+
+        var reportedSrcQty = await reserveInst.getSrcQty(tokenA.address, tokenB.address, dstQty, rate);
+
+        assert.equal(expectedSrcQty.valueOf(), reportedSrcQty.valueOf(), "unexpected dst qty");
+    });
+
 //    it("should see trades stopped with sanity pricing contract.", async function () {
 //    });
 //

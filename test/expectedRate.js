@@ -50,7 +50,7 @@ contract('ExpectedRates', function(accounts) {
 
         //quantity buy steps
         var qtyBuyStepX = [-1400, -700, -150, 0, 150, 350, 700,  1400];
-        var qtyBuyStepY = [ 1000,   75,   25, 0,  0, -70, -160, -3000];
+        var qtyBuyStepY = [ 1000,   75,   25, 0,  0, -50, -160, -3000];
 
         //imbalance buy steps
         var imbalanceBuyStepX = [-8500, -2800, -1500, 0, 1500, 2800,  4500];
@@ -58,11 +58,11 @@ contract('ExpectedRates', function(accounts) {
 
         //sell price will be 1 / buy (assuming no spread) so sell is actually buy price in other direction
         var qtySellStepX = [-1400, -700, -150, 0, 150, 350, 700, 1400];
-        var qtySellStepY = [-300,   -80,  -15, 0,   0, 120, 170, 3000];
+        var qtySellStepY = [ 1000,   75,   25, 0,  0, -50, -160, -3000];
 
         //sell imbalance step
         var imbalanceSellStepX = [-8500, -2800, -1500, 0, 1500, 2800,  4500];
-        var imbalanceSellStepY = [-1500,  -320,   -75, 0,    0,  110,   650];
+        var imbalanceSellStepY = [ 1300,   130,    43, 0,   0, -110, -1600];
 
         //compact data.
         var sells = [];
@@ -184,27 +184,99 @@ contract('ExpectedRates', function(accounts) {
 
     it("should init expected rates.", async function () {
         await expectedRates.addOperator(operator);
-        await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
         await expectedRates.setMinSlippageFactor(minSlippageBps, {from: operator});
     });
 
-    it("should test correct rates calculated.", async function() {
+    it("should test eth to token. use qty slippage.", async function() {
         var tokenInd = 2;
-        var qty = 50;
+        var qty = 9;
+        quantityFactor = 10;
 
+        await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
         var myExpectedRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], qty);
-        var mySlippageRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], (qty * quantityFactor));
+        var qtySlippageRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], (qty * quantityFactor));
 
         var minSlippage =  ((10000 - minSlippageBps) * myExpectedRate[1].valueOf()) / 10000;
 
-        mySlippageRate = mySlippageRate[1].valueOf() * 1;
-        if (mySlippageRate > minSlippage)
-            mySlippageRate = minSlippage;
+        qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+        if (qtySlippageRate > minSlippage) {
+            qtySlippageRate = minSlippage;
+            assert(false, "expect qty slippage rate to be lower");
+        }
 
         rates = await expectedRates.getExpectedRate(ethAddress, tokenAdd[tokenInd], qty);
 
         assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
-        assert.equal(rates[1].valueOf(), mySlippageRate, "unexpected rate");
+        assert.equal(rates[1].valueOf(), qtySlippageRate, "unexpected rate");
+    });
 
+    it("should test eth to token. use min slippage.", async function() {
+        var tokenInd = 2;
+        var qty = 9;
+        quantityFactor = 5;
+
+        await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
+        var myExpectedRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], qty);
+        var qtySlippageRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], (qty * quantityFactor));
+
+        var minSlippage =  ((10000 - minSlippageBps) * myExpectedRate[1].valueOf()) / 10000;
+
+        qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+        if (qtySlippageRate > minSlippage) {
+            qtySlippageRate = minSlippage;
+        } else {
+            assert(false, "expect min slippage rate to be lower");
+        }
+
+        rates = await expectedRates.getExpectedRate(ethAddress, tokenAdd[tokenInd], qty);
+
+        assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
+        assert.equal(rates[1].valueOf(), qtySlippageRate, "unexpected rate");
+    });
+
+    it("should test token to eth. use slippage.", async function() {
+        var tokenInd = 2;
+        var qty = 300;
+
+        var myExpectedRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, qty);
+        var qtySlippageRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, (qty * quantityFactor));
+
+        var minSlippage = new BigNumber(10000 - minSlippageBps).mul(myExpectedRate[1]).div(10000).floor();
+
+        qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+        if (qtySlippageRate > minSlippage) {
+            qtySlippageRate = minSlippage;
+            assert(false, "expect qty slippage rate to be lower");
+        }
+
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+
+        assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
+        assert.equal(rates[1].valueOf(), qtySlippageRate.valueOf(), "unexpected rate");
+
+    });
+
+    it("should test token to eth. use min quantity.", async function() {
+        var tokenInd = 2;
+        var qty = 110;
+        quantityFactor = 2;
+
+        await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
+        var myExpectedRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, qty);
+        var qtySlippageRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, (qty * quantityFactor));
+
+        var minSlippage = new BigNumber(10000 - minSlippageBps).mul(myExpectedRate[1]).div(10000).floor();
+
+        qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+        if (qtySlippageRate > minSlippage) {
+            qtySlippageRate = minSlippage;
+        } else {
+            assert(false, "expect min slippage rate to be lower");
+        }
+
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+
+        assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
+        assert.equal(rates[1].valueOf(), qtySlippageRate.valueOf(), "unexpected rate");
     });
  });
