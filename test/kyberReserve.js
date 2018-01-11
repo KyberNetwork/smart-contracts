@@ -463,12 +463,70 @@ contract('KyberReserve', function(accounts) {
         assert.equal(expectedSrcQty.valueOf(), reportedSrcQty.valueOf(), "unexpected dst qty");
     });
 
+    it ("should see sell > block max imbalance, and sells >> total max imbalance. will reject sells", async function() {
+        var tokenInd = 3;
+        var token = tokens[tokenInd]; //choose some token
+
+        //perform trade
+        await token.transfer(network, maxPerBlockImbalance + 1);
+
+        await reserveInst.trade(tokenAdd[tokenInd], maxPerBlockImbalance - 1, ethAddress, user2, sellRate, true, {from:network});
+
+        //perform trade that is too big for block
+        await reserveInst.trade(tokenAdd[tokenInd], maxPerBlockImbalance + 1, ethAddress, user2, sellRate, true, {from:network});
+
+        for (var i = 0; i < 11; ++i)
+        {
+            var amountTwei = maxPerBlockImbalance - 1;
+
+            await token.transfer(network, amountTwei);
+
+            //verify sell rate
+            var sellRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock);
+
+            var expectedRate = (new BigNumber(baseSellRate[tokenInd])).floor();
+            var extraBps = getExtraBpsForSellQuantity(amountTwei);
+            expectedRate = addBps(expectedRate, extraBps);
+            extraBps = getExtraBpsForImbalanceSellQuantity((reserveTokenImbalance[tokenInd] - (amountTwei * 1)));
+            expectedRate = addBps(expectedRate, extraBps);
+            expectedRate = expectedRate.floor();
+
+            //check correct rate calculated
+            assert.equal(sellRate.valueOf(), expectedRate.valueOf(), "unexpected rate.");
+
+            //pre trade step, approve allowance from network to reserve (on reserve test we skip step where user sends to netwok)
+            await token.approve(reserveInst.address, amountTwei, {from: network});
+
+            //perform trade
+            await reserveInst.trade(tokenAdd[tokenInd], amountTwei, ethAddress, user2, sellRate, true, {from:network});
+
+            //check lower ether balance on reserve
+            var amountWei = (new BigNumber(amountTwei).mul(expectedRate)).div(precisionUnits).floor();
+            expectedReserveBalanceWei = (new BigNumber(expectedReserveBalanceWei)).sub(amountWei).floor();
+            var balance = await Helper.getBalancePromise(reserveInst.address);
+            assert.equal(balance.valueOf(), expectedReserveBalanceWei.valueOf(), "bad reserve balance wei");
+
+            //check token balances
+            ///////////////////////
+
+            //check token balance on network zeroed
+            var tokenTweiBalance = await token.balanceOf(network);
+
+            assert.equal(tokenTweiBalance.valueOf(), 0, "bad token balance network");
+
+            //check token balance on reserve was updated (higher)
+            //below is true since all tokens and ether have same decimals (18)
+            reserveTokenBalance[tokenInd] += (amountTwei * 1);
+            reserveTokenImbalance[tokenInd] -= (amountTwei * 1); //imbalance represents how many missing tokens
+            var reportedBalance = await token.balanceOf(reserveInst.address);
+            assert.equal(reportedBalance.valueOf(), reserveTokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
+        }
+    });
+
+
 //    it("should see trades stopped with sanity pricing contract.", async function () {
 //    });
-//
-//
-//    it("should perform big buy and sell all bought tokens. see balances return to start balnance." , function () {
-//    });
+
 });
 
 function convertRateToPricingRate (baseRate) {
