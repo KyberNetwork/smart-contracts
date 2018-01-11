@@ -253,7 +253,6 @@ contract('ExpectedRates', function(accounts) {
 
         assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
         assert.equal(rates[1].valueOf(), qtySlippageRate.valueOf(), "unexpected rate");
-
     });
 
     it("should test token to eth. use min quantity.", async function() {

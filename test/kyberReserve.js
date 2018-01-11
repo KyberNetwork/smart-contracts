@@ -523,7 +523,6 @@ contract('KyberReserve', function(accounts) {
         }
     });
 
-
 //    it("should see trades stopped with sanity pricing contract.", async function () {
 //    });
 
