@@ -278,5 +278,9 @@ contract('ExpectedRates', function(accounts) {
 
         assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
         assert.equal(rates[1].valueOf(), qtySlippageRate.valueOf(), "unexpected rate");
+=======
+        assert.equal(rates[1].valueOf(), mySlippageRate, "unexpected rate");
+
+>>>>>>> d9652042055a6ef198a9998c0f7611c9b28e149e
     });
  });
