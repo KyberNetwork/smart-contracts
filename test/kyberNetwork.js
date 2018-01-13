@@ -347,7 +347,7 @@ contract('KyberNetwork', function(accounts) {
         assert.equal(reportedBalance.valueOf(), reserve2TokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
     });
 
-    it("should set reserve sell rate diff > epsilon. perform sell and make sure done on correct reserve.", async function () {
+    it("should set reserve sell rate diff > epsilon. perform sell and make sure done on expected reserve.", async function () {
         var tokenInd = 0;
         var token = tokens[tokenInd]; //choose some token
         var amountTwei = 35 * 1;
@@ -370,8 +370,7 @@ contract('KyberNetwork', function(accounts) {
 
         //perform trade
         var rates = await network.getExpectedRate(tokenAdd[tokenInd], ethAddress, amountTwei);
-        console.log("sellRAte1: " + sellRate1 + " rate2 " + sellRate2 + " expectedRate " + rates[0].valueOf());
-        var destAmount = await network.trade(tokenAdd[tokenInd], amountTwei, ethAddress, user2, 3000, sellRate2, walletId, {from:user1, value:0});
+        var destAmount = await network.trade(tokenAdd[tokenInd], amountTwei, ethAddress, user2, 3000, sellRate1, walletId, {from:user1, value:0});
 
         //check lower ether balance on reserve 2
         var expectedWeiAmount = (new BigNumber(sellRate1)).mul(amountTwei).div(precisionUnits).floor();
@@ -394,8 +393,265 @@ contract('KyberNetwork', function(accounts) {
         var reportedBalance = await token.balanceOf(reserve1.address);
         assert.equal(reportedBalance.valueOf(), reserve1TokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
     });
+
+    it("should verify trade reverted when trade disabled..", async function () {
+        var tokenInd = 0;
+        var token = tokens[tokenInd]; //choose some token
+        var amountTwei = 35 * 1;
+
+        // transfer funds to user and approve funds to network
+        await token.transfer(user1, amountTwei);
+        await token.approve(network.address, amountTwei, {from:user1})
+
+        var sellRate1 = await reserve1.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock + 10);
+
+        //disable trade
+        await network.setEnable(false);
+
+        try {
+            await network.trade(tokenAdd[tokenInd], amountTwei, ethAddress, user2, 3000, sellRate1, walletId, {from:user1, value:0});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //enable trade
+        await network.setEnable(true);
+
+        //perform trade
+        var rates = await network.getExpectedRate(tokenAdd[tokenInd], ethAddress, amountTwei);
+        var destAmount = await network.trade(tokenAdd[tokenInd], amountTwei, ethAddress, user2, 3000, sellRate1, walletId, {from:user1, value:0});
+
+        //check lower ether balance on reserve 2
+        var expectedWeiAmount = (new BigNumber(sellRate1)).mul(amountTwei).div(precisionUnits).floor();
+        expectedReserve1BalanceWei = (expectedReserve1BalanceWei * 1) - (expectedWeiAmount * 1);
+        expectedReserve1BalanceWei -= expectedReserve1BalanceWei % 1;
+        var balance = await Helper.getBalancePromise(reserve1.address);
+        assert.equal(balance.valueOf(), expectedReserve1BalanceWei, "bad reserve balance wei");
+
+        //check token balances
+        ///////////////////////
+
+        //check token balance on user1
+        var tokenTweiBalance = await token.balanceOf(user1);
+
+        assert.equal(tokenTweiBalance.valueOf(), 0, "bad token balance");
+
+        //check higher token balance on reserve
+        //below is true since all tokens and ether have same decimals (18)
+        reserve1TokenBalance[tokenInd] = (reserve1TokenBalance[tokenInd] * 1) + (amountTwei * 1);
+        var reportedBalance = await token.balanceOf(reserve1.address);
+        assert.equal(reportedBalance.valueOf(), reserve1TokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
+    });
+
+    it("should verify trade reverted when dest amount is 0.", async function () {
+        var tokenInd = 0;
+        var token = tokens[tokenInd]; //choose some token
+        var amountTweiLow = 1 * 1;
+        var amountTWeiHi = 20 * 1;
+
+        // transfer funds to user and approve funds to network
+        await token.transfer(user1, amountTWeiHi);
+        await token.approve(network.address, amountTWeiHi, {from:user1})
+
+        var sellRate1 = await reserve1.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTweiLow, currentBlock + 10);
+
+        //try with low amount Twei
+        try {
+            await network.trade(tokenAdd[tokenInd], amountTweiLow, ethAddress, user2, 3000, sellRate1, walletId, {from:user1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //perform the trade
+        var rates = await network.getExpectedRate(tokenAdd[tokenInd], ethAddress, amountTWeiHi);
+        var destAmount = await network.trade(tokenAdd[tokenInd], amountTWeiHi, ethAddress, user2, 3000, sellRate1, walletId, {from:user1, value:0});
+
+        //check lower ether balance on reserve 2
+        var expectedWeiAmount = (new BigNumber(sellRate1)).mul(amountTWeiHi).div(precisionUnits).floor();
+        expectedReserve1BalanceWei = (expectedReserve1BalanceWei * 1) - (expectedWeiAmount * 1);
+        expectedReserve1BalanceWei -= expectedReserve1BalanceWei % 1;
+        var balance = await Helper.getBalancePromise(reserve1.address);
+        assert.equal(balance.valueOf(), expectedReserve1BalanceWei, "bad reserve balance wei");
+
+        //check token balances
+        ///////////////////////
+
+        //check token balance on user1
+        var tokenTweiBalance = await token.balanceOf(user1);
+
+        assert.equal(tokenTweiBalance.valueOf(), 0, "bad token balance");
+
+        //check higher token balance on reserve
+        //below is true since all tokens and ether have same decimals (18)
+        reserve1TokenBalance[tokenInd] = (reserve1TokenBalance[tokenInd] * 1) + (amountTWeiHi * 1);
+        var reportedBalance = await token.balanceOf(reserve1.address);
+        assert.equal(reportedBalance.valueOf(), reserve1TokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
+    });
+
+    it("should verify trade reverted when unlisting pair.", async function () {
+        var tokenInd = 0;
+        var token = tokens[tokenInd]; //choose some token
+        var amountTWei = 20 * 1;
+
+        // transfer funds to user and approve funds to network
+        await token.transfer(user1, amountTWei);
+        await token.approve(network.address, amountTWei, {from:user1})
+
+        var sellRate1 = await reserve1.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTWei, currentBlock + 10);
+
+        //unlist and verify trade reverted.
+        await network.listPairForReserve(reserve1.address, tokenAdd[tokenInd], ethAddress, false);
+        await network.listPairForReserve(reserve2.address, tokenAdd[tokenInd], ethAddress, false);
+
+        try {
+            await network.trade(tokenAdd[tokenInd], amountTWei, ethAddress, user2, 3000, sellRate1, walletId, {from:user1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //list back and perfom trade.
+        await network.listPairForReserve(reserve1.address, tokenAdd[tokenInd], ethAddress, true);
+        await network.listPairForReserve(reserve2.address, tokenAdd[tokenInd], ethAddress, true);
+
+        //perform the trade
+        var rates = await network.getExpectedRate(tokenAdd[tokenInd], ethAddress, amountTWei);
+        var destAmount = await network.trade(tokenAdd[tokenInd], amountTWei, ethAddress, user2, 3000, sellRate1, walletId, {from:user1, value:0});
+
+        //check lower ether balance on reserve 2
+        var expectedWeiAmount = (new BigNumber(sellRate1)).mul(amountTWei).div(precisionUnits).floor();
+        expectedReserve1BalanceWei = (expectedReserve1BalanceWei * 1) - (expectedWeiAmount * 1);
+        expectedReserve1BalanceWei -= expectedReserve1BalanceWei % 1;
+        var balance = await Helper.getBalancePromise(reserve1.address);
+        assert.equal(balance.valueOf(), expectedReserve1BalanceWei, "bad reserve balance wei");
+
+        //check token balances
+        ///////////////////////
+
+        //check token balance on user1
+        var tokenTweiBalance = await token.balanceOf(user1);
+
+        assert.equal(tokenTweiBalance.valueOf(), 0, "bad token balance");
+
+        //check higher token balance on reserve
+        //below is true since all tokens and ether have same decimals (18)
+        reserve1TokenBalance[tokenInd] = (reserve1TokenBalance[tokenInd] * 1) + (amountTWei * 1);
+        var reportedBalance = await token.balanceOf(reserve1.address);
+        assert.equal(reportedBalance.valueOf(), reserve1TokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
+    });
+
+    it("should verify trade revert conditions(high gas price, missing contracts).", async function () {
+        var tokenInd = 0;
+        var token = tokens[tokenInd]; //choose some token
+        var amountTWei = 5 * 1;
+
+        // transfer funds to user and approve funds to network - for all trades in this 'it'
+        await token.transfer(user1, amountTWei * 4);
+        await token.approve(network.address, amountTWei * 4, {from:user1})
+
+        try {
+            await network.trade(tokenAdd[tokenInd], amountTWei, ethAddress, user2, 3000, sellRate1, walletId, {from:user1, price: maxGasPrice * 1 + 3});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //see trade success with good gas price
+        await network.trade(tokenAdd[tokenInd], amountTWei, ethAddress, user2, 3000, sellRate1, walletId, {from:user1, price: maxGasPrice * 1 - 2});
+
+        //remove white list contract
+        await network.setParams(0, expectedRate.address, feeBurner.address, gasPrice.valueOf(), 15);
+
+        try {
+            await network.trade(tokenAdd[tokenInd], amountTWei, ethAddress, user2, 3000, sellRate1, walletId, {from:user1, price: maxGasPrice * 1 + 3});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //return contract
+        await network.setParams(whiteList.address, expectedRate.address, feeBurner.address, gasPrice.valueOf(), 15);
+
+        //see trade success
+        await network.trade(tokenAdd[tokenInd], amountTWei, ethAddress, user2, 3000, sellRat
+
+        //remove contract
+        await network.setParams(whiteList.address, expectedRate.address, feeBurner.address, gasPrice.valueOf(), 15);
+
+    });
 //    it("should see trades stopped with sanity pricing contract.", async function () {
 //    });
+
+    it("should get reserve list and verify addresses.", async function () {
+        var reserves = await network.getReserves();
+
+        assert.equal(reserves.length, 2, "unexpected number of reserves.");
+
+        assert.equal(reserves[0].valueOf(), reserve1.address, "unexpected reserve address.");
+        assert.equal(reserves[1].valueOf(), reserve2.address, "unexpected reserve address.");
+    });
+
+
+    it("should verify same reserve can't be added twice.", async function () {
+        var numRes = await network.getNumReserves();
+
+        assert.equal(numRes.valueOf(), 2, "unexpected number of reserves.");
+
+        //try adding existing reserve
+        try {
+            await network.addReserve(reserve1.address, true);
+            assert(false, "throw was expected in line above.");
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // remove reserves and see same add success.
+        await network.addReserve(reserve1.address, false);
+
+        await network.addReserve(reserve1.address, true);
+    });
+
+    it("should remove reserves and verify reserve array length is 0.", async function () {
+        var numRes = await network.getNumReserves();
+
+        assert.equal(numRes.valueOf(), 2, "unexpected number of reserves.");
+
+        // remove reserves
+        await network.addReserve(reserve1.address, false);
+        await network.addReserve(reserve2.address, false);
+
+        var numRes = await network.getNumReserves();
+
+        assert.equal(numRes.valueOf(), 0, "unexpected number of reserves.");
+
+        await network.addReserve(reserve1.address, true);
+        await network.addReserve(reserve2.address, true);
+    });
+
+    it("should verify getExpectedRate reverted when expected rate contract not set.", async function () {
+        await network.setParams(whiteList.address, 0, feeBurner.address, gasPrice.valueOf(), 15);
+
+        //try adding existing reserve
+        try {
+            await network.getExpectedRatetokenAdd[1], ethAddress, amountTWei);
+            assert(false, "throw was expected in line above.");
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        await network.setParams(whiteList.address, expectedRate.address, feeBurner.address, gasPrice.valueOf(), 15);
+        await network.getExpectedRatetokenAdd[1], ethAddress, amountTWei);
+    });
+
 });
 
 function convertRateToConversionRatesRate (baseRate) {
