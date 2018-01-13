@@ -106,6 +106,7 @@ contract KyberNetwork is Withdrawable, Utils {
     function addReserve(KyberReserve reserve, bool add) public onlyAdmin {
 
         if (add) {
+            require(!isReserve[reserve]);
             reserves.push(reserve);
             isReserve[reserve] = true;
             AddReserveToNetwork(reserve, true);
@@ -115,7 +116,8 @@ contract KyberNetwork is Withdrawable, Utils {
             for (uint i = 0; i < reserves.length; i++) {
                 if (reserves[i] == reserve) {
                     if (reserves.length == 0) return;
-                    reserves[i] = reserves[--reserves.length];
+                    reserves[i] = reserves[reserves.length - 1];
+                    --reserves.length;
                     AddReserveToNetwork(reserve, false);
                     break;
                 }
