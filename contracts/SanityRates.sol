@@ -12,8 +12,8 @@ interface SanityRatesInterface {
 
 
 contract SanityRates is SanityRatesInterface, Withdrawable, Utils {
-    mapping(address=>uint) internal tokenRate;
-    mapping(address=>uint) internal reasonableDiffInBps;
+    mapping(address=>uint) public tokenRate;
+    mapping(address=>uint) public reasonableDiffInBps;
 
     function SanityRates(address _admin) public {
         admin = _admin;
