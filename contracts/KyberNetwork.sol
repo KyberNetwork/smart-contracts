@@ -115,9 +115,8 @@ contract KyberNetwork is Withdrawable, Utils {
             // will have trouble if more than 50k reserves...
             for (uint i = 0; i < reserves.length; i++) {
                 if (reserves[i] == reserve) {
-                    if (reserves.length == 0) return;
                     reserves[i] = reserves[reserves.length - 1];
-                    --reserves.length;
+                    reserves.length--;
                     AddReserveToNetwork(reserve, false);
                     break;
                 }
