@@ -137,13 +137,7 @@ contract KyberReserve is Withdrawable, Utils {
         uint dstDecimals = getDecimals(dest);
         uint srcDecimals = getDecimals(source);
 
-        if (srcDecimals >= dstDecimals) {
-            require((srcDecimals - dstDecimals) <= MAX_DECIMALS);
-            return (PRECISION * dstQty * (10**(srcDecimals - dstDecimals))) / rate;
-        } else {
-            require((dstDecimals-srcDecimals) <= MAX_DECIMALS);
-            return (PRECISION * dstQty) / (rate * (10 ** (dstDecimals - srcDecimals)));
-        }
+        return calcSrcQty(dstQty, srcDecimals, dstDecimals, rate);
     }
 
     function getConversionRate(ERC20 source, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
