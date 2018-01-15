@@ -316,4 +316,5 @@ contract('ExpectedRates', function(accounts) {
         await expectedRates.setQuantityFactor(2, {from: operator});
         rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty);
     });
+
  });
