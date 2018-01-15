@@ -447,7 +447,7 @@ contract('KyberNetwork', function(accounts) {
         assert.equal(reportedBalance.valueOf(), reserve1TokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
     });
 
-    it("should verify trade reverted when dest amount is 0.", async function () {
+    it("should verify trade reverted when dest amount (actual amount) is 0.", async function () {
         let tokenInd = 0;
         let token = tokens[tokenInd]; //choose some token
         let amountTweiLow = 1 * 1;
@@ -607,6 +607,24 @@ contract('KyberNetwork', function(accounts) {
         //see same trade performed when value minus 1
         await network.trade(tokenAdd[tokenInd], amountTWei.sub(1).valueOf(), ethAddress,
                 user2, amountTWei.valueOf(), 0, walletId, {from:user1});
+    });
+
+    it("should verify trade reverted when dest address 0.", async function () {
+        let tokenInd = 0;
+        let token = tokens[tokenInd]; //choose some token
+        let amountWei = 4 * 1;
+        let minConversionRate = 0;
+
+        //perform trade
+        try {
+             await network.trade(ethAddress, amountWei, tokenAdd[tokenInd], 0, 2000, minConversionRate, walletId, {from:user1, value:amountWei});
+             assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //see same trade performed with valid value
+        await network.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, 2000, minConversionRate, walletId, {from:user1, value:amountWei});
     });
 
     it("should get reserve list and verify addresses.", async function () {
