@@ -27,7 +27,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
         uint lastRateUpdateBlock;
     }
 
-    mapping(address => mapping(uint=>uint)) internal tokenImbalanceData;
+    mapping(address => mapping(uint=>uint)) public tokenImbalanceData;
 
     function VolumeImbalanceRecorder(address _admin) public {
         admin = _admin;
@@ -179,6 +179,15 @@ contract VolumeImbalanceRecorder is Withdrawable {
     }
 
     function encodeTokenImbalanceData(TokenImbalanceData data) internal pure returns(uint) {
+        // check for overflows
+        require(data.lastBlockBuyUnitsImbalance < int(POW_2_64 / 2));
+        require(data.lastBlockBuyUnitsImbalance > int(-1 * int(POW_2_64) / 2));
+        require(data.lastBlock < POW_2_64);
+        require(data.totalBuyUnitsImbalance < int(POW_2_64 / 2));
+        require(data.totalBuyUnitsImbalance > int(-1 * int(POW_2_64) / 2));
+        require(data.lastRateUpdateBlock < POW_2_64);
+
+        // do encoding
         uint result = uint(data.lastBlockBuyUnitsImbalance) & (POW_2_64 - 1);
         result |= data.lastBlock * POW_2_64;
         result |= (uint(data.totalBuyUnitsImbalance) & (POW_2_64 - 1)) * POW_2_64 * POW_2_64;
