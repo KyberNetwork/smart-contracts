@@ -498,13 +498,14 @@ contract('Deployment', function(accounts) {
     return Network.new(networkOwner,{gas:4700000}).then(function(instance){
         network = instance;
         // set whitelist
-        return network.setParams(whitelist.address,0,0,50*10**9,15);
+        return;
+//        return network.setParams(whitelist.address,0,0,50*10**9,15);
     });
   });
 
   it("create conversionRates", function() {
     this.timeout(31000000);
-    return ConversionRates.new(accounts[0],{gas:4700000}).then(function(instance){
+    return ConversionRates.new(accounts[0],{gas:5700000}).then(function(instance){
         conversionRates = instance;
         return conversionRates.addOperator(accounts[0],{from:accounts[0]});
     });
@@ -601,9 +602,10 @@ contract('Deployment', function(accounts) {
 
   it("set network params", function() {
     this.timeout(31000000);
-
-    // set whitelist
-    return network.setParams(whitelist.address,expectedRate.address,feeBurner.address,50*10**9,15);
+    // set contracts and enable network
+    return network.setParams(whitelist.address,expectedRate.address,feeBurner.address,50*10**9,15).then( function() {
+        return network.setEnable(true);
+    });
   });
 
   it("add reserve to network", function() {
