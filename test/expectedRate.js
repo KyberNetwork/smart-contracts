@@ -21,7 +21,11 @@ let admin;
 let operator;
 let alerter;
 let sanityRates;
+<<<<<<< HEAD
 let network;
+=======
+let network
+>>>>>>> 62b31ba... change all var to let in js files.
 
 //tokens data
 ////////////
