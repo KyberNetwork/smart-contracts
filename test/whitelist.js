@@ -1,5 +1,7 @@
 let WhiteList = artifacts.require("./WhiteList.sol")
 
+let admin;
+
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
 
@@ -10,9 +12,10 @@ let oneSgdToEther = 0.0010352;
 
 contract('WhiteList', function(accounts) {
     it("should init globals.", async function () {
+        admin = accounts[0];
         sgdToEthRateInWei = (((new BigNumber(10)).pow(18)).mul(oneSgdToEther));
-        whiteListInst = await WhiteList.new(accounts[0]);
-        await whiteListInst.addOperator(accounts[8], {from: accounts[0]});
+        whiteListInst = await WhiteList.new(admin);
+        await whiteListInst.addOperator(accounts[8], {from: admin});
         await whiteListInst.setSgdToEthRate(sgdToEthRateInWei, {from : accounts[8]});
 
         // set defaultUserCapSgd SGD cap for category 0 which is the default for all users.
@@ -42,8 +45,8 @@ contract('WhiteList', function(accounts) {
     });
 
     it("should test when sgdtoWei not init, cap is always 0.", async function () {
-        let whiteListInst2 = await WhiteList.new(accounts[0]);
-        await whiteListInst2.addOperator(accounts[8], {from: accounts[0]});
+        let whiteListInst2 = await WhiteList.new(admin);
+        await whiteListInst2.addOperator(accounts[8], {from: admin});
         //tests unset user
         userCap = await whiteListInst.getUserCapInWei(accounts[4]);
         assert.equal(0, userCap.valueOf(), "unexpected user cap");
@@ -56,8 +59,8 @@ contract('WhiteList', function(accounts) {
     });
 
     it("should test when no category is init, cap is always 0.", async function () {
-        let whiteListInst2 = await WhiteList.new(accounts[0]);
-        await whiteListInst2.addOperator(accounts[8], {from: accounts[0]});
+        let whiteListInst2 = await WhiteList.new(admin);
+        await whiteListInst2.addOperator(accounts[8], {from: admin});
         //tests unset user
         userCap = await whiteListInst2.getUserCapInWei(accounts[4]);
         assert.equal(0, userCap.valueOf(), "unexpected user cap");
@@ -66,5 +69,18 @@ contract('WhiteList', function(accounts) {
         await whiteListInst2.setUserCategory(accounts[4], 17, {from : accounts[8]});
         userCap = await whiteListInst2.getUserCapInWei(accounts[4]);
         assert.equal(0, userCap.valueOf(), "unexpected user cap");
+    });
+
+    it("should test can't init this contract with empty contracts (address 0).", async function () {
+        let list;
+
+        try {
+           sanityRatess = await WhiteList.new(0);
+           assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        sanityRatess = await WhiteList.new(admin);
     });
 });

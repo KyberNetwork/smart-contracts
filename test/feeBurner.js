@@ -158,4 +158,24 @@ contract('FeeBurner', function(accounts) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
         }
    });
+
+   it("should test can't init this contract with empty contracts (address 0).", async function () {
+       let feeBurnerTemp;
+
+       try {
+           feeBurnerTemp =  await FeeBurner.new(admin, 0);
+           assert(false, "throw was expected in line above.")
+       } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+       }
+
+       try {
+           feeBurnerTemp =  await FeeBurner.new(0, kncToken.address);
+           assert(false, "throw was expected in line above.")
+       } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+       }
+
+       feeBurnerTemp =  await FeeBurner.new(admin, kncToken.address);
+   });
 });

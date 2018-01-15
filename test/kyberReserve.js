@@ -815,6 +815,50 @@ contract('KyberReserve', function(accounts) {
         let rate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], srcQty, currentBlock);
         assert.equal(rate.valueOf(), 0, "unexpected rate");
     });
+
+    it("should test can't init this contract with empty contracts (address 0).", async function () {
+        let reserve;
+
+        try {
+           reserve = await Reserve.new(network, convRatesInst.address, 0);
+           assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+           reserve =  await Reserve.new(network, 0, admin);
+           assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+           reserve =  await Reserve.new(0, convRatesInst.address, admin);
+           assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        reserve = await Reserve.new(network, convRatesInst.address, admin);
+
+        try {
+           await reserve.setContracts(0, convRatesInst.address, 0);
+           assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+           await reserve.setContracts(network, 0, 0);
+           assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //sanity rates can currently be empty
+        await reserve.setContracts(network, convRatesInst.address, 0);
+    });
 });
 
 function convertRateToPricingRate (baseRate) {

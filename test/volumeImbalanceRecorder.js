@@ -17,7 +17,8 @@ let currentBlock;
 contract('VolumeImbalanceRecorder', function(accounts) {
     it("should init globals and init VolumeImbalanceRecorder Inst.", async function() {
         //init globals
-        imbalanceInst = await MockImbalanceRecorder.new(accounts[0]);
+        admin = accounts[0];
+        imbalanceInst = await MockImbalanceRecorder.new(admin);
         token = await TestToken.new("test", "tst", 18);
 
         await imbalanceInst.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
@@ -37,7 +38,7 @@ contract('VolumeImbalanceRecorder', function(accounts) {
 
     it("should test internal get functions.", async function() {
         //init globals
-        imbalanceInst = await MockImbalanceRecorder.new(accounts[0]);
+        imbalanceInst = await MockImbalanceRecorder.new(admin);
         token = await TestToken.new("test", "tst", 18);
 
         await imbalanceInst.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
@@ -253,7 +254,7 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         assert.equal(trades.length, priceUpdateBlocks.length, "arrays mismatch");
 
         //create new instance
-        let imbalanceInst2 = await MockImbalanceRecorder.new(accounts[0]);
+        let imbalanceInst2 = await MockImbalanceRecorder.new(admin);
 
         //set even resolution
         newRecordResolution = 13;
@@ -299,7 +300,7 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         assert.equal(trades.length, priceUpdateBlocks.length, "arrays mismatch");
 
         //create new instance
-        let imbalanceInst3 = await MockImbalanceRecorder.new(accounts[0]);
+        let imbalanceInst3 = await MockImbalanceRecorder.new(admin);
         let newRecordResolution = 3;
         await imbalanceInst3.setTokenControlInfo(token.address, newRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
 
@@ -359,7 +360,7 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         assert.equal(trades.length, priceUpdateBlocks.length, "arrays mismatch");
 
         //create new instance
-        let imbalanceInst2 = await MockImbalanceRecorder.new(accounts[0]);
+        let imbalanceInst2 = await MockImbalanceRecorder.new(admin);
 
         //set even resolution
         newRecordResolution = 2;
@@ -384,7 +385,7 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         let totalImbalanceSinceUpdate = 0;
 
         //create new instance
-        let imbalanceInst2 = await MockImbalanceRecorder.new(accounts[0]);
+        let imbalanceInst2 = await MockImbalanceRecorder.new(admin);
 
         //set even resolution
         newRecordResolution = 17; //trade + 1
@@ -399,5 +400,19 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         let imbalanceArr = await imbalanceInst2.getMockImbalance(token.address, priceUpdateBlock, currentBlock);
 
         assert.equal(imbalanceArr[0].valueOf(), 0, "unexpected total imbalance.");
+    });
+
+    it("should test can't init this contract with empty contracts (address 0).", async function () {
+        let recorder;
+
+        try {
+           recorder = await MockImbalanceRecorder.new(0);
+           assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //sanity rates can currently be empty
+        recorder = await MockImbalanceRecorder.new(admin);
     });
 });

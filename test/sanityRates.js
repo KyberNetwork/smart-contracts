@@ -56,4 +56,18 @@ contract('SanityRates', function(accounts) {
         let ethToTokenRate = await sanityRates.getSanityRate(ethAddress, tokens[tokenInd]);
         assert.equal(expectedEthToToken.valueOf(), ethToTokenRate.valueOf(), "unexpected rate");
     });
+
+    it("should test can't init this contract with empty contracts (address 0).", async function () {
+        let sanityRatess;
+
+        try {
+           sanityRatess = await SanityRates.new(0);
+           assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //sanity rates can currently be empty
+        sanityRatess = await SanityRates.new(admin);
+    });
 });

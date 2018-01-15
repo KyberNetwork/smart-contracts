@@ -21,7 +21,7 @@ let admin;
 let operator;
 let alerter;
 let sanityRates;
-let network
+let network;
 
 //tokens data
 ////////////
@@ -172,6 +172,7 @@ contract('ExpectedRates', function(accounts) {
 
         expectedRates = await ExpectedRate.new(network.address, admin);
         await network.setParams(whiteList.address, expectedRates.address, feeBurner.address, gasPrice.valueOf(), 15);
+        await network.setEnable(true);
         let price = await network.maxGasPrice();
         assert.equal(price.valueOf(), gasPrice.valueOf());
 
@@ -185,6 +186,26 @@ contract('ExpectedRates', function(accounts) {
     it("should init expected rates.", async function () {
         await expectedRates.addOperator(operator);
         await expectedRates.setMinSlippageFactor(minSlippageBps, {from: operator});
+    });
+
+    it("should test can't init expected rate with empty contracts (address 0).", async function () {
+        let expectedRateT;
+
+        try {
+            expectedRateT =  await ExpectedRate.new(network.address, 0);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            expectedRateT =  await ExpectedRate.new(0, admin);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        expectedRateT =  await ExpectedRate.new(network.address, admin);
     });
 
     it("should test eth to token. use qty slippage.", async function() {
@@ -294,17 +315,5 @@ contract('ExpectedRates', function(accounts) {
 
         await expectedRates.setQuantityFactor(2, {from: operator});
         rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty);
-    });
-
-
-    it("should verify get expected rate reverted when kyber network address is 0.", async function() {
-        let qty = 100;
-        let expected1 = await ExpectedRate.new(0, admin);
-        try {
-            await expected1.getExpectedRate(tokenAdd[1], ethAddress, qty);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
     });
  });
