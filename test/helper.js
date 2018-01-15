@@ -42,8 +42,8 @@ module.exports.getCurrentBlock = function() {
 };
 
 module.exports.bytesToHex = function (byteArray) {
-    var strNum = toHexString(byteArray);
-    var num = '0x' + strNum;
+    let strNum = toHexString(byteArray);
+    let num = '0x' + strNum;
     return num;
 };
 
