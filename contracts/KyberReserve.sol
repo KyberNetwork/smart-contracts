@@ -129,21 +129,21 @@ contract KyberReserve is Withdrawable, Utils {
         return token.decimals();
     }
 
-    function getDestQty(ERC20 source, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {
+    function getDestQty(ERC20 source, ERC20 dest, uint sourceQty, uint rate) public view returns(uint) {
         uint dstDecimals = getDecimals(dest);
-        uint srcDecimals = getDecimals(source);
+        uint sourceDecimals = getDecimals(source);
 
-        return calcDstQty(srcQty, srcDecimals, dstDecimals, rate);
+        return calcDstQty(sourceQty, sourceDecimals, dstDecimals, rate);
     }
 
-    function getSrcQty(ERC20 source, ERC20 dest, uint dstQty, uint rate) public view returns(uint) {
+    function getSourceQty(ERC20 source, ERC20 dest, uint dstQty, uint rate) public view returns(uint) {
         uint dstDecimals = getDecimals(dest);
-        uint srcDecimals = getDecimals(source);
+        uint sourceDecimals = getDecimals(source);
 
-        return calcSrcQty(dstQty, srcDecimals, dstDecimals, rate);
+        return calcSourceQty(dstQty, sourceDecimals, dstDecimals, rate);
     }
 
-    function getConversionRate(ERC20 source, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
+    function getConversionRate(ERC20 source, ERC20 dest, uint sourceQty, uint blockNumber) public view returns(uint) {
         ERC20 token;
         bool  buy;
 
@@ -159,8 +159,8 @@ contract KyberReserve is Withdrawable, Utils {
             return 0; // pair is not listed
         }
 
-        uint rate = conversionRatesContract.getRate(token, blockNumber, buy, srcQty);
-        uint destQty = getDestQty(source, dest, srcQty, rate);
+        uint rate = conversionRatesContract.getRate(token, blockNumber, buy, sourceQty);
+        uint destQty = getDestQty(source, dest, sourceQty, rate);
 
         if (getBalance(dest) < destQty) return 0;
 

@@ -7,7 +7,7 @@ import "./Utils.sol";
 
 
 interface SanityRatesInterface {
-    function getSanityRate(ERC20 src, ERC20 dest) public view returns(uint);
+    function getSanityRate(ERC20 source, ERC20 dest) public view returns(uint);
 }
 
 
@@ -35,17 +35,17 @@ contract SanityRates is SanityRatesInterface, Withdrawable, Utils {
         }
     }
 
-    function getSanityRate(ERC20 src, ERC20 dest) public view returns(uint) {
-        if (src != ETH_TOKEN_ADDRESS && dest != ETH_TOKEN_ADDRESS) return 0;
+    function getSanityRate(ERC20 source, ERC20 dest) public view returns(uint) {
+        if (source != ETH_TOKEN_ADDRESS && dest != ETH_TOKEN_ADDRESS) return 0;
 
         uint rate;
         address token;
-        if (src == ETH_TOKEN_ADDRESS) {
+        if (source == ETH_TOKEN_ADDRESS) {
             rate = (PRECISION*PRECISION)/tokenRate[dest];
             token = dest;
         } else {
-            rate = tokenRate[src];
-            token = src;
+            rate = tokenRate[source];
+            token = source;
         }
 
         return rate * (10000 + reasonableDiffInBps[token])/10000;

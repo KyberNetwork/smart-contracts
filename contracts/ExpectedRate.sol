@@ -7,7 +7,7 @@ import "./Withdrawable.sol";
 
 
 interface ExpectedRateInterface {
-    function getExpectedRate(ERC20 source, ERC20 dest, uint srcQty) public view
+    function getExpectedRate(ERC20 source, ERC20 dest, uint sourceQty) public view
         returns (uint expectedRate, uint slippageRate);
 }
 
@@ -39,7 +39,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface {
         minSlippageFactorInBps = bps;
     }
 
-    function getExpectedRate(ERC20 source, ERC20 dest, uint srcQty)
+    function getExpectedRate(ERC20 source, ERC20 dest, uint sourceQty)
         public view
         returns (uint expectedRate, uint slippageRate)
     {
@@ -48,8 +48,8 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface {
         uint bestReserve;
         uint minSlippage;
 
-        (bestReserve, expectedRate) = kyberNetwork.findBestRate(source, dest, srcQty);
-        (bestReserve, slippageRate) = kyberNetwork.findBestRate(source, dest, (srcQty * quantityFactor));
+        (bestReserve, expectedRate) = kyberNetwork.findBestRate(source, dest, sourceQty);
+        (bestReserve, slippageRate) = kyberNetwork.findBestRate(source, dest, (sourceQty * quantityFactor));
 
         minSlippage = ((10000 - minSlippageFactorInBps) * expectedRate) / 10000;
         if (slippageRate >= minSlippage) {

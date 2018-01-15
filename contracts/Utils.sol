@@ -13,23 +13,23 @@ contract Utils {
     uint  constant internal MAX_RATE  = (PRECISION * 10**6); // up to 1M tokens per ETH
     uint  constant internal MAX_DECIMALS = 18;
 
-    function calcDstQty(uint srcQty, uint srcDecimals, uint dstDecimals, uint rate) internal pure returns(uint) {
-        if (dstDecimals >= srcDecimals) {
-            require((dstDecimals - srcDecimals) <= MAX_DECIMALS);
-            return (srcQty * rate * (10**(dstDecimals - srcDecimals))) / PRECISION;
+    function calcDstQty(uint sourceQty, uint sourceDecimals, uint dstDecimals, uint rate) internal pure returns(uint) {
+        if (dstDecimals >= sourceDecimals) {
+            require((dstDecimals - sourceDecimals) <= MAX_DECIMALS);
+            return (sourceQty * rate * (10**(dstDecimals - sourceDecimals))) / PRECISION;
         } else {
-            require((srcDecimals - dstDecimals) <= MAX_DECIMALS);
-            return (srcQty * rate) / (PRECISION * (10**(srcDecimals - dstDecimals)));
+            require((sourceDecimals - dstDecimals) <= MAX_DECIMALS);
+            return (sourceQty * rate) / (PRECISION * (10**(sourceDecimals - dstDecimals)));
         }
     }
 
-    function calcSrcQty(uint dstQty, uint srcDecimals, uint dstDecimals, uint rate) internal pure returns(uint) {
-        if (srcDecimals >= dstDecimals) {
-            require((srcDecimals - dstDecimals) <= MAX_DECIMALS);
-            return (PRECISION * dstQty * (10**(srcDecimals - dstDecimals))) / rate;
+    function calcSourceQty(uint dstQty, uint sourceDecimals, uint dstDecimals, uint rate) internal pure returns(uint) {
+        if (sourceDecimals >= dstDecimals) {
+            require((sourceDecimals - dstDecimals) <= MAX_DECIMALS);
+            return (PRECISION * dstQty * (10**(sourceDecimals - dstDecimals))) / rate;
         } else {
-            require((dstDecimals - srcDecimals) <= MAX_DECIMALS);
-            return (PRECISION * dstQty) / (rate * (10**(dstDecimals - srcDecimals)));
+            require((dstDecimals - sourceDecimals) <= MAX_DECIMALS);
+            return (PRECISION * dstQty) / (rate * (10**(dstDecimals - sourceDecimals)));
         }
     }
 }
