@@ -23,6 +23,8 @@ var validRateDurationInBlocks = 1000;
 var buys = [];
 var sells = [];
 var indices = [];
+var baseBuy = [];
+var baseSell = [];
 var qtyBuyStepX = [];
 var qtyBuyStepY = [];
 var qtySellStepX = [];
@@ -81,8 +83,6 @@ contract('ConversionRates', function(accounts) {
 
     it("should set base rates for all tokens then get and verify.", async function () {
         // set base rate
-        var baseBuy = [];
-        var baseSell = [];
 
         //buy is ether to token rate. sale is token to ether rate. so sell == 1 / buy. assuming we have no spread.
         var ethToTokenRate;
@@ -395,6 +395,295 @@ contract('ConversionRates', function(accounts) {
 
         compareRates(receivedRate, expectedRate);
     });
+
+    it("should verify addToken reverted when token already exists.", async function () {
+        var tokenInd = 16;
+        var token = tokens[tokenInd]; //choose some token
+
+        try {
+            await convRatesInst.addToken(token);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should verify set compact data reverted when input arrays length don't match.", async function () {
+        //set compact data
+        sells.length = buys.length = indices.length = 0;
+
+        compactBuyArr1 = [1, 2, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14];
+        compactBuyArr2 = [15, 16, 17, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14];
+        var compactBuyHex = Helper.bytesToHex(compactBuyArr1);
+        buys.push(compactBuyHex);
+        compactBuyHex = Helper.bytesToHex(compactBuyArr2);
+        buys.push(compactBuyHex);
+
+        compactSellArr1 = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34];
+        compactSellArr2 = [35, 36, 37, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34];
+        var compactSellHex = Helper.bytesToHex(compactSellArr1);
+        sells.push(compactSellHex);
+
+        indices[0] = 0;
+        indices[1] = 1;
+
+        //compact sell arr smaller (1)
+        try {
+            await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //sells 2 buys 2. indices 3
+        var compactSellHex = Helper.bytesToHex(compactSellArr2);
+        sells.push(compactSellHex);
+
+        indices[2] = 5;
+
+        try {
+            await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //set indices to 2 and see success.
+        indices.length = 2;
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+    });
+
+    it("should verify set compact data reverted when input arrays length don't match num set tokens.", async function () {
+        //set compact data
+        sells[2] = buys[2] = indices[2] = 5;
+
+        //length 3 but only two exist in contract
+        try {
+            await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        sells.length = buys.length = indices.length = 2;
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+    });
+
+    it("should verify set base rate data reverted when input arrays length don't match each other.", async function () {
+        //sells different length
+        sells[2] = 5;
+
+        //length 3 for sells and buys. indices 2
+        try {
+            await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        sells.length = buys.length = indices.length = 2;
+        await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
+
+        //buys different length
+        buys[2] = 5;
+
+        //length 3 for sells and buys. indices 2
+        try {
+            await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        sells.length = buys.length = indices.length = 2;
+        await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
+
+        //indices different length
+        indices[2] = 5;
+
+        //length 3 for sells and buys. indices 2
+        try {
+            await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        sells.length = buys.length = indices.length = 2;
+        await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
+
+        //baseBuy different length
+        baseBuy.push(19);
+
+        //length 3 for sells and buys. indices 2
+        try {
+            await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        baseBuy.length = baseSell.length;
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+
+        //baseSell different length
+        baseSell.push(19);
+
+        //length 3 for sells and buys. indices 2
+        try {
+            await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        baseSell.length = baseBuy.length;
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+    });
+
+
+    it("should verify set base rate data reverted when setting to unlisted token.", async function () {
+        //sells different length
+        var tokenAdd5 = tokens[5];
+        tokens[5] = 19;
+
+        try {
+            await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        tokens[5] = tokenAdd5;
+        await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
+    });
+
+
+    it("should verify set qty step reverted when input arrays lengths don't match.", async function () {
+        //qty buy step x - change size. see set fails
+        qtyBuyStepX.push(17);
+
+        try {
+            await convRatesInst.setQtyStepFunction(tokens[4], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //set size back and see set success
+        qtyBuyStepX.length = qtyBuyStepY.length;
+        await convRatesInst.setQtyStepFunction(tokens[4], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+
+        //qty buy step x - change size. see set fails
+        qtyBuyStepY.push(17);
+
+        try {
+            await convRatesInst.setQtyStepFunction(tokens[4], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //set size back and see set success
+        qtyBuyStepY.length = qtyBuyStepX.length;
+        await convRatesInst.setQtyStepFunction(tokens[4], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+
+        //qty sell step x - change size. see set fails
+        qtySellStepX.push(17);
+
+        try {
+            await convRatesInst.setQtyStepFunction(tokens[4], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //set size back and see set success
+        qtySellStepX.length = qtySellStepY.length;
+        await convRatesInst.setQtyStepFunction(tokens[4], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+
+        //qty sell step y - change size. see set fails
+        qtySellStepY.push(17);
+
+        try {
+            await convRatesInst.setQtyStepFunction(tokens[4], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //set size back and see set success
+        qtySellStepY.length = qtySellStepX.length;
+        await convRatesInst.setQtyStepFunction(tokens[4], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+    });
+
+    it("should verify set qty step reverted when token not listed.", async function () {
+        try {
+            await convRatesInst.setQtyStepFunction(35, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should verify set imbalance step reverted when input arrays lengths don't match.", async function () {
+        //imbalance buy step x - change size. see set fails
+        imbalanceBuyStepX.push(17);
+
+        try {
+            await convRatesInst.setImbalanceStepFunction(tokens[4], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //set size back and see set success
+        imbalanceBuyStepX.length = imbalanceBuyStepY.length;
+        await convRatesInst.setImbalanceStepFunction(tokens[4], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+
+        //imbalance buy step x - change size. see set fails
+        imbalanceBuyStepY.push(17);
+
+        try {
+            await convRatesInst.setImbalanceStepFunction(tokens[4], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //set size back and see set success
+        imbalanceBuyStepY.length = imbalanceBuyStepX.length;
+        await convRatesInst.setImbalanceStepFunction(tokens[4], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+
+        //imbalance sell step x - change size. see set fails
+        imbalanceSellStepX.push(17);
+
+        try {
+            await convRatesInst.setImbalanceStepFunction(tokens[4], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //set size back and see set success
+        imbalanceSellStepX.length = imbalanceSellStepY.length;
+        await convRatesInst.setImbalanceStepFunction(tokens[4], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+
+        //imbalance sell step y - change size. see set fails
+        imbalanceSellStepY.push(17);
+
+        try {
+            await convRatesInst.setImbalanceStepFunction(tokens[4], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //set size back and see set success
+        imbalanceSellStepY.length = imbalanceSellStepX.length;
+        await convRatesInst.setImbalanceStepFunction(tokens[4], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+    });
+
 });
 
 function convertRateToPricingRate (baseRate) {
