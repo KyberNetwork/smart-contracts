@@ -497,9 +497,6 @@ contract('Deployment', function(accounts) {
     networkOwner = accounts[0];
     return Network.new(networkOwner,{gas:4700000}).then(function(instance){
         network = instance;
-        // set whitelist
-        return;
-//        return network.setParams(whitelist.address,0,0,50*10**9,15);
     });
   });
 
