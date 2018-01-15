@@ -39,20 +39,21 @@ contract KyberNetwork is Withdrawable, Utils {
     }
     /* solhint-enable no-complex-fallback */
 
-    event ExecuteTrade(address indexed sender, ERC20 source, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
+    event ExecuteTrade(address indexed sender, ERC20 source, ERC20 dest, uint actualSourceAmount, uint actualDestAmount);
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev makes a trade between source and dest token and send dest token to destAddress
     /// @param source Source token
-    /// @param srcAmount amount of source tokens
+    /// @param sourceAmount amount of source tokens
     /// @param dest   Destination token
     /// @param destAddress Address to send tokens to
     /// @param maxDestAmount A limit on the amount of dest tokens
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
+    /// @param walletId is the wallet ID to send part of the fees
     /// @return amount of actual dest tokens
     function trade(
         ERC20 source,
-        uint srcAmount,
+        uint sourceAmount,
         ERC20 dest,
         address destAddress,
         uint maxDestAmount,
@@ -65,18 +66,18 @@ contract KyberNetwork is Withdrawable, Utils {
     {
         require(enabled);
 
-        uint userSrcBalanceBefore;
-        uint userSrcBalanceAfter;
+        uint userSourceBalanceBefore;
+        uint userSourceBalanceAfter;
         uint userDestBalanceBefore;
         uint userDestBalanceAfter;
 
-        userSrcBalanceBefore = getBalance(source, msg.sender);
+        userSourceBalanceBefore = getBalance(source, msg.sender);
         if (source == ETH_TOKEN_ADDRESS)
-            userSrcBalanceBefore += msg.value;
+            userSourceBalanceBefore += msg.value;
         userDestBalanceBefore = getBalance(dest, destAddress);
 
         uint actualDestAmount = doTrade(source,
-                                        srcAmount,
+                                        sourceAmount,
                                         dest,
                                         destAddress,
                                         maxDestAmount,
@@ -85,14 +86,14 @@ contract KyberNetwork is Withdrawable, Utils {
                                         );
         require(actualDestAmount > 0);
 
-        userSrcBalanceAfter = getBalance(source, msg.sender);
+        userSourceBalanceAfter = getBalance(source, msg.sender);
         userDestBalanceAfter = getBalance(dest, destAddress);
 
-        require(userSrcBalanceAfter <= userSrcBalanceBefore);
+        require(userSourceBalanceAfter <= userSourceBalanceBefore);
         require(userDestBalanceAfter >= userDestBalanceBefore);
 
         require((userDestBalanceAfter - userDestBalanceBefore) >=
-            calcDstQty((userSrcBalanceBefore - userSrcBalanceAfter), getDecimals(source), getDecimals(dest),
+            calcDstQty((userSourceBalanceBefore - userSourceBalanceAfter), getDecimals(source), getDecimals(dest),
                 minConversionRate));
 
         return actualDestAmount;
@@ -152,7 +153,7 @@ contract KyberNetwork is Withdrawable, Utils {
         ExpectedRateInterface _expectedRate,
         FeeBurnerInterface    _feeBurner,
         uint                  _maxGasPrice,
-        uint                  _negligibleDiff
+        uint                  _negligibleRateDiff
     )
         public
         onlyAdmin
@@ -164,7 +165,7 @@ contract KyberNetwork is Withdrawable, Utils {
         expectedRateContract = _expectedRate;
         feeBurnerContract = _feeBurner;
         maxGasPrice = _maxGasPrice;
-        negligibleRateDiff = _negligibleDiff;
+        negligibleRateDiff = _negligibleRateDiff;
     }
 
     function setEnable(bool _enable) public onlyAdmin {
@@ -204,7 +205,7 @@ contract KyberNetwork is Withdrawable, Utils {
     /// @param source Source token
     /// @param dest Destination token
     /* solhint-disable code-complexity */
-    function findBestRate(ERC20 source, ERC20 dest, uint srcQty) public view returns(uint, uint) {
+    function findBestRate(ERC20 source, ERC20 dest, uint sourceQty) public view returns(uint, uint) {
         uint bestRate = 0;
         uint bestReserve = 0;
         uint numRelevantReserves = 0;
@@ -216,7 +217,7 @@ contract KyberNetwork is Withdrawable, Utils {
             //list all reserves that have this token.
             if (!(perReserveListedPairs[reserves[i]])[keccak256(source, dest)]) continue;
 
-            rates[i] = reserves[i].getConversionRate(source, dest, srcQty, block.number);
+            rates[i] = reserves[i].getConversionRate(source, dest, sourceQty, block.number);
 
             if (rates[i] > bestRate) {
                 //best rate is highest rate
@@ -247,12 +248,12 @@ contract KyberNetwork is Withdrawable, Utils {
     }
     /* solhint-enable code-complexity */
 
-    function getExpectedRate(ERC20 source, ERC20 dest, uint srcQuantity)
+    function getExpectedRate(ERC20 source, ERC20 dest, uint sourceQty)
         public view
         returns (uint expectedRate, uint slippageRate)
     {
         require(enabled);
-        return expectedRateContract.getExpectedRate(source, dest, srcQuantity);
+        return expectedRateContract.getExpectedRate(source, dest, sourceQty);
     }
 
     function getUserCapInWei(address user) public view returns(uint) {
@@ -261,7 +262,7 @@ contract KyberNetwork is Withdrawable, Utils {
 
     function doTrade(
         ERC20 source,
-        uint srcAmount,
+        uint sourceAmount,
         ERC20 dest,
         address destAddress,
         uint maxDestAmount,
@@ -272,26 +273,27 @@ contract KyberNetwork is Withdrawable, Utils {
         returns(uint)
     {
         require(tx.gasprice <= maxGasPrice);
-        require(validateTradeInput(source, srcAmount));
+        require(validateTradeInput(source, sourceAmount, destAddress));
 
         uint reserveInd;
         uint rate;
 
-        (reserveInd, rate) = findBestRate(source, dest, srcAmount);
+        (reserveInd, rate) = findBestRate(source, dest, sourceAmount);
         KyberReserve theReserve = reserves[reserveInd];
         require(rate > 0);
         require(rate < MAX_RATE);
         require(rate >= minConversionRate);
 
-        uint actualSourceAmount = srcAmount;
+        uint actualSourceAmount = sourceAmount;
         uint actualDestAmount = calcDestAmount(source, dest, actualSourceAmount, rate);
         if (actualDestAmount > maxDestAmount) {
             actualDestAmount = maxDestAmount;
-            actualSourceAmount = calcSrcAmount(source, dest, actualDestAmount, rate);
+            actualSourceAmount = calcSourceAmount(source, dest, actualDestAmount, rate);
+            require(actualSourceAmount <= sourceAmount);
         }
 
         // do the trade
-        // verify trade size is smaller then user cap
+        // verify trade size is smaller than user cap
         uint ethAmount;
         if (source == ETH_TOKEN_ADDRESS) {
             ethAmount = actualSourceAmount;
@@ -310,8 +312,8 @@ contract KyberNetwork is Withdrawable, Utils {
                 rate,
                 true));
 
-        if ((actualSourceAmount < srcAmount) && (source == ETH_TOKEN_ADDRESS)) {
-            msg.sender.transfer(srcAmount-actualSourceAmount);
+        if ((actualSourceAmount < sourceAmount) && (source == ETH_TOKEN_ADDRESS)) {
+            msg.sender.transfer(sourceAmount - actualSourceAmount);
         }
 
         require(feeBurnerContract.handleFees(ethAmount, theReserve, walletId));
@@ -368,27 +370,29 @@ contract KyberNetwork is Withdrawable, Utils {
         return token.decimals();
     }
 
-    function calcDestAmount(ERC20 source, ERC20 dest, uint srcAmount, uint rate) internal view returns(uint) {
-        return calcDstQty(srcAmount, getDecimals(source), getDecimals(dest), rate);
+    function calcDestAmount(ERC20 source, ERC20 dest, uint sourceAmount, uint rate) internal view returns(uint) {
+        return calcDstQty(sourceAmount, getDecimals(source), getDecimals(dest), rate);
     }
 
-    function calcSrcAmount(ERC20 source, ERC20 dest, uint destAmount, uint rate) internal view returns(uint) {
-        return calcSrcQty(destAmount, getDecimals(source), getDecimals(dest), rate);
+    function calcSourceAmount(ERC20 source, ERC20 dest, uint destAmount, uint rate) internal view returns(uint) {
+        return calcSourceQty(destAmount, getDecimals(source), getDecimals(dest), rate);
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev checks that user sent ether/tokens to contract before trade
     /// @param source Source token
-    /// @param srcAmount amount of source tokens
+    /// @param sourceAmount amount of source tokens
     /// @return true if input is valid
-    function validateTradeInput(ERC20 source, uint srcAmount) internal view returns(bool) {
-        require(srcAmount < MAX_QTY);
+    function validateTradeInput(ERC20 source, uint sourceAmount, address destAddress) internal view returns(bool) {
+        if ((sourceAmount >= MAX_QTY) || (sourceAmount == 0) || (destAddress == 0))
+            return false;
 
         if (source == ETH_TOKEN_ADDRESS) {
-            require(msg.value == srcAmount);
+            if (msg.value != sourceAmount)
+                return false;
         } else {
-            require(msg.value == 0);
-            require(source.allowance(msg.sender, this) >= srcAmount);
+            if ((msg.value != 0) || (source.allowance(msg.sender, this) < sourceAmount))
+                return false;
         }
 
         return true;
