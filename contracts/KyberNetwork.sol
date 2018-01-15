@@ -18,14 +18,15 @@ contract KyberNetwork is Withdrawable, Utils {
     uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
     KyberReserve[] public reserves;
     mapping(address=>bool) public isReserve;
-    WhiteList public whiteList;
+    WhiteList public whiteListContract;
     ExpectedRateInterface public expectedRateContract;
     FeeBurnerInterface    public feeBurnerContract;
     uint                  public maxGasPrice = 50 * 1000 * 1000 * 1000; // 50 gwei
-    bool                  public enable = true; // network is enabled
+    bool                  public enabled = false; // network is enabled
     mapping(address=>mapping(bytes32=>bool)) public perReserveListedPairs;
 
     function KyberNetwork(address _admin) public {
+        require(_admin != address(0));
         admin = _admin;
     }
 
@@ -62,7 +63,7 @@ contract KyberNetwork is Withdrawable, Utils {
         payable
         returns(uint)
     {
-        require(enable);
+        require(enabled);
 
         uint userSrcBalanceBefore;
         uint userSrcBalanceAfter;
@@ -156,7 +157,10 @@ contract KyberNetwork is Withdrawable, Utils {
         public
         onlyAdmin
     {
-        whiteList = _whiteList;
+        require(_whiteList != address(0));
+        require(_feeBurner != address(0));
+        require(_expectedRate != address(0));
+        whiteListContract = _whiteList;
         expectedRateContract = _expectedRate;
         feeBurnerContract = _feeBurner;
         maxGasPrice = _maxGasPrice;
@@ -164,7 +168,12 @@ contract KyberNetwork is Withdrawable, Utils {
     }
 
     function setEnable(bool _enable) public onlyAdmin {
-        enable = _enable;
+        if (_enable == true) {
+            require(whiteListContract != address(0));
+            require(feeBurnerContract != address(0));
+            require(expectedRateContract != address(0));
+        }
+        enabled = _enable;
     }
 
     /// @dev returns number of reserves
@@ -242,12 +251,12 @@ contract KyberNetwork is Withdrawable, Utils {
         public view
         returns (uint expectedRate, uint slippageRate)
     {
-        require(expectedRateContract != address(0));
+        require(enabled);
         return expectedRateContract.getExpectedRate(source, dest, srcQuantity);
     }
 
     function getUserCapInWei(address user) public view returns(uint) {
-        return whiteList.getUserCapInWei(user);
+        return whiteListContract.getUserCapInWei(user);
     }
 
     function doTrade(
@@ -263,8 +272,6 @@ contract KyberNetwork is Withdrawable, Utils {
         returns(uint)
     {
         require(tx.gasprice <= maxGasPrice);
-        require(whiteList != address(0));
-        require(feeBurnerContract != address(0));
         require(validateTradeInput(source, srcAmount));
 
         uint reserveInd;
