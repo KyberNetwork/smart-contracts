@@ -131,7 +131,7 @@ contract('FeeBurner', function(accounts) {
         assert(feesWaitingToBurn.valueOf() == 1, "unexpected waiting to burn.");
 
         let waitingWalletFees = await feeBurnerInst.reserveFeeToWallet(mockReserve, someExternalWallet);
-        assert(waitingWalletFees.valueOf() > 0, "unexpected waiting wallet fees.");
+        assert(waitingWalletFees.valueOf() > 1, "unexpected waiting wallet fees.");
 
         await feeBurnerInst.sendFeeToWallet(someExternalWallet, mockReserve);
 
