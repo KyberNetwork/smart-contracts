@@ -16,6 +16,7 @@ contract SanityRates is SanityRatesInterface, Withdrawable, Utils {
     mapping(address=>uint) public reasonableDiffInBps;
 
     function SanityRates(address _admin) public {
+        require(_admin != address(0));
         admin = _admin;
     }
 

@@ -19,6 +19,8 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface {
     uint public minSlippageFactorInBps = 50;
 
     function ExpectedRate(KyberNetwork _kyberNetwork, address _admin) public {
+        require(_admin != address(0));
+        require(_kyberNetwork != address(0));
         kyberNetwork = _kyberNetwork;
         admin = _admin;
     }
@@ -42,7 +44,6 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface {
         returns (uint expectedRate, uint slippageRate)
     {
         require(quantityFactor != 0);
-        require(kyberNetwork != address(0));
 
         uint bestReserve;
         uint minSlippage;

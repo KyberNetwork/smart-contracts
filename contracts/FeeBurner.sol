@@ -29,6 +29,8 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
     uint public kncPerETHRate = 300;
 
     function FeeBurner(address _admin, BurnableToken kncToken) public {
+        require(_admin != address(0));
+        require(kncToken != address(0));
         admin = _admin;
         knc = kncToken;
     }
@@ -44,8 +46,9 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
         walletFeesInBps[wallet] = feesInBps;
     }
 
-    function setKyberNetwork(address network) public onlyAdmin {
-        kyberNetwork = network;
+    function setKyberNetwork(address _kyberNetwork) public onlyAdmin {
+        require(_kyberNetwork != address(0));
+        kyberNetwork = _kyberNetwork;
     }
 
     function setKNCRate(uint rate) public onlyAdmin {

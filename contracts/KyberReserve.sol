@@ -14,13 +14,16 @@ contract KyberReserve is Withdrawable, Utils {
 
     address public kyberNetwork;
     bool public tradeEnabled;
-    ConversionRates public ratesContract;
+    ConversionRates public conversionRatesContract;
     SanityRatesInterface public sanityRatesContract;
     mapping(bytes32=>bool) public approvedWithdrawAddresses; // sha3(token,address)=>bool
 
     function KyberReserve(address _kyberNetwork, ConversionRates _ratesContract, address _admin) public {
+        require(_admin != address(0));
+        require(_ratesContract != address(0));
+        require(_kyberNetwork != address(0));
         kyberNetwork = _kyberNetwork;
-        ratesContract = _ratesContract;
+        conversionRatesContract = _ratesContract;
         admin = _admin;
         tradeEnabled = true;
     }
@@ -99,15 +102,15 @@ contract KyberReserve is Withdrawable, Utils {
         return true;
     }
 
-    function setContracts(address _kyberNetwork, ConversionRates _rates, SanityRatesInterface _sanityRates)
+    function setContracts(address _kyberNetwork, ConversionRates _conversionRates, SanityRatesInterface _sanityRates)
         public
         onlyAdmin
     {
         require(_kyberNetwork != address(0));
-        require(_rates != address(0));
+        require(_conversionRates != address(0));
 
         kyberNetwork = _kyberNetwork;
-        ratesContract = _rates;
+        conversionRatesContract = _conversionRates;
         sanityRatesContract = _sanityRates;
     }
 
@@ -156,7 +159,7 @@ contract KyberReserve is Withdrawable, Utils {
             return 0; // pair is not listed
         }
 
-        uint rate = ratesContract.getRate(token, blockNumber, buy, srcQty);
+        uint rate = conversionRatesContract.getRate(token, blockNumber, buy, srcQty);
         uint destQty = getDestQty(source, dest, srcQty, rate);
 
         if (getBalance(dest) < destQty) return 0;
@@ -211,7 +214,7 @@ contract KyberReserve is Withdrawable, Utils {
             token = sourceToken;
         }
 
-        ratesContract.recordImbalance(
+        conversionRatesContract.recordImbalance(
             token,
             buy,
             0,

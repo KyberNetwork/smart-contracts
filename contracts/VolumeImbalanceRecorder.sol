@@ -30,6 +30,7 @@ contract VolumeImbalanceRecorder is Withdrawable {
     mapping(address => mapping(uint=>uint)) internal tokenImbalanceData;
 
     function VolumeImbalanceRecorder(address _admin) public {
+        require(_admin != address(0));
         admin = _admin;
     }
 
