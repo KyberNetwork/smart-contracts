@@ -278,4 +278,33 @@ contract('ExpectedRates', function(accounts) {
         assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
         assert.equal(rates[1].valueOf(), qtySlippageRate.valueOf(), "unexpected rate");
     });
+
+    it("should verify get expected rate reverted when quantity factor is 0.", async function() {
+        var qty = 100;
+        rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty);
+
+        await expectedRates.setQuantityFactor(0, {from: operator});
+
+        try {
+            rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        await expectedRates.setQuantityFactor(2, {from: operator});
+        rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty);
+    });
+
+
+    it("should verify get expected rate reverted when kyber network address is 0.", async function() {
+        var qty = 100;
+        var expected1 = await ExpectedRate.new(0, admin);
+        try {
+            await expected1.getExpectedRate(tokenAdd[1], ethAddress, qty);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
  });
