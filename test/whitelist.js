@@ -1,16 +1,10 @@
 let WhiteList = artifacts.require("./WhiteList.sol")
 
-<<<<<<< HEAD
 let admin;
 
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
 
-=======
-let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
-
->>>>>>> 62b31ba... change all var to let in js files.
 let whiteListInst;
 let sgdToEthRateInWei;
 let defaultUserCapSgd = 1000;
