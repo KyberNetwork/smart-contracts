@@ -12,6 +12,7 @@ var minimalRecordResolution = 2; //low resolution so I don't lose too much data.
 var maxPerBlockImbalance = 4000;
 var maxTotalImbalance = maxPerBlockImbalance * 12;
 var admin;
+var alerter;
 var rateUpdateBlock;
 var currentBlock = 3000;
 var wrapper;
@@ -41,6 +42,12 @@ var compactSellArr2 = [];
 var convRatesInst;
 
 contract('ConversionRates', function(accounts) {
+    it("should init globals", function() {
+        admin = accounts[0];
+        alerter = accounts[1];
+        operator = accounts[2];
+        reserveAddress = accounts[3];
+    })
     it("should test bytes14.", async function () {
         var arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
         var hexArr = Helper.bytesToHex(arr);
@@ -57,7 +64,7 @@ contract('ConversionRates', function(accounts) {
 
     it("should init ConversionRates Inst and set general parameters.", async function () {
         //init contracts
-        convRatesInst = await ConversionRates.new(accounts[0], {});
+        convRatesInst = await ConversionRates.new(admin);
 
         //set pricing general parameters
         convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);
@@ -70,15 +77,11 @@ contract('ConversionRates', function(accounts) {
             await convRatesInst.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
             await convRatesInst.enableTokenTrade(token.address);
         }
-
         assert.equal(tokens.length, numTokens, "bad number tokens");
-
-        // set account addresses
-        operator = accounts[1];
-        reserveAddress = accounts[2];
 
         await convRatesInst.addOperator(operator);
         await convRatesInst.setReserveAddress(reserveAddress);
+        await convRatesInst.addAlerter(alerter);
     });
 
     it("should set base rates for all tokens then get and verify.", async function () {
@@ -684,6 +687,137 @@ contract('ConversionRates', function(accounts) {
         await convRatesInst.setImbalanceStepFunction(tokens[4], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
     });
 
+    it("should verify set qty step reverted when token not listed.", async function () {
+        try {
+            await convRatesInst.setImbalanceStepFunction(35, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should verify enable token trade reverted if token not added(listed).", async function () {
+
+        var someToken = await TestToken.new("testinggg", "ts11", 15);
+
+        await convRatesInst.setTokenControlInfo(someToken.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
+
+        //try to enable token trade when not listed.
+        try {
+            await convRatesInst.enableTokenTrade(someToken.address);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //add token and see enable success
+        await convRatesInst.addToken(someToken.address);
+        await convRatesInst.enableTokenTrade(someToken.address);
+    });
+
+    it("should verify enable token trade reverted if token control info not set.", async function () {
+
+        var someToken = await TestToken.new("testing", "tst9", 15);
+
+        await convRatesInst.addToken(someToken.address);
+
+        //try to enable token trade when not listed.
+        try {
+            await convRatesInst.enableTokenTrade(someToken.address);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //add token and see enable success
+        await convRatesInst.setTokenControlInfo(someToken.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
+        await convRatesInst.enableTokenTrade(token.address);
+    });
+
+    it("should verify disable token trade reverted if token not listed.", async function () {
+
+        var someToken = await TestToken.new("testing", "tst9", 15);
+
+        //try to disable token trade when not listed.
+        try {
+            await convRatesInst.disableTokenTrade(someToken.address, {from: alerter});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //add token and see enable success
+        await convRatesInst.addToken(someToken.address);
+        await convRatesInst.disableTokenTrade(someToken.address, {from: alerter});
+    });
+
+    it("should verify get rate returns 0 if token disabled.", async function () {
+        var qty = 3000;
+        var index = 5;
+
+        var rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
+
+        assert(rate > 0, "unexpected rate");
+
+        await convRatesInst.disableTokenTrade(tokens[index], {from: alerter});
+        var rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
+        assert(rate == 0, "unexpected rate");
+
+        await convRatesInst.enableTokenTrade(tokens[index]);
+    });
+
+    it("should verify get rate returns 0 if token minimal record resolution is zero.", async function () {
+        var qty = 3000;
+        var index = 5;
+
+        var rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
+
+        assert(rate > 0, "unexpected rate");
+
+        await convRatesInst.setTokenControlInfo(tokens[index], 0, 0, 0);
+        var rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
+        assert(rate == 0, "unexpected rate");
+
+        await convRatesInst.setTokenControlInfo(tokens[index], minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
+    });
+
+    it("should verify get rate returns 0 block is high (bigger then expiration block).", async function () {
+        var qty = 3000;
+        var index = 5;
+
+        var rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
+
+        assert(rate > 0, "unexpected rate");
+
+        var rate = await convRatesInst.getRate(tokens[index], currentBlock*1 + 2000, false, qty);
+        assert(rate == 0, "unexpected rate");
+    });
+
+    it("should verify get rate returns 0 when qty above block imbalance.", async function () {
+        var qty = maxPerBlockImbalance * 1 - 1;
+        var index = 5;
+
+        var rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
+
+        assert(rate > 0, "unexpected rate");
+
+        qty = qty * 1 + 2;
+        var rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
+        assert(rate == 0, "unexpected rate");
+    });
+
+    it("should verify record imbalance reverted when not from reserve address.", async function () {
+        //try record imbalance
+        try {
+            await convRatesInst.recordImbalance(tokens[5], 30, currentBlock, currentBlock, {from: alerter});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //now the same from reserve address
+        await convRatesInst.recordImbalance(tokens[5], 30, currentBlock, currentBlock, {from: reserveAddress});
+    });
 });
 
 function convertRateToPricingRate (baseRate) {
