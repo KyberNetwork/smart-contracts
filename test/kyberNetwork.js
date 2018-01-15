@@ -474,6 +474,7 @@ contract('KyberNetwork', function(accounts) {
         let amountWei = 4 * 1;
         let minConversionRate = 0;
 
+
         //unlist and verify trade reverted.
         await network.listPairForReserve(reserve1.address, ethAddress, tokenAdd[tokenInd], false);
         await network.listPairForReserve(reserve2.address, ethAddress, tokenAdd[tokenInd], false);

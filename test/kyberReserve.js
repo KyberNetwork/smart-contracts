@@ -773,6 +773,7 @@ contract('KyberReserve', function(accounts) {
         sanityRate = await SanityRates.new(admin);
         await sanityRate.addOperator(operator);
         let tokens2 = [tokenAdd[tokenInd]];
+
         //set low rate - that will be smaller then calculated and cause return value 0
         let rates2 = [new BigNumber(sellRate).div(2).floor()];
 
@@ -799,7 +800,6 @@ contract('KyberReserve', function(accounts) {
         let amountTwei = maxPerBlockImbalance - 1;
         let srcQty = 50; //some high number of figure out ~rate
         let buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], srcQty, currentBlock);
-        srcQty = await reserveInst.getSrcQty(ethAddress, tokenAdd[tokenInd], amountTwei, 10);
         srcQty = await reserveInst.getSrcQty(ethAddress, tokenAdd[tokenInd], amountTwei, buyRate);
 
         let token = tokens[tokenInd];
@@ -816,7 +816,6 @@ contract('KyberReserve', function(accounts) {
         balance = await token.balanceOf(reserveInst.address);
         assert(balance < amountTwei, "unexpected token balance: " + balance);
 
-        //see
         let rate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], srcQty, currentBlock);
         assert.equal(rate.valueOf(), 0, "unexpected rate");
     });
