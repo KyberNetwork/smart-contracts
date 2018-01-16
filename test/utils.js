@@ -47,18 +47,18 @@ contract('utils', function(accounts) {
         let srcDecimal = 10;
         let dstDecimal = 16;
 
-        let expectedSourceQty = (((precision / rate)* dstQty * (10**(srcDecimal - dstDecimal))));
-        let reportedSourceQty = await utils.mockCalcSourceQty(dstQty, srcDecimal, dstDecimal, rate);
+        let expectedSrcQty = (((precision / rate)* dstQty * (10**(srcDecimal - dstDecimal))));
+        let reportedSrcQty = await utils.mockCalcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
 
-        assert.equal(expectedSourceQty, reportedSourceQty.valueOf(), "unexpected src qty");
+        assert.equal(expectedSrcQty, reportedSrcQty.valueOf(), "unexpected src qty");
 
         //check when dest decimals < src decimals
         srcDecimal = 12;
         dstDecimal = 10;
 
-        expectedSourceQty = (((precision / rate)* dstQty * (10**(srcDecimal - dstDecimal))));
-        reportedSourceQty = await utils.mockCalcSourceQty(dstQty, srcDecimal, dstDecimal, rate.valueOf());
-        assert.equal(expectedSourceQty, reportedSourceQty.valueOf(), "unexpected src qty");
+        expectedSrcQty = (((precision / rate)* dstQty * (10**(srcDecimal - dstDecimal))));
+        reportedSrcQty = await utils.mockCalcSrcQty(dstQty, srcDecimal, dstDecimal, rate.valueOf());
+        assert.equal(expectedSrcQty, reportedSrcQty.valueOf(), "unexpected src qty");
     });
 
     it("should check when decimals diff > 18 calc reverted.", async function () {
@@ -79,7 +79,7 @@ contract('utils', function(accounts) {
         }
 
         try {
-            await utils.mockCalcSourceQty(30, 10, 30, 1500);
+            await utils.mockCalcSrcQty(30, 10, 30, 1500);
             assert(false, "throw was expected in line above.")
         }
         catch(e){

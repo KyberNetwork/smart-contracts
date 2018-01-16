@@ -120,7 +120,6 @@ contract('KyberReserve', function(accounts) {
 
         let result = await convRatesInst.addOperator(operator);
         await convRatesInst.addAlerter(alerter);
-        //        console.log
     });
 
     it("should set base prices + compact data price factor + step function. for all tokens.", async function () {
@@ -606,17 +605,17 @@ contract('KyberReserve', function(accounts) {
         let dstQty = 300;
         let rate = precisionUnits / 2;
 
-        let getSrcQTY = await reserveInst.getSourceQty(token3Dec.address, ethAddress, dstQty, rate);
-        let calcSourceQty = precisionUnits.mul(dstQty).mul(10).pow(3 - 18).div(rate).floor();
-        assert.equal(calcSourceQty.valueOf(), getSrcQTY.valueOf(), "bad src qty");
+        let getSrcQTY = await reserveInst.getSrcQty(token3Dec.address, ethAddress, dstQty, rate);
+        let calcSrcQty = precisionUnits.mul(dstQty).mul(10).pow(3 - 18).div(rate).floor();
+        assert.equal(calcSrcQty.valueOf(), getSrcQTY.valueOf(), "bad src qty");
 
-        getSrcQTY = await reserveInst.getSourceQty(ethAddress, token3Dec.address, dstQty, rate);
-        calcSourceQty = (precisionUnits / rate ) * dstQty / ((10 ** (3 - 18)));;
-        assert.equal(calcSourceQty.valueOf(), getSrcQTY.valueOf(), "bad src qty");
+        getSrcQTY = await reserveInst.getSrcQty(ethAddress, token3Dec.address, dstQty, rate);
+        calcSrcQty = (precisionUnits / rate ) * dstQty / ((10 ** (3 - 18)));;
+        assert.equal(calcSrcQty.valueOf(), getSrcQTY.valueOf(), "bad src qty");
 
         //see reverted when qty diff > max diff
         try {
-            getSrcQTY = await reserveInst.getSourceQty(token30Dec.address, token3Dec.address, dstQty, rate);
+            getSrcQTY = await reserveInst.getSrcQty(token30Dec.address, token3Dec.address, dstQty, rate);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -624,7 +623,7 @@ contract('KyberReserve', function(accounts) {
 
         //see reverted when qty diff > max diff
         try {
-            getSrcQTY = await reserveInst.getSourceQty(token3Dec.address, token30Dec.address, dstQty, rate);
+            getSrcQTY = await reserveInst.getSrcQty(token3Dec.address, token30Dec.address, dstQty, rate);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -719,11 +718,11 @@ contract('KyberReserve', function(accounts) {
 
         //get src qty
         let dstQty = 100000;
-        let expectedSourceQty = (((precision / rate)* dstQty * (10**(srcDecimal - dstDecimal))));
+        let expectedSrcQty = (((precision / rate)* dstQty * (10**(srcDecimal - dstDecimal))));
 
-        let reportedSourceQty = await reserveInst.getSourceQty(tokenA.address, tokenB.address, dstQty, rate);
+        let reportedSrcQty = await reserveInst.getSrcQty(tokenA.address, tokenB.address, dstQty, rate);
 
-        assert.equal(expectedSourceQty.valueOf(), reportedSourceQty.valueOf(), "unexpected dst qty");
+        assert.equal(expectedSrcQty.valueOf(), reportedSrcQty.valueOf(), "unexpected dst qty");
     });
 
     it ("should test get conversion rate options", async function() {
@@ -800,9 +799,9 @@ contract('KyberReserve', function(accounts) {
         let amountTwei = maxPerBlockImbalance - 1;
         let srcQty = 50; //some high number of figure out ~rate
         let buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], srcQty, currentBlock);
-        console.log(ethAddress+ "  " + tokenAdd[tokenInd] + "  " + amountTwei + "  "  + buyRate)
-        srcQty = await reserveInst.getSourceQty(ethAddress, tokenAdd[tokenInd], amountTwei, 10);
-        srcQty = await reserveInst.getSourceQty(ethAddress, tokenAdd[tokenInd], amountTwei, buyRate);
+
+        srcQty = await reserveInst.getSrcQty(ethAddress, tokenAdd[tokenInd], amountTwei, 10);
+        srcQty = await reserveInst.getSrcQty(ethAddress, tokenAdd[tokenInd], amountTwei, buyRate);
 
         let token = tokens[tokenInd];
         for (let i = 0; i < 200; i++){

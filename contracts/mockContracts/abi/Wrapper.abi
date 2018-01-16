@@ -103,7 +103,7 @@
         "type": "address"
       },
       {
-        "name": "sources",
+        "name": "srcs",
         "type": "address[]"
       },
       {

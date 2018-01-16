@@ -278,9 +278,9 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
 
     function getTokenQty(ERC20 token, uint ethQty, uint rate) internal view returns(uint) {
         uint dstDecimals = token.decimals();
-        uint sourceDecimals = 18;
+        uint srcDecimals = 18;
 
-        return calcDstQty(ethQty, sourceDecimals, dstDecimals, rate);
+        return calcDstQty(ethQty, srcDecimals, dstDecimals, rate);
     }
 
     function getLast4Bytes(bytes32 b) internal pure returns(uint) {
