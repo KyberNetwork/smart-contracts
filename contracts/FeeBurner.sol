@@ -37,6 +37,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
 
     function setReserveData(address reserve, uint feesInBps, address kncWallet) public onlyAdmin {
         require(feesInBps < 100); // make sure it is always < 1%
+        require(kncWallet != address(0));
         reserveFeesInBps[reserve] = feesInBps;
         reserveKNCWallet[reserve] = kncWallet;
     }
@@ -86,7 +87,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
 
     function burnReserveFees(address reserve) public {
         uint burnAmount = reserveFeeToBurn[reserve];
-        require(burnAmount > 0);
+        require(burnAmount > 1);
         reserveFeeToBurn[reserve] = 1; // leave 1 twei to avoid spikes in gas fee
         require(knc.burnFrom(reserveKNCWallet[reserve], burnAmount - 1));
 
@@ -98,7 +99,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
     // this function is callable by anyone
     function sendFeeToWallet(address wallet, address reserve) public {
         uint feeAmount = reserveFeeToWallet[reserve][wallet];
-        require(feeAmount > 0);
+        require(feeAmount > 1);
         reserveFeeToWallet[reserve][wallet] = 1; // leave 1 twei to avoid spikes in gas fee
         require(knc.transferFrom(reserveKNCWallet[reserve], wallet, feeAmount - 1));
 
