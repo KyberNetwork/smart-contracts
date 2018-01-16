@@ -715,10 +715,10 @@ it("set eth to dgd rate", function() {
 
        return tokenInstance[1].balanceOf(destAddress);
     }).then(function(result){
-      if( result.valueOf() > expectedDgd.valueOf() + 10 ) {
+      if( result.valueOf() > expectedDgd.valueOf() + 100 ) {
         assert.fail("unexpected dgd balance", result.valueOf(), expectedDgd.valueOf() );
       }
-      if( result.valueOf() < expectedDgd.valueOf() - 10 ) {
+      if( result.valueOf() < expectedDgd.valueOf() - 100 ) {
         assert.fail("unexpected dgd balance", result.valueOf(), expectedDgd.valueOf() );
       }
     }).then(function(){

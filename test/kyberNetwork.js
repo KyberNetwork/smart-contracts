@@ -531,7 +531,7 @@ contract('KyberNetwork', function(accounts) {
 
         //set high imbalance values
         let highImbalance = amountTWei.mul(4).valueOf();
-        await pricing1.setTokenControlInfo(token.address, minimalRecordResolution, highImbalance, highImbalance);
+        await pricing1.setTokenControlInfo(token.address, new BigNumber(10).pow(14), highImbalance, highImbalance);
         //set large category cap for user 1
         await whiteList.setUserCategory(user1, 1, {from: operator});
         await whiteList.setCategoryCap(1, amountTWei.mul(2).valueOf(), {from:operator});
