@@ -504,7 +504,7 @@ contract('Deployment', function(accounts) {
 
   it("create conversionRates", function() {
     this.timeout(31000000);
-    return ConversionRates.new(accounts[0],{gas:4700000}).then(function(instance){
+    return ConversionRates.new(accounts[0],{gas:5700000}).then(function(instance){
         conversionRates = instance;
         return conversionRates.addOperator(accounts[0],{from:accounts[0]});
     });

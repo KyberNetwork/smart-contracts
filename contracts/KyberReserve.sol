@@ -99,6 +99,8 @@ contract KyberReserve is Withdrawable, Utils {
         return true;
     }
 
+    event SetContractAddresses(address network, address rate, address sanity);
+
     function setContracts(address _kyberNetwork, ConversionRates _rates, SanityRatesInterface _sanityRates)
         public
         onlyAdmin
@@ -109,6 +111,8 @@ contract KyberReserve is Withdrawable, Utils {
         kyberNetwork = _kyberNetwork;
         ratesContract = _rates;
         sanityRatesContract = _sanityRates;
+
+        SetContractAddresses(kyberNetwork, ratesContract, sanityRatesContract);
     }
 
     ////////////////////////////////////////////////////////////////////////////
