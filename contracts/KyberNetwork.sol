@@ -252,7 +252,7 @@ contract KyberNetwork is Withdrawable, Utils {
         public view
         returns (uint expectedRate, uint slippageRate)
     {
-        require(enabled);
+        require(expectedRateContract != address(0));
         return expectedRateContract.getExpectedRate(src, dest, srcQty);
     }
 
