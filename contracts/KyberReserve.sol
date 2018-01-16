@@ -115,7 +115,7 @@ contract KyberReserve is Withdrawable, Utils {
         conversionRatesContract = _conversionRates;
         sanityRatesContract = _sanityRates;
 
-        SetContractAddresses(kyberNetwork, ratesContract, sanityRatesContract);
+        SetContractAddresses(kyberNetwork, conversionRatesContract, sanityRatesContract);
     }
 
     ////////////////////////////////////////////////////////////////////////////
