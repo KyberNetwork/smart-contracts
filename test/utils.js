@@ -86,4 +86,30 @@ contract('utils', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     });
+
+    it("should check when decimals diff > 18 calc reverted.", async function () {
+        try {
+            await utils.mockCalcDstQty(30, 10, 30, 1500);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await utils.mockCalcDstQty(30, 30, 10, 1500);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await utils.mockCalcSourceQty(30, 10, 30, 1500);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
 });

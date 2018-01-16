@@ -799,7 +799,6 @@ contract('KyberReserve', function(accounts) {
         let amountTwei = maxPerBlockImbalance - 1;
         let srcQty = 50; //some high number of figure out ~rate
         let buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], srcQty, currentBlock);
-
         srcQty = await reserveInst.getSrcQty(ethAddress, tokenAdd[tokenInd], amountTwei, 10);
         srcQty = await reserveInst.getSrcQty(ethAddress, tokenAdd[tokenInd], amountTwei, buyRate);
 
