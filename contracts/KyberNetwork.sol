@@ -169,7 +169,7 @@ contract KyberNetwork is Withdrawable, Utils {
     }
 
     function setEnable(bool _enable) public onlyAdmin {
-        if (_enable == true) {
+        if (_enable) {
             require(whiteListContract != address(0));
             require(feeBurnerContract != address(0));
             require(expectedRateContract != address(0));
