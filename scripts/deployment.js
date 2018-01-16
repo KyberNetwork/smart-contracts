@@ -497,8 +497,6 @@ contract('Deployment', function(accounts) {
     networkOwner = accounts[0];
     return Network.new(networkOwner,{gas:4700000}).then(function(instance){
         network = instance;
-        // set whitelist
-        return network.setParams(whitelist.address,0,0,50*10**9,15);
     });
   });
 
@@ -601,9 +599,10 @@ contract('Deployment', function(accounts) {
 
   it("set network params", function() {
     this.timeout(31000000);
-
-    // set whitelist
-    return network.setParams(whitelist.address,expectedRate.address,feeBurner.address,50*10**9,15);
+    // set contracts and enable network
+    return network.setParams(whitelist.address,expectedRate.address,feeBurner.address,50*10**9,15).then( function() {
+        return network.setEnable(true);
+    });
   });
 
   it("add reserve to network", function() {
