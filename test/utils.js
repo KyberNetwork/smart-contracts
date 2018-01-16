@@ -13,24 +13,6 @@ contract('utils', function(accounts) {
         utils = await MockUtils.new();
     });
 
-    it("should check when decimals diff > 18 calc reverted.", async function () {
-        try {
-            await utils.mockCalcDstQty(30, 10, 30, 1500);
-            assert(false, "throw was expected in line above.")
-        }
-        catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        try {
-            await utils.mockCalcSourceQty(30, 10, 30, 1500);
-            assert(false, "throw was expected in line above.")
-        }
-        catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-    });
-
     it("check dest qty calculation.", async function () {
         let srcQty = 100;
         let rate = precision.div(2); //1 to 2. in precision units
@@ -77,5 +59,31 @@ contract('utils', function(accounts) {
         expectedSourceQty = (((precision / rate)* dstQty * (10**(srcDecimal - dstDecimal))));
         reportedSourceQty = await utils.mockCalcSourceQty(dstQty, srcDecimal, dstDecimal, rate.valueOf());
         assert.equal(expectedSourceQty, reportedSourceQty.valueOf(), "unexpected src qty");
+    });
+
+    it("should check when decimals diff > 18 calc reverted.", async function () {
+        try {
+            await utils.mockCalcDstQty(30, 10, 30, 1500);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await utils.mockCalcDstQty(30, 30, 10, 1500);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await utils.mockCalcSourceQty(30, 10, 30, 1500);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
     });
 });

@@ -754,7 +754,7 @@ contract('KyberReserve', function(accounts) {
         assert.equal(0, sellRate.valueOf(), "rate not 0");
 
         //test normal case.
-            sellRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock);
+        sellRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock);
 
         //check correct rate calculated
         assert.equal(sellRate.valueOf(), expectedRate.valueOf(), "unexpected rate.");
@@ -763,7 +763,7 @@ contract('KyberReserve', function(accounts) {
     it ("should test get conversion rate return 0 when sanity rate is lower the calculated rate", async function() {
         let tokenInd = 1;
         let token = tokens[tokenInd]; //choose some token
-        let amount = 300 * 1;
+        let amount = 30 * 1;
 
         let sellRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amount, currentBlock);
 
@@ -774,10 +774,11 @@ contract('KyberReserve', function(accounts) {
         sanityRate = await SanityRates.new(admin);
         await sanityRate.addOperator(operator);
         let tokens2 = [tokenAdd[tokenInd]];
-        let rates2 = [new BigNumber(sellRate).mul(9).div(11).floor()];
+        //set low rate - that will be smaller then calculated and cause return value 0
+        let rates2 = [new BigNumber(sellRate).div(2).floor()];
 
         await sanityRate.setSanityRates(tokens2, rates2, {from: operator});
-        let diffs = [10];
+        let diffs = [1000];
         await sanityRate.setReasonableDiff(tokens2, diffs, {from: admin});
 
         await reserveInst.setContracts(network, convRatesInst.address, sanityRate.address, {from:admin});
@@ -786,22 +787,26 @@ contract('KyberReserve', function(accounts) {
 
         assert.equal(nowRate.valueOf(), 0, "expected zero rate.");
 
-        //remove sanity rate contract.
-        await reserveInst.setContracts(network, convRatesInst.address, 0, {from:admin});
+        //set high sanity rate. that will not fail the calculated rate.
+        rates2 = [new BigNumber(sellRate).mul(2).floor()];
+        await sanityRate.setSanityRates(tokens2, rates2, {from: operator});
         nowRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amount, currentBlock);
         assert(nowRate.valueOf() > 0, "expected valid rate.");
+        await reserveInst.setContracts(network, convRatesInst.address, 0, {from:admin});
     });
 
     it("should zero reserve balance and see that get rate returns zero when not enough dest balance", async function() {
         let tokenInd = 1;
         let amountTwei = maxPerBlockImbalance - 1;
-        let srcQty = 60; //some high number of figure out ~rate
+        let srcQty = 50; //some high number of figure out ~rate
         let buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], srcQty, currentBlock);
+        console.log(ethAddress+ "  " + tokenAdd[tokenInd] + "  " + amountTwei + "  "  + buyRate)
+        srcQty = await reserveInst.getSourceQty(ethAddress, tokenAdd[tokenInd], amountTwei, 10);
         srcQty = await reserveInst.getSourceQty(ethAddress, tokenAdd[tokenInd], amountTwei, buyRate);
 
         let token = tokens[tokenInd];
         for (let i = 0; i < 200; i++){
-            //perform trade
+            //perform trades until reverted due to low dest quantity
             try {
                 await reserveInst.trade(ethAddress, srcQty, tokenAdd[tokenInd], user1, buyRate, true, {from:network, value:srcQty});
             } catch (e) {
@@ -809,9 +814,11 @@ contract('KyberReserve', function(accounts) {
             }
         }
 
+        //expect dest balance to be low
         balance = await token.balanceOf(reserveInst.address);
         assert(balance < amountTwei, "unexpected token balance: " + balance);
 
+        //see
         let rate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], srcQty, currentBlock);
         assert.equal(rate.valueOf(), 0, "unexpected rate");
     });

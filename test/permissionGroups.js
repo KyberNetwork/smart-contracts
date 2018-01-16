@@ -190,4 +190,56 @@ contract('PermissionGroups', function(accounts) {
         assert.equal(alerters.length, 1, "bad number of alerters.")
         assert.equal(accounts[4], alerters[0]);
     });
-})
+
+    it("should test new admin address 0 is reverted.", async function () {
+        let someAdmin = accounts[9];
+
+        try {
+            await permissionsInst.transferAdmin(0);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        await permissionsInst.transferAdmin(someAdmin);
+    });
+
+    it("should test can't add same alerter twice.", async function () {
+        let alerter2 = accounts[9];
+
+        await permissionsInst.addAlerter(alerter2);
+
+        try {
+            await permissionsInst.addAlerter(alerter2);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should test can't add same operator twice.", async function () {
+        let operator2 = accounts[9];
+
+        await permissionsInst.addOperator(operator2);
+
+        try {
+            await permissionsInst.addOperator(operator2);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should test removing 2nd alerter.", async function () {
+        let alerter2 = accounts[2];
+        let alerter3 = accounts[3];
+
+        await permissionsInst.addAlerter(alerter2);
+        await permissionsInst.addAlerter(alerter3);
+
+        await permissionsInst.removeAlerter(alerter2);
+    });
+});

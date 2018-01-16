@@ -67,7 +67,43 @@ contract('SanityRates', function(accounts) {
            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        //sanity rates can currently be empty
         sanityRatess = await SanityRates.new(admin);
+    });
+
+    it("should test can't init diffs when array lengths aren't the same.", async function () {
+        reasonableDiffs.push(8);
+        try {
+            await sanityRates.setReasonableDiff(tokens, reasonableDiffs);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        reasonableDiffs.length = tokens.length;
+
+        await sanityRates.setReasonableDiff(tokens, reasonableDiffs);
+    });
+
+    it("should test can't init rates when array lengths aren't the same.", async function () {
+        rates.push(8);
+        try {
+            await sanityRates.setSanityRates(tokens, rates, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        rates.length = tokens.length;
+
+        await sanityRates.setSanityRates(tokens, rates, {from: operator});
+    });
+
+    it("should test return rate 0 when both are tokens (no ether).", async function () {
+        let rate0 = await sanityRates.getSanityRate(tokens[1], tokens[2]);
+        assert.equal(rate0, 0, "0 rate expected");
+        rate0 = await sanityRates.getSanityRate(tokens[0], tokens[1]);
+        assert.equal(rate0, 0, "0 rate expected");
+        rate0 = await sanityRates.getSanityRate(tokens[2], tokens[3]);
+        assert.equal(rate0, 0, "0 rate expected");
     });
 });

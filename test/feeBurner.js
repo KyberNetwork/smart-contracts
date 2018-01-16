@@ -157,25 +157,98 @@ contract('FeeBurner', function(accounts) {
             catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
         }
-   });
+    });
 
-   it("should test can't init this contract with empty contracts (address 0).", async function () {
-       let feeBurnerTemp;
+    it("should test can't init this contract with empty contracts (address 0).", async function () {
+        let feeBurnerTemp;
 
-       try {
-           feeBurnerTemp =  await FeeBurner.new(admin, 0);
-           assert(false, "throw was expected in line above.")
-       } catch(e){
-           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-       }
+        try {
+            feeBurnerTemp =  await FeeBurner.new(admin, 0);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
-       try {
-           feeBurnerTemp =  await FeeBurner.new(0, kncToken.address);
-           assert(false, "throw was expected in line above.")
-       } catch(e){
-           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-       }
+        try {
+            feeBurnerTemp =  await FeeBurner.new(0, kncToken.address);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
-       feeBurnerTemp =  await FeeBurner.new(admin, kncToken.address);
-   });
+        feeBurnerTemp =  await FeeBurner.new(admin, kncToken.address);
+
+        try {
+            await feeBurnerTemp.setKyberNetwork(0);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        await feeBurnerTemp.setKyberNetwork(mockKyberNetwork);
+    });
+
+    it("should test can't set bps fee > 1% (100 bps) and can't set empty knc wallet.", async function () {
+        let highBpsfee = 101;
+
+        try {
+            await feeBurnerInst.setReserveData(mockReserve, highBpsfee, mockKNCWallet);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //see success
+        await feeBurnerInst.setReserveData(mockReserve, 99, mockKNCWallet);
+
+        try {
+            await feeBurnerInst.setReserveData(mockReserve, 99, 0);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //see success
+        await feeBurnerInst.setReserveData(mockReserve, 99, mockKNCWallet);
+    });
+
+    it("should test can't set wallet fees above 100% (10000 bps).", async function () {
+        let highBpsfee = 10000;
+
+        try {
+            await feeBurnerInst.setWalletFees(someExternalWallet, highBpsfee);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //see success
+        await feeBurnerInst.setWalletFees(someExternalWallet, 9999);
+    });
+
+    it("should test burn fees reverted when balance is 'zeroed' == 1.", async function () {
+        try {
+            await feeBurnerInst.burnReserveFees(mockReserve);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await feeBurnerInst.burnReserveFees(mockReserve);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should test send fees to wallet reverted when balance is 'zeroed' == 1.", async function () {
+        try {
+            await feeBurnerInst.sendFeeToWallet(someExternalWallet, mockReserve);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
 });
