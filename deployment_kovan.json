@@ -6,74 +6,84 @@
       "decimals": 18
     },
     "OMG": {
-      "address": "0x28108bc3f3bd42a1144daff0eb73eddadf2f3510",
+      "address": "0x7606bd550f467546212649a9c25623dfca88dcd7",
       "name": "OmiseGO",
       "decimals": 18
     },
     "KNC": {
-      "address": "0x6b795456a4fe39d3171d0584ef7df787eeabea26",
+      "address": "0x8dc114d77e857558aefbe8e1a50b460ff9578f1a",
       "name": "KyberNetwork",
       "decimals": 18
     },
     "EOS": {
-      "address": "0x094655b92b557e164b82c702fed10f1e152351ea",
+      "address": "0x15fb2a9d7dadbb88f260f78dcbb574b3b76a8e06",
       "name": "Eos",
       "decimals": 18
     },
     "SALT": {
-      "address": "0x0be7d3de36c9bde96d529b41d0639204b2ed19c2",
-      "name": "SNT",
+      "address": "0xcc112cd38362bf3c07d226768fd5869e65296083",
+      "name": "SALT",
+      "decimals": 8
+    },
+    "SNT": {
+      "address": "0x676f650000f420485b99ef0377a2e1c96eb3e821",
+      "name": "STATUS",
       "decimals": 18
     }
   },
   "exchangesAddress": {
-    "bittrex": "0xc52c9be53b113b67fd409104bb4fe87aeb5594c9",
-    "liqui": "0xe0fb184197afcad2bce798150bbb61a556ab1910",
-    "poloniex": "0x3ca82ef89fdb3c2736f2d15cfba5e46ff13300b9",
-    "binance": "0xb87c9946b8e8cb3fda218041666e65e7a5d129f5",
-    "bitfinex": "0x9522c4218664539e61aa86dfb6cc172093e4e2e1"
+    "bittrex": "0x337bd888263110b9e285815436a47b65bced5957",
+    "liqui": "0xa65204dcd9484a3c8a5e927398625c1de9084e25",
+    "poloniex": "0x711c6e568477524b32e1b249442b2af6458a2464",
+    "binance": "0x30e9e8f35b7aa27cca210961716681fdc62e990a",
+    "bitfinex": "0x38adde42854d787da1512a588216059937287903"
   },
   "exchanges": {
     "bittrex": {
-      "OMG": "0xb577c9a6cab74fc26e7d3c47a215ec171d2fafe7",
-      "KNC": "0x4dc179ad0cfe87337d523bc4817b96629b981ad7",
-      "EOS": "0x17db02ef8200c62b68626d1bfb169f3c889fe200",
-      "SALT": "0x42e26fd05b47ca5a1ab245464fa3b20ddb9db379",
-      "ETH": "0xcaac90bb6339cff15427684e2bf827156622cfd7"
+      "OMG": "0xd9f95b69708082975302e52fa7ce873660de4f1b",
+      "KNC": "0x132478f1ec4b8e1256b11fdf3e00d97e4df5988f",
+      "EOS": "0xef6ee90c5bb23da2eb71b3daa8e57b204e5ac647",
+      "SALT": "0x385d619b530f00ab7d082683f7cdc37995ac76f2",
+      "SNT": "0x3ef96f9de64c44b1ad392b10e2277a73ec14ff5f",
+      "ETH": "0x46ff7ebe96cdf10c6924db000a809881d849b570"
     },
     "liqui": {
-      "OMG": "0x36ce496260d03a1b85bf6777f228a32563887330",
-      "KNC": "0x254d19765ebb4e17bdc10d9449a765755c278bb4",
-      "EOS": "0xbd3d24860ceb0ec3f08ac4f37211e3ec57b9e48d",
-      "SALT": "0x0358cc72971335984d6a730cb239e49b1dc4c0fe",
-      "ETH": "0x1fc6b6f15f8fad3de74951a050fe0a663e37de72"
+      "OMG": "0x275a5b53a05b2e7dd7a7e5af57ba3e511154f80e",
+      "KNC": "0x9be40f24aeca73a20a56fc7a5827862782532dd4",
+      "EOS": "0x9b289197b1a9717d3a8c2ce73943aa714d5ad4a7",
+      "SALT": "0xc81e91848618cdbd80056e220088347554abc2da",
+      "SNT": "0x5264a52025ece5bdf33955fc4855084ea4261ea8",
+      "ETH": "0x839c63d65420ba5331d0b5ac717c04c4ab046c52"
     },
     "poloniex": {
-      "OMG": "0x4bb359f37d3947d1b7b5b58648be13d904eb6eb8",
-      "KNC": "0x879289c2d2eab8c8658108279b8a32eb75020180",
-      "EOS": "0xcbcd57a7fd8c921d213319310baca61ab832beac",
-      "SALT": "0x2b7c578187fbea01aa2a78fae2d3b575290f35f1",
-      "ETH": "0x84b95801e6632bd8b0dc3560c0b230d16bc64478"
+      "OMG": "0x530f8b471c40072e2f8e731192ab34ede0c60dce",
+      "KNC": "0x0a121ee34697e4fdbeef517dbf2e066015d2b8ce",
+      "EOS": "0xa028ffc099ee430c3e1a24477f944f323f0f137d",
+      "SALT": "0xa87c406af03bef102bc2db318417ebe3f32b9209",
+      "SNT": "0xcec53bbbef4ff4d83368078aa4599dd0bca10f71",
+      "ETH": "0x67f21d76865c2e57d0385394e40fe1837b4c033e"
     },
     "binance": {
-      "OMG": "0xf2fd56967735ff2a274648acceb5aed28b7ae4f3",
-      "KNC": "0x69d7a0c9c7dbc15fbb5a4c1515c8ac582ef3dddd",
-      "EOS": "0xf2e708a50721ca4c881877f7ae417e8ce052cfb5",
-      "SALT": "0x45b050f70a66224b781b4ef1b0b29842c3929a29",
-      "ETH": "0x09cdc7c2a9caf7bb486783514bd44e81336bf61b"
+      "OMG": "0xf41cfddf6c941691d4d533d52d7e19d08247e263",
+      "KNC": "0x0dfa8d93208f02a5bf70f62461d122a438a56feb",
+      "EOS": "0x3267970558f0bf6e3a5bf97e5496313ea90195f0",
+      "SALT": "0xf79f4974c8f043d5aa6995e875b2151d74b21bd2",
+      "SNT": "0x133161df5b1b962cfac014f1a04d1f2ab5a51820",
+      "ETH": "0xfd018cc53c14420b072662a62b5ece74cf5bfae8"
     },
     "bitfinex": {
-      "OMG": "0xbc688586eb1f85145cb65449ba2a9c5fac10fb4d",
-      "KNC": "0xf20c44d89751847586b564a643afbd0c0aa96506",
-      "EOS": "0x2b50cfc9a831d3c5cfe276c6d33926d0f658b47a",
-      "SALT": "0x6ec194827a49cc9fcc69e3c6ff844f24f80e3df0",
-      "ETH": "0x13c287a2aa6d3dc79618ef8ae6087f33c14e3cdb"
+      "OMG": "0xd4fd3b4ecfbbe45a34589ceaa27b4c781f101cf9",
+      "KNC": "0x07f203edb013e5f51bf17da637540ec7cea8b327",
+      "EOS": "0x581a3296573b1555ac2b6403ec4f21203c735d58",
+      "SALT": "0xd1b1785a39dbbc63c9c28a8dba6faaa27e9225b7",
+      "SNT": "0xe5757ef939b862d97e331cee0d9bfcf221d9d78e",
+      "ETH": "0x39f8c41eaccd208549968701278dcb33a430ac19"
     }
   },
-  "bank": "0x5e9f9c1d7ebd4af7e72106fa83b80cf83c8e5f59",
-  "reserve": "0xb57e7b3ede2eb428de3a7be3988727df130e1a0f",
-  "pricing": "0x78d2eada24cc526b82901d50f0d2fae6627393fa",
-  "network": "0x152efe8e90f41701852ef59c0831daa581b2018f",
-  "wrapper": "0xb6e8688caff0e389aa17c62f86e4196f25f07f34",
-  "feeburner": "0x25434f921f492bd4f3fb363f5a7ae975528254b0"
+  "bank": "0x2eb59a43644451b279a2c1a44a9bfecb055527d0",
+  "reserve": "0x2d1ceabd5a1cd16581ad199031601615a434a2cd",
+  "pricing": "0x77925520469d0fcbb0311814c053bf9bafcd867b",
+  "network": "0x643211b405c9a14139142e1104250bbcd94bd0ef",
+  "wrapper": "0xa54f27b5a72fc1ddc5c4bc6ed50391f457e4a46a",
+  "feeburner": "0xa33a2f0745ee8e31b753ec33d22d363a62a123a4"
 }

@@ -20,8 +20,8 @@
       "decimals": 8,
       "reserve balance" : 625
     },
-    "STATUS": {
-      "name": "SNT",
+    "SNT": {
+      "name": "STATUS",
       "decimals": 18,
       "reserve balance" : 17450
     }
