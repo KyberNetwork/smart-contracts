@@ -78,14 +78,37 @@
       "type": "function"
     },
     {
-      "constant": false,
+      "constant": true,
       "inputs": [
         {
-          "name": "newAdmin",
+          "name": "",
           "type": "address"
         }
       ],
-      "name": "transferAdmin",
+      "name": "reasonableDiffInBps",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "srcs",
+          "type": "address[]"
+        },
+        {
+          "name": "diff",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "setReasonableDiff",
       "outputs": [],
       "payable": false,
       "stateMutability": "nonpayable",
@@ -95,11 +118,11 @@
       "constant": false,
       "inputs": [
         {
-          "name": "newFactor",
-          "type": "uint256"
+          "name": "newAdmin",
+          "type": "address"
         }
       ],
-      "name": "setQuantityFactor",
+      "name": "transferAdmin",
       "outputs": [],
       "payable": false,
       "stateMutability": "nonpayable",
@@ -129,51 +152,6 @@
       "type": "function"
     },
     {
-      "constant": true,
-      "inputs": [
-        {
-          "name": "src",
-          "type": "address"
-        },
-        {
-          "name": "dest",
-          "type": "address"
-        },
-        {
-          "name": "srcQty",
-          "type": "uint256"
-        }
-      ],
-      "name": "getExpectedRate",
-      "outputs": [
-        {
-          "name": "expectedRate",
-          "type": "uint256"
-        },
-        {
-          "name": "slippageRate",
-          "type": "uint256"
-        }
-      ],
-      "payable": false,
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "constant": false,
-      "inputs": [
-        {
-          "name": "bps",
-          "type": "uint256"
-        }
-      ],
-      "name": "setMinSlippageFactor",
-      "outputs": [],
-      "payable": false,
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
       "constant": false,
       "inputs": [
         {
@@ -189,8 +167,17 @@
     },
     {
       "constant": true,
-      "inputs": [],
-      "name": "quantityFactor",
+      "inputs": [
+        {
+          "name": "src",
+          "type": "address"
+        },
+        {
+          "name": "dest",
+          "type": "address"
+        }
+      ],
+      "name": "getSanityRate",
       "outputs": [
         {
           "name": "",
@@ -216,6 +203,25 @@
       "type": "function"
     },
     {
+      "constant": true,
+      "inputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "tokenRate",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "constant": false,
       "inputs": [
         {
@@ -228,6 +234,24 @@
         }
       ],
       "name": "withdrawEther",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "srcs",
+          "type": "address[]"
+        },
+        {
+          "name": "rates",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "setSanityRates",
       "outputs": [],
       "payable": false,
       "stateMutability": "nonpayable",
@@ -248,25 +272,7 @@
       "type": "function"
     },
     {
-      "constant": true,
-      "inputs": [],
-      "name": "minSlippageFactorInBps",
-      "outputs": [
-        {
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "payable": false,
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [
-        {
-          "name": "_kyberNetwork",
-          "type": "address"
-        },
         {
           "name": "_admin",
           "type": "address"
@@ -275,50 +281,6 @@
       "payable": false,
       "stateMutability": "nonpayable",
       "type": "constructor"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "name": "newFactor",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "name": "oldFactor",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "name": "sender",
-          "type": "address"
-        }
-      ],
-      "name": "QuantityFactorSet",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "name": "newMin",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "name": "oldMin",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "name": "sender",
-          "type": "address"
-        }
-      ],
-      "name": "MinSlippageFactorSet",
-      "type": "event"
     },
     {
       "anonymous": false,

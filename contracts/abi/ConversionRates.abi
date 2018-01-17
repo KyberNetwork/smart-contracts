@@ -1,14 +1,14 @@
 [
     {
       "constant": false,
-      "inputs": [],
-      "name": "enableTrade",
-      "outputs": [
+      "inputs": [
         {
-          "name": "",
-          "type": "bool"
+          "name": "alerter",
+          "type": "address"
         }
       ],
+      "name": "removeAlerter",
+      "outputs": [],
       "payable": false,
       "stateMutability": "nonpayable",
       "type": "function"
@@ -17,11 +17,91 @@
       "constant": false,
       "inputs": [
         {
-          "name": "alerter",
+          "name": "reserve",
           "type": "address"
         }
       ],
-      "name": "removeAlerter",
+      "name": "setReserveAddress",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address"
+        }
+      ],
+      "name": "disableTokenTrade",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "validRateDurationInBlocks",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "tokens",
+          "type": "address[]"
+        },
+        {
+          "name": "baseBuy",
+          "type": "uint256[]"
+        },
+        {
+          "name": "baseSell",
+          "type": "uint256[]"
+        },
+        {
+          "name": "buy",
+          "type": "bytes14[]"
+        },
+        {
+          "name": "sell",
+          "type": "bytes14[]"
+        },
+        {
+          "name": "blockNumber",
+          "type": "uint256"
+        },
+        {
+          "name": "indices",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "setBaseRate",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address"
+        }
+      ],
+      "name": "enableTokenTrade",
       "outputs": [],
       "payable": false,
       "stateMutability": "nonpayable",
@@ -45,6 +125,20 @@
       "constant": true,
       "inputs": [],
       "name": "getOperators",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address[]"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "getListedTokens",
       "outputs": [
         {
           "name": "",
@@ -94,11 +188,38 @@
     {
       "constant": true,
       "inputs": [],
-      "name": "sanityRatesContract",
+      "name": "numTokensInCurrentCompactData",
       "outputs": [
         {
           "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [
+        {
+          "name": "token",
           "type": "address"
+        },
+        {
+          "name": "command",
+          "type": "uint256"
+        },
+        {
+          "name": "param",
+          "type": "uint256"
+        }
+      ],
+      "name": "getStepFunctionData",
+      "outputs": [
+        {
+          "name": "",
+          "type": "int256"
         }
       ],
       "payable": false,
@@ -109,19 +230,23 @@
       "constant": false,
       "inputs": [
         {
-          "name": "token",
-          "type": "address"
+          "name": "buy",
+          "type": "bytes14[]"
         },
         {
-          "name": "addr",
-          "type": "address"
+          "name": "sell",
+          "type": "bytes14[]"
         },
         {
-          "name": "approve",
-          "type": "bool"
+          "name": "blockNumber",
+          "type": "uint256"
+        },
+        {
+          "name": "indices",
+          "type": "uint256[]"
         }
       ],
-      "name": "approveWithdrawAddress",
+      "name": "setCompactData",
       "outputs": [],
       "payable": false,
       "stateMutability": "nonpayable",
@@ -131,80 +256,37 @@
       "constant": false,
       "inputs": [
         {
-          "name": "token",
-          "type": "address"
-        },
-        {
-          "name": "amount",
+          "name": "duration",
           "type": "uint256"
-        },
-        {
-          "name": "destination",
-          "type": "address"
         }
       ],
-      "name": "withdraw",
-      "outputs": [
-        {
-          "name": "",
-          "type": "bool"
-        }
-      ],
+      "name": "setValidRateDurationInBlocks",
+      "outputs": [],
       "payable": false,
       "stateMutability": "nonpayable",
       "type": "function"
     },
     {
-      "constant": false,
-      "inputs": [],
-      "name": "disableTrade",
-      "outputs": [
-        {
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "payable": false,
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "constant": false,
+      "constant": true,
       "inputs": [
         {
-          "name": "srcToken",
+          "name": "token",
           "type": "address"
-        },
-        {
-          "name": "srcAmount",
-          "type": "uint256"
-        },
-        {
-          "name": "destToken",
-          "type": "address"
-        },
-        {
-          "name": "destAddress",
-          "type": "address"
-        },
-        {
-          "name": "conversionRate",
-          "type": "uint256"
-        },
-        {
-          "name": "validate",
-          "type": "bool"
         }
       ],
-      "name": "trade",
+      "name": "getTokenBasicData",
       "outputs": [
+        {
+          "name": "",
+          "type": "bool"
+        },
         {
           "name": "",
           "type": "bool"
         }
       ],
-      "payable": true,
-      "stateMutability": "payable",
+      "payable": false,
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -248,23 +330,11 @@
       "constant": true,
       "inputs": [
         {
-          "name": "src",
+          "name": "token",
           "type": "address"
-        },
-        {
-          "name": "dest",
-          "type": "address"
-        },
-        {
-          "name": "srcQty",
-          "type": "uint256"
-        },
-        {
-          "name": "blockNumber",
-          "type": "uint256"
         }
       ],
-      "name": "getConversionRate",
+      "name": "getRateUpdateBlock",
       "outputs": [
         {
           "name": "",
@@ -273,6 +343,36 @@
       ],
       "payable": false,
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "name": "xBuy",
+          "type": "int256[]"
+        },
+        {
+          "name": "yBuy",
+          "type": "int256[]"
+        },
+        {
+          "name": "xSell",
+          "type": "int256[]"
+        },
+        {
+          "name": "ySell",
+          "type": "int256[]"
+        }
+      ],
+      "name": "setQtyStepFunction",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -291,25 +391,31 @@
     },
     {
       "constant": true,
+      "inputs": [],
+      "name": "reserveContract",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
       "inputs": [
         {
-          "name": "src",
+          "name": "",
           "type": "address"
         },
         {
-          "name": "dest",
-          "type": "address"
-        },
-        {
-          "name": "dstQty",
-          "type": "uint256"
-        },
-        {
-          "name": "rate",
+          "name": "",
           "type": "uint256"
         }
       ],
-      "name": "getSrcQty",
+      "name": "tokenImbalanceData",
       "outputs": [
         {
           "name": "",
@@ -335,39 +441,116 @@
       "type": "function"
     },
     {
+      "constant": true,
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "name": "currentBlockNumber",
+          "type": "uint256"
+        },
+        {
+          "name": "buy",
+          "type": "bool"
+        },
+        {
+          "name": "qty",
+          "type": "uint256"
+        }
+      ],
+      "name": "getRate",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "constant": false,
       "inputs": [
         {
-          "name": "_kyberNetwork",
+          "name": "token",
           "type": "address"
         },
         {
-          "name": "_conversionRates",
-          "type": "address"
+          "name": "xBuy",
+          "type": "int256[]"
         },
         {
-          "name": "_sanityRates",
-          "type": "address"
+          "name": "yBuy",
+          "type": "int256[]"
+        },
+        {
+          "name": "xSell",
+          "type": "int256[]"
+        },
+        {
+          "name": "ySell",
+          "type": "int256[]"
         }
       ],
-      "name": "setContracts",
+      "name": "setImbalanceStepFunction",
       "outputs": [],
       "payable": false,
       "stateMutability": "nonpayable",
       "type": "function"
     },
     {
-      "constant": true,
-      "inputs": [],
-      "name": "kyberNetwork",
-      "outputs": [
+      "constant": false,
+      "inputs": [
         {
-          "name": "",
+          "name": "token",
           "type": "address"
+        },
+        {
+          "name": "minimalRecordResolution",
+          "type": "uint256"
+        },
+        {
+          "name": "maxPerBlockImbalance",
+          "type": "uint256"
+        },
+        {
+          "name": "maxTotalImbalance",
+          "type": "uint256"
         }
       ],
+      "name": "setTokenControlInfo",
+      "outputs": [],
       "payable": false,
-      "stateMutability": "view",
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "name": "buyAmount",
+          "type": "int256"
+        },
+        {
+          "name": "rateUpdateBlock",
+          "type": "uint256"
+        },
+        {
+          "name": "currentBlock",
+          "type": "uint256"
+        }
+      ],
+      "name": "recordImbalance",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -394,9 +577,13 @@
         {
           "name": "token",
           "type": "address"
+        },
+        {
+          "name": "buy",
+          "type": "bool"
         }
       ],
-      "name": "getDecimals",
+      "name": "getBasicRate",
       "outputs": [
         {
           "name": "",
@@ -408,27 +595,44 @@
       "type": "function"
     },
     {
-      "constant": true,
-      "inputs": [],
-      "name": "conversionRatesContract",
-      "outputs": [
+      "constant": false,
+      "inputs": [
         {
-          "name": "",
+          "name": "token",
           "type": "address"
         }
       ],
+      "name": "addToken",
+      "outputs": [],
       "payable": false,
-      "stateMutability": "view",
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
       "constant": true,
-      "inputs": [],
-      "name": "tradeEnabled",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address"
+        }
+      ],
+      "name": "getCompactData",
       "outputs": [
         {
           "name": "",
-          "type": "bool"
+          "type": "uint256"
+        },
+        {
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "name": "",
+          "type": "bytes1"
+        },
+        {
+          "name": "",
+          "type": "bytes1"
         }
       ],
       "payable": false,
@@ -439,15 +643,23 @@
       "constant": true,
       "inputs": [
         {
-          "name": "",
-          "type": "bytes32"
+          "name": "token",
+          "type": "address"
         }
       ],
-      "name": "approvedWithdrawAddresses",
+      "name": "getTokenControlInfo",
       "outputs": [
         {
           "name": "",
-          "type": "bool"
+          "type": "uint256"
+        },
+        {
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "name": "",
+          "type": "uint256"
         }
       ],
       "payable": false,
@@ -469,65 +681,7 @@
       "type": "function"
     },
     {
-      "constant": true,
       "inputs": [
-        {
-          "name": "token",
-          "type": "address"
-        }
-      ],
-      "name": "getBalance",
-      "outputs": [
-        {
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "payable": false,
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "constant": true,
-      "inputs": [
-        {
-          "name": "src",
-          "type": "address"
-        },
-        {
-          "name": "dest",
-          "type": "address"
-        },
-        {
-          "name": "srcQty",
-          "type": "uint256"
-        },
-        {
-          "name": "rate",
-          "type": "uint256"
-        }
-      ],
-      "name": "getDestQty",
-      "outputs": [
-        {
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "payable": false,
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "name": "_kyberNetwork",
-          "type": "address"
-        },
-        {
-          "name": "_ratesContract",
-          "type": "address"
-        },
         {
           "name": "_admin",
           "type": "address"
@@ -536,143 +690,6 @@
       "payable": false,
       "stateMutability": "nonpayable",
       "type": "constructor"
-    },
-    {
-      "payable": true,
-      "stateMutability": "payable",
-      "type": "fallback"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "name": "token",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "DepositToken",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "name": "origin",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "name": "src",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "name": "srcAmount",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "name": "destToken",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "name": "destAmount",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "name": "destAddress",
-          "type": "address"
-        }
-      ],
-      "name": "TradeExecute",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "name": "enable",
-          "type": "bool"
-        }
-      ],
-      "name": "TradeEnabled",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "name": "token",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "name": "addr",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "name": "approve",
-          "type": "bool"
-        }
-      ],
-      "name": "WithdrawAddressApproved",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "name": "token",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "name": "amount",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "name": "destination",
-          "type": "address"
-        }
-      ],
-      "name": "WithdrawFunds",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "name": "network",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "name": "rate",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "name": "sanity",
-          "type": "address"
-        }
-      ],
-      "name": "SetContractAddresses",
-      "type": "event"
     },
     {
       "anonymous": false,

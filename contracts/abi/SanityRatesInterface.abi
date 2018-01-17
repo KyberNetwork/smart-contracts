@@ -9,20 +9,12 @@
         {
           "name": "dest",
           "type": "address"
-        },
-        {
-          "name": "srcQty",
-          "type": "uint256"
         }
       ],
-      "name": "getExpectedRate",
+      "name": "getSanityRate",
       "outputs": [
         {
-          "name": "expectedRate",
-          "type": "uint256"
-        },
-        {
-          "name": "slippageRate",
+          "name": "",
           "type": "uint256"
         }
       ],
