@@ -20,10 +20,10 @@
       "decimals": 8,
       "reserve balance" : 625
     },
-    "SALT": {
+    "STATUS": {
       "name": "SNT",
       "decimals": 18,
-      "reserve balance" : 16000
+      "reserve balance" : 17450
     }
   },
   "exchanges": [
