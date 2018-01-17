@@ -604,21 +604,27 @@ contract('KyberNetwork', function(accounts) {
         await network.addReserve(reserve1.address, true);
     });
 
-    it("should remove reserves and verify reserve array length is 0.", async function () {
-        let numRes = await network.getNumReserves();
+    it("should add reserves then remove reserves and verify reserve array length is 0.", async function () {
+        let net = await Network.new(admin);
+        let res1 = await Reserve.new(net.address, pricing1.address, admin);
+        let res2 = await Reserve.new(net.address, pricing2.address, admin);
+
+
+        await net.addReserve(res1.address, true);
+        await net.addReserve(res2.address, true);
+
+        let numRes = await net.getNumReserves();
 
         assert.equal(numRes.valueOf(), 2, "unexpected number of reserves.");
 
         // remove reserves
-        await network.addReserve(reserve1.address, false);
-        await network.addReserve(reserve2.address, false);
+        await net.addReserve(res1.address, false);
+        await net.addReserve(res2.address, false);
 
-        numRes = await network.getNumReserves();
+        numRes = await net.getNumReserves();
 
         assert.equal(numRes.valueOf(), 0, "unexpected number of reserves.");
 
-        await network.addReserve(reserve1.address, true);
-        await network.addReserve(reserve2.address, true);
     });
 
     it("should test can't init this contract with empty contracts (address 0).", async function () {
