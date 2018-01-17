@@ -105,7 +105,15 @@ contract('utils', function(accounts) {
         }
 
         try {
-            await utils.mockCalcSourceQty(30, 10, 30, 1500);
+            await utils.mockCalcSrcQty(30, 10, 30, 1500);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await utils.mockCalcSrcQty(30, 30, 10, 1500);
             assert(false, "throw was expected in line above.")
         }
         catch(e){
