@@ -25,9 +25,9 @@
       "name": "SALT",
       "decimals": 8
     },
-    "STATUS": {
+    "SNT": {
       "address": "0x676f650000f420485b99ef0377a2e1c96eb3e821",
-      "name": "SNT",
+      "name": "STATUS",
       "decimals": 18
     }
   },
