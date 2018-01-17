@@ -44,7 +44,7 @@
       "KNC": "0x132478f1ec4b8e1256b11fdf3e00d97e4df5988f",
       "EOS": "0xef6ee90c5bb23da2eb71b3daa8e57b204e5ac647",
       "SALT": "0x385d619b530f00ab7d082683f7cdc37995ac76f2",
-      "STATUS": "0x3ef96f9de64c44b1ad392b10e2277a73ec14ff5f",
+      "SNT": "0x3ef96f9de64c44b1ad392b10e2277a73ec14ff5f",
       "ETH": "0x46ff7ebe96cdf10c6924db000a809881d849b570"
     },
     "liqui": {
@@ -52,7 +52,7 @@
       "KNC": "0x9be40f24aeca73a20a56fc7a5827862782532dd4",
       "EOS": "0x9b289197b1a9717d3a8c2ce73943aa714d5ad4a7",
       "SALT": "0xc81e91848618cdbd80056e220088347554abc2da",
-      "STATUS": "0x5264a52025ece5bdf33955fc4855084ea4261ea8",
+      "SNT": "0x5264a52025ece5bdf33955fc4855084ea4261ea8",
       "ETH": "0x839c63d65420ba5331d0b5ac717c04c4ab046c52"
     },
     "poloniex": {
@@ -60,7 +60,7 @@
       "KNC": "0x0a121ee34697e4fdbeef517dbf2e066015d2b8ce",
       "EOS": "0xa028ffc099ee430c3e1a24477f944f323f0f137d",
       "SALT": "0xa87c406af03bef102bc2db318417ebe3f32b9209",
-      "STATUS": "0xcec53bbbef4ff4d83368078aa4599dd0bca10f71",
+      "SNT": "0xcec53bbbef4ff4d83368078aa4599dd0bca10f71",
       "ETH": "0x67f21d76865c2e57d0385394e40fe1837b4c033e"
     },
     "binance": {
@@ -68,7 +68,7 @@
       "KNC": "0x0dfa8d93208f02a5bf70f62461d122a438a56feb",
       "EOS": "0x3267970558f0bf6e3a5bf97e5496313ea90195f0",
       "SALT": "0xf79f4974c8f043d5aa6995e875b2151d74b21bd2",
-      "STATUS": "0x133161df5b1b962cfac014f1a04d1f2ab5a51820",
+      "SNT": "0x133161df5b1b962cfac014f1a04d1f2ab5a51820",
       "ETH": "0xfd018cc53c14420b072662a62b5ece74cf5bfae8"
     },
     "bitfinex": {
@@ -76,7 +76,7 @@
       "KNC": "0x07f203edb013e5f51bf17da637540ec7cea8b327",
       "EOS": "0x581a3296573b1555ac2b6403ec4f21203c735d58",
       "SALT": "0xd1b1785a39dbbc63c9c28a8dba6faaa27e9225b7",
-      "STATUS": "0xe5757ef939b862d97e331cee0d9bfcf221d9d78e",
+      "SNT": "0xe5757ef939b862d97e331cee0d9bfcf221d9d78e",
       "ETH": "0x39f8c41eaccd208549968701278dcb33a430ac19"
     }
   },
