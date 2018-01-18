@@ -353,7 +353,7 @@ contract KyberNetwork is Withdrawable, Utils {
             src.transferFrom(msg.sender, this, amount);
         }
 
-        // reserve send tokens/eth to network. network sends it to destination
+        // reserve sends tokens/eth to network. network sends it to destination
         require(reserve.trade.value(callValue)(src, amount, dest, this, conversionRate, validate));
 
         if (dest == ETH_TOKEN_ADDRESS) {
