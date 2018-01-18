@@ -798,26 +798,20 @@ contract('KyberReserve', function(accounts) {
     it("should zero reserve balance and see that get rate returns zero when not enough dest balance", async function() {
         let tokenInd = 1;
         let amountTwei = maxPerBlockImbalance - 1;
-        let srcQty = 50; //some high number of figure out ~rate
-        let buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], srcQty, currentBlock);
-        srcQty = await reserveInst.getSrcQty(ethAddress, tokenAdd[tokenInd], amountTwei, buyRate);
-
         let token = tokens[tokenInd];
-        for (let i = 0; i < 200; i++){
-            //perform trades until reverted due to low dest quantity
-            try {
-                await reserveInst.trade(ethAddress, srcQty, tokenAdd[tokenInd], user1, buyRate, true, {from:network, value:srcQty});
-            } catch (e) {
-                break;
-            }
-        }
+        let srcQty = 50; //some high number of figure out ~rate
 
-        //expect dest balance to be low
+
+        let balance = await token.balanceOf(reserveInst.address);
+        await reserveInst.approveWithdrawAddress(tokenAdd[tokenInd], withDrawAddress, true);
+        await reserveInst.withdraw(tokenAdd[tokenInd], balance, withDrawAddress, {from: operator});
+
         balance = await token.balanceOf(reserveInst.address);
-        assert(balance < amountTwei, "unexpected token balance: " + balance);
+
+        assert.equal(balance.valueOf(0), 0, "expected balance 0");
 
         let rate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], srcQty, currentBlock);
-        assert.equal(rate.valueOf(), 0, "unexpected rate");
+        assert.equal(rate.valueOf(), 0, "expected rate 0");
     });
 
     it("should test can't init this contract with empty contracts (address 0).", async function () {
