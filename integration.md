@@ -4,9 +4,10 @@ with kyber network smart contract.
 The api we describe should be viewed at this point only as a reference.
 Changes are still expected before the mainnet launch.
 
-A wallet/exchange service interacts with the contract in two ways:
+A wallet/exchange service interacts with the contract in three ways:
 1. Rate query: queries the offered price of, e.g., GNO to ETH conversion.
-2. Trade execution: e.g., convert X GNO to Y ETH
+2. Trade execution: e.g., convert X GNO to Y ETH.
+3. Checks if user is allowed to use the exchange services and the maximum amount he can trade. 
 
 We describe the api for each bellow:
 
@@ -23,7 +24,7 @@ Use address `0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee` to denote Ether.
 For example, if user wants to sell GNO tokens in return to ETH, he should set
 `source = 0x6810e776880c02933d47db1b9fc05908e5386b96` and
 `dest = 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee`.
-In return to 1 GNO token he is expected to recieve
+In return to 1 GNO token he is expected to receive
 `expectedPrice / 10**18` ETH, but in the worse case scenario he will get only `slippagePrice/10**18` ETH.
 
 If he wants to buy GNO with ETH, he should set
@@ -76,8 +77,28 @@ of the transaction confirmation.
 7. `walletId`: the id of the service provider. Should be determined along with
 kyber network.
 
+
+## User eligibility
+Different users might have different maximal trade amount they can use.
+For example, in the future, users who did full KYC with kyber might be allowed to trade higher amounts.
+Also, during the initial pilot launch, only selected users (e.g., KGT holders) will be allowed to participate.
+For this purpose, every user (Ethereum account) has a cap of the maximal ETH he can trade in a single trade.
+A maximal amount of 0 ETH means the user cannot use the exchange at all (applicable mainly in the first pilot period).
+In this ropsten deployment, the default user limitation is 10 ETH.
+
+When converting ETH to token, the amount of ETH should not exceed the maximal amount. When converting token to ETH, the received ETH amount should not exceed the maximal amount.
+If the amount exceed the maximal amount, the tx is reverted.
+As conversion rate is not fully known before tx is approved, when converting to ETH, it is recommended to make sure the expected amount does not exceed 95% of the maximal user limitation.
+
+To get user cap (max trade size) one should call:
+```
+function getUserCapInWei(address user)
+```
+the return value is user ETH cap in wei units.
+In the current ropsten deployment, every address has a cap of 10 ETH.
+
 # Current testnet deployment
-The contract is currently depolyed on ropsten testnet.
+The contract is currently deployed on ropsten testnet.
 The ropsten addresses can be found [here](https://github.com/KyberNetwork/smart-contracts/blob/ropsten_deployment/deployment_ropsten.json).
 For wallets the relevant addresses are those of kyber network contract and the token addresses.
 The kyber network contract address can be found [here](https://github.com/KyberNetwork/smart-contracts/blob/ropsten_deployment/deployment_ropsten.json#L156), while the token addresses are [here](https://github.com/KyberNetwork/smart-contracts/blob/ropsten_deployment/deployment_ropsten.json#L9).
