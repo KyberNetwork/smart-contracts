@@ -639,6 +639,27 @@ contract('KyberNetwork', function(accounts) {
         await network.trade(tokenAdd[tokenInd], amountTWei.valueOf(), ethAddress, user2, 5000, 0, walletId, {from:user1});
     });
 
+    it("should verify sell reverted when sent with ether value.", async function () {
+        let tokenInd = 1;
+        let token = tokens[tokenInd]; //choose some token
+        let amountTWei = 15*1;
+
+        // transfer funds to user and approve funds to network
+        await token.transfer(user1, amountTWei*1);
+        await token.approve(network.address, amountTWei*1, {from:user1})
+
+        try {
+            await network.trade(tokenAdd[tokenInd], amountTWei.valueOf(), ethAddress, user2, 5000, 0, walletId, {from:user1, value: 10});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }   
+
+        //perform same trade
+        await network.trade(tokenAdd[tokenInd], amountTWei.valueOf(), ethAddress, user2, 5000, 0, walletId, {from:user1, value: 0});
+    });
+
+
     it("should verify trade reverted when dest amount (actual amount) is 0.", async function () {
         let tokenInd = 2;
         let token = tokens[tokenInd]; //choose some token
