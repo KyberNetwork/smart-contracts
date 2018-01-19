@@ -11,7 +11,7 @@ contract WhiteList is Withdrawable {
     mapping (uint=>uint)    public categoryCap;  // will define cap on trade amount per category in singapore Dollar.
 
     function WhiteList(address _admin) public {
-        require (_admin != address(0));
+        require(_admin != address(0));
         admin = _admin;
     }
 
