@@ -1,11 +1,11 @@
 
-var Permissions = artifacts.require("./PermissionGroups.sol");
-var MockPermission = artifacts.require("./mockContracts/MockPermission.sol");
+let Permissions = artifacts.require("./PermissionGroups.sol");
+let MockPermission = artifacts.require("./mockContracts/MockPermission.sol");
 
-var Helper = require("./helper.js");
+let Helper = require("./helper.js");
 
-var permissionsInst;
-var mockPermissionsInst;
+let permissionsInst;
+let mockPermissionsInst;
 
 contract('PermissionGroups', function(accounts) {
     it("should test request admin change is rejected for non admin.", async function () {
@@ -65,7 +65,7 @@ contract('PermissionGroups', function(accounts) {
     });
 
     it("should test get operators success.", async function () {
-        var operators = await permissionsInst.getOperators();
+        let operators = await permissionsInst.getOperators();
         assert.equal(operators.length, 2, "bad number of operators.")
         assert.equal(accounts[1], operators[0]);
         assert.equal(accounts[2], operators[1]);
@@ -75,7 +75,7 @@ contract('PermissionGroups', function(accounts) {
         mockPermissionsInst = await MockPermission.new();
         await mockPermissionsInst.addOperator(accounts[2]);
         await mockPermissionsInst.addOperator(accounts[3]);
-        var operators = await permissionsInst.getOperators();
+        let operators = await permissionsInst.getOperators();
 
         try {
             await mockPermissionsInst.setRate(9, {from:accounts[6]});
@@ -147,7 +147,7 @@ contract('PermissionGroups', function(accounts) {
 
     it("should test remove operator success.", async function () {
         await permissionsInst.removeOperator(accounts[2]);
-        var operators = await permissionsInst.getOperators();
+        let operators = await permissionsInst.getOperators();
         assert.equal(operators.length, 1, "bad number of operators.")
         assert.equal(accounts[1], operators[0]);
     });
@@ -158,7 +158,7 @@ contract('PermissionGroups', function(accounts) {
     });
 
     it("should test get alerters success.", async function () {
-        var alerters = await permissionsInst.getAlerters();
+        let alerters = await permissionsInst.getAlerters();
         assert.equal(alerters.length, 2, "bad number of operators.")
         assert.equal(accounts[3], alerters[0]);
         assert.equal(accounts[4], alerters[1]);
@@ -186,8 +186,60 @@ contract('PermissionGroups', function(accounts) {
 
     it("should test remove alerter success.", async function () {
         await permissionsInst.removeAlerter(accounts[3]);
-        var alerters = await permissionsInst.getAlerters();
+        let alerters = await permissionsInst.getAlerters();
         assert.equal(alerters.length, 1, "bad number of alerters.")
         assert.equal(accounts[4], alerters[0]);
     });
-})
+
+    it("should test new admin address 0 is reverted.", async function () {
+        let someAdmin = accounts[9];
+
+        try {
+            await permissionsInst.transferAdmin(0);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        await permissionsInst.transferAdmin(someAdmin);
+    });
+
+    it("should test can't add same alerter twice.", async function () {
+        let alerter2 = accounts[9];
+
+        await permissionsInst.addAlerter(alerter2);
+
+        try {
+            await permissionsInst.addAlerter(alerter2);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should test can't add same operator twice.", async function () {
+        let operator2 = accounts[9];
+
+        await permissionsInst.addOperator(operator2);
+
+        try {
+            await permissionsInst.addOperator(operator2);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should test removing 2nd alerter.", async function () {
+        let alerter2 = accounts[2];
+        let alerter3 = accounts[3];
+
+        await permissionsInst.addAlerter(alerter2);
+        await permissionsInst.addAlerter(alerter3);
+
+        await permissionsInst.removeAlerter(alerter2);
+    });
+});

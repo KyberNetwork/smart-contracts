@@ -14,13 +14,16 @@ contract KyberReserve is Withdrawable, Utils {
 
     address public kyberNetwork;
     bool public tradeEnabled;
-    ConversionRates public ratesContract;
+    ConversionRates public conversionRatesContract;
     SanityRatesInterface public sanityRatesContract;
     mapping(bytes32=>bool) public approvedWithdrawAddresses; // sha3(token,address)=>bool
 
     function KyberReserve(address _kyberNetwork, ConversionRates _ratesContract, address _admin) public {
+        require(_admin != address(0));
+        require(_ratesContract != address(0));
+        require(_kyberNetwork != address(0));
         kyberNetwork = _kyberNetwork;
-        ratesContract = _ratesContract;
+        conversionRatesContract = _ratesContract;
         admin = _admin;
         tradeEnabled = true;
     }
@@ -33,16 +36,16 @@ contract KyberReserve is Withdrawable, Utils {
 
     event TradeExecute(
         address indexed origin,
-        address source,
-        uint sourceAmount,
+        address src,
+        uint srcAmount,
         address destToken,
         uint destAmount,
         address destAddress
     );
 
     function trade(
-        ERC20 sourceToken,
-        uint sourceAmount,
+        ERC20 srcToken,
+        uint srcAmount,
         ERC20 destToken,
         address destAddress,
         uint conversionRate,
@@ -55,7 +58,7 @@ contract KyberReserve is Withdrawable, Utils {
         require(tradeEnabled);
         require(msg.sender == kyberNetwork);
 
-        require(doTrade(sourceToken, sourceAmount, destToken, destAddress, conversionRate, validate));
+        require(doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate));
 
         return true;
     }
@@ -101,18 +104,18 @@ contract KyberReserve is Withdrawable, Utils {
 
     event SetContractAddresses(address network, address rate, address sanity);
 
-    function setContracts(address _kyberNetwork, ConversionRates _rates, SanityRatesInterface _sanityRates)
+    function setContracts(address _kyberNetwork, ConversionRates _conversionRates, SanityRatesInterface _sanityRates)
         public
         onlyAdmin
     {
         require(_kyberNetwork != address(0));
-        require(_rates != address(0));
+        require(_conversionRates != address(0));
 
         kyberNetwork = _kyberNetwork;
-        ratesContract = _rates;
+        conversionRatesContract = _conversionRates;
         sanityRatesContract = _sanityRates;
 
-        SetContractAddresses(kyberNetwork, ratesContract, sanityRatesContract);
+        SetContractAddresses(kyberNetwork, conversionRatesContract, sanityRatesContract);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -130,43 +133,43 @@ contract KyberReserve is Withdrawable, Utils {
         return token.decimals();
     }
 
-    function getDestQty(ERC20 source, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {
+    function getDestQty(ERC20 src, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {
         uint dstDecimals = getDecimals(dest);
-        uint srcDecimals = getDecimals(source);
+        uint srcDecimals = getDecimals(src);
 
         return calcDstQty(srcQty, srcDecimals, dstDecimals, rate);
     }
 
-    function getSrcQty(ERC20 source, ERC20 dest, uint dstQty, uint rate) public view returns(uint) {
+    function getSrcQty(ERC20 src, ERC20 dest, uint dstQty, uint rate) public view returns(uint) {
         uint dstDecimals = getDecimals(dest);
-        uint srcDecimals = getDecimals(source);
+        uint srcDecimals = getDecimals(src);
 
         return calcSrcQty(dstQty, srcDecimals, dstDecimals, rate);
     }
 
-    function getConversionRate(ERC20 source, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
+    function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
         ERC20 token;
         bool  buy;
 
         if (!tradeEnabled) return 0;
 
-        if (ETH_TOKEN_ADDRESS == source) {
+        if (ETH_TOKEN_ADDRESS == src) {
             buy = true;
             token = dest;
         } else if (ETH_TOKEN_ADDRESS == dest) {
             buy = false;
-            token = source;
+            token = src;
         } else {
             return 0; // pair is not listed
         }
 
-        uint rate = ratesContract.getRate(token, blockNumber, buy, srcQty);
-        uint destQty = getDestQty(source, dest, srcQty, rate);
+        uint rate = conversionRatesContract.getRate(token, blockNumber, buy, srcQty);
+        uint destQty = getDestQty(src, dest, srcQty, rate);
 
         if (getBalance(dest) < destQty) return 0;
 
         if (sanityRatesContract != address(0)) {
-            uint sanityRate = sanityRatesContract.getSanityRate(source, dest);
+            uint sanityRate = sanityRatesContract.getSanityRate(src, dest);
             if (rate > sanityRate) return 0;
         }
 
@@ -174,15 +177,15 @@ contract KyberReserve is Withdrawable, Utils {
     }
 
     /// @dev do a trade
-    /// @param sourceToken Source token
-    /// @param sourceAmount Amount of source token
+    /// @param srcToken Src token
+    /// @param srcAmount Amount of src token
     /// @param destToken Destination token
     /// @param destAddress Destination address to send tokens to
     /// @param validate If true, additional validations are applicable
     /// @return true iff trade is successful
     function doTrade(
-        ERC20 sourceToken,
-        uint sourceAmount,
+        ERC20 srcToken,
+        uint srcAmount,
         ERC20 destToken,
         address destAddress,
         uint conversionRate,
@@ -194,37 +197,37 @@ contract KyberReserve is Withdrawable, Utils {
         // can skip validation if done at kyber network level
         if (validate) {
             require(conversionRate > 0);
-            if (sourceToken == ETH_TOKEN_ADDRESS)
-                require(msg.value == sourceAmount);
+            if (srcToken == ETH_TOKEN_ADDRESS)
+                require(msg.value == srcAmount);
             else
                 require(msg.value == 0);
         }
 
-        uint destAmount = getDestQty(sourceToken, destToken, sourceAmount, conversionRate);
+        uint destAmount = getDestQty(srcToken, destToken, srcAmount, conversionRate);
         // sanity check
         require(destAmount > 0);
 
         // add to imbalance
         ERC20 token;
         int buy;
-        if (sourceToken == ETH_TOKEN_ADDRESS) {
+        if (srcToken == ETH_TOKEN_ADDRESS) {
             buy = int(destAmount);
             token = destToken;
         } else {
-            buy = -1 * int(sourceAmount);
-            token = sourceToken;
+            buy = -1 * int(srcAmount);
+            token = srcToken;
         }
 
-        ratesContract.recordImbalance(
+        conversionRatesContract.recordImbalance(
             token,
             buy,
             0,
             block.number
         );
 
-        // collect source tokens
-        if (sourceToken != ETH_TOKEN_ADDRESS) {
-            require(sourceToken.transferFrom(msg.sender, this, sourceAmount));
+        // collect src tokens
+        if (srcToken != ETH_TOKEN_ADDRESS) {
+            require(srcToken.transferFrom(msg.sender, this, srcAmount));
         }
 
         // send dest tokens
@@ -234,7 +237,7 @@ contract KyberReserve is Withdrawable, Utils {
             require(destToken.transfer(destAddress, destAmount));
         }
 
-        TradeExecute(msg.sender, sourceToken, sourceAmount, destToken, destAmount, destAddress);
+        TradeExecute(msg.sender, srcToken, srcAmount, destToken, destAmount, destAddress);
 
         return true;
     }

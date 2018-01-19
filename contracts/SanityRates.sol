@@ -16,21 +16,22 @@ contract SanityRates is SanityRatesInterface, Withdrawable, Utils {
     mapping(address=>uint) public reasonableDiffInBps;
 
     function SanityRates(address _admin) public {
+        require(_admin != address(0));
         admin = _admin;
     }
 
-    function setReasonableDiff(ERC20[] sources, uint[] diff) public onlyAdmin {
-        require(sources.length == diff.length);
-        for (uint i = 0; i < sources.length; i++) {
-            reasonableDiffInBps[sources[i]] = diff[i];
+    function setReasonableDiff(ERC20[] srcs, uint[] diff) public onlyAdmin {
+        require(srcs.length == diff.length);
+        for (uint i = 0; i < srcs.length; i++) {
+            reasonableDiffInBps[srcs[i]] = diff[i];
         }
     }
 
-    function setSanityRates(ERC20[] sources, uint[] rates) public onlyOperator {
-        require(sources.length == rates.length);
+    function setSanityRates(ERC20[] srcs, uint[] rates) public onlyOperator {
+        require(srcs.length == rates.length);
 
-        for (uint i = 0; i < sources.length; i++) {
-            tokenRate[sources[i]] = rates[i];
+        for (uint i = 0; i < srcs.length; i++) {
+            tokenRate[srcs[i]] = rates[i];
         }
     }
 

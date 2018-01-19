@@ -92,16 +92,16 @@ contract Wrapper is Utils {
     }
 
 
-    function getExpectedRates( KyberNetwork network, ERC20[] sources, ERC20[] dests, uint[] qty )
+    function getExpectedRates( KyberNetwork network, ERC20[] srcs, ERC20[] dests, uint[] qty )
         public view returns(uint[], uint[])
     {
-        require( sources.length == dests.length );
-        require( sources.length == qty.length );
+        require( srcs.length == dests.length );
+        require( srcs.length == qty.length );
 
-        uint[] memory rates = new uint[](sources.length);
-        uint[] memory slippage = new uint[](sources.length);
-        for ( uint i = 0; i < sources.length; i++ ) {
-            (rates[i],slippage[i]) = network.getExpectedRate(sources[i],dests[i],qty[i]);
+        uint[] memory rates = new uint[](srcs.length);
+        uint[] memory slippage = new uint[](srcs.length);
+        for ( uint i = 0; i < srcs.length; i++ ) {
+            (rates[i],slippage[i]) = network.getExpectedRate(srcs[i],dests[i],qty[i]);
         }
 
         return (rates, slippage);
