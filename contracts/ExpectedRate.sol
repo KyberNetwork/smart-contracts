@@ -14,7 +14,7 @@ interface ExpectedRateInterface {
 
 contract ExpectedRate is Withdrawable, ExpectedRateInterface {
 
-    KyberNetwork internal kyberNetwork;
+    KyberNetwork public kyberNetwork;
     uint public quantityFactor = 2;
     uint public minSlippageFactorInBps = 50;
 
