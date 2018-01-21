@@ -598,35 +598,53 @@ contract('KyberReserve', function(accounts) {
         }
     });
 
-    it("should test get src qty.", async function () {
+    it("should test get src qty when dst qty is very small and source is near 0.", async function () {
         //legal call
         let token3Dec = await TestToken.new("test", "tst", 3);
-        let token30Dec = await TestToken.new("test", "tst", 30);
-        let dstQty = 300;
+        let dstQty = 200;
         let rate = precisionUnits / 2;
 
+        //make sure src qty rounded up.
         let getSrcQTY = await reserveInst.getSrcQty(token3Dec.address, ethAddress, dstQty, rate);
-        let calcSrcQty = precisionUnits.mul(dstQty).mul(10).pow(3 - 18).div(rate).floor();
+        let calcSrcQty = (new BigNumber(10)).pow(3 - 18).mul(precisionUnits).mul(dstQty).div(rate).ceil();
         assert.equal(calcSrcQty.valueOf(), getSrcQTY.valueOf(), "bad src qty");
 
         getSrcQTY = await reserveInst.getSrcQty(ethAddress, token3Dec.address, dstQty, rate);
         calcSrcQty = (precisionUnits / rate ) * dstQty / ((10 ** (3 - 18)));;
         assert.equal(calcSrcQty.valueOf(), getSrcQTY.valueOf(), "bad src qty");
 
-        //see reverted when qty diff > max diff
+    });
+
+    it("should test get src qty reverted when decimals diff > max decimals diff (18).", async function () {
+        //max decimal diff is defined in contract Utils.sol MAX_DECIMALS
+        let token3Dec = await TestToken.new("test", "tst", 3);
+        let token30Dec = await TestToken.new("test", "tst", 30);
+        let dstQty = 300;
+        let rate = precisionUnits / 2;
+
+        //first get src qty when decimal diff is legal
+        getSrcQTY = await reserveInst.getSrcQty(ethAddress, token3Dec.address, dstQty, rate);
+        calcSrcQty = (precisionUnits / rate ) * dstQty / ((10 ** (3 - 18)));;
+        assert.equal(calcSrcQty.valueOf(), getSrcQTY.valueOf(), "bad src qty");
+
+        getSrcQTY = await reserveInst.getSrcQty(ethAddress, token3Dec.address, dstQty, rate);
+        calcSrcQty = (precisionUnits / rate ) * dstQty / ((10 ** (3 - 18)));;
+        assert.equal(calcSrcQty.valueOf(), getSrcQTY.valueOf(), "bad src qty");
+
+        //see reverted when qty decimal diff > max decimal diff
         try {
-            getSrcQTY = await reserveInst.getSrcQty(token30Dec.address, token3Dec.address, dstQty, rate);
-            assert(false, "throw was expected in line above.")
+           getSrcQTY = await reserveInst.getSrcQty(token30Dec.address, token3Dec.address, dstQty, rate);
+           assert(false, "throw was expected in line above.")
         } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         //see reverted when qty diff > max diff
         try {
-            getSrcQTY = await reserveInst.getSrcQty(token3Dec.address, token30Dec.address, dstQty, rate);
-            assert(false, "throw was expected in line above.")
+           getSrcQTY = await reserveInst.getSrcQty(token3Dec.address, token30Dec.address, dstQty, rate);
+           assert(false, "throw was expected in line above.")
         } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     });
 
