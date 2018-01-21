@@ -31,13 +31,7 @@
       "decimals": 18
     }
   },
-  "exchangesAddress": {
-    "bittrex": "0x337bd888263110b9e285815436a47b65bced5957",
-    "liqui": "0xa65204dcd9484a3c8a5e927398625c1de9084e25",
-    "poloniex": "0x711c6e568477524b32e1b249442b2af6458a2464",
-    "binance": "0x30e9e8f35b7aa27cca210961716681fdc62e990a",
-    "bitfinex": "0x38adde42854d787da1512a588216059937287903"
-  },
+
   "exchanges": {
     "bittrex": {
       "OMG": "0xd9f95b69708082975302e52fa7ce873660de4f1b",
@@ -80,7 +74,6 @@
       "ETH": "0x39f8c41eaccd208549968701278dcb33a430ac19"
     }
   },
-  "bank": "0x2eb59a43644451b279a2c1a44a9bfecb055527d0",
   "reserve": "0x749dd52D7f22CBc3897a0fc20b55393B1f78B4fE",
   "pricing": "0xd4AF09F41C674141e9F8c1ce2883F08ECAfd6649",
   "network": "0x803e2b13a11c21ec0616cead4a3d2ebe1326f5b0",
