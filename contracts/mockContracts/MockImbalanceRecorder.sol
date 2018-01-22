@@ -22,7 +22,7 @@ contract MockImbalanceRecorder is VolumeImbalanceRecorder {
         public view
         returns(int totalImbalance, int currentBlockImbalance)
     {
-       return getImbalance(token, rateUpdateBlock, currentBlock);
+        return getImbalance(token, rateUpdateBlock, currentBlock);
     }
 
     function getMockImbalanceInRange(ERC20 token, uint startBlock, uint endBlock) public view returns(int buyImbalance) {
@@ -38,12 +38,12 @@ contract MockImbalanceRecorder is VolumeImbalanceRecorder {
     }
 
     function callEncodeTokenImbalanceData(
-        int64 lastBlockBuyUnitsImbalance,
-        uint64 lastBlock,
-        int64 totalBuyUnitsImbalance,
-        uint64 lastRateUpdateBlock
+        int lastBlockBuyUnitsImbalance,
+        uint lastBlock,
+        int totalBuyUnitsImbalance,
+        uint lastRateUpdateBlock
     )
-        external pure returns(uint)
+        external view returns(uint)
     {
         TokenImbalanceData memory data =
             TokenImbalanceData(lastBlockBuyUnitsImbalance, lastBlock, totalBuyUnitsImbalance, lastRateUpdateBlock);

@@ -39,6 +39,27 @@ let compactBuyArr2 = [];
 let compactSellArr1 = [];
 let compactSellArr2 = [];
 
+// getStepFunctionData command IDs
+let comID_BuyRateStpQtyXLength = 0;
+let comID_BuyRateStpQtyParamX = 1;
+let comID_BuyRateStpQtyYLength = 2;
+let comID_BuyRateStpQtyParamY = 3;
+
+let comID_SellRateStpQtyXLength = 4;
+let comID_SellRateStpQtyParamX = 5;
+let comID_SellRateStpQtyYLength = 6;
+let comID_SellRateStpQtyParamY = 7;
+
+let comID_BuyRateStpImbalanceXLength = 8;
+let comID_BuyRateStpImbalanceParamX = 9;
+let comID_BuyRateStpImbalanceYLength = 10;
+let comID_BuyRateStpImbalanceParamY = 11;
+
+let comID_SellRateStpImbalanceXLength = 12;
+let comID_SellRateStpImbalanceParamX = 13;
+let comID_SellRateStpImbalanceYLength = 14;
+let comID_SellRateStpImbalanceParamY = 15;
+
 let convRatesInst;
 
 contract('ConversionRates', function(accounts) {
@@ -173,6 +194,24 @@ contract('ConversionRates', function(accounts) {
         assert.equal(blockNum.valueOf(), currentBlock.valueOf(), "bad block number returned");
     });
 
+
+    it("should verify setCompactData reverted when block number out of range.", async function () {
+        let block = 0xffffffff1; //block number limited to size of int
+
+        try {
+            await convRatesInst.setCompactData(buys, sells, block, indices, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //see success on legal block
+        let legalBlock = 0xffffffff - 1;
+        await convRatesInst.setCompactData(buys, sells, legalBlock, indices, {from: operator});;
+
+    });
+
+
     it("should set step functions qty and imbalance.", async function () {
         qtyBuyStepX = [15, 30, 70];
         qtyBuyStepY = [8, 30, 70];
@@ -187,6 +226,130 @@ contract('ConversionRates', function(accounts) {
             await convRatesInst.setQtyStepFunction(tokens[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             await convRatesInst.setImbalanceStepFunction(tokens[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
         }
+    });
+
+    it("should get qty buy step function and verify numbers.", async function () {
+        tokenId = 1; //
+
+        // x axis
+        let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpQtyXLength, 0); //get length
+        assert.equal(received.valueOf(), qtyBuyStepX.length, "length don't match");
+
+        // now y axis
+        received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpQtyYLength, 0); //get length
+        assert.equal(received.valueOf(), qtyBuyStepX.length, "length don't match"); //x and y must match.
+
+        //iterate x and y values and compare
+        for (let i = 0; i < qtyBuyStepX.length; ++i) {
+            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpQtyParamX, i); //get x value in cell i
+            assert.equal(received.valueOf(), qtyBuyStepX[i], "mismatch for x value in cell: " + i);
+            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpQtyParamY, i); //get x value in cell i
+            assert.equal(received.valueOf(), qtyBuyStepY[i], "mismatch for y value in cell: " + i);
+        }
+    });
+
+
+    it("should get qty sell step function and verify numbers.", async function () {
+        tokenId = 3; //
+
+        // x axis
+        let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpQtyXLength, 0); //get length
+        assert.equal(received.valueOf(), qtySellStepX.length, "length don't match");
+
+        // now y axis
+        received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpQtyYLength, 0); //get length
+        assert.equal(received.valueOf(), qtySellStepX.length, "length don't match"); //x and y must match.
+
+        //iterate x and y values and compare
+        for (let i = 0; i < qtySellStepX.length; ++i) {
+            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpQtyParamX, i); //get x value in cell i
+            assert.equal(received.valueOf(), qtySellStepX[i], "mismatch for x value in cell: " + i);
+            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpQtyParamY, i); //get x value in cell i
+            assert.equal(received.valueOf(), qtySellStepY[i], "mismatch for y value in cell: " + i);
+        }
+    });
+
+    it("should get imbalance buy step function and verify numbers.", async function () {
+        tokenId = 1; //
+
+        // x axis
+        let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceXLength, 0); //get length
+        assert.equal(received.valueOf(), imbalanceBuyStepX.length, "length don't match");
+
+        // now y axis
+        received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceYLength, 0); //get length
+        assert.equal(received.valueOf(), imbalanceBuyStepX.length, "length don't match"); //x and y must match.
+
+        //iterate x and y values and compare
+        for (let i = 0; i < imbalanceBuyStepX.length; ++i) {
+            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceParamX, i); //get x value in cell i
+            assert.equal(received.valueOf(), imbalanceBuyStepX[i], "mismatch for x value in cell: " + i);
+            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceParamY, i); //get x value in cell i
+            assert.equal(received.valueOf(), imbalanceBuyStepY[i], "mismatch for y value in cell: " + i);
+        }
+    });
+
+    it("should get imbalance sell step function and verify numbers.", async function () {
+        tokenId = 3; //
+
+        // x axis
+        let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceXLength, 0); //get length
+        assert.equal(received.valueOf(), imbalanceSellStepX.length, "length don't match");
+
+        // now y axis
+        received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceYLength, 0); //get length
+        assert.equal(received.valueOf(), imbalanceSellStepX.length, "length don't match"); //x and y must match.
+
+        //iterate x and y values and compare
+        for (let i = 0; i < imbalanceSellStepX.length; ++i) {
+            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceParamX, i); //get x value in cell i
+            assert.equal(received.valueOf(), imbalanceSellStepX[i], "mismatch for x value in cell: " + i);
+            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceParamY, i); //get x value in cell i
+            assert.equal(received.valueOf(), imbalanceSellStepY[i], "mismatch for y value in cell: " + i);
+        }
+    });
+
+    it("should get set function data reverts with illegal command ID.", async function () {
+        tokenId = 1; //
+
+        try {
+            let received = await convRatesInst.getStepFunctionData(tokens[tokenId], 19, 0); //get length
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+
+    it("should get and verify listed tokens.", async function () {
+        let rxTokens = await convRatesInst.getListedTokens();
+        assert.equal(rxTokens.length, tokens.length, "length don't match");
+
+        for (let i = 0; i < tokens.length; i++){
+            assert.equal(rxTokens[i].valueOf(), tokens[i], "address don't match");
+        }
+    });
+
+
+    it("should test get token basic data works properly.", async function () {
+        token = await TestToken.new("testt", "tst", 18);
+        //see token not listed
+        let basicData = await convRatesInst.getTokenBasicData(token.address);
+        assert.equal(basicData[0].valueOf(), 0, "token should not be listed");
+
+        //add token and see listed
+        await convRatesInst.addToken(token.address);
+        basicData = await convRatesInst.getTokenBasicData(token.address);
+        assert.equal(basicData[0].valueOf(), 1, "token should  be listed");
+
+        //see not enabled
+        assert.equal(basicData[1].valueOf(), 0, "token should not be enabled");
+
+        //enable token and see enabled
+        await convRatesInst.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
+        await convRatesInst.enableTokenTrade(token.address);
+        basicData = await convRatesInst.getTokenBasicData(token.address);
+        assert.equal(basicData[1].valueOf(), 1, "token should be enabled");
     });
 
     it("should get buy rate with update according to compact data update.", async function () {
@@ -209,6 +372,7 @@ contract('ConversionRates', function(accounts) {
 
         assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
     });
+
 
     it("should get buy rate when compact data has boundary values (-128, 127).", async function () {
         let tokenInd = 7;
@@ -265,6 +429,7 @@ contract('ConversionRates', function(accounts) {
 
         assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
     });
+
 
     it("should get buy rate when updating only 2nd cell compact data.", async function () {
         let tokenInd = 16;
@@ -731,7 +896,7 @@ contract('ConversionRates', function(accounts) {
 
         //add token and see enable success
         await convRatesInst.setTokenControlInfo(someToken.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
-        await convRatesInst.enableTokenTrade(token.address);
+        await convRatesInst.enableTokenTrade(someToken.address);
     });
 
     it("should verify disable token trade reverted if token not listed.", async function () {

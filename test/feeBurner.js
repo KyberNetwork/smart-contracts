@@ -188,7 +188,7 @@ contract('FeeBurner', function(accounts) {
         await feeBurnerTemp.setKyberNetwork(mockKyberNetwork);
     });
 
-    it("should test can't set bps fee > 1% (100 bps) and can't set empty knc wallet.", async function () {
+    it("should test can't set bps fee > 1% (100 bps).", async function () {
         let highBpsfee = 101;
 
         try {
@@ -200,7 +200,10 @@ contract('FeeBurner', function(accounts) {
 
         //see success
         await feeBurnerInst.setReserveData(mockReserve, 99, mockKNCWallet);
+    });
 
+
+    it("should test can't set empty (address 0) knc wallet.", async function () {
         try {
             await feeBurnerInst.setReserveData(mockReserve, 99, 0);
             assert(false, "throw was expected in line above.")
@@ -211,6 +214,7 @@ contract('FeeBurner', function(accounts) {
         //see success
         await feeBurnerInst.setReserveData(mockReserve, 99, mockKNCWallet);
     });
+
 
     it("should test can't set wallet fees above 100% (10000 bps).", async function () {
         let highBpsfee = 10000;

@@ -66,12 +66,6 @@ contract('VolumeImbalanceRecorder', function(accounts) {
 //            uint lastPriceUpdateBlock;
 //        }
 
-        //8 bytes ints./uints each
-        let Mask8Byte = 0xffffffffffffffff;
-        let int1 = -5;
-        let int2 = 11;
-        let int3 = -9;
-        let int4 = 20;
         let bytes = [];
         bytes.length = 32;
         bytes[0] = 1;
@@ -80,16 +74,10 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         bytes[24] = 4;
         let startIntStr = Helper.bytesToHex(bytes);
         let startInt = (new BigNumber(Helper.bytesToHex(bytes)));
-        console.log("startInt " + startIntStr);
         let toStruct = await imbalanceInst.callDecodeTokenImbalanceData(startInt);
-
-        console.log("toStruct " + toStruct[0].toString(16) + " " + toStruct[1].toString(16) + " " +
-                    toStruct[2].toString(16) + " " + toStruct[3].toString(16));
 
         let toInt = await imbalanceInst.callEncodeTokenImbalanceData(toStruct[0], toStruct[1], toStruct[2], toStruct[3]);
 
-        console.log("toInt " + toInt.toString(16));
-        //for now only print numbers
         assert.equal(startInt.valueOf(), toInt.valueOf(), "conversion failed");
 
         //test negative values.
@@ -102,37 +90,47 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         bytes[24] = -1002;
         startIntStr = Helper.bytesToHex(bytes);
         startInt = (new BigNumber(Helper.bytesToHex(bytes)));
-        console.log("startInt " + startIntStr);
         toStruct = await imbalanceInst.callDecodeTokenImbalanceData(startInt);
 
-        console.log("toStruct " + toStruct[0].toString(16) + " " + toStruct[1].toString(16) + " " +
-                    toStruct[2].toString(16) + " " + toStruct[3].toString(16));
-
         toInt = await imbalanceInst.callEncodeTokenImbalanceData(toStruct[0], toStruct[1], toStruct[2], toStruct[3]);
-
-        console.log("toInt " + toInt.toString(16));
-        //for now only print numbers
         assert.equal(startInt.valueOf(), toInt.valueOf(), "conversion failed");
     });
 
-    it("should test correct imbalance calculated on updates without block change and without price updates.", async function() {
-        currentBlock = 1000;
-        priceUpdateBlock = 990;
-        let trades = [300, 700, 80, -200, -28];
-        let totalBlockImbalance = 0;
-        let totalImbalanceSinceUpdate = 0;
+    it("should test variable range for encode / decode of token imbalance data.", async function() {
+    //        struct TokenImbalanceData {
+    //            int  lastBlockBuyUnitsImbalance;
+    //            uint lastBlock;
+    //
+    //            int  totalBuyUnitsImbalance;
+    //            uint lastPriceUpdateBlock;
+    //        }
 
-        for (let i = 0; i < trades.length; ++i) {
-            await imbalanceInst.addTrade(token.address, trades[i], priceUpdateBlock, currentBlock);
-            totalBlockImbalance += trades[i];
+        let pow_2_64 = (new BigNumber(2).pow(64).div(1));
+        let pow_2_64_div2 = (new BigNumber(2).pow(64).div(2));
+        let neg_pow_2_64_div2 = (new BigNumber(2).pow(64).div(2).mul(-1));
+
+        let startStruct = [pow_2_64_div2.sub(1), pow_2_64.sub(1), pow_2_64_div2.sub(1), pow_2_64.sub(1)];
+
+        let toInt = await imbalanceInst.callEncodeTokenImbalanceData(startStruct[0], startStruct[1], startStruct[2], startStruct[3]);
+
+        let toStruct = await imbalanceInst.callDecodeTokenImbalanceData(toInt);
+
+        for(let i =0; i < 4; i++){
+            assert.equal(startStruct[i].valueOf(), toStruct[i].valueOf(), "array cell: " + i + " not equal");
         }
-        totalImbalanceSinceUpdate = totalBlockImbalance;
 
-        let imbalanceArr =  await imbalanceInst.getMockImbalance(token.address, priceUpdateBlock, currentBlock);
+        startStruct = [neg_pow_2_64_div2.add(1), pow_2_64.sub(1), neg_pow_2_64_div2.add(1), pow_2_64.sub(1)];
 
-        assert.equal(imbalanceArr[1].valueOf(), totalBlockImbalance, "unexpected last block imbalance.");
-        assert.equal(imbalanceArr[0].valueOf(), totalImbalanceSinceUpdate, "unexpected total imbalance.");
+        toInt = await imbalanceInst.callEncodeTokenImbalanceData(startStruct[0], startStruct[1], startStruct[2], startStruct[3]);
+
+        toStruct = await imbalanceInst.callDecodeTokenImbalanceData(toInt);
+
+        for(let i =0; i < 4; i++){
+            assert.equal(startStruct[i].valueOf(), toStruct[i].valueOf(), "array cell: " + i + " not equal");
+        }
+
     });
+
 
     it("should test correct negative imbalance calculated on updates without block change and without price updates.", async function() {
         currentBlock = 1002;
@@ -414,5 +412,86 @@ contract('VolumeImbalanceRecorder', function(accounts) {
 
         //sanity rates can currently be empty
         recorder = await MockImbalanceRecorder.new(admin);
+    });
+
+    it("should test encode imbalance data reverts on data overflow or underflow.", async function() {
+        let pow_2_64 = (new BigNumber(2).pow(64).div(1));
+        let pow_2_64_div2 = (new BigNumber(2).pow(64).div(2));
+        let neg_pow_2_64_div2 = (new BigNumber(2).pow(64).div(2).mul(-1));
+        let legalValue = 100;
+
+        /*function prototype
+        function callEncodeTokenImbalanceData(
+                int64 lastBlockBuyUnitsImbalance,
+                uint64 lastBlock,
+                int64 totalBuyUnitsImbalance,
+                uint64 lastRateUpdateBlock
+        */
+
+        // start with legal call
+        await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, legalValue, legalValue);
+
+        //test invalid range for lastBlockBuyUnitsImbalance
+        try {
+            await imbalanceInst.callEncodeTokenImbalanceData(pow_2_64_div2.sub(0).valueOf(), legalValue, legalValue, legalValue);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //see success
+        await imbalanceInst.callEncodeTokenImbalanceData(pow_2_64_div2.sub(1).valueOf(), legalValue, legalValue, legalValue);
+
+        try {
+            await imbalanceInst.callEncodeTokenImbalanceData(neg_pow_2_64_div2.valueOf(), legalValue, legalValue, legalValue);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        await imbalanceInst.callEncodeTokenImbalanceData(neg_pow_2_64_div2.add(1).valueOf(), legalValue, legalValue, legalValue);
+
+        //test invalid range for lastBlock
+        try {
+            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, pow_2_64.valueOf(), legalValue, legalValue);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //see success
+        await imbalanceInst.callEncodeTokenImbalanceData(legalValue, pow_2_64.sub(1).valueOf(), legalValue, legalValue);
+
+
+        //test invalid range for totalBuyUnitsImbalance
+        try {
+            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, pow_2_64_div2.valueOf(), legalValue);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, pow_2_64_div2.sub(1).valueOf(), legalValue);
+
+        try {
+            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, neg_pow_2_64_div2.valueOf(), legalValue);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+
+        await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, neg_pow_2_64_div2.add(1).valueOf(), legalValue);
+
+        //test invalid range for lastRateUpdateBlock
+        try {
+            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, legalValue, pow_2_64_div2 * 2);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "using" + pow_2_64 +  " expected throw but got: " + e);
+        }
+
+        await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, legalValue, pow_2_64.sub(1));
+
     });
 });
