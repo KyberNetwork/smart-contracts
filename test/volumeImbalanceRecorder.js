@@ -115,25 +115,6 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         assert.equal(startInt.valueOf(), toInt.valueOf(), "conversion failed");
     });
 
-    it("should test correct imbalance calculated on updates without block change and without price updates.", async function() {
-        currentBlock = 1000;
-        priceUpdateBlock = 990;
-        let trades = [300, 700, 80, -200, -28];
-        let totalBlockImbalance = 0;
-        let totalImbalanceSinceUpdate = 0;
-
-        for (let i = 0; i < trades.length; ++i) {
-            await imbalanceInst.addTrade(token.address, trades[i], priceUpdateBlock, currentBlock);
-            totalBlockImbalance += trades[i];
-        }
-        totalImbalanceSinceUpdate = totalBlockImbalance;
-
-        let imbalanceArr =  await imbalanceInst.getMockImbalance(token.address, priceUpdateBlock, currentBlock);
-
-        assert.equal(imbalanceArr[1].valueOf(), totalBlockImbalance, "unexpected last block imbalance.");
-        assert.equal(imbalanceArr[0].valueOf(), totalImbalanceSinceUpdate, "unexpected total imbalance.");
-    });
-
     it("should test correct negative imbalance calculated on updates without block change and without price updates.", async function() {
         currentBlock = 1002;
         priceUpdateBlock = 1001;
@@ -414,5 +395,74 @@ contract('VolumeImbalanceRecorder', function(accounts) {
 
         //sanity rates can currently be empty
         recorder = await MockImbalanceRecorder.new(admin);
+    });
+
+    it("should test encode imbalance data reverts on data overflow or underflow.", async function() {
+        let pow_2_64 = (new BigNumber(2).pow(64).div(1));
+        let pow_2_64_div2 = (new BigNumber(2).pow(64).div(2));
+        let neg_pow_2_64_div2 = (new BigNumber(2).pow(64).div(2).mul(-1));
+
+        console.log("pow_2_64 " + pow_2_64.toString(16));
+        console.log("pow_2_64_div2 " + pow_2_64_div2.toString(16));
+        console.log("neg_pow_2_64_div2 " + neg_pow_2_64_div2.toString(16));
+
+        let legalValue = 100;
+
+        /*function prototype
+        function callEncodeTokenImbalanceData(
+                int64 lastBlockBuyUnitsImbalance,
+                uint64 lastBlock,
+                int64 totalBuyUnitsImbalance,
+                uint64 lastRateUpdateBlock
+        */
+
+        // start with legal call
+        await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, legalValue, legalValue);
+
+        //test invalid range for lastBlockBuyUnitsImbalance
+        try {
+            await imbalanceInst.callEncodeTokenImbalanceData(pow_2_64_div2.sub(0).valueOf(), legalValue, legalValue, legalValue);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await imbalanceInst.callEncodeTokenImbalanceData(neg_pow_2_64_div2.valueOf(), legalValue, legalValue, legalValue);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //test invalid range for lastBlock
+        try {
+            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, pow_2_64.add(1).valueOf(), legalValue, legalValue);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //test invalid range for totalBuyUnitsImbalance
+        try {
+            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, pow_2_64_div2.valueOf(), legalValue);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, neg_pow_2_64_div2.valueOf(), legalValue);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //test invalid range for lastRateUpdateBlock
+        try {
+            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, legalValue, pow_2_64_div2 * 2);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "using" + pow_2_64 +  " expected throw but got: " + e);
+        }
     });
 });
