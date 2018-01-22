@@ -34,12 +34,12 @@
 
   "exchanges": {
     "binance": {
-      "OMG": "0xf41cfddf6c941691d4d533d52d7e19d08247e263",
-      "KNC": "0x0dfa8d93208f02a5bf70f62461d122a438a56feb",
-      "EOS": "0x3267970558f0bf6e3a5bf97e5496313ea90195f0",
-      "SALT": "0xf79f4974c8f043d5aa6995e875b2151d74b21bd2",
-      "SNT": "0x133161df5b1b962cfac014f1a04d1f2ab5a51820",
-      "ETH": "0xfd018cc53c14420b072662a62b5ece74cf5bfae8"
+      "OMG": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "KNC": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "EOS": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "SALT": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "SNT": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "ETH": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"
     }
   },
   "reserve": "0x749dd52D7f22CBc3897a0fc20b55393B1f78B4fE",
