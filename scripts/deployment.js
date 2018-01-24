@@ -40,7 +40,7 @@ var reserveOwner;
 
 var ethAddress = new BigNumber("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
 
-var exchanges = [];// ["Bittrex", "Liqui", "Poloniex", "Binance", "Bitfinex"];
+var exchanges = [];// ["Bittrex", "Liqui", "Huobi", "Binance", "Bitfinex"];
 var exchangesInstance = [];
 var exchangeDepositAddresses = [];
 
