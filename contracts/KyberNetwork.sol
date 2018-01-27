@@ -145,6 +145,9 @@ contract KyberNetwork is Withdrawable, Utils {
             }
         }
 
+        setDecimals(src);
+        setDecimals(dest);
+
         ListReservePairs(reserve, src, dest, add);
     }
 
@@ -363,11 +366,6 @@ contract KyberNetwork is Withdrawable, Utils {
         }
 
         return true;
-    }
-
-    function getDecimals(ERC20 token) internal view returns(uint) {
-        if (token == ETH_TOKEN_ADDRESS) return 18;
-        return token.decimals();
     }
 
     function calcDestAmount(ERC20 src, ERC20 dest, uint srcAmount, uint rate) internal view returns(uint) {
