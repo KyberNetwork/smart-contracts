@@ -265,6 +265,8 @@ contract ConversionRates is ConversionRatesInterface, VolumeImbalanceRecorder, U
     }
 
     function getCompactData(ERC20 token) public view returns(uint, uint, byte, byte) {
+        require(tokenData[token].listed);
+
         uint arrayIndex = tokenData[token].compactDataArrayIndex;
         uint fieldOffset = tokenData[token].compactDataFieldIndex;
 
