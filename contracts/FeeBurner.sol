@@ -2,17 +2,13 @@ pragma solidity 0.4.18;
 
 
 import "./ERC20Interface.sol";
+import "./FeeBurnerInterface.sol";
 import "./Withdrawable.sol";
 
 
 interface BurnableToken {
     function transferFrom(address _from, address _to, uint _value) public returns (bool);
     function burnFrom(address _from, uint256 _value) public returns (bool);
-}
-
-
-interface FeeBurnerInterface {
-    function handleFees (uint tradeWeiAmount, address reserve, address wallet) public returns(bool);
 }
 
 

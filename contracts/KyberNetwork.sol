@@ -2,13 +2,13 @@ pragma solidity 0.4.18;
 
 
 import "./ERC20Interface.sol";
-import "./KyberReserve.sol";
+import "./KyberReserveInterface.sol";
 import "./Withdrawable.sol";
 import "./Utils.sol";
 import "./PermissionGroups.sol";
-import "./WhiteList.sol";
-import "./ExpectedRate.sol";
-import "./FeeBurner.sol";
+import "./WhiteListInterface.sol";
+import "./ExpectedRateInterface.sol";
+import "./FeeBurnerInterface.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -16,9 +16,9 @@ import "./FeeBurner.sol";
 contract KyberNetwork is Withdrawable, Utils {
 
     uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
-    KyberReserve[] public reserves;
+    KyberReserveInterface[] public reserves;
     mapping(address=>bool) public isReserve;
-    WhiteList public whiteListContract;
+    WhiteListInterface public whiteListContract;
     ExpectedRateInterface public expectedRateContract;
     FeeBurnerInterface    public feeBurnerContract;
     uint                  public maxGasPrice = 50 * 1000 * 1000 * 1000; // 50 gwei
@@ -99,13 +99,13 @@ contract KyberNetwork is Withdrawable, Utils {
         return actualDestAmount;
     }
 
-    event AddReserveToNetwork(KyberReserve reserve, bool add);
+    event AddReserveToNetwork(KyberReserveInterface reserve, bool add);
 
     /// @notice can be called only by admin
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
     /// @param add If true, the add reserve. Otherwise delete reserve.
-    function addReserve(KyberReserve reserve, bool add) public onlyAdmin {
+    function addReserve(KyberReserveInterface reserve, bool add) public onlyAdmin {
 
         if (add) {
             require(!isReserve[reserve]);
@@ -149,7 +149,7 @@ contract KyberNetwork is Withdrawable, Utils {
     }
 
     function setParams(
-        WhiteList _whiteList,
+        WhiteListInterface    _whiteList,
         ExpectedRateInterface _expectedRate,
         FeeBurnerInterface    _feeBurner,
         uint                  _maxGasPrice,
@@ -186,7 +186,7 @@ contract KyberNetwork is Withdrawable, Utils {
     /// @notice should be called off chain with as much gas as needed
     /// @dev get an array of all reserves
     /// @return An array of all reserves
-    function getReserves() public view returns(KyberReserve[]) {
+    function getReserves() public view returns(KyberReserveInterface[]) {
         return reserves;
     }
 
@@ -279,7 +279,7 @@ contract KyberNetwork is Withdrawable, Utils {
         uint rate;
 
         (reserveInd, rate) = findBestRate(src, dest, srcAmount);
-        KyberReserve theReserve = reserves[reserveInd];
+        KyberReserveInterface theReserve = reserves[reserveInd];
         require(rate > 0);
         require(rate < MAX_RATE);
         require(rate >= minConversionRate);
@@ -337,7 +337,7 @@ contract KyberNetwork is Withdrawable, Utils {
         ERC20 dest,
         address destAddress,
         uint expectedDestAmount,
-        KyberReserve reserve,
+        KyberReserveInterface reserve,
         uint conversionRate,
         bool validate
     )
