@@ -4,9 +4,9 @@ pragma solidity 0.4.18;
 import "./ERC20Interface.sol";
 import "./VolumeImbalanceRecorder.sol";
 import "./Utils.sol";
+import "./ConversionRatesInterface.sol";
 
-
-contract ConversionRates is VolumeImbalanceRecorder, Utils {
+contract ConversionRates is ConversionRatesInterface, VolumeImbalanceRecorder, Utils {
 
     // bps - basic rate steps. one step is 1 / 10000 of the rate.
     struct StepFunction {

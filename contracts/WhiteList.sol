@@ -2,9 +2,10 @@ pragma solidity 0.4.18;
 
 
 import "./Withdrawable.sol";
+import "./WhiteListInterface.sol";
 
 
-contract WhiteList is Withdrawable {
+contract WhiteList is WhiteListInterface, Withdrawable {
 
     uint public weiPerSgd; // amount of weis in 1 singapore dollar
     mapping (address=>uint) public userCategory; // each user has a category defining cap on trade. 0 for standard.
