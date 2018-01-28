@@ -9,9 +9,27 @@ contract Utils {
 
     ERC20 constant internal ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
     uint  constant internal PRECISION = (10**18);
-    uint  constant internal MAX_QTY   = (10**28); // 1B tokens
+    uint  constant internal MAX_QTY   = (10**28); // 10B tokens
     uint  constant internal MAX_RATE  = (PRECISION * 10**6); // up to 1M tokens per ETH
     uint  constant internal MAX_DECIMALS = 18;
+    uint  constant internal ETH_DECIMALS = 18;
+    mapping(address=>uint) internal decimals;
+
+    function setDecimals(ERC20 token) internal {
+        if (token == ETH_TOKEN_ADDRESS) decimals[token] = ETH_DECIMALS;
+        else decimals[token] = token.decimals();
+    }
+
+    function getDecimals(ERC20 token) internal view returns(uint) {
+        if (token == ETH_TOKEN_ADDRESS) return ETH_DECIMALS; // save storage access
+        uint tokenDecimals = decimals[token];
+        // technically, there might be token with decimals 0
+        // moreover, very possible that old tokens have decimals 0
+        // these tokens will just have higher gas fees.
+        if(tokenDecimals == 0) return token.decimals();
+
+        return tokenDecimals;
+    }
 
     function calcDstQty(uint srcQty, uint srcDecimals, uint dstDecimals, uint rate) internal pure returns(uint) {
         if (dstDecimals >= srcDecimals) {

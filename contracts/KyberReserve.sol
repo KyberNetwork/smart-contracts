@@ -85,6 +85,8 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
     function approveWithdrawAddress(ERC20 token, address addr, bool approve) public onlyAdmin {
         approvedWithdrawAddresses[keccak256(token, addr)] = approve;
         WithdrawAddressApproved(token, addr, approve);
+
+        setDecimals(token);
     }
 
     event WithdrawFunds(ERC20 token, uint amount, address destination);
@@ -127,11 +129,6 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
             return this.balance;
         else
             return token.balanceOf(this);
-    }
-
-    function getDecimals(ERC20 token) public view returns(uint) {
-        if (token == ETH_TOKEN_ADDRESS) return 18;
-        return token.decimals();
     }
 
     function getDestQty(ERC20 src, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {

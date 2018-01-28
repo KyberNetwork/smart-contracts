@@ -70,6 +70,8 @@ contract ConversionRates is ConversionRatesInterface, VolumeImbalanceRecorder, U
         numTokensInCurrentCompactData = (numTokensInCurrentCompactData + 1) % NUM_TOKENS_IN_COMPACT_DATA;
 
         setGarbageToVolumeRecorder(token);
+
+        setDecimals(token);
     }
 
     function setCompactData(bytes14[] buy, bytes14[] sell, uint blockNumber, uint[] indices) public onlyOperator {
@@ -314,8 +316,8 @@ contract ConversionRates is ConversionRatesInterface, VolumeImbalanceRecorder, U
     }
 
     function getTokenQty(ERC20 token, uint ethQty, uint rate) internal view returns(uint) {
-        uint dstDecimals = token.decimals();
-        uint srcDecimals = 18;
+        uint dstDecimals = getDecimals(token);
+        uint srcDecimals = ETH_DECIMALS;
 
         return calcDstQty(ethQty, srcDecimals, dstDecimals, rate);
     }
