@@ -121,7 +121,7 @@ contract('FeeBurner', function(accounts) {
         }
     });
 
-    it("should test burn fee and handle fee calls success. see see waiting fees zeroed.", async function () {
+    it("should test burn fee and handle fee calls success. See waiting fees zeroed.", async function () {
         let feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
         assert(feesWaitingToBurn.valueOf() > 1, "unexpected waiting to burn.");
 

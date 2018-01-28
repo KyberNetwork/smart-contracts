@@ -39,6 +39,22 @@ contract('PermissionGroups', function(accounts) {
         await permissionsInst.claimAdmin({from:accounts[0]});
     });
 
+    it("should test can't claim admin with two addresses.", async function () {
+        let currentAdmin = accounts[0];
+        let pendingAdmin1 = accounts[1];
+        let pendingAdmin2 = accounts[2];
+        await permissionsInst.transferAdmin(pendingAdmin1, {from:currentAdmin});
+        await permissionsInst.transferAdmin(pendingAdmin2, {from:currentAdmin});
+        await permissionsInst.claimAdmin({from:pendingAdmin2});
+        assert.strictEqual(await permissionsInst.admin.call(), pendingAdmin2)
+        await permissionsInst.claimAdmin({from:pendingAdmin1}).catch(() => {});
+        assert.strictEqual(await permissionsInst.admin.call(), pendingAdmin2)
+
+        //give back admin
+        await permissionsInst.transferAdmin(currentAdmin, {from:pendingAdmin2});
+        await permissionsInst.claimAdmin({from:currentAdmin});
+    });
+
     it("should test add alerter is rejected for non admin.", async function () {
         try {
             await permissionsInst.addAlerter(accounts[2], {from:accounts[2]});
