@@ -32,6 +32,9 @@ contract Utils {
     }
 
     function calcDstQty(uint srcQty, uint srcDecimals, uint dstDecimals, uint rate) internal pure returns(uint) {
+        require(srcQty <= MAX_QTY);
+        require(rate <= MAX_RATE);
+
         if (dstDecimals >= srcDecimals) {
             require((dstDecimals - srcDecimals) <= MAX_DECIMALS);
             return (srcQty * rate * (10**(dstDecimals - srcDecimals))) / PRECISION;
@@ -42,6 +45,9 @@ contract Utils {
     }
 
     function calcSrcQty(uint dstQty, uint srcDecimals, uint dstDecimals, uint rate) internal pure returns(uint) {
+        require(dstQty <= MAX_QTY);
+        require(rate <= MAX_RATE);
+        
         //source quantity is rounded up. to avoid dest quantity being too low.
         uint numerator;
         uint denominator;
