@@ -4,9 +4,9 @@ pragma solidity 0.4.18;
 import "./ERC20Interface.sol";
 import "./VolumeImbalanceRecorder.sol";
 import "./Utils.sol";
+import "./ConversionRatesInterface.sol";
 
-
-contract ConversionRates is VolumeImbalanceRecorder, Utils {
+contract ConversionRates is ConversionRatesInterface, VolumeImbalanceRecorder, Utils {
 
     // bps - basic rate steps. one step is 1 / 10000 of the rate.
     struct StepFunction {
@@ -70,6 +70,8 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
         numTokensInCurrentCompactData = (numTokensInCurrentCompactData + 1) % NUM_TOKENS_IN_COMPACT_DATA;
 
         setGarbageToVolumeRecorder(token);
+
+        setDecimals(token);
     }
 
     function setCompactData(bytes14[] buy, bytes14[] sell, uint blockNumber, uint[] indices) public onlyOperator {
@@ -263,6 +265,8 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
     }
 
     function getCompactData(ERC20 token) public view returns(uint, uint, byte, byte) {
+        require(tokenData[token].listed);
+
         uint arrayIndex = tokenData[token].compactDataArrayIndex;
         uint fieldOffset = tokenData[token].compactDataFieldIndex;
 
@@ -314,8 +318,8 @@ contract ConversionRates is VolumeImbalanceRecorder, Utils {
     }
 
     function getTokenQty(ERC20 token, uint ethQty, uint rate) internal view returns(uint) {
-        uint dstDecimals = token.decimals();
-        uint srcDecimals = 18;
+        uint dstDecimals = getDecimals(token);
+        uint srcDecimals = ETH_DECIMALS;
 
         return calcDstQty(ethQty, srcDecimals, dstDecimals, rate);
     }

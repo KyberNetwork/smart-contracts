@@ -4,21 +4,22 @@ pragma solidity 0.4.18;
 import "./ERC20Interface.sol";
 import "./Utils.sol";
 import "./Withdrawable.sol";
-import "./ConversionRates.sol";
+import "./ConversionRatesInterface.sol";
 import "./VolumeImbalanceRecorder.sol";
-import "./SanityRates.sol";
+import "./SanityRatesInterface.sol";
+import "./KyberReserveInterface.sol";
 
 
 /// @title Kyber Reserve contract
-contract KyberReserve is Withdrawable, Utils {
+contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
 
     address public kyberNetwork;
     bool public tradeEnabled;
-    ConversionRates public conversionRatesContract;
+    ConversionRatesInterface public conversionRatesContract;
     SanityRatesInterface public sanityRatesContract;
     mapping(bytes32=>bool) public approvedWithdrawAddresses; // sha3(token,address)=>bool
 
-    function KyberReserve(address _kyberNetwork, ConversionRates _ratesContract, address _admin) public {
+    function KyberReserve(address _kyberNetwork, ConversionRatesInterface _ratesContract, address _admin) public {
         require(_admin != address(0));
         require(_ratesContract != address(0));
         require(_kyberNetwork != address(0));
@@ -84,6 +85,8 @@ contract KyberReserve is Withdrawable, Utils {
     function approveWithdrawAddress(ERC20 token, address addr, bool approve) public onlyAdmin {
         approvedWithdrawAddresses[keccak256(token, addr)] = approve;
         WithdrawAddressApproved(token, addr, approve);
+
+        setDecimals(token);
     }
 
     event WithdrawFunds(ERC20 token, uint amount, address destination);
@@ -104,7 +107,7 @@ contract KyberReserve is Withdrawable, Utils {
 
     event SetContractAddresses(address network, address rate, address sanity);
 
-    function setContracts(address _kyberNetwork, ConversionRates _conversionRates, SanityRatesInterface _sanityRates)
+    function setContracts(address _kyberNetwork, ConversionRatesInterface _conversionRates, SanityRatesInterface _sanityRates)
         public
         onlyAdmin
     {
@@ -126,11 +129,6 @@ contract KyberReserve is Withdrawable, Utils {
             return this.balance;
         else
             return token.balanceOf(this);
-    }
-
-    function getDecimals(ERC20 token) public view returns(uint) {
-        if (token == ETH_TOKEN_ADDRESS) return 18;
-        return token.decimals();
     }
 
     function getDestQty(ERC20 src, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {

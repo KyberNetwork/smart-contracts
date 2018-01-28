@@ -29,7 +29,7 @@
   "exchanges": [
     "bittrex",
     "liqui",
-    "poloniex",
+    "huobi",
     "binance",
     "bitfinex"
   ],

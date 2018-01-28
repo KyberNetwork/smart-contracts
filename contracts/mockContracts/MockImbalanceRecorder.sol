@@ -43,7 +43,7 @@ contract MockImbalanceRecorder is VolumeImbalanceRecorder {
         int totalBuyUnitsImbalance,
         uint lastRateUpdateBlock
     )
-        external view returns(uint)
+        external pure returns(uint)
     {
         TokenImbalanceData memory data =
             TokenImbalanceData(lastBlockBuyUnitsImbalance, lastBlock, totalBuyUnitsImbalance, lastRateUpdateBlock);
