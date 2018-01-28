@@ -5,7 +5,6 @@ import "./ERC20Interface.sol";
 import "./Utils.sol";
 import "./Withdrawable.sol";
 import "./ConversionRatesInterface.sol";
-import "./VolumeImbalanceRecorder.sol";
 import "./SanityRatesInterface.sol";
 import "./KyberReserveInterface.sol";
 
