@@ -1,7 +1,6 @@
 pragma solidity ^0.4.18;
 
 import "../ERC20Interface.sol";
-import "../KyberReserve.sol";
 import "../KyberNetwork.sol";
 import "../Utils.sol";
 import "../ConversionRates.sol";
@@ -34,19 +33,13 @@ contract Wrapper is Utils {
         return int8(x[byteInd]);
     }
 
-//    struct TokenRatesCompactData {
-//        bytes14 buy;  // change buy rate of token from baseBuyRate in 10 bps
-//        bytes14 sell; // change sell rate of token from baseSellRate in 10 bps
-//
-//        uint32 blockNumber;
-//    }
-//
-//    function getDataFromCompact(TokenRatesCompactData compact, uint byteInd) public pure
-//        returns(int8 buyByte, int8 sellByte, uint blockNumber)
-//    {
-//        blockNumber = uint(compact.blockNumber);
-////        return (compact.buy[byteInd], compact.sell[byteInd], uint(compact.blockNumber));
-//    }
+    function isTokenListedOnNetwork(KyberNetwork network, address reserve, address from, address to) external view
+    returns (bool listedFromTo, bool listedToFrom)
+    {
+        listedFromTo = network.perReserveListedPairs(reserve, (keccak256(from, to)));
+        listedToFrom = network.perReserveListedPairs(reserve, (keccak256(to, from)));
+        return (listedFromTo, listedToFrom);
+    }
 
     function getCompactData(ConversionRates ratesContract, ERC20 token) internal view returns(int8,int8,uint) {
         uint bulkIndex; uint index; byte buy; byte sell; uint updateBlock;
@@ -57,8 +50,8 @@ contract Wrapper is Utils {
     }
 
     function getTokenRates(ConversionRates ratesContract, ERC20[] tokenList)
-        public view
-        returns(uint[], uint[], int8[], int8[], uint[])
+    public view
+    returns(uint[], uint[], int8[], int8[], uint[])
     {
         uint[] memory buyBases = new uint[](tokenList.length);
         uint[] memory sellBases = new uint[](tokenList.length);
@@ -93,7 +86,7 @@ contract Wrapper is Utils {
 
 
     function getExpectedRates( KyberNetwork network, ERC20[] srcs, ERC20[] dests, uint[] qty )
-        public view returns(uint[], uint[])
+    public view returns(uint[], uint[])
     {
         require( srcs.length == dests.length );
         require( srcs.length == qty.length );
