@@ -1,0 +1,56 @@
+{
+  "tokens": {
+    "OMG": {
+      "name": "OmiseGO",
+      "decimals": 18,
+      "address": "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07",
+      "minimalRecordResolution" : "1000000000000000",
+      "maxPerBlockImbalance" : "120000000000000000000",
+      "maxTotalImbalance" : "180000000000000000000"
+    },
+    "KNC": {
+      "name": "KyberNetwork",
+      "decimals": 18,
+      "address": "0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
+      "minimalRecordResolution" : "1000000000000000",
+      "maxPerBlockImbalance" : "550000000000000000000",
+      "maxTotalImbalance" : "820000000000000000000"
+    },
+    "EOS": {
+      "name": "Eos",
+      "decimals": 18,
+      "address": "0x86Fa049857E0209aa7D9e616F7eb3b3B78ECfdb0",
+      "minimalRecordResolution" : "1000000000000000",
+      "maxPerBlockImbalance" : "150000000000000000000",
+      "maxTotalImbalance" : "230000000000000000000"
+    },
+    "SALT": {
+      "name": "SALT",
+      "decimals": 8,
+      "address": "0x86Fa049857E0209aa7D9e616F7eb3b3B78ECfdb0",
+      "minimalRecordResolution" : "100000",
+      "maxPerBlockImbalance" : "25000000000",
+      "maxTotalImbalance" : "37000000000"
+    },
+    "SNT": {
+      "name": "STATUS",
+      "decimals": 18,
+      "minimalRecordResolution" : "10000000000000000",
+      "maxPerBlockImbalance" : "6850000000000000000000",
+      "maxTotalImbalance" : "10300000000000000000000"
+    }
+  },
+  "exchanges": [
+    "binance" : {"ETH" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+                 "OMG" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+                 "KNC" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+                 "SNT" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+                 "SALT" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90" }
+  ],
+
+  "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+  "ilan" : "0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
+  "victor" : "0x8bC3da587DeF887B5C822105729ee1D6aF05A5ca",
+
+  "output filename" : "deployment_script.json"
+}

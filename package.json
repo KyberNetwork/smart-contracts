@@ -1,0 +1,27 @@
+{
+  "name": "smart-contracts",
+  "version": "1.0.0",
+  "description": "This repository has the main contracts in KyberNetwork platform. There are three main components in this repository including  KyberNetwork contract, KyberReserve and KyberWallet contracts. In addition, we have a couple of mock modules that simulate testnet tokens and centralized exchanges. This repository is for testing purposes only,  do not use it for real deployment.",
+  "main": "truffle.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KyberNetwork/smart-contracts.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/KyberNetwork/smart-contracts/issues"
+  },
+  "homepage": "https://github.com/KyberNetwork/smart-contracts#readme",
+  "dependencies": {
+    "rlp": "^2.0.0",
+    "solc": "^0.4.18",
+    "web3": "^1.0.0-beta.29"
+  }
+}
