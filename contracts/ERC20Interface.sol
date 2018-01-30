@@ -10,5 +10,7 @@ interface ERC20 {
     function approve(address _spender, uint _value) public returns (bool success);
     function allowance(address _owner, address _spender) public view returns (uint remaining);
     function decimals() public view returns(uint digits);
+    function name() public view returns(string name);
+    function symbol() public view returns(string symbol);
     event Approval(address indexed _owner, address indexed _spender, uint _value);
 }
