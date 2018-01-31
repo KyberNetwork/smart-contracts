@@ -56,8 +56,8 @@ contract PermissionGroups {
      */
     function transferAdminQuickly(address newAdmin) public onlyAdmin {
         require(newAdmin != address(0));
-        AdminClaimed(newAdmin, admin);
         TransferAdminPending(newAdmin);
+        AdminClaimed(newAdmin, admin);
         admin = newAdmin;
     }
 
@@ -77,7 +77,7 @@ contract PermissionGroups {
 
     function addAlerter(address newAlerter) public onlyAdmin {
         require(!alerters[newAlerter]); // prevent duplicates.
-        require(alertersGroup.length <= MAX_GROUP_SIZE);
+        require(alertersGroup.length < MAX_GROUP_SIZE);
 
         AlerterAdded(newAlerter, true);
         alerters[newAlerter] = true;
@@ -102,7 +102,7 @@ contract PermissionGroups {
 
     function addOperator(address newOperator) public onlyAdmin {
         require(!operators[newOperator]); // prevent duplicates.
-        require(operatorsGroup.length <= MAX_GROUP_SIZE);
+        require(operatorsGroup.length < MAX_GROUP_SIZE);
 
         OperatorAdded(newOperator, true);
         operators[newOperator] = true;
