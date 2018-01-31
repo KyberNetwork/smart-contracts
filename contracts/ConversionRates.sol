@@ -250,7 +250,7 @@ contract ConversionRates is ConversionRatesInterface, VolumeImbalanceRecorder, U
             rate = addBps(rate, extraBps);
         }
 
-        if (abs(totalImbalance + imbalanceQty) >= getMaxTotalImbalance(token)) return 0;
+        if (abs(totalImbalance) >= getMaxTotalImbalance(token)) return 0;
         if (abs(blockImbalance + imbalanceQty) >= getMaxPerBlockImbalance(token)) return 0;
 
         return rate;
