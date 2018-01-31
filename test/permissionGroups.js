@@ -52,16 +52,21 @@ contract('PermissionGroups', function(accounts) {
 
     it("should test quick admin transfer successful run.", async function () {
         await permissionsInst.transferAdminQuickly(secondAdmin, {from: mainAdmin});
+        assert.strictEqual(await permissionsInst.admin.call(), secondAdmin)
         try {
-            await permissionsInst.transferAdminQuickly(user, {from: mainAdmin});
+            await permissionsInst.transferAdminQuickly(user, {from:mainAdmin})
             assert(false, "throw was expected in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
+
+        //and back
         await permissionsInst.transferAdminQuickly(mainAdmin, {from: secondAdmin});
+        assert.strictEqual(await permissionsInst.admin.call(), mainAdmin)
+
         try {
-            await permissionsInst.transferAdminQuickly(user, {from: secondAdmin});
+            await permissionsInst.transferAdminQuickly(user, {from:secondAdmin})
             assert(false, "throw was expected in line above.")
         }
         catch(e){
