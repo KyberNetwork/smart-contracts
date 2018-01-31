@@ -3,7 +3,7 @@ var fs = require("fs");
 var RLP = require('rlp');
 url = "http://localhost:8545";
 //url = "https://kovan.infura.io";
-url = "https://mainnet.infura.io";
+//url = "https://mainnet.infura.io";
 var web3 = new Web3(new Web3.providers.HttpProvider(url));
 var solc = require('solc')
 
@@ -238,9 +238,12 @@ async function main() {
                                                  maxGasPrice,
                                                  negDiffInBps));
 
+  // add operator
+  console.log("network - add operator");
+  await sendTx(networkContract.methods.addOperator(victor));
   // transfer admin ownership
   console.log("network transfer admin");
-  await sendTx(networkContract.methods.transferAdmin(admin));
+  await sendTx(networkContract.methods.transferAdminQuickly(admin));
 
 
   // reserve
@@ -259,7 +262,7 @@ async function main() {
   }
 
   console.log("reserve transfer admin");
-  await sendTx(reserveContract.methods.transferAdmin(admin));
+  await sendTx(reserveContract.methods.transferAdminQuickly(admin));
 
 
   // expected rates
@@ -273,14 +276,20 @@ async function main() {
   await sendTx(expectedRateContract.methods.removeOperator(sender));
 
   console.log("expected rate transfer admin");
-  await sendTx(expectedRateContract.methods.transferAdmin(admin));
+  await sendTx(expectedRateContract.methods.transferAdminQuickly(admin));
 
 
   // whitelist
   console.log("white list - add opeator 1");
   await sendTx(whitelistContract.methods.addOperator(ilan));
+  console.log("white list - add temp opeator to set sgd rate");
+  await sendTx(whitelistContract.methods.addOperator(sender));
+  console.log("white list - set sgd rate");
+  await sendTx(whitelistContract.methods.setSgdToEthRate(web3.utils.toBN("645161290322581")));
+  console.log("white list - remove temp opeator to set sgd rate");
+  await sendTx(whitelistContract.methods.removeOperator(sender));
   console.log("white list transfer admin");
-  await sendTx(whitelistContract.methods.transferAdmin(admin));
+  await sendTx(whitelistContract.methods.transferAdminQuickly(admin));
 
   // burn fee
   console.log("burn fee - set reserve data");
@@ -292,7 +301,7 @@ async function main() {
   console.log("set KNC to ETH rate");
   await sendTx(feeBurnerContract.methods.setKNCRate(kncToEthRate));
   console.log("burn fees transfer admin");
-  await sendTx(feeBurnerContract.methods.transferAdmin(admin));
+  await sendTx(feeBurnerContract.methods.transferAdminQuickly(admin));
 
   // conversion rates
   console.log("conversion rate - add token");
@@ -327,7 +336,7 @@ async function main() {
   await sendTx(conversionRatesContract.methods.addOperator(victor));
 
   console.log("conversion rate - transfer admin");
-  await sendTx(conversionRatesContract.methods.transferAdmin(admin));
+  await sendTx(conversionRatesContract.methods.transferAdminQuickly(admin));
 
   console.log("last nonce is", nonce);
 }
@@ -335,6 +344,7 @@ async function main() {
 try{
   var content = fs.readFileSync("deployment_script_input.json", 'utf8');
   //console.log(content.substring(1470,1530));
+  //console.log(content.substring(1400,1500));
   parseInput(JSON.parse(content));
 }
 catch(err) {

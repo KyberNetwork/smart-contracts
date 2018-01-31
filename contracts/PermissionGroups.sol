@@ -9,6 +9,7 @@ contract PermissionGroups {
     mapping(address=>bool) internal alerters;
     address[] internal operatorsGroup;
     address[] internal alertersGroup;
+    uint constant internal MAX_GROUP_SIZE = 50;
 
     function PermissionGroups() public {
         admin = msg.sender;
@@ -49,6 +50,17 @@ contract PermissionGroups {
         pendingAdmin = newAdmin;
     }
 
+    /**
+     * @dev Allows the current admin to set the admin in one tx. Useful initial deployment.
+     * @param newAdmin The address to transfer ownership to.
+     */
+    function transferAdminQuickly(address newAdmin) public onlyAdmin {
+        require(newAdmin != address(0));
+        AdminClaimed(newAdmin, admin);
+        TransferAdminPending(newAdmin);
+        admin = newAdmin;
+    }
+
     event AdminClaimed( address newAdmin, address previousAdmin);
 
     /**
@@ -65,6 +77,8 @@ contract PermissionGroups {
 
     function addAlerter(address newAlerter) public onlyAdmin {
         require(!alerters[newAlerter]); // prevent duplicates.
+        require(alertersGroup.length <= MAX_GROUP_SIZE);
+
         AlerterAdded(newAlerter, true);
         alerters[newAlerter] = true;
         alertersGroup.push(newAlerter);
@@ -88,6 +102,8 @@ contract PermissionGroups {
 
     function addOperator(address newOperator) public onlyAdmin {
         require(!operators[newOperator]); // prevent duplicates.
+        require(operatorsGroup.length <= MAX_GROUP_SIZE);
+
         OperatorAdded(newOperator, true);
         operators[newOperator] = true;
         operatorsGroup.push(newOperator);
