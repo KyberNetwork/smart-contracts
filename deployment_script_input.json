@@ -35,6 +35,7 @@
     "SNT": {
       "name": "STATUS",
       "decimals": 18,
+      "address": "0x744d70fdbe2ba4cf95131626614a1763df805b9e",      
       "minimalRecordResolution" : "10000000000000000",
       "maxPerBlockImbalance" : "6850000000000000000000",
       "maxTotalImbalance" : "10300000000000000000000"
