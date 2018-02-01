@@ -1,4 +1,5 @@
-let ConversionRates = artifacts.require("./ConversionRates.sol");
+//let ConversionRates = artifacts.require("./ConversionRates.sol");
+let ConversionRates = artifacts.require("./mockContracts/MockConversionRate.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 let Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
 
@@ -15,6 +16,7 @@ let admin;
 let alerter;
 let rateUpdateBlock;
 let currentBlock = 3000;
+let lastSetCompactBlock = currentBlock;
 let wrapper;
 let numTokens = 17;
 let tokens = [];
@@ -160,6 +162,7 @@ contract('ConversionRates', function(accounts) {
         assert.deepEqual(indices.length, buys.length, "bad array size");
 
         await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        lastSetCompactBlock = currentBlock;
 
         //get compact data for all tokens and verify as expected
         for (i = 0; i < numTokens; ++i) {
@@ -207,8 +210,8 @@ contract('ConversionRates', function(accounts) {
 
         //see success on legal block
         let legalBlock = 0xffffffff - 1;
-        await convRatesInst.setCompactData(buys, sells, legalBlock, indices, {from: operator});;
-
+        await convRatesInst.setCompactData(buys, sells, legalBlock, indices, {from: operator});
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
     });
 
 
@@ -390,6 +393,7 @@ contract('ConversionRates', function(accounts) {
         compactHex = Helper.bytesToHex(compactSellArr1);
         sells.push(compactHex);
         convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        lastSetCompactBlock = currentBlock;
 
         // get rate with the updated compact data.
         let srcQty = 5;
@@ -413,6 +417,7 @@ contract('ConversionRates', function(accounts) {
         buys.length = 0;
         buys.push(compactHex);
         convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        lastSetCompactBlock = currentBlock;
 
         // get rate without activating quantity step function (small amount).
         srcQty = 11;
@@ -447,6 +452,7 @@ contract('ConversionRates', function(accounts) {
         compactHex = Helper.bytesToHex(compactSellArr2);
         sells.push(compactHex);
         convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        lastSetCompactBlock = currentBlock;
 
         // get rate without activating quantity step function (small amount).
 
@@ -619,6 +625,7 @@ contract('ConversionRates', function(accounts) {
         //set indices to 2 and see success.
         indices.length = 2;
         await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        lastSetCompactBlock = currentBlock;
     });
 
     it("should verify set compact data reverted when input arrays length don't match num set tokens.", async function () {
@@ -635,6 +642,7 @@ contract('ConversionRates', function(accounts) {
 
         sells.length = buys.length = indices.length = 2;
         await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        lastSetCompactBlock = currentBlock;
     });
 
     it("should verify set base rate data reverted when input arrays length don't match each other.", async function () {
@@ -693,6 +701,7 @@ contract('ConversionRates', function(accounts) {
 
         baseBuy.length = baseSell.length;
         await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        lastSetCompactBlock = currentBlock;
 
         //baseSell different length
         baseSell.push(19);
@@ -707,6 +716,7 @@ contract('ConversionRates', function(accounts) {
 
         baseSell.length = baseBuy.length;
         await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        lastSetCompactBlock = currentBlock;
     });
 
 
@@ -970,6 +980,42 @@ contract('ConversionRates', function(accounts) {
         rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
         assert(rate == 0, "unexpected rate");
     });
+
+    it("should verify get rate returns 0 when qty + total imbalance are above maxTotalImbalance.", async function () {
+        let qty = (maxPerBlockImbalance * -1 + 2);
+        let index = 11;
+        let totalImbalance = 0;
+        let token = tokens[index];
+        let imbalance = qty;
+
+        let lastSetBlock = await convRatesInst.getUpdateRateBlockFromCompact(token);
+        assert.equal(lastSetBlock.valueOf(), lastSetCompactBlock, "unexpected block");
+
+        while ((totalImbalance + imbalance) > (-maxTotalImbalance)) {
+            await convRatesInst.recordImbalance(token, imbalance, lastSetCompactBlock, currentBlock++, {from: reserveAddress});
+            totalImbalance += imbalance;
+        }
+
+        qty = maxTotalImbalance + totalImbalance - 1;
+        let rximbalance = await convRatesInst.mockGetImbalance(token, lastSetCompactBlock, currentBlock);
+        assert.equal(rximbalance[0].valueOf(), totalImbalance, "bad imbalance");
+
+        let maxTotal = await convRatesInst.mockGetMaxTotalImbalance(token);
+        assert.equal(maxTotalImbalance, maxTotal.valueOf(), "unexpected max total imbalance.");
+
+        console.log("current imbalance: " + totalImbalance + " max total: " + maxTotalImbalance + " qty " + qty);
+
+        //we are near total imbalance so small getRate will get legal rate.
+        let rate = await convRatesInst.getRate(token, currentBlock, false, qty);
+
+        assert(rate > 0, "expected rate > 0, received: " + rate);
+
+        //high get rate should get 0.
+        rate = await convRatesInst.getRate(token, currentBlock, false, (qty + 1));
+
+        assert.equal(rate.valueOf(), 0, "unexpected rate");
+    });
+
 
     it("should verify record imbalance reverted when not from reserve address.", async function () {
         //try record imbalance
