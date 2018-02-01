@@ -1,0 +1,63 @@
+{
+  "tokens": {
+    "OMG": {
+      "name": "OmiseGO",
+      "decimals": 18,
+      "address": "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "120000000000000000000",
+      "maxTotalImbalance": "180000000000000000000"
+    },
+    "KNC": {
+      "name": "KyberNetwork",
+      "decimals": 18,
+      "address": "0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "550000000000000000000",
+      "maxTotalImbalance": "820000000000000000000"
+    },
+    "EOS": {
+      "name": "Eos",
+      "decimals": 18,
+      "address": "0x86Fa049857E0209aa7D9e616F7eb3b3B78ECfdb0",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "150000000000000000000",
+      "maxTotalImbalance": "230000000000000000000"
+    },
+    "SALT": {
+      "name": "SALT",
+      "decimals": 8,
+      "address": "0x4156D3342D5c385a87D264F90653733592000581",
+      "minimalRecordResolution": "100000",
+      "maxPerBlockImbalance": "25000000000",
+      "maxTotalImbalance": "37000000000"
+    },
+    "SNT": {
+      "name": "STATUS",
+      "decimals": 18,
+      "address": "0x744d70fdbe2ba4cf95131626614a1763df805b9e",
+      "minimalRecordResolution": "10000000000000000",
+      "maxPerBlockImbalance": "6850000000000000000000",
+      "maxTotalImbalance": "10300000000000000000000"
+    },
+    "ETH": {
+      "name": "Ethereum",
+      "decimals": 18,
+      "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  },
+  "exchanges": {
+    "binance": {
+      "ETH": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "OMG": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "KNC": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "SNT": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "SALT": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547"
+    }
+  },
+  "reserve": "0x148332cd398321989F37803188B9A69Fa32b133C",
+  "pricing": "0x3209f7ae16D545C60d8cc9c6A5F02181a94feA52",
+  "network": "0x6BC0E45a62e952171fbD7562e7B5f30C50e564AC",
+  "wrapper": "0x28e9221a3BB961bd89641EA55B4DFA4Ae464E9cF",
+  "feeburner": "0xeb69a461281C00556673e4ddF2FCeaA69F6B99a9"
+}

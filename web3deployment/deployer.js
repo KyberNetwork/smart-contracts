@@ -1,14 +1,25 @@
 var Web3 = require("web3");
 var fs = require("fs");
 var RLP = require('rlp');
-url = "http://localhost:8545";
-//url = "https://kovan.infura.io";
-//url = "https://mainnet.infura.io";
+
+var mainnetGasPrice = 5 * 10**9;
+var kovanGasPrice = 50 * 10 ** 9;
+
+var mainnet = true;
+
+if (mainnet) {
+  url = "https://mainnet.infura.io";
+}
+else {
+  url = "http://localhost:8545";
+  //url = "https://kovan.infura.io";  
+}
+
+
 var web3 = new Web3(new Web3.providers.HttpProvider(url));
 var solc = require('solc')
 
-var rand = "choose something random - this is not the real key";
-
+var rand = web3.utils.randomHex(999);
 var privateKey = web3.utils.sha3("js sucks" + rand);
 var account = web3.eth.accounts.privateKeyToAccount(privateKey);
 var sender = account.address;
@@ -42,7 +53,7 @@ async function sendTx(txObject) {
     nonce : nonce,
     data : txData,
     gas : gasLimit,
-    gasPrice : 5 * 1000 * 1000 * 1000
+    gasPrice : mainnet ? mainnetGasPrice : kovanGasPrice
   };
 
   var signedTx = await web3.eth.accounts.signTransaction(tx, txKey);
@@ -73,7 +84,7 @@ async function deployContract(solcOutput, contractName, ctorArgs) {
 
 }
 
-const contractPath = "./contracts/";
+const contractPath = "../contracts/";
 
 var input = {
   "ConversionRatesInterface.sol" : fs.readFileSync(contractPath + 'ConversionRatesInterface.sol', 'utf8'),
@@ -94,6 +105,7 @@ var input = {
   "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
   "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
   "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
+  "Wrapper.sol" : fs.readFileSync(contractPath + 'mockContracts/Wrapper.sol', 'utf8')
 };
 
 var networkAddress;
@@ -102,6 +114,7 @@ var conversionRatesAddress;
 var whitelistAddress;
 var feeBurnerAddress;
 var expectedRateAddress;
+var wrapperAddress;
 
 var networkContract;
 var reserveContract;
@@ -109,15 +122,20 @@ var conversionRatesContract;
 var whitelistContract;
 var feeBurnerContract;
 var expectedRateContract;
+var wrapperContract;
 
-var admin = "0xBC33a1F908612640F2849b56b67a4De4d179C151";
-var ilan = "0x4a48312f6981484c4204d8501ad3d93f4f4571bf";
-var victor = "0x8bC3da587DeF887B5C822105729ee1D6aF05A5ca";
+var networkPermissions;
+var reservePermissions;
+var conversionRatesPermissions;
+var whitelistPermissions;
+var feeBurnerPermissions;
+var expectedRatePermissions;
+
 var depositAddresses = [];
 var maxGasPrice = 50 * 1000 * 1000 * 1000;
 var negDiffInBps = 15;
 var minExpectedRateSlippage = 300;
-var kncWallet = admin;
+var kncWallet;
 var kncToEthRate = 307;
 var validDurationBlock = 24;
 
@@ -150,21 +168,21 @@ function parseInput( jsonInput ) {
 
     // exchanges
     var exchangeInfo = jsonInput["exchanges"];
-    for(var i = 0 ; i < exchangeInfo.length ; i++ ) {
-      var exchange = exchangeInfo[i];
-      Object.keys(exchange).forEach(function(name){
-        depositDict = exchangeInfo[i][name];
-        Object.keys(depositDict).forEach(function(token){
-          var depositAddress = depositDict[token];
-          var dict = {};
-          dict[token] = depositAddress;
-          depositAddresses.push(dict);
-        });
+    Object.keys(exchangeInfo).forEach(function(exchange) {
+      Object.keys(exchangeInfo[exchange]).forEach(function(token){
+        var depositAddress = exchangeInfo[exchange][token];
+        var dict = {};
+        dict[token] = depositAddress;
+        depositAddresses.push(dict);
       });
-    }
-    victor = jsonInput["victor"];
-    admin = jsonInput["admin"];
-    ilan = jsonInput["ilan"];
+    });
+
+    networkPermissions = jsonInput.permission["KyberNetwork"];
+    reservePermissions = jsonInput.permission["KyberReserve"];
+    conversionRatesPermissions = jsonInput.permission["ConversionRates"];
+    whitelistPermissions = jsonInput.permission["WhiteList"];
+    feeBurnerPermissions = jsonInput.permission["FeeBurner"];
+    expectedRatePermissions = jsonInput.permission["ExpectedRate"];
 
     maxGasPrice =  web3.utils.toBN(jsonInput["max gas price"]);
     negDiffInBps = web3.utils.toBN(jsonInput["neg diff in bps"]);
@@ -178,18 +196,36 @@ function parseInput( jsonInput ) {
     outputFileName = jsonInput["output filename"];
 };
 
+async function setPermissions(contract, permJson) {
+  console.log("set operator(s)");
+  for(var i = 0 ; i < permJson.operator.length ; i++ ) {
+    var operator = permJson.operator[i];
+    console.log(operator);
+    await sendTx(contract.methods.addOperator(operator));
+  }
+  console.log("set alerter(s)");
+  for(var i = 0 ; i < permJson.alerter.length ; i++ ) {
+    var alerter = permJson.alerter[i];
+    console.log(alerter);
+    await sendTx(contract.methods.addAlerter(alerter));
+  }
+  console.log("transferAdminQuickly");
+  var admin = permJson.admin;
+  console.log(admin);
+  await sendTx(contract.methods.transferAdminQuickly(admin));
+}
+
 
 async function main() {
- nonce = await web3.eth.getTransactionCount(sender);
- console.log("nonce",nonce);
-
+  nonce = await web3.eth.getTransactionCount(sender);
+  console.log("nonce",nonce);
 
   console.log("starting compilation");
   var output = await solc.compile({ sources: input }, 1);
   //console.log(output);
   console.log("finished compilation");
 
-
+  await waitForEth();
 
 
   console.log("deploying kyber network");
@@ -204,6 +240,8 @@ async function main() {
   [whitelistAddress, whitelistContract] = await deployContract(output, "WhiteList.sol:WhiteList", [sender]);
   console.log("deploying expected rates");
   [expectedRateAddress, expectedRateContract] = await deployContract(output, "ExpectedRate.sol:ExpectedRate", [networkAddress,sender]);
+  console.log("deploying wrapper");
+  [wrapperAddress, wrapperContract] = await deployContract(output, "Wrapper.sol:Wrapper", [networkAddress,sender]);
 
   console.log("network", networkAddress);
   console.log("rates", conversionRatesAddress);
@@ -211,6 +249,7 @@ async function main() {
   console.log("feeBurner", feeBurnerAddress);
   console.log("whitelistAddress", whitelistAddress);
   console.log("expectedRateAddress", expectedRateAddress);
+  console.log("wrapperAddress", wrapperAddress);
 
   // add reserve to network
   console.log("Add reserve to network");
@@ -239,16 +278,9 @@ async function main() {
                                                  negDiffInBps));
 
   // add operator
-  console.log("network - add operator");
-  await sendTx(networkContract.methods.addOperator(victor));
-  // transfer admin ownership
-  console.log("network transfer admin");
-  await sendTx(networkContract.methods.transferAdminQuickly(admin));
-
+  await setPermissions(networkContract, networkPermissions);
 
   // reserve
-  console.log("reserve set operator");
-  await sendTx(reserveContract.methods.addOperator(victor));
   console.log("whitelist deposit addresses");
   for( i = 0 ; i < depositAddresses.length ; i++ ) {
     var dict = depositAddresses[i];
@@ -260,14 +292,9 @@ async function main() {
                                                                 depositAddress,
                                                                 true));
   }
-
-  console.log("reserve transfer admin");
-  await sendTx(reserveContract.methods.transferAdminQuickly(admin));
-
+  await setPermissions(reserveContract, reservePermissions);
 
   // expected rates
-  console.log("expected rate - add operator");
-  await sendTx(expectedRateContract.methods.addOperator(ilan));
   console.log("expected rate - add temp operator");
   await sendTx(expectedRateContract.methods.addOperator(sender));
   console.log("expected rate - set slippage to 3%");
@@ -275,21 +302,18 @@ async function main() {
   console.log("expected rate - remove temp operator");
   await sendTx(expectedRateContract.methods.removeOperator(sender));
 
-  console.log("expected rate transfer admin");
-  await sendTx(expectedRateContract.methods.transferAdminQuickly(admin));
+  await setPermissions(expectedRateContract, expectedRatePermissions);
 
 
   // whitelist
-  console.log("white list - add opeator 1");
-  await sendTx(whitelistContract.methods.addOperator(ilan));
   console.log("white list - add temp opeator to set sgd rate");
   await sendTx(whitelistContract.methods.addOperator(sender));
   console.log("white list - set sgd rate");
   await sendTx(whitelistContract.methods.setSgdToEthRate(web3.utils.toBN("645161290322581")));
   console.log("white list - remove temp opeator to set sgd rate");
   await sendTx(whitelistContract.methods.removeOperator(sender));
-  console.log("white list transfer admin");
-  await sendTx(whitelistContract.methods.transferAdminQuickly(admin));
+
+  await setPermissions(whitelistContract, whitelistPermissions);
 
   // burn fee
   console.log("burn fee - set reserve data");
@@ -300,8 +324,8 @@ async function main() {
   await sendTx(feeBurnerContract.methods.setKyberNetwork(networkAddress));
   console.log("set KNC to ETH rate");
   await sendTx(feeBurnerContract.methods.setKNCRate(kncToEthRate));
-  console.log("burn fees transfer admin");
-  await sendTx(feeBurnerContract.methods.transferAdminQuickly(admin));
+
+  await setPermissions(feeBurnerContract, feeBurnerPermissions);
 
   // conversion rates
   console.log("conversion rate - add token");
@@ -332,19 +356,85 @@ async function main() {
     await sendTx(conversionRatesContract.methods.enableTokenTrade(tokens[i]));
   }
 
-  console.log("conversion rate - add operator");
-  await sendTx(conversionRatesContract.methods.addOperator(victor));
+  console.log("conversion rate - add temp operator");
+  await sendTx(conversionRatesContract.methods.addOperator(sender));
+  console.log("conversion rate - set qty step function to 0");
+  for( var i = 0 ; i < tokens.length ; i++ ) {
+    console.log(tokens[i]);
+    await sendTx(conversionRatesContract.methods.setQtyStepFunction(tokens[i],
+                                                                    [0],
+                                                                    [0],
+                                                                    [0],
+                                                                    [0]));
+  }
+  console.log("conversion rate - set imbalance step function to 0");
+  for( var i = 0 ; i < tokens.length ; i++ ) {
+    console.log(tokens[i]);
+    await sendTx(conversionRatesContract.methods.setImbalanceStepFunction(tokens[i],
+                                                                    [0],
+                                                                    [0],
+                                                                    [0],
+                                                                    [0]));
+  }
 
-  console.log("conversion rate - transfer admin");
-  await sendTx(conversionRatesContract.methods.transferAdminQuickly(admin));
+  console.log("conversion rate - remove temp operator");
+  await sendTx(conversionRatesContract.methods.removeOperator(sender));
+
+  await setPermissions(conversionRatesContract, conversionRatesPermissions);
 
   console.log("last nonce is", nonce);
+
+  printParams(JSON.parse(content));
 }
 
+function printParams(jsonInput) {
+    dictOutput = {};
+    dictOutput["tokens"] = jsonInput.tokens;
+    dictOutput["tokens"]["ETH"] = {"name" : "Ethereum", "decimals" : 18, "address" : ethAddress };
+    dictOutput["exchanges"] = jsonInput.exchanges;
+    dictOutput["reserve"] = reserveAddress;
+    dictOutput["pricing"] = conversionRatesAddress;
+    dictOutput["network"] = networkAddress;
+    dictOutput["wrapper"] = wrapperAddress;
+    dictOutput["feeburner"] = feeBurnerAddress;
+    var json = JSON.stringify(dictOutput, null, 2);
+    console.log(json);
+    var outputFileName = jsonInput["output filename"];
+    fs.writeFileSync(outputFileName, json);
+}
+
+
+function sleep(ms){
+    return new Promise(resolve=>{
+        setTimeout(resolve,ms)
+    })
+}
+
+async function waitForEth() {
+  while(true) {
+    var balance = await web3.eth.getBalance(sender);
+    console.log("waiting for balance to account " + sender);
+    if(balance.toString() !== "0") {
+      console.log("received " + balance.toString() + " wei");
+      return;
+    }
+    else await sleep(10000)
+  }
+}
+
+
+var filename;
+var content;
+if(mainnet) {
+  filename = "deployment_script_input_mainnet.json";
+}
+else {
+  filename = "deployment_script_input_kovan.json"
+}
 try{
-  var content = fs.readFileSync("deployment_script_input.json", 'utf8');
+  content = fs.readFileSync(filename, 'utf8');
   //console.log(content.substring(1470,1530));
-  //console.log(content.substring(1400,1500));
+  //console.log(content.substring(3490,3550));
   parseInput(JSON.parse(content));
 }
 catch(err) {
@@ -352,5 +442,9 @@ catch(err) {
 }
 
 main();
+
+
+
+
 
 //console.log(deployContract(output, "cont",5));
