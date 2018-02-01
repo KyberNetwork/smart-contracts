@@ -5,14 +5,14 @@ var RLP = require('rlp');
 var mainnetGasPrice = 5 * 10**9;
 var kovanGasPrice = 50 * 10 ** 9;
 
-var mainnet = true;
+var mainnet = false;
 
 if (mainnet) {
   url = "https://mainnet.infura.io";
 }
 else {
-  url = "http://localhost:8545";
-  //url = "https://kovan.infura.io";  
+  //url = "http://localhost:8545";
+  url = "https://kovan.infura.io";
 }
 
 
@@ -299,6 +299,8 @@ async function main() {
   await sendTx(expectedRateContract.methods.addOperator(sender));
   console.log("expected rate - set slippage to 3%");
   await sendTx(expectedRateContract.methods.setMinSlippageFactor(minExpectedRateSlippage));
+  console.log("expected rate - set qty factor to 1");
+  await sendTx(expectedRateContract.methods.setQuantityFactor(1));
   console.log("expected rate - remove temp operator");
   await sendTx(expectedRateContract.methods.removeOperator(sender));
 
