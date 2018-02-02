@@ -4,6 +4,7 @@ pragma solidity 0.4.18;
 import "./ERC20Interface.sol";
 import "./FeeBurnerInterface.sol";
 import "./Withdrawable.sol";
+import "./Utils.sol";
 
 
 interface BurnableToken {
@@ -12,7 +13,7 @@ interface BurnableToken {
 }
 
 
-contract FeeBurner is Withdrawable, FeeBurnerInterface {
+contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
 
     mapping(address=>uint) public reserveFeesInBps;
     mapping(address=>address) public reserveKNCWallet;
@@ -49,6 +50,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
     }
 
     function setKNCRate(uint rate) public onlyAdmin {
+        require(kncPerETHRate <= MAX_RATE);
         kncPerETHRate = rate;
     }
 
@@ -57,6 +59,8 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface {
 
     function handleFees(uint tradeWeiAmount, address reserve, address wallet) public returns(bool) {
         require(msg.sender == kyberNetwork);
+        require(tradeWeiAmount <= MAX_QTY);
+        require(kncPerETHRate <= MAX_RATE);
 
         uint kncAmount = tradeWeiAmount * kncPerETHRate;
         uint fee = kncAmount * reserveFeesInBps[reserve] / 10000;

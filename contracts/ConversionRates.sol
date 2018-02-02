@@ -50,6 +50,8 @@ contract ConversionRates is ConversionRatesInterface, VolumeImbalanceRecorder, U
     address public reserveContract;
     uint constant internal NUM_TOKENS_IN_COMPACT_DATA = 14;
     uint constant internal BYTES_14_OFFSET = (2 ** (8 * NUM_TOKENS_IN_COMPACT_DATA));
+    int  constant internal MAX_BPS_ADJUSTMENT = 10 ** 11; // 1B %
+    int  constant internal MIN_BPS_ADJUSTMENT = -100 * 100; // cannot go down by more than 100%
 
     function ConversionRates(address _admin) public VolumeImbalanceRecorder(_admin)
         { } // solhint-disable-line no-empty-blocks
@@ -350,6 +352,10 @@ contract ConversionRates is ConversionRatesInterface, VolumeImbalanceRecorder, U
     }
 
     function addBps(uint rate, int bps) internal pure returns(uint) {
+        require(rate <= MAX_RATE);
+        require(bps >= MIN_BPS_ADJUSTMENT);
+        require(bps <= MAX_BPS_ADJUSTMENT);
+
         uint maxBps = 100 * 100;
         return (rate * uint(int(maxBps) + bps)) / maxBps;
     }
