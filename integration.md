@@ -7,7 +7,9 @@ Changes are still expected before the mainnet launch.
 A wallet/exchange service interacts with the contract in three ways:
 1. Rate query: queries the offered price of, e.g., GNO to ETH conversion.
 2. Trade execution: e.g., convert X GNO to Y ETH.
-3. Checks if user is allowed to use the exchange services and the maximum amount he can trade. 
+3. Checks if user is allowed to use the exchange services and the maximum amount he can trade.
+4. Checks the network state. Initially it might be down for maintanance in extreme cases.
+5. Checks user max gas price.
 
 We describe the api for each bellow:
 
@@ -96,6 +98,16 @@ function getUserCapInWei(address user)
 ```
 the return value is user ETH cap in wei units.
 In the current ropsten deployment, every address has a cap of 10 ETH.
+
+## Network state
+In extreme case, or when upgrading the contract the network might be disabled by the network admin and all trades are disabled.
+The status can be fetched by reading the public variable `enable`. Please note that in the non-ropsten deployment it is renamed to `enabled`.
+
+## User max gas price
+To prevent user front running, the contract limits the gas price user can have.
+If the user send a transaction with higher gas price the transaction is reverted.
+This limited can be queried from the public variable `maxGasPrice`.
+A typical value would be 50000000000, which stands for 50 gwei.
 
 # Current testnet deployment
 The contract is currently deployed on ropsten testnet.
