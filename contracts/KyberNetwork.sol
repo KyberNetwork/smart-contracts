@@ -23,6 +23,7 @@ contract KyberNetwork is Withdrawable, Utils {
     FeeBurnerInterface    public feeBurnerContract;
     uint                  public maxGasPrice = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool                  public enabled = false; // network is enabled
+    uint                  public networkState; // this is only a field for UI.
     mapping(address=>mapping(bytes32=>bool)) public perReserveListedPairs;
 
     function KyberNetwork(address _admin) public {
@@ -178,6 +179,10 @@ contract KyberNetwork is Withdrawable, Utils {
             require(expectedRateContract != address(0));
         }
         enabled = _enable;
+    }
+
+    function setNetworkState(uint _networkState) public onlyOperator {
+        networkState = _networkState;
     }
 
     /// @dev returns number of reserves

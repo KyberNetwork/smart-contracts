@@ -7,9 +7,17 @@ let Helper = require("./helper.js");
 let permissionsInst;
 let mockPermissionsInst;
 
+let mainAdmin;
+let secondAdmin;
+let user;
+
 contract('PermissionGroups', function(accounts) {
     it("should test request admin change is rejected for non admin.", async function () {
         // global inits in first test
+        user = accounts[9];
+        mainAdmin = accounts[0];
+        secondAdmin = accounts[1];
+
         permissionsInst = await Permissions.new();
         mockPermissionsInst = await MockPermission.new();
 
@@ -25,6 +33,50 @@ contract('PermissionGroups', function(accounts) {
     it("should test claim admin is rejected for unrelevant address.", async function () {
         try {
             await permissionsInst.claimAdmin();
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should test quick admin transfer rejected for non admin address.", async function () {
+        try {
+            await permissionsInst.transferAdminQuickly(secondAdmin, {from: user});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should test quick admin transfer successful run.", async function () {
+        await permissionsInst.transferAdminQuickly(secondAdmin, {from: mainAdmin});
+        assert.strictEqual(await permissionsInst.admin.call(), secondAdmin)
+        try {
+            await permissionsInst.transferAdminQuickly(user, {from:mainAdmin})
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //and back
+        await permissionsInst.transferAdminQuickly(mainAdmin, {from: secondAdmin});
+        assert.strictEqual(await permissionsInst.admin.call(), mainAdmin)
+
+        try {
+            await permissionsInst.transferAdminQuickly(user, {from:secondAdmin})
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should test quick admin transfer rejected for address 0.", async function () {
+        try {
+            await permissionsInst.transferAdminQuickly(0, {from: mainAdmin});
             assert(false, "throw was expected in line above.")
         }
         catch(e){
@@ -257,5 +309,37 @@ contract('PermissionGroups', function(accounts) {
         await permissionsInst.addAlerter(alerter3);
 
         await permissionsInst.removeAlerter(alerter2);
+    });
+
+    it("should test can't add more then MAX_GROUP_SIZE (50) operators.", async function () {
+        let operators = await permissionsInst.getOperators();
+
+        for (let i = (operators.length); i < 50; i++) {
+            await permissionsInst.addOperator(i);
+        }
+
+        try {
+            await permissionsInst.addOperator(100);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should test can't add more then MAX_GROUP_SIZE (50) alerters.", async function () {
+        let alerters = await permissionsInst.getAlerters();
+
+        for (let i = (alerters.length); i < 50; i++) {
+            await permissionsInst.addAlerter(i);
+        }
+
+        try {
+            await permissionsInst.addAlerter(100);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
     });
 });
