@@ -5,14 +5,14 @@ var RLP = require('rlp');
 var mainnetGasPrice = 5 * 10**9;
 var kovanGasPrice = 50 * 10 ** 9;
 
-var mainnet = false;
+var mainnet = true;
 
 if (mainnet) {
   url = "https://mainnet.infura.io";
 }
 else {
-  //url = "http://localhost:8545";
-  url = "https://kovan.infura.io";
+  url = "http://localhost:8545";
+  //url = "https://kovan.infura.io";
 }
 
 
@@ -141,6 +141,9 @@ var validDurationBlock = 24;
 var testers;
 var testersCat;
 var testersCap;
+var users;
+var usersCat;
+var usersCap;
 
 var ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
@@ -196,6 +199,9 @@ function parseInput( jsonInput ) {
     testers = jsonInput["whitelist params"]["testers"];
     testersCat = jsonInput["whitelist params"]["testers category"];
     testersCap = jsonInput["whitelist params"]["category cap"];
+    users = jsonInput["whitelist params"]["users"];
+    usersCat = jsonInput["whitelist params"]["users category"];
+    usersCap = jsonInput["whitelist params"]["category cap"];
 
     // output file name
     outputFileName = jsonInput["output filename"];
@@ -327,6 +333,13 @@ async function main() {
   }
   console.log("white list - set cat cap");
   await sendTx(whitelistContract.methods.setCategoryCap(testersCat, testersCap));
+  console.log("white list - init initial users list");
+  for(var i = 0 ; i < users.length ; i++ ) {
+    console.log(users[i]);
+    await sendTx(whitelistContract.methods.setUserCategory(users[i],usersCat));
+  }
+  console.log("white list - set cat cap");
+  await sendTx(whitelistContract.methods.setCategoryCap(usersCat, usersCap));
   console.log("white list - remove temp opeator to set sgd rate");
   await sendTx(whitelistContract.methods.removeOperator(sender));
 
