@@ -10,8 +10,8 @@ if (mainnet) {
   url = "https://mainnet.infura.io";
 }
 else {
-  //url = "http://localhost:8545";
-  url = "https://kovan.infura.io";
+  url = "http://localhost:8545";
+  //url = "https://kovan.infura.io";
 }
 
 
@@ -140,6 +140,9 @@ var validDurationBlock = 24;
 var testers;
 var testersCat;
 var testersCap;
+var users;
+var usersCat;
+var usersCap;
 
 var ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
@@ -195,6 +198,9 @@ function parseInput( jsonInput ) {
     testers = jsonInput["whitelist params"]["testers"];
     testersCat = jsonInput["whitelist params"]["testers category"];
     testersCap = jsonInput["whitelist params"]["category cap"];
+    users = jsonInput["whitelist params"]["users"];
+    usersCat = jsonInput["whitelist params"]["users category"];
+    usersCap = jsonInput["whitelist params"]["category cap"];
 
     // output file name
     outputFileName = jsonInput["output filename"];
@@ -336,7 +342,14 @@ async function main() {
   await sendTx(whitelistContract.methods.addOperator(sender));
   console.log("white list - set sgd rate");
   await sendTx(whitelistContract.methods.setSgdToEthRate(web3.utils.toBN("645161290322581")));
-  console.log("white list - init initial list");
+  console.log("white list - init users list");
+  for(var i = 0 ; i < users.length ; i++ ) {
+    console.log(users[i]);
+    await sendTx(whitelistContract.methods.setUserCategory(users[i],usersCat));
+  }
+  console.log("white list - set cat cap");
+  await sendTx(whitelistContract.methods.setCategoryCap(usersCat, usersCap));
+  console.log("white list - init tester list");
   for(var i = 0 ; i < testers.length ; i++ ) {
     console.log(testers[i]);
     await sendTx(whitelistContract.methods.setUserCategory(testers[i],testersCat));

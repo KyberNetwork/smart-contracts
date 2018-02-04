@@ -1,0 +1,64 @@
+{
+  "tokens": {
+    "OMG": {
+      "name": "OmiseGO",
+      "decimals": 18,
+      "address": "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "120000000000000000000",
+      "maxTotalImbalance": "180000000000000000000"
+    },
+    "KNC": {
+      "name": "KyberNetwork",
+      "decimals": 18,
+      "address": "0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "550000000000000000000",
+      "maxTotalImbalance": "820000000000000000000"
+    },
+    "EOS": {
+      "name": "Eos",
+      "decimals": 18,
+      "address": "0x86Fa049857E0209aa7D9e616F7eb3b3B78ECfdb0",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "150000000000000000000",
+      "maxTotalImbalance": "230000000000000000000"
+    },
+    "SALT": {
+      "name": "SALT",
+      "decimals": 8,
+      "address": "0x4156D3342D5c385a87D264F90653733592000581",
+      "minimalRecordResolution": "100000",
+      "maxPerBlockImbalance": "25000000000",
+      "maxTotalImbalance": "37000000000"
+    },
+    "SNT": {
+      "name": "STATUS",
+      "decimals": 18,
+      "address": "0x744d70fdbe2ba4cf95131626614a1763df805b9e",
+      "minimalRecordResolution": "10000000000000000",
+      "maxPerBlockImbalance": "6850000000000000000000",
+      "maxTotalImbalance": "10300000000000000000000"
+    },
+    "ETH": {
+      "name": "Ethereum",
+      "decimals": 18,
+      "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  },
+  "exchanges": {
+    "binance": {
+      "ETH": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "OMG": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "KNC": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "SNT": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "SALT": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "EOS": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"
+    }
+  },
+  "reserve": "0x141aE6CAe2f660012f02e8F94e2FAa5a381A5c55",
+  "pricing": "0xEFb7bEe1F230D15498FFcD3D678B1994134dA41B",
+  "network": "0xeCcB1C1CB1ec652627932eb6B3AAD57cB431B1Fa",
+  "wrapper": "0x7A8a770B36E27177A68424C9D4ddcdD2c32DcB1b",
+  "feeburner": "0xB070b1a3487f4C2Ca6E7C677FA43F602e6583396"
+}
