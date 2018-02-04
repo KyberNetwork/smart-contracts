@@ -1,7 +1,6 @@
 var Web3 = require("web3");
 var fs = require("fs");
 var RLP = require('rlp');
-
 var mainnetGasPrice = 5 * 10**9;
 var kovanGasPrice = 50 * 10 ** 9;
 
@@ -261,6 +260,8 @@ async function main() {
   //console.log(networkContract.methods.addReserve(reserveAddress,true));
   await sendTx(networkContract.methods.addReserve(reserveAddress,true));
 
+  console.log("add temp operator to set info data");
+  await sendTx(networkContract.methods.addOperator(sender));
   // list tokens
   for( i = 0 ; i < tokens.length ; i++ ) {
     console.log("listing eth", tokens[i]);
@@ -272,7 +273,22 @@ async function main() {
                                                             tokens[i],
                                                             ethAddress,
                                                             true));
+
+    var srcString1 = web3.utils.sha3("src token " + (2*i).toString());
+    var destString1 = web3.utils.sha3("dest token " + (2*i).toString());
+    var srcString2 = web3.utils.sha3("src token " + (2*i + 1).toString());
+    var destString2 = web3.utils.sha3("dest token " + (2*i + 1).toString());
+
+    await sendTx(networkContract.methods.setInfo(srcString1, ethAddress));
+    await sendTx(networkContract.methods.setInfo(destString1, tokens[i]));
+    await sendTx(networkContract.methods.setInfo(srcString2, tokens[i]));
+    await sendTx(networkContract.methods.setInfo(destString2, ethAddress));
   }
+  console.log("set num listed pairs info");
+  var numListPairsString = web3.utils.sha3("num listed pairs");
+  await sendTx(networkContract.methods.setInfo(numListPairsString,tokens.length * 2));
+  console.log("delete temp operator to set info data");
+  await sendTx(networkContract.methods.removeOperator(sender));
 
   // set params
   console.log("network set params");
