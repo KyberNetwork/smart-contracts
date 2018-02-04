@@ -146,9 +146,9 @@ async function readKyberNetwork(kyberNetworkAdd){
     myLog(0, 0, ("------------------------------------------------------------"));
 
     if (blockCode != solcCode){
-        myLog(1, 0, "blockchain Code:");
-        myLog(0, 0, blockCode);
-        myLog(0, 0, '')
+//        myLog(1, 0, "blockchain Code:");
+//        myLog(0, 0, blockCode);
+        myLog(0, 0, '');
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
         myLog(0, 0, '')
     } else {
@@ -211,9 +211,9 @@ async function readWhiteListData(whiteListAddress) {
     let solcCode = '0x' + (solcOutput.contracts["WhiteList.sol:WhiteList"].runtimeBytecode);
 
     if (blockCode != solcCode){
-        myLog(1, 0, "blockchain Code:");
-        myLog(0, 0, blockCode);
-        myLog(0, 0, '')
+//        myLog(1, 0, "blockchain Code:");
+//        myLog(0, 0, blockCode);
+        myLog(0, 0, '');
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
         myLog(0, 0, '')
     } else {
@@ -263,9 +263,9 @@ async function readExpectedRateData(expectedRateAddress) {
     let solcCode = '0x' + (solcOutput.contracts["ExpectedRate.sol:ExpectedRate"].runtimeBytecode);
 
     if (blockCode != solcCode){
-        myLog(1, 0, "blockchain Code:");
-        myLog(0, 0, blockCode);
-        myLog(0, 0, '')
+//        myLog(1, 0, "blockchain Code:");
+//        myLog(0, 0, blockCode);
+        myLog(0, 0, '');
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
         myLog(0, 0, '')
     } else {
@@ -319,9 +319,9 @@ async function readReserve(reserveAdd, index){
     let solcCode = '0x' + (solcOutput.contracts["KyberReserve.sol:KyberReserve"].runtimeBytecode);
 
     if (blockCode != solcCode){
-        myLog(1, 0, "blockchain Code:");
-        myLog(0, 0, blockCode);
-        myLog(0, 0, '')
+//        myLog(1, 0, "blockchain Code:");
+//        myLog(0, 0, blockCode);
+        myLog(0, 0, '');
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
         myLog(0, 0, '')
     } else {
@@ -354,7 +354,7 @@ async function verifyApprovedWithdrawAddress (reserveContract) {
     //verify approved withdrawal addresses are set
     myLog(0, 0, '');
     myLog(0, 0, "Test approved withdrawal addresses per Exchange for reserve");
-    myLog(0, 0, "-----------------------------------------------------------");
+    myLog(0, 0, "-----------S--------------------------------------------P--");
     let exchanges = deploymentInput["exchanges"];
     let jsonWithDrawAdds = {};
     for (let exchange in exchanges){
@@ -374,7 +374,7 @@ async function verifyApprovedWithdrawAddress (reserveContract) {
 
     myLog(0, 0, '');
     myLog(0, 0, "Iterating all token approve events. verify approved tokens listed in json.")
-    myLog(0, 0, "--------------------------------------------------------------------------ccd cd ")
+    myLog(0, 0, "---------------------------------------------Y-------R-------------------- ")
     // see all events for approve withdraw address
     let eventsReference = await reserveContract.getPastEvents("WithdrawAddressApproved", {fromBlock: 0, toBlock: 'latest'});
 
@@ -425,16 +425,16 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
     }
 
     myLog(0, 0, ("fee burner data for reserve " + index + ":" + a2n(reserveAddress)));
-    myLog(0, 0, ("-------------------------------------------------------------------"));
+    myLog(0, 0, ("------O----S----------------------------T--------------------H----"));
 
     //verify binary as expected.
     let blockCode = await web3.eth.getCode(feeBurnerAdd);
     let solcCode = '0x' + (solcOutput.contracts["FeeBurner.sol:FeeBurner"].runtimeBytecode);
 
     if (blockCode != solcCode){
-        myLog(1, 0, "blockchain Code:");
-        myLog(0, 0, blockCode);
-        myLog(0, 0, '')
+//        myLog(1, 0, "blockchain Code:");
+//        myLog(0, 0, blockCode);
+        myLog(0, 0, '');
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
         myLog(0, 0, '')
    } else {
@@ -480,7 +480,7 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index) 
     myLog(0, 0, '');
 
     myLog(0, 0, ("Conversion Rate " + index + " address: " +  conversionRateAddress));
-    myLog(0, 0, ("-------------------------------------------------------------------"));
+    myLog(0, 0, ("--------E-----------------G------------------------R---------------"));
 
 
     //verify binary as expected.
@@ -488,9 +488,9 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index) 
     let solcCode = '0x' + (solcOutput.contracts["ConversionRates.sol:ConversionRates"].runtimeBytecode);
 
     if (blockCode != solcCode){
-        myLog(1, 0, "blockchain Code:");
-        myLog(0, 0, blockCode);
-        myLog(0, 0, '')
+//        myLog(1, 0, "blockchain Code:");
+//        myLog(0, 0, blockCode);
+        myLog(0, 0, '');
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
         myLog(0, 0, '')
     } else {
@@ -528,7 +528,7 @@ async function verifyTokenListMatchingDeployJSON (reserveIndex, tokenList) {
 
     myLog(0, 0, '');
     myLog(0, 0, ("Verify all json token list is listed in conversion rate contract "));
-    myLog(0, 0, "----------------------------------------------------------------");
+    myLog(0, 0, "-------E---------------A-----------------------------------------");
 
     //verify json reserve address is this reserve address
     jsonTokenList.forEach(function(address) {
@@ -558,7 +558,7 @@ async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, re
     myLog(0, 0, '');
 
     myLog(0, 0, ("token " + a2n(tokenAdd, 1)));
-    myLog(0, 0, ("-----------------------------------------------"));
+    myLog(0, 0, ("-T---------------------------------------------"));
     let basic = await Rate.methods.getTokenBasicData(tokenAdd).call();
     myLog((basic[0] == false), (basic[1] == false), ("listed = " + basic[0] + ". Enabled = " + basic[1]));
 
@@ -670,9 +670,9 @@ async function readSanityRate(sanityRateAddress, reserveAddress, index, tokens) 
     let solcCode = '0x' + (solcOutput.contracts["SanityRates.sol:SanityRates"].runtimeBytecode);
 
     if (blockCode != solcCode){
-        myLog(1, 0, "blockchain Code:");
-        myLog(0, 0, blockCode);
-        myLog(0, 0, '')
+//        myLog(1, 0, "blockchain Code:");
+//        myLog(0, 0, blockCode);
+        myLog(0, 0, '');
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
     } else {
         myLog(0, 0, "Code on blockchain matches locally compiled code");
