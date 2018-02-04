@@ -3,10 +3,9 @@ const fs = require("fs");
 const RLP = require('rlp');
 
 //inputs
-const nodeUrl = "ccgit ";
-const whiteListContractReference = "0x0decdaf699f66f87ea41e9a3ccd7d7d1656c4fa8";
-const whiteListContractVerify = "0xCb46b40def144e355064d729D0e72DFEA80383a9";
-
+const nodeUrl = "";
+const whiteListContractReference = "0xCb46b40def144e355064d729D0e72DFEA80383a9";
+const whiteListContractVerify = "0x0decdaf699f66f87ea41e9a3ccd7d7d1656c4fa8";
 
 let web3 = new Web3(new Web3.providers.HttpProvider(nodeUrl));
 let solc = require('solc')
@@ -55,6 +54,9 @@ async function main() {
     
     let eventsReference = await readFromContract.getPastEvents("UserCategorySet", {fromBlock: 0, toBlock: 'latest'});
     let eventsVerify = await verifyContract.getPastEvents("UserCategorySet", {fromBlock: 0, toBlock: 'latest'});
+
+//    console.log(eventsReference);
+
 
     let addressesReference = [];
     let categoryOld = [];
