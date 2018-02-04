@@ -1,0 +1,50 @@
+{
+  "tokens": {
+    "ETH": {
+      "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "name": "Ethereum",
+      "decimals": 18
+    },
+    "OMG": {
+      "address": "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07",
+      "name": "OmiseGO",
+      "decimals": 18
+    },
+    "KNC": {
+      "address": "0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
+      "name": "KyberNetwork",
+      "decimals": 18
+    },
+    "EOS": {
+      "address": "0x86Fa049857E0209aa7D9e616F7eb3b3B78ECfdb0",
+      "name": "Eos",
+      "decimals": 18
+    },
+    "SALT": {
+      "address": "0x4156D3342D5c385a87D264F90653733592000581",
+      "name": "SALT",
+      "decimals": 8
+    },
+    "SNT": {
+      "address": "0x744d70FDBE2Ba4CF95131626614a1763DF805B9E",
+      "name": "STATUS",
+      "decimals": 18
+    }
+  },
+
+  "exchanges": {
+    "binance": {
+      "OMG": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "KNC": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "EOS": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "SALT": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "SNT": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "ETH": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"
+    }
+  },
+  "reserve": "0x749dd52D7f22CBc3897a0fc20b55393B1f78B4fE",
+  "pricing": "0xd4AF09F41C674141e9F8c1ce2883F08ECAfd6649",
+  "network": "0x803e2b13a11c21ec0616cead4a3d2ebe1326f5b0",
+  "wrapper": "0x69569ec8ddf4dbd0a48a96bf7ab37e62cfe2c3ec",
+  "feeburner": "0x05AB34199286612D4D605156F1E099f95e68016b"
+}
