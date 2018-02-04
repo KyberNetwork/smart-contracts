@@ -495,14 +495,14 @@ contract('Deployment', function(accounts) {
   it("create network", function() {
     this.timeout(31000000);
     networkOwner = accounts[0];
-    return Network.new(networkOwner,{gas:5700000}).then(function(instance){
+    return Network.new(networkOwner,{gas:6000000}).then(function(instance){
         network = instance;
     });
   });
 
   it("create conversionRates", function() {
     this.timeout(31000000);
-    return ConversionRates.new(accounts[0],{gas:5700000}).then(function(instance){
+    return ConversionRates.new(accounts[0],{gas:6000000}).then(function(instance){
         conversionRates = instance;
         return conversionRates.addOperator(accounts[0],{from:accounts[0]});
     });
@@ -511,7 +511,7 @@ contract('Deployment', function(accounts) {
   it("create reserve and deposit tokens", function() {
     this.timeout(30000000);
     reserveOwner = accounts[0];
-    return Reserve.new(network.address, conversionRates.address, reserveOwner,{gas:5700000}).then(function(instance){
+    return Reserve.new(network.address, conversionRates.address, reserveOwner,{gas:6000000}).then(function(instance){
         reserve = instance;
     }).then(function(){
         return conversionRates.setValidRateDurationInBlocks(new BigNumber(1000000));

@@ -50,6 +50,7 @@ contract ConversionRates is ConversionRatesInterface, VolumeImbalanceRecorder, U
     address public reserveContract;
     uint constant internal NUM_TOKENS_IN_COMPACT_DATA = 14;
     uint constant internal BYTES_14_OFFSET = (2 ** (8 * NUM_TOKENS_IN_COMPACT_DATA));
+    uint constant internal MAX_STEPS_IN_FUNCTION = 10;
     int  constant internal MAX_BPS_ADJUSTMENT = 10 ** 11; // 1B %
     int  constant internal MIN_BPS_ADJUSTMENT = -100 * 100; // cannot go down by more than 100%
 
@@ -129,6 +130,8 @@ contract ConversionRates is ConversionRatesInterface, VolumeImbalanceRecorder, U
     {
         require(xBuy.length == yBuy.length);
         require(xSell.length == ySell.length);
+        require(xBuy.length <= MAX_STEPS_IN_FUNCTION);
+        require(xSell.length <= MAX_STEPS_IN_FUNCTION);
         require(tokenData[token].listed);
 
         tokenData[token].buyRateQtyStepFunction = StepFunction(xBuy, yBuy);
@@ -147,6 +150,8 @@ contract ConversionRates is ConversionRatesInterface, VolumeImbalanceRecorder, U
     {
         require(xBuy.length == yBuy.length);
         require(xSell.length == ySell.length);
+        require(xBuy.length <= MAX_STEPS_IN_FUNCTION);
+        require(xSell.length <= MAX_STEPS_IN_FUNCTION);
         require(tokenData[token].listed);
 
         tokenData[token].buyRateImbalanceStepFunction = StepFunction(xBuy, yBuy);
