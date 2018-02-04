@@ -62,7 +62,9 @@ let SanityRates = [];   // one per reserve
 //parameters
 let tokensPerReserve = [];//[reserve index][token address]
 let deploymentInput;
+let deploymentOutput;
 let addressesToNames = {};
+tokenSymbolToAddress = {};
 let jsonTokenList = [];
 let jsonWithdrawAddresses = [];
 let minRecordResolutionPerToken = {};
@@ -78,7 +80,6 @@ const runWhiteList = 1;
 const runFeeBurner = 1;
 const printAdminETC = 1;
 const showStepFunctions = 1;
-const useNamesForAddresses = 1;
 
 // code
 ////////
@@ -89,24 +90,45 @@ const infuraUrl = 'https://mainnet.infura.io';
 const localURL = 'http://localhost';
 
 const deployInputJsonPath = './deployment_script_input_mainnet.json';
-let deployOutputJsonPath = './deployment_mainnet.json';
+let deployOutputJsonPath = '';
 
 let kyberNetworkAdd = '0x0';
 let jsonKNCAddress;
+let ouputLogString = "";
+let ouputErrString = "";
 
 //run the code
 main();
 
 async function main (){
-    console.log("starting compilation");
+    myLog(0, 0, "starting compilation");
     solcOutput = await solc.compile({ sources: input }, 1);
-//    console.log(solcOutput);
-    console.log("finished compilation");
+//    myLog(0, 0, solcOutput);
+    myLog(0, 0, "finished compilation");
 
     await init(infuraUrl);
     await readDeploymentInJSON(deployInputJsonPath);
     await readDeploymentOutJSON(deployOutputJsonPath);
     await readKyberNetwork(kyberNetworkAdd);
+
+    //write output logs
+    let fileName = deployInputJsonPath + ".log";
+    fs.writeFileSync(fileName, ouputLogString, function(err) {
+        if(err) {
+            return console.log(err);
+        }
+
+        myLog(0, 1, "saved log to: " + fileName);
+    });
+
+    fileName = deployInputJsonPath + ".err";
+    fs.writeFileSync(fileName, ouputErrString, function(err) {
+        if(err) {
+            return console.log(err);
+        }
+
+        myLog(0, 1, "saved error file to: " + fileName);
+    });
 }
 
 //functions
@@ -125,10 +147,10 @@ async function readKyberNetwork(kyberNetworkAdd){
 
     if (blockCode != solcCode){
         myLog(1, 0, "blockchain Code:");
-        console.log(blockCode);
-        console.log()
+        myLog(0, 0, blockCode);
+        myLog(0, 0, '')
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
-        console.log()
+        myLog(0, 0, '')
     } else {
         myLog(0, 0, "Code on blockchain matches locally compiled code");
         myLog(0, 0, '');
@@ -190,10 +212,10 @@ async function readWhiteListData(whiteListAddress) {
 
     if (blockCode != solcCode){
         myLog(1, 0, "blockchain Code:");
-        console.log(blockCode);
-        console.log()
+        myLog(0, 0, blockCode);
+        myLog(0, 0, '')
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
-        console.log()
+        myLog(0, 0, '')
     } else {
         myLog(0, 0, "Code on blockchain matches locally compiled code");
         myLog(0, 0, '');
@@ -242,10 +264,10 @@ async function readExpectedRateData(expectedRateAddress) {
 
     if (blockCode != solcCode){
         myLog(1, 0, "blockchain Code:");
-        console.log(blockCode);
-        console.log()
+        myLog(0, 0, blockCode);
+        myLog(0, 0, '')
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
-        console.log()
+        myLog(0, 0, '')
     } else {
         myLog(0, 0, "Code on blockchain matches locally compiled code");
         myLog(0, 0, '');
@@ -275,7 +297,7 @@ async function readReserve(reserveAdd, index){
             let abi = solcOutput.contracts["KyberReserve.sol:KyberReserve"].interface;
             reserveABI = JSON.parse(abi);
         } catch (e) {
-            console.log(e);
+            myLog(0, 0, e);
             throw e;
         }
     }
@@ -298,10 +320,10 @@ async function readReserve(reserveAdd, index){
 
     if (blockCode != solcCode){
         myLog(1, 0, "blockchain Code:");
-        console.log(blockCode);
-        console.log()
+        myLog(0, 0, blockCode);
+        myLog(0, 0, '')
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
-        console.log()
+        myLog(0, 0, '')
     } else {
         myLog(0, 0, "Code on blockchain matches locally compiled code");
         myLog(0, 0, '');
@@ -319,6 +341,8 @@ async function readReserve(reserveAdd, index){
     sanityRateAdd[index] = await Reserve.methods.sanityRatesContract().call();
     myLog(0, 0, ("sanityRateAdd " + index + ": " + sanityRateAdd[index]));
 
+    await verifyApprovedWithdrawAddress(Reserve);
+
     //call contracts
     await readFeeBurnerDataForReserve(feeBurnerAdd, reserveAdd, index);
     await readConversionRate(ratesAdd[index], reserveAdd, index);
@@ -326,18 +350,60 @@ async function readReserve(reserveAdd, index){
 };
 
 
-async function verifyApprovedWithdrawAddress (tokenList) {
+async function verifyApprovedWithdrawAddress (reserveContract) {
     //verify approved withdrawal addresses are set
-    for (let i = 0; i < jsonWithdrawAddresses.length; i++) {
-        let address = jsonWithdrawAddresses[i];
-        let isApproved = await Reserve.methods.approvedWithdrawAddresses(address).call();
-        if (isApproved == true) {
-            approvedStr = " approved for withdrawal.";
-        } else {
-            approvedStr = " not approved for withdrawal.";
+    myLog(0, 0, '');
+    myLog(0, 0, "Test approved withdrawal addresses per Exchange for reserve");
+    myLog(0, 0, "-----------------------------------------------------------");
+    let exchanges = deploymentInput["exchanges"];
+    let jsonWithDrawAdds = {};
+    for (let exchange in exchanges){
+        myLog(0, 0, '');
+        myLog(0, 0, "Exchange: " + exchange);
+        myLog(0, 0, "--------------------------");
+        let tokensInEx = exchanges[exchange];
+        for (let token in tokensInEx) {
+            let withDrawAdd = tokensInEx[token];
+            let tokenAdd = tokenSymbolToAddress[token];
+            let sha3 = await twoStringsSoliditySha(tokenAdd, withDrawAdd);
+            jsonWithDrawAdds[sha3] = true;
+            let isApproved = await reserveContract.methods.approvedWithdrawAddresses(sha3.toString(16)).call();
+            myLog((isApproved == 'false'), 0, "Token: " + token + " withdraw address " + withDrawAdd + " approved: " + isApproved);
         }
+    }
 
-        myLog(0, isApproved, ("Address: " + a2n(address, 1) + approvedStr));
+    myLog(0, 0, '');
+    myLog(0, 0, "Iterating all token approve events. verify approved tokens listed in json.")
+    myLog(0, 0, "--------------------------------------------------------------------------ccd cd ")
+    // see all events for approve withdraw address
+    let eventsReference = await reserveContract.getPastEvents("WithdrawAddressApproved", {fromBlock: 0, toBlock: 'latest'});
+
+//    console.log(eventsReference);
+    let sha3Tokens = {};
+    let sha3Addresses = {};
+    let refSha3 = [];
+    for(let i = 0 ; i < eventsReference.length ; i++ ) {
+        sha3Approved = await twoStringsSoliditySha(eventsReference[i].returnValues.token, eventsReference[i].returnValues.addr);
+        refSha3.push(sha3Approved);
+        sha3Addresses[sha3Approved] = (eventsReference[i].returnValues.addr).toLowerCase();
+        if (eventsReference[i].returnValues.approve == true){
+            sha3Tokens[sha3Approved] = (eventsReference[i].returnValues.token).toLowerCase();
+        } else {
+            sha3Tokens[sha3Approved] = '';
+        }
+    }
+
+    for (let i = 0; i < refSha3.length; i++) {
+        let sha3Adds = refSha3[i];
+        let isListedInJson = false;
+        if (sha3Tokens[sha3Adds] != '') {
+            // address currently approved
+            if (jsonWithDrawAdds[sha3Adds] == true) {
+                isListedInJson = true;
+            }
+            myLog((isListedInJson == false), 0, "Token: " + a2n(sha3Tokens[sha3Adds], 1) + " has event for approved address: " +
+                sha3Addresses[sha3Approved] + " listed in json: " + isListedInJson);
+        }
     };
 }
 
@@ -354,7 +420,7 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
         let abi = solcOutput.contracts["FeeBurner.sol:FeeBurner"].interface;
         FeeBurner = await new web3.eth.Contract(JSON.parse(abi), feeBurnerAdd);
     } catch (e) {
-        console.log(e);
+        myLog(0, 0, e);
         throw e;
     }
 
@@ -367,16 +433,16 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
 
     if (blockCode != solcCode){
         myLog(1, 0, "blockchain Code:");
-        console.log(blockCode);
-        console.log()
+        myLog(0, 0, blockCode);
+        myLog(0, 0, '')
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
-        console.log()
+        myLog(0, 0, '')
    } else {
        myLog(0, 0, "Code on blockchain matches locally compiled code");
        myLog(0, 0, '');
    }
 
-    if (index == 0)await printAdminAlertersOperators(FeeBurner, "FeeBurner");
+    if (index == 0) await printAdminAlertersOperators(FeeBurner, "FeeBurner");
     let reserveFees = await FeeBurner.methods.reserveFeesInBps(reserveAddress).call();
     myLog((reserveFees < 10), 0, ("reserveFeesInBps: " + reserveFees + " == " + bpsToPercent(reserveFees) + "%"));
     let KNCWallet = (await FeeBurner.methods.reserveKNCWallet(reserveAddress).call()).toLowerCase();
@@ -404,7 +470,7 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index) 
             let abi = solcOutput.contracts["ConversionRates.sol:ConversionRates"].interface;
             conversionRatesABI = JSON.parse(abi);
         } catch (e) {
-            console.log(e);
+            myLog(0, 0, e);
             throw e;
         }
     }
@@ -423,10 +489,10 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index) 
 
     if (blockCode != solcCode){
         myLog(1, 0, "blockchain Code:");
-        console.log(blockCode);
-        console.log()
+        myLog(0, 0, blockCode);
+        myLog(0, 0, '')
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
-        console.log()
+        myLog(0, 0, '')
     } else {
         myLog(0, 0, "Code on blockchain matches locally compiled code");
          myLog(0, 0, '');
@@ -460,9 +526,9 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index) 
 
 async function verifyTokenListMatchingDeployJSON (reserveIndex, tokenList) {
 
-    console.log();
+    myLog(0, 0, '');
     myLog(0, 0, ("Verify all json token list is listed in conversion rate contract "));
-    console.log("----------------------------------------------------------------");
+    myLog(0, 0, "----------------------------------------------------------------");
 
     //verify json reserve address is this reserve address
     jsonTokenList.forEach(function(address) {
@@ -526,23 +592,23 @@ async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, re
 
     buyRateQtyStepFunction = await getStepFunctionXYArr(tokenAdd, 0, Rate);
     assert.equal(buyRateQtyStepFunction[0].length, buyRateQtyStepFunction[1].length, "buyRateQtyStepFunction X Y different length");
-    myLog(0, 0, ("buyRateQtyStepFunction X: " + buyRateQtyStepFunction[0]));
-    myLog(0, 0, ("buyRateQtyStepFunction Y: " + buyRateQtyStepFunction[1]));
+    myLog(buyRateQtyStepFunction[0].length < 1, 0, ("buyRateQtyStepFunction X: " + buyRateQtyStepFunction[0]));
+    myLog(buyRateQtyStepFunction[1].length < 1, 0, ("buyRateQtyStepFunction Y: " + buyRateQtyStepFunction[1]));
 
     sellRateQtyStepFunction = await getStepFunctionXYArr(tokenAdd, 4, Rate);
     assert.equal(sellRateQtyStepFunction[0].length, sellRateQtyStepFunction[1].length, "sellRateQtyStepFunction X Y different length");
-    myLog(0, 0, ("sellRateQtyStepFunction X: " + sellRateQtyStepFunction[0]));
-    myLog(0, 0, ("sellRateQtyStepFunction Y: " + sellRateQtyStepFunction[1]));
+    myLog(sellRateQtyStepFunction[0].length < 1, 0, ("sellRateQtyStepFunction X: " + sellRateQtyStepFunction[0]));
+    myLog(sellRateQtyStepFunction[1].length < 1, 0, ("sellRateQtyStepFunction Y: " + sellRateQtyStepFunction[1]));
 
     buyRateImbalanceStepFunction = await getStepFunctionXYArr(tokenAdd, 8, Rate);
     assert.equal(buyRateImbalanceStepFunction[0].length, buyRateImbalanceStepFunction[1].length, "buyRateImbalanceStepFunction X Y different length");
-    myLog(0, 0, ("buyRateImbalanceStepFunction X: " + buyRateImbalanceStepFunction[0]));
-    myLog(0, 0, ("buyRateImbalanceStepFunction Y: " + buyRateImbalanceStepFunction[1]));
+    myLog(buyRateImbalanceStepFunction[0].length < 1, 0, ("buyRateImbalanceStepFunction X: " + buyRateImbalanceStepFunction[0]));
+    myLog(buyRateImbalanceStepFunction[1].length < 1, 0, ("buyRateImbalanceStepFunction Y: " + buyRateImbalanceStepFunction[1]));
 
     sellRateImbalanceStepFunction = await getStepFunctionXYArr(tokenAdd, 12, Rate);
     assert.equal(sellRateImbalanceStepFunction[0].length, sellRateImbalanceStepFunction[1].length, "sellRateImbalanceStepFunction X Y different length");
-    myLog(0, 0, ("sellRateImbalanceStepFunction X: " + sellRateImbalanceStepFunction[0]));
-    myLog(0, 0, ("sellRateImbalanceStepFunction Y: " + sellRateImbalanceStepFunction[1]));
+    myLog(sellRateImbalanceStepFunction[0].length < 1, 0, ("sellRateImbalanceStepFunction X: " + sellRateImbalanceStepFunction[0]));
+    myLog(sellRateImbalanceStepFunction[1].length < 1, 0, ("sellRateImbalanceStepFunction Y: " + sellRateImbalanceStepFunction[1]));
 };
 
 async function getStepFunctionXYArr(tokenAdd, commandID, rateContract) {
@@ -571,21 +637,27 @@ async function getStepFunctionXYArr(tokenAdd, commandID, rateContract) {
 }
 
 let sanityRatesABI;
+let needSanityRateABI = 1;
 
 async function readSanityRate(sanityRateAddress, reserveAddress, index, tokens) {
     if (sanityRateAdd == 0) {
-        myLog(0, 1, ("sanity rate not configured for reserve: " + a2n(reserveAddress, 0)));
+        myLog(0, 0, "");
+        myLog(0, 1, ("sanity rate not configured for reserve: " + a2n(reserveAddress, 1)));
         return;
     }
 
-    if (index == 0) {
-        sanityRatesABIStr = fs.readFileSync(sanityRateABIFile, 'utf8');
-        sanityRatesABI = JSON.parse(sanityRatesABIStr);
+    if (needSanityRateABI == 1) {
+        needSanityRateABI = 0;
+        try {
+            let abi = solcOutput.contracts["SanityRates.sol:SanityRates"].interface;
+            sanityRatesABI = JSON.parse(abi);
+        } catch (e) {
+            myLog(0, 0, e);
+            throw e;
+        }
     }
 
     myLog(0, 0, '');
-
-
 
     SanityRates[index] = await new web3.eth.Contract(sanityRatesABI, sanityRateAddress);
     let Sanity = SanityRates[index];
@@ -594,17 +666,18 @@ async function readSanityRate(sanityRateAddress, reserveAddress, index, tokens) 
     myLog(0, 0, ("-------------------------------------------------------------------"));
 
     //verify binary as expected.
-//    let blockCode = await web3.eth.getCode(sanityRateAddress);
-//    let solcCode = '0x' + (solcOutput.contracts[""].runtimeBytecode);
-//
-//    if (blockCode != solcCode){
-//        myLog(1, 0, "blockchain Code:");
-//        console.log(blockCode);
-//        console.log()
-//        myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
-//        console.log()
-//        myLog(0, 0, "Code on blockchain matches locally compiled code");
-//    }
+    let blockCode = await web3.eth.getCode(sanityRateAddress);
+    let solcCode = '0x' + (solcOutput.contracts["SanityRates.sol:SanityRates"].runtimeBytecode);
+
+    if (blockCode != solcCode){
+        myLog(1, 0, "blockchain Code:");
+        myLog(0, 0, blockCode);
+        myLog(0, 0, '')
+        myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
+    } else {
+        myLog(0, 0, "Code on blockchain matches locally compiled code");
+        myLog(0, 0, '');
+    }
 
     await printAdminAlertersOperators(SanityRates[index]);
     for (let i = 0; i < tokens.length; i++) {
@@ -619,9 +692,9 @@ async function validateReserveTokensListedOnNetwork(tokens, reserveAddress) {
     let isListed;
     let keccak;
 
-    console.log();
-    console.log("Validate reserve tokens listed on network contract reserve: " + a2n(reserveAddress, 0))
-    console.log("-------------------------------------------------------------------------------------------")
+    myLog(0, 0, '');
+    myLog(0, 0, "Validate reserve tokens listed on network contract reserve: " + a2n(reserveAddress, 0))
+    myLog(0, 0, "-------------------------------------------------------------------------------------------")
     //check tokens listed eth->token and token to eth
     //todo - how to use keccak correctly.
     for (let i = 0; i < tokens.length; i++){
@@ -667,13 +740,41 @@ async function printAdminAlertersOperators(contract, jsonKey) {
         return;
     }
 
-
-
-    myLog(0, 0, ("Admin: " + (a2n(await contract.methods.admin().call(), 1))));
+    let permissionList = deploymentInput["permission"][jsonKey];
+    //admin
+    let admin = await contract.methods.admin().call();
+    let isApproved = (admin.toLowerCase() == (permissionList["admin"]).toLowerCase());
+    myLog((isApproved == false), 0, ("Admin: " + (a2n(admin, 1)) + " approved: " + isApproved));
     let pendingAdmin = await contract.methods.pendingAdmin().call();
     myLog(0, (pendingAdmin != 0), ("Pending Admin: " + a2n(pendingAdmin, 1)));
-    myLog(0, 0, ("Alerters: " + await contract.methods.getAlerters().call()));
-    myLog(0, 0, ("Operators: " + await contract.methods.getOperators().call()));
+
+    //operators
+    let operators = await contract.methods.getOperators().call();
+    let jsonOperators = permissionList["operator"];
+    operators.forEach(function (operator) {
+        let isApproved = false;
+        jsonOperators.forEach(function(jsonOperator){
+            if (operator.toLowerCase() == jsonOperator.toLowerCase()) {
+                isApproved = true;
+            }
+        });
+        myLog(isApproved == false, 0, "Operator: " + operator + " is approved: " + isApproved);
+    });
+    if (operators.length == 0) myLog(0, 1, "No alerters defined for contract " + jsonKey);
+
+    //alerters
+    let alerters = await contract.methods.getAlerters().call();
+    let jsonAlerters = permissionList["alerter"];
+    alerters.forEach(function (alerter) {
+        let isApproved = false;
+        jsonAlerters.forEach(function(jsonAlerter){
+            if (alerter.toLowerCase() == jsonAlerters.toLowerCase()) {
+                isApproved = true;
+            }
+        });
+        myLog(isApproved == false, 0, "Alerters: " + alerter + " is approved: " + isApproved);
+    });
+    if (alerters.length == 0) myLog(0, 1, "No alerters defined for contract " + jsonKey);
 }
 
 async function init(nodeUrl){
@@ -700,31 +801,33 @@ async function init(nodeUrl){
 };
 
 async function readDeploymentOutJSON(filePath) {
-    console.log();
-    console.log ("reading deployment output json from: " + filePath);
+    myLog(0, 0, '');
+    myLog(0, 1, "reading deployment output json from: " + filePath);
     try{
-        deploymentInput = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        deploymentOutput = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     } catch(err) {
-        console.log(err);
+        myLog(0, 0, err);
         assert.fail(err.toString());
     }
 
-    let input = deploymentInput;
+    let input = deploymentOutput;
     let address;
 
     //tokens
-    console.log("reading tokens");
-    let tokenInfo = input["tokens"];
+    myLog(0, 0, "reading tokens from local json");
+//    let tokenInfo = input["tokens"];
+    let tokenInfo = tokensJson["tokens"];
     Object.keys(tokenInfo).forEach(function(key) {
         let val = tokenInfo[key];
         let symbol = key;
         let name = val["name"];
         address = (val["address"]).toLowerCase();
+
         addressesToNames[address] = symbol;
         jsonTokenList.push(address);
     });
 
-    console.log("reading contract addresses");
+    myLog(0, 0, "reading contract addresses");
     address = (input["feeburner"]).toLowerCase();
     addressesToNames[address] = "feeBurner";
     feeBurnerAdd = address;
@@ -741,11 +844,11 @@ async function readDeploymentOutJSON(filePath) {
     addressesToNames[address] = "reserve";
     reservesAdd[0] = address;
 
-    console.log("reading exchanges.");
+    myLog(0, 0, "reading exchanges.");
     let exchanges = input["exchanges"];
     Object.keys(exchanges).forEach(function(key) {
         let exchange = key;
-        console.log(exchange);
+        myLog(0, 0, exchange);
         let tokenPerEx = exchanges[key];
         let tokenNames = Object.keys(tokenPerEx);
         let exchangeWithdrawAdd = 0;
@@ -754,7 +857,6 @@ async function readDeploymentOutJSON(filePath) {
             exchangeWithdrawAdd = tokenPerEx[tokenNames[0]];
             addressesToNames[exchangeWithdrawAdd.toLowerCase()] = exchange + "-withdraw";
             jsonWithdrawAddresses.push(exchangeWithdrawAdd.toLowerCase());
-//            console.log("addressesToNames[tokenPerEx[tokenNames[0]]] " + addressesToNames[tokenPerEx[tokenNames[0]]]);
         }
 
         Object.keys(tokenPerEx).forEach(function(key) {
@@ -764,19 +866,19 @@ async function readDeploymentOutJSON(filePath) {
                 addressesToNames[address] = name;
                 jsonWithdrawAddresses.push(address);
             } else {
-//                console.log("same withdraw address")
+//                myLog(0, 0, "same withdraw address")
             }
         });
     });
 };
 
 async function readDeploymentInJSON(filePath) {
-    console.log();
-    console.log ("reading deployment input json from: " + filePath);
+    myLog(0, 0, '');
+    myLog(0, 1, "reading deployment input json from: " + filePath);
     try{
         deploymentInput = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     } catch(err) {
-        console.log(err);
+        myLog(0, 0, err);
         assert.fail(err.toString());
     }
 
@@ -796,8 +898,9 @@ async function readDeploymentInJSON(filePath) {
     }
 
     // add ether to arrays
-    decimalsPerToken[ethAddress] = 18;
-    addressesToNames[ethAddress] = 'ETH';
+    decimalsPerToken[ethAddress.toLowerCase()] = 18;
+    addressesToNames[ethAddress.toLowerCase()] = 'ETH';
+    tokenSymbolToAddress['ETH'] = ethAddress.toLowerCase();
 
     deployOutputJsonPath = './' + input["output filename"];
 
@@ -822,6 +925,7 @@ async function jsonVerifyTokenData (tokenData, symbol) {
     decimalsPerToken[address] = decimals;
 
     addressesToNames[address] = symbol;
+    tokenSymbolToAddress[symbol] = address;
 
     // read from web: symbol, name, decimal and see matching what we have
     let abi = solcOutput.contracts["MockERC20.sol:MockERC20"].interface;
@@ -849,14 +953,14 @@ async function jsonVerifyTokenData (tokenData, symbol) {
 };
 
 async function readAccountsJSON(filePath) {
-    console.log();
+    myLog(0, 0, '');
 
     let accInput;
     console.log ("reading accounts json from: " + filePath);
     try{
         accInput = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     } catch(err) {
-        console.log(err);
+        myLog(0, 0, err);
         assert.fail(err.toString());
     }
 
@@ -868,14 +972,14 @@ async function readAccountsJSON(filePath) {
         address = (accounts[key]).toLowerCase();
 
         addressesToNames[address] = key;
-        console.log(key + " " + address);
+        myLog(0, 0, key + " " + address);
     });
     addressesToNames["0x0000000000000000000000000000000000000000"] = "none";
 };
 
 function getAmountTokens(amountTwei, tokenAdd) {
     let digits = decimalsPerToken[tokenAdd];
-//    console.log("decimals " + decimals + "amountTwei " + amountTwei)
+//    myLog(0, 0, "decimals " + decimals + "amountTwei " + amountTwei)
     let stringAmount = amountTwei.toString(10);
     let integer = stringAmount.substring(0,stringAmount.length - digits);
     let fraction = stringAmount.substring(stringAmount.length - digits);
@@ -894,77 +998,81 @@ function getAmountTokens(amountTwei, tokenAdd) {
 //address to name
 function a2n(address, showAddWithName) {
     let name;
-    if (useNamesForAddresses){
-        try {
-            name =  addressesToNames[address.toLowerCase()];
-            if (showAddWithName) {
-                name += " " + address.toLowerCase();
-            }
-        } catch(e) {
-            name = address;
-        };
-    } else {
+    try {
+        name =  addressesToNames[address.toLowerCase()];
+        if (showAddWithName) {
+            name += " " + address.toLowerCase();
+        }
+    } catch(e) {
         name = address;
     }
 
     return name;
 }
+
+
 function bpsToPercent (bpsValue) {
     return (bpsValue / 100);
 };
 
+
 function myLog(error, highlight, string) {
     if (error) {
-        console.error(string);
+//        console.error(string);
         console.log('\x1b[31m%s\x1b[0m', string);
+        ouputErrString += "\nerror: " + string;
+        ouputLogString += "\nerror: " + string;
     } else if (highlight) {
         console.log('\x1b[33m%s\x1b[0m', string);
+        ouputErrString += "\nwarning: " + string;
+        ouputLogString += "\nwarning: " + string;
     } else {
         console.log('\x1b[32m%s\x1b[0m', string);
+        ouputLogString += "\n     " + string;
     }
 };
-//
-//const tokens = {
-//  "tokens": {
-//    "OMG": {
-//      "name": "OmiseGO",
-//      "decimals": 18,
-//      "address": "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07",
-//      "minimalRecordResolution" : "1000000000000000",
-//      "maxPerBlockImbalance" : "120000000000000000000",
-//      "maxTotalImbalance" : "180000000000000000000"
-//    },
-//    "KNC": {
-//      "name": "KyberNetwork",
-//      "decimals": 18,
-//      "address": "0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
-//      "minimalRecordResolution" : "1000000000000000",
-//      "maxPerBlockImbalance" : "550000000000000000000",
-//      "maxTotalImbalance" : "820000000000000000000"
-//    },
-//    "EOS": {
-//      "name": "Eos",
-//      "decimals": 18,
-//      "address": "0x86Fa049857E0209aa7D9e616F7eb3b3B78ECfdb0",
-//      "minimalRecordResolution" : "1000000000000000",
-//      "maxPerBlockImbalance" : "150000000000000000000",
-//      "maxTotalImbalance" : "230000000000000000000"
-//    },
-//    "SALT": {
-//      "name": "SALT",
-//      "decimals": 8,
-//      "address": "0x4156D3342D5c385a87D264F90653733592000581",
-//      "minimalRecordResolution" : "100000",
-//      "maxPerBlockImbalance" : "25000000000",
-//      "maxTotalImbalance" : "37000000000"
-//    },
-//    "SNT": {
-//      "name": "STATUS",
-//      "decimals": 18,
-//      "address": "0x744d70fdbe2ba4cf95131626614a1763df805b9e",
-//      "minimalRecordResolution" : "10000000000000000",
-//      "maxPerBlockImbalance" : "6850000000000000000000",
-//      "maxTotalImbalance" : "10300000000000000000000"
-//    }
-//}
 
+let tokensJson = {
+    "tokens":{
+        "OMG": {
+          "name": "OmiseGO",
+          "decimals": 18,
+          "address": "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07",
+          "minimalRecordResolution" : "1000000000000000",
+          "maxPerBlockImbalance" : "120000000000000000000",
+          "maxTotalImbalance" : "180000000000000000000"
+        },
+        "KNC": {
+          "name": "KyberNetwork",
+          "decimals": 18,
+          "address": "0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
+          "minimalRecordResolution" : "1000000000000000",
+          "maxPerBlockImbalance" : "550000000000000000000",
+          "maxTotalImbalance" : "820000000000000000000"
+        },
+        "EOS": {
+          "name": "Eos",
+          "decimals": 18,
+          "address": "0x86Fa049857E0209aa7D9e616F7eb3b3B78ECfdb0",
+          "minimalRecordResolution" : "1000000000000000",
+          "maxPerBlockImbalance" : "150000000000000000000",
+          "maxTotalImbalance" : "230000000000000000000"
+        },
+        "SALT": {
+          "name": "SALT",
+          "decimals": 8,
+          "address": "0x4156D3342D5c385a87D264F90653733592000581",
+          "minimalRecordResolution" : "100000",
+          "maxPerBlockImbalance" : "25000000000",
+          "maxTotalImbalance" : "37000000000"
+        },
+        "SNT": {
+          "name": "STATUS",
+          "decimals": 18,
+          "address": "0x744d70fdbe2ba4cf95131626614a1763df805b9e",
+          "minimalRecordResolution" : "10000000000000000",
+          "maxPerBlockImbalance" : "6850000000000000000000",
+          "maxTotalImbalance" : "10300000000000000000000"
+        }
+    }
+};
