@@ -7,7 +7,7 @@ import "./Withdrawable.sol";
 import "./ExpectedRateInterface.sol";
 
 
-contract ExpectedRate is Withdrawable, ExpectedRateInterface {
+contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
 
     KyberNetwork public kyberNetwork;
     uint public quantityFactor = 2;
@@ -30,6 +30,8 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface {
     event MinSlippageFactorSet (uint newMin, uint oldMin, address sender);
 
     function setMinSlippageFactor(uint bps) public onlyOperator {
+        require(minSlippageFactorInBps <= 100 * 100);
+
         MinSlippageFactorSet(bps, minSlippageFactorInBps, msg.sender);
         minSlippageFactorInBps = bps;
     }
@@ -39,12 +41,15 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface {
         returns (uint expectedRate, uint slippageRate)
     {
         require(quantityFactor != 0);
+        require(srcQty * quantityFactor <= MAX_QTY);
 
         uint bestReserve;
         uint minSlippage;
 
         (bestReserve, expectedRate) = kyberNetwork.findBestRate(src, dest, srcQty);
         (bestReserve, slippageRate) = kyberNetwork.findBestRate(src, dest, (srcQty * quantityFactor));
+
+        require(expectedRate <= MAX_RATE);
 
         minSlippage = ((10000 - minSlippageFactorInBps) * expectedRate) / 10000;
         if (slippageRate >= minSlippage) {

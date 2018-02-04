@@ -165,6 +165,8 @@ contract KyberNetwork is Withdrawable, Utils {
         require(_whiteList != address(0));
         require(_feeBurner != address(0));
         require(_expectedRate != address(0));
+        require(_negligibleRateDiff <= 100 * 100); // at most 100%
+        
         whiteListContract = _whiteList;
         expectedRateContract = _expectedRate;
         feeBurnerContract = _feeBurner;

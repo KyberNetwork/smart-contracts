@@ -19,6 +19,7 @@ contract SanityRates is SanityRatesInterface, Withdrawable, Utils {
     function setReasonableDiff(ERC20[] srcs, uint[] diff) public onlyAdmin {
         require(srcs.length == diff.length);
         for (uint i = 0; i < srcs.length; i++) {
+            require(diff[i] <= 100 * 100);
             reasonableDiffInBps[srcs[i]] = diff[i];
         }
     }
@@ -27,6 +28,7 @@ contract SanityRates is SanityRatesInterface, Withdrawable, Utils {
         require(srcs.length == rates.length);
 
         for (uint i = 0; i < srcs.length; i++) {
+            require(rates[i] <= MAX_RATE);
             tokenRate[srcs[i]] = rates[i];
         }
     }
