@@ -138,19 +138,18 @@ var deployTokens = function( owner ){
 
       //deploy all tokens from json
       return inputs.reduce(function (promise, item) {
-          return promise.then(function () {
-              var symbol = tokenSymbol[item];
-              var name = tokenName[item];
-              var decimals = tokenDecimals[item];
-              return TestToken.new(name, symbol, decimals, {from:owner});
-          }).then(function(instance){
-              if( tokenSymbol[item] === "KNC" ) {
-                  console.log("found knc");
-                  kncInstance = instance;
-              }
-
-              tokenInstance.push(instance);
-          }).then(function deployKgt() {
+       return promise.then(function () {
+           var symbol = tokenSymbol[item];
+           var name = tokenName[item];
+           var decimals = tokenDecimals[item];
+           return TestToken.new(name, symbol, decimals, {from:owner});
+       }).then(function(instance){
+           if( tokenSymbol[item] === "KNC" ) {
+             console.log("found knc");
+             kncInstance = instance;
+           }
+           tokenInstance.push(instance);
+       }).then(function deployKgt() {
               return TestToken.new(kgtName, kgtSymbol, kgtDec)
           }).then(function (instance) {
               kgtInstance = instance;
@@ -778,7 +777,6 @@ it("set eth to dgd rate", function() {
                    "decimals" : tokenDecimals[i]};
       tokensDict[tokenSymbol[i]] = tokenDict;
     }
-    let num = tokenSymbol.length;
     tokenDict = {"address" : kgtInstance.address,
                        "name" : kgtName,
                        "decimals" : kgtDec};
