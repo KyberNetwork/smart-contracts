@@ -34,8 +34,6 @@ var input = {
 
 let solcOutput;
 
-const gasLimit = 1*100000;
-
 const ethAddress = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 
 // variables
@@ -64,7 +62,7 @@ let tokensPerReserve = [];//[reserve index][token address]
 let deploymentInput;
 let deploymentOutput;
 let addressesToNames = {};
-tokenSymbolToAddress = {};
+let tokenSymbolToAddress = {};
 let jsonTokenList = [];
 let jsonWithdrawAddresses = [];
 let minRecordResolutionPerToken = {};
