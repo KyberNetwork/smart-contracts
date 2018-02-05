@@ -26,7 +26,7 @@ var kncInstance;
 var kgtInstance;
 const kgtName = "Kyber genesis token";
 const kgtSymbol = "KGT";
-const kgtDec = 18;
+const kgtDec = 0;
 
 
 var conversionRate = (((new BigNumber(10)).pow(18)).mul(2));
@@ -136,6 +136,7 @@ var deployTokens = function( owner ){
           inputs.push(i);
       }
 
+
       //deploy all tokens from json
       return inputs.reduce(function (promise, item) {
        return promise.then(function () {
@@ -149,13 +150,13 @@ var deployTokens = function( owner ){
              kncInstance = instance;
            }
            tokenInstance.push(instance);
-       }).then(function deployKgt() {
-              return TestToken.new(kgtName, kgtSymbol, kgtDec)
-          }).then(function (instance) {
-              kgtInstance = instance;
-          });
+       })
       }, Promise.resolve()).then(function(){
-          fulfill(true);
+          return TestToken.new(kgtName, kgtSymbol, kgtDec).then(function (instance) {
+            kgtInstance = instance;
+          }).then(function(){
+            fulfill(true);
+          });
       }).catch(function(err){
           reject(err);
       });
@@ -777,10 +778,6 @@ it("set eth to dgd rate", function() {
                    "decimals" : tokenDecimals[i]};
       tokensDict[tokenSymbol[i]] = tokenDict;
     }
-    tokenDict = {"address" : kgtInstance.address,
-                       "name" : kgtName,
-                       "decimals" : kgtDec};
-    tokensDict[kgtSymbol] = tokenDict;
 
     exchangesDepositAddressesDict = {};
     exchangesAddressDict = {};
@@ -796,6 +793,7 @@ it("set eth to dgd rate", function() {
     dict["network"] = network.address;
     dict["wrapper"] = wrapper.address;
     dict["feeburner"] = feeBurner.address;
+    dict["KGT address"] = kgtInstance.address;
 
     var json = JSON.stringify(dict, null, 2);
 
