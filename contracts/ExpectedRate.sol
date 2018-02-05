@@ -23,6 +23,8 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
     event QuantityFactorSet (uint newFactor, uint oldFactor, address sender);
 
     function setQuantityFactor(uint newFactor) public onlyOperator {
+        require(newFactor <= 100);
+
         QuantityFactorSet(quantityFactor, newFactor, msg.sender);
         quantityFactor = newFactor;
     }
@@ -41,6 +43,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
         returns (uint expectedRate, uint slippageRate)
     {
         require(quantityFactor != 0);
+        require(srcQty <= MAX_QTY);
         require(srcQty * quantityFactor <= MAX_QTY);
 
         uint bestReserve;
