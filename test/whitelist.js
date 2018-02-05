@@ -25,7 +25,7 @@ contract('WhiteList', function(accounts) {
         user1 = accounts[3];
         user2 = accounts[4];
 
-        kgtToken = await TestToken.new("KyberNetwork", "KNC", 18);
+        kgtToken = await TestToken.new("Kyber genesis token", "KGT", 0);
         sgdToEthRateInWei = (((new BigNumber(10)).pow(18)).mul(oneSgdToEther));
         whiteListInst = await WhiteList.new(admin, kgtToken.address);
         await whiteListInst.addOperator(operator, {from: admin});
@@ -141,19 +141,19 @@ contract('WhiteList', function(accounts) {
         let list;
 
         try {
-            sanityRatess = await WhiteList.new(0, kgtToken.address);
+            list = await WhiteList.new(0, kgtToken.address);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            sanityRatess = await WhiteList.new(admin, 0);
+            list = await WhiteList.new(admin, 0);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        sanityRatess = await WhiteList.new(admin, kgtToken.address);
+        list = await WhiteList.new(admin, kgtToken.address);
     });
 });
