@@ -24,14 +24,6 @@
       "maxPerBlockImbalance": "150000000000000000000",
       "maxTotalImbalance": "230000000000000000000"
     },
-    "SALT": {
-      "name": "SALT",
-      "decimals": 8,
-      "address": "0x4156D3342D5c385a87D264F90653733592000581",
-      "minimalRecordResolution": "100000",
-      "maxPerBlockImbalance": "25000000000",
-      "maxTotalImbalance": "37000000000"
-    },
     "SNT": {
       "name": "STATUS",
       "decimals": 18,
@@ -39,6 +31,54 @@
       "minimalRecordResolution": "10000000000000000",
       "maxPerBlockImbalance": "6850000000000000000000",
       "maxTotalImbalance": "10300000000000000000000"
+    },
+    "ELF": {
+      "name": "AELF",
+      "decimals": 18,
+      "address": "0xbf2179859fc6d5bee9bf9158632dc51678a4100e",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "1050000000000000000000",
+      "maxTotalImbalance": "1620000000000000000000"
+    },
+    "POWR": {
+      "name": "Power Ledger",
+      "decimals": 6,
+      "address": "0x595832f8fc6bf59c85c527fec3740a1b7a361269",
+      "minimalRecordResolution": "1000",
+      "maxPerBlockImbalance": "2100000000",
+      "maxTotalImbalance": "3240000000"
+    },
+    "MANA": {
+      "name": "MANA",
+      "decimals": 18,
+      "address": "0x0f5d2fb29fb7d3cfee444a200298f468908cc942",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "20050000000000000000000",
+      "maxTotalImbalance": "320020000000000000000000"
+    },
+    "BAT": {
+      "name": "Basic Attention Token",
+      "decimals": 18,
+      "address": "0x0d8775f648430679a709e98d2b0cb6250d2887ef",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "5500000000000000000000",
+      "maxTotalImbalance": "8200000000000000000000"
+    },
+    "REQ": {
+      "name": "Request",
+      "decimals": 18,
+      "address": "0x8f8221afbb33998d8584a2b05749ba73c37a938a",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "5500000000000000000000",
+      "maxTotalImbalance": "8200000000000000000000"
+    },
+    "GTO": {
+      "name": "Gifto",
+      "decimals": 5,
+      "address": "0xc5bbae50781be1669306b9e001eff57a2957b09d",
+      "minimalRecordResolution": "10",
+      "maxPerBlockImbalance": "550000000",
+      "maxTotalImbalance": "820000000"
     },
     "ETH": {
       "name": "Ethereum",
@@ -52,12 +92,18 @@
       "OMG": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "KNC": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "SNT": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
-      "SALT": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547"
+      "EOS": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "ELF": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "POWR": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "MANA": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "BAT": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "REQ": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "GTO": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547"
     }
   },
-  "reserve": "0x148332cd398321989F37803188B9A69Fa32b133C",
-  "pricing": "0x3209f7ae16D545C60d8cc9c6A5F02181a94feA52",
-  "network": "0x6BC0E45a62e952171fbD7562e7B5f30C50e564AC",
-  "wrapper": "0x28e9221a3BB961bd89641EA55B4DFA4Ae464E9cF",
-  "feeburner": "0xeb69a461281C00556673e4ddF2FCeaA69F6B99a9"
+  "reserve": "0x99980a41f444c0832a9D6d6C61391201DDd60A26",
+  "pricing": "0xdbcd2Ae616E5886c36463eCB45a639C0Fa7583a4",
+  "network": "0xCc92a4462761134C00b3e16A9bd6cE8bFAD387B0",
+  "wrapper": "0x640cBe9BFF6c27b5Ecd9e0d0381b501a66e43389",
+  "feeburner": "0x1e6eF17b78DD4E27b99C1cfd9Cd02A8A160AA95C"
 }

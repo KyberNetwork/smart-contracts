@@ -1,10 +1,10 @@
 var Web3 = require("web3");
 var fs = require("fs");
 var RLP = require('rlp');
-var mainnetGasPrice = 5 * 10**9;
+var mainnetGasPrice = 1 * 10**9;
 var kovanGasPrice = 50 * 10 ** 9;
 
-var mainnet = false;
+var mainnet = true;
 
 if (mainnet) {
   url = "https://mainnet.infura.io";
@@ -472,14 +472,14 @@ async function waitForEth() {
 var filename;
 var content;
 if(mainnet) {
-  filename = "deployment_script_input_mainnet.json";
+  filename = "deployment_script_input_mainnet_stage.json";
 }
 else {
   filename = "deployment_script_input_kovan.json"
 }
 try{
   content = fs.readFileSync(filename, 'utf8');
-  //console.log(content.substring(1470,1530));
+  //console.log(content.substring(2892,2900));
   //console.log(content.substring(3490,3550));
   parseInput(JSON.parse(content));
 }
