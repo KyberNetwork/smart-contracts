@@ -441,11 +441,20 @@ function printParams(jsonInput) {
     dictOutput["tokens"] = jsonInput.tokens;
     dictOutput["tokens"]["ETH"] = {"name" : "Ethereum", "decimals" : 18, "address" : ethAddress };
     dictOutput["exchanges"] = jsonInput.exchanges;
+    dictOutput["permission"] = jsonInput.permission;
+    dictOutput["whitelist params"] = jsonInput["whitelist params"];
+    dictOutput["max gas price"] = maxGasPrice;
+    dictOutput["neg diff in bps"] = negDiffInBps;
+    dictOutput["min expected rate slippage"] = minExpectedRateSlippage;
+    dictOutput["KNC wallet"] = kncWallet;
+    dictOutput["KNC to ETH rate"] = kncToEthRate;
+    dictOutput["valid duration block"] = validDurationBlock;
     dictOutput["reserve"] = reserveAddress;
     dictOutput["pricing"] = conversionRatesAddress;
     dictOutput["network"] = networkAddress;
     dictOutput["wrapper"] = wrapperAddress;
     dictOutput["feeburner"] = feeBurnerAddress;
+
     var json = JSON.stringify(dictOutput, null, 2);
     console.log(json);
     var outputFileName = jsonInput["output filename"];
