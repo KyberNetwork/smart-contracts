@@ -26,7 +26,7 @@ var kncInstance;
 var kgtInstance;
 const kgtName = "Kyber genesis token";
 const kgtSymbol = "KGT";
-const kgtDec = 18;
+const kgtDec = 0;
 
 
 var conversionRate = (((new BigNumber(10)).pow(18)).mul(2));
@@ -34,6 +34,7 @@ var counterConversionRate = (((new BigNumber(10)).pow(18)).div(2));
 
 var expBlock = 10**10;
 var validBlockDuration = 24;
+const maxGas = 5878178;
 
 var tokenOwner;
 
@@ -136,6 +137,7 @@ var deployTokens = function( owner ){
           inputs.push(i);
       }
 
+
       //deploy all tokens from json
       return inputs.reduce(function (promise, item) {
        return promise.then(function () {
@@ -149,13 +151,13 @@ var deployTokens = function( owner ){
              kncInstance = instance;
            }
            tokenInstance.push(instance);
-       }).then(function deployKgt() {
-              return TestToken.new(kgtName, kgtSymbol, kgtDec)
-          }).then(function (instance) {
-              kgtInstance = instance;
-          });
+       })
       }, Promise.resolve()).then(function(){
-          fulfill(true);
+          return TestToken.new(kgtName, kgtSymbol, kgtDec).then(function (instance) {
+            kgtInstance = instance;
+          }).then(function(){
+            fulfill(true);
+          });
       }).catch(function(err){
           reject(err);
       });
@@ -505,14 +507,14 @@ contract('Deployment', function(accounts) {
   it("create network", function() {
     this.timeout(31000000);
     networkOwner = accounts[0];
-    return Network.new(networkOwner,{gas:6000000}).then(function(instance){
+    return Network.new(networkOwner,{gas:maxGas}).then(function(instance){
         network = instance;
     });
   });
 
   it("create conversionRates", function() {
     this.timeout(31000000);
-    return ConversionRates.new(accounts[0],{gas:6000000}).then(function(instance){
+    return ConversionRates.new(accounts[0],{gas:maxGas}).then(function(instance){
         conversionRates = instance;
         return conversionRates.addOperator(accounts[0],{from:accounts[0]});
     });
@@ -521,7 +523,7 @@ contract('Deployment', function(accounts) {
   it("create reserve and deposit tokens", function() {
     this.timeout(30000000);
     reserveOwner = accounts[0];
-    return Reserve.new(network.address, conversionRates.address, reserveOwner,{gas:6000000}).then(function(instance){
+    return Reserve.new(network.address, conversionRates.address, reserveOwner,{gas:maxGas}).then(function(instance){
         reserve = instance;
     }).then(function(){
         return conversionRates.setValidRateDurationInBlocks(new BigNumber(1000000));
@@ -777,10 +779,6 @@ it("set eth to dgd rate", function() {
                    "decimals" : tokenDecimals[i]};
       tokensDict[tokenSymbol[i]] = tokenDict;
     }
-    tokenDict = {"address" : kgtInstance.address,
-                       "name" : kgtName,
-                       "decimals" : kgtDec};
-    tokensDict[kgtSymbol] = tokenDict;
 
     exchangesDepositAddressesDict = {};
     exchangesAddressDict = {};
@@ -796,6 +794,7 @@ it("set eth to dgd rate", function() {
     dict["network"] = network.address;
     dict["wrapper"] = wrapper.address;
     dict["feeburner"] = feeBurner.address;
+    dict["KGT address"] = kgtInstance.address;
 
     var json = JSON.stringify(dict, null, 2);
 
