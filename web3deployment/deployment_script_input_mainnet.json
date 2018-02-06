@@ -54,7 +54,7 @@
                                       "operator" : ["0x8bc3da587def887b5c822105729ee1d6af05a5ca"],
                                       "alerter" : []},
                    "KyberReserve" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-                                      "operator" : ["0x8bc3da587def887b5c822105729ee1d6af05a5ca"],
+                                      "operator" : ["0x5bab5ef16cfac98e216a229db17913454b0f9365"],
                                       "alerter" : []},
                    "ConversionRates" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
                                          "operator" : ["0x8bc3da587def887b5c822105729ee1d6af05a5ca"],
