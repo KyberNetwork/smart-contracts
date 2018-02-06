@@ -112,7 +112,7 @@ contract('KyberNetwork', function(accounts) {
 
         currentBlock = priceUpdateBlock = await Helper.getCurrentBlock();
 
-        console.log("current block: " + currentBlock);
+//        console.log("current block: " + currentBlock);
         //init contracts
         pricing1 = await ConversionRates.new(admin, {});
         pricing2 = await ConversionRates.new(admin, {});
@@ -236,7 +236,8 @@ contract('KyberNetwork', function(accounts) {
         //set contracts
         feeBurner = await FeeBurner.new(admin, tokenAdd[0]);
         feeBurner.setKyberNetwork(network.address);
-        whiteList = await WhiteList.new(admin);
+        let kgtToken = await TestToken.new("kyber genesis token", "KGT", 0);
+        whiteList = await WhiteList.new(admin, kgtToken.address);
         await whiteList.addOperator(operator);
         await whiteList.setCategoryCap(0, 1000, {from:operator});
         await whiteList.setSgdToEthRate(30000, {from:operator});
@@ -432,7 +433,7 @@ contract('KyberNetwork', function(accounts) {
         //check used ethers as expected.
         let userPostBalance = await Helper.getBalancePromise(user2);
 
-        console.log("init user balance: " + user2InitBalance + " post balance: " + userPostBalance + " diff " + userPostBalance*1 - user2InitBalance*1);
+//        console.log("init user balance: " + user2InitBalance + " post balance: " + userPostBalance + " diff " + userPostBalance*1 - user2InitBalance*1);
 
         //check token balance on user1
         tokenTweiBalance = await token.balanceOf(user1);

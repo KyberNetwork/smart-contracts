@@ -165,7 +165,8 @@ contract('ExpectedRates', function(accounts) {
         //set contracts
         feeBurner = await FeeBurner.new(admin, tokenAdd[0]);
         feeBurner.setKyberNetwork(network.address);
-        whiteList = await WhiteList.new(admin);
+        let kgtToken = await TestToken.new("kyber genesis token", "KGT", 0);
+        whiteList = await WhiteList.new(admin, kgtToken.address);
         await whiteList.addOperator(operator);
         await whiteList.setCategoryCap(0, 1000, {from:operator});
         await whiteList.setSgdToEthRate(30000, {from:operator});
