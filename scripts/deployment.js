@@ -29,6 +29,7 @@ var counterConversionRate = (((new BigNumber(10)).pow(18)).div(2));
 
 var expBlock = 10**10;
 var validBlockDuration = 24;
+const maxGas = 5878178;
 
 var tokenOwner;
 
@@ -495,14 +496,14 @@ contract('Deployment', function(accounts) {
   it("create network", function() {
     this.timeout(31000000);
     networkOwner = accounts[0];
-    return Network.new(networkOwner,{gas:6000000}).then(function(instance){
+    return Network.new(networkOwner,{gas:maxGas}).then(function(instance){
         network = instance;
     });
   });
 
   it("create conversionRates", function() {
     this.timeout(31000000);
-    return ConversionRates.new(accounts[0],{gas:6000000}).then(function(instance){
+    return ConversionRates.new(accounts[0],{gas:maxGas}).then(function(instance){
         conversionRates = instance;
         return conversionRates.addOperator(accounts[0],{from:accounts[0]});
     });
@@ -511,7 +512,7 @@ contract('Deployment', function(accounts) {
   it("create reserve and deposit tokens", function() {
     this.timeout(30000000);
     reserveOwner = accounts[0];
-    return Reserve.new(network.address, conversionRates.address, reserveOwner,{gas:6000000}).then(function(instance){
+    return Reserve.new(network.address, conversionRates.address, reserveOwner,{gas:maxGas}).then(function(instance){
         reserve = instance;
     }).then(function(){
         return conversionRates.setValidRateDurationInBlocks(new BigNumber(1000000));
