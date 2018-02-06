@@ -99,7 +99,7 @@ contract('KyberReserve', function(accounts) {
 
         currentBlock = priceUpdateBlock = await Helper.getCurrentBlock();
 
-        console.log("current block: " + currentBlock);
+//        console.log("current block: " + currentBlock);
         //init contracts
         convRatesInst = await ConversionRates.new(admin, {});
 

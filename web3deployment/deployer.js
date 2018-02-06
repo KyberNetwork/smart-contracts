@@ -143,6 +143,7 @@ var testersCap;
 var users;
 var usersCat;
 var usersCap;
+var kgtAddress;
 
 var ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
@@ -201,6 +202,8 @@ function parseInput( jsonInput ) {
     users = jsonInput["whitelist params"]["users"];
     usersCat = jsonInput["whitelist params"]["users category"];
     usersCap = jsonInput["whitelist params"]["category cap"];
+    kgtAddress = jsonInput["whitelist params"]["KGT address"];
+
 
     // output file name
     outputFileName = jsonInput["output filename"];
@@ -247,7 +250,7 @@ async function main() {
   console.log("deploying fee burner");
   [feeBurnerAddress, feeBurnerContract] = await deployContract(output, "FeeBurner.sol:FeeBurner", [sender,"0xdd974D5C2e2928deA5F71b9825b8b646686BD200"]);
   console.log("deploying whitelist");
-  [whitelistAddress, whitelistContract] = await deployContract(output, "WhiteList.sol:WhiteList", [sender]);
+  [whitelistAddress, whitelistContract] = await deployContract(output, "WhiteList.sol:WhiteList", [sender, kgtAddress]);
   console.log("deploying expected rates");
   [expectedRateAddress, expectedRateContract] = await deployContract(output, "ExpectedRate.sol:ExpectedRate", [networkAddress,sender]);
   console.log("deploying wrapper");
