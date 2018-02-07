@@ -5,40 +5,82 @@
       "decimals": 18,
       "address": "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07",
       "minimalRecordResolution" : "1000000000000000",
-      "maxPerBlockImbalance" : "120000000000000000000",
-      "maxTotalImbalance" : "180000000000000000000"
+      "maxPerBlockImbalance" : "775091297865175138304",
+      "maxTotalImbalance" : "1096640332676811325440"
     },
     "KNC": {
       "name": "KyberNetwork",
       "decimals": 18,
       "address": "0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
       "minimalRecordResolution" : "1000000000000000",
-      "maxPerBlockImbalance" : "550000000000000000000",
-      "maxTotalImbalance" : "820000000000000000000"
+      "maxPerBlockImbalance" : "2711997842670896021504",
+      "maxTotalImbalance" : "3833713935933528080384"
     },
     "EOS": {
       "name": "Eos",
       "decimals": 18,
       "address": "0x86Fa049857E0209aa7D9e616F7eb3b3B78ECfdb0",
       "minimalRecordResolution" : "1000000000000000",
-      "maxPerBlockImbalance" : "150000000000000000000",
-      "maxTotalImbalance" : "230000000000000000000"
+      "maxPerBlockImbalance" : "1019792725446519947264",
+      "maxTotalImbalance" : "1441689429340878536704"
     },
-    "SALT": {
-      "name": "SALT",
-      "decimals": 8,
-      "address": "0x4156D3342D5c385a87D264F90653733592000581",
-      "minimalRecordResolution" : "100000",
-      "maxPerBlockImbalance" : "25000000000",
-      "maxTotalImbalance" : "37000000000"
-    },
+
     "SNT": {
       "name": "STATUS",
       "decimals": 18,
       "address": "0x744d70fdbe2ba4cf95131626614a1763df805b9e",
       "minimalRecordResolution" : "10000000000000000",
-      "maxPerBlockImbalance" : "6850000000000000000000",
-      "maxTotalImbalance" : "10300000000000000000000"
+      "maxPerBlockImbalance" : "37434287125568931495936",
+      "maxTotalImbalance" : "38806865287259009056768"
+    },
+
+    "ELF": {
+      "name": "AELF",
+      "decimals": 18,
+      "address": "0xbf2179859fc6d5bee9bf9158632dc51678a4100e",
+      "minimalRecordResolution" : "1000000000000000",
+      "maxPerBlockImbalance" : "6727090010493247553536",
+      "maxTotalImbalance" : "9489286595433755312128"
+    },
+    "POWR": {
+      "name": "Power Ledger",
+      "decimals": 6,
+      "address": "0x595832f8fc6bf59c85c527fec3740a1b7a361269",
+      "minimalRecordResolution" : "1000",
+      "maxPerBlockImbalance" : "8860273487",
+      "maxTotalImbalance" : "8860273487"
+    },
+    "MANA": {
+      "name": "MANA",
+      "decimals": 18,
+      "address": "0x0f5d2fb29fb7d3cfee444a200298f468908cc942",
+      "minimalRecordResolution" : "1000000000000000",
+      "maxPerBlockImbalance" : "54907343857240902729728",
+      "maxTotalImbalance" : "54907343857240902729728"
+    },
+    "BAT": {
+      "name": "Basic Attention Token",
+      "decimals": 18,
+      "address": "0x0d8775f648430679a709e98d2b0cb6250d2887ef",
+      "minimalRecordResolution" : "1000000000000000",
+      "maxPerBlockImbalance" : "13480268257338322845696",
+      "maxTotalImbalance" : "13480268257338322845696"
+    },
+    "REQ": {
+      "name": "Request",
+      "decimals": 18,
+      "address": "0x8f8221afbb33998d8584a2b05749ba73c37a938a",
+      "minimalRecordResolution" : "1000000000000000",
+      "maxPerBlockImbalance" : "32547010644498297389056",
+      "maxTotalImbalance" : "33735087557886343118848"
+    },
+    "GTO": {
+      "name": "Gifto",
+      "decimals": 5,
+      "address": "0xc5bbae50781be1669306b9e001eff57a2957b09d",
+      "minimalRecordResolution" : "10",
+      "maxPerBlockImbalance" : "1925452883",
+      "maxTotalImbalance" : "1925452883"
     }
   },
   "exchanges": {
@@ -46,8 +88,13 @@
                  "OMG" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
                  "KNC" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
                  "SNT" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-                 "SALT" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-                 "EOS" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90" }
+                 "EOS" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+                 "ELF" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+                 "POWR" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+                 "MANA" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+                 "BAT" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+                 "REQ" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+                 "GTO" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90" }
   },
 
   "permission" : { "KyberNetwork" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
@@ -147,7 +194,7 @@
   "min expected rate slippage" : 300,
   "KNC wallet" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
   "KNC to ETH rate" : 300,
-  "valid duration block" : 24,
+  "valid duration block" : 60,
 
   "output filename" : "mainnet_production.json"
 }
