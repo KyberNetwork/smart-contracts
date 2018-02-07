@@ -443,12 +443,12 @@ function printParams(jsonInput) {
     dictOutput["exchanges"] = jsonInput.exchanges;
     dictOutput["permission"] = jsonInput.permission;
     dictOutput["whitelist params"] = jsonInput["whitelist params"];
-    dictOutput["max gas price"] = maxGasPrice;
-    dictOutput["neg diff in bps"] = negDiffInBps;
-    dictOutput["min expected rate slippage"] = minExpectedRateSlippage;
+    dictOutput["max gas price"] = (parseInt(maxGasPrice, 10)).toString;
+    dictOutput["neg diff in bps"] = parseInt(negDiffInBps, 10);
+    dictOutput["min expected rate slippage"] = parseInt(minExpectedRateSlippage, 10);
     dictOutput["KNC wallet"] = kncWallet;
-    dictOutput["KNC to ETH rate"] = kncToEthRate;
-    dictOutput["valid duration block"] = validDurationBlock;
+    dictOutput["KNC to ETH rate"] = parseInt(kncToEthRate, 10);
+    dictOutput["valid duration block"] = parseInt(validDurationBlock, 10);
     dictOutput["reserve"] = reserveAddress;
     dictOutput["pricing"] = conversionRatesAddress;
     dictOutput["network"] = networkAddress;
