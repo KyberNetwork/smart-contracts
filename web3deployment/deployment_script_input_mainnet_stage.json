@@ -137,9 +137,10 @@
     "testers category" : 9,
     "testers cap" : 5000,
     "KGT address": "0xfce10cbf5171dc12c215bbcca5dd75cbaea72506",
+    "KGT cap": 0,
     "users" : [],
     "users category" : 1,
-    "users cap": 0
+    "users cap": 0,
     "default cap": 0
   },
 
