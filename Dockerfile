@@ -21,5 +21,5 @@ ADD . /smart-contracts
 
 WORKDIR /smart-contracts
 
-RUN npm install -g truffle
+RUN npm install -g truffle@4.0.1
 RUN npm install bignumber.js

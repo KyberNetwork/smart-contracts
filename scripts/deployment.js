@@ -34,7 +34,7 @@ var counterConversionRate = (((new BigNumber(10)).pow(18)).div(2));
 
 var expBlock = 10**10;
 var validBlockDuration = 24;
-const maxGas = 5878178;
+const maxGas = 4612388;
 
 var tokenOwner;
 
