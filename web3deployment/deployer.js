@@ -4,14 +4,14 @@ var RLP = require('rlp');
 var mainnetGasPrice = 1 * 10**9;
 var kovanGasPrice = 50 * 10 ** 9;
 
-var mainnet = false;
+var mainnet = true;
 
 if (mainnet) {
   url = "https://mainnet.infura.io";
 }
 else {
-//  url = "http://localhost:8545";
-  url = "https://kovan.infura.io";
+  url = "http://localhost:8545";
+//  url = "https://kovan.infura.io";
 }
 
 
