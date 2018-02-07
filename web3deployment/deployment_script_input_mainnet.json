@@ -135,7 +135,9 @@
 "0x12f0453c1947269842c5646df98905533c1b9519",
 "0x29641cd7f394dff57eaa6ebca31c88e5b84d6b4c",
 "0xe9dcde10206cbbd76c52944ff0eec832c886bbc6" ],
-	"users category" : 1
+    "users category" : 1,
+    "users cap": 5000,
+    "default cap": 0
   },
 
 

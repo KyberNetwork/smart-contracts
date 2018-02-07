@@ -198,10 +198,10 @@ function parseInput( jsonInput ) {
     validDurationBlock = web3.utils.toBN(jsonInput["valid duration block"]);
     testers = jsonInput["whitelist params"]["testers"];
     testersCat = jsonInput["whitelist params"]["testers category"];
-    testersCap = jsonInput["whitelist params"]["category cap"];
+    testersCap = jsonInput["whitelist params"]["testers cap"];
     users = jsonInput["whitelist params"]["users"];
     usersCat = jsonInput["whitelist params"]["users category"];
-    usersCap = jsonInput["whitelist params"]["category cap"];
+    usersCap = jsonInput["whitelist params"]["users cap"];
     kgtAddress = jsonInput["whitelist params"]["KGT address"];
 
 
