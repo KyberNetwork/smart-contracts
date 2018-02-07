@@ -101,63 +101,9 @@
       "GTO": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547"
     }
   },
-
-  "reserve": "0x2C5a182d280EeB5824377B98CD74871f78d6b8BC",
-  "pricing": "0xe3E415a7a6c287a95DC68a01ff036828073fD2e6",
-  "network": "0xD2D21FdeF0D054D2864ce328cc56D1238d6b239e",
-  "wrapper": "0x865aA8818615BA9DFA8bcB6A1432B0fc506DBd58",
-  "feeburner": "0x8a31a527E024150121b4aB33e6b6c24f69846cC9",
-
-  "permission" : { "KyberNetwork" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-    "operator" : ["0xf214dde57f32f3f34492ba3148641693058d4a9e"],
-    "alerter" : []},
-    "KyberReserve" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-      "operator" : ["0x8c3151b751f2409697e35f62d016713593f64eef"],
-      "alerter" : []},
-    "ConversionRates" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-      "operator" : ["0xeAE89c711c02468deA8eE1AdE4fA78B79AC9379a"],
-      "alerter" : []},
-    "FeeBurner" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-      "operator" : ["0xeAE89c711c02468deA8eE1AdE4fA78B79AC9379a"],
-      "alerter" : []},
-    "WhiteList" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-      "operator" : ["0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
-        "0xf214dde57f32f3f34492ba3148641693058d4a9e"],
-      "alerter" : []},
-    "ExpectedRate" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-      "operator" : ["0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
-        "0xeAE89c711c02468deA8eE1AdE4fA78B79AC9379a"],
-      "alerter" : []}},
-
-
-  "whitelist params" : {
-    "testers" : ["0x053a9f418F7BE3391A2821BE23b418a909f42F54",
-      "0x0d225f12898e0ca01867290a61f4cbfe11a1da8a",
-      "0x12f0453c1947269842c5646df98905533c1b9519",
-      "0x42bbe426b1796b8eca6444928e874a58ee124973",
-      "0xb2d904d1981080C9002818D833819e33a58F8388",
-      "0x3Cf628d49Ae46b49b210F0521Fbd9F82B461A9E1",
-      "0xdde0a80664fbbdb56e2cd82f725cd3be1f9bb6d3",
-      "0xC825Ef342d94B687590E123BBB27994ccBfFcc35",
-      "0x8180a5CA4E3B94045e05A9313777955f7518D757",
-      "0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
-      "0xd0643bc0d0c879f175556509dbcee9373379d5c3"],
-    "testers category" : 9,
-    "testers cap" : 5000,
-    "KGT address": "0xfce10cbf5171dc12c215bbcca5dd75cbaea72506",
-    "users" : [],
-    "users cap" : 5000,
-    "default cap" : 0,
-    "users category" : 1
-
-  },
-
-
-  "max gas price" : "50000000000",
-  "neg diff in bps" : 20,
-  "min expected rate slippage" : 300,
-  "KNC wallet" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-  "KNC to ETH rate" : 300,
-  "valid duration block" : 60
-
+  "reserve": "0x99980a41f444c0832a9D6d6C61391201DDd60A26",
+  "pricing": "0xdbcd2Ae616E5886c36463eCB45a639C0Fa7583a4",
+  "network": "0xCc92a4462761134C00b3e16A9bd6cE8bFAD387B0",
+  "wrapper": "0x640cBe9BFF6c27b5Ecd9e0d0381b501a66e43389",
+  "feeburner": "0x1e6eF17b78DD4E27b99C1cfd9Cd02A8A160AA95C"
 }
