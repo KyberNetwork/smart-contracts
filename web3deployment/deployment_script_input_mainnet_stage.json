@@ -135,13 +135,14 @@
     "0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
     "0xd0643bc0d0c879f175556509dbcee9373379d5c3"],
     "testers category" : 9,
-    "category cap" : 5000,
+    "testers cap" : 5000,
     "KGT address": "0xfce10cbf5171dc12c215bbcca5dd75cbaea72506",
+    "KGT cap": 0,
     "users" : [],
-    "users category" : 1
-
+    "users category" : 1,
+    "users cap": 0,
+    "default cap": 0
   },
-
 
   "max gas price" : "50000000000",
   "neg diff in bps" : 20,
