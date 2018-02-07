@@ -26,7 +26,6 @@
       "maxPerBlockImbalance" : "1019792725446519947264",
       "maxTotalImbalance" : "1441689429340878536704"
     },
-
     "SNT": {
       "name": "STATUS",
       "decimals": 18,
@@ -90,13 +89,8 @@
                  "OMG" : "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
                  "KNC" : "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
                  "SNT" : "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
-                 "EOS" : "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
-                 "ELF" : "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
-                 "POWR" : "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
-                 "MANA" : "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
-                 "BAT" : "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
-                 "REQ" : "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
-                 "GTO" : "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547" }
+                 "SALT" : "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+                 "EOS" : "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547" }
   },
 
   "permission" : { "KyberNetwork" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
@@ -135,11 +129,12 @@
     "0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
     "0xd0643bc0d0c879f175556509dbcee9373379d5c3"],
     "testers category" : 9,
-    "category cap" : 5000,
+    "testers cap" : 5000,
     "KGT address": "0xfce10cbf5171dc12c215bbcca5dd75cbaea72506",
     "users" : [],
-    "users category" : 1
-
+    "users category" : 1,
+    "users cap": 5000,
+    "default cap": 0
   },
 
 
