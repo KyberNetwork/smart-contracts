@@ -20,7 +20,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
         admin = _admin;
     }
 
-    event QuantityFactorSet (uint oldFtor, uint newFactor, address sender);
+    event QuantityFactorSet (uint oldFactor, uint newFactor, address sender);
 
     function setQuantityFactor(uint newFactor) public onlyOperator {
         require(newFactor <= 100);
@@ -32,7 +32,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
     event MinSlippageFactorSet (uint newMin, uint oldMin, address sender);
 
     function setMinSlippageFactor(uint bps) public onlyOperator {
-        require(minSlippageFactorInBps <= 100 * 100);
+        require(bps <= 100 * 100);
 
         MinSlippageFactorSet(bps, minSlippageFactorInBps, msg.sender);
         minSlippageFactorInBps = bps;
