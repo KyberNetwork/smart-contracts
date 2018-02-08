@@ -59,7 +59,8 @@ var feeBurner;
 var expectedRate;
 
 var nam;// = "0xc6bc2f7b73da733366985f5f5b485262b45a77a3";
-var victor;// = "0x760d30979eb313a2d23c53e4fb55986183b0ffd9";
+var victor_1;// = "0x760d30979eb313a2d23c53e4fb55986183b0ffd9";
+var victor_2;// = "0xEDd15B61505180B3A0C25B193dF27eF10214D851";
 var duc;// = "0x25B8b1F2c21A70B294231C007e834Ad2de04f51F";
 
 
@@ -115,7 +116,8 @@ var parseInput = function( jsonInput ) {
 
     // special addresses
     var specialAddresses = jsonInput["special addresses"];
-    victor = specialAddresses["victor"];
+    victor_1 = specialAddresses["victor_1"];
+    victor_2 = specialAddresses["victor_2"];
     nam = specialAddresses["nam"];
     duc = specialAddresses["duc"];
 
@@ -655,17 +657,32 @@ contract('Deployment', function(accounts) {
 
   it("add operator in conversionRates", function() {
     this.timeout(31000000);
-    return conversionRates.addOperator(victor);
+    return conversionRates.addOperator(victor_1);
+  });
+
+  it("add operator in conversionRates", function() {
+    this.timeout(31000000);
+    return conversionRates.addOperator(victor_2);
   });
 
   it("add operator in expectedRate", function() {
     this.timeout(31000000);
-    return expectedRate.addOperator(victor);
+    return expectedRate.addOperator(victor_1);
+  });
+
+  it("add operator in expectedRate", function() {
+    this.timeout(31000000);
+    return expectedRate.addOperator(victor_2);
   });
 
   it("add operator in reserve", function() {
     this.timeout(31000000);
-    return reserve.addOperator(victor);
+    return reserve.addOperator(victor_1);
+  });
+
+  it("add operator in reserve", function() {
+    this.timeout(31000000);
+    return reserve.addOperator(victor_2);
   });
 
   it("transfer ownership in exchanges", function() {

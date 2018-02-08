@@ -39,7 +39,8 @@ var sendEtherToNam = function( sender, namAddresses, amount ){
 ////////////////////////////////////////////////////////////////////////////////
 
 var nam;
-var victor;
+var victor_1;
+var victor_2;
 var duc;
 var spyrus;
 var andrew;
@@ -50,7 +51,8 @@ var parseInput = function( jsonInput ) {
 
     // special addresses
     var specialAddresses = jsonInput["special addresses"];
-    victor = specialAddresses["victor"];
+    victor_1 = specialAddresses["victor_1"];
+    victor_2 = specialAddresses["victor_2"];
     nam = specialAddresses["nam"];
     duc = specialAddresses["duc"];
     spyrus = specialAddresses["spyrus"];
@@ -80,8 +82,11 @@ contract('Scenario One', function(accounts) {
 
   });
 
-  it("send to victor", function() {
-      return sendEtherWithPromise(accounts[0],victor,amount);
+  it("send to victor_1", function() {
+      return sendEtherWithPromise(accounts[0],victor_1,amount);
+  });
+  it("send to victor_2", function() {
+      return sendEtherWithPromise(accounts[0],victor_2,amount);
   });
   it("send to duc", function() {
       return sendEtherWithPromise(accounts[0],duc,amount);
