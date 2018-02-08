@@ -367,16 +367,12 @@ async function readWhiteListData(whiteListAddress) {
         for (let j = 0; j < testersWhiteListed.length; j++) {
             if (testersWhiteListed[j].toLowerCase() == whiteListedArr[i]) {
                 isAddressListedAsTester = true;
-                testersWhiteListed[j] = testersWhiteListed[testersWhiteListed.length - 1];
-                testersWhiteListed.length -= 1;
                 break;
             }
         }
         for (let j = 0; j < usersWhiteListed.length; j++) {
             if (usersWhiteListed[j].toLowerCase() == whiteListedArr[i]) {
                 isAddressListedAsUser = true;
-                usersWhiteListed[j] = usersWhiteListed[usersWhiteListed.length - 1];
-                usersWhiteListed.length -= 1;
                 break;
             }
         }
@@ -403,8 +399,25 @@ async function readWhiteListData(whiteListAddress) {
             addressEventCat + ". Tester: " + isAddressListedAsTester + "    User: " + isAddressListedAsUser);
     }
 
+    let numTestersUnlisted = 0;
+
+    //make sure no address from json was left out
     for (let i = 0; i < testersWhiteListed.length; i++) {
-        myLog(1, 0, "Address: " + testersWhiteListed[i] + " from json, isn't white listed.");
+        if (whiteListEvents[testersWhiteListed[i].toLowerCase()] != jsonTestersCat.toString(10)) {
+            let cat = whiteListEvents[testersWhiteListed[i].toLowerCase()];
+            myLog((cat == 0), (cat > 0), "Address: " + testersWhiteListed[i] + " from json, expected cat: " + jsonTestersCat +
+                ". Current category: " + cat);
+        }
+    }
+
+    console.log("usersWhiteListed.length   " + usersWhiteListed.length)
+
+    for (let i = 0; i < usersWhiteListed.length; i++) {
+        if (whiteListEvents[usersWhiteListed[i].toLowerCase()] != jsonUsersCat.toString(10)) {
+            let cat = whiteListEvents[usersWhiteListed[i].toLowerCase()];
+            myLog((cat == 0), (cat > 0), "Address: " + usersWhiteListed[i] + " from json, expected cat: " + jsonUsersCat +
+                ". Current category: " + cat);
+        }
     }
 }
 
