@@ -410,8 +410,6 @@ async function readWhiteListData(whiteListAddress) {
         }
     }
 
-    console.log("usersWhiteListed.length   " + usersWhiteListed.length)
-
     for (let i = 0; i < usersWhiteListed.length; i++) {
         if (whiteListEvents[usersWhiteListed[i].toLowerCase()] != jsonUsersCat.toString(10)) {
             let cat = whiteListEvents[usersWhiteListed[i].toLowerCase()];
@@ -557,31 +555,38 @@ async function verifyApprovedWithdrawAddress (reserveContract) {
     // see all events for approve withdraw address
     let eventsReference = await reserveContract.getPastEvents("WithdrawAddressApproved", {fromBlock: 0, toBlock: 'latest'});
 
-//    console.log(eventsReference);
-    let sha3Tokens = {};
-    let sha3Addresses = {};
+    console.log(eventsReference);
+    let sha3ToTokens = {};
+    let sha3ToAddresses = {};
     let refSha3 = [];
+    let withDrawAdds = [];
+
+    // iterate all withdrawal approve events.
     for(let i = 0 ; i < eventsReference.length ; i++ ) {
+
         sha3Approved = await twoStringsSoliditySha(eventsReference[i].returnValues.token, eventsReference[i].returnValues.addr);
+        withDrawAdds.push(eventsReference[i].returnValues.addr);
         refSha3.push(sha3Approved);
-        sha3Addresses[sha3Approved] = (eventsReference[i].returnValues.addr).toLowerCase();
+ w       sha3ToAddresses[sha3Approved] = (eventsReference[i].returnValues.addr).toLowerCase();
+
         if (eventsReference[i].returnValues.approve == true){
-            sha3Tokens[sha3Approved] = (eventsReference[i].returnValues.token).toLowerCase();
+            sha3ToTokens[sha3Approved] = (eventsReference[i].returnValues.token).toLowerCase();
         } else {
-            sha3Tokens[sha3Approved] = '';
+            sha3ToTokens[sha3Approved] = '';
         }
     }
 
     for (let i = 0; i < refSha3.length; i++) {
         let sha3Adds = refSha3[i];
         let isListedInJson = false;
-        if (sha3Tokens[sha3Adds] != '') {
+
+        if (sha3ToTokens[sha3Adds] != '') {
             // address currently approved
             if (jsonWithDrawAdds[sha3Adds] == true) {
                 isListedInJson = true;
             }
-            myLog((isListedInJson == false), 0, "Token: " + a2n(sha3Tokens[sha3Adds], 1) + " has event for approved address: " +
-                sha3Addresses[sha3Approved] + " listed in json: " + isListedInJson);
+            myLog((isListedInJson == false), 0, "Token: " + a2n(sha3ToTokens[sha3Adds], 0) + " withdrawal address: " +
+                sha3ToAddresses[sha3Adds] + " listed in json: " + isListedInJson );
         }
     };
 }
