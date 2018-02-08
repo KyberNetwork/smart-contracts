@@ -8,12 +8,12 @@ const BigNumber = require('bignumber.js')
 
 process.on('unhandledRejection', console.error.bind(console))
 
-const { configPath, gasPriceGwei, printPrivateKey, rpcUrl, signedTxOutput } = require('yargs')
-    .usage('Usage: $0 --config-path [path] --gas-price-gwei [gwei] --print-private-key [bool] --rpc-url [url] --signed-tx-output [path]')
+const { configPath, gasPriceGwei, printPrivateKey, rpcUrl, signedTxOutput, dontSendTx, chainId: chainIdInput } = require('yargs')
+    .usage('Usage: $0 --config-path [path] --gas-price-gwei [gwei] --print-private-key [bool] --rpc-url [url] --signed-tx-output [path] --dont-send-tx [bool] --chain-id')
     .demandOption(['configPath', 'gasPriceGwei', 'rpcUrl'])
     .boolean('printPrivateKey')
+    .boolean('dontSendTx')
     .argv;
-
 const web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
 const solc = require('solc')
 
@@ -27,6 +27,7 @@ const sender = account.address;
 const gasPrice = BigNumber(gasPriceGwei).mul(10 ** 9);
 const signedTxs = [];
 let nonce;
+let chainId = chainIdInput;
 
 console.log("from",sender);
 
@@ -56,6 +57,7 @@ async function sendTx(txObject) {
     nonce : nonce,
     data : txData,
     gas : gasLimit,
+    chainId,
     gasPrice
   };
 
@@ -63,7 +65,9 @@ async function sendTx(txObject) {
   nonce++;
   // don't wait for confirmation
   signedTxs.push(signedTx.rawTransaction)
-  web3.eth.sendSignedTransaction(signedTx.rawTransaction,{from:sender});
+  if (!dontSendTx) {
+    web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
+  }
 }
 
 async function deployContract(solcOutput, contractName, ctorArgs) {
@@ -238,12 +242,17 @@ async function main() {
   nonce = await web3.eth.getTransactionCount(sender);
   console.log("nonce",nonce);
 
+  chainId = chainId || await web3.eth.net.getId()
+  console.log('chainId', chainId);
+
   console.log("starting compilation");
   const output = await solc.compile({ sources: input }, 1);
   //console.log(output);
   console.log("finished compilation");
 
-  await waitForEth();
+  if (!dontSendTx) {
+    await waitForEth();
+  }
 
 
   console.log("deploying kyber network");
@@ -439,7 +448,7 @@ async function main() {
   console.log("last nonce is", nonce);
 
   printParams(JSON.parse(content));
-  const signedTxsJson = JSON.stringify(signedTxs, null, 2);
+  const signedTxsJson = JSON.stringify({ from: sender, txs: signedTxs }, null, 2);
   if (signedTxOutput) {
     fs.writeFileSync(signedTxOutput, signedTxsJson);
   }
