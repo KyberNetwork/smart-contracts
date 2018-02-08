@@ -20,7 +20,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
         admin = _admin;
     }
 
-    event QuantityFactorSet (uint newFactor, uint oldFactor, address sender);
+    event QuantityFactorSet (uint oldFtor, uint newFactor, address sender);
 
     function setQuantityFactor(uint newFactor) public onlyOperator {
         require(newFactor <= 100);
