@@ -804,7 +804,7 @@ async function getStepFunctionXYArr(tokenAdd, commandID, rateContract) {
 
     commandID ++;
     for (let i = 0; i < lengthX; i++) {
-        ValsX[i] = await rateContract.methods.getStepFunctionData(tokenAdd, commandID, i).call();
+        ValsX[i] = getAmountTokens(await rateContract.methods.getStepFunctionData(tokenAdd, commandID, i).call(), tokenAdd);
     }
 
     commandID++;
