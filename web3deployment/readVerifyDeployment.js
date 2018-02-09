@@ -555,7 +555,7 @@ async function verifyApprovedWithdrawAddress (reserveContract) {
     // see all events for approve withdraw address
     let eventsReference = await reserveContract.getPastEvents("WithdrawAddressApproved", {fromBlock: 0, toBlock: 'latest'});
 
-    console.log(eventsReference);
+//    console.log(eventsReference);
     let sha3ToTokens = {};
     let sha3ToAddresses = {};
     let refSha3 = [];
@@ -567,7 +567,7 @@ async function verifyApprovedWithdrawAddress (reserveContract) {
         sha3Approved = await twoStringsSoliditySha(eventsReference[i].returnValues.token, eventsReference[i].returnValues.addr);
         withDrawAdds.push(eventsReference[i].returnValues.addr);
         refSha3.push(sha3Approved);
- w       sha3ToAddresses[sha3Approved] = (eventsReference[i].returnValues.addr).toLowerCase();
+        sha3ToAddresses[sha3Approved] = (eventsReference[i].returnValues.addr).toLowerCase();
 
         if (eventsReference[i].returnValues.approve == true){
             sha3ToTokens[sha3Approved] = (eventsReference[i].returnValues.token).toLowerCase();
