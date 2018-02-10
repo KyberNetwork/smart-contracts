@@ -77,7 +77,9 @@ let jsonDefaultCap;
 let jsonKGTCap;
 let jsonKGTAddress;
 let kgtHolderCategory;
-
+let jsonFeeBurnerAdd;
+let jsonRatesAdd;
+let jsonReserveAdd;
 // show / not show
 // set to 0 to avoid showing in report
 //////////////////
@@ -214,15 +216,13 @@ async function readKyberNetwork(kyberNetworkAdd){
     }
 
     //read addresses and create contract instances.
-    let feeAdd = (await Network.methods.feeBurnerContract().call()).toLowerCase();
+    feeBurnerAdd = (await Network.methods.feeBurnerContract().call()).toLowerCase();
     whiteListAdd = (await Network.methods.whiteListContract().call()).toLowerCase();
     expectedRateAdd = (await Network.methods.expectedRateContract().call()).toLowerCase();
 
-
     myLog(0, 1, ("enable: " + await Network.methods.enabled().call() + "!!!"));
     await printAdminAlertersOperators(Network, "KyberNetwork");
-    myLog((feeAdd!=feeBurnerAdd), (feeAdd == 0), ("feeBurnerAdd: " + feeBurnerAdd));
-    feeBurnerAdd = feeAdd;
+    myLog((feeBurnerAdd!=jsonFeeBurnerAdd), 0, ("feeBurnerAdd: " + feeBurnerAdd));
     myLog((whiteListAdd == 0), 0, ("whiteListAdd: " + whiteListAdd));
     myLog((expectedRateAdd == 0), 0, ("expectedRateAdd: " + expectedRateAdd));
 
@@ -236,8 +236,8 @@ async function readKyberNetwork(kyberNetworkAdd){
     numReserves = await Network.methods.getNumReserves().call();
     let addressess = await Network.methods.getReserves().call();
     for (let i = 0; i < numReserves; i++) {
-        reservesAdd[i] =  addressess[i];
-        myLog(0, 0, ("reserveAdd " + i + ": " + reservesAdd[i]));
+        reservesAdd[i] =  (addressess[i]).toLowerCase();
+        myLog((i == 0 && jsonReserveAdd != reservesAdd[0]), 0, ("reserveAdd " + i + ": " + reservesAdd[i]));
     }
 
     await readWhiteListData(whiteListAdd);
@@ -513,8 +513,8 @@ async function readReserve(reserveAdd, index){
 
     let kyber = (await Reserve.methods.kyberNetwork().call()).toLowerCase();
     myLog((kyber != kyberNetworkAdd), 0, ("kyberNetwork " + kyber));
-    ratesAdd[index] = await Reserve.methods.conversionRatesContract().call();
-    myLog(0, 0, ("ratesAdd " + index + ": " + ratesAdd[index]));
+    ratesAdd[index] = (await Reserve.methods.conversionRatesContract().call()).toLowerCase();
+    myLog((index == 0 && jsonRatesAdd != ratesAdd[0]), 0, ("ratesAdd " + index + ": " + ratesAdd[index]));
     sanityRateAdd[index] = await Reserve.methods.sanityRatesContract().call();
     myLog(0, 0, ("sanityRateAdd " + index + ": " + sanityRateAdd[index]));
 
@@ -602,7 +602,7 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
 
     try {
         let abi = solcOutput.contracts["FeeBurner.sol:FeeBurner"].interface;
-        FeeBurner = await new web3.eth.Contract(JSON.parse(abi), feeBurnerAdd);
+        FeeBurner = await new web3.eth.Contract(JSON.parse(abi), feeBurnerAddress);
     } catch (e) {
         myLog(0, 0, e);
         throw e;
@@ -612,7 +612,7 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
     myLog(0, 0, ("------O----S----------------------------T--------------------H----"));
 
     //verify binary as expected.
-    let blockCode = await web3.eth.getCode(feeBurnerAdd);
+    let blockCode = await web3.eth.getCode(feeBurnerAddress);
     let solcCode = '0x' + (solcOutput.contracts["FeeBurner.sol:FeeBurner"].runtimeBytecode);
 
     if (blockCode != solcCode){
@@ -685,7 +685,7 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index) 
     await printAdminAlertersOperators(Rate, "ConversionRates");
     let validRateDurationInBlocks = await Rate.methods.validRateDurationInBlocks().call();
     myLog((validRateDurationInBlocks != jsonValidDurationBlock), 0, ("validRateDurationInBlocks: " + validRateDurationInBlocks));
-    let reserveContractAdd = await Rate.methods.reserveContract().call();
+    let reserveContractAdd = (await Rate.methods.reserveContract().call()).toLowerCase();
     myLog((reserveAddress != reserveContractAdd), 0, ("reserveContract: " + reserveContractAdd));
     tokensPerReserve[index] = await Rate.methods.getListedTokens().call();
 
@@ -746,11 +746,17 @@ async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, re
     let basic = await Rate.methods.getTokenBasicData(tokenAdd).call();
     myLog((basic[0] == false), (basic[1] == false), ("listed = " + basic[0] + ". Enabled = " + basic[1]));
 
-    //todo how to pass bool value to contrace? reslut is always the same...
-    let buy = await Rate.methods.getBasicRate(tokenAdd, true).call();
-    myLog((buy == 0), 0, ("basic eth to token rate: " + buy));
-    let sell = await Rate.methods.getBasicRate(tokenAdd, false).call();
-    myLog((sell == 0), 0, ("basic token to Eth rate: " + buy));
+    let ether = web3.utils.toBN(10).pow(web3.utils.toBN(18));
+    let precisionPartial = web3.utils.toBN(10).pow(web3.utils.toBN(12));
+    let blockNum = await web3.eth.getBlockNumber();
+    let buyRate1Eth = await Rate.methods.getRate(tokenAdd, blockNum, true, ether).call();
+    let etherToToken = (web3.utils.toBN(buyRate1Eth.valueOf()).div(precisionPartial)) / 1000000;
+    myLog((buyRate1Eth == 0), 0, ("for 1 eth. eth to " + a2n(tokenAdd, 0) + " rate is: " + buyRate1Eth +
+        " (1 eth = " + etherToToken + " " + a2n(tokenAdd, 0) + ")"));
+    let sellRate100Tokens = await Rate.methods.getRate(tokenAdd, blockNum, false, 100).call();
+    tokens100ToEth = (web3.utils.toBN(sellRate100Tokens).div(precisionPartial)) / 10000;
+    myLog((sellRate100Tokens == 0), 0, ("for 100 " + a2n(tokenAdd, 0) + " tokens. Token to eth rate is " +
+        sellRate100Tokens + " (100 " + a2n(tokenAdd, 0) + " = " + tokens100ToEth + " ether)"));
 
     //read imbalance info
 
@@ -1013,11 +1019,11 @@ async function readDeploymentJSON(filePath) {
     myLog(0, 0, "reading contract addresses");
     address = (json["feeburner"]).toLowerCase();
     addressesToNames[address] = "feeBurner";
-    feeBurnerAdd = address;
+    jsonFeeBurnerAdd = address;
 
     address = (json["pricing"]).toLowerCase();
     addressesToNames[address] = "conversionRate";
-    ratesAdd[0] = address;
+    jsonRatesAdd = address;
 
     address = (json["network"]).toLowerCase();
     addressesToNames[address] = "kyber-network";
@@ -1025,7 +1031,7 @@ async function readDeploymentJSON(filePath) {
 
     address = (json["reserve"]).toLowerCase();
     addressesToNames[address] = "reserve";
-    reservesAdd[0] = address;
+    jsonReserveAdd = address;
 
     myLog(0, 0, "reading exchanges.");
     let exchanges = json["exchanges"];
