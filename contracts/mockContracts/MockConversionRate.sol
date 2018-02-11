@@ -24,4 +24,8 @@ contract MockConversionRate is ConversionRates {
         bytes32 compactData = tokenRatesCompactData[tokenData[token].compactDataArrayIndex];
         updateRateBlock = getLast4Bytes(compactData);
     }
+
+    function mockAddBps(uint rate, int bps) public pure returns(uint) {
+        return addBps(rate, bps);
+    }
 }

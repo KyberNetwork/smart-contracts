@@ -377,6 +377,17 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         assert.equal((imbalanceInRange.valueOf() * newRecordResolution), totalImbalanceInRange, "unexpected total imbalance.");
     });
 
+    it("should test get imbalance in range reverted when start block > and block.", async function() {
+        let imbalanceInRange = await imbalanceInst.getMockImbalanceInRange(token.address, priceUpdateBlock, (priceUpdateBlock + 2 * 1));
+
+        try {
+            let imbalanceInRange = await imbalanceInst.getMockImbalanceInRange(token.address, priceUpdateBlock, (priceUpdateBlock - 2 * 1));
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
     it("should test record resolution influence when trades always below resolution.", async function() {
         let trade = 16;
         let currentBlock = priceUpdateBlock = 20000;
