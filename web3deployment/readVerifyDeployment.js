@@ -47,6 +47,8 @@ let numReserves;
 let reservesAdd = [];
 let ratesAdd = [];      // one per reserve
 let sanityRateAdd = []; // one per reserve
+let ERC20Inst = [];
+let ERC20Adds = [];
 
 //contract instances
 let Network;
@@ -518,6 +520,8 @@ async function readReserve(reserveAdd, index){
     sanityRateAdd[index] = await Reserve.methods.sanityRatesContract().call();
     myLog(0, 0, ("sanityRateAdd " + index + ": " + sanityRateAdd[index]));
 
+    await reportReserveBalance(reserveAdd);
+
     await verifyApprovedWithdrawAddress(Reserve);
 
     //call contracts
@@ -526,6 +530,20 @@ async function readReserve(reserveAdd, index){
     await readSanityRate(sanityRateAdd[index], reserveAdd, index, tokensPerReserve[index]);
 };
 
+async function reportReserveBalance(reserveAddress) {
+    myLog(0, 0, '');
+    myLog(0, 0, "Current Reserve Balances for reserve: " + reserveAddress);
+    myLog(0, 0, "-----------S--------------------------------------------P--");
+    //ether first
+    let ethBal = await web3.eth.getBalance(reserveAddress);
+    myLog(0, 0, "Eth: " + ethBal + " wei = " + getAmountTokens(ethBal, ethAddress) + " tokens.");
+
+    //ERC20
+    for (let i = 0; i < ERC20Inst.length; i++) {
+        let balance = await ERC20Inst[i].methods.balanceOf(reserveAddress).call();
+        myLog(0, 0, (a2n(ERC20Adds[i], 0) + ": " + balance + " twei = " + getAmountTokens(balance, ERC20Adds[i]) + " tokens."));
+    }
+}
 
 async function verifyApprovedWithdrawAddress (reserveContract) {
     //verify approved withdrawal addresses are set
@@ -1083,6 +1101,7 @@ async function jsonVerifyTokenData (tokenData, symbol) {
     addressesToNames[address] = symbol;
     tokenSymbolToAddress[symbol] = address;
     jsonTokenList.push(address);
+    decimalsPerToken[address] = decimals;
 
     if (symbol == 'ETH') {
         return;
@@ -1091,11 +1110,12 @@ async function jsonVerifyTokenData (tokenData, symbol) {
     minRecordResolutionPerToken[address] = tokenData["minimalRecordResolution"];
     maxPerBlockImbalancePerToken[address] = tokenData["maxPerBlockImbalance"];
     maxTotalImbalancePerToken[address] = tokenData["maxTotalImbalance"];
-    decimalsPerToken[address] = decimals;
 
     // read from web: symbol, name, decimal and see matching what we have
     let abi = solcOutput.contracts["MockERC20.sol:MockERC20"].interface;
-    ERC20 = await new web3.eth.Contract(JSON.parse(abi), address);
+    let ERC20 = await new web3.eth.Contract(JSON.parse(abi), address);
+    ERC20Inst.push(ERC20);
+    ERC20Adds.push(address);
 
     //verify token data on blockchain.
     if (symbol == "EOS") {
