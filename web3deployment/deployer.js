@@ -1,35 +1,40 @@
-var Web3 = require("web3");
-var fs = require("fs");
-var RLP = require('rlp');
-var mainnetGasPrice = 1 * 10**9;
-var kovanGasPrice = 50 * 10 ** 9;
+#!/usr/bin/env node
 
-var mainnet = true;
+const Web3 = require("web3");
+const fs = require("fs");
+const path = require('path');
+const RLP = require('rlp');
+const BigNumber = require('bignumber.js')
 
-if (mainnet) {
-  url = "https://mainnet.infura.io";
+process.on('unhandledRejection', console.error.bind(console))
+
+const { configPath, gasPriceGwei, printPrivateKey, rpcUrl, signedTxOutput, dontSendTx, chainId: chainIdInput } = require('yargs')
+    .usage('Usage: $0 --config-path [path] --gas-price-gwei [gwei] --print-private-key [bool] --rpc-url [url] --signed-tx-output [path] --dont-send-tx [bool] --chain-id')
+    .demandOption(['configPath', 'gasPriceGwei', 'rpcUrl'])
+    .boolean('printPrivateKey')
+    .boolean('dontSendTx')
+    .argv;
+const web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
+const solc = require('solc')
+
+const rand = web3.utils.randomHex(999);
+const privateKey = web3.utils.sha3("js sucks" + rand);
+if (printPrivateKey) {
+  console.log("privateKey", privateKey);
 }
-else {
-  url = "http://localhost:8545";
-  //url = "https://kovan.infura.io";
-}
-
-
-var web3 = new Web3(new Web3.providers.HttpProvider(url));
-var solc = require('solc')
-
-var rand = web3.utils.randomHex(999);
-var privateKey = web3.utils.sha3("js sucks" + rand);
-var account = web3.eth.accounts.privateKeyToAccount(privateKey);
-var sender = account.address;
-var nonce;
+const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+const sender = account.address;
+const gasPrice = BigNumber(gasPriceGwei).mul(10 ** 9);
+const signedTxs = [];
+let nonce;
+let chainId = chainIdInput;
 
 console.log("from",sender);
 
 async function sendTx(txObject) {
-  var txTo = txObject._parent.options.address;
+  const txTo = txObject._parent.options.address;
 
-  var gasLimit;
+  let gasLimit;
   try {
     gasLimit = await txObject.estimateGas();
   }
@@ -42,34 +47,38 @@ async function sendTx(txObject) {
   }
 
   //console.log(gasLimit);
-  var txData = txObject.encodeABI();
-  var txFrom = account.address;
-  var txKey = account.privateKey;
+  const txData = txObject.encodeABI();
+  const txFrom = account.address;
+  const txKey = account.privateKey;
 
-  var tx = {
+  const tx = {
     from : txFrom,
     to : txTo,
     nonce : nonce,
     data : txData,
     gas : gasLimit,
-    gasPrice : mainnet ? mainnetGasPrice : kovanGasPrice
+    chainId,
+    gasPrice
   };
 
-  var signedTx = await web3.eth.accounts.signTransaction(tx, txKey);
+  const signedTx = await web3.eth.accounts.signTransaction(tx, txKey);
   nonce++;
   // don't wait for confirmation
-  web3.eth.sendSignedTransaction(signedTx.rawTransaction,{from:sender});
+  signedTxs.push(signedTx.rawTransaction)
+  if (!dontSendTx) {
+    web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
+  }
 }
 
 async function deployContract(solcOutput, contractName, ctorArgs) {
 
-  var actualName = contractName;
-  var bytecode = solcOutput.contracts[actualName].bytecode;
+  const actualName = contractName;
+  const bytecode = solcOutput.contracts[actualName].bytecode;
 
-  var abi = solcOutput.contracts[actualName].interface;
-  var myContract = new web3.eth.Contract(JSON.parse(abi));
-  var deploy = myContract.deploy({data:"0x" + bytecode, arguments: ctorArgs});
-  var address = "0x" + web3.utils.sha3(RLP.encode([sender,nonce])).slice(12).substring(14);
+  const abi = solcOutput.contracts[actualName].interface;
+  const myContract = new web3.eth.Contract(JSON.parse(abi));
+  const deploy = myContract.deploy({data:"0x" + bytecode, arguments: ctorArgs});
+  let address = "0x" + web3.utils.sha3(RLP.encode([sender,nonce])).slice(12).substring(14);
   address = web3.utils.toChecksumAddress(address);
 
   await sendTx(deploy);
@@ -83,9 +92,9 @@ async function deployContract(solcOutput, contractName, ctorArgs) {
 
 }
 
-const contractPath = "../contracts/";
+const contractPath = path.join(__dirname, "../contracts/");
 
-var input = {
+const input = {
   "ConversionRatesInterface.sol" : fs.readFileSync(contractPath + 'ConversionRatesInterface.sol', 'utf8'),
   "ConversionRates.sol" : fs.readFileSync(contractPath + 'ConversionRates.sol', 'utf8'),
   "PermissionGroups.sol" : fs.readFileSync(contractPath + 'PermissionGroups.sol', 'utf8'),
@@ -107,64 +116,64 @@ var input = {
   "Wrapper.sol" : fs.readFileSync(contractPath + 'mockContracts/Wrapper.sol', 'utf8')
 };
 
-var networkAddress;
-var reserveAddress;
-var conversionRatesAddress;
-var whitelistAddress;
-var feeBurnerAddress;
-var expectedRateAddress;
-var wrapperAddress;
+let networkAddress;
+let reserveAddress;
+let conversionRatesAddress;
+let whitelistAddress;
+let feeBurnerAddress;
+let expectedRateAddress;
+let wrapperAddress;
 
-var networkContract;
-var reserveContract;
-var conversionRatesContract;
-var whitelistContract;
-var feeBurnerContract;
-var expectedRateContract;
-var wrapperContract;
+let networkContract;
+let reserveContract;
+let conversionRatesContract;
+let whitelistContract;
+let feeBurnerContract;
+let expectedRateContract;
+let wrapperContract;
 
-var networkPermissions;
-var reservePermissions;
-var conversionRatesPermissions;
-var whitelistPermissions;
-var feeBurnerPermissions;
-var expectedRatePermissions;
+let networkPermissions;
+let reservePermissions;
+let conversionRatesPermissions;
+let whitelistPermissions;
+let feeBurnerPermissions;
+let expectedRatePermissions;
 
-var depositAddresses = [];
-var maxGasPrice = 50 * 1000 * 1000 * 1000;
-var negDiffInBps = 15;
-var minExpectedRateSlippage = 300;
-var kncWallet;
-var kncToEthRate = 307;
-var validDurationBlock = 24;
-var testers;
-var testersCat;
-var testersCap;
-var users;
-var usersCat;
-var usersCap;
-var kgtAddress;
+const depositAddresses = [];
+let maxGasPrice = 50 * 1000 * 1000 * 1000;
+let negDiffInBps = 15;
+let minExpectedRateSlippage = 300;
+let kncWallet;
+let kncToEthRate = 307;
+let validDurationBlock = 24;
+let testers;
+let testersCat;
+let testersCap;
+let users;
+let usersCat;
+let usersCap;
+let kgtAddress;
 
-var ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+const ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
-var tokens = [];
-var tokenControlInfo = {};
-var tokenNameToAddress = { "ETH" : ethAddress };
+const tokens = [];
+const tokenControlInfo = {};
+const tokenNameToAddress = { "ETH" : ethAddress };
 
 
 function parseInput( jsonInput ) {
     // tokens
-    var tokenInfo = jsonInput["tokens"];
+    const tokenInfo = jsonInput["tokens"];
     Object.keys(tokenInfo).forEach(function(key) {
-      var val = tokenInfo[key];
-      var symbol = key;
-      var name = val["name"];
-      var address = val["address"];
+      const val = tokenInfo[key];
+      const symbol = key;
+      const name = val["name"];
+      const address = val["address"];
 
       tokenNameToAddress[symbol] = address;
 
       tokens.push(address);
-      var dict = {
+      const dict = {
         minimalRecordResolution : web3.utils.toBN(val["minimalRecordResolution"]),
         maxPerBlockImbalance : web3.utils.toBN(val["maxPerBlockImbalance"]),
         maxTotalImbalance : web3.utils.toBN(val["maxTotalImbalance"])
@@ -173,11 +182,11 @@ function parseInput( jsonInput ) {
     });
 
     // exchanges
-    var exchangeInfo = jsonInput["exchanges"];
+    const exchangeInfo = jsonInput["exchanges"];
     Object.keys(exchangeInfo).forEach(function(exchange) {
       Object.keys(exchangeInfo[exchange]).forEach(function(token){
-        var depositAddress = exchangeInfo[exchange][token];
-        var dict = {};
+        const depositAddress = exchangeInfo[exchange][token];
+        const dict = {};
         dict[token] = depositAddress;
         depositAddresses.push(dict);
       });
@@ -211,19 +220,19 @@ function parseInput( jsonInput ) {
 
 async function setPermissions(contract, permJson) {
   console.log("set operator(s)");
-  for(var i = 0 ; i < permJson.operator.length ; i++ ) {
-    var operator = permJson.operator[i];
+  for(let i = 0 ; i < permJson.operator.length ; i++ ) {
+    const operator = permJson.operator[i];
     console.log(operator);
     await sendTx(contract.methods.addOperator(operator));
   }
   console.log("set alerter(s)");
-  for(var i = 0 ; i < permJson.alerter.length ; i++ ) {
-    var alerter = permJson.alerter[i];
+  for(let i = 0 ; i < permJson.alerter.length ; i++ ) {
+    const alerter = permJson.alerter[i];
     console.log(alerter);
     await sendTx(contract.methods.addAlerter(alerter));
   }
   console.log("transferAdminQuickly");
-  var admin = permJson.admin;
+  const admin = permJson.admin;
   console.log(admin);
   await sendTx(contract.methods.transferAdminQuickly(admin));
 }
@@ -233,12 +242,17 @@ async function main() {
   nonce = await web3.eth.getTransactionCount(sender);
   console.log("nonce",nonce);
 
+  chainId = chainId || await web3.eth.net.getId()
+  console.log('chainId', chainId);
+
   console.log("starting compilation");
-  var output = await solc.compile({ sources: input }, 1);
+  const output = await solc.compile({ sources: input }, 1);
   //console.log(output);
   console.log("finished compilation");
 
-  await waitForEth();
+  if (!dontSendTx) {
+    await waitForEth();
+  }
 
 
   console.log("deploying kyber network");
@@ -283,10 +297,10 @@ async function main() {
                                                             ethAddress,
                                                             true));
 
-    var srcString1 = web3.utils.sha3("src token " + (2*i).toString());
-    var destString1 = web3.utils.sha3("dest token " + (2*i).toString());
-    var srcString2 = web3.utils.sha3("src token " + (2*i + 1).toString());
-    var destString2 = web3.utils.sha3("dest token " + (2*i + 1).toString());
+    const srcString1 = web3.utils.sha3("src token " + (2*i).toString());
+    const destString1 = web3.utils.sha3("dest token " + (2*i).toString());
+    const srcString2 = web3.utils.sha3("src token " + (2*i + 1).toString());
+    const destString2 = web3.utils.sha3("dest token " + (2*i + 1).toString());
 
     await sendTx(networkContract.methods.setInfo(srcString1, ethAddress));
     await sendTx(networkContract.methods.setInfo(destString1, tokens[i]));
@@ -294,7 +308,7 @@ async function main() {
     await sendTx(networkContract.methods.setInfo(destString2, ethAddress));
   }
   console.log("set num listed pairs info");
-  var numListPairsString = web3.utils.sha3("num listed pairs");
+  const numListPairsString = web3.utils.sha3("num listed pairs");
   await sendTx(networkContract.methods.setInfo(numListPairsString,tokens.length * 2));
   console.log("delete temp operator to set info data");
   await sendTx(networkContract.methods.removeOperator(sender));
@@ -316,10 +330,10 @@ async function main() {
   // reserve
   console.log("whitelist deposit addresses");
   for( i = 0 ; i < depositAddresses.length ; i++ ) {
-    var dict = depositAddresses[i];
-    var tokenSymbol = Object.keys(dict)[0];
-    var tokenAddress = tokenNameToAddress[tokenSymbol];
-    var depositAddress = dict[tokenSymbol];
+    const dict = depositAddresses[i];
+    const tokenSymbol = Object.keys(dict)[0];
+    const tokenAddress = tokenNameToAddress[tokenSymbol];
+    const depositAddress = dict[tokenSymbol];
     console.log(tokenSymbol,tokenAddress,depositAddress);
     await sendTx(reserveContract.methods.approveWithdrawAddress(tokenAddress,
                                                                 depositAddress,
@@ -346,14 +360,14 @@ async function main() {
   console.log("white list - set sgd rate");
   await sendTx(whitelistContract.methods.setSgdToEthRate(web3.utils.toBN("645161290322581")));
   console.log("white list - init users list");
-  for(var i = 0 ; i < users.length ; i++ ) {
+  for(let i = 0 ; i < users.length ; i++ ) {
     console.log(users[i]);
     await sendTx(whitelistContract.methods.setUserCategory(users[i],usersCat));
   }
   console.log("white list - set cat cap");
   await sendTx(whitelistContract.methods.setCategoryCap(usersCat, usersCap));
   console.log("white list - init tester list");
-  for(var i = 0 ; i < testers.length ; i++ ) {
+  for(let i = 0 ; i < testers.length ; i++ ) {
     console.log(testers[i]);
     await sendTx(whitelistContract.methods.setUserCategory(testers[i],testersCat));
   }
@@ -378,7 +392,7 @@ async function main() {
 
   // conversion rates
   console.log("conversion rate - add token");
-  for( var i = 0 ; i < tokens.length ; i++ ) {
+  for( let i = 0 ; i < tokens.length ; i++ ) {
     console.log(tokens[i]);
     await sendTx(conversionRatesContract.methods.addToken(tokens[i]));
   }
@@ -389,9 +403,9 @@ async function main() {
   await sendTx(conversionRatesContract.methods.setReserveAddress(reserveAddress));
 
   console.log("conversion rate - set control info");
-  for( var i = 0 ; i < tokens.length ; i++ ) {
+  for( let i = 0 ; i < tokens.length ; i++ ) {
     console.log(tokens[i]);
-    var dict = tokenControlInfo[tokens[i]];
+    const dict = tokenControlInfo[tokens[i]];
     await sendTx(conversionRatesContract.methods.setTokenControlInfo(tokens[i],
                                                                      dict.minimalRecordResolution,
                                                                      dict.maxPerBlockImbalance,
@@ -399,16 +413,16 @@ async function main() {
   }
 
   console.log("conversion rate - enable token trade");
-  for( var i = 0 ; i < tokens.length ; i++ ) {
+  for( let i = 0 ; i < tokens.length ; i++ ) {
     console.log(tokens[i]);
-    var dict = tokenControlInfo[tokens[i]];
+    const dict = tokenControlInfo[tokens[i]];
     await sendTx(conversionRatesContract.methods.enableTokenTrade(tokens[i]));
   }
 
   console.log("conversion rate - add temp operator");
   await sendTx(conversionRatesContract.methods.addOperator(sender));
   console.log("conversion rate - set qty step function to 0");
-  for( var i = 0 ; i < tokens.length ; i++ ) {
+  for( let i = 0 ; i < tokens.length ; i++ ) {
     console.log(tokens[i]);
     await sendTx(conversionRatesContract.methods.setQtyStepFunction(tokens[i],
                                                                     [0],
@@ -417,7 +431,7 @@ async function main() {
                                                                     [0]));
   }
   console.log("conversion rate - set imbalance step function to 0");
-  for( var i = 0 ; i < tokens.length ; i++ ) {
+  for( let i = 0 ; i < tokens.length ; i++ ) {
     console.log(tokens[i]);
     await sendTx(conversionRatesContract.methods.setImbalanceStepFunction(tokens[i],
                                                                     [0],
@@ -434,6 +448,10 @@ async function main() {
   console.log("last nonce is", nonce);
 
   printParams(JSON.parse(content));
+  const signedTxsJson = JSON.stringify({ from: sender, txs: signedTxs }, null, 2);
+  if (signedTxOutput) {
+    fs.writeFileSync(signedTxOutput, signedTxsJson);
+  }
 }
 
 function printParams(jsonInput) {
@@ -454,10 +472,10 @@ function printParams(jsonInput) {
     dictOutput["network"] = networkAddress;
     dictOutput["wrapper"] = wrapperAddress;
     dictOutput["feeburner"] = feeBurnerAddress;
-
-    var json = JSON.stringify(dictOutput, null, 2);
+    const json = JSON.stringify(dictOutput, null, 2);
     console.log(json);
-    var outputFileName = jsonInput["output filename"];
+    const outputFileName = jsonInput["output filename"];
+    console.log(outputFileName, 'write');
     fs.writeFileSync(outputFileName, json);
 }
 
@@ -470,7 +488,7 @@ function sleep(ms){
 
 async function waitForEth() {
   while(true) {
-    var balance = await web3.eth.getBalance(sender);
+    const balance = await web3.eth.getBalance(sender);
     console.log("waiting for balance to account " + sender);
     if(balance.toString() !== "0") {
       console.log("received " + balance.toString() + " wei");
@@ -481,28 +499,20 @@ async function waitForEth() {
 }
 
 
-var filename;
-var content;
-if(mainnet) {
-  filename = "deployment_script_input_mainnet_stage.json";
-}
-else {
-  filename = "deployment_script_input_kovan.json"
-}
+let filename;
+let content;
+
 try{
-  content = fs.readFileSync(filename, 'utf8');
+  content = fs.readFileSync(configPath, 'utf8');
   //console.log(content.substring(2892,2900));
   //console.log(content.substring(3490,3550));
   parseInput(JSON.parse(content));
 }
 catch(err) {
   console.log(err);
+  process.exit(-1)
 }
 
 main();
-
-
-
-
 
 //console.log(deployContract(output, "cont",5));
