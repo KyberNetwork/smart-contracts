@@ -207,10 +207,10 @@ function parseInput( jsonInput ) {
     validDurationBlock = web3.utils.toBN(jsonInput["valid duration block"]);
     testers = jsonInput["whitelist params"]["testers"];
     testersCat = jsonInput["whitelist params"]["testers category"];
-    testersCap = jsonInput["whitelist params"]["category cap"];
+    testersCap = jsonInput["whitelist params"]["testers cap"];
     users = jsonInput["whitelist params"]["users"];
     usersCat = jsonInput["whitelist params"]["users category"];
-    usersCap = jsonInput["whitelist params"]["category cap"];
+    usersCap = jsonInput["whitelist params"]["users cap"];
     kgtAddress = jsonInput["whitelist params"]["KGT address"];
 
 
@@ -459,6 +459,14 @@ function printParams(jsonInput) {
     dictOutput["tokens"] = jsonInput.tokens;
     dictOutput["tokens"]["ETH"] = {"name" : "Ethereum", "decimals" : 18, "address" : ethAddress };
     dictOutput["exchanges"] = jsonInput.exchanges;
+    dictOutput["permission"] = jsonInput.permission;
+    dictOutput["whitelist params"] = jsonInput["whitelist params"];
+    dictOutput["max gas price"] = jsonInput["max gas price"];
+    dictOutput["neg diff in bps"] = jsonInput["neg diff in bps"];
+    dictOutput["min expected rate slippage"] = jsonInput["min expected rate slippage"];
+    dictOutput["KNC wallet"] = kncWallet;
+    dictOutput["KNC to ETH rate"] = jsonInput["KNC to ETH rate"];
+    dictOutput["valid duration block"] = jsonInput["valid duration block"];
     dictOutput["reserve"] = reserveAddress;
     dictOutput["pricing"] = conversionRatesAddress;
     dictOutput["network"] = networkAddress;

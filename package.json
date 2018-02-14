@@ -21,6 +21,7 @@
   "homepage": "https://github.com/KyberNetwork/smart-contracts#readme",
   "dependencies": {
     "bignumber.js": "^5.0.0",
+    "compare-versions": "^3.1.0",
     "rlp": "^2.0.0",
     "solc": "^0.4.18",
     "truffle": "^4.0.1",
