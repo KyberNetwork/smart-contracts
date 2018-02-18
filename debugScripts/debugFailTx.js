@@ -54,7 +54,7 @@ let addressesToNames = {};
 
 //contract instances
 let tokenInst;
-let NetWorkInst;
+let networkInst;
 let expectedInst;
 let numBlocksToGoBack = 40;
 
@@ -241,9 +241,9 @@ async function checkMinConversionRate(blockNumber, src, dest, tradeQty, minConve
     let errString = '';
 
     let abi = solcOutput.contracts["KyberNetwork.sol:KyberNetwork"].interface;
-    NetWorkInst = await new web3.eth.Contract(JSON.parse(abi), kyberNetworkAdd);
+    networkInst = await new web3.eth.Contract(JSON.parse(abi), kyberNetworkAdd);
 
-    expectedRateAdd = await NetWorkInst.methods.expectedRateContract().call();
+    expectedRateAdd = await networkInst.methods.expectedRateContract().call();
     abi = solcOutput.contracts["ExpectedRate.sol:ExpectedRate"].interface;
 //    console.log("expectedRateAdd: " + expectedRateAdd);
     expectedInst = await new web3.eth.Contract(JSON.parse(abi), expectedRateAdd);
