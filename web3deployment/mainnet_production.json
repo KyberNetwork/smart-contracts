@@ -85,8 +85,8 @@
       "decimals": 18,
       "address": "0x255aa6df07540cb5d3d297f0d0d4d84cb52bc8e6",
       "minimalRecordResolution": "1000000000000000",
-      "maxPerBlockImbalance": "1863033640031799738368",
-      "maxTotalImbalance": "2539128547999339773952"
+      "maxPerBlockImbalance": "2191833834271476809728",
+      "maxTotalImbalance": "3001716436034787475456"
     },
 
     "APPC": {
