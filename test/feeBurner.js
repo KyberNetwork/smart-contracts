@@ -80,11 +80,8 @@ contract('FeeBurner', function(accounts) {
         assert.equal(expectedOtherWalletWaitingFees.valueOf(), waitingWalletFees.valueOf(), "unexpected wallet balance.");
     });
 
-    it("should test handle fees rejected with wrong caller.", async function () {
+    it("should test handle fees reverted with wrong caller.", async function () {
         let tradeSizeWei = 500000;
-        let initialWalletbalance = await kncToken.balanceOf(mockKNCWallet);
-
-        let feeSize = tradeSizeWei * kncPerEtherRate * burnFeeInBPS / totalBPS;
 
         try {
             await feeBurnerInst.handleFees(tradeSizeWei, mockReserve, 0, {from: mockReserve});
@@ -95,7 +92,7 @@ contract('FeeBurner', function(accounts) {
         }
     });
 
-    it("should test all set set functions rejected for non admin.", async function () {
+    it("should test all set set functions reverted for non admin.", async function () {
         try {
             await feeBurnerInst.setKNCRate(500, {from: mockReserve});
             assert(false, "expected throw in line above..")
@@ -154,8 +151,33 @@ contract('FeeBurner', function(accounts) {
             await feeBurnerInst.burnReserveFees(mockReserve);
             assert(false, "expected throw in line above..")
         }
-            catch(e){
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
+        }
+    });
+
+
+    it("should test that when calling burn fees with no fees to burn call reverted.", async function () {
+        //send more tokens to wallet and approve for reserve.
+        //check current fee to burn see wallet has that amount.
+        let feeToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
+        let numKncWalletTokens = await kncToken.balanceOf(mockKNCWallet);
+
+//        console.log("feeToBurn " + feeToBurn + " numKncWalletTokens " + numKncWalletTokens)
+
+        await kncToken.transfer(mockKNCWallet, (feeToBurn - numKncWalletTokens * 1));
+        await kncToken.approve(feeBurnerInst.address, 0xfffffffff, {from: mockKNCWallet});
+
+        //burn success
+        await feeBurnerInst.burnReserveFees(mockReserve);
+
+        //now burn fail. since all was burned...
+        try {
+            await feeBurnerInst.burnReserveFees(mockReserve);
+            assert(false, "expected throw in line above..")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
         }
     });
 
@@ -230,22 +252,6 @@ contract('FeeBurner', function(accounts) {
         await feeBurnerInst.setWalletFees(someExternalWallet, 9999);
     });
 
-    it("should test burn fees reverted when balance is 'zeroed' == 1.", async function () {
-        try {
-            await feeBurnerInst.burnReserveFees(mockReserve);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        try {
-            await feeBurnerInst.burnReserveFees(mockReserve);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-    });
-
     it("should test send fees to wallet reverted when balance is 'zeroed' == 1.", async function () {
         try {
             await feeBurnerInst.sendFeeToWallet(someExternalWallet, mockReserve);
@@ -255,4 +261,48 @@ contract('FeeBurner', function(accounts) {
         }
     });
 
+
+    it("should test handle fees reverted when trade size > max trade size.", async function () {
+        let legalTrade = new BigNumber(10).pow(28);
+        let illegalTrade = legalTrade.add(1);
+
+        await feeBurnerInst.handleFees(legalTrade, mockReserve, someExternalWallet, {from: mockKyberNetwork});
+
+        try {
+            await feeBurnerInst.handleFees(illegalTrade, mockReserve, 0, {from: mockKyberNetwork});
+            assert(false, "expected throw in line above..")
+        }
+            catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
+        }
+    });
+
+    it("should test when calling send fees to wallet but knc wallet doesn't have enough tokens. call reverted.", async function () {
+        let waitingWalletFees = await feeBurnerInst.reserveFeeToWallet(mockReserve, someExternalWallet);
+        let numKncWalletTokens = await kncToken.balanceOf(mockKNCWallet);
+
+        //now send fees fail. since all was burned...
+        try {
+            await feeBurnerInst.sendFeeToWallet(someExternalWallet, mockReserve);
+            assert(false, "expected throw in line above..")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
+        }
+    });
+
+    it("should test set KNC rate reverted when value above maxRate.", async function () {
+        let legalKncRate = new BigNumber(10).pow(24);
+        let illegalKncRate = legalKncRate.add(1);
+
+        await feeBurnerInst.setKNCRate(legalKncRate);
+
+        try {
+            await feeBurnerInst.setKNCRate(illegalKncRate);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
 });
+
