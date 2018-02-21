@@ -77,6 +77,7 @@ let jsonUsersCap;
 let jsonTestersCap;
 let jsonDefaultCap;
 let jsonKGTCap;
+let jsonWeiPerSGD;
 let jsonKGTAddress;
 let kgtHolderCategory;
 let jsonFeeBurnerAdd;
@@ -94,13 +95,17 @@ const showStepFunctions = 1;
 // code
 ////////
 ////////
+const mainnetUrls = ['https://mainnet.infura.io',
+                                     'https://api.mycryptoapi.com/eth',
+                                     'https://api.myetherapi.com/eth',
+                                     'https://mew.giveth.io/'];
 
-const mainnetPublicNode = 'https://mainnet.infura.io';
 const kovanPublicNode = 'https://kovan.infura.io';
 const ropstenPublicNode = 'https://ropsten.infura.io';
 
 let infuraUrl = '';
 const localURL = 'http://localhost';
+const solcOutputPath = "./solcOuput.json";
 
 let deployInputJsonPath = '';
 
@@ -108,6 +113,7 @@ let kyberNetworkAdd = '0x0';
 let jsonKNCAddress;
 let ouputLogString = "";
 let ouputErrString = "";
+let nodeId = 0;
 
 //run the code
 main();
@@ -118,10 +124,7 @@ async function main (){
         return;
     }
 
-    myLog(0, 0, "starting compilation");
-    solcOutput = await solc.compile({ sources: input }, 1);
-//    myLog(0, 0, solcOutput);
-    myLog(0, 0, "finished compilation");
+    await getCompiledContracts();
 
     await init(infuraUrl);
 
@@ -165,7 +168,12 @@ function processScriptInputParameters() {
     switch (process.argv[2]){
         case '1':
         case 'm':
-            infuraUrl = mainnetPublicNode;
+            if (process.argv.length > 4) {
+                nodeId = process.argv[4];
+            } else {
+                nodeId = 0;
+            };
+            infuraUrl = mainnetUrls[nodeId];
             break;
         case '2':
         case 'k':
@@ -177,20 +185,28 @@ function processScriptInputParameters() {
             break;
         default: {
             myLog(0, 0, '');
-            myLog(1, 0, "error: invalid 2nd parameter: " + process.argv[2])
+            myLog(1, 0, "error: invalid 1st parameter: " + process.argv[2])
             return false;
         }
     }
 
     deployInputJsonPath = process.argv[3];
+
+    if (process.argv.length > 4) {
+        nodeId = process.argv[4];
+    } else {
+        nodeId = 0;
+    }
+
 }
 
 function printHelp () {
-    console.log("usage: \'node readVerifyDeployment.js network inputFile\'.");
-    console.log("network options: '1' or 'm' for mainnet, '2' or 'k' for kovan, '3' or 'r' for ropsten");
+    console.log("usage: \'node readVerifyDeployment.js network inputFile nodeID\'.");
+    console.log("network options: m / k / r.  (m = mainnet, k = kovan, r = ropsten)");
+    console.log("nodeID: 0 - 3 for different public nodes for mainnet")
     console.log("input file = deployment summary json file. Insert path from current directory.");
     console.log("Ex: \'node readVerifyDeployment.js m mainnet.json\'");
-    console.log("Another example: \'node readVerifyDeployment.js 2 kovanOut.json\'");
+    console.log("Another example: \'node readVerifyDeployment.js k kovanOut.json\'");
 }
 
 
@@ -282,7 +298,7 @@ async function readWhiteListData(whiteListAddress) {
 
     await printAdminAlertersOperators(WhiteList, "WhiteList");
     let weiPerSgd = await WhiteList.methods.weiPerSgd().call();
-    myLog((weiPerSgd == 0), 0, ("weiPerSgd: " + weiPerSgd + " = " + getAmountTokens(weiPerSgd, ethAddress) + " tokens."));
+    myLog((weiPerSgd != jsonWeiPerSGD), (weiPerSgd == 0), ("weiPerSgd: " + weiPerSgd + " = " + getAmountTokens(weiPerSgd, ethAddress) + " tokens."));
     let kgtAddress = await WhiteList.methods.kgtToken().call();
     myLog((kgtAddress.toLowerCase() != jsonKGTAddress || kgtAddress == 0), 0, ("KGT Address: " + kgtAddress));
     kgtHolderCategory = parseInt(await WhiteList.methods.kgtHolderCategory().call(), 10);
@@ -296,15 +312,21 @@ async function readWhiteListData(whiteListAddress) {
     let categorySetEvents = await WhiteList.getPastEvents("CategoryCapSet", {fromBlock: 0, toBlock: 'latest'});
 
 //    console.log(categorySetEvents);
-   
+    let categoriesDict = {};
     let numCategories = 0;
+
     for(let i = 0; i < categorySetEvents.length; i++) {
-        let cat = parseInt(categorySetEvents[i].returnValues.category, 10);
-        let sgdCap = categorySetEvents[i].returnValues.sgdCap;
+       let cat = parseInt(categorySetEvents[i].returnValues.category, 10);
+       let sgdCap = categorySetEvents[i].returnValues.sgdCap;
+       categoriesDict[cat] = sgdCap;
+    };
+
+    for (let cat in categoriesDict) {
+        let sgdCap = categoriesDict[cat];
+        let category = parseInt(cat, 10);
         if (sgdCap > 0) numCategories ++;
         let isError = false;
-        let categoryStr;
-        switch (cat) {
+        switch (category) {
             case 0:
                 if (sgdCap != jsonDefaultCap) {isError = true};
                 categoryStr = "default";
@@ -344,7 +366,6 @@ async function readWhiteListData(whiteListAddress) {
    
     let testersWhiteListed = deploymentJson["whitelist params"]["testers"];
     let usersWhiteListed = deploymentJson["whitelist params"]["users"];
-//    testersWhiteListed.sort();
 
     let whiteListEvents = {};
     let whiteListedArr = [];
@@ -892,7 +913,7 @@ async function readSanityRate(sanityRateAddress, reserveAddress, index, tokens) 
         let rate = await Sanity.methods.tokenRate(tokens[i]).call();
         let diff = await Sanity.methods.reasonableDiffInBps(tokens[i]).call();
 
-        myLog(0, 0, "Token: " + tokens[i] + " rate: " + rate + " reasonableDiffInBps: " + diff);
+        myLog(0, 0, "Token: " + a2n (tokens[i], 0) + " rate: " + rate + " reasonableDiffInBps: " + diff);
     }
 };
 
@@ -976,7 +997,7 @@ async function printAdminAlertersOperators(contract, jsonKey) {
     alerters.forEach(function (alerter) {
         let isApproved = false;
         jsonAlerters.forEach(function(jsonAlerter){
-            if (alerter.toLowerCase() == jsonAlerters.toLowerCase()) {
+            if (alerter.toLowerCase() == jsonAlerter.toLowerCase()) {
                 isApproved = true;
             }
         });
@@ -1091,6 +1112,11 @@ async function readDeploymentJSON(filePath) {
     jsonDefaultCap = deploymentJson["whitelist params"]["default cap"];
     jsonKGTAddress = (deploymentJson["whitelist params"]["KGT address"]).toLowerCase();
     jsonKGTCap = deploymentJson["whitelist params"]["KGT cap"];
+    try {
+        jsonWeiPerSGD = deploymentJson["whitelist params"]["wei per SGD"];
+    } catch(e) {
+        jsonWeiPerSGD = 1;
+    }
 };
 
 async function jsonVerifyTokenData (tokenData, symbol) {
@@ -1202,6 +1228,25 @@ function bpsToPercent (bpsValue) {
     return (bpsValue / 100);
 };
 
+async function getCompiledContracts() {
+    try{
+        solcOutput = JSON.parse(fs.readFileSync(solcOutputPath, 'utf8'));
+    } catch(err) {
+        console.log(err.toString());
+        myLog(0, 0, "starting compilation");
+        solcOutput = await solc.compile({ sources: input }, 1);
+        //    console.log(solcOutput);
+        myLog(0, 0, "finished compilation");
+        let solcOutJson = JSON.stringify(solcOutput, null, 2);
+        fs.writeFileSync(solcOutputPath, solcOutJson, function(err) {
+            if(err) {
+                return console.log(err);
+            }
+
+            console.log("Saved solc output to: " + solcOutputPath);
+        });
+    }
+}
 
 function myLog(error, highlight, string) {
     if (error) {
@@ -1219,7 +1264,7 @@ function myLog(error, highlight, string) {
     }
 };
 
-let tokensJson = {
+const tokensJson = {
     "tokens":{
         "OMG": {
           "address": "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07",
