@@ -541,6 +541,7 @@ async function readReserve(reserveAdd, index){
     sanityRateAdd[index] = await Reserve.methods.sanityRatesContract().call();
     myLog(0, 0, ("sanityRateAdd " + index + ": " + sanityRateAdd[index]));
 
+//await readSanityRate(sanityRateAdd[index], reserveAdd, index, tokensPerReserve[index]);
     await reportReserveBalance(reserveAdd);
 
     await verifyApprovedWithdrawAddress(Reserve);
@@ -908,7 +909,7 @@ async function readSanityRate(sanityRateAddress, reserveAddress, index, tokens) 
         myLog(0, 0, '');
     }
 
-    await printAdminAlertersOperators(SanityRates[index]);
+    await printAdminAlertersOperators(Sanity, "SanityRate");
     for (let i = 0; i < tokens.length; i++) {
         let rate = await Sanity.methods.tokenRate(tokens[i]).call();
         let diff = await Sanity.methods.reasonableDiffInBps(tokens[i]).call();
@@ -989,7 +990,7 @@ async function printAdminAlertersOperators(contract, jsonKey) {
         });
         myLog(isApproved == false, 0, "Operator: " + operator + " is approved: " + isApproved);
     });
-    if (operators.length == 0) myLog(0, 1, "No alerters defined for contract " + jsonKey);
+    if (operators.length == 0) myLog(0, 1, "No operators defined for contract " + jsonKey);
 
     //alerters
     let alerters = await contract.methods.getAlerters().call();
@@ -1201,6 +1202,7 @@ function getAmountTokens(amountTwei, tokenAdd) {
     }
 
     fraction = fraction.replace(/0+$/,'');
+    fraction = fraction.slice(0, 4); //enough 4 decimals.
     if (fraction == '') fraction = '0';
     if (integer == '') integer = '0';
 
