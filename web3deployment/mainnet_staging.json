@@ -187,6 +187,13 @@
         "0xf214dde57f32f3f34492ba3148641693058d4a9e"
       ],
       "alerter": []
+    },
+    "SanityRate": {
+      "admin": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
+      "operator": [
+        "0x0a3d5c8894bbe1e9113e4ed6f0c3b0d4fa6b131e"
+      ],
+      "alerter": []
     }
   },
   "whitelist params": {
