@@ -971,37 +971,53 @@ async function printAdminAlertersOperators(contract, jsonKey) {
     }
 
     let permissionList = deploymentJson["permission"][jsonKey];
+    let jsonAdmin;
+    let jsonOperators;
+    let jsonAlerters;
+    try {
+        jsonAlerters = permissionList["alerter"];
+        jsonOperators = permissionList["operator"];
+        jsonAdmin = (permissionList["admin"]).toLowerCase();
+    } catch (e) {
+        jsonAlerters = '';
+        jsonOperators = '';
+        jsonAdmin = '';
+    }
+
     //admin
     let admin = await contract.methods.admin().call();
-    let isApproved = (admin.toLowerCase() == (permissionList["admin"]).toLowerCase());
+    let isApproved = (admin.toLowerCase() == jsonAdmin);
     myLog((isApproved == false), 0, ("Admin: " + (a2n(admin, 1)) + " approved: " + isApproved));
     let pendingAdmin = await contract.methods.pendingAdmin().call();
     myLog(0, (pendingAdmin != 0), ("Pending Admin: " + a2n(pendingAdmin, 1)));
 
     //operators
     let operators = await contract.methods.getOperators().call();
-    let jsonOperators = permissionList["operator"];
     operators.forEach(function (operator) {
         let isApproved = false;
-        jsonOperators.forEach(function(jsonOperator){
-            if (operator.toLowerCase() == jsonOperator.toLowerCase()) {
-                isApproved = true;
-            }
-        });
+        if (jsonOperators != '') {
+            jsonOperators.forEach(function(jsonOperator){
+                if (operator.toLowerCase() == jsonOperator.toLowerCase()) {
+                    isApproved = true;
+                }
+            });
+        };
         myLog(isApproved == false, 0, "Operator: " + operator + " is approved: " + isApproved);
     });
     if (operators.length == 0) myLog(0, 1, "No operators defined for contract " + jsonKey);
 
     //alerters
     let alerters = await contract.methods.getAlerters().call();
-    let jsonAlerters = permissionList["alerter"];
+
     alerters.forEach(function (alerter) {
         let isApproved = false;
-        jsonAlerters.forEach(function(jsonAlerter){
-            if (alerter.toLowerCase() == jsonAlerter.toLowerCase()) {
-                isApproved = true;
-            }
-        });
+        if (jsonAlerters != '') {
+            jsonAlerters.forEach(function(jsonAlerter){
+                if (alerter.toLowerCase() == jsonAlerter.toLowerCase()) {
+                    isApproved = true;
+                }
+            });
+        };
         myLog(isApproved == false, 0, "Alerters: " + alerter + " is approved: " + isApproved);
     });
     if (alerters.length == 0) myLog(0, 1, "No alerters defined for contract " + jsonKey);
