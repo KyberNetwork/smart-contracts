@@ -597,7 +597,11 @@ contract('Deployment', function(accounts) {
       return feeBurner.setKyberNetwork(network.address);
     }).then(function(){
       return feeBurner.setWalletFees(0,50);
-    });
+    }).then(function(){
+      return feeBurner.setTaxInBps(2000);
+    })/*.then(function(){
+      return feeBurner.setTaxWallet(0); // zero address will revert
+    })*/;
   });
 
   it("create expected rate", function() {
