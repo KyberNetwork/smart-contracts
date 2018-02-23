@@ -360,7 +360,7 @@ var listTokens = function( owner, reserve, network, expBlock, rate, convRate ) {
       }).then(function(decimals){
           return conversionRates.setTokenControlInfo( tokenAddress,
                                               10**(decimals-2),
-                                              (10 ** decimals) * 10000,
+                                              (10 ** decimals) * 50000,
                                               (10 ** decimals) * 1000000 );
       }).then(function(){
           return conversionRates.enableTokenTrade( tokenAddress );
