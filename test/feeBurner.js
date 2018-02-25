@@ -377,7 +377,7 @@ contract('FeeBurner', function(accounts) {
     });
 
     it("should verify payed so far on this reserve.", async function () {
-        let rxPayedSoFar = await feeBurnerInst.feesPayedPerReserve(mockReserve);
+        let rxPayedSoFar = await feeBurnerInst.feePayedPerReserve(mockReserve);
 
         assert.equal(rxPayedSoFar.valueOf(), payedSoFar);
     });
