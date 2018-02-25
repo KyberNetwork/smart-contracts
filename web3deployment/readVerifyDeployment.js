@@ -307,7 +307,7 @@ async function readWhiteListData(whiteListAddress) {
 
     await printAdminAlertersOperators(WhiteList, "WhiteList");
     let weiPerSgd = await WhiteList.methods.weiPerSgd().call();
-    myLog((weiPerSgd != jsonWeiPerSGD), (weiPerSgd == 0), ("weiPerSgd: " + weiPerSgd + " = " + getAmountTokens(weiPerSgd, ethAddress) + " tokens."));
+    myLog((weiPerSgd == 0), (weiPerSgd != jsonWeiPerSGD), ("weiPerSgd: " + weiPerSgd + " = " + getAmountTokens(weiPerSgd, ethAddress) + " tokens."));
     let kgtAddress = await WhiteList.methods.kgtToken().call();
     myLog((kgtAddress.toLowerCase() != jsonKGTAddress || kgtAddress == 0), 0, ("KGT Address: " + kgtAddress));
     kgtHolderCategory = parseInt(await WhiteList.methods.kgtHolderCategory().call(), 10);
@@ -691,7 +691,7 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
     let KNCAddress = (await FeeBurner.methods.knc().call()).toLowerCase();
     myLog((KNCAddress != jsonKNCAddress), 0, ("KNCAddress: " + KNCAddress));
     let kncPerEthRate = await FeeBurner.methods.kncPerETHRate().call();
-    myLog((kncPerEthRate != jsonKNC2EthRate), 0, ("kncPerEthRate: " + kncPerEthRate));
+    myLog((kncPerETHRate.valueOf() == 0), (kncPerEthRate != jsonKNC2EthRate), ("kncPerEthRate: " + kncPerEthRate));
     let kyberNetwork = (await FeeBurner.methods.kyberNetwork().call()).toLowerCase();
     myLog((kyberNetwork != kyberNetworkAdd), 0, ("kyberNetworkAdd: " + kyberNetwork));
     let taxFeeBps = await FeeBurner.methods.taxFeeBps().call()
