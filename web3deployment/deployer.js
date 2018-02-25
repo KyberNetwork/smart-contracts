@@ -149,7 +149,7 @@ let minExpectedRateSlippage = 300;
 let kncWallet;
 let kncToEthRate = 307;
 let validDurationBlock = 24;
-let taxWallet = 0x0;
+let taxWalletAddress = 0x0;
 let taxFeesBps = 1000;
 
 let testers;
@@ -211,7 +211,7 @@ function parseInput( jsonInput ) {
     kncWallet = jsonInput["KNC wallet"];
     kncToEthRate = web3.utils.toBN(jsonInput["KNC to ETH rate"]);
     taxFeesBps = jsonInput["tax fees bps"];
-    taxWallet = web3.utils.toBN(jsonInput["tax wallet address"]);
+    taxWalletAddress = jsonInput["tax wallet address"];
     validDurationBlock = web3.utils.toBN(jsonInput["valid duration block"]);
     testers = jsonInput["whitelist params"]["testers"];
     testersCat = jsonInput["whitelist params"]["testers category"];
@@ -395,9 +395,9 @@ async function main() {
   await sendTx(feeBurnerContract.methods.setKNCRate(kncToEthRate));
   console.log("set tax fees bps");
   await sendTx(feeBurnerContract.methods.setTaxInBps(taxFeesBps));
-  if(taxWallet != '' && taxFeesBps != 0) {
+  if(taxWalletAddress != '' && taxWalletAddress != 0) {
     console.log("set wallet address");
-    await sendTx(feeBurnerContract.methods.setTaxWallet(taxWallet));
+    await sendTx(feeBurnerContract.methods.setTaxWallet(taxWalletAddress));
   }
 
   await setPermissions(feeBurnerContract, feeBurnerPermissions);
