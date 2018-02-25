@@ -35,11 +35,10 @@ contract('FeeBurner', function(accounts) {
         assert.equal(balance.valueOf(), initialKNCWalletBalance, "unexpected wallet balance.");
 
         //init fee burner
-        feeBurnerInst = await FeeBurner.new(admin, kncToken.address);
+        feeBurnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork);
 
         //set parameters in fee burner.
         await feeBurnerInst.setKNCRate(kncPerEtherRate);
-        await feeBurnerInst.setKyberNetwork(mockKyberNetwork);
         await feeBurnerInst.setReserveData(mockReserve, burnFeeInBPS, mockKNCWallet);
 
         //allowance to fee burner to enable burning
@@ -101,14 +100,6 @@ contract('FeeBurner', function(accounts) {
     it("should test all set set functions rejected for non admin.", async function () {
         try {
             await feeBurnerInst.setKNCRate(500, {from: mockReserve});
-            assert(false, "expected throw in line above..")
-        }
-            catch(e){
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
-        }
-
-        try {
-            await feeBurnerInst.setKyberNetwork(mockKyberNetwork, {from: mockReserve});
             assert(false, "expected throw in line above..")
         }
             catch(e){
@@ -279,29 +270,28 @@ contract('FeeBurner', function(accounts) {
         let feeBurnerTemp;
 
         try {
-            feeBurnerTemp =  await FeeBurner.new(admin, 0);
+            feeBurnerTemp =  await FeeBurner.new(admin, 0, mockKyberNetwork);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            feeBurnerTemp =  await FeeBurner.new(0, kncToken.address);
+            feeBurnerTemp =  await FeeBurner.new(0, kncToken.address, mockKyberNetwork);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        feeBurnerTemp =  await FeeBurner.new(admin, kncToken.address);
 
         try {
-            await feeBurnerTemp.setKyberNetwork(0);
+            feeBurnerTemp =  await FeeBurner.new(admin, kncToken.address, 0);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await feeBurnerTemp.setKyberNetwork(mockKyberNetwork);
+        feeBurnerTemp =  await FeeBurner.new(admin, kncToken.address, mockKyberNetwork);
     });
 
     it("should test can't set bps fee > 1% (100 bps).", async function () {
