@@ -148,6 +148,8 @@
   "min expected rate slippage" : 300,
   "KNC wallet" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
   "KNC to ETH rate" : 300,
+  "tax fees bps": 0,
+  "tax wallet address": "",
   "valid duration block" : 24,
 
   "output filename" : "kovan.json"
