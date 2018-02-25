@@ -579,11 +579,9 @@ contract('Deployment', function(accounts) {
     });
   });
 
-
-
   it("create burning fees", function() {
     this.timeout(31000000);
-    return FeeBurner.new(accounts[0],kncInstance.address).then(function(instance){
+    return FeeBurner.new(accounts[0],kncInstance.address, network.address).then(function(instance){
         feeBurner = instance;
         return feeBurner.addOperator(accounts[0],{from:accounts[0]});
     }).then(function(result){
@@ -592,9 +590,6 @@ contract('Deployment', function(accounts) {
       // set fees for reserve
       // 0.25% from accounts
       return feeBurner.setReserveData(reserve.address,25, accounts[0]);
-    }).then(function(){
-      // set kyber network
-      return feeBurner.setKyberNetwork(network.address);
     }).then(function(){
       return feeBurner.setWalletFees(0,50);
     }).then(function(){
