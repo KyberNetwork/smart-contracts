@@ -19,7 +19,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
     mapping(address=>address) public reserveKNCWallet; //wallet holding knc per reserve. from here burn and send fees.
     mapping(address=>uint) public walletFeesInBps; // wallet that is the source of tx is entitled so some fees.
     mapping(address=>uint) public reserveFeeToBurn;
-    mapping(address=>uint) public feesPayedPerReserve; // track burned fees and sent wallet fees per reserve.
+    mapping(address=>uint) public feePayedPerReserve; // track burned fees and sent wallet fees per reserve.
     mapping(address=>mapping(address=>uint)) public reserveFeeToWallet;
     address public taxWallet;
     uint public taxFeeBps = 0; // burned fees are taxed. % out of burned fees.
@@ -114,7 +114,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         require(knc.burnFrom(reserveKNCWallet[reserve], burnAmount - 1));
 
         //update reserve "payments" so far
-        feesPayedPerReserve[reserve] += (taxToSend + burnAmount - 1);
+        feePayedPerReserve[reserve] += (taxToSend + burnAmount - 1);
 
         BurnAssignedFees(reserve, msg.sender, (burnAmount - 1));
     }
@@ -128,7 +128,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         reserveFeeToWallet[reserve][wallet] = 1; // leave 1 twei to avoid spikes in gas fee
         require(knc.transferFrom(reserveKNCWallet[reserve], wallet, feeAmount - 1));
 
-        feesPayedPerReserve[reserve] += (feeAmount - 1);
+        feePayedPerReserve[reserve] += (feeAmount - 1);
         SendWalletFees(wallet, reserve, msg.sender);
     }
 }
