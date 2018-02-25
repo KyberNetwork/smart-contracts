@@ -163,8 +163,7 @@ contract('ExpectedRates', function(accounts) {
         await network.addReserve(reserve1.address, true);
 
         //set contracts
-        feeBurner = await FeeBurner.new(admin, tokenAdd[0]);
-        feeBurner.setKyberNetwork(network.address);
+        feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address);
         let kgtToken = await TestToken.new("kyber genesis token", "KGT", 0);
         whiteList = await WhiteList.new(admin, kgtToken.address);
         await whiteList.addOperator(operator);

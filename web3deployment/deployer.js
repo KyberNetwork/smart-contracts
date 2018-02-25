@@ -87,9 +87,6 @@ async function deployContract(solcOutput, contractName, ctorArgs) {
 
 
   return [address,myContract];
-
-
-
 }
 
 const contractPath = path.join(__dirname, "../contracts/");
@@ -146,6 +143,9 @@ let minExpectedRateSlippage = 300;
 let kncWallet;
 let kncToEthRate = 307;
 let validDurationBlock = 24;
+let taxWallet = 0x0;
+let taxFeesBps = 1000;
+
 let testers;
 let testersCat;
 let testersCap;
@@ -204,6 +204,8 @@ function parseInput( jsonInput ) {
     minExpectedRateSlippage = web3.utils.toBN(jsonInput["min expected rate slippage"]);
     kncWallet = jsonInput["KNC wallet"];
     kncToEthRate = web3.utils.toBN(jsonInput["KNC to ETH rate"]);
+    taxWallet = jsonInput["tax fees bps"];
+    taxFeesBps = web3.utils.toBN(jsonInput["tax wallet address"]);
     validDurationBlock = web3.utils.toBN(jsonInput["valid duration block"]);
     testers = jsonInput["whitelist params"]["testers"];
     testersCat = jsonInput["whitelist params"]["testers category"];
@@ -262,7 +264,7 @@ async function main() {
   console.log("deploying kyber reserve");
   [reserveAddress,reserveContract] = await deployContract(output, "KyberReserve.sol:KyberReserve", [networkAddress,conversionRatesAddress,sender]);
   console.log("deploying fee burner");
-  [feeBurnerAddress, feeBurnerContract] = await deployContract(output, "FeeBurner.sol:FeeBurner", [sender,"0xdd974D5C2e2928deA5F71b9825b8b646686BD200"]);
+  [feeBurnerAddress, feeBurnerContract] = await deployContract(output, "FeeBurner.sol:FeeBurner", [sender,"0xdd974D5C2e2928deA5F71b9825b8b646686BD200",networkAddress]);
   console.log("deploying whitelist");
   [whitelistAddress, whitelistContract] = await deployContract(output, "WhiteList.sol:WhiteList", [sender, kgtAddress]);
   console.log("deploying expected rates");
@@ -383,10 +385,14 @@ async function main() {
   await sendTx(feeBurnerContract.methods.setReserveData(reserveAddress,
                                                         25,
                                                         kncWallet));
-  console.log("set kyber network");
-  await sendTx(feeBurnerContract.methods.setKyberNetwork(networkAddress));
   console.log("set KNC to ETH rate");
   await sendTx(feeBurnerContract.methods.setKNCRate(kncToEthRate));
+  console.log("set tax fees bps");
+  await sendTx(feeBurnerContract.methods.setTaxInBps(taxFeesBps));
+  if(taxWallet != 0) {
+    console.log("set wallet address");
+    await sendTx(feeBurnerContract.methods.setTaxWallet(taxWallet));
+  }
 
   await setPermissions(feeBurnerContract, feeBurnerPermissions);
 
@@ -466,6 +472,8 @@ function printParams(jsonInput) {
     dictOutput["min expected rate slippage"] = jsonInput["min expected rate slippage"];
     dictOutput["KNC wallet"] = kncWallet;
     dictOutput["KNC to ETH rate"] = jsonInput["KNC to ETH rate"];
+    dictOutput["tax wallet address"] = jsonInput["tax wallet address"];
+    dictOutput["tax fees bps"] = jsonInput["tax fees bps"];
     dictOutput["valid duration block"] = jsonInput["valid duration block"];
     dictOutput["reserve"] = reserveAddress;
     dictOutput["pricing"] = conversionRatesAddress;
