@@ -178,7 +178,8 @@
       "operator": [
         "0x7E68d7AFcD5cc6167eB5f0Eb07eDcfe75185CC00",
         "0xf214dde57f32f3f34492ba3148641693058d4a9e",
-        "0xd0643BC0D0C879F175556509dbcEe9373379D5C3"
+        "0xd0643BC0D0C879F175556509dbcEe9373379D5C3",
+        "0x342F4057110bE50957d0f156F4939a929944C69e"
       ],
       "alerter": []
     },
