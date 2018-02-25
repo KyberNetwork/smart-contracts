@@ -17,10 +17,16 @@ const { configPath, gasPriceGwei, printPrivateKey, rpcUrl, signedTxOutput, dontS
 const web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
 const solc = require('solc')
 
-const rand = web3.utils.randomHex(999);
+const rand = web3.utils.randomHex(7);
 const privateKey = web3.utils.sha3("js sucks" + rand);
 if (printPrivateKey) {
   console.log("privateKey", privateKey);
+  let path = "privatekey_"  + web3.utils.randomHex(7) + ".txt";
+  fs.writeFileSync(path, privateKey, function(err) {
+      if(err) {
+          return console.log(err);
+      }
+  });
 }
 const account = web3.eth.accounts.privateKeyToAccount(privateKey);
 const sender = account.address;
@@ -204,8 +210,8 @@ function parseInput( jsonInput ) {
     minExpectedRateSlippage = web3.utils.toBN(jsonInput["min expected rate slippage"]);
     kncWallet = jsonInput["KNC wallet"];
     kncToEthRate = web3.utils.toBN(jsonInput["KNC to ETH rate"]);
-    taxWallet = jsonInput["tax fees bps"];
-    taxFeesBps = web3.utils.toBN(jsonInput["tax wallet address"]);
+    taxFeesBps = jsonInput["tax fees bps"];
+    taxWallet = web3.utils.toBN(jsonInput["tax wallet address"]);
     validDurationBlock = web3.utils.toBN(jsonInput["valid duration block"]);
     testers = jsonInput["whitelist params"]["testers"];
     testersCat = jsonInput["whitelist params"]["testers category"];
@@ -389,7 +395,7 @@ async function main() {
   await sendTx(feeBurnerContract.methods.setKNCRate(kncToEthRate));
   console.log("set tax fees bps");
   await sendTx(feeBurnerContract.methods.setTaxInBps(taxFeesBps));
-  if(taxWallet != 0) {
+  if(taxWallet != '' && taxFeesBps != 0) {
     console.log("set wallet address");
     await sendTx(feeBurnerContract.methods.setTaxWallet(taxWallet));
   }
