@@ -70,8 +70,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
     function handleFees(uint tradeWeiAmount, address reserve, address wallet) public returns(bool) {
         require(msg.sender == kyberNetwork);
         require(tradeWeiAmount <= MAX_QTY);
-        require(kncPerETHRate <= MAX_RATE);
-
+        
         uint kncAmount = tradeWeiAmount * kncPerETHRate;
         uint fee = kncAmount * reserveFeesInBps[reserve] / 10000;
 
