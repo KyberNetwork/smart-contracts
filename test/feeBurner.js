@@ -11,11 +11,13 @@ let mockKyberNetwork;
 let mockReserve;
 let mockKNCWallet;
 let someExternalWallet;
+let taxWallet;
 let kncPerEtherRate = 200;
 let initialKNCWalletBalance = 10000000000;
 let burnFeeInBPS = 70;  //basic price steps
+let taxFeesInBPS = 30;
 let totalBPS = 10000;   //total price steps.
-
+let payedSoFar = 0; //track how much fees payed or burned so far.
 
 contract('FeeBurner', function(accounts) {
     it("should init globals and init feeburner Inst.", async function () {
@@ -24,6 +26,7 @@ contract('FeeBurner', function(accounts) {
         mockReserve = accounts[8];
         mockKNCWallet = accounts[7];
         someExternalWallet = accounts[6];
+        taxWallet = accounts[5];
         admin = accounts[0];
         //move funds to knc wallet
         kncToken = await TestToken.new("kyber", "KNC", 18);
@@ -32,12 +35,11 @@ contract('FeeBurner', function(accounts) {
         assert.equal(balance.valueOf(), initialKNCWalletBalance, "unexpected wallet balance.");
 
         //init fee burner
-        feeBurnerInst = await FeeBurner.new(admin, kncToken.address);
+        feeBurnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork);
 
         //set parameters in fee burner.
         await feeBurnerInst.setKNCRate(kncPerEtherRate);
-        await feeBurnerInst.setKyberNetwork(mockKyberNetwork);
-        await feeBurnerInst.setReserveData(mockReserve, 70, mockKNCWallet);
+        await feeBurnerInst.setReserveData(mockReserve, burnFeeInBPS, mockKNCWallet);
 
         //allowance to fee burner to enable burning
         await kncToken.approve(feeBurnerInst.address, initialKNCWalletBalance / 10, {from: mockKNCWallet});
@@ -105,7 +107,7 @@ contract('FeeBurner', function(accounts) {
         }
 
         try {
-            await feeBurnerInst.setKyberNetwork(mockKyberNetwork, {from: mockReserve});
+            await feeBurnerInst.setReserveData(mockReserve, 70, mockKNCWallet, {from: mockReserve});
             assert(false, "expected throw in line above..")
         }
             catch(e){
@@ -113,7 +115,15 @@ contract('FeeBurner', function(accounts) {
         }
 
         try {
-            await feeBurnerInst.setReserveData(mockReserve, 70, mockKNCWallet, {from: mockReserve});
+            await feeBurnerInst.setTaxInBps(taxFeesInBPS , {from: mockReserve});
+            assert(false, "expected throw in line above..")
+        }
+            catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
+        }
+
+        try {
+            await feeBurnerInst.setTaxWallet(taxWallet , {from: mockReserve});
             assert(false, "expected throw in line above..")
         }
             catch(e){
@@ -121,10 +131,12 @@ contract('FeeBurner', function(accounts) {
         }
     });
 
-    it("should test burn fee and handle fee calls success. See waiting fees zeroed.", async function () {
+    it("should test burn fee success. See waiting fees 'zeroed' (= 1).", async function () {
         let feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
         assert(feesWaitingToBurn.valueOf() > 1, "unexpected waiting to burn.");
 
+        waitingFees = await feeBurnerInst.reserveFeeToBurn(mockReserve);
+        payedSoFar += (1 * waitingFees.valueOf()) - 1;
         await feeBurnerInst.burnReserveFees(mockReserve);
 
         feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
@@ -133,11 +145,106 @@ contract('FeeBurner', function(accounts) {
         let waitingWalletFees = await feeBurnerInst.reserveFeeToWallet(mockReserve, someExternalWallet);
         assert(waitingWalletFees.valueOf() > 1, "unexpected waiting wallet fees.");
 
+        payedSoFar += (1 * waitingWalletFees.valueOf()) - 1;
         await feeBurnerInst.sendFeeToWallet(someExternalWallet, mockReserve);
 
         waitingWalletFees = await feeBurnerInst.reserveFeeToWallet(mockReserve, someExternalWallet);
         assert(waitingWalletFees.valueOf() == 1, "unexpected waiting wallet fees.");
     });
+
+    it("should set tax fee and and tax wallet and validate values.", async function () {
+        await feeBurnerInst.setTaxWallet(taxWallet);
+
+        rxTaxWallet = await feeBurnerInst.taxWallet();
+
+        assert.equal(rxTaxWallet.valueOf(), taxWallet, "invalid tax wallet address");
+
+        //see zero address blocked.
+        try {
+            await feeBurnerInst.setTaxWallet(0);
+            assert(false, "expected throw in line above..")
+        }
+            catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
+        }
+
+        assert.equal(rxTaxWallet.valueOf(), taxWallet, "invalid tax wallet address");
+
+        //set tax in BPS
+        await feeBurnerInst.setTaxInBps(taxFeesInBPS);
+
+        rxTaxFees = await feeBurnerInst.taxFeeBps();
+
+        assert.equal(rxTaxFees.valueOf(), taxFeesInBPS, "invalid tax fees BPS");
+    });
+
+
+    it("should test tax fees sent to wallet according to set fees.", async function () {
+        let tradeSize = 1000;
+
+        let taxWalletInitBalance =  await kncToken.balanceOf(taxWallet);
+
+        //first see with zero tax nothing sent.
+        await feeBurnerInst.setTaxWallet(taxWallet);
+        await feeBurnerInst.setTaxInBps(0);
+        await feeBurnerInst.handleFees(tradeSize, mockReserve, 0, {from: mockKyberNetwork});
+
+        let waitingFees = await feeBurnerInst.reserveFeeToBurn(mockReserve);
+        payedSoFar += (1 * waitingFees.valueOf()) - 1;
+
+        assert(waitingFees.valueOf() > 0);
+
+        await feeBurnerInst.burnReserveFees(mockReserve);
+
+        let taxWalletBalance = await kncToken.balanceOf(taxWallet);
+        assert.equal(taxWalletBalance.valueOf(), taxWalletInitBalance.valueOf());
+
+        //now with tax
+        await feeBurnerInst.setTaxInBps(taxFeesInBPS);
+        await feeBurnerInst.handleFees(tradeSize, mockReserve, 0, {from: mockKyberNetwork});
+
+        waitingFees = await feeBurnerInst.reserveFeeToBurn(mockReserve);
+        payedSoFar += (1 * waitingFees.valueOf()) - 1;
+        assert(waitingFees.valueOf() > 0);
+        await feeBurnerInst.burnReserveFees(mockReserve);
+
+        let taxWalletBalanceAfter = await kncToken.balanceOf(taxWallet);
+        let expectedBalance = waitingFees * taxFeesInBPS / totalBPS;
+        assert.equal(taxWalletBalanceAfter.valueOf(), Math.floor(expectedBalance));
+    });
+
+
+    it("should test tax fees behavior with smallest values.", async function () {
+        //first create 2 wei burn fee. which will be reverted.
+        const burnFeeInBPS = 50; //0.5%
+        await feeBurnerInst.setReserveData(mockReserve, burnFeeInBPS, mockKNCWallet);
+        let tradeSize = 1; // * eth to knc rate is the ref number.
+
+        await feeBurnerInst.handleFees(tradeSize, mockReserve, 0, {from: mockKyberNetwork});
+        let waitingFees = await feeBurnerInst.reserveFeeToBurn(mockReserve);
+        assert.equal(waitingFees.valueOf(), 2);
+
+        //see burn fails
+        try {
+            await feeBurnerInst.burnReserveFees(mockReserve);
+            assert(false, "expected throw in line above..")
+        }
+            catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
+        }
+
+        await feeBurnerInst.handleFees(tradeSize, mockReserve, 0, {from: mockKyberNetwork});
+        waitingFees = await feeBurnerInst.reserveFeeToBurn(mockReserve);
+        assert.equal(waitingFees.valueOf(), 3);
+
+        //on value 3 want to see tax wallet gets 0 fees.
+        let taxWalletInitBalance = await kncToken.balanceOf(taxWallet);
+        await feeBurnerInst.burnReserveFees(mockReserve);
+        payedSoFar += waitingFees - 1;
+        let taxWalletBalance = await kncToken.balanceOf(taxWallet);
+        assert.equal(taxWalletBalance.valueOf(), taxWalletInitBalance.valueOf());
+    });
+
 
     it("should test that when knc wallet (we burn from) is empty burn fee is reverted.", async function () {
         let initialWalletbalance = await kncToken.balanceOf(mockKNCWallet);
@@ -163,29 +270,28 @@ contract('FeeBurner', function(accounts) {
         let feeBurnerTemp;
 
         try {
-            feeBurnerTemp =  await FeeBurner.new(admin, 0);
+            feeBurnerTemp =  await FeeBurner.new(admin, 0, mockKyberNetwork);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            feeBurnerTemp =  await FeeBurner.new(0, kncToken.address);
+            feeBurnerTemp =  await FeeBurner.new(0, kncToken.address, mockKyberNetwork);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        feeBurnerTemp =  await FeeBurner.new(admin, kncToken.address);
 
         try {
-            await feeBurnerTemp.setKyberNetwork(0);
+            feeBurnerTemp =  await FeeBurner.new(admin, kncToken.address, 0);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await feeBurnerTemp.setKyberNetwork(mockKyberNetwork);
+        feeBurnerTemp =  await FeeBurner.new(admin, kncToken.address, mockKyberNetwork);
     });
 
     it("should test can't set bps fee > 1% (100 bps).", async function () {
@@ -215,7 +321,6 @@ contract('FeeBurner', function(accounts) {
         await feeBurnerInst.setReserveData(mockReserve, 99, mockKNCWallet);
     });
 
-
     it("should test can't set wallet fees above 100% (10000 bps).", async function () {
         let highBpsfee = 10000;
 
@@ -228,6 +333,22 @@ contract('FeeBurner', function(accounts) {
 
         //see success
         await feeBurnerInst.setWalletFees(someExternalWallet, 9999);
+    });
+
+
+    it("should test can't fee taxes above 100% (10000 bps).", async function () {
+        let highBpsTax = 10000;
+        let validBpsTax = 9999;
+
+        try {
+            await feeBurnerInst.setTaxInBps(highBpsTax);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //see success
+        await feeBurnerInst.setTaxInBps(validBpsTax);
     });
 
     it("should test burn fees reverted when balance is 'zeroed' == 1.", async function () {
@@ -253,6 +374,12 @@ contract('FeeBurner', function(accounts) {
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
+    });
+
+    it("should verify payed so far on this reserve.", async function () {
+        let rxPayedSoFar = await feeBurnerInst.feePayedPerReserve(mockReserve);
+
+        assert.equal(rxPayedSoFar.valueOf(), payedSoFar);
     });
 
 });

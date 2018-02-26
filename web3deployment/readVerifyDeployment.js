@@ -80,6 +80,14 @@ let jsonKGTCap;
 let jsonWeiPerSGD;
 let jsonKGTAddress;
 let kgtHolderCategory;
+let jsonValidDurationBlock;
+let jsonMaxGasPrice;
+let jsonNegDiffBps;
+let jsonMinExpectedRateSlippage;
+let jsonKNCWallet;
+let jsonKNC2EthRate;
+let jsonTaxFeeBps;
+let jsonTaxWalletAddress;
 let jsonFeeBurnerAdd;
 let jsonRatesAdd;
 let jsonReserveAdd;
@@ -91,6 +99,7 @@ const runWhiteList = 1;
 const runFeeBurner = 1;
 const printAdminETC = 1;
 const showStepFunctions = 1;
+const verifyWhitelistedAddresses = false;
 
 // code
 ////////
@@ -298,7 +307,7 @@ async function readWhiteListData(whiteListAddress) {
 
     await printAdminAlertersOperators(WhiteList, "WhiteList");
     let weiPerSgd = await WhiteList.methods.weiPerSgd().call();
-    myLog((weiPerSgd != jsonWeiPerSGD), (weiPerSgd == 0), ("weiPerSgd: " + weiPerSgd + " = " + getAmountTokens(weiPerSgd, ethAddress) + " tokens."));
+    myLog((weiPerSgd == 0), (weiPerSgd != jsonWeiPerSGD), ("weiPerSgd: " + weiPerSgd + " = " + getAmountTokens(weiPerSgd, ethAddress) + " tokens."));
     let kgtAddress = await WhiteList.methods.kgtToken().call();
     myLog((kgtAddress.toLowerCase() != jsonKGTAddress || kgtAddress == 0), 0, ("KGT Address: " + kgtAddress));
     kgtHolderCategory = parseInt(await WhiteList.methods.kgtHolderCategory().call(), 10);
@@ -343,6 +352,9 @@ async function readWhiteListData(whiteListAddress) {
                 if (sgdCap != jsonKGTCap) {isError = true};
                 categoryStr = "kgt holder";
                 break;
+            case 3:
+                categoryStr = "KYC list";
+                break;
             default:
                 isError = true;
                 categoryStr = "not listed in json";
@@ -356,6 +368,9 @@ async function readWhiteListData(whiteListAddress) {
         myLog(1, 0, "No category has cap > 0. meaning trading is blocked for all addresses.")
         myLog(0, 0, '')
     }
+
+    if (verifyWhitelistedAddresses != true) return;
+
 
     myLog(0, 0, '');
     myLog(0, 0, "Verify all white listed addresses. compare json and whitelisted events from blockchain");
@@ -676,9 +691,16 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
     let KNCAddress = (await FeeBurner.methods.knc().call()).toLowerCase();
     myLog((KNCAddress != jsonKNCAddress), 0, ("KNCAddress: " + KNCAddress));
     let kncPerEthRate = await FeeBurner.methods.kncPerETHRate().call();
-    myLog((kncPerEthRate != jsonKNC2EthRate), 0, ("kncPerEthRate: " + kncPerEthRate));
+    myLog((kncPerETHRate.valueOf() == 0), (kncPerEthRate != jsonKNC2EthRate), ("kncPerEthRate: " + kncPerEthRate));
     let kyberNetwork = (await FeeBurner.methods.kyberNetwork().call()).toLowerCase();
     myLog((kyberNetwork != kyberNetworkAdd), 0, ("kyberNetworkAdd: " + kyberNetwork));
+    let taxFeeBps = await FeeBurner.methods.taxFeeBps().call()
+    myLog((taxFeeBps != jsonTaxFeeBps), 0, ("tax fee in bps: " + taxFeeBps + " = " + bpsToPercent(taxFeeBps) + "%"));
+    let taxWalletAdd = await FeeBurner.methods.taxWallet().call()
+    myLog((taxWalletAdd.toLowerCase() != jsonTaxWalletAddress.toLowerCase()), 0, ("tax wallet address: " + taxWalletAdd));
+    let payedSoFar = await FeeBurner.methods.feePayedPerReserve(reserveAddress).call();
+    myLog(0, 0, "Fees payed so far by reserve (burn + tax): " + getAmountTokens(payedSoFar, jsonKNCAddress) + " knc tokens.");
+
 
     //todo: get addresses for wallets that receive fees and print addresses + fees.
 //    myLog(0, 0, ("reserveFeeToWallet: " + await FeeBurner.methods.reserveFeeToWal let(reserveAddress).call());
@@ -971,37 +993,53 @@ async function printAdminAlertersOperators(contract, jsonKey) {
     }
 
     let permissionList = deploymentJson["permission"][jsonKey];
+    let jsonAdmin;
+    let jsonOperators;
+    let jsonAlerters;
+    try {
+        jsonAlerters = permissionList["alerter"];
+        jsonOperators = permissionList["operator"];
+        jsonAdmin = (permissionList["admin"]).toLowerCase();
+    } catch (e) {
+        jsonAlerters = '';
+        jsonOperators = '';
+        jsonAdmin = '';
+    }
+
     //admin
     let admin = await contract.methods.admin().call();
-    let isApproved = (admin.toLowerCase() == (permissionList["admin"]).toLowerCase());
+    let isApproved = (admin.toLowerCase() == jsonAdmin);
     myLog((isApproved == false), 0, ("Admin: " + (a2n(admin, 1)) + " approved: " + isApproved));
     let pendingAdmin = await contract.methods.pendingAdmin().call();
     myLog(0, (pendingAdmin != 0), ("Pending Admin: " + a2n(pendingAdmin, 1)));
 
     //operators
     let operators = await contract.methods.getOperators().call();
-    let jsonOperators = permissionList["operator"];
     operators.forEach(function (operator) {
         let isApproved = false;
-        jsonOperators.forEach(function(jsonOperator){
-            if (operator.toLowerCase() == jsonOperator.toLowerCase()) {
-                isApproved = true;
-            }
-        });
+        if (jsonOperators != '') {
+            jsonOperators.forEach(function(jsonOperator){
+                if (operator.toLowerCase() == jsonOperator.toLowerCase()) {
+                    isApproved = true;
+                }
+            });
+        };
         myLog(isApproved == false, 0, "Operator: " + operator + " is approved: " + isApproved);
     });
     if (operators.length == 0) myLog(0, 1, "No operators defined for contract " + jsonKey);
 
     //alerters
     let alerters = await contract.methods.getAlerters().call();
-    let jsonAlerters = permissionList["alerter"];
+
     alerters.forEach(function (alerter) {
         let isApproved = false;
-        jsonAlerters.forEach(function(jsonAlerter){
-            if (alerter.toLowerCase() == jsonAlerter.toLowerCase()) {
-                isApproved = true;
-            }
-        });
+        if (jsonAlerters != '') {
+            jsonAlerters.forEach(function(jsonAlerter){
+                if (alerter.toLowerCase() == jsonAlerter.toLowerCase()) {
+                    isApproved = true;
+                }
+            });
+        };
         myLog(isApproved == false, 0, "Alerters: " + alerter + " is approved: " + isApproved);
     });
     if (alerters.length == 0) myLog(0, 1, "No alerters defined for contract " + jsonKey);
@@ -1105,6 +1143,13 @@ async function readDeploymentJSON(filePath) {
     jsonMinExpectedRateSlippage = json["min expected rate slippage"];
     jsonKNCWallet = (json["KNC wallet"]).toLowerCase();
     jsonKNC2EthRate = json["KNC to ETH rate"];
+    try {
+        jsonTaxFeeBps = json["tax fees bps"];
+        jsonTaxWalletAddress = json["tax wallet address"];
+    } catch (e) {
+        jsonTaxFeeBps = 2000;
+        jsonTaxWalletAddress = 0x0;
+    }
     jsonValidDurationBlock = json["valid duration block"];
     jsonTestersCat = deploymentJson["whitelist params"]["testers category"];
     jsonUsersCat = deploymentJson["whitelist params"]["users category"];
