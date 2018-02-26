@@ -517,8 +517,6 @@ async function readReserve(reserveAdd, index){
         }
     }
 
-    reserveAdd = '0x2AAb2b157a03915c8a73ADaE735d0Cf51c872F31';
-
     Reserves[index] = await new web3.eth.Contract(reserveABI, reserveAdd);
     let Reserve = Reserves[index];
 
