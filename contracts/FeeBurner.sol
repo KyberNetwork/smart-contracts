@@ -16,18 +16,23 @@ interface BurnableToken {
 contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
 
     mapping(address=>uint) public reserveFeesInBps;
-    mapping(address=>address) public reserveKNCWallet;
-    mapping(address=>uint) public walletFeesInBps;
+    mapping(address=>address) public reserveKNCWallet; //wallet holding knc per reserve. from here burn and send fees.
+    mapping(address=>uint) public walletFeesInBps; // wallet that is the source of tx is entitled so some fees.
     mapping(address=>uint) public reserveFeeToBurn;
+    mapping(address=>uint) public feePayedPerReserve; // track burned fees and sent wallet fees per reserve.
     mapping(address=>mapping(address=>uint)) public reserveFeeToWallet;
+    address public taxWallet;
+    uint public taxFeeBps = 0; // burned fees are taxed. % out of burned fees.
 
     BurnableToken public knc;
     address public kyberNetwork;
     uint public kncPerETHRate = 300;
 
-    function FeeBurner(address _admin, BurnableToken kncToken) public {
+    function FeeBurner(address _admin, BurnableToken kncToken, address _kyberNetwork) public {
         require(_admin != address(0));
         require(kncToken != address(0));
+        require(_kyberNetwork != address(0));
+        kyberNetwork = _kyberNetwork;
         admin = _admin;
         knc = kncToken;
     }
@@ -44,13 +49,18 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         walletFeesInBps[wallet] = feesInBps;
     }
 
-    function setKyberNetwork(address _kyberNetwork) public onlyAdmin {
-        require(_kyberNetwork != address(0));
-        kyberNetwork = _kyberNetwork;
+    function setTaxInBps(uint _taxFeeBps) public onlyAdmin {
+        require(_taxFeeBps < 10000); // under 100%
+        taxFeeBps = _taxFeeBps;
+    }
+
+    function setTaxWallet(address _taxWallet) public onlyAdmin {
+        require(_taxWallet != address(0));
+        taxWallet = _taxWallet;
     }
 
     function setKNCRate(uint rate) public onlyAdmin {
-        require(kncPerETHRate <= MAX_RATE);
+        require(rate <= MAX_RATE);
         kncPerETHRate = rate;
     }
 
@@ -82,16 +92,31 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         return true;
     }
 
+
     // this function is callable by anyone
-    event BurnAssignedFees(address indexed reserve, address sender);
+    event BurnAssignedFees(address indexed reserve, address sender, uint quantity);
+    event SendTaxFee(address indexed reserve, address sender, address taxWallet, uint quantity);
 
     function burnReserveFees(address reserve) public {
         uint burnAmount = reserveFeeToBurn[reserve];
-        require(burnAmount > 1);
+        uint taxToSend = 0;
+        require(burnAmount > 2);
         reserveFeeToBurn[reserve] = 1; // leave 1 twei to avoid spikes in gas fee
+        if (taxWallet != address(0) && taxFeeBps != 0) {
+            taxToSend = (burnAmount - 1) * taxFeeBps / 10000;
+            require(burnAmount - 1 > taxToSend);
+            burnAmount -= taxToSend;
+            if (taxToSend > 0) {
+                require (knc.transferFrom(reserveKNCWallet[reserve], taxWallet, taxToSend));
+                SendTaxFee(reserve, msg.sender, taxWallet, taxToSend);
+            }
+        }
         require(knc.burnFrom(reserveKNCWallet[reserve], burnAmount - 1));
 
-        BurnAssignedFees(reserve, msg.sender);
+        //update reserve "payments" so far
+        feePayedPerReserve[reserve] += (taxToSend + burnAmount - 1);
+
+        BurnAssignedFees(reserve, msg.sender, (burnAmount - 1));
     }
 
     event SendWalletFees(address indexed wallet, address reserve, address sender);
@@ -103,6 +128,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         reserveFeeToWallet[reserve][wallet] = 1; // leave 1 twei to avoid spikes in gas fee
         require(knc.transferFrom(reserveKNCWallet[reserve], wallet, feeAmount - 1));
 
+        feePayedPerReserve[reserve] += (feeAmount - 1);
         SendWalletFees(wallet, reserve, msg.sender);
     }
 }

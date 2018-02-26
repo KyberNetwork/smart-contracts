@@ -3,52 +3,72 @@
     "OMG": {
       "name": "OmiseGO",
       "decimals": 18,
-      "reserve balance": 955.115509
+      "reserve balance": 1062.4452
     },
     "KNC": {
       "name": "KyberNetwork",
       "decimals": 18,
-      "reserve balance": 4101.363415
+      "reserve balance": 3291.3726
     },
     "EOS": {
       "name": "Eos",
       "decimals": 18,
-      "reserve balance": 1443.55468
+      "reserve balance": 1890.2334
     },
     "SNT": {
       "name": "STATUS",
       "decimals": 18,
-      "reserve balance": 56294.98177
+      "reserve balance": 74100.06
     },
     "ELF": {
       "name": "AELF",
       "decimals": 18,
-      "reserve balance": 9079.358123
+      "reserve balance": 9381.696
     },
     "POWR": {
       "name": "Power Ledger",
       "decimals": 6,
-      "reserve balance": 16246.295081
+      "reserve balance": 21139.446
     },
     "MANA": {
       "name": "MANA",
       "decimals": 18,
-      "reserve balance": 105143.259068
+      "reserve balance": 83010.6
     },
     "BAT": {
       "name": "Basic Attention Token",
       "decimals": 18,
-      "reserve balance": 30979.266436
+      "reserve balance": 24832.062
     },
     "REQ": {
       "name": "Request",
       "decimals": 18,
-      "reserve balance": 41578.405148
+      "reserve balance": 57109.62
     },
     "GTO": {
       "name": "Gifto",
       "decimals": 5,
-      "reserve balance": 42977.111265
+      "reserve balance": 36007.17
+    },
+    "RDN": {
+      "name": "Raiden",
+      "decimals": 18,
+      "reserve balance": 3595.0146
+    },
+    "APPC": {
+      "name": "AppCoins",
+      "decimals": 18,
+      "reserve balance": 14453.868
+    },
+    "ENG": {
+      "name": "Enigma",
+      "decimals": 8,
+      "reserve balance": 4226.7708
+    },
+    "SALT": {
+      "name": "Salt",
+      "decimals": 8,
+      "reserve balance": 2918.7378
     }
   },
   "exchanges": [
