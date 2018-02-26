@@ -691,7 +691,7 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
     let KNCAddress = (await FeeBurner.methods.knc().call()).toLowerCase();
     myLog((KNCAddress != jsonKNCAddress), 0, ("KNCAddress: " + KNCAddress));
     let kncPerEthRate = await FeeBurner.methods.kncPerETHRate().call();
-    myLog((kncPerETHRate.valueOf() == 0), (kncPerEthRate != jsonKNC2EthRate), ("kncPerEthRate: " + kncPerEthRate));
+    myLog((kncPerEthRate.valueOf() == 0), (kncPerEthRate != jsonKNC2EthRate), ("kncPerEthRate: " + kncPerEthRate));
     let kyberNetwork = (await FeeBurner.methods.kyberNetwork().call()).toLowerCase();
     myLog((kyberNetwork != kyberNetworkAdd), 0, ("kyberNetworkAdd: " + kyberNetwork));
     let taxFeeBps = await FeeBurner.methods.taxFeeBps().call()
