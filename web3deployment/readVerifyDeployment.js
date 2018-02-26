@@ -517,6 +517,8 @@ async function readReserve(reserveAdd, index){
         }
     }
 
+    reserveAdd = '0x2AAb2b157a03915c8a73ADaE735d0Cf51c872F31';
+
     Reserves[index] = await new web3.eth.Contract(reserveABI, reserveAdd);
     let Reserve = Reserves[index];
 
@@ -691,7 +693,7 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
     let KNCAddress = (await FeeBurner.methods.knc().call()).toLowerCase();
     myLog((KNCAddress != jsonKNCAddress), 0, ("KNCAddress: " + KNCAddress));
     let kncPerEthRate = await FeeBurner.methods.kncPerETHRate().call();
-    myLog((kncPerETHRate.valueOf() == 0), (kncPerEthRate != jsonKNC2EthRate), ("kncPerEthRate: " + kncPerEthRate));
+    myLog((kncPerEthRate.valueOf() == 0), (kncPerEthRate != jsonKNC2EthRate), ("kncPerEthRate: " + kncPerEthRate));
     let kyberNetwork = (await FeeBurner.methods.kyberNetwork().call()).toLowerCase();
     myLog((kyberNetwork != kyberNetworkAdd), 0, ("kyberNetworkAdd: " + kyberNetwork));
     let taxFeeBps = await FeeBurner.methods.taxFeeBps().call()
