@@ -724,7 +724,7 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
     myLog((jsonKNCWallet != KNCWallet), 0, ("reserveKNCWallet: " + KNCWallet));
     let kncWalletBalance = await kncInst.methods.balanceOf(KNCWallet).call();
     let walletTokenBalance = getAmountTokens(kncWalletBalance.valueOf(), jsonKNCAddress);
-    myLog((walletTokenBalance.valueOf() < 30), (walletTokenBalance.valueOf() < 70), ("reserveKNCWallet balance: " + kncWalletBalance + " KNC tokens"));
+    myLog((walletTokenBalance.valueOf() < 30), (walletTokenBalance.valueOf() < 70), ("reserveKNCWallet balance: " + walletTokenBalance + " KNC tokens"));
 
     let feeToBurn = await FeeBurner.methods.reserveFeeToBurn(reserveAddress).call();
     myLog(0, 0, ("reserveFeeToBurn: " + feeToBurn + " twei == " + getAmountTokens(feeToBurn, jsonKNCAddress) + " KNC tokens."));
