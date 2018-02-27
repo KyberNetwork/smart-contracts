@@ -106,10 +106,10 @@ let nodeId = 0;
 const runExpectedRate = 1;
 const runWhiteList = 1;
 const runFeeBurner = 1;
-const printAdminETC = 0;
+const printAdminETC = 1;
 const showStepFunctions = 1;
 const verifyWhitelistedAddresses = false;
-const saveSpyrosDict = true;
+const saveSpyrosDict = false;
 const spyrosDictPath = './spyrosOutputfile.json';
 
 // code
@@ -1390,4 +1390,4 @@ const tokensJson = {
           "address": "0x744d70fdbe2ba4cf95131626614a1763df805b9e",
         }
     }
-};
+};9
