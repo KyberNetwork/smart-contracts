@@ -106,10 +106,10 @@ let nodeId = 0;
 const runExpectedRate = 1;
 const runWhiteList = 1;
 const runFeeBurner = 1;
-const printAdminETC = 1;
+const printAdminETC = 0;
 const showStepFunctions = 1;
 const verifyWhitelistedAddresses = false;
-const saveSpyrosDict = false;
+const saveSpyrosDict = true;
 const spyrosDictPath = './spyrosOutputfile.json';
 
 // code
@@ -806,7 +806,8 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index, 
     await validateReserveTokensListedOnNetwork(tokensPerReserve[index], reserveAddress);
 
     let numTokens = tokensPerReserve[index].length;
-    if (isKyberReserve) SpyrosDict["tokens"] = {};
+    if (isKyberReserve) SpyrosDict["kyber"] = {};
+	if  (!(isKyberReserve)) SpyrosDict["prycto"] = {};
     for (let i = 0; i < numTokens; i++) {
         await readTokenDataInConversionRate(conversionRateAddress, tokensPerReserve[index][i], index, isKyberReserve);
     }
@@ -914,8 +915,10 @@ async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, re
     tokenDict["sellRateImbalanceStepFunction Y: "] = sellRateImbalanceStepFunction[1];
 
     if (isKyberReserve) {
-        SpyrosDict["tokens"][tokenName] = tokenDict;
-    }
+        SpyrosDict["kyber"][tokenName] = tokenDict;
+    } else {
+		SpyrosDict["prycto"][tokenName] = tokenDict;
+		}
 };
 
 async function getStepFunctionXYArr(tokenAdd, commandID, rateContract) {
@@ -1388,4 +1391,3 @@ const tokensJson = {
         }
     }
 };
-
