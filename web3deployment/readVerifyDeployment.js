@@ -116,9 +116,10 @@ const spyrosDictPath = './spyrosOutputfile.json';
 ////////
 ////////
 const mainnetUrls = ['https://mainnet.infura.io',
-                                     'https://api.mycryptoapi.com/eth',
-                                     'https://api.myetherapi.com/eth',
-                                     'https://mew.giveth.io/'];
+                     'https://semi-node.kyber.network',
+                     'https://api.mycryptoapi.com/eth',
+                     'https://api.myetherapi.com/eth',
+                     'https://mew.giveth.io/'];
 
 const kovanPublicNode = 'https://kovan.infura.io';
 const ropstenPublicNode = 'https://ropsten.infura.io';
@@ -807,7 +808,7 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index, 
 
     let numTokens = tokensPerReserve[index].length;
     if (isKyberReserve) SpyrosDict["kyber"] = {};
-	if  (!(isKyberReserve)) SpyrosDict["prycto"] = {};
+	if  (!(isKyberReserve)) SpyrosDict["other" + index] = {};
     for (let i = 0; i < numTokens; i++) {
         await readTokenDataInConversionRate(conversionRateAddress, tokensPerReserve[index][i], index, isKyberReserve);
     }
@@ -917,7 +918,7 @@ async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, re
     if (isKyberReserve) {
         SpyrosDict["kyber"][tokenName] = tokenDict;
     } else {
-		SpyrosDict["prycto"][tokenName] = tokenDict;
+		SpyrosDict["other" + reserveIndex][tokenName] = tokenDict;
 		}
 };
 
