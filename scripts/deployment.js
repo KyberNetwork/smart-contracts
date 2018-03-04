@@ -61,6 +61,7 @@ var expectedRate;
 var nam;// = "0xc6bc2f7b73da733366985f5f5b485262b45a77a3";
 var victor_1;// = "0x760d30979eb313a2d23c53e4fb55986183b0ffd9";
 var victor_2;// = "0xEDd15B61505180B3A0C25B193dF27eF10214D851";
+var victor_3;// = "0x13922f1857c0677f79e4bbb16ad2c49faa620829";
 var duc;// = "0x25B8b1F2c21A70B294231C007e834Ad2de04f51F";
 
 
@@ -118,6 +119,7 @@ var parseInput = function( jsonInput ) {
     var specialAddresses = jsonInput["special addresses"];
     victor_1 = specialAddresses["victor_1"];
     victor_2 = specialAddresses["victor_2"];
+    victor_3 = specialAddresses["victor_3"];
     nam = specialAddresses["nam"];
     duc = specialAddresses["duc"];
 
@@ -302,6 +304,32 @@ var addDepositAddressToExchange = function( exchange, owner ) {
           reject(err);
         });
     });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+
+var approveIntermediateAccount = function( addr ) {
+  return new Promise(function (fulfill, reject){
+
+      var tokens = [];
+
+      //create array of tokens
+      for (var i = 0 ; i < tokenInstance.length ; i++ ) {
+          tokens.push(i);
+      }
+
+      return tokens.reduce(function (promise, item) {
+          return promise.then(function () {
+              return reserve.approveWithdrawAddress(tokenInstance[item].address, addr, true);
+          });
+      }, Promise.resolve()).then(function(){
+          return reserve.approveWithdrawAddress(ethAddress, addr, true);
+      }).then(function(){
+          fulfill(true);
+      }).catch(function(err){
+        reject(err);
+      });
+  });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -552,6 +580,11 @@ contract('Deployment', function(accounts) {
   it("create exchanges", function() {
     this.timeout(31000000);
     return createExchanges( tokenOwner, bank.address );
+  });
+
+  it ("approve intermediate account", function() {
+    this.timeout(31000000);
+    return approveIntermediateAccount(victor_3);
   });
 
   it("withdraw ETH from exchange", function() {
