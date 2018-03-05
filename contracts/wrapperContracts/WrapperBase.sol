@@ -60,6 +60,10 @@ contract WrapperBase is Withdrawable {
         }
     }
 
+    function getWrappedContract() public view returns (PermissionGroups _wrappedContract) {
+        return(wrappedContract);
+    }
+
     function getDataTrackingParameters(uint index) internal view returns (address[], uint) {
         require(index < dataInstances.length);
         return(dataInstances[index].approveSignatureArray, dataInstances[index].lastSetNonce);

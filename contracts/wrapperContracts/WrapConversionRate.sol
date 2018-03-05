@@ -33,11 +33,7 @@ contract WrapConversionRate is WrapperBase {
         addTokenDataIndex = addDataInstance();
         tokenInfoDataIndex = addDataInstance();
     }
-
-    function getWrappedContract() public view returns (ConversionRatesInterface _conversionRates) {
-        _conversionRates = conversionRates;
-    }
-
+    
     // add token functions
     //////////////////////
     function setAddTokenData(ERC20 token, uint minimalRecordResolution, uint maxPerBlockImbalance, uint maxTotalImbalance) public onlyOperator {
