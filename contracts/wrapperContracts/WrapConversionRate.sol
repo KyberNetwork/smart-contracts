@@ -2,14 +2,13 @@ pragma solidity 0.4.18;
 
 
 import "../ERC20Interface.sol";
-import "../Withdrawable.sol";
-import "../ConversionRatesInterface.sol";
+import "../ConversionRates.sol";
 import "./WrapperBase.sol";
 
 
 contract WrapConversionRate is WrapperBase {
 
-    ConversionRatesInterface conversionRates;
+    ConversionRates conversionRates;
 
     //add token parameters
     ERC20     addTokenToken;
@@ -25,7 +24,7 @@ contract WrapConversionRate is WrapperBase {
     uint        tokenInfoDataIndex;
 
     //general functions
-    function WrapConversionRate(ConversionRatesInterface _conversionRates, address _admin) public
+    function WrapConversionRate(ConversionRates _conversionRates, address _admin) public
         WrapperBase(PermissionGroups(address(_conversionRates)), _admin)
     {
         require (_conversionRates != address(0));
@@ -33,7 +32,7 @@ contract WrapConversionRate is WrapperBase {
         addTokenDataIndex = addDataInstance();
         tokenInfoDataIndex = addDataInstance();
     }
-    
+
     // add token functions
     //////////////////////
     function setAddTokenData(ERC20 token, uint minimalRecordResolution, uint maxPerBlockImbalance, uint maxTotalImbalance) public onlyOperator {
@@ -50,7 +49,7 @@ contract WrapConversionRate is WrapperBase {
         addTokenMaxTotalImbalance = maxTotalImbalance;
     }
 
-    function signToApproveAddTokenData(uint nonce) public onlyOperator {
+    function approveAddTokenData(uint nonce) public onlyOperator {
         if(addSignature(addTokenDataIndex, nonce, msg.sender)) {
             // can perform operation.
             performAddToken();
@@ -116,7 +115,7 @@ contract WrapConversionRate is WrapperBase {
         tokenInfoMaxTotalImbalance = maxTotalImbalanceValues;
     }
 
-    function signToApproveTokenControlInfo(uint nonce) public onlyOperator {
+    function approveTokenControlInfo(uint nonce) public onlyOperator {
         if(addSignature(tokenInfoDataIndex, nonce, msg.sender)) {
             // can perform operation.
             performSetTokenControlInfo();
@@ -154,18 +153,6 @@ contract WrapConversionRate is WrapperBase {
     function getTokenInfoData() public view returns(ERC20[], uint[], uint[]) {
         return(tokenInfoTokenList, tokenInfoPerBlockImbalance, tokenInfoMaxTotalImbalance);
     }
-
-//    function getTokenInfoTokenList() public view returns(ERC20[] tokens) {
-//        return(tokenInfoTokenList);
-//    }
-//
-//    function getTokenInfoMaxPerBlockImbalanceList() public view returns(uint[] maxPerBlockImbalanceValues) {
-//        return (tokenInfoPerBlockImbalance);
-//    }
-//
-//    function getTokenInfoMaxTotalImbalanceList() public view returns(uint[] maxTotalImbalanceValues) {
-//        return(tokenInfoMaxTotalImbalance);
-//    }
 
     function getTokenInfoSignatures() public view returns (address[] signatures) {
         uint nonce;

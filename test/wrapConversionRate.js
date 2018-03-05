@@ -91,9 +91,9 @@ contract('ConversionRates', function(accounts) {
         let rxNonce = await wrapConvRateInst.getAddTokenNonce();
         let nonce = rxNonce.valueOf();
 
-        await wrapConvRateInst.signToApproveAddTokenData(nonce, {from:operator1});
-        await wrapConvRateInst.signToApproveAddTokenData(nonce, {from:operator2});
-        await wrapConvRateInst.signToApproveAddTokenData(nonce, {from:operator3});
+        await wrapConvRateInst.approveAddTokenData(nonce, {from:operator1});
+        await wrapConvRateInst.approveAddTokenData(nonce, {from:operator2});
+        await wrapConvRateInst.approveAddTokenData(nonce, {from:operator3});
 
         let tokenInfo = await convRatesInst.getTokenControlInfo(token.address);
 
@@ -129,24 +129,14 @@ contract('ConversionRates', function(accounts) {
         assert.equal(tokenInfoPending[2].valueOf()[0], maxTotalList[0]);
         assert.equal(tokenInfoPending[2].valueOf()[1], maxTotalList[1]);
 
-        //try other getters
-//        let tokenInfoPerBlock = await wrapConvRateInst.getTokenInfoMaxPerBlockImbalanceList();
-//        assert.equal(tokenInfoPerBlock[0].valueOf(), maxPerBlockList[0]);
-//        assert.equal(tokenInfoPerBlock[1].valueOf(), maxPerBlockList[1]);
-//
-//        let tokenInfoMaxTotal = await wrapConvRateInst.getTokenInfoMaxTotalImbalanceList();
-//        assert.equal(tokenInfoMaxTotal[0].valueOf(), maxTotalList[0]);
-//        assert.equal(tokenInfoMaxTotal[1].valueOf(), maxTotalList[1]);
-
-        //
         let rxNonce = await wrapConvRateInst.getTokenInfoNonce();
         let nonce = rxNonce.valueOf();
         assert.equal(nonce, tokenInfoNonce);
 
         //approve
-        await wrapConvRateInst.signToApproveTokenControlInfo(nonce, {from: operator1});
-        await wrapConvRateInst.signToApproveTokenControlInfo(nonce, {from: operator2});
-        await wrapConvRateInst.signToApproveTokenControlInfo(nonce, {from: operator3});
+        await wrapConvRateInst.approveTokenControlInfo(nonce, {from: operator1});
+        await wrapConvRateInst.approveTokenControlInfo(nonce, {from: operator2});
+        await wrapConvRateInst.approveTokenControlInfo(nonce, {from: operator3});
 
         //get token info, see updated
         tokenInfo = await convRatesInst.getTokenControlInfo(tokens[0]);
@@ -194,8 +184,8 @@ contract('ConversionRates', function(accounts) {
         assert.equal(addData[3].valueOf(), maxTotal);
 
         //verify tracking data
-        await wrapConvRateInst.signToApproveAddTokenData(addTokenNonce, {from:operator1});
-        await wrapConvRateInst.signToApproveAddTokenData(addTokenNonce, {from:operator2});
+        await wrapConvRateInst.approveAddTokenData(addTokenNonce, {from:operator1});
+        await wrapConvRateInst.approveAddTokenData(addTokenNonce, {from:operator2});
 
         let rxNonce = await wrapConvRateInst.getAddTokenNonce();
         let rxSignatures = await wrapConvRateInst.getAddTokenSignatures();
@@ -213,9 +203,9 @@ contract('ConversionRates', function(accounts) {
         assert.equal(rxNonce.valueOf(), addTokenNonce);
         assert.equal(rxSignatures.length, 0);
 
-        await wrapConvRateInst.signToApproveAddTokenData(addTokenNonce, {from:operator1});
-        await wrapConvRateInst.signToApproveAddTokenData(addTokenNonce, {from:operator2});
-        await wrapConvRateInst.signToApproveAddTokenData(addTokenNonce, {from:operator3});
+        await wrapConvRateInst.approveAddTokenData(addTokenNonce, {from:operator1});
+        await wrapConvRateInst.approveAddTokenData(addTokenNonce, {from:operator2});
+        await wrapConvRateInst.approveAddTokenData(addTokenNonce, {from:operator3});
 
         let tokenInfo = await convRatesInst.getTokenControlInfo(token.address);
 
@@ -243,7 +233,4 @@ contract('ConversionRates', function(accounts) {
         ratesAdmin = await convRatesInst.admin();
         assert.equal(wrapConvRateInst.address, ratesAdmin.valueOf());
     });
-
-
-
 });
