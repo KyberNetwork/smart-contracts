@@ -233,4 +233,85 @@ contract('ConversionRates', function(accounts) {
         ratesAdmin = await convRatesInst.admin();
         assert.equal(wrapConvRateInst.address, ratesAdmin.valueOf());
     });
+
+    it("should test only operator can call set and approve function.", async function() {
+        try {
+            await wrapConvRateInst.setAddTokenData(accounts[9], minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance, {from: admin});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        let maxPerBlockList = [maxPerBlockImbWrap, maxTotalImbWrap];
+        let maxTotalList = [maxTotalImbWrap, maxTotalImbWrap];
+
+        try {
+            await wrapConvRateInst.setTokenInfoData(tokens, maxPerBlockList, maxTotalList, {from: admin});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        let rxNonce = await wrapConvRateInst.getAddTokenNonce();
+
+        try {
+            await wrapConvRateInst.approveAddTokenData(rxNonce, {from:operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        rxNonce = await wrapConvRateInst.getTokenInfoNonce();
+
+        try {
+            await wrapConvRateInst.approveAddTokenData(rxNonce, {from:admin});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should test each operator can approve only once per new data that was set.", async function() {
+         //prepare new values for tokens
+        let maxPerBlockList = [maxPerBlockImbWrap, maxTotalImbWrap];
+        let maxTotalList = [maxTotalImbWrap, maxTotalImbWrap];
+
+        await wrapConvRateInst.setTokenInfoData(tokens, maxPerBlockList, maxTotalList, {from: operator1});
+        tokenInfoNonce++;
+
+        //approve
+        await wrapConvRateInst.approveTokenControlInfo(tokenInfoNonce, {from: operator1});
+        try {
+            await wrapConvRateInst.approveTokenControlInfo(tokenInfoNonce, {from: operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //new token
+        token = await TestToken.new("test9", "tst9", 18);
+
+        //prepare add token data
+        let minResolution = 6;
+        let maxPerBlock = 200;
+        let maxTotal = 400;
+
+        await wrapConvRateInst.setAddTokenData(token.address, minResolution, maxPerBlock, maxTotal, {from: operator1});
+        addTokenNonce++;
+
+        //approve
+        await wrapConvRateInst.approveAddTokenData(addTokenNonce, {from:operator1});
+        try {
+            await wrapConvRateInst.approveAddTokenData(addTokenNonce, {from:operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
 });
