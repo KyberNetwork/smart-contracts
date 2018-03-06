@@ -1,4 +1,3 @@
-//let ConversionRates = artifacts.require("./ConversionRates.sol");
 let ConversionRates = artifacts.require("./mockContracts/MockConversionRate.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 let WrapConversionRate = artifacts.require("./wrapperContracts/WrapConversionRate.sol");
@@ -17,7 +16,6 @@ let maxTotalImbWrap = 2000;
 
 let admin;
 let alerter;
-let wrapper;
 let numTokens = 2;
 let tokens = [];
 let operator1;
@@ -32,7 +30,7 @@ let wrapConvRateInst;
 let addTokenNonce = 0;
 let tokenInfoNonce = 0;
 
-contract('ConversionRates', function(accounts) {
+contract('WrapConversionRates', function(accounts) {
     it("should init ConversionRates Inst and set general parameters.", async function () {
         admin = accounts[0];
         alerter = accounts[1];
