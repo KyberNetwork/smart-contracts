@@ -23,6 +23,10 @@ contract WrapConversionRate is WrapperBase {
     uint[]      tokenInfoMaxTotalImbalance;
     uint        tokenInfoDataIndex;
 
+    //valid duration
+    uint public pendingValidDurationBlocks;
+    uint        validDurationIndex;
+
     //general functions
     function WrapConversionRate(ConversionRates _conversionRates, address _admin) public
         WrapperBase(PermissionGroups(address(_conversionRates)), _admin)
@@ -31,6 +35,7 @@ contract WrapConversionRate is WrapperBase {
         conversionRates = _conversionRates;
         addTokenDataIndex = addDataInstance();
         tokenInfoDataIndex = addDataInstance();
+        validDurationIndex = addDataInstance();
     }
 
     // add token functions
@@ -164,6 +169,36 @@ contract WrapConversionRate is WrapperBase {
         address[] memory signatures;
         (signatures, nonce) = getDataTrackingParameters(tokenInfoDataIndex);
         return nonce;
+    }
+
+    //valid duration blocks
+    ///////////////////////
+    function setValidDurationData(uint validDurationBlocks) public onlyOperator {
+        require(validDurationBlocks > 5);
+
+        //update data tracking
+        setNewData(validDurationIndex);
+
+        pendingValidDurationBlocks = validDurationBlocks;
+    }
+
+    function approveValidDurationData(uint nonce) public onlyOperator {
+        if(addSignature(validDurationIndex, nonce, msg.sender)) {
+            // can perform operation.
+            conversionRates.setValidRateDurationInBlocks(pendingValidDurationBlocks);
+        }
+    }
+
+    function getValidDurationSignatures() public view returns (address[] signatures) {
+        uint nonce;
+        (signatures, nonce) = getDataTrackingParameters(validDurationIndex);
+        return(signatures);
+    }
+
+    function getValidDurationNonce() public view returns (uint nonce) {
+        address[] memory signatures;
+        (signatures, nonce) = getDataTrackingParameters(validDurationIndex);
+        return(nonce);
     }
 }
 

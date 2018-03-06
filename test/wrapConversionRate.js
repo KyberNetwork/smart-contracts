@@ -22,13 +22,14 @@ let operator1;
 let operator2;
 let operator3;
 let reserveAddress;
-let validRateDurationInBlocks = 1000;
+let validRateDurationInBlocks = 60;
 
 let convRatesInst;
 let wrapConvRateInst;
 
 let addTokenNonce = 0;
 let tokenInfoNonce = 0;
+let validDurationNonce = 0;
 
 contract('WrapConversionRates', function(accounts) {
     it("should init ConversionRates Inst and set general parameters.", async function () {
@@ -98,6 +99,26 @@ contract('WrapConversionRates', function(accounts) {
         assert.equal(tokenInfo[0].valueOf(), minRecordResWrap);
         assert.equal(tokenInfo[1].valueOf(), maxPerBlockImbWrap);
         assert.equal(tokenInfo[2].valueOf(), maxTotalImbWrap);
+    });
+
+    it("should test set valid duration in blocks and verify data with get data", async function () {
+        await wrapConvRateInst.setValidDurationData(validRateDurationInBlocks, {from: operator1});
+        validDurationNonce++;
+
+        let rxValidDuration = await wrapConvRateInst.pendingValidDurationBlocks();
+        assert.equal(rxValidDuration.valueOf(), validRateDurationInBlocks);
+
+        let rxNonce = await wrapConvRateInst.getValidDurationNonce();
+        assert.equal(rxNonce, validDurationNonce);
+        let nonce = rxNonce.valueOf();
+
+        await wrapConvRateInst.approveValidDurationData(nonce, {from:operator1});
+        await wrapConvRateInst.approveValidDurationData(nonce, {from:operator2});
+        await wrapConvRateInst.approveValidDurationData(nonce, {from:operator3});
+
+        rxValidDuration = await convRatesInst.validRateDurationInBlocks();
+
+        assert.equal(rxValidDuration.valueOf(), validRateDurationInBlocks);
     });
 
     it("should test update token control info using wrapper. And getting info before update", async function () {
@@ -233,19 +254,9 @@ contract('WrapConversionRates', function(accounts) {
     });
 
     it("should test only operator can call set and approve function.", async function() {
+        //add token data
         try {
             await wrapConvRateInst.setAddTokenData(accounts[9], minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance, {from: admin});
-            assert(false, "throw was expected in line above.")
-        }
-        catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        let maxPerBlockList = [maxPerBlockImbWrap, maxTotalImbWrap];
-        let maxTotalList = [maxTotalImbWrap, maxTotalImbWrap];
-
-        try {
-            await wrapConvRateInst.setTokenInfoData(tokens, maxPerBlockList, maxTotalList, {from: admin});
             assert(false, "throw was expected in line above.")
         }
         catch(e){
@@ -262,10 +273,39 @@ contract('WrapConversionRates', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
+        //token info data
+        let maxPerBlockList = [maxPerBlockImbWrap, maxTotalImbWrap];
+        let maxTotalList = [maxTotalImbWrap, maxTotalImbWrap];
+
+        try {
+            await wrapConvRateInst.setTokenInfoData(tokens, maxPerBlockList, maxTotalList, {from: admin});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
         rxNonce = await wrapConvRateInst.getTokenInfoNonce();
 
         try {
-            await wrapConvRateInst.approveAddTokenData(rxNonce, {from:admin});
+            await wrapConvRateInst.approveTokenControlInfo(rxNonce, {from:admin});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //valid duration
+        try {
+            await wrapConvRateInst.setValidDurationData(rxNonce, {from:admin});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await wrapConvRateInst.approveValidDurationData(rxNonce, {from:admin});
             assert(false, "throw was expected in line above.")
         }
         catch(e){
