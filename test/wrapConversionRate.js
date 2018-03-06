@@ -65,11 +65,11 @@ contract('WrapConversionRates', function(accounts) {
         await wrapConvRateInst.addOperator(operator1);
         await wrapConvRateInst.addOperator(operator2);
         await wrapConvRateInst.addOperator(operator3);
-        await convRatesInst.addOperator(wrapConvRateInst.address);
 
         //transfer admin to wrapper
         await convRatesInst.transferAdmin(wrapConvRateInst.address);
         await wrapConvRateInst.claimWrappedContractAdmin();
+        await wrapConvRateInst.addWrapperAsOperatorConversionRate({from: operator1});
     });
 
     it("should test add token using wrapper. and verify data with get data", async function () {

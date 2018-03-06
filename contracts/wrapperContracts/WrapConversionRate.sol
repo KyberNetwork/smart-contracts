@@ -38,6 +38,10 @@ contract WrapConversionRate is WrapperBase {
         validDurationIndex = addDataInstance();
     }
 
+    function addWrapperAsOperatorConversionRate() public onlyOperator {
+        conversionRates.addOperator(this);
+    }
+
     // add token functions
     //////////////////////
     function setAddTokenData(ERC20 token, uint minimalRecordResolution, uint maxPerBlockImbalance, uint maxTotalImbalance) public onlyOperator {
