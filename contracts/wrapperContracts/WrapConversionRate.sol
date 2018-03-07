@@ -28,10 +28,11 @@ contract WrapConversionRate is WrapperBase {
     uint constant addTokenDataIndex = 0;
     uint constant tokenInfoDataIndex = 1;
     uint constant validDurationIndex = 2;
+    uint constant numDataInstances = 3;
 
     //general functions
     function WrapConversionRate(ConversionRates _conversionRates, address _admin) public
-        WrapperBase(PermissionGroups(address(_conversionRates)), _admin, 3)
+        WrapperBase(PermissionGroups(address(_conversionRates)), _admin, numDataInstances)
     {
         require (_conversionRates != address(0));
         conversionRates = _conversionRates;
