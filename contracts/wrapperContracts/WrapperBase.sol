@@ -9,7 +9,6 @@ import "../PermissionGroups.sol";
 contract WrapperBase is Withdrawable {
 
     PermissionGroups wrappedContract;
-    uint numDataInstances;
 
     struct DataTracker {
         address [] approveSignatureArray;
@@ -23,8 +22,8 @@ contract WrapperBase is Withdrawable {
         require(_admin != address(0));
         wrappedContract = _wrappedContract;
         admin = _admin;
-        numDataInstances = _numDataInstances;
-        for (uint i = 0; i < numDataInstances; i++){
+
+        for (uint i = 0; i < _numDataInstances; i++){
             addDataInstance();
         }
     }
