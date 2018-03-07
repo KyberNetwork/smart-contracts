@@ -103,12 +103,6 @@ contract WrapConversionRate is WrapperBase {
         return(signatures);
     }
 
-    function getAddTokenNonce() public view returns (uint nonce) {
-        address[] memory signatures;
-        (signatures, nonce) = getDataTrackingParameters(addTokenDataIndex);
-        return(nonce);
-    }
-
     //set token control info
     ////////////////////////
     function setTokenInfoData(ERC20 [] tokens, uint[] maxPerBlockImbalanceValues, uint[] maxTotalImbalanceValues)
@@ -159,7 +153,9 @@ contract WrapConversionRate is WrapperBase {
         return(tokenInfoTokenList[index], tokenInfoPerBlockImbalance[index], tokenInfoMaxTotalImbalance[index]);
     }
 
-
+    function getTokenInfoNumToknes() public view returns(uint numSetTokens) {
+        return tokenInfoTokenList.length;
+    }
 
     function getTokenInfoData() public view returns(uint nonce, uint numSetTokens, ERC20[] tokenAddress, uint[] maxPerBlock, uint[] maxTotal) {
         (, nonce) = getDataTrackingParameters(tokenInfoDataIndex);
@@ -205,12 +201,6 @@ contract WrapConversionRate is WrapperBase {
         uint nonce;
         (signatures, nonce) = getDataTrackingParameters(validDurationIndex);
         return(signatures);
-    }
-
-    function getValidDurationNonce() public view returns (uint nonce) {
-        address[] memory signatures;
-        (signatures, nonce) = getDataTrackingParameters(validDurationIndex);
-        return(nonce);
     }
 }
 
