@@ -77,7 +77,7 @@ in case big changes in market price happens before the confirmation of the trans
 A value of `1` will execute the trade according to market price in the time
 of the transaction confirmation.
 7. `walletId`: the id of the service provider. Should be determined along with
-kyber network.
+kyber network. If you are not sure what to put here, just put `0`.
 
 
 ## User eligibility
