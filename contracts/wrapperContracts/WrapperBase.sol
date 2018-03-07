@@ -9,6 +9,7 @@ import "../PermissionGroups.sol";
 contract WrapperBase is Withdrawable {
 
     PermissionGroups wrappedContract;
+    uint numDataInstances;
 
     struct DataTracker {
         address [] approveSignatureArray;
@@ -17,14 +18,18 @@ contract WrapperBase is Withdrawable {
 
     DataTracker[] internal dataInstances;
 
-    function WrapperBase(PermissionGroups _wrappedContract, address _admin) public {
+    function WrapperBase(PermissionGroups _wrappedContract, address _admin, uint _numDataInstances) public {
         require(_wrappedContract != address(0));
         require(_admin != address(0));
         wrappedContract = _wrappedContract;
         admin = _admin;
+        numDataInstances = _numDataInstances;
+        for (uint i = 0; i < numDataInstances; i++){
+            addDataInstance();
+        }
     }
 
-    function claimWrappedContractAdmin() public onlyAdmin {
+    function claimWrappedContractAdmin() public onlyOperator {
         wrappedContract.claimAdmin();
     }
 
@@ -32,10 +37,9 @@ contract WrapperBase is Withdrawable {
         wrappedContract.transferAdmin(newAdmin);
     }
 
-    function addDataInstance() internal returns (uint) {
+    function addDataInstance() internal {
         address[] memory add = new address[](0);
         dataInstances.push(DataTracker(add, 0));
-        return(dataInstances.length - 1);
     }
 
     function setNewData(uint dataIndex) internal {

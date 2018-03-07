@@ -15,31 +15,26 @@ contract WrapConversionRate is WrapperBase {
     uint      addTokenMinimalResolution; // can be roughly 1 cent
     uint      addTokenMaxPerBlockImbalance; // in twei resolution
     uint      addTokenMaxTotalImbalance;
-    uint      addTokenDataIndex;
 
     //set token control info parameters.
     ERC20[]     tokenInfoTokenList;
     uint[]      tokenInfoPerBlockImbalance; // in twei resolution
     uint[]      tokenInfoMaxTotalImbalance;
-    uint        tokenInfoDataIndex;
 
     //valid duration
-    uint public pendingValidDurationBlocks;
-    uint        validDurationIndex;
+    uint pendingValidDurationBlocks;
+
+    //data indexes
+    uint constant addTokenDataIndex = 0;
+    uint constant tokenInfoDataIndex = 1;
+    uint constant validDurationIndex = 2;
 
     //general functions
     function WrapConversionRate(ConversionRates _conversionRates, address _admin) public
-        WrapperBase(PermissionGroups(address(_conversionRates)), _admin)
+        WrapperBase(PermissionGroups(address(_conversionRates)), _admin, 3)
     {
         require (_conversionRates != address(0));
         conversionRates = _conversionRates;
-        addTokenDataIndex = addDataInstance();
-        tokenInfoDataIndex = addDataInstance();
-        validDurationIndex = addDataInstance();
-    }
-
-    function addWrapperAsOperatorConversionRate() public onlyOperator {
-        conversionRates.addOperator(this);
     }
 
     // add token functions
@@ -68,6 +63,8 @@ contract WrapConversionRate is WrapperBase {
     function performAddToken() internal {
         conversionRates.addToken(addTokenToken);
 
+        conversionRates.addOperator(this);
+
         //token control info
         conversionRates.setTokenControlInfo(
             addTokenToken,
@@ -84,15 +81,19 @@ contract WrapConversionRate is WrapperBase {
         conversionRates.setImbalanceStepFunction(addTokenToken, zeroArr, zeroArr, zeroArr, zeroArr);
 
         conversionRates.enableTokenTrade(addTokenToken);
+
+        conversionRates.removeOperator(this);
     }
 
     function getAddTokenParameters() public view
-        returns(ERC20 token, uint minimalRecordResolution, uint maxPerBlockImbalance, uint maxTotalImbalance)
+        returns(uint nonce, ERC20 token, uint minimalRecordResolution, uint maxPerBlockImbalance, uint maxTotalImbalance)
     {
+        (, nonce) = getDataTrackingParameters(addTokenDataIndex);
         token = addTokenToken;
         minimalRecordResolution = addTokenMinimalResolution;
         maxPerBlockImbalance = addTokenMaxPerBlockImbalance; // in twei resolution
         maxTotalImbalance = addTokenMaxTotalImbalance;
+        return(nonce, token, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
     }
 
     function getAddTokenSignatures() public view returns (address[] signatures) {
@@ -136,11 +137,9 @@ contract WrapConversionRate is WrapperBase {
         require(tokenInfoTokenList.length == tokenInfoMaxTotalImbalance.length);
 
         uint minimalRecordResolution;
-        uint rxMaxPerBlockImbalance;
-        uint rxMaxTotalImbalance;
 
         for (uint i = 0; i < tokenInfoTokenList.length; i++) {
-            (minimalRecordResolution, rxMaxPerBlockImbalance, rxMaxTotalImbalance) =
+            (minimalRecordResolution, , ) =
                 conversionRates.getTokenControlInfo(tokenInfoTokenList[i]);
             require(minimalRecordResolution != 0);
 
@@ -159,8 +158,11 @@ contract WrapConversionRate is WrapperBase {
         return(tokenInfoTokenList[index], tokenInfoPerBlockImbalance[index], tokenInfoMaxTotalImbalance[index]);
     }
 
-    function getTokenInfoData() public view returns(ERC20[], uint[], uint[]) {
-        return(tokenInfoTokenList, tokenInfoPerBlockImbalance, tokenInfoMaxTotalImbalance);
+
+
+    function getTokenInfoData() public view returns(uint nonce, uint numSetTokens, ERC20[] tokenAddress, uint[] maxPerBlock, uint[] maxTotal) {
+        (, nonce) = getDataTrackingParameters(tokenInfoDataIndex);
+        return(nonce, tokenInfoTokenList.length, tokenInfoTokenList, tokenInfoPerBlockImbalance, tokenInfoMaxTotalImbalance);
     }
 
     function getTokenInfoSignatures() public view returns (address[] signatures) {
@@ -191,6 +193,11 @@ contract WrapConversionRate is WrapperBase {
             // can perform operation.
             conversionRates.setValidRateDurationInBlocks(pendingValidDurationBlocks);
         }
+    }
+
+    function getValidDurationBlocksData() public view returns(uint validDuration, uint nonce) {
+        (, nonce) = getDataTrackingParameters(validDurationIndex);
+        return(nonce, pendingValidDurationBlocks);
     }
 
     function getValidDurationSignatures() public view returns (address[] signatures) {

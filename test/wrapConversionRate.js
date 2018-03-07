@@ -68,8 +68,7 @@ contract('WrapConversionRates', function(accounts) {
 
         //transfer admin to wrapper
         await convRatesInst.transferAdmin(wrapConvRateInst.address);
-        await wrapConvRateInst.claimWrappedContractAdmin();
-        await wrapConvRateInst.addWrapperAsOperatorConversionRate({from: operator1});
+        await wrapConvRateInst.claimWrappedContractAdmin({from: operator1});
     });
 
     it("should test add token using wrapper. and verify data with get data", async function () {
@@ -81,10 +80,11 @@ contract('WrapConversionRates', function(accounts) {
         addTokenNonce++;
 
         let addData = await wrapConvRateInst.getAddTokenParameters();
-        assert.equal(addData[0].valueOf(), token.address);
-        assert.equal(addData[1].valueOf(), minRecordResWrap);
-        assert.equal(addData[2].valueOf(), maxPerBlockImbWrap);
-        assert.equal(addData[3].valueOf(), maxTotalImbWrap);
+        assert.equal(addData[0].valueOf(), addTokenNonce);
+        assert.equal(addData[1].valueOf(), token.address);
+        assert.equal(addData[2].valueOf(), minRecordResWrap);
+        assert.equal(addData[3].valueOf(), maxPerBlockImbWrap);
+        assert.equal(addData[4].valueOf(), maxTotalImbWrap);
 
 
         let rxNonce = await wrapConvRateInst.getAddTokenNonce();
@@ -105,8 +105,9 @@ contract('WrapConversionRates', function(accounts) {
         await wrapConvRateInst.setValidDurationData(validRateDurationInBlocks, {from: operator1});
         validDurationNonce++;
 
-        let rxValidDuration = await wrapConvRateInst.pendingValidDurationBlocks();
-        assert.equal(rxValidDuration.valueOf(), validRateDurationInBlocks);
+        let validDurationInfo = await wrapConvRateInst.getValidDurationBlocksData();
+        assert.equal(validDurationInfo[0].valueOf(), validDurationNonce);
+        assert.equal(validDurationInfo[1].valueOf(), validRateDurationInBlocks);
 
         let rxNonce = await wrapConvRateInst.getValidDurationNonce();
         assert.equal(rxNonce, validDurationNonce);
@@ -142,11 +143,13 @@ contract('WrapConversionRates', function(accounts) {
 
         //verify token info before setting
         let tokenInfoPending = await wrapConvRateInst.getTokenInfoData();
-        assert.deepEqual(tokenInfoPending[0].valueOf(), tokens);
-        assert.equal(tokenInfoPending[1].valueOf()[0], maxPerBlockList[0]);
-        assert.equal(tokenInfoPending[1].valueOf()[1], maxPerBlockList[1]);
-        assert.equal(tokenInfoPending[2].valueOf()[0], maxTotalList[0]);
-        assert.equal(tokenInfoPending[2].valueOf()[1], maxTotalList[1]);
+        assert.equal(tokenInfoPending[0].valueOf(), tokenInfoNonce);
+        assert.equal(tokenInfoPending[1].valueOf(), tokens.length);
+        assert.deepEqual(tokenInfoPending[2].valueOf(), tokens);
+        assert.equal(tokenInfoPending[3].valueOf()[0], maxPerBlockList[0]);
+        assert.equal(tokenInfoPending[3].valueOf()[1], maxPerBlockList[1]);
+        assert.equal(tokenInfoPending[4].valueOf()[0], maxTotalList[0]);
+        assert.equal(tokenInfoPending[4].valueOf()[1], maxTotalList[1]);
 
         let rxNonce = await wrapConvRateInst.getTokenInfoNonce();
         let nonce = rxNonce.valueOf();
@@ -178,7 +181,7 @@ contract('WrapConversionRates', function(accounts) {
 
         //transfer admin to wrapper
         await convRatesInst.transferAdmin(wrapConvRateInst.address);
-        await wrapConvRateInst.claimWrappedContractAdmin();
+        await wrapConvRateInst.claimWrappedContractAdmin({from: operator1});
 
         ratesAdmin = await convRatesInst.admin();
         assert.equal(wrapConvRateInst.address, ratesAdmin.valueOf());
@@ -197,10 +200,11 @@ contract('WrapConversionRates', function(accounts) {
         addTokenNonce++;
 
         let addData = await wrapConvRateInst.getAddTokenParameters();
-        assert.equal(addData[0].valueOf(), token.address);
-        assert.equal(addData[1].valueOf(), minResolution);
-        assert.equal(addData[2].valueOf(), maxPerBlock);
-        assert.equal(addData[3].valueOf(), maxTotal);
+        assert.equal(addData[0].valueOf(), addTokenNonce);
+        assert.equal(addData[1].valueOf(), token.address);
+        assert.equal(addData[2].valueOf(), minResolution);
+        assert.equal(addData[3].valueOf(), maxPerBlock);
+        assert.equal(addData[4].valueOf(), maxTotal);
 
         //verify tracking data
         await wrapConvRateInst.approveAddTokenData(addTokenNonce, {from:operator1});
@@ -238,7 +242,6 @@ contract('WrapConversionRates', function(accounts) {
         let ratesAdmin = await convRatesInst.admin();
         assert.equal(wrapConvRateInst.address, ratesAdmin.valueOf());
 
-
         await wrapConvRateInst.transferWrappedContractAdmin(admin);
         await convRatesInst.claimAdmin({from: admin});
 
@@ -247,7 +250,7 @@ contract('WrapConversionRates', function(accounts) {
 
         //transfer admin to wrapper
         await convRatesInst.transferAdmin(wrapConvRateInst.address);
-        await wrapConvRateInst.claimWrappedContractAdmin();
+        await wrapConvRateInst.claimWrappedContractAdmin({from: operator1});
 
         ratesAdmin = await convRatesInst.admin();
         assert.equal(wrapConvRateInst.address, ratesAdmin.valueOf());
