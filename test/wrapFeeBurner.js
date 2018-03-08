@@ -59,10 +59,6 @@ contract('WrapFeeBurner', function(accounts) {
         let balance = await kncToken.balanceOf(mockKNCWallet);
         assert.equal(balance.valueOf(), initialKNCWalletBalance, "unexpected wallet balance.");
         burnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork);
-//
-//        //set parameters in fee burner.
-//        await burnerInst.setKNCRate(kncPerEtherRate);
-//        await burnerInst.setReserveData(mockReserve, burnFeeInBPS, mockKNCWallet);
     });
 
     it("should init FeeBurner wrapper wrapper and set as fee burner admin.", async function () {
@@ -74,23 +70,21 @@ contract('WrapFeeBurner', function(accounts) {
 
         //transfer admin to wrapper
         await burnerInst.transferAdmin(wrapBurnerInst.address);
-        await wrapBurnerInst.claimWrappedContractAdmin();
+        await wrapBurnerInst.claimWrappedContractAdmin({from: operator1});
     });
 
     it("should test setting knc rate range ", async function () {
         await wrapBurnerInst.setPendingKNCRateRange(kncToEthMin, kncToEthMax, {from: operator1});
         kncRateRangeNonce++;
-        let rxNonce = await wrapBurnerInst.getKNCRateRangeNonce();
-        assert.equal(rxNonce, kncRateRangeNonce);
+        let rateRangeData = await wrapBurnerInst.getPendingKNCRateRange();
+        assert.equal(rateRangeData[2].valueOf(), kncRateRangeNonce);
 
         await wrapBurnerInst.setPendingKNCRateRange(kncToEthMin, kncToEthMax, {from: operator1});
         kncRateRangeNonce++;
-        rxNonce = await wrapBurnerInst.getKNCRateRangeNonce();
-        assert.equal(rxNonce, kncRateRangeNonce);
-
-        let pendingRates = await wrapBurnerInst.getPendingKNCRateRange();
-        assert.equal(pendingRates[0].valueOf(), kncToEthMin);
-        assert.equal(pendingRates[1].valueOf(), kncToEthMax);
+        rateRangeData = await wrapBurnerInst.getPendingKNCRateRange();
+        assert.equal(rateRangeData[2].valueOf(), kncRateRangeNonce);
+        assert.equal(rateRangeData[0].valueOf(), kncToEthMin);
+        assert.equal(rateRangeData[1].valueOf(), kncToEthMax);
 
         await wrapBurnerInst.approveKNCRateRange(kncRateRangeNonce, {from:operator1});
         await wrapBurnerInst.approveKNCRateRange(kncRateRangeNonce, {from:operator2});
@@ -111,39 +105,38 @@ contract('WrapFeeBurner', function(accounts) {
     it("should test setting knc rate and verify it has to be between min and max", async function () {
         await wrapBurnerInst.setKNCPerEthRate(kncToEthRate, {from: operator1});
 
-//        let rxKncEthRate = await burnerInst.kncPerETHRate();
-//        assert.equal(rxKncEthRate.valueOf(), kncToEthRate);
-//
-//        //rate range
-//        try {
-//            await wrapBurnerInst.setKNCPerEthRate(kncToEthMin - 1, {from: operator1});
-//            assert(false, "throw was expected in line above.")
-//        }
-//        catch(e){
-//            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-//        }
-//
-//        try {
-//            await wrapBurnerInst.setKNCPerEthRate(kncToEthMin * 1 + 1, {from: operator1});
-//            assert(false, "throw was expected in line above.")
-//        }
-//        catch(e){
-//            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-//        }
+        let rxKncEthRate = await burnerInst.kncPerETHRate();
+        assert.equal(rxKncEthRate.valueOf(), kncToEthRate);
+
+        //rate range
+        try {
+            await wrapBurnerInst.setKNCPerEthRate(kncToEthMin - 1, {from: operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await wrapBurnerInst.setKNCPerEthRate(kncToEthMax * 1 + 1, {from: operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
     });
 
     it("should test adding reserve with its related knc wallet and fees", async function () {
         await wrapBurnerInst.setPendingReserveData(mockReserve, reserveFeeBps, mockKNCWallet, {from: operator1});
         addReserveNonce++;
-        let rxNonce = await wrapBurnerInst.getAddReserveNonce();
-        assert.equal(rxNonce, addReserveNonce);
+        let pendingReserveData = await wrapBurnerInst.getPendingAddReserveData();
+        assert.equal(pendingReserveData[3].valueOf(), addReserveNonce);
 
         await wrapBurnerInst.setPendingReserveData(mockReserve, reserveFeeBps, mockKNCWallet, {from: operator1});
         addReserveNonce++;
-        rxNonce = await wrapBurnerInst.getAddReserveNonce();
-        assert.equal(rxNonce, addReserveNonce);
+        pendingReserveData = await wrapBurnerInst.getPendingAddReserveData();
+        assert.equal(pendingReserveData[3].valueOf(), addReserveNonce);
 
-        let pendingReserveData = await wrapBurnerInst.getPendingAddReserveData();
         assert.equal(pendingReserveData[0].valueOf(), mockReserve);
         assert.equal(pendingReserveData[1].valueOf(), reserveFeeBps);
         assert.equal(pendingReserveData[2].valueOf(), mockKNCWallet);
@@ -169,15 +162,14 @@ contract('WrapFeeBurner', function(accounts) {
     it("should test adding 3rd party wallet with fees", async function () {
         await wrapBurnerInst.setPendingWalletFee(mock3rdPartyWallet, mock3rdPartyWalletFeeBps, {from: operator1});
         otherWalletNonce++;
-        let rxNonce = await wrapBurnerInst.getWalletFeeNonce();
-        assert.equal(rxNonce.valueOf(), otherWalletNonce);
+        let pending3rdPartyWalletData = await wrapBurnerInst.getPendingWalletFeeData();
+        assert.equal(pending3rdPartyWalletData[2].valueOf(), otherWalletNonce);
 
         await wrapBurnerInst.setPendingWalletFee(mock3rdPartyWallet, mock3rdPartyWalletFeeBps, {from: operator1});
         otherWalletNonce++;
-        rxNonce = await wrapBurnerInst.getWalletFeeNonce();
-        assert.equal(rxNonce, otherWalletNonce);
+        pending3rdPartyWalletData = await wrapBurnerInst.getPendingWalletFeeData();
+        assert.equal(pending3rdPartyWalletData[2].valueOf(), otherWalletNonce);
 
-        let pending3rdPartyWalletData = await wrapBurnerInst.getPendingWalletFeeData();
         assert.equal(pending3rdPartyWalletData[0].valueOf(), mock3rdPartyWallet);
         assert.equal(pending3rdPartyWalletData[1].valueOf(), mock3rdPartyWalletFeeBps);
 
@@ -196,16 +188,15 @@ contract('WrapFeeBurner', function(accounts) {
     it("should test setting tax wallet and tax fees", async function () {
         await wrapBurnerInst.setPendingTaxParameters(taxWallet, taxFeeBps, {from: operator1});
         taxDataNonce++;
-        let rxNonce = await wrapBurnerInst.getTaxDataNonce();
-        assert.equal(rxNonce.valueOf(), taxDataNonce);
+        let pendingTaxData = await wrapBurnerInst.getPendingTaxData();
+        assert.equal(pendingTaxData[2].valueOf(), taxDataNonce);
 
         //verify nonce changed
         await wrapBurnerInst.setPendingTaxParameters(taxWallet, taxFeeBps, {from: operator1});
         taxDataNonce++;
-        rxNonce = await wrapBurnerInst.getTaxDataNonce();
-        assert.equal(rxNonce.valueOf(), taxDataNonce);
+        pendingTaxData = await wrapBurnerInst.getPendingTaxData();
+        assert.equal(pendingTaxData[2].valueOf(), taxDataNonce);
 
-        let pendingTaxData = await wrapBurnerInst.getPendingTaxData();
         assert.equal(pendingTaxData[0].valueOf(), taxWallet);
         assert.equal(pendingTaxData[1].valueOf(), taxFeeBps);
 

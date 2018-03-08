@@ -16,34 +16,33 @@ contract WrapFeeBurner is WrapperBase {
     uint kncPerEthMaxRate;
     uint kncPerEthPendingMinRate;
     uint kncPerEthPendingMaxRate;
-    uint kncRateRangeIndex;
-
+    
     //add reserve pending data
     address reserve;
     uint reserveFeeBps;
     address reserveKNCWallet;
-    uint addReserveIndex;
     
     //wallet fee parametrs
     address walletAddress;
     uint walletFeeBps;
-    uint walletFeeIndex;
-    
+
     //tax pending parameters
     address taxWallet;
     uint taxFeeBps;
-    uint taxDataIndex;
+
+    //data indexes
+    uint constant kncRateRangeIndex = 0;
+    uint constant addReserveIndex = 1;
+    uint constant walletFeeIndex = 2;
+    uint constant taxDataIndex = 3;
+    uint constant lastDataIndex = 4;
 
     //general functions
     function WrapFeeBurner(FeeBurner _feeBurner, address _admin) public
-        WrapperBase(PermissionGroups(address(_feeBurner)), _admin)
+        WrapperBase(PermissionGroups(address(_feeBurner)), _admin, lastDataIndex)
     {
         require (_feeBurner != address(0));
         feeBurnerContract = _feeBurner;
-        kncRateRangeIndex = addDataInstance();
-        addReserveIndex = addDataInstance();
-        walletFeeIndex = addDataInstance();
-        taxDataIndex = addDataInstance();
     }
 
     // knc rate handling
@@ -67,10 +66,12 @@ contract WrapFeeBurner is WrapperBase {
         }
     }
 
-    function getPendingKNCRateRange() public view returns(uint minRate, uint maxRate) {
+    function getPendingKNCRateRange() public view returns(uint minRate, uint maxRate, uint nonce) {
         minRate = kncPerEthPendingMinRate;
         maxRate = kncPerEthPendingMaxRate;
-        return(minRate, maxRate);
+        (, nonce) = getDataTrackingParameters(kncRateRangeIndex);
+
+        return(minRate, maxRate, nonce);
     }
 
     function getKNCRateRange() public view returns(uint minRate, uint maxRate) {
@@ -86,15 +87,8 @@ contract WrapFeeBurner is WrapperBase {
     }
 
     function getKNCRateRangeSignatures() public view returns (address[] signatures) {
-        uint nonce;
-        (signatures, nonce) = getDataTrackingParameters(kncRateRangeIndex);
+        (signatures,) = getDataTrackingParameters(kncRateRangeIndex);
         return(signatures);
-    }
-
-    function getKNCRateRangeNonce() public view returns (uint nonce) {
-        address[] memory signatures;
-        (signatures, nonce) = getDataTrackingParameters(kncRateRangeIndex);
-        return(nonce);
     }
 
     //set reserve data
@@ -113,20 +107,14 @@ contract WrapFeeBurner is WrapperBase {
         }
     }
 
-    function getPendingAddReserveData() public view returns(address _reserve, uint feeBps, address kncWallet) {
-        return(reserve, reserveFeeBps, reserveKNCWallet);
+    function getPendingAddReserveData() public view returns(address _reserve, uint feeBps, address kncWallet, uint nonce) {
+        (, nonce) = getDataTrackingParameters(addReserveIndex);
+        return(reserve, reserveFeeBps, reserveKNCWallet, nonce);
     }
 
     function getAddReserveSignatures() public view returns (address[] signatures) {
-        uint nonce;
-        (signatures, nonce) = getDataTrackingParameters(addReserveIndex);
+        (signatures, ) = getDataTrackingParameters(addReserveIndex);
         return(signatures);
-    }
-
-    function getAddReserveNonce() public view returns (uint nonce) {
-        address[] memory signatures;
-        (signatures, nonce) = getDataTrackingParameters(addReserveIndex);
-        return(nonce);
     }
 
     //wallet fee
@@ -144,20 +132,14 @@ contract WrapFeeBurner is WrapperBase {
         }
     }
 
-    function getPendingWalletFeeData() public view returns(address wallet, uint feeBps) {
-        return(walletAddress, walletFeeBps);
+    function getPendingWalletFeeData() public view returns(address wallet, uint feeBps, uint nonce) {
+        (, nonce) = getDataTrackingParameters(walletFeeIndex);
+        return(walletAddress, walletFeeBps, nonce);
     }
 
     function getWalletFeeSignatures() public view returns (address[] signatures) {
-        uint nonce;
-        (signatures, nonce) = getDataTrackingParameters(walletFeeIndex);
+        (signatures, ) = getDataTrackingParameters(walletFeeIndex);
         return(signatures);
-    }
-
-    function getWalletFeeNonce() public view returns (uint nonce) {
-        address[] memory signatures;
-        (signatures, nonce) = getDataTrackingParameters(walletFeeIndex);
-        return(nonce);
     }
 
     //tax parameters
@@ -176,20 +158,15 @@ contract WrapFeeBurner is WrapperBase {
         }
     }
 
-    function getPendingTaxData() public view returns(address wallet, uint feeBps) {
-        return(taxWallet, taxFeeBps);
+    function getPendingTaxData() public view returns(address wallet, uint feeBps, uint nonce) {
+        (, nonce) = getDataTrackingParameters(taxDataIndex);
+        return(taxWallet, taxFeeBps, nonce);
     }
 
     function getTaxDataSignatures() public view returns (address[] signatures) {
         uint nonce;
         (signatures, nonce) = getDataTrackingParameters(taxDataIndex);
         return(signatures);
-    }
-
-    function getTaxDataNonce() public view returns (uint nonce) {
-        address[] memory signatures;
-        (signatures, nonce) = getDataTrackingParameters(taxDataIndex);
-        return(nonce);
     }
 }
 
