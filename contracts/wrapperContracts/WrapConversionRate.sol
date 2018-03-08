@@ -145,12 +145,13 @@ contract WrapConversionRate is WrapperBase {
         }
     }
 
-    function getControlInfoPerToken (uint index) public view returns(ERC20 token, uint _maxPerBlockImbalance, uint _maxTotalImbalance) {
+    function getControlInfoPerToken (uint index) public view returns(ERC20 token, uint _maxPerBlockImbalance, uint _maxTotalImbalance, uint nonce) {
         require (tokenInfoTokenList.length > index);
         require (tokenInfoPerBlockImbalance.length > index);
         require (tokenInfoMaxTotalImbalance.length > index);
+        (, nonce) = getDataTrackingParameters(tokenInfoDataIndex);
 
-        return(tokenInfoTokenList[index], tokenInfoPerBlockImbalance[index], tokenInfoMaxTotalImbalance[index]);
+        return(tokenInfoTokenList[index], tokenInfoPerBlockImbalance[index], tokenInfoMaxTotalImbalance[index], nonce);
     }
 
     function getTokenInfoNumToknes() public view returns(uint numSetTokens) {
