@@ -30,6 +30,8 @@ var input = {
   "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
   "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
   "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
+  "WrapConversionRate.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapConversionRate.sol', 'utf8'),
+  "WrapperBase.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapperBase.sol', 'utf8')
 };
 
 let solcOutput;
@@ -91,6 +93,7 @@ let jsonTaxFeeBps;
 let jsonTaxWalletAddress;
 let jsonFeeBurnerAdd;
 let jsonRatesAdd;
+let jsonWrapConversionRate;
 let jsonReserveAdd;
 
 let kyberNetworkAdd = '0x0';
@@ -110,6 +113,7 @@ const printAdminETC = 1;
 const showStepFunctions = 1;
 const verifyWhitelistedAddresses = false;
 const saveSpyrosDict = false;
+const verifyTokenDataOnblockChain = false;
 const spyrosDictPath = './spyrosOutputfile.json';
 
 // code
@@ -581,7 +585,7 @@ async function readReserve(reserveAdd, index, isKyberReserve){
         myLog(0, 0, "Code on blockchain matches locally compiled code");
         myLog(0, 0, '');
     }
-    await printAdminAlertersOperators(Reserve, "KyberReserve");
+    if (isKyberReserve) await printAdminAlertersOperators(Reserve, "KyberReserve");
 
     //read addresses
     let enabled = await await Reserve.methods.tradeEnabled().call();
@@ -786,7 +790,15 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index, 
          myLog(0, 0, '');
     }
 
-    await printAdminAlertersOperators(Rate, "ConversionRates");
+    if (isKyberReserve && jsonWrapConversionRate != 0) {
+        //verify wrapper binary
+        let admin = await contract.methods.admin().call().toLowerCase();
+        myLog((admin != jsonWrapConversionRate), 0, "Admin is wrapper contract: " + (admin == jsonWrapConversionRate));
+        readConversionRateWrapper(jsonWrapConversionRate);
+    }
+
+    if(isKyberReserve) await printAdminAlertersOperators(Rate, "ConversionRates");
+
     let validRateDurationInBlocks = await Rate.methods.validRateDurationInBlocks().call();
     myLog((validRateDurationInBlocks != jsonValidDurationBlock), 0, ("validRateDurationInBlocks: " + validRateDurationInBlocks));
     let reserveContractAdd = (await Rate.methods.reserveContract().call()).toLowerCase();
@@ -801,14 +813,14 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index, 
 
     myLog(0, 0, "token list: " + tokNames);
 
-
     verifyTokenListMatchingDeployJSON(index, tokensPerReserve[index]);
 
     await validateReserveTokensListedOnNetwork(tokensPerReserve[index], reserveAddress);
 
     let numTokens = tokensPerReserve[index].length;
     if (isKyberReserve) SpyrosDict["kyber"] = {};
-	if  (!(isKyberReserve)) SpyrosDict["other" + index] = {};
+	else SpyrosDict["other" + index] = {};
+
     for (let i = 0; i < numTokens; i++) {
         await readTokenDataInConversionRate(conversionRateAddress, tokensPerReserve[index][i], index, isKyberReserve);
     }
@@ -839,7 +851,41 @@ async function verifyTokenListMatchingDeployJSON (reserveIndex, tokenList) {
     });
 };
 
-let showStepFuncMsg = 1;
+async function readConversionRateWrapper(convRateWrapperAddress) {
+    try {
+        let abi = solcOutput.contracts["WrapConversionRate.sol:WrapConversionRate"].interface;
+        wrapConversionRatesABI = JSON.parse(abi);
+    } catch (e) {
+        myLog(0, 0, e);
+        throw e;
+    }
+
+    let WrapConversionRateInst = await new web3.eth.Contract(wrapConversionRatesABI, convRateWrapperAddress);
+    Rate = ConversionRates[index];
+
+    myLog(0, 0, '');
+
+    myLog(0, 0, ("Conversion Rates wrapper address: " +  convRateWrapperAddress));
+    myLog(0, 0, ("--------------------------------------------------------------------"));
+
+
+    //verify binary as expected.
+    let blockCode = await web3.eth.getCode(convRateWrapperAddress);
+    let solcCode = '0x' + (solcOutput.contracts["WrapConversionRate.sol:WrapConversionRate"].runtimeBytecode);
+
+    if (blockCode != solcCode){
+//        myLog(1, 0, "blockchain Code:");
+//        myLog(0, 0, blockCode);
+        myLog(0, 0, '');
+        myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
+        myLog(0, 0, '')
+    } else {
+        myLog(0, 0, "Code on blockchain matches locally compiled code");
+         myLog(0, 0, '');
+    }
+}
+
+const showStepFuncMsg = 1;
 
 async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, reserveIndex, isKyberReserve) {
     let Rate = ConversionRates[reserveIndex];
@@ -919,7 +965,7 @@ async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, re
         SpyrosDict["kyber"][tokenName] = tokenDict;
     } else {
 		SpyrosDict["other" + reserveIndex][tokenName] = tokenDict;
-		}
+    }
 };
 
 async function getStepFunctionXYArr(tokenAdd, commandID, rateContract) {
@@ -990,7 +1036,8 @@ async function readSanityRate(sanityRateAddress, reserveAddress, index, tokens, 
         myLog(0, 0, '');
     }
 
-    await printAdminAlertersOperators(Sanity, "SanityRate");
+    if(isKyberReserve) await printAdminAlertersOperators(Sanity, "SanityRate");
+
     for (let i = 0; i < tokens.length; i++) {
         let rate = await Sanity.methods.tokenRate(tokens[i]).call();
         let diff = await Sanity.methods.reasonableDiffInBps(tokens[i]).call();
@@ -1143,9 +1190,12 @@ async function readDeploymentJSON(filePath) {
     //tokens
     myLog(0, 0, "reading tokens from local json");
 //    let tokenInfo = json["tokens"];
-    myLog(0, 0, '');
-    myLog(0, 0, "validate token data on block chain");
-    myLog(0, 0, "----------------------------------");
+    if (verifyTokenDataOnblockChain) {
+        myLog(0, 0, '');
+        myLog(0, 0, "validate token data on block chain");
+        myLog(0, 0, "----------------------------------");
+    }
+
     let tokenInfo = json["tokens"];
 
     for (let key in tokenInfo) {
@@ -1153,7 +1203,7 @@ async function readDeploymentJSON(filePath) {
         await jsonVerifyTokenData(tokenData, key);
     }
 
-    myLog(0, 0, "reading contract addresses");
+    myLog(0, 0, "json - reading contract addresses");
     address = (json["feeburner"]).toLowerCase();
     addressesToNames[address] = "feeBurner";
     jsonFeeBurnerAdd = address;
@@ -1161,6 +1211,15 @@ async function readDeploymentJSON(filePath) {
     address = (json["pricing"]).toLowerCase();
     addressesToNames[address] = "conversionRate";
     jsonRatesAdd = address;
+
+    try {
+        address = (json["pricing wrapper"]).toLowerCase();
+        addressesToNames[address] = "conversionRateWrapper";
+        jsonWrapConversionRate = address;
+    } catch(e) {
+        jsonWrapConversionRate = 0;
+    }
+
 
     address = (json["network"]).toLowerCase();
     addressesToNames[address] = "kyber-network";
@@ -1209,6 +1268,7 @@ async function readDeploymentJSON(filePath) {
         jsonTaxFeeBps = 2000;
         jsonTaxWalletAddress = 0x0;
     }
+
     jsonValidDurationBlock = json["valid duration block"];
     jsonTestersCat = deploymentJson["whitelist params"]["testers category"];
     jsonUsersCat = deploymentJson["whitelist params"]["users category"];
@@ -1247,18 +1307,19 @@ async function jsonVerifyTokenData (tokenData, symbol) {
     let ERC20 = await new web3.eth.Contract(JSON.parse(abi), address);
     if (symbol == 'KNC') {
         kncInst = ERC20;
+        jsonKNCAddress = address;
     }
     ERC20Inst.push(ERC20);
     ERC20Adds.push(address);
 
     //verify token data on blockchain.
+    if (verifyTokenDataOnblockChain == false) return;
+
     if (symbol == "EOS") {
         let rxDecimals = await ERC20.methods.decimals().call();
         myLog((!(rxDecimals == decimals)), 0, "Address: " + address  + " " + symbol + ". Name: " + name + ". Decimals: " + decimals);
         return;
     }
-    
-    if (symbol == "KNC") jsonKNCAddress = address;
 
     let rxName = await ERC20.methods.name().call();
     let rxSymbol = await ERC20.methods.symbol().call();
