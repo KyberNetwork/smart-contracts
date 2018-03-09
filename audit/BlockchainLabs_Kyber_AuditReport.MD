@@ -113,18 +113,22 @@ _"Provided that the users input reflects the users intent - i.e., min conversion
 
 One of the issues we found was around a malicious admin deploying a fake token, from the previous statement we can ignore this issue and assume there will be a front end solution for the user to confirm they always have the correct token address.
 
-A concering issue is [this one](https://github.com/BlockchainLabsNZ/KyberNetwork-contracts/issues/9), a malicious admin could potentially burn the supply of a users KNC tokens. We are satisfied that public awareness of this issues is sufficient to mitigate this issue (See point 8. in the [Technical Details section of Kyber's post](https://blog.kyber.network/kyber-network-smart-contract-29fd7b46a7af))
+One issue worth highlighting is [this one](https://github.com/BlockchainLabsNZ/KyberNetwork-contracts/issues/9), a malicious admin could potentially burn the supply of KNC tokens from a Kyber Reserve. We are satisfied that public awareness of this issues is sufficient to mitigate this issue (See point 8. in the [Technical Details section of Kyber's post](https://blog.kyber.network/kyber-network-smart-contract-29fd7b46a7af))
 
-The issues we spotted were to do with a Kyber admin being malicious, not the Reserve Operators, we could not find any exploits for them to take a users tokens or ETH. To get around these issues we would suggest splitting out the `KyberNetwork::setParams()` function into multiple functions and applying a different privilege level for the more important parameters. Another option would be to require a Multi-Signature account to be in charge of those potentially dangerous calls.
+The issues we spotted were to do with a Kyber Admin being malicious, not the Reserve Operators, we could not find any exploits for them to take a users tokens or ETH.  One improvement may be splitting out the `KyberNetwork::setParams()` function into multiple functions and applying a different privilege level for the more important parameters.
 
 Ideally a decentralized exchange would require buy-in from users and operators to effect any significant changes. In which case, changing a system contract address would be better managed by requiring a redeployment of the entire Kyber Network and convincing users that this is a good idea.
+
+Kyber has clearly articulated their trust model is that Reserve Operators are required to trust Kyber Admins, however users are not required to trust either Reserve Operators or Kyber Admins.
 
 ## Conclusion
 The developers demonstrated a great understanding of Solidity and smart contracts. They were receptive to the feedback provided to help improve the robustness of the contracts.
 
 We took part in carefully reviewing all source code provided, including both static and dynamic testing methodology.
 
-Overall we consider the resulting contracts following the audit feedback period adequate and have not identified any critical vulnerabilities that would endanger a users ETH, but we have noted some potential for malicious Kyber admins to drain KNC balances. This contract has a low level risk of ETH or ERC20 Tokens being hacked or stolen from the inspected contracts by third parties.
+We were satisfied that a user's ETH or ERC20 Tokens aren't at risk of being hacked or stolen in the interaction with Kyber Network contracts provided the user input is correct.
+
+Overall we consider the resulting contracts following the audit feedback period to be robust and have not identified any critical vulnerabilities. Minor issues have been fixed where appropriate and the only Moderate issue has been mitigated.
 
 ___
 
