@@ -16,6 +16,7 @@ The following contracts were subject for static, dynamic and functional analyses
 - [ExpectedRate.sol](https://github.com/KyberNetwork/smart-contracts/blob/7c1170407b2dd6df061c9648c2ec9955d7cb6089/contracts/ExpectedRate.sol)
 - [FeeBurner.sol](https://github.com/KyberNetwork/smart-contracts/blob/7c1170407b2dd6df061c9648c2ec9955d7cb6089/contracts/FeeBurner.sol)
 - [VolumeImbalanceRecorder.sol](https://github.com/KyberNetwork/smart-contracts/blob/7c1170407b2dd6df061c9648c2ec9955d7cb6089/contracts/VolumeImbalanceRecorders.sol)
+- [WhiteList.sol](https://github.com/KyberNetwork/smart-contracts/blob/7c1170407b2dd6df061c9648c2ec9955d7cb6089/contracts/WhiteList.sol)
 
 ## Focus areas
 The audit report is focused on the following key areas - though this is not an exhaustive list.
@@ -79,7 +80,7 @@ The audit report is focused on the following key areas - though this is not an e
 - **Non standardised Naming** - `Correctness` In the `Whitelist.sol` contract, the `setSgdToEthRate` takes a parameter `_sgdToWeiRate`and assigns it's value to the public variable `weiPerSgd`. These naming conventions for such a simple setter function change too much and might lead to a mistake in reading it or using it.  [View on GitHub](https://github.com/BlockchainLabsNZ/KyberNetwork-contracts/issues/6)
   - [ ] Not Fixed
 
-- **All of the permissions are handled in the same file.** - `Gas optimization` All the logic is loaded in contracts even when they only use a portion of the code. Some contracts only need to know about `admin`, others only about `alerters` and others only about `operators` We suggest having the logic split into different files under one folder and only request what is needed.  [View on GitHub](https://github.com/BlockchainLabsNZ/KyberNetwork-contracts/issues/5)
+- **All of the permissions are handled in the same file** - `Gas optimization` All the logic is loaded in contracts even when they only use a portion of the code. Some contracts only need to know about `admin`, others only about `alerters` and others only about `operators` We suggest having the logic split into different files under one folder and only request what is needed.  [View on GitHub](https://github.com/BlockchainLabsNZ/KyberNetwork-contracts/issues/5)
   - [ ] Not Fixed
 
 - **No validation on for value in setQuantityFactor setter function** - `Question` `setQuantityFactor` in `ExpectedRate.sol` has no validation of the `newFactor` value which is input by an operator. Is there an upper or lower bound for this value? [#L25-L28](https://github.com/KyberNetwork/smart-contracts/blob/audit2/contracts/ExpectedRate.sol#L25-L28])  [View on GitHub](https://github.com/BlockchainLabsNZ/KyberNetwork-contracts/issues/4)
@@ -109,22 +110,26 @@ The audit report is focused on the following key areas - though this is not an e
 
 During our audit we kept in mind this central statement:
 
-_"Provided that the users input reflects the users intent - i.e., min conversion rate, and the token address is of a reputable token, then even if network admin is malicious, user funds (beside gas costs) are never at risk"_
+_**"Provided that the users input reflects the users intent - i.e., min conversion rate, and the token address is of a reputable token, then even if network admin is malicious, user funds (beside gas costs) are never at risk"**_
 
-One of the issues we found was around a malicious admin deploying a fake token, from the previous statement we can ignore this issue and assume there will be a front end solution for the user to confirm they always have the correct token address.
+One of the attacks we considered was a malicious Kyber Admin deploying a fake token, from the previous statement one must anticipate that there will be an appropriate front end solution for the user to confirm they always have the correct token address. This speaks to the wider Ethereum ecosystem's lack of a registry of trusted token contracts, thus no smart contract logic can definitively address this.
 
-A concering issue is [this one](https://github.com/BlockchainLabsNZ/KyberNetwork-contracts/issues/9), a malicious admin could potentially burn the supply of a users KNC tokens. We are satisfied that public awareness of this issues is sufficient to mitigate this issue (See point 8. in the [Technical Details section of Kyber's post](https://blog.kyber.network/kyber-network-smart-contract-29fd7b46a7af))
+An issue worth highlighting is [this one](https://github.com/BlockchainLabsNZ/KyberNetwork-contracts/issues/9), a malicious admin could potentially burn the supply of KNC tokens from a Kyber Reserve. We are satisfied that public awareness of this issues is sufficient to mitigate this issue (See point 8. in the [Technical Details section of Kyber's post](https://blog.kyber.network/kyber-network-smart-contract-29fd7b46a7af)).
 
-The issues we spotted were to do with a Kyber admin being malicious, not the Reserve Operators, we could not find any exploits for them to take a users tokens or ETH. To get around these issues we would suggest splitting out the `KyberNetwork::setParams()` function into multiple functions and applying a different privilege level for the more important parameters. Another option would be to require a Multi-Signature account to be in charge of those potentially dangerous calls.
+The issues we spotted were to do with a Kyber Admin being malicious, not the Reserve Operators, we could not find any exploits for them to take a users tokens or ETH.  One improvement may be splitting out the `KyberNetwork::setParams()` function into multiple functions and applying a different privilege level for the more important parameters.
 
 Ideally a decentralized exchange would require buy-in from users and operators to effect any significant changes. In which case, changing a system contract address would be better managed by requiring a redeployment of the entire Kyber Network and convincing users that this is a good idea.
+
+Kyber has clearly articulated their trust model is that Reserve Operators are required to trust Kyber Admins, however users are not required to trust either Reserve Operators or Kyber Admins.
 
 ## Conclusion
 The developers demonstrated a great understanding of Solidity and smart contracts. They were receptive to the feedback provided to help improve the robustness of the contracts.
 
 We took part in carefully reviewing all source code provided, including both static and dynamic testing methodology.
 
-Overall we consider the resulting contracts following the audit feedback period adequate and have not identified any critical vulnerabilities that would endanger a users ETH, but we have noted some potential for malicious Kyber admins to drain KNC balances. This contract has a low level risk of ETH or ERC20 Tokens being hacked or stolen from the inspected contracts by third parties.
+We were satisfied that a user's ETH or ERC20 Tokens aren't at risk of being hacked or stolen in the interaction with Kyber Network contracts provided the user input is correct.
+
+Overall we consider the resulting contracts following the audit feedback period to be robust and have not identified any critical vulnerabilities. Minor issues have been fixed where appropriate and the only Moderate issue has been mitigated.
 
 ___
 
