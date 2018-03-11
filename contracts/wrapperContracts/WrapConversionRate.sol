@@ -59,6 +59,7 @@ contract WrapConversionRate is WrapperBase {
         uint maxTotalImbalance
         ) public onlyOperator
     {
+        require(token != address(0));
         require(minRecordResolution != 0);
         require(maxPerBlockImbalance != 0);
         require(maxTotalImbalance != 0);
@@ -82,7 +83,7 @@ contract WrapConversionRate is WrapperBase {
     function getAddTokenData() public view
         returns(uint nonce, ERC20 token, uint minRecordResolution, uint maxPerBlockImbalance, uint maxTotalImbalance)
     {
-        address[] signatures;
+        address[] memory signatures;
         (signatures, nonce) = getDataTrackingParameters(ADD_TOKEN_DATA_INDEX);
         token = addTokenData.token;
         minRecordResolution = addTokenData.minimalResolution;
@@ -91,7 +92,7 @@ contract WrapConversionRate is WrapperBase {
         return(nonce, token, minRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
     }
 
-    function getAddTokenSignatures() public view returns (address[] signatures) {
+    function getAddTokenSignatures() public view returns (address[] memory signatures) {
         uint nonce;
         (signatures, nonce) = getDataTrackingParameters(ADD_TOKEN_DATA_INDEX);
         return(signatures);
@@ -127,7 +128,7 @@ contract WrapConversionRate is WrapperBase {
         require(tokenControlInfoData.tokens.length > index);
         require(tokenControlInfoData.perBlockImbalance.length > index);
         require(tokenControlInfoData.maxTotalImbalance.length > index);
-        address[] signatures;
+        address[] memory signatures;
         (signatures, nonce) = getDataTrackingParameters(TOKEN_INFO_DATA_INDEX);
 
         return(
@@ -145,7 +146,7 @@ contract WrapConversionRate is WrapperBase {
     function getTokenInfoData() public view
         returns(uint nonce, uint numSetTokens, ERC20[] tokenAddress, uint[] maxPerBlock, uint[] maxTotal)
     {
-        address[] signatures;
+        address[] memory signatures;
         (signatures, nonce) = getDataTrackingParameters(TOKEN_INFO_DATA_INDEX);
 
         return(
@@ -156,7 +157,7 @@ contract WrapConversionRate is WrapperBase {
             tokenControlInfoData.maxTotalImbalance);
     }
 
-    function getTokenInfoSignatures() public view returns (address[] signatures) {
+    function getTokenInfoSignatures() public view returns (address[] memory signatures) {
         uint nonce;
         (signatures, nonce) = getDataTrackingParameters(TOKEN_INFO_DATA_INDEX);
         return(signatures);
@@ -187,12 +188,12 @@ contract WrapConversionRate is WrapperBase {
     }
 
     function getValidDurationBlocksData() public view returns(uint validDuration, uint nonce) {
-        address[] signatures;
+        address[] memory signatures;
         (signatures, nonce) = getDataTrackingParameters(VALID_DURATION_DATA_INDEX);
         return(nonce, validDurationData.durationInBlocks);
     }
 
-    function getValidDurationSignatures() public view returns (address[] signatures) {
+    function getValidDurationSignatures() public view returns (address[] memory signatures) {
         uint nonce;
         (signatures, nonce) = getDataTrackingParameters(VALID_DURATION_DATA_INDEX);
         return(signatures);
