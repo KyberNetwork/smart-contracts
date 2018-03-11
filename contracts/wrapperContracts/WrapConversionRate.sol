@@ -104,7 +104,7 @@ contract WrapConversionRate is WrapperBase {
         conversionRates.removeOperator(this);
     }
 
-    function getAddTokenParameters() public view
+    function getAddTokenData() public view
         returns(uint nonce, ERC20 token, uint minimalRecordResolution, uint maxPerBlockImbalance, uint maxTotalImbalance)
     {
         (, nonce) = getDataTrackingParameters(ADD_TOKEN_DATA_INDEX);

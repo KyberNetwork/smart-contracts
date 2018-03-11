@@ -62,7 +62,7 @@ contract WrapperBase is Withdrawable {
             allSigned = false;
         }
     }
-    
+
     function getDataTrackingParameters(uint index) internal view returns (address[], uint) {
         require(index < dataInstances.length);
         return(dataInstances[index].approveSignatureArray, dataInstances[index].lastSetNonce);

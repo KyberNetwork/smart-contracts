@@ -79,7 +79,7 @@ contract('WrapConversionRates', function(accounts) {
         await wrapConvRateInst.setAddTokenData(token.address, minRecordResWrap, maxPerBlockImbWrap, maxTotalImbWrap, {from: operator1});
         addTokenNonce++;
 
-        let addData = await wrapConvRateInst.getAddTokenParameters();
+        let addData = await wrapConvRateInst.getAddTokenData();
         assert.equal(addData[0].valueOf(), addTokenNonce);
         assert.equal(addData[1].valueOf(), token.address);
         assert.equal(addData[2].valueOf(), minRecordResWrap);
@@ -193,7 +193,7 @@ contract('WrapConversionRates', function(accounts) {
         await wrapConvRateInst.setAddTokenData(token.address, minResolution, maxPerBlock, maxTotal, {from: operator1});
         addTokenNonce++;
 
-        let addData = await wrapConvRateInst.getAddTokenParameters();
+        let addData = await wrapConvRateInst.getAddTokenData();
         assert.equal(addData[0].valueOf(), addTokenNonce);
         assert.equal(addData[1].valueOf(), token.address);
         assert.equal(addData[2].valueOf(), minResolution);
@@ -213,7 +213,7 @@ contract('WrapConversionRates', function(accounts) {
         addTokenNonce++;
 
         //check updated track data
-        addData = await wrapConvRateInst.getAddTokenParameters();
+        addData = await wrapConvRateInst.getAddTokenData();
         rxNonce = addData[0].valueOf();
         rxSignatures = await wrapConvRateInst.getAddTokenSignatures();
         assert.equal(rxNonce.valueOf(), addTokenNonce);
