@@ -8,7 +8,7 @@ import "../PermissionGroups.sol";
 
 contract WrapperBase is Withdrawable {
 
-    PermissionGroups wrappedContract;
+    PermissionGroups public wrappedContract;
 
     struct DataTracker {
         address [] approveSignatureArray;
@@ -62,11 +62,7 @@ contract WrapperBase is Withdrawable {
             allSigned = false;
         }
     }
-
-    function getWrappedContract() public view returns (PermissionGroups _wrappedContract) {
-        return(wrappedContract);
-    }
-
+    
     function getDataTrackingParameters(uint index) internal view returns (address[], uint) {
         require(index < dataInstances.length);
         return(dataInstances[index].approveSignatureArray, dataInstances[index].lastSetNonce);
