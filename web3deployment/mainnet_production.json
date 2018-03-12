@@ -112,6 +112,14 @@
       "maxPerBlockImbalance": "123819203326",
       "maxTotalImbalance": "123819203326"
     },
+    "QBX": {
+      "name": "Ethos",
+      "decimals": 8,
+      "address": "0x5Af2Be193a6ABCa9c8817001F45744777Db30756",
+      "minimalRecordResolution": "10000",
+      "maxPerBlockImbalance": "127620338002",
+      "maxTotalImbalance": "127620338002"
+    },
     "ETH": {
       "name": "Ethereum",
       "decimals": 18,
@@ -134,7 +142,8 @@
       "ENG": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
       "SALT": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
       "APPC": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-      "RDN": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"
+      "RDN": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "QBX": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"
     }
   },
   "permission": {
