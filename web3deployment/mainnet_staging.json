@@ -116,7 +116,14 @@
       "maxPerBlockImbalance": "800000000000",
       "maxTotalImbalance": "800000000000"
     },
-
+    "BQX": {
+      "name" : "Ethos",
+      "decimals": 8,
+      "address": "0x5af2be193a6abca9c8817001f45744777db30756",
+      "maxPerBlockImbalance": "114446593497",
+      "maxTotalImbalance": "114446593497",
+      "minimalRecordResolution": "10000"
+    },
     "ETH": {
       "name": "Ethereum",
       "decimals": 18,
@@ -139,34 +146,35 @@
       "ENG": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "SALT": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "APPC": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
-      "RDN": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547"      
+      "RDN": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "BQX": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547"    
     }
   },
   "permission": {
     "KyberNetwork": {
       "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
       "operator": [
-        "0x8bc3da587def887b5c822105729ee1d6af05a5ca"
+        "0xf214dDE57f32F3F34492Ba3148641693058D4A9e"
       ],
       "alerter": []
     },
     "KyberReserve": {
-      "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "admin": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
       "operator": [
-        "0x5bab5ef16cfac98e216a229db17913454b0f9365"
+        "0x8C3151b751F2409697E35F62D016713593F64Eef"
       ],
       "alerter": []
     },
     "ConversionRates": {
-      "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "admin": "0xBC42b8d87086B7b609F80C1bEa0D15A094d5a516",
       "operator": [
-        "0x8bc3da587def887b5c822105729ee1d6af05a5ca",
+        "0xeae89c711c02468dea8ee1ade4fa78b79ac9379a",
         "0x9224016462B204C57Eb70e1D69652f60bcAF53A8"
       ],
       "alerter": []
     },
     "FeeBurner": {
-      "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "admin": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
       "operator": [
         "0xf214dde57f32f3f34492ba3148641693058d4a9e"
       ],
@@ -184,7 +192,14 @@
       "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
       "operator": [
         "0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
-        "0xf214dde57f32f3f34492ba3148641693058d4a9e"
+        "0xeae89c711c02468dea8ee1ade4fa78b79ac9379a"
+      ],
+      "alerter": []
+    },
+    "SanityRate": {
+      "admin": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
+      "operator": [
+        "0x0a3d5c8894bbe1e9113e4ed6f0c3b0d4fa6b131e"
       ],
       "alerter": []
     }
@@ -274,5 +289,6 @@
   "pricing": "0xe3E415a7a6c287a95DC68a01ff036828073fD2e6",
   "network": "0xD2D21FdeF0D054D2864ce328cc56D1238d6b239e",
   "wrapper": "0x865aA8818615BA9DFA8bcB6A1432B0fc506DBd58",
-  "feeburner": "0xB2cB365D803Ad914e63EA49c95eC663715c2F673"
+  "feeburner": "0xB2cB365D803Ad914e63EA49c95eC663715c2F673",
+  "whitelist" : "0x1b8a28d2185a7ab86ae40303b39f33278cc42130"
 }
