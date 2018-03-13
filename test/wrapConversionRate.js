@@ -230,8 +230,7 @@ contract('WrapConversionRates', function(accounts) {
         assert.equal(tokenInfo[2].valueOf(), maxTotal);
     });
 
-
-    it("should test add and fetch admin.", async function() {
+    it("should test transfer and fetch admin.", async function() {
         let ratesAdmin = await convRatesInst.admin();
         assert.equal(wrapConvRateInst.address, ratesAdmin.valueOf());
 
@@ -305,6 +304,113 @@ contract('WrapConversionRates', function(accounts) {
         }
     });
 
+    it("test can't init wrapper with contract with address 0.", async function() {
+        let wrapper;
+
+        try {
+            wrapper = await WrapConversionRate.new(0, admin);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            wrapper = await WrapConversionRate.new(convRatesInst.address, 0);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+        wrapper = await WrapConversionRate.new(convRatesInst.address, admin);
+    });
+
+
+    it("test can't add token with zero values.", async function() {
+        //new token
+        token = await TestToken.new("test9", "tst9", 18);
+
+        //prepare add token data
+        let minResolution = 6;
+        let maxPerBlock = 200;
+        let maxTotal = 400;
+
+        try {
+            await wrapConvRateInst.setAddTokenData(0, minResolution, maxPerBlock, maxTotal, {from: operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await wrapConvRateInst.setAddTokenData(token.address, 0, maxPerBlock, maxTotal, {from: operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await wrapConvRateInst.setAddTokenData(token.address, minResolution, 0, maxTotal, {from: operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await wrapConvRateInst.setAddTokenData(token.address, minResolution, maxPerBlock, 0, {from: operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        await wrapConvRateInst.setAddTokenData(token.address, minResolution, maxPerBlock, maxTotal, {from: operator1});
+        addTokenNonce++;
+    });
+
+    it("test can't set token info data with arrays that have different length.", async function() {
+        let maxPerBlockList = [maxPerBlockImbWrap];
+        let maxTotalList = [maxTotalImbWrap, maxTotalImbWrap];
+
+        try {
+            await wrapConvRateInst.setTokenInfoData(tokens, maxPerBlockList, maxTotalList, {from: operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+
+        maxPerBlockList = [maxPerBlockImbWrap, maxPerBlockImbWrap];
+        maxTotalList = [maxTotalImbWrap];
+        try {
+            await wrapConvRateInst.setTokenInfoData(tokens, maxPerBlockList, maxTotalList, {from: operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        maxPerBlockList = [maxPerBlockImbWrap, maxPerBlockImbWrap, maxPerBlockImbWrap];
+        maxTotalList = [maxTotalImbWrap, maxTotalImbWrap, maxTotalImbWrap];
+        try {
+            await wrapConvRateInst.setTokenInfoData(tokens, maxPerBlockList, maxTotalList, {from: operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        maxPerBlockList = [maxPerBlockImbWrap, maxPerBlockImbWrap];
+        maxTotalList = [maxTotalImbWrap, maxTotalImbWrap];
+
+        await wrapConvRateInst.setTokenInfoData(tokens, maxPerBlockList, maxTotalList, {from: operator1});
+        tokenInfoNonce++;
+    });
+
     it("should test each operator can approve only once per new data that was set.", async function() {
          //prepare new values for tokens
         let maxPerBlockList = [maxPerBlockImbWrap, maxTotalImbWrap];
@@ -344,4 +450,150 @@ contract('WrapConversionRates', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     });
+
+    it("tests when all approve and data sent. additional approve with no new data will revert.", async function() {
+        //new token
+        token = await TestToken.new("test9", "tst9", 18);
+
+        //prepare add token data
+        let minResolution = 10;
+        let maxPerBlock = 300;
+        let maxTotal = 600;
+
+        await wrapConvRateInst.setAddTokenData(token.address, minResolution, maxPerBlock, maxTotal, {from: operator1});
+        addTokenNonce++;
+
+        //approve
+        await wrapConvRateInst.approveAddTokenData(addTokenNonce, {from:operator1});
+        await wrapConvRateInst.approveAddTokenData(addTokenNonce, {from:operator2});
+        await wrapConvRateInst.approveAddTokenData(addTokenNonce, {from:operator3});
+
+        //see data was set.
+        //get token info, see updated
+        tokenInfo = await convRatesInst.getTokenControlInfo(token.address);
+
+        //verify set values before updating
+        assert.equal(tokenInfo[0].valueOf(), minResolution);
+        assert.equal(tokenInfo[1].valueOf(), maxPerBlock);
+        assert.equal(tokenInfo[2].valueOf(), maxTotal);
+
+        try {
+            await wrapConvRateInst.approveAddTokenData(addTokenNonce, {from:operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("tests API getControlInfoPerToken.", async function() {
+        //legal index
+        //prepare new values for tokens
+        let maxPerBlockList = [maxPerBlockImbWrap, maxTotalImbWrap];
+        let maxTotalList = [maxTotalImbWrap, maxTotalImbWrap];
+
+        await wrapConvRateInst.setTokenInfoData(tokens, maxPerBlockList, maxTotalList, {from: operator1});
+        tokenInfoNonce++;
+
+        //verify token info
+        let tokenInfo = await wrapConvRateInst.getControlInfoPerToken(0);
+
+        assert.equal(tokenInfo[0].valueOf(), tokens[0]);
+        assert.equal(tokenInfo[1].valueOf(), maxPerBlockList[0]);
+        assert.equal(tokenInfo[2].valueOf(), maxTotalList[0]);
+        assert.equal(tokenInfo[3].valueOf(), tokenInfoNonce);
+
+        //verify token info
+        tokenInfo = await wrapConvRateInst.getControlInfoPerToken(1);
+
+        assert.equal(tokenInfo[0].valueOf(), tokens[1]);
+        assert.equal(tokenInfo[1].valueOf(), maxPerBlockList[1]);
+        assert.equal(tokenInfo[2].valueOf(), maxTotalList[1]);
+        assert.equal(tokenInfo[3].valueOf(), tokenInfoNonce);
+
+        //try illegal index
+        try {
+            tokenInfo = await wrapConvRateInst.getControlInfoPerToken(2);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("validate signatures for token control info.", async function() {
+        //legal index
+        //prepare new values for tokens
+        let maxPerBlockList = [maxPerBlockImbWrap, maxTotalImbWrap];
+        let maxTotalList = [maxTotalImbWrap, maxTotalImbWrap];
+
+        await wrapConvRateInst.setTokenInfoData(tokens, maxPerBlockList, maxTotalList, {from: operator1});
+        tokenInfoNonce++;
+
+        let numTokensSetInfo = await wrapConvRateInst.getTokenInfoNumToknes();
+        assert.equal(numTokensSetInfo.valueOf(), 2);
+
+        let rxSignatures = await wrapConvRateInst.getTokenInfoSignatures();
+        assert.equal(rxSignatures.length, 0);
+
+//        verify tracking data
+        await wrapConvRateInst.approveTokenControlInfo(tokenInfoNonce, {from:operator1});
+        await wrapConvRateInst.approveTokenControlInfo(tokenInfoNonce, {from:operator2});
+
+        rxSignatures = await wrapConvRateInst.getAddTokenSignatures();
+        assert.equal(rxSignatures[0], operator1);
+        assert.equal(rxSignatures[1], operator2);
+    });
+
+    it("validate signatures for valid block duration.", async function() {
+        await wrapConvRateInst.setValidDurationData(20, {from: operator1});
+        validDurationNonce++;
+
+        let rxSignatures = await wrapConvRateInst.getValidDurationSignatures();
+        assert.equal(rxSignatures.length, 0);
+
+        //verify tracking data
+        await wrapConvRateInst.approveValidDurationData(validDurationNonce, {from:operator1});
+        await wrapConvRateInst.approveValidDurationData(validDurationNonce, {from:operator2});
+
+        rxSignatures = await wrapConvRateInst.getValidDurationSignatures();
+        assert.equal(rxSignatures[0], operator1);
+        assert.equal(rxSignatures[1], operator2);
+
+        //set invalid duration and see signatures remained.
+        //try illegal index
+        try {
+            await wrapConvRateInst.setValidDurationData(4, {from: operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+        rxSignatures = await wrapConvRateInst.getValidDurationSignatures();
+        assert.equal(rxSignatures.length, 2);
+    });
+
+    it("init wrapper with illegal values.", async function() {
+        let wrapper;
+
+        try {
+            wrapper = await WrapConversionRate.new(0, admin);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+
+        try {
+            wrapper = await WrapConversionRate.new(convRatesInst.address, 0);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        wrapper = await WrapConversionRate.new(convRatesInst.address, admin);
+    });
+
 });
