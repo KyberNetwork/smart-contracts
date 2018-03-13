@@ -1003,8 +1003,6 @@ contract('ConversionRates', function(accounts) {
         let maxTotal = await convRatesInst.mockGetMaxTotalImbalance(token);
         assert.equal(maxTotalImbalance, maxTotal.valueOf(), "unexpected max total imbalance.");
 
-        console.log("current imbalance: " + totalImbalance + " max total: " + maxTotalImbalance + " qty " + qty);
-
         //we are near total imbalance so small getRate will get legal rate.
         let rate = await convRatesInst.getRate(token, currentBlock, false, qty);
 
@@ -1028,6 +1026,133 @@ contract('ConversionRates', function(accounts) {
 
         //now the same from reserve address
         await convRatesInst.recordImbalance(tokens[5], 30, currentBlock, currentBlock, {from: reserveAddress});
+    });
+
+    it("should verify set step functions for qty reverted when more them max steps (10).", async function () {
+        let index = 1;
+
+        qtyBuyStepX = [15, 30, 70, 100, 200, 500, 700, 900, 1100, 1500];
+        qtyBuyStepY = [8, 30, 70, 100, 120, 150, 170, 190, 210, 250];
+        qtySellStepX = [15, 30, 70, 100, 200, 500, 700, 900, 1100, 1500];
+        qtySellStepY = [8, 30, 70, 100, 120, 150, 170, 190, 210, 250];
+
+        await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+
+        //set illegal number of steps for buy
+        qtyBuyStepX[10] = 1600;
+        qtyBuyStepY[10] = 350;
+
+        try {
+            await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //remove extra step and see success.
+        qtyBuyStepY.length = qtyBuyStepX.length = 10;
+        await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+
+        //set illegal number of steps for sell
+        qtySellStepX[10] = 1600;
+        qtySellStepY[10] = 350;
+
+        try {
+            await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should verify set step functions for imbalance reverted when more them max steps (10).", async function () {
+        let index = 1;
+
+        imbalanceBuyStepX = [15, 30, 70, 100, 200, 500, 700, 900, 1100, 1500];
+        imbalanceBuyStepY = [8, 30, 70, 100, 120, 150, 170, 190, 210, 250];
+        imbalanceSellStepX = [15, 30, 70, 100, 200, 500, 700, 900, 1100, 1500];
+        imbalanceSellStepY = [8, 30, 70, 100, 120, 150, 170, 190, 210, 250];
+
+        await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+
+        //set illegal value for buy steps.
+        imbalanceBuyStepX[10] = 1600;
+        imbalanceBuyStepY[10] = 350;
+
+        try {
+            await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+
+        //remove extra step and see success again
+        imbalanceBuyStepX.length = imbalanceBuyStepY.length = 10;
+        await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+
+        //set illegal value for sell steps.
+        imbalanceSellStepX[10] = 1600;
+        imbalanceSellStepY[10] = 350;
+
+        try {
+            await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should verify getCompactData reverted when token not listed.", async function () {
+        let someToken = await TestToken.new("testing", "tst9", 15);
+
+        try {
+            let compactResArr = await convRatesInst.getCompactData(someToken.address);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //add token and see enable success
+        await convRatesInst.addToken(someToken.address);
+        compactResArr = await convRatesInst.getCompactData(someToken.address);
+    });
+
+    it("should verify add bps reverts for illegal values", async function () {
+        let minLegalBps = -100 * 100;
+        let maxLegalBps = new BigNumber(10).pow(11);
+        let legalRate = new BigNumber(10).pow(24);
+        let illegalRate = legalRate.add(1);
+        let illegalBpsMinSide = minLegalBps - 1*1;
+        let illegalBpsMaxSide = maxLegalBps.add(1);
+
+        await convRatesInst.mockAddBps(legalRate, minLegalBps);
+        await convRatesInst.mockAddBps(legalRate, maxLegalBps);
+
+        //see fail with illegal rate
+        try {
+            await convRatesInst.mockAddBps(illegalRate, minLegalBps);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //see fail with illegal bps (min side)
+        try {
+            await convRatesInst.mockAddBps(legalRate, illegalBpsMinSide);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //see fail with illegal bps (max side)
+        try {
+            await convRatesInst.mockAddBps(legalRate, illegalBpsMaxSide);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
     });
 });
 
