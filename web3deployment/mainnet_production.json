@@ -113,12 +113,12 @@
       "maxTotalImbalance": "123819203326"
     },
     "BQX": {
-      "name" : "Ethos",
+      "name": "Ethos",
       "decimals": 8,
-      "address": "0x5af2be193a6abca9c8817001f45744777db30756",
-      "maxPerBlockImbalance": "114446593497",
-      "maxTotalImbalance": "114446593497",
-      "minimalRecordResolution": "10000"
+      "address": "0x5Af2Be193a6ABCa9c8817001F45744777Db30756",
+      "minimalRecordResolution": "10000",
+      "maxPerBlockImbalance": "127620338002",
+      "maxTotalImbalance": "127620338002"
     },
     "ETH": {
       "name": "Ethereum",
@@ -168,7 +168,7 @@
       ]
     },
     "ConversionRates": {
-      "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "admin": "0x97b82E42a0c04bAd5E61e7cFb4806317d608D809",
       "operator": [
         "0x8bc3da587def887b5c822105729ee1d6af05a5ca",
         "0x9224016462B204C57Eb70e1D69652f60bcAF53A8"
@@ -188,7 +188,8 @@
         "0x7E68d7AFcD5cc6167eB5f0Eb07eDcfe75185CC00",
         "0xf214dde57f32f3f34492ba3148641693058d4a9e",
         "0xd0643BC0D0C879F175556509dbcEe9373379D5C3",
-        "0x342F4057110bE50957d0f156F4939a929944C69e"
+        "0x342F4057110bE50957d0f156F4939a929944C69e",
+        "0x3A9b02c14d967333cE68E353a64653E258da2BAa"
       ],
       "alerter": []
     },
@@ -279,6 +280,10 @@
     ],
     "users category": 1,
     "users cap": 5000,
+    "email category": 3,
+    "email cap": 5000,
+    "KYC category": 4,
+    "KYC cap": 10000,
     "default cap": 0,
     "wei per SGD": 850000000000000
   },
@@ -292,6 +297,7 @@
   "valid duration block": 60,
   "reserve": "0x63825c174ab367968EC60f061753D3bbD36A0D8F",
   "pricing": "0x798AbDA6Cc246D0EDbA912092A2a3dBd3d11191B",
+  "pricing wrapper":"0x97b82E42a0c04bAd5E61e7cFb4806317d608D809",
   "network": "0x964F35fAe36d75B1e72770e244F6595B68508CF5",
   "wrapper": "0x533E6D1FFA2B96cF9C157475c76c38d1B13bc584",
   "feeburner": "0x07f6e905f2a1559cd9fd43cb92f8a1062a3ca706",
