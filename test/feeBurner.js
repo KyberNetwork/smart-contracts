@@ -284,7 +284,7 @@ contract('FeeBurner', function(accounts) {
 
         //burn success
         await feeBurnerInst.burnReserveFees(mockReserve);
-        payedSoFar += waitingFees - 1;
+        payedSoFar += feeToBurn - 1;
 
         //now burn fail. since all was burned...
         try {
