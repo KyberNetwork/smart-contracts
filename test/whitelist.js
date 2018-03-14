@@ -39,7 +39,7 @@ contract('WhiteList', function(accounts) {
 
     it("should verify the default cap for non set user.", async function () {
         let userCap = await whiteListInst.getUserCapInWei(user1);
-        console.log("user1" + user1 + " userCap" + userCap);
+//        console.log("user1" + user1 + " userCap" + userCap);
         let expectedUserCapWei = sgdToEthRateInWei.mul(defaultUserCapSgd);
         assert.equal(userCap.valueOf(), expectedUserCapWei, "unexpected user cap");
     });
