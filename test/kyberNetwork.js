@@ -193,6 +193,7 @@ contract('KyberNetwork', function(accounts) {
 
     it("should init network and 2 reserves and set all reserve data including balances", async function () {
         network = await Network.new(admin);
+        await network.addOperator(operator);
         reserve1 = await Reserve.new(network.address, pricing1.address, admin);
         reserve2 = await Reserve.new(network.address, pricing2.address, admin);
         await pricing1.setReserveAddress(reserve1.address);
@@ -234,8 +235,7 @@ contract('KyberNetwork', function(accounts) {
         await network.addReserve(reserve2.address, true);
 
         //set contracts
-        feeBurner = await FeeBurner.new(admin, tokenAdd[0]);
-        feeBurner.setKyberNetwork(network.address);
+        feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address);
         let kgtToken = await TestToken.new("kyber genesis token", "KGT", 0);
         whiteList = await WhiteList.new(admin, kgtToken.address);
         await whiteList.addOperator(operator);
@@ -1011,6 +1011,26 @@ contract('KyberNetwork', function(accounts) {
         await networkTemp.setEnable(true);
     });
 
+    it("should verify can't reverts when negligible rate diff > 10000.", async function () {
+        let legalNegRateDiff = 100 * 100;
+        let illegalNegRateDiff = (100 * 100) + 1;
+        let currentNegRateDiff = await network.negligibleRateDiff();
+
+        try {
+            await network.setParams(whiteList.address, expectedRate.address, feeBurner.address, gasPrice.valueOf(), illegalNegRateDiff);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        await network.setParams(whiteList.address, expectedRate.address, feeBurner.address, gasPrice.valueOf(), legalNegRateDiff);
+        let negDiff = await network.negligibleRateDiff();
+
+        assert.equal(negDiff, legalNegRateDiff);
+        await network.setParams(whiteList.address, expectedRate.address, feeBurner.address, gasPrice.valueOf(), currentNegRateDiff);
+    });
+
+
     it("should verify get expected rate reverts when rates contracts not set (address 0).", async function () {
         let networkTemp;
         let amountTwei = 30;
@@ -1027,6 +1047,15 @@ contract('KyberNetwork', function(accounts) {
         //set expected rate and see no throw
         await networkTemp.setParams(whiteList.address, expectedRate.address, feeBurner.address, gasPrice.valueOf(), negligibleRateDiff);
         await networkTemp.getExpectedRate(tokenAdd[2], ethAddress, amountTwei);
+    });
+
+    it("should use setInfo (UI info) and check value is set.", async function () {
+        let info = 15;
+        let field = 10;
+
+        await network.setInfo(field, info, {from: operator});
+        let rxInfo = await network.info(field);
+        assert.equal(info.valueOf(), rxInfo.valueOf(), "info data doesn't match");
     });
 });
 
