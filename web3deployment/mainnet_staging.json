@@ -174,7 +174,7 @@
       "alerter": []
     },
     "FeeBurner": {
-      "admin": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
+      "admin": "0xDD5536241D27072CB1971d5aB950Ef390D78D3D1",
       "operator": [
         "0xf214dde57f32f3f34492ba3148641693058d4a9e"
       ],
@@ -297,5 +297,6 @@
   "network": "0xD2D21FdeF0D054D2864ce328cc56D1238d6b239e",
   "wrapper": "0x865aA8818615BA9DFA8bcB6A1432B0fc506DBd58",
   "feeburner": "0xB2cB365D803Ad914e63EA49c95eC663715c2F673",
+  "feeBurner wrapper": "0xDD5536241D27072CB1971d5aB950Ef390D78D3D1",
   "whitelist" : "0x1b8a28d2185a7ab86ae40303b39f33278cc42130"
 }
