@@ -32,7 +32,7 @@ contract WrapFeeBurner is WrapperBase {
 
     //wallet fee parameters
     struct WalletFee {
-        address wAddress;
+        address walletAddress;
         uint feeBps;
     }
 
