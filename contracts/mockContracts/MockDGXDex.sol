@@ -21,7 +21,9 @@ contract MockDGXDEX is Withdrawable {
     
     ERC20 token;
     address feedSigner;
-    
+    bool public sigCheck = true;
+    bool public blockCheck = true;
+
     function MockDGXDEX(ERC20 _token, address _feedSigner, address _admin) public {
         admin = _admin;
         token = _token;
@@ -33,17 +35,23 @@ contract MockDGXDEX is Withdrawable {
     event Purchase(bool success, uint256 purchasedAmount);
     event Sell(bool success, uint256 amountWei);
 
+    function setSigCheck (bool _sigCheck) public onlyAdmin {
+        sigCheck = _sigCheck;
+    }
+
+    function setBlockCheck (bool _blockCheck) public onlyAdmin {
+        blockCheck = _blockCheck;
+    }
+
     function purchase(uint256 block_number,
                       uint256 nonce,
                       uint256 weiPerDgxMg,
                       address signer,
-                      bytes signature,
-                      bool skip_sig_check,
-                      bool skip_block_check) payable public returns (bool success, uint256 purchasedAmount) {
+                      bytes signature) payable public returns (bool success, uint256 purchasedAmount) {
 
         uint256 tokenAmount;
 
-        if(! skip_sig_check) {
+        if( sigCheck) {
             bool verified;
             address actual_signer;
             
@@ -56,7 +64,7 @@ contract MockDGXDEX is Withdrawable {
 
             require(verified);
         }
-        if(! skip_block_check) {
+        if(blockCheck) {
             require((block_number + 5) >= block.number);
         }
 
@@ -77,13 +85,11 @@ contract MockDGXDEX is Withdrawable {
                   uint256  nonce,
                   uint256 weiPerDgxMg,
                   address signer,
-                  bytes signature,
-                  bool skip_sig_check,
-                  bool skip_block_check) public returns (bool success) {
+                  bytes signature) public returns (bool success) {
 
         uint256 amountWei;
 
-        if(! skip_sig_check) {
+        if (sigCheck) {
             bool verified;
             address actual_signer;
             
@@ -96,7 +102,7 @@ contract MockDGXDEX is Withdrawable {
 
             require(verified);
         }
-        if(! skip_block_check) {
+        if (blockCheck) {
             require((block_number + 5) >= block.number);
         }
 
