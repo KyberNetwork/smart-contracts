@@ -31,16 +31,34 @@ contract MockDGXDEX is Withdrawable {
     function () public payable {}
     
     event Purchase(bool success, uint256 purchasedAmount);
-    
+    event Sell(bool success, uint256 amountWei);
+
     function purchase(uint256 block_number,
-                      uint256 /* nonce */,
+                      uint256 nonce,
                       uint256 weiPerDgxMg,
-                      uint256 /* signer */,
-                      bytes /* signature */ ) payable public returns (bool success, uint256 purchasedAmount) {
+                      address signer,
+                      bytes signature,
+                      bool skip_sig_check,
+                      bool skip_block_check) payable public returns (bool success, uint256 purchasedAmount) {
 
         uint256 tokenAmount;
 
-        // TODO: signatures validation
+        if(! skip_sig_check) {
+            bool verified;
+            address actual_signer;
+            
+            (verified, actual_signer) =   
+            verify_signed_price(block_number,
+                                nonce,
+                                weiPerDgxMg,
+                                signer,
+                                signature);
+
+            require(verified);
+        }
+        if(! skip_block_check) {
+            require((block_number + 5) >= block.number);
+        }
 
         require((block_number + 5) >= block.number);
 
@@ -53,24 +71,35 @@ contract MockDGXDEX is Withdrawable {
         Purchase(success, purchasedAmount);
         
     }
- 
-    event Sell(bool success, uint256 amountWei);
-    event Stam(uint256 amount, uint256 dgx_decimals, uint256 value);
-     
-   
+
     function sell(uint256 amount,
                   uint256 block_number,
-                  uint256 /* nonce */,
+                  uint256  nonce,
                   uint256 weiPerDgxMg,
-                  uint256 /* signer */,
-                  bytes /* signature */) public returns (bool success) {
-        
+                  address signer,
+                  bytes signature,
+                  bool skip_sig_check,
+                  bool skip_block_check) public returns (bool success) {
+
         uint256 amountWei;
-        
-        // TODO: signatures validation
-        
-        require((block_number + 5) >= block.number);
-        
+
+        if(! skip_sig_check) {
+            bool verified;
+            address actual_signer;
+            
+            (verified, actual_signer) =   
+            verify_signed_price(block_number,
+                                nonce,
+                                weiPerDgxMg,
+                                signer,
+                                signature);
+
+            require(verified);
+        }
+        if(! skip_block_check) {
+            require((block_number + 5) >= block.number);
+        }
+
         amountWei = amount * G_TO_MG * weiPerDgxMg / DGX_DECIMALS;
         require(token.transferFrom(msg.sender, this, amount));
         msg.sender.transfer(amountWei);

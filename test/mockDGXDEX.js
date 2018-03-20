@@ -29,7 +29,14 @@ contract('MockDGXDEX', function (accounts) {
         //purchase tokens
         let weiPerDgxMg = new BigNumber("91274710000000");
         let etherWeiPurchase = new BigNumber(10).pow(18);
-        let result = await dgxDex.purchase(web3.eth.blockNumber, 0, weiPerDgxMg ,0 ,0, {value:etherWeiPurchase});
+        let result = await dgxDex.purchase(web3.eth.blockNumber,
+                                           0,
+                                           weiPerDgxMg,
+                                           0,
+                                           0,
+                                           true,
+                                           false,
+                                           {value:etherWeiPurchase});
         let log = result.logs[0];
         assert.equal(log.event, "Purchase");
         assert.equal(log.args.success, true);
@@ -37,7 +44,14 @@ contract('MockDGXDEX', function (accounts) {
         // sell tokens and make sure we get back 1 eth.
         purchasedAmount = new BigNumber(log.args.purchasedAmount); //10955000000
         await dgxToken.approve(dgxDex.address, purchasedAmount, {from:accounts[0]})
-        result = await dgxDex.sell(purchasedAmount,web3.eth.blockNumber,0,weiPerDgxMg,0,0);
+        result = await dgxDex.sell(purchasedAmount,
+                                   web3.eth.blockNumber,
+                                   0,
+                                   weiPerDgxMg,
+                                   0,
+                                   0,
+                                   true,
+                                   false);
         log = result.logs[0];
         assert.equal(log.event, "Sell");
         assert.equal(log.args.success, true);
@@ -49,7 +63,14 @@ contract('MockDGXDEX', function (accounts) {
         // purchase 1 eth worth of tokens.
         weiPerDgxMg = new BigNumber("91274710000000");
         etherWeiPurchase = new BigNumber(10).pow(18);
-        await dgxDex.purchase(web3.eth.blockNumber - 4, 0, weiPerDgxMg ,0 ,0, {value:etherWeiPurchase});
+        await dgxDex.purchase(web3.eth.blockNumber - 4,
+                              0,
+                              weiPerDgxMg,
+                              0,
+                              0,
+                              true,
+                              false,
+                              {value:etherWeiPurchase});
     });
     it("make sure we can not purchase with an expired block number.", async function (){
 
@@ -57,7 +78,60 @@ contract('MockDGXDEX', function (accounts) {
         weiPerDgxMg = new BigNumber("91274710000000");
         etherWeiPurchase = new BigNumber(10).pow(18);
         try {
-            await dgxDex.purchase(web3.eth.blockNumber - 5, 0, weiPerDgxMg ,0 ,0, {value:etherWeiPurchase});
+            await dgxDex.purchase(web3.eth.blockNumber - 5,
+                                  0,
+                                  weiPerDgxMg,
+                                  0,
+                                  0,
+                                  {value:etherWeiPurchase},
+                                  true,
+                                  false);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+    it("purchase with real signature check and price feed.", async function (){
+
+        let block_number = 5278367;
+        let nonce = 134;
+        let weiPerDgxMg = new BigNumber("91274710000000");
+        let signer = "0xb2aa58ef57ffd6c0cb8aae0a706860bc08e360d8";
+        let signature = "0xe11c7e420ad1042fb6233562a004427ab34ce1389a1fb76c4daeb50f49b2172d66fb50c255b7faaed4b017fb364d30f1566b030d099f17a94c9618afae7d2e6400";
+
+        // try to purchase 1 eth worth of tokens.
+        etherWeiPurchase = new BigNumber(10).pow(18);
+        
+        await dgxDex.purchase(block_number,
+                              nonce,
+                              weiPerDgxMg,
+                              signer,
+                              signature,
+                              false, /* skip sig check */
+                              true, /* skip block check */
+                              {value:etherWeiPurchase});
+    });
+    it("make sure we cannot purchase with altered price feed.", async function (){
+
+        let block_number = 5278367;
+        let nonce = 134;
+        let weiPerDgxMg = new BigNumber("91274710000000");
+        let signer = "0xb2aa58ef57ffd6c0cb8aae0a706860bc08e360d8";
+        let signature = "0xe11c7e420ad1042fb6233562a004427ab34ce1389a1fb76c4daeb50f49b2172d66fb50c255b7faaed4b017fb364d30f1566b030d099f17a94c9618afae7d2e6400";
+        signature = signature.replace("e11c7e", "e11c8e");
+ 
+        // try to purchase 1 eth worth of tokens.
+        etherWeiPurchase = new BigNumber(10).pow(18);
+
+        try {
+            await dgxDex.purchase(block_number,
+                    nonce,
+                    weiPerDgxMg,
+                    signer,
+                    signature,
+                    false, /* skip sig check */
+                    true, /* skip block check */
+                    {value:etherWeiPurchase});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
