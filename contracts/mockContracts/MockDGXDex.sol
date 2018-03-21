@@ -1,24 +1,17 @@
 pragma solidity ^0.4.18;
 
-//ask:
-//dst address change?
-//should init another token outside in test?
-
-// blocknumber + 5 >= current block number ? revert
-// signatures - skip for now.
-
 import "../ERC20Interface.sol";
 import "../Withdrawable.sol";
 import "./ecverify.sol";
-
 
 /// @title Mock Digix DEX
 /// @author Tal Baneth
 /// @dev a dummy contract that simulates Digix contract for purchase/sell with verified signatures. 
 contract MockDGXDEX is Withdrawable {
-    uint  constant internal G_TO_MG = (10**3);
-    uint  constant internal DGX_DECIMALS = (10**9);
-    
+    uint  constant internal GRAM_TO_MILLIGRAM = 10**3;
+    uint  constant internal DGX_DECIMALS = 10**9;
+    uint  constant internal BLOCK_EXPIRATION = 5;
+
     ERC20 token;
     address feedSigner;
     bool public sigCheck = true;
@@ -29,11 +22,8 @@ contract MockDGXDEX is Withdrawable {
         token = _token;
         feedSigner = _feedSigner;
     }
-    
+
     function () public payable {}
-    
-    event Purchase(bool success, uint256 purchasedAmount);
-    event Sell(bool success, uint256 amountWei);
 
     function setSigCheck (bool _sigCheck) public onlyAdmin {
         sigCheck = _sigCheck;
@@ -43,91 +33,102 @@ contract MockDGXDEX is Withdrawable {
         blockCheck = _blockCheck;
     }
 
-    function purchase(uint256 block_number,
+    event Purchase(bool success, uint256 purchasedAmount, address buyerAddress, uint256 weiPerDgxMg);
+
+    function purchase(uint256 blockNumber,
                       uint256 nonce,
                       uint256 weiPerDgxMg,
                       address signer,
-                      bytes signature) payable public returns (bool success, uint256 purchasedAmount) {
+                      bytes signature)
+    payable public
+    returns (bool success, uint256 purchasedAmount)
+    {
 
-        uint256 tokenAmount;
-
-        if( sigCheck) {
-            bool verified;
-            address actual_signer;
-            
-            (verified, actual_signer) =   
-            verify_signed_price(block_number,
-                                nonce,
-                                weiPerDgxMg,
-                                signer,
-                                signature);
-
-            require(verified);
-        }
-        if(blockCheck) {
-            require((block_number + 5) >= block.number);
-        }
-
-        require((block_number + 5) >= block.number);
-
-        tokenAmount = (msg.value / weiPerDgxMg) * ( DGX_DECIMALS / G_TO_MG);
-        require(token.transfer(msg.sender, tokenAmount));
-
-        success = true;
-        purchasedAmount = tokenAmount;
-        
-        Purchase(success, purchasedAmount);
-        
-    }
-
-    function sell(uint256 amount,
-                  uint256 block_number,
-                  uint256  nonce,
-                  uint256 weiPerDgxMg,
-                  address signer,
-                  bytes signature) public returns (bool success) {
-
-        uint256 amountWei;
+        uint256 amountMg;
+        uint256 amountMgDgxWei;
+        uint256 amountDgxWei;
+        bool verified;
+        address actualSigner;
 
         if (sigCheck) {
-            bool verified;
-            address actual_signer;
-            
-            (verified, actual_signer) =   
-            verify_signed_price(block_number,
-                                nonce,
-                                weiPerDgxMg,
-                                signer,
-                                signature);
-
+            (verified, actualSigner) = verify_signed_price(blockNumber,
+                                                           nonce,
+                                                           weiPerDgxMg,
+                                                           signer,
+                                                           signature);
             require(verified);
         }
         if (blockCheck) {
-            require((block_number + 5) >= block.number);
+            require((blockNumber + BLOCK_EXPIRATION) >= block.number);
         }
 
-        amountWei = amount * G_TO_MG * weiPerDgxMg / DGX_DECIMALS;
+        amountMg = (msg.value / weiPerDgxMg);
+        amountMgDgxWei = amountMg * DGX_DECIMALS;
+        amountDgxWei = amountMgDgxWei / GRAM_TO_MILLIGRAM;
+
+        require(token.transfer(msg.sender, amountDgxWei));
+
+        success = true;
+        purchasedAmount = amountDgxWei;
+
+        Purchase(success, purchasedAmount, msg.sender, weiPerDgxMg);
+        
+    }
+
+    event Sell(bool success, uint256 amountWei, address sellerAddress, uint256 weiPerDgxMg);
+
+    function sell(uint256 amount,
+                  uint256 blockNumber,
+                  uint256 nonce,
+                  uint256 weiPerDgxMg,
+                  address signer,
+                  bytes signature)
+    public
+    returns (bool success) {
+
+        uint256 amountWei;
+        uint256 amountDgxWei;
+        uint256 amountMgDgxWei;
+        bool verified;
+        address actualSigner;
+
+        if (sigCheck) {
+            (verified, actualSigner) = verify_signed_price(blockNumber,
+                                                           nonce,
+                                                           weiPerDgxMg,
+                                                           signer,
+                                                           signature);
+            require(verified);
+        }
+        if (blockCheck) {
+            require((blockNumber + BLOCK_EXPIRATION) >= block.number);
+        }
+
+        amountDgxWei = amount;
+        amountMgDgxWei = amountDgxWei * GRAM_TO_MILLIGRAM;
+        amountWei = amountMgDgxWei * weiPerDgxMg / DGX_DECIMALS;
+
         require(token.transferFrom(msg.sender, this, amount));
         msg.sender.transfer(amountWei);
         
         success = true;
 
-        Sell(success, amountWei);
+        Sell(success, amountWei, msg.sender, weiPerDgxMg);
     }
 
     function verify_signed_price(uint _block_number, uint _nonce, uint _price, address _signer, bytes _signature)
-        public
-        returns (bool _verified, address _actual_signer)
-        {
-            bytes32 _hash;
-            bool _verifies;
-            _hash = hash_price_data(_block_number, _nonce, _price);
-            
-            ECVerifyContract ECVerify = new ECVerifyContract();
-            
-            (_verifies,_actual_signer) = ECVerify.ecrecovery(_hash, _signature);
-            _verified = (_verifies && (_actual_signer == _signer));
-        }
+    public
+    returns (bool _verified, address _actual_signer)
+    {
+        bytes32 _hash;
+        bool _verifies;
+        _hash = hash_price_data(_block_number, _nonce, _price);
+        
+        ECVerifyContract ECVerify = new ECVerifyContract();
+        
+        (_verifies,_actual_signer) = ECVerify.ecrecovery(_hash, _signature);
+        _verified = (_verifies && (_actual_signer == _signer));
+    }
 
     function concat_price_data(uint _a, uint _b, uint _c) internal pure returns (string _result) {
         uint maxlength = 100;
