@@ -116,6 +116,8 @@ contract MockDGXDEX is Withdrawable {
         Sell(success, amountWei, msg.sender, weiPerDgxMg);
     }
 
+    /* The code below is DGX signature verification (logic and code style). */
+
     function verify_signed_price(uint _block_number, uint _nonce, uint _price, address _signer, bytes _signature)
     public
     returns (bool _verified, address _actual_signer)

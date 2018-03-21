@@ -1,11 +1,9 @@
-let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let mockDGXDEX = artifacts.require("./mockContracts/MockDGXDEX.sol")
-let Helper = require("./helper.js")
+const TestToken = artifacts.require("./mockContracts/TestToken.sol");
+const mockDGXDEX = artifacts.require("./mockContracts/MockDGXDEX.sol")
+const Helper = require("./helper.js")
 
-let myToken;
-
-let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-let BigNumber = require('bignumber.js');
+const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const BigNumber = require('bignumber.js');
 
 contract('MockDGXDEX', function (accounts) {
     it("create DGX dex and store funds in it.", async function (){
