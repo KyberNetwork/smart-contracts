@@ -86,6 +86,14 @@ contract('WrapConversionRates', function(accounts) {
         assert.equal(addData[3].valueOf(), maxPerBlockImbWrap);
         assert.equal(addData[4].valueOf(), maxTotalImbWrap);
 
+        //can't approve with wrong nonce
+        try {
+            await wrapConvRateInst.approveAddTokenData((addTokenNonce - 1), {from:operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         await wrapConvRateInst.approveAddTokenData(addTokenNonce, {from:operator1});
         await wrapConvRateInst.approveAddTokenData(addTokenNonce, {from:operator2});
@@ -106,6 +114,14 @@ contract('WrapConversionRates', function(accounts) {
         assert.equal(validDurationInfo[0].valueOf(), validDurationNonce);
         assert.equal(validDurationInfo[1].valueOf(), validRateDurationInBlocks);
 
+        //can't approve with wrong nonce
+        try {
+            await wrapConvRateInst.approveValidDurationData((validDurationNonce - 1), {from:operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         await wrapConvRateInst.approveValidDurationData(validDurationNonce, {from:operator1});
         await wrapConvRateInst.approveValidDurationData(validDurationNonce, {from:operator2});
@@ -148,6 +164,15 @@ contract('WrapConversionRates', function(accounts) {
         let rxNonce = await wrapConvRateInst.getTokenInfoNonce();
         let nonce = rxNonce.valueOf();
         assert.equal(nonce, tokenInfoNonce);
+
+        //can't approve with wrong nonce
+        try {
+            await wrapConvRateInst.approveTokenControlInfo((nonce - 1), {from: operator1});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         //approve
         await wrapConvRateInst.approveTokenControlInfo(nonce, {from: operator1});
@@ -561,7 +586,7 @@ contract('WrapConversionRates', function(accounts) {
         assert.equal(rxSignatures[1], operator2);
 
         //set invalid duration and see signatures remained.
-        //try illegal index
+        //try illegal valid duration
         try {
             await wrapConvRateInst.setValidDurationData(4, {from: operator1});
             assert(false, "throw was expected in line above.")

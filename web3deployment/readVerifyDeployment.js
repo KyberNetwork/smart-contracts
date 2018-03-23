@@ -31,6 +31,7 @@ var input = {
   "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
   "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
   "WrapConversionRate.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapConversionRate.sol', 'utf8'),
+  "WrapFeeBurner.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapFeeBurner.sol', 'utf8'),
   "WrapperBase.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapperBase.sol', 'utf8')
 };
 
@@ -98,6 +99,7 @@ let jsonTaxWalletAddress;
 let jsonFeeBurnerAdd;
 let jsonRatesAdd;
 let jsonWrapConversionRate;
+let jsonWrapFeeBurner;
 let jsonReserveAdd;
 
 let kyberNetworkAdd = '0x0';
@@ -293,7 +295,7 @@ async function readKyberNetwork(kyberNetworkAdd){
 
     // now reserves
     for (let i = 0; i < numReserves; i++) {
-        await readReserve(reservesAdd[i], i, (reservesAdd[i] == jsonReserveAdd));
+        await readReserve(reservesAdd[i], i, (reservesAdd[i].toLowerCase() == jsonReserveAdd));
     }
 };
 
@@ -716,7 +718,7 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
     myLog(0, 0, ("fee burner data for reserve " + index + ":" + a2n(reserveAddress)));
     myLog(0, 0, ("------O----S----------------------------T--------------------H----"));
 
-    //verify binary as expected.
+//verify binary as expected.
     let blockCode = await web3.eth.getCode(feeBurnerAddress);
     let solcCode = '0x' + (solcOutput.contracts["FeeBurner.sol:FeeBurner"].runtimeBytecode);
 
@@ -730,6 +732,13 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
        myLog(0, 0, "Code on blockchain matches locally compiled code");
        myLog(0, 0, '');
    }
+
+    if (isKyberReserve && (jsonWrapFeeBurner != 0)) {
+        //verify wrapper binary
+        let admin = (await FeeBurner.methods.admin().call()).toLowerCase();
+        myLog((admin != jsonWrapFeeBurner), 0, "Admin is wrapper contract: " + jsonWrapFeeBurner +(admin == jsonWrapFeeBurner));
+        verifyWrapperCode(jsonWrapFeeBurner, "WrapFeeBurner");
+    }
 
     if (isKyberReserve) await printAdminAlertersOperators(FeeBurner, "FeeBurner");
     let reserveFees = await FeeBurner.methods.reserveFeesInBps(reserveAddress).call();
@@ -802,8 +811,8 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index, 
     if (isKyberReserve && jsonWrapConversionRate != 0) {
         //verify wrapper binary
         let admin = (await Rate.methods.admin().call()).toLowerCase();
-        myLog((admin != jsonWrapConversionRate), 0, "Admin is wrapper contract: " + (admin == jsonWrapConversionRate));
-        readConversionRateWrapper(jsonWrapConversionRate);
+        myLog((admin != jsonWrapConversionRate), 0, "Admin is wrapper contract: " + jsonWrapConversionRate + (admin == jsonWrapConversionRate));
+        verifyWrapperCode(jsonWrapConversionRate, "WrapConversionRate");
     }
 
     if(isKyberReserve) await printAdminAlertersOperators(Rate, "ConversionRates");
@@ -860,36 +869,29 @@ async function verifyTokenListMatchingDeployJSON (reserveIndex, tokenList) {
     });
 };
 
-async function readConversionRateWrapper(convRateWrapperAddress) {
+async function verifyWrapperCode(wrapperAddress, wrapperName) {
     try {
-        let abi = solcOutput.contracts["WrapConversionRate.sol:WrapConversionRate"].interface;
+        let abi = solcOutput.contracts[wrapperName + ".sol:" + wrapperName].interface;
         wrapConversionRatesABI = JSON.parse(abi);
     } catch (e) {
         myLog(0, 0, e);
         throw e;
     }
 
-    let WrapConversionRateInst = await new web3.eth.Contract(wrapConversionRatesABI, convRateWrapperAddress);
-
-    myLog(0, 0, '');
-
-    myLog(0, 0, ("Conversion Rates wrapper address: " +  convRateWrapperAddress));
-    myLog(0, 0, ("--------------------------------------------------------------------"));
-
+    myLog(0, 0, (wrapperName + " address: " +  wrapperAddress));
 
     //verify binary as expected.
-    let blockCode = await web3.eth.getCode(convRateWrapperAddress);
-    let solcCode = '0x' + (solcOutput.contracts["WrapConversionRate.sol:WrapConversionRate"].runtimeBytecode);
+    let blockCode = await web3.eth.getCode(wrapperAddress);
+    let solcCode = '0x' + (solcOutput.contracts[wrapperName + ".sol:" + wrapperName].runtimeBytecode);
 
     if (blockCode != solcCode){
 //        myLog(1, 0, "blockchain Code:");
 //        myLog(0, 0, blockCode);
         myLog(0, 0, '');
-        myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
+        myLog(1, 0, "wrapper code from block chain doesn't match locally compiled code.")
         myLog(0, 0, '')
     } else {
-        myLog(0, 0, "Code on blockchain matches locally compiled code");
-         myLog(0, 0, '');
+        myLog(0, 0, "Wrapper Code on blockchain matches locally compiled code");
     }
 }
 
@@ -1228,6 +1230,13 @@ async function readDeploymentJSON(filePath) {
         jsonWrapConversionRate = 0;
     }
 
+    try {
+        address = (json["feeBurner wrapper"]).toLowerCase();
+        addressesToNames[address] = "feeBurnerWrapper";
+        jsonWrapFeeBurner = address;
+    } catch(e) {
+        jsonWrapFeeBurner = 0;
+    }
 
     address = (json["network"]).toLowerCase();
     addressesToNames[address] = "kyber-network";
