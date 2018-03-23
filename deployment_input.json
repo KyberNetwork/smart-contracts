@@ -78,6 +78,13 @@
     "binance",
     "bitfinex"
   ],
+  "supported_tokens": {
+    "bittrex": ["omg", "snt", "powr", "mana", "bat", "eng", "salt"],
+    "liqui": ["omg", "knc", "eos", "snt", "bat", "eng"],
+    "huobi": ["omg", "eos", "elf", "powr", "mana", "bat", "req", "rdn", "appc", "eng", "salt"],
+    "binance": ["omg", "knc", "eos", "snt", "elf", "powr", "mana", "bat", "req", "gto", "rdn", "appc", "eng", "salt", "bqx"],
+    "bitfinex": ["omg", "eos", "snt", "bat"]
+  },
   "default reserve balances": {
     "token": 1000000,
     "ether": 16
