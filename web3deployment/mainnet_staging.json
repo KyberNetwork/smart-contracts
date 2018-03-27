@@ -157,7 +157,7 @@
       "minimalRecordResolution" : "10",
       "maxPerBlockImbalance" : "1925452883",
       "maxTotalImbalance" : "1925452883",
-      "internal use": false
+      "internal use": true
     },
 
     "RCN": {
