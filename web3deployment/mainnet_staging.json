@@ -7,7 +7,7 @@
       "minimalRecordResolution": "1000000000000000",
       "maxPerBlockImbalance": "775091297865175138304",
       "maxTotalImbalance": "1096640332676811325440",
-      "internal use": true      
+      "internal use": true
     },
     "KNC": {
       "name": "KyberNetwork",
@@ -169,6 +169,27 @@
       "maxTotalImbalance" : "1925452883",
       "internal use": false
     },
+
+    "ZIL": {
+      "name": "Zilliqa",
+      "decimals": 12,
+      "address": "0x05f4a42e251f2d52b8ed15e9fedaacfcef1fad27",
+      "minimalRecordResolution" : "10",
+      "maxPerBlockImbalance" : "1925452883",
+      "maxTotalImbalance" : "1925452883",
+      "internal use": true
+    },
+
+    "LINK": {
+      "name": "Chain Link",
+      "decimals": 18,
+      "address": "0x514910771af9ca656af840dff83e8264ecf986ca",
+      "minimalRecordResolution" : "10",
+      "maxPerBlockImbalance" : "1925452883",
+      "maxTotalImbalance" : "1925452883",
+      "internal use": true
+    },
+
 
     "ETH": {
       "name": "Ethereum",
