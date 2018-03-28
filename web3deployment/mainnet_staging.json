@@ -137,7 +137,7 @@
       "maxPerBlockImbalance": "114446593497",
       "maxTotalImbalance": "114446593497",
       "minimalRecordResolution": "10000",
-      "internal use": true,
+      "internal use": true
     },
 
     "ADX": {
@@ -366,7 +366,7 @@
   "reserve": "0x2C5a182d280EeB5824377B98CD74871f78d6b8BC",
   "pricing": "0xe3E415a7a6c287a95DC68a01ff036828073fD2e6",
   "network": "0xD2D21FdeF0D054D2864ce328cc56D1238d6b239e",
-  "wrapper": "0x865aA8818615BA9DFA8bcB6A1432B0fc506DBd58",
+  "wrapper": "0x6172AFC8c00c46E0D07ce3AF203828198194620a",
   "feeburner": "0xB2cB365D803Ad914e63EA49c95eC663715c2F673",
   "whitelist" : "0x1b8a28d2185a7ab86ae40303b39f33278cc42130"
 }
