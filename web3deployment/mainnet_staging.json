@@ -215,7 +215,10 @@
       "SALT": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "APPC": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "RDN": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
-      "BQX": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547"
+      "BQX": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "ZIL": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "AST": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "LINK": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547"
     }
   },
   "permission": {
