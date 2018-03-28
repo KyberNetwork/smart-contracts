@@ -1144,9 +1144,9 @@ async function printAdminAlertersOperators(contract, jsonKey) {
     //admin
     let admin = await contract.methods.admin().call();
     let isApproved = (admin.toLowerCase() == jsonAdmin);
-    myLog((isApproved == false), 0, ("Admin: " + (a2n(admin, 1)) + " approved: " + isApproved));
+    myLog((isApproved == false), 0, ("Admin: " + admin + " approved: " + isApproved));
     let pendingAdmin = await contract.methods.pendingAdmin().call();
-    myLog((pendingAdmin != 0), 0, ("Pending Admin: " + a2n(pendingAdmin, 1)));
+    myLog((pendingAdmin != 0), 0, ("Pending Admin: " + pendingAdmin));
 
     //operators
     let operators = await contract.methods.getOperators().call();
@@ -1419,12 +1419,11 @@ function getAmountTokens(amountTwei, tokenAdd) {
 function a2n(address, showAddWithName) {
     let name;
     try {
-        name =  addressesToNames[address.toLowerCase()];
-        if (showAddWithName) {
-            name += " " + address.toLowerCase();
-        }
-        if (name == 'undefined') {
+        name = addressesToNames[address.toLowerCase()];
+        if (name === 'undefined') {
             name = address;
+        } else if (showAddWithName) {
+            name += " " + address.toLowerCase();
         }
     } catch(e) {
         name = address;
