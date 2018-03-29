@@ -116,6 +116,7 @@ const runWhiteList = 1;
 const runFeeBurner = 1;
 const printAdminETC = 1;
 const showStepFunctions = 1;
+const readTokenDataInConvRate = true;
 const verifyWhitelistedAddresses = false;
 const saveSpyrosDict = false;
 const verifyTokenDataOnblockChain = false;
@@ -635,23 +636,25 @@ async function reportReserveBalance(reserveAddress) {
 
 async function verifyApprovedWithdrawAddress (reserveContract, isKyberReserve) {
     //verify approved withdrawal addresses are set
-    myLog(0, 0, '');
-    myLog(0, 0, "Test approved withdrawal addresses per Exchange for reserve");
-    myLog(0, 0, "-----------S--------------------------------------------P--");
-    let exchanges = deploymentJson["exchanges"];
     let jsonWithDrawAdds = {};
-    for (let exchange in exchanges){
+    if (isKyberReserve) {
         myLog(0, 0, '');
-        myLog(0, 0, "Exchange: " + exchange);
-        myLog(0, 0, "--------------------------");
-        let tokensInEx = exchanges[exchange];
-        for (let token in tokensInEx) {
-            let withDrawAdd = tokensInEx[token];
-            let tokenAdd = tokenSymbolToAddress[token];
-            let sha3 = await twoStringsSoliditySha(tokenAdd, withDrawAdd);
-            jsonWithDrawAdds[sha3] = true;
-            let isApproved = await reserveContract.methods.approvedWithdrawAddresses(sha3.toString(16)).call();
-            myLog((isApproved == 'false'), 0, "Token: " + token + " withdraw address " + withDrawAdd + " approved: " + isApproved);
+        myLog(0, 0, "Test approved withdrawal addresses per Exchange for reserve");
+        myLog(0, 0, "-----------S--------------------------------------------P--");
+        let exchanges = deploymentJson["exchanges"];
+        for (let exchange in exchanges){
+            myLog(0, 0, '');
+            myLog(0, 0, "Exchange: " + exchange);
+            myLog(0, 0, "--------------------------");
+            let tokensInEx = exchanges[exchange];
+            for (let token in tokensInEx) {
+                let withDrawAdd = tokensInEx[token];
+                let tokenAdd = tokenSymbolToAddress[token];
+                let sha3 = await twoStringsSoliditySha(tokenAdd, withDrawAdd);
+                jsonWithDrawAdds[sha3] = true;
+                let isApproved = await reserveContract.methods.approvedWithdrawAddresses(sha3.toString(16)).call();
+                myLog((isApproved == false), 0, "Token: " + token + " withdraw address " + withDrawAdd + " approved in reserve: " + isApproved);
+            }
         }
     }
 
@@ -689,8 +692,10 @@ async function verifyApprovedWithdrawAddress (reserveContract, isKyberReserve) {
 
         if (sha3ToTokens[sha3Adds] != '') {
             // address currently approved
-            if (jsonWithDrawAdds[sha3Adds] == true) {
-                isListedInJson = true;
+            if (isKyberReserve) {
+                if (jsonWithDrawAdds[sha3Adds] == true) {
+                    isListedInJson = true;
+                }
             }
             myLog((isListedInJson == false), 0, "Token: " + a2n(sha3ToTokens[sha3Adds], 0) + " withdrawal address: " +
                 sha3ToAddresses[sha3Adds] + " listed in json: " + isListedInJson );
@@ -834,8 +839,15 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index, 
     await validateReserveTokensListedOnNetwork(tokensPerReserve[index], reserveAddress);
 
     let numTokens = tokensPerReserve[index].length;
+
+    if (readTokenDataInConvRate == false) return;
+
     if (isKyberReserve) SpyrosDict["kyber"] = {};
 	else SpyrosDict["other" + index] = {};
+
+
+    myLog(0, 0, ("Verify all json token list is listed in conversion rate contract "));
+    myLog(0, 0, "-------E---------------A-----------------------------------------");
 
     for (let i = 0; i < numTokens; i++) {
         await readTokenDataInConversionRate(conversionRateAddress, tokensPerReserve[index][i], index, isKyberReserve);
@@ -1025,7 +1037,7 @@ let needSanityRateABI = 1;
 async function readSanityRate(sanityRateAddress, reserveAddress, index, tokens, isKyberReserve) {
     if (sanityRateAddress == 0) {
         myLog(0, 0, "");
-        myLog(0, 1, ("sanity rate not configured for reserve: " + a2n(reserveAddress, 1)));
+        myLog(0, 1, ("sanity rate not configured for reserve: " + reserveAddress));
         return;
     }
 
