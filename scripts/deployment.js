@@ -49,6 +49,7 @@ var ethAddress = new BigNumber("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
 var exchanges = [];// ["Bittrex", "Liqui", "Huobi", "Binance", "Bitfinex"];
 var exchangesInstance = [];
 var exchangeDepositAddresses = [];
+var supportedTokens = {}
 
 var bank;
 var wrapper;
@@ -114,6 +115,7 @@ var parseInput = function( jsonInput ) {
     exchangeInfo.forEach(function(exchange) {
       exchanges.push(exchange);
     });
+    supportedTokens = jsonInput["supported_tokens"];
 
     // special addresses
     var specialAddresses = jsonInput["special addresses"];
@@ -257,7 +259,7 @@ var createExchanges = function( owner, bankAddress ) {
                 return CentralizedExchange.new(item, bankAddress, {from:owner});
             }).then(function(instance){
                 exchangesInstance.push(instance);
-                return addDepositAddressToExchange(instance, owner);
+                return addDepositAddressToExchange(instance, owner, item);
             });
         }, Promise.resolve()).then(function(){
             fulfill(true);
@@ -270,7 +272,7 @@ var createExchanges = function( owner, bankAddress ) {
 /////////////////////////////////////////////////////////////////
 
 
-var addDepositAddressToExchange = function( exchange, owner ) {
+var addDepositAddressToExchange = function( exchange, owner, exchangeName ) {
     return new Promise(function (fulfill, reject){
 
         var tokens = [];
@@ -278,7 +280,9 @@ var addDepositAddressToExchange = function( exchange, owner ) {
 
         //create array of tokens
         for (var i = 0 ; i < tokenInstance.length ; i++ ) {
-            tokens.push(i);
+            if (supportedTokens[exchangeName].indexOf(tokenSymbol[i].toLowerCase()) >= 0) {
+              tokens.push(i);
+            }
         }
 
         return tokens.reduce(function (promise, item) {
@@ -820,12 +824,16 @@ it("set eth to dgd rate", function() {
   it("print addresses", function() {
     tokensDict = {};
     console.log("\ntokens");
-    tokensDict["ETH"] = {"address" : "0x" + ethAddress.toString(16), "name" : "Ethereum", "decimals" : 18 };
+    tokensDict["ETH"] = {"address" : "0x" + ethAddress.toString(16), 
+                         "name" : "Ethereum", 
+                         "decimals" : 18,
+                         "internal use": true};
     for( var i = 0 ; i < tokenSymbol.length ; i++ ) {
       //console.log(tokenSymbol[i] + " : " + tokenInstance[i].address );
       tokenDict = {"address" : tokenInstance[i].address,
                    "name" : tokenName[i],
-                   "decimals" : tokenDecimals[i]};
+                   "decimals" : tokenDecimals[i],
+                   "internal use": true};
       tokensDict[tokenSymbol[i]] = tokenDict;
     }
 
