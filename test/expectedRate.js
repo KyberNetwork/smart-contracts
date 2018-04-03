@@ -317,4 +317,79 @@ contract('ExpectedRates', function(accounts) {
         rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty);
     });
 
+    it("should verify set quantity factor reverts when > 100.", async function() {
+            let legalFactor = 100;
+        let illegalFactor = 101;
+
+        await expectedRates.setQuantityFactor(legalFactor, {from: operator});
+        let rxFactor = await expectedRates.quantityFactor();
+
+        assert.equal(rxFactor, legalFactor);
+
+
+        try {
+            await expectedRates.setQuantityFactor(illegalFactor, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        rxFactor = await expectedRates.quantityFactor();
+        assert.equal(rxFactor, legalFactor);
+    });
+
+//    it("should verify set min slippage reverts when > 100 * 100.", async function() {
+//        let legalSlippage = 100 * 100;
+//        let illegalSlippage = 100 * 100 + 1 * 1;
+//
+//        await expectedRates.setMinSlippageFactor(legalSlippage, {from: operator});
+//        let rxSlippage = await expectedRates.minSlippageFactorInBps();
+//
+//        assert.equal(rxSlippage, legalSlippage);
+//
+//        try {
+//            await expectedRates.setMinSlippageFactor(illegalSlippage, {from: operator});
+//            assert(false, "throw was expected in line above.")
+//        } catch(e){
+//            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+//        }
+//
+//        rxSlippage = await expectedRates.minSlippageFactorInBps();
+//        assert.equal(rxSlippage, legalSlippage);
+//    });
+
+    it("should verify get expected rate reverts when qty > MAX QTY.", async function() {
+        let legalQty = (new BigNumber(10).pow(28));
+        let illegalQty = (new BigNumber(10).pow(28)).add(1);
+        let tokenInd = 1;
+
+        //with quantity factor 1
+        await expectedRates.setQuantityFactor(1, {from: operator});
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, legalQty);
+
+        try {
+            rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, illegalQty);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should verify get expected rate reverts when qty * qtyFactor > MAX QTY.", async function() {
+        let legalQty = (new BigNumber(10).pow(28)).div(2);
+        let illegalQty = (new BigNumber(10).pow(28)).div(2).add(1);
+        let tokenInd = 1;
+
+        //with quantity factor 2
+        await expectedRates.setQuantityFactor(2, {from: operator});
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, legalQty);
+
+        illegalQty = legalQty.add(1);
+        try {
+            rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, illegalQty);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
  });

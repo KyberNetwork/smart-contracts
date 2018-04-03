@@ -84,6 +84,21 @@ contract('SanityRates', function(accounts) {
         await sanityRates.setReasonableDiff(tokens, reasonableDiffs);
     });
 
+    it("should test can't init diffs when value > max diff (10000 = 100%).", async function () {
+        reasonableDiffs[0] = (100 * 100) + 1;
+
+        try {
+            await sanityRates.setReasonableDiff(tokens, reasonableDiffs);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        reasonableDiffs[0] = 100 * 100;
+
+        await sanityRates.setReasonableDiff(tokens, reasonableDiffs);
+    });
+
     it("should test can't init rates when array lengths aren't the same.", async function () {
         rates.push(8);
         try {
@@ -95,6 +110,23 @@ contract('SanityRates', function(accounts) {
 
         rates.length = tokens.length;
 
+        await sanityRates.setSanityRates(tokens, rates, {from: operator});
+    });
+
+    it("should test reverts when sanity rate > maxRate (10**24).", async function () {
+        let legalRate = new BigNumber(10).pow(24);
+        let illegalRate = legalRate.add(1);
+
+        rates[0] = illegalRate;
+
+        try {
+            await sanityRates.setSanityRates(tokens, rates, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        rates[0] = legalRate;
         await sanityRates.setSanityRates(tokens, rates, {from: operator});
     });
 
