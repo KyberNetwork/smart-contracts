@@ -20,7 +20,7 @@ process.on('unhandledRejection', console.error.bind(console))
 
 const { gasPriceGwei, privateKeyFile } = require('yargs')
     .usage('Usage: $0 --gas-price-gwei [gwei] --private-key-file [file]')
-    .demandOption(['gasPriceGwei', 'privateKeyFile'])
+    .demandOption(['privateKeyFile'])
     .argv;
 
 url = "https://mainnet.infura.io";
@@ -36,7 +36,7 @@ try {
 
 const account = web3.eth.accounts.privateKeyToAccount("0x"+privateKey);
 const sender = account.address;
-const gasPrice = BigNumber(gasPriceGwei).mul(10 ** 9);
+let gasPrice
 const signedTxs = [];
 let nonce;
 let errors = 0;
@@ -147,6 +147,14 @@ async function sendFeesToWallets(reserve_address) {
 
 async function main() {
     console.log("from",sender);
+
+    if (typeof gasPriceGwei != 'undefined') {
+        gasPrice = BigNumber(gasPriceGwei).mul(10 ** 9);
+    }
+    else {
+        gasPrice = await web3.eth.getGasPrice()
+    }
+    console.log("gasPrice", gasPrice.toString())
 
     nonce = await web3.eth.getTransactionCount(sender);
     console.log("nonce",nonce);
