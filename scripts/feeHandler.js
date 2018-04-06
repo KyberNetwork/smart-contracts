@@ -13,38 +13,34 @@ const fs = require("fs");
 const path = require('path');
 const BigNumber = require('bignumber.js')
 
-process.on('unhandledRejection', console.error.bind(console))
-
-const { gasPriceGwei, privateKeyFile } = require('yargs')
-    .usage('Usage: $0 --gas-price-gwei [gwei] --private-key-file [file]')
-    .demandOption(['privateKeyFile'])
-    .argv;
-
 const url = "https://mainnet.infura.io";
 const web3 = new Web3(new Web3.providers.HttpProvider(url));
 
 let privateKey;
-try {  
-    let data = fs.readFileSync(privateKeyFile, 'utf8');
-    privateKey = data;
-} catch(e) {
-    console.log('Error:', e.stack);
-}
-
-const account = web3.eth.accounts.privateKeyToAccount("0x"+privateKey);
-const sender = account.address;
-
+let account
+let sender
 let gasPrice
 const signedTxs = [];
 let nonce;
 let errors = 0;
 let txs = 0;
-
-const Network = new web3.eth.Contract(JSON.parse(NetworkAbi), NetworkAddress);
+let Network
 let FeeBurner
 
+function getNetwork() {
+    Network = new web3.eth.Contract(JSON.parse(NetworkAbi), NetworkAddress);
+}
+
 function get_sender(){
-    
+    try {  
+        let data = fs.readFileSync(privateKeyFile, 'utf8');
+        privateKey = data;
+    } catch(e) {
+        console.log('Error:', e.stack);
+    }
+
+    account = web3.eth.accounts.privateKeyToAccount("0x"+privateKey);
+    sender = account.address;
 }
 
 function sleep(ms){
@@ -149,7 +145,10 @@ async function sendFeesToWallets(reserve_address) {
 }
 
 async function main() {
-    console.log("from",sender);
+    getNetwork()
+
+    get_sender()
+    console.log("sender",sender);
 
     if (typeof gasPriceGwei != 'undefined') {
         gasPrice = BigNumber(gasPriceGwei).mul(10 ** 9);
@@ -173,6 +172,7 @@ async function main() {
     for (let reserve_index in reserves) {
         let reserve_address = reserves[reserve_index];
         console.log("reserve_address", reserve_address)
+        continue
         await burnReservesFees(reserve_address);
         await sendFeesToWallets(reserve_address);
     }
@@ -180,5 +180,12 @@ async function main() {
     console.log("***** performed " + txs +" txs, " + errors + " failed *****")
     process.exit(errors)
 }
+
+process.on('unhandledRejection', console.error.bind(console))
+
+const { gasPriceGwei, privateKeyFile } = require('yargs')
+    .usage('Usage: $0 --gas-price-gwei [gwei] --private-key-file [file]')
+    .demandOption(['privateKeyFile'])
+    .argv;
 
 main();
