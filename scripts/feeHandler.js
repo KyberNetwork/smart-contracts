@@ -7,6 +7,8 @@ const wallets = {"olympus": "0x09227deaeE08a5Ba9D6Eb057F922aDfAd191c36c",
                  "imtoken": "0xb9E29984Fe50602E7A619662EBED4F90D93824C7",
                  "trust": "0xf1aa99c69715f423086008eb9d06dc1e35cc504d",
                  "cipher": "0xDD61803d4a56C597E0fc864F7a20eC7158c6cBA5" }
+const KNC_MINIMAL_TX_AMOUNT = 10
+const RETRIALS = 60
 
 const Web3 = require("web3");
 const fs = require("fs");
@@ -50,25 +52,26 @@ function sleep(ms){
 }
 
 async function waitForTx(txHash) {
-  while(true) {
-    const reciept = await web3.eth.getTransactionReceipt(txHash)
-    if(reciept != null) {
-        // tx is mined
-        if (reciept.status == '0x1'){
-            console.log("successfull tx", txHash)
+    let retrials = RETRIALS;
+    while(retrials--) {
+        const reciept = await web3.eth.getTransactionReceipt(txHash)
+        if(reciept != null) {
+            // tx is mined
+            if (reciept.status == '0x1'){
+                console.log("successfull tx", txHash)
+            }
+            else
+            {
+                console.log("unsuccesfull tx", txHash)
+                errors++;
+            }
+            return;
         }
-        else
-        {
-            console.log("unsuccesfull tx", txHash)
-            errors++;
+        else{
+            // tx is not mined yet
+            await sleep(5000)
         }
-        return;
     }
-    else{
-        // tx is not mined yet
-        await sleep(5000)
-    }
-  }
 }
 
 async function sendTx(txObject) {
@@ -112,14 +115,14 @@ async function sendTx(txObject) {
 async function enoughReserveFeesToBurn(reserve_address) {
     let reserveFeeToBurn = (await FeeBurner.methods.reserveFeeToBurn(reserve_address).call()).toLowerCase();
     console.log("reserveFeeToBurn", reserveFeeToBurn)
-    return (reserveFeeToBurn.toString() >= 10)
+    return (reserveFeeToBurn.toString() >= KNC_MINIMAL_TX_AMOUNT)
 }
 
 async function enoughWalletFeesToBurn(reserve_address, wallet_address)
 {
     let walletFeeToSend = (await FeeBurner.methods.reserveFeeToWallet(reserve_address, wallet_address).call()).toLowerCase();
     console.log("walletFeeToSend", walletFeeToSend)
-    return (walletFeeToSend.toString() >= 10)
+    return (walletFeeToSend.toString() >= KNC_MINIMAL_TX_AMOUNT)
 }
 
 async function burnReservesFees(reserve_address) {
@@ -172,7 +175,6 @@ async function main() {
     for (let reserve_index in reserves) {
         let reserve_address = reserves[reserve_index];
         console.log("reserve_address", reserve_address)
-        continue
         await burnReservesFees(reserve_address);
         await sendFeesToWallets(reserve_address);
     }
