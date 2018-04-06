@@ -28,10 +28,10 @@ const signedTxs = [];
 let nonce;
 let errors = 0;
 let txs = 0;
+let feeBurnerAddress;
 let Network;
 let FeeBurner;
 let KNCToken;
-let feeBurnerAddress;
 
 function KNCWeiToKNCString(KNCWei) {
     return BigNumber(KNCWei).div(10 ** 18).toString()
@@ -120,51 +120,51 @@ async function sendTx(txObject) {
     nonce++;
     signedTxs.push(signedTx.rawTransaction)
     console.log("sendSignedTransaction")
-    //txHash = await web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
-    //await waitForTx(txHash.transactionHash);
+    txHash = await web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
+    await waitForTx(txHash.transactionHash);
 }
 
-async function enoughReserveFeesToBurn(reserve_address) {
-    let reserveFeeToBurn = (await FeeBurner.methods.reserveFeeToBurn(reserve_address).call()).toLowerCase();
+async function enoughReserveFeesToBurn(reserveAddress) {
+    let reserveFeeToBurn = (await FeeBurner.methods.reserveFeeToBurn(reserveAddress).call()).toLowerCase();
     console.log("reserveFeeToBurn", KNCWeiToKNCString(reserveFeeToBurn))
     return (reserveFeeToBurn.toString() >= KNC_MINIMAL_TX_AMOUNT)
 }
 
-async function enoughWalletFeesToBurn(reserve_address, wallet_address)
+async function enoughWalletFeesToBurn(reserveAddress, walletAddress)
 {
-    let walletFeeToSend = (await FeeBurner.methods.reserveFeeToWallet(reserve_address, wallet_address).call()).toLowerCase();
+    let walletFeeToSend = (await FeeBurner.methods.reserveFeeToWallet(reserveAddress, walletAddress).call()).toLowerCase();
     console.log("walletFeeToSend", KNCWeiToKNCString(walletFeeToSend))
     return (walletFeeToSend.toString() >= KNC_MINIMAL_TX_AMOUNT)
 }
 
-async function burnReservesFees(reserve_address) {
+async function burnReservesFees(reserveAddress) {
     console.log("burnReservesFees")
-    let enough = await enoughReserveFeesToBurn(reserve_address);
+    let enough = await enoughReserveFeesToBurn(reserveAddress);
     console.log("enough", enough)
     if (enough) {
-        await sendTx(FeeBurner.methods.burnReserveFees(reserve_address));
+        await sendTx(FeeBurner.methods.burnReserveFees(reserveAddress));
     }
 }
 
-async function sendFeesToWallets(reserve_address) {
+async function sendFeesToWallets(reserveAddress) {
     console.log("sendFeesToWallets")
     for (let wallet in wallets) {
-        let wallet_address = wallets[wallet];
-        console.log("wallet_address", wallet_address)
-        let enough = await enoughWalletFeesToBurn(reserve_address, wallet_address);
+        let walletAddress = wallets[wallet];
+        console.log("walletAddress", walletAddress)
+        let enough = await enoughWalletFeesToBurn(reserveAddress, walletAddress);
         console.log("enough", enough)
         if (enough) {
-            await sendTx(FeeBurner.methods.sendFeeToWallet(wallet_address, reserve_address));
+            await sendTx(FeeBurner.methods.sendFeeToWallet(walletAddress, reserveAddress));
         }
     }
 }
 
-async function reserveKNCWalletDetails(reserve_address) {
-    let reserveKNCWallet = await FeeBurner.methods.reserveKNCWallet(reserve_address).call();
+async function reserveKNCWalletDetails(reserveAddress) {
+    let reserveKNCWallet = await FeeBurner.methods.reserveKNCWallet(reserveAddress).call();
     console.log("reserveKNCWallet", reserveKNCWallet)
  
-    let reserveWalletTotal = await KNCToken.methods.balanceOf(reserveKNCWallet).call();
-    console.log("reserveWalletTotal", KNCWeiToKNCString(reserveWalletTotal));
+    let reserveWalletBalance = await KNCToken.methods.balanceOf(reserveKNCWallet).call();
+    console.log("reserveWalletBalance", KNCWeiToKNCString(reserveWalletBalance));
 
     let reserveWalletAllowance = await KNCToken.methods.allowance(reserveKNCWallet, feeBurnerAddress).call();
     console.log("reserveWalletAllowance", KNCWeiToKNCString(reserveWalletAllowance));
@@ -199,11 +199,11 @@ async function main() {
     FeeBurner = new web3.eth.Contract(JSON.parse(feeBurnerAbi), feeBurnerAddress);
 
     for (let reserve_index in reserves) {
-        let reserve_address = reserves[reserve_index];
-        console.log("reserve_address", reserve_address)
-        await reserveKNCWalletDetails(reserve_address)        
-        await burnReservesFees(reserve_address);
-        await sendFeesToWallets(reserve_address);
+        let reserveAddress = reserves[reserve_index];
+        console.log("reserveAddress", reserveAddress)
+        await reserveKNCWalletDetails(reserveAddress)        
+        await burnReservesFees(reserveAddress);
+        await sendFeesToWallets(reserveAddress);
     }
 
     console.log("***** performed " + txs +" txs, " + errors + " failed *****")
