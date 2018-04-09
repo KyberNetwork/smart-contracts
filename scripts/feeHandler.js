@@ -83,6 +83,8 @@ async function waitForTx(txHash) {
             await sleep(5000)
         }
     }
+    errors++;
+    return
 }
 
 async function sendTx(txObject) {
