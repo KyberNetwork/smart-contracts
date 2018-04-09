@@ -28,20 +28,20 @@ let nonce;
 let errors = 0;
 let txs = 0;
 let feeBurnerAddress;
-let Network;
-let FeeBurner;
-let KNCToken;
+let networkContract;
+let feeBurnerContract;
+let kncTokenContract;
 
 function KNCWeiToKNCString(KNCWei) {
     return BigNumber(KNCWei).div(10 ** 18).toString()
 }
 
-function getKNCToken() {
-    KNCToken = new web3.eth.Contract(JSON.parse(erc20Abi), kncTokenAddress);
+function getKncToken() {
+    kncTokenContract = new web3.eth.Contract(JSON.parse(erc20Abi), kncTokenAddress);
 }
 
 function getNetwork() {
-    Network = new web3.eth.Contract(JSON.parse(networkAbi), networkAddress);
+    networkContract = new web3.eth.Contract(JSON.parse(networkAbi), networkAddress);
 }
 
 function getSender(){
@@ -125,14 +125,14 @@ async function sendTx(txObject) {
 }
 
 async function enoughReserveFeesToBurn(reserveAddress) {
-    let reserveFeeToBurn = (await FeeBurner.methods.reserveFeeToBurn(reserveAddress).call()).toLowerCase();
+    let reserveFeeToBurn = (await feeBurnerContract.methods.reserveFeeToBurn(reserveAddress).call()).toLowerCase();
     console.log("reserveFeeToBurn", KNCWeiToKNCString(reserveFeeToBurn))
     return (reserveFeeToBurn.toString() >= KNC_MINIMAL_TX_AMOUNT)
 }
 
 async function enoughWalletFeesToBurn(reserveAddress, walletAddress)
 {
-    let walletFeeToSend = (await FeeBurner.methods.reserveFeeToWallet(reserveAddress, walletAddress).call()).toLowerCase();
+    let walletFeeToSend = (await feeBurnerContract.methods.reserveFeeToWallet(reserveAddress, walletAddress).call()).toLowerCase();
     console.log("walletFeeToSend", KNCWeiToKNCString(walletFeeToSend))
     return (walletFeeToSend.toString() >= KNC_MINIMAL_TX_AMOUNT)
 }
@@ -142,7 +142,7 @@ async function burnReservesFees(reserveAddress) {
     let enough = await enoughReserveFeesToBurn(reserveAddress);
     console.log("enough", enough)
     if (enough) {
-        await sendTx(FeeBurner.methods.burnReserveFees(reserveAddress));
+        await sendTx(feeBurnerContract.methods.burnReserveFees(reserveAddress));
     }
 }
 
@@ -154,25 +154,25 @@ async function sendFeesToWallets(reserveAddress) {
         let enough = await enoughWalletFeesToBurn(reserveAddress, walletAddress);
         console.log("enough", enough)
         if (enough) {
-            await sendTx(FeeBurner.methods.sendFeeToWallet(walletAddress, reserveAddress));
+            await sendTx(feeBurnerContract.methods.sendFeeToWallet(walletAddress, reserveAddress));
         }
     }
 }
 
 async function reserveKNCWalletDetails(reserveAddress) {
-    let reserveKNCWallet = await FeeBurner.methods.reserveKNCWallet(reserveAddress).call();
+    let reserveKNCWallet = await feeBurnerContract.methods.reserveKNCWallet(reserveAddress).call();
     console.log("reserveKNCWallet", reserveKNCWallet)
  
-    let reserveWalletBalance = await KNCToken.methods.balanceOf(reserveKNCWallet).call();
+    let reserveWalletBalance = await kncTokenContract.methods.balanceOf(reserveKNCWallet).call();
     console.log("reserveWalletBalance", KNCWeiToKNCString(reserveWalletBalance));
 
-    let reserveWalletAllowance = await KNCToken.methods.allowance(reserveKNCWallet, feeBurnerAddress).call();
+    let reserveWalletAllowance = await kncTokenContract.methods.allowance(reserveKNCWallet, feeBurnerAddress).call();
     console.log("reserveWalletAllowance", KNCWeiToKNCString(reserveWalletAllowance));
 }
 
 async function main() {
 
-    getKNCToken()
+    getKncToken()
 
     getNetwork()
 
@@ -196,7 +196,7 @@ async function main() {
     feeBurnerAddress = await Network.methods.feeBurnerContract().call();
     console.log("feeBurnerAddress",feeBurnerAddress);
 
-    FeeBurner = new web3.eth.Contract(JSON.parse(feeBurnerAbi), feeBurnerAddress);
+    feeBurnerContract = new web3.eth.Contract(JSON.parse(feeBurnerAbi), feeBurnerAddress);
 
     for (let reserve_index in reserves) {
         let reserveAddress = reserves[reserve_index];
