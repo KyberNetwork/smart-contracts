@@ -124,8 +124,8 @@ async function sendTx(txObject) {
     const signedTx = await web3.eth.accounts.signTransaction(tx, txKey);
     nonce++;
     console.log("sendSignedTransaction")
-    // txHash = await web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
-    // await waitForTx(txHash.transactionHash);
+    txHash = await web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
+    await waitForTx(txHash.transactionHash);
 }
 
 async function enoughReserveFeesToBurn(reserveAddress) {
