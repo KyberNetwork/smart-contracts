@@ -1,159 +1,174 @@
 {
   "tokens": {
-    "ETH": {
-      "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-      "name": "Ethereum",
-      "decimals": 18
-    },
     "OMG": {
-      "address": "0x98541419c0f9873acf6bf449cb7246f9df600d2c",
       "name": "OmiseGO",
-      "decimals": 18
-    },
-    "DGD": {
-      "address": "0xe8c213a416646b5dfc04845d1b3e471b35599722",
-      "name": "Digix",
-      "decimals": 9
-    },
-    "CVC": {
-      "address": "0x5313256342e3b2a12188b91eee310f8311b8aa73",
-      "name": "Civic",
-      "decimals": 8
-    },
-    "FUN": {
-      "address": "0xf96a8f7cd011a3cf2f2c8f5fdf8aaf0471ec3302",
-      "name": "FunFair",
-      "decimals": 8
-    },
-    "MCO": {
-      "address": "0xec8530552d545aa50668af7d75a96d9359d7388a",
-      "name": "Monaco",
-      "decimals": 8
-    },
-    "GNT": {
-      "address": "0x4d46106343242999b7617e6c1a8f6d4927831582",
-      "name": "Golem",
-      "decimals": 18
-    },
-    "ADX": {
-      "address": "0xf0de273c82a7eddd6057d963b848cd21309364bf",
-      "name": "Adex",
-      "decimals": 4
-    },
-    "PAY": {
-      "address": "0xa8f3612baea3998fee82673506189dc277eb8973",
-      "name": "TenX",
-      "decimals": 18
-    },
-    "BAT": {
-      "address": "0xfe35c93a01af76dbe1116f13dd903578f340ab7d",
-      "name": "BasicAttention",
-      "decimals": 18
+      "decimals": 18,
+      "address": "0x5b9a857e0C3F2acc5b94f6693536d3Adf5D6e6Be",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "775091297865175138304",
+      "maxTotalImbalance": "1096640332676811325440"
     },
     "KNC": {
-      "address": "0xa59826bfd12c6cddff70137a5f3e29b75215c531",
       "name": "KyberNetwork",
-      "decimals": 18
+      "decimals": 18,
+      "address": "0xE5585362D0940519d87d29362115D4cc060C56B3",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "2711997842670896021504",
+      "maxTotalImbalance": "3833713935933528080384"
     },
     "EOS": {
-      "address": "0x7d7fd73fede850a0d3f044af79ba83490830ae4b",
       "name": "Eos",
-      "decimals": 18
+      "decimals": 18,
+      "address": "0xd3c64BbA75859Eb808ACE6F2A6048ecdb2d70817",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "1019792725446519947264",
+      "maxTotalImbalance": "1441689429340878536704"
     },
-    "LINK": {
-      "address": "0xfab56a845dbb07f6ffdadf225713de8617e37d5c",
-      "name": "ChainLink",
-      "decimals": 18
+    "SNT": {
+      "name": "STATUS",
+      "decimals": 18,
+      "address": "0xF739577d63cdA4a534B0fB92ABf8BBf6EA48d36c",
+      "minimalRecordResolution": "10000000000000000",
+      "maxPerBlockImbalance": "37434287125568931495936",
+      "maxTotalImbalance": "38806865287259009056768"
+    },
+    "ELF": {
+      "name": "AELF",
+      "decimals": 18,
+      "address": "0x7174FCb9C2A49c027C9746983D8262597b5EcCb1",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "6727090010493247553536",
+      "maxTotalImbalance": "9489286595433755312128"
+    },
+    "POWR": {
+      "name": "Power Ledger",
+      "decimals": 6,
+      "address": "0x2C4EfAa21f09c3C6EEF0Edb001E9bffDE7127D3B",
+      "minimalRecordResolution": "1000",
+      "maxPerBlockImbalance": "8860273487",
+      "maxTotalImbalance": "8860273487"
+    },
+    "MANA": {
+      "name": "MANA",
+      "decimals": 18,
+      "address": "0xf5E314c435B3B2EE7c14eA96fCB3307C3a3Ef608",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "54907343857240902729728",
+      "maxTotalImbalance": "54907343857240902729728"
+    },
+    "BAT": {
+      "name": "Basic Attention Token",
+      "decimals": 18,
+      "address": "0x04A34c8f5101Dcc50bF4c64D1C7C124F59bb988c",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "13480268257338322845696",
+      "maxTotalImbalance": "13480268257338322845696"
+    },
+    "REQ": {
+      "name": "Request",
+      "decimals": 18,
+      "address": "0xa448cD1DB463ae738a171C483C56157d6B83B97f",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "32547010644498297389056",
+      "maxTotalImbalance": "33735087557886343118848"
+    },
+    "GTO": {
+      "name": "Gifto",
+      "decimals": 5,
+      "address": "0x6B07b8360832c6bBf05A39D9d443A705032bDc4d",
+      "minimalRecordResolution": "10",
+      "maxPerBlockImbalance": "1925452883",
+      "maxTotalImbalance": "1925452883"
+    },
+    "ETH": {
+      "name": "Ethereum",
+      "decimals": 18,
+      "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
     }
-  },
-  "exchangesAddress": {
-    "bittrex": "0x032ce14c810f3a96d3f99ef5fd4769297780896d",
-    "liqui": "0x5d57f5514a2f409316bee22066a8c556ee2d0b23",
-    "poloniex": "0xb9921d1a90dea77bf603077f107b2ebc80bdcf81",
-    "binance": "0xf965d592d0d30bcbae8c66f32fc97de707a7823f",
-    "bitfinex": "0x40602b10470c41671393de663e7f6b611bea0530"
   },
   "exchanges": {
-    "bittrex": {
-      "OMG": "0x2294cf82ddcfd0f885d760753b984ce0204804a0",
-      "DGD": "0xde90112fc13dc4c1e7cf0be848cc09bad4a7d76b",
-      "CVC": "0xe101a9447e2c2b26b9b4bf9b6de43808548a34f0",
-      "FUN": "0xffaad020e5b4a75abd1e8d8c19bb96ac7fd12dbf",
-      "MCO": "0xa9999af627afe65b471986b0098ad30b376733b6",
-      "GNT": "0xae10fa73a90740492fcf33e99c5d360ffc1a2f01",
-      "ADX": "0xe9260c851ae2e9d82218f499cd8e3ad2759622a2",
-      "PAY": "0xa3ced8f745d6331dfbc2ac201e486fa51f24e180",
-      "BAT": "0x8f6379d3ff9b3cd6f497379c0915187b1a14ef56",
-      "KNC": "0x6f909965ab1f0e2d99badc4d3703e7dc632972b7",
-      "EOS": "0x191f4eac1039c107610960b3ee686da5173ff91e",
-      "LINK": "0x1ff65dd6e179c26151a8369427399edc3e8f263b",
-      "ETH": "0xd2c0d47b55e75f9583b64f33f78a2f74a50f6fa9"
-    },
-    "liqui": {
-      "OMG": "0xa11f367a8053c6a17dad2958bb19b68880acbbbb",
-      "DGD": "0x411f654ba129eebdde825556578736edfc495ab0",
-      "CVC": "0x10361703dd52b95d3b3973a09dab49cd57b627cb",
-      "FUN": "0x7664b312749741b6e73b1e36ce0019964b6fc99c",
-      "MCO": "0xba24efb5facaa7f7004b91b67c37c704944035ef",
-      "GNT": "0x240fea1d22ff351ac457fa380aa1205902b2a744",
-      "ADX": "0xf67700dbd1e4b431141ff7c12c42f2e21ab76c0d",
-      "PAY": "0x8537dabcdb2743dc756741f0c8087f1c9fb7019c",
-      "BAT": "0xb39b53cee01936a1909ffb43b8bc6cae88c408f5",
-      "KNC": "0xf40998b218ad2f0d8c164f4b4d95fd58e4d6e7d5",
-      "EOS": "0x66929ca713b5005f06ffc66df3eb2a49799da527",
-      "LINK": "0x5f05225142c38a7f1f1be6ab866b3c849abf492d",
-      "ETH": "0x705782632a8bad70482f7797aa928817a5bdc309"
-    },
-    "poloniex": {
-      "OMG": "0xdaf62f16ac034b35cd5871a12ae30f70de8cc9fe",
-      "DGD": "0x11661a9b86df15c0a428f0210259d9da3dcef990",
-      "CVC": "0x9f4171bbaee1e218ed4a4a624d5c6ab0724fcb4b",
-      "FUN": "0xb8f55d605977828a63d39fcea2732cae9926df40",
-      "MCO": "0xc2c376402da0bebb57aaa2b2db95e0ccee9b75c3",
-      "GNT": "0xae13b50df85516891ba2bd579e83bfa3b682e6f5",
-      "ADX": "0xc1cc28c28e74b9e41678f3604c0aad58cef3466b",
-      "PAY": "0x8feddc37d81bad881af37e464efa0f2d20e60ca1",
-      "BAT": "0x39bd58d82bc5a2cc07e1613fc56b09ca036c41c2",
-      "KNC": "0xf657a97b75faa8772007f99f81dcce07feb803a2",
-      "EOS": "0x225275566986eac29ee88015e1fe0be680ec7400",
-      "LINK": "0xecd3bab089e5957cf10d140396f752824bcda093",
-      "ETH": "0xb39908316f9e6444fc2d2a9a7b466e6e4079b0e1"
-    },
     "binance": {
-      "OMG": "0xa99d6d3d2031a3af98aee0a9ebdad7d8376c1520",
-      "DGD": "0x7f2d14fc7f7a865181b3859f4b56521fe0352f47",
-      "CVC": "0x197c681bbfa40779e5b5804dec5b3e4b7fd95bfa",
-      "FUN": "0x8e9a3a01ba17af0972a7c19062eb26423b898f04",
-      "MCO": "0x3497ab4e05417c30403488c8ca8c938f11349967",
-      "GNT": "0x6f5279ae30ef31dd476b57a72cc80f654c58e6eb",
-      "ADX": "0xa48573dff9695a6f88921188e686bb6a8637f320",
-      "PAY": "0x057a1e476c6efa39d8612ccd550d0cedd197d3ce",
-      "BAT": "0x686405577af237a4e0181260d121afbcd3d534f2",
-      "KNC": "0x2d1f8aa22fc8251ff55bb34f0ce39efebfa2237f",
-      "EOS": "0xa3151196bd24cc8aeeb1d3736a023439c365df1d",
-      "LINK": "0xd421cff201cb03c0cc73a835d0d780e7675f3bdf",
-      "ETH": "0x66dc151443c1ee3c40cf513053dd5325f33b3d44"
-    },
-    "bitfinex": {
-      "OMG": "0x6212ed0c892a110da8fb4f4b5e61178d815b8ebe",
-      "DGD": "0x5cc4e078e5c3c67940e8d66834a2796366751af6",
-      "CVC": "0x960a756d804e3207d73d36a79b4d66bf111f25b7",
-      "FUN": "0x70d16aa6faeacdf55002e30925a71f32afc99c55",
-      "MCO": "0xbddc3b39f89e57b4a08e79fd537825bb66278f59",
-      "GNT": "0xf132b11af67e1c5307ec9d96d16755df14aca8aa",
-      "ADX": "0xdf67153f118ee200ff3c1e308b38487797dc70bd",
-      "PAY": "0xd7ffea1b1606636a94c94a0b4d1c1676a90aad1e",
-      "BAT": "0x94de9c55fd3450b1765f8b1bd5369a449c76dcb3",
-      "KNC": "0x5ab20f90f6e1860c22a3c7e8326e4bdb052252d6",
-      "EOS": "0x59379d43fc58c60127cc151723b5afa9276f52b7",
-      "LINK": "0x7810a125f582808ea8b1ad916fa7579a119fefaf",
-      "ETH": "0xf4268a665ff3a30c7cd6b883dce28d2f87758554"
+      "ETH": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "OMG": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "KNC": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "SNT": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "EOS": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "ELF": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "POWR": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "MANA": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "BAT": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "REQ": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "GTO": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"
     }
   },
-  "bank": "0xb5d52555c117c9f3e8f596432fa45393b9efbd8b",
-  "reserve": "0x488b362e51a53e969cb28f42eadc41411f20a835",
-  "pricing": "0x6dcf29f5dc0f207e6d850d9436e35281079bc063",
-  "network": "0xe801403a9b8dae494f9088a4687c1c139fae2fe4",
-  "wrapper": "0x54556ac5afbd73b6a9d1c3d2d679477dd33ea81f",
-  "feeburner": "0xf8a7e8053195ebba0f78611fa47e68c4caab6bea"
+  "permission": {
+    "KyberNetwork": {
+      "admin": "0x85Ff15b853df828C1a1E5bba4254600724Ba4Ca3",
+      "operator": [
+        "0x85Ff15b853df828C1a1E5bba4254600724Ba4Ca3"
+      ],
+      "alerter": []
+    },
+    "KyberReserve": {
+      "admin": "0x85Ff15b853df828C1a1E5bba4254600724Ba4Ca3",
+      "operator": [
+        "0x760d30979eb313a2d23c53e4fb55986183b0ffd9",
+        "0xedd15b61505180b3a0c25b193df27ef10214d851"
+      ],
+      "alerter": []
+    },
+    "ConversionRates": {
+      "admin": "0x85Ff15b853df828C1a1E5bba4254600724Ba4Ca3",
+      "operator": [
+        "0x760d30979eb313a2d23c53e4fb55986183b0ffd9",
+        "0xedd15b61505180b3a0c25b193df27ef10214d851"
+      ],
+      "alerter": []
+    },
+    "FeeBurner": {
+      "admin": "0x85Ff15b853df828C1a1E5bba4254600724Ba4Ca3",
+      "operator": [
+        "0x85Ff15b853df828C1a1E5bba4254600724Ba4Ca3"
+      ],
+      "alerter": []
+    },
+    "WhiteList": {
+      "admin": "0x85Ff15b853df828C1a1E5bba4254600724Ba4Ca3",
+      "operator": [
+        "0x85Ff15b853df828C1a1E5bba4254600724Ba4Ca3"
+      ],
+      "alerter": []
+    },
+    "ExpectedRate": {
+      "admin": "0x85Ff15b853df828C1a1E5bba4254600724Ba4Ca3",
+      "operator": [
+        "0x85Ff15b853df828C1a1E5bba4254600724Ba4Ca3"
+      ],
+      "alerter": []
+    }
+  },
+  "whitelist params": {
+    "testers": [
+      "0x053a9f418F7BE3391A2821BE23b418a909f42F54"
+    ],
+    "testers category": 9,
+    "testers cap": 5000,
+    "KGT address": "0xfce10cbf5171dc12c215bbcca5dd75cbaea72506",
+    "KGT cap": 0,
+    "users": [],
+    "users category": 1,
+    "users cap": 0,
+    "default cap": 5000000
+  },
+  "max gas price": "90000000000",
+  "neg diff in bps": 20,
+  "min expected rate slippage": 300,
+  "KNC wallet": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+  "KNC to ETH rate": 300,
+  "valid duration block": 60,
+  "reserve": "0x0FC1CF3e7DD049F7B42e6823164A64F76fC06Be0",
+  "pricing": "0x535DE1F5a982c2a896da62790a42723A71c0c12B",
+  "network": "0x0a56d8a49E71da8d7F9C65F95063dB48A3C9560B",
+  "wrapper": "0x9de0a60F4A489e350cD8E3F249f4080858Af41d3",
+  "feeburner": "0x89B5c470559b80e541E53eF78244edD112c7C58A"
 }
