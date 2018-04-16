@@ -176,6 +176,16 @@
       "internal use": true
     },
 
+    "DAI": {
+      "name" : "DAI",
+      "decimals": 18,
+      "address": "0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "2711997842670896021504",
+      "maxTotalImbalance": "3833713935933528080384",
+      "internal use": false
+    },
+
     "LINK": {
       "name": "Chain Link",
       "decimals": 18,
