@@ -147,7 +147,7 @@ async function enoughReserveFeesToBurn(reserveAddress) {
     return (reserveFeeToBurn.toString() >= KNC_MINIMAL_TX_AMOUNT)
 }
 
-async function enoughWalletFeesToBurn(reserveAddress, walletAddress)
+async function enoughWalletFeesToSend(reserveAddress, walletAddress)
 {
     let walletFeeToSend = (await feeBurnerContract.methods.reserveFeeToWallet(reserveAddress, walletAddress).call()).toLowerCase();
     console.log("walletFeeToSend", kncWeiToKNCString(walletFeeToSend))
@@ -168,7 +168,7 @@ async function sendFeesToWallets(reserveAddress) {
     for (let wallet in wallets) {
         let walletAddress = wallets[wallet];
         console.log("walletAddress", walletAddress)
-        let enough = await enoughWalletFeesToBurn(reserveAddress, walletAddress);
+        let enough = await enoughWalletFeesToSend(reserveAddress, walletAddress);
         console.log("enough", enough)
         if (enough) {
             await sendTx(feeBurnerContract.methods.sendFeeToWallet(walletAddress, reserveAddress));
@@ -176,7 +176,9 @@ async function sendFeesToWallets(reserveAddress) {
     }
 }
 
-async function reserveKNCWalletDetails(reserveAddress) {
+async function validateReserveKNCWallet(reserveAddress) {
+    console.log("validateReserveKNCWallet")
+
     let reserveKNCWallet = await feeBurnerContract.methods.reserveKNCWallet(reserveAddress).call();
     console.log("reserveKNCWallet", reserveKNCWallet)
  
@@ -185,6 +187,31 @@ async function reserveKNCWalletDetails(reserveAddress) {
 
     let reserveWalletAllowance = await kncTokenContract.methods.allowance(reserveKNCWallet, feeBurnerAddress).call();
     console.log("reserveWalletAllowance", kncWeiToKNCString(reserveWalletAllowance));
+
+    let walletUsableKnc = BigNumber.min(reserveWalletAllowance, reserveWalletBalance)
+    console.log("walletUsableKnc", kncWeiToKNCString(walletUsableKnc));
+
+    let totalFeesToBurnAndSend
+    let reserveFeeToBurn = await feeBurnerContract.methods.reserveFeeToBurn(reserveAddress).call();
+    console.log("reserveFeeToBurn", kncWeiToKNCString(reserveFeeToBurn))
+    totalFeesToBurnAndSend = reserveFeeToBurn
+
+    for (let wallet in wallets) {
+        let walletAddress = wallets[wallet];
+        console.log("walletAddress", walletAddress)
+        let walletFeeToSend = await feeBurnerContract.methods.reserveFeeToWallet(reserveAddress, walletAddress).call();
+        console.log("walletFeeToSend", kncWeiToKNCString(walletFeeToSend))
+        totalFeesToBurnAndSend = BigNumber(totalFeesToBurnAndSend).add(walletFeeToSend)
+    }
+    console.log("totalFeesToBurnAndSend", kncWeiToKNCString(totalFeesToBurnAndSend))
+
+    if (BigNumber(walletUsableKnc).lt(totalFeesToBurnAndSend))
+    {
+        console.log("validation error. walletUsableKnc " + kncWeiToKNCString(walletUsableKnc) + " is less than totalFeesToBurnAndSend " + kncWeiToKNCString(totalFeesToBurnAndSend))
+        errors += 1
+        return false
+    }
+    return true
 }
 
 function getConfig() {
@@ -259,9 +286,11 @@ async function doMain() {
     for (let reserve_index in reserves) {
         let reserveAddress = reserves[reserve_index];
         console.log("reserveAddress", reserveAddress)
-        await reserveKNCWalletDetails(reserveAddress)        
-        await burnReservesFees(reserveAddress);
-        await sendFeesToWallets(reserveAddress);
+        canHandleReserve = await validateReserveKNCWallet(reserveAddress)
+        if (canHandleReserve) {
+            await burnReservesFees(reserveAddress);
+            await sendFeesToWallets(reserveAddress);
+        }
     }
 
     // account for spent eth
@@ -270,7 +299,7 @@ async function doMain() {
     predictedRunsLeft =  BigNumber(finalSenderBalance).div(ethSpentInProcess).toString()
 
     // summary prints
-    console.log("***** performed " + txs +" txs, " + errors + " failed *****")
+    console.log("***** performed " + txs +" txs, got " + errors + " errors *****")
     console.log("***** spent " + weiToEthString(ethSpentInProcess) + " ETH in the process, sender balance now " + weiToEthString(finalSenderBalance) + "ETH, expected to last " + predictedRunsLeft + " more runs *****")
     process.exit(errors)
 }
