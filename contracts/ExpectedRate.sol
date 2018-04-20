@@ -46,10 +46,11 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
         require(srcQty <= MAX_QTY);
         require(srcQty * quantityFactor <= MAX_QTY);
 
+        uint bestReserve;
         uint minSlippage;
 
-        expectedRate = kyberNetwork.findBestRates(src, dest, srcQty);
-        slippageRate = kyberNetwork.findBestRates(src, dest, (srcQty * quantityFactor));
+        (bestReserve, expectedRate) = kyberNetwork.findBestRate(src, dest, srcQty);
+        (bestReserve, slippageRate) = kyberNetwork.findBestRate(src, dest, (srcQty * quantityFactor));
 
         require(expectedRate <= MAX_RATE);
 
