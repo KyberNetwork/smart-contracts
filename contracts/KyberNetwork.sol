@@ -400,6 +400,7 @@ contract KyberNetwork is Withdrawable, Utils {
         uint callValue = 0;
 
         if (src == dest) {
+            //this is for a "fake" trade when both src and dest are ehters.
             if (destAddress != (address(this)))
                 destAddress.transfer(amount);
             return true;
@@ -416,7 +417,7 @@ contract KyberNetwork is Withdrawable, Utils {
         require(reserve.trade.value(callValue)(src, amount, dest, this, conversionRate, validate));
 
         if (destAddress != address(this)) {
-            //for token to token dest address is network. and Ether already here...
+            //for token to token dest address is network. and Ether / token already here...
             if (dest == ETH_TOKEN_ADDRESS) {
                 destAddress.transfer(expectedDestAmount);
             } else {
