@@ -368,6 +368,7 @@ contract KyberNetwork is Withdrawable, Utils {
 
         //when src is ether, reserve1 is doing a "fake" trade. (ether to ether) - don't burn.
         //when dest is ether, reserve2 is doing a "fake" trade. (ether to ether) - don't burn.
+        if (src != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(amount.eth, reserves[reserve1], walletId));
         if (dest != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(amount.eth, reserves[reserve2], walletId));
 
         ExecuteTrade(msg.sender, src, dest, amount.actualSrc, amount.actualDest);
