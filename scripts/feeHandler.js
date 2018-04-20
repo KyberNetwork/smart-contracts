@@ -220,7 +220,7 @@ async function getGasPrice() {
     }
 }
 
-async function main() {
+async function doMain() {
 
     // get abis from compiled sources
     await getAbis()
@@ -273,6 +273,16 @@ async function main() {
     console.log("***** performed " + txs +" txs, " + errors + " failed *****")
     console.log("***** spent " + weiToEthString(ethSpentInProcess) + " ETH in the process, sender balance now " + weiToEthString(finalSenderBalance) + "ETH, expected to last " + predictedRunsLeft + " more runs *****")
     process.exit(errors)
+}
+
+async function main() {
+    try {
+        await doMain();
+    }
+    catch(err) {
+       console.log("caught an exception: " + err)
+       process.exit(1)
+    }
 }
 
 process.on('unhandledRejection', console.error.bind(console))
