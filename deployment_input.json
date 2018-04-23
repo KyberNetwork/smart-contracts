@@ -69,8 +69,84 @@
       "name": "Salt",
       "decimals": 8,
       "reserve balance": 2918.7378
+    },
+    "BQX": {
+      "name": "Ethos",
+      "decimals": 8
+    },
+    "ADX": {
+      "name": "AdEx",
+      "decimals": 4
+    },
+    "AST": {
+      "name": "AirSwap",
+      "decimals": 4
+    },
+    "RCN": {
+      "name": "RipioCreditNetwork",
+      "decimals": 18
+    },
+    "ZIL": {
+      "name": "Zilliqa",
+      "decimals": 12
+    },
+    "LINK": {
+      "name": "ChainLink",
+      "decimals": 18
+    },
+    "DAI": {
+      "name": "DAI",
+      "decimals": 18
+    },
+    "DGX": {
+      "name": "Digix Gold",
+      "decimals": 9
     }
   },
+  "internal use tokens": [
+    "omg",
+    "knc",
+    "eos",
+    "snt",
+    "elf",
+    "powr",
+    "mana",
+    "bat",
+    "req",
+    "gto",
+    "rdn",
+    "appc",
+    "eng",
+    "salt",
+    "bqx",
+    "ast",
+    "zil",
+    "link",
+    "dgx"
+  ],
+  "listed tokens": [
+    "omg",
+    "knc",
+    "eos",
+    "snt",
+    "elf",
+    "powr",
+    "mana",
+    "bat",
+    "req",
+    "gto",
+    "rdn",
+    "appc",
+    "eng",
+    "salt",
+    "bqx",
+    "adx",
+    "ast",
+    "rcn",
+    "zil",
+    "link",
+    "dai"
+  ],
   "exchanges": [
     "bittrex",
     "liqui",
@@ -79,11 +155,59 @@
     "bitfinex"
   ],
   "supported_tokens": {
-    "bittrex": ["omg", "snt", "powr", "mana", "bat", "eng", "salt"],
-    "liqui": ["omg", "knc", "eos", "snt", "bat", "eng"],
-    "huobi": ["omg", "eos", "elf", "powr", "mana", "bat", "req", "rdn", "appc", "eng", "salt"],
-    "binance": ["omg", "knc", "eos", "snt", "elf", "powr", "mana", "bat", "req", "gto", "rdn", "appc", "eng", "salt", "bqx"],
-    "bitfinex": ["omg", "eos", "snt", "bat"]
+    "bittrex": [
+      "omg",
+      "snt",
+      "powr",
+      "mana",
+      "bat",
+      "eng",
+      "salt"
+    ],
+    "liqui": [
+      "omg",
+      "knc",
+      "eos",
+      "snt",
+      "bat",
+      "eng"
+    ],
+    "huobi": [
+      "omg",
+      "eos",
+      "elf",
+      "powr",
+      "mana",
+      "bat",
+      "req",
+      "rdn",
+      "appc",
+      "eng",
+      "salt"
+    ],
+    "binance": [
+      "omg",
+      "knc",
+      "eos",
+      "snt",
+      "elf",
+      "powr",
+      "mana",
+      "bat",
+      "req",
+      "gto",
+      "rdn",
+      "appc",
+      "eng",
+      "salt",
+      "bqx"
+    ],
+    "bitfinex": [
+      "omg",
+      "eos",
+      "snt",
+      "bat"
+    ]
   },
   "default reserve balances": {
     "token": 1000000,
