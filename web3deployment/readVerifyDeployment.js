@@ -155,10 +155,12 @@ async function main (){
 
     await init(infuraUrl);
 
+    myLog(0, 0, "reading input json");
     if (await readDeploymentJSON(deployInputJsonPath) == false) {
         printHelp();
         return;
     };
+    myLog(0, 0, "done reading input json");
 
     await readKyberNetwork(kyberNetworkAdd);
 
@@ -687,8 +689,7 @@ async function verifyApprovedWithdrawAddress (reserveContract, isKyberReserve) {
 
     for (let i = 0; i < refSha3.length; i++) {
         let sha3Adds = refSha3[i];
-        let isListedInJson = true;
-        if (isKyberReserve) isListedInJson = false;
+        let isListedInJson = false;
 
         if (sha3ToTokens[sha3Adds] != '') {
             // address currently approved
@@ -696,9 +697,13 @@ async function verifyApprovedWithdrawAddress (reserveContract, isKyberReserve) {
                 if (jsonWithDrawAdds[sha3Adds] == true) {
                     isListedInJson = true;
                 }
+                myLog((isListedInJson == false), 0, "Token: " + a2n(sha3ToTokens[sha3Adds], 0) + " withdrawal address: " +
+                       sha3ToAddresses[sha3Adds] + " listed in json: " + isListedInJson );
+            } else {
+                    myLog(0, 0, "Token: " + a2n(sha3ToTokens[sha3Adds], 0) + " withdrawal address: " +
+                           sha3ToAddresses[sha3Adds]);
             }
-            myLog((isListedInJson == false), 0, "Token: " + a2n(sha3ToTokens[sha3Adds], 0) + " withdrawal address: " +
-                sha3ToAddresses[sha3Adds] + " listed in json: " + isListedInJson );
+
         }
     };
 }
@@ -821,7 +826,7 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index, 
     if(isKyberReserve) await printAdminAlertersOperators(Rate, "ConversionRates");
 
     let validRateDurationInBlocks = await Rate.methods.validRateDurationInBlocks().call();
-    myLog((validRateDurationInBlocks != jsonValidDurationBlock), 0, ("validRateDurationInBlocks: " + validRateDurationInBlocks));
+    myLog((isKyberReserve && (validRateDurationInBlocks != jsonValidDurationBlock)), 0, ("validRateDurationInBlocks: " + validRateDurationInBlocks));
     let reserveContractAdd = (await Rate.methods.reserveContract().call()).toLowerCase();
     myLog((reserveAddress != reserveContractAdd), 0, ("reserveContract: " + reserveContractAdd));
     tokensPerReserve[index] = await Rate.methods.getListedTokens().call();
@@ -1141,16 +1146,19 @@ async function printAdminAlertersOperators(contract, jsonKey) {
 
     let permissionList = deploymentJson["permission"][jsonKey];
     let jsonAdmin;
+    let jsonPendingAdmin;
     let jsonOperators;
     let jsonAlerters;
     try {
         jsonAlerters = permissionList["alerter"];
         jsonOperators = permissionList["operator"];
         jsonAdmin = (permissionList["admin"]).toLowerCase();
+        jsonPendingAdmin = (permissionList["pending admin"]).toLowerCase();
     } catch (e) {
         jsonAlerters = '';
         jsonOperators = '';
         jsonAdmin = '';
+        jsonPendingAdmin = '';
     }
 
     //admin
@@ -1158,7 +1166,8 @@ async function printAdminAlertersOperators(contract, jsonKey) {
     let isApproved = (admin.toLowerCase() == jsonAdmin);
     myLog((isApproved == false), 0, ("Admin: " + admin + " approved: " + isApproved));
     let pendingAdmin = await contract.methods.pendingAdmin().call();
-    myLog((pendingAdmin != 0), 0, ("Pending Admin: " + pendingAdmin));
+    isApproved = ((pendingAdmin == '0x0000000000000000000000000000000000000000') ||  (pendingAdmin.toLowerCase() == jsonPendingAdmin));
+    myLog((isApproved == false), 0, ("Pending Admin: " + pendingAdmin + " approved: " + isApproved));
 
     //operators
     let operators = await contract.methods.getOperators().call();
@@ -1432,7 +1441,7 @@ function a2n(address, showAddWithName) {
     let name;
     try {
         name = addressesToNames[address.toLowerCase()];
-        if (name === 'undefined') {
+        if (name == 'undefined') {
             name = address;
         } else if (showAddWithName) {
             name += " " + address.toLowerCase();
