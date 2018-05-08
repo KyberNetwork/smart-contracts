@@ -330,7 +330,8 @@
         "0xf214dde57f32f3f34492ba3148641693058d4a9e",
         "0xd0643BC0D0C879F175556509dbcEe9373379D5C3",
         "0x342F4057110bE50957d0f156F4939a929944C69e",
-        "0x3A9b02c14d967333cE68E353a64653E258da2BAa"
+        "0x3A9b02c14d967333cE68E353a64653E258da2BAa",
+        "0x7D5a75e27B3E9d07aB63c7b7F18f544b0a6a96a0"
       ],
       "alerter": []
     },
@@ -345,7 +346,7 @@
     },
     "SanityRate": {
       "admin": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
-      "pending admin": "",
+      "pending admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
       "operator": [
         "0x0a3d5c8894bbe1e9113e4ed6f0c3b0d4fa6b131e",
         "0xd0643BC0D0C879F175556509dbcEe9373379D5C3"
