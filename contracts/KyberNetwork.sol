@@ -405,6 +405,7 @@ contract KyberNetwork is Withdrawable, Utils {
                 destAddress.transfer(amount);
             return true;
         }
+        
 
         if (src == ETH_TOKEN_ADDRESS) {
             callValue = amount;
