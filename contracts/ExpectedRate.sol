@@ -43,7 +43,6 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
         returns (uint expectedRate, uint slippageRate)
     {
         require(quantityFactor != 0);
-        require(srcQty <= MAX_QTY);
         require(srcQty * quantityFactor <= MAX_QTY);
 
         uint bestReserve;
