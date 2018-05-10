@@ -25,12 +25,11 @@ contract KyberNetwork is Withdrawable, Utils {
     bool                  public enabled = false; // network is enabled
     mapping(bytes32=>uint) public info; // this is only a UI field for external app.
     mapping(address=>mapping(bytes32=>bool)) public perReserveListedPairs;
-    mappint(address=>address[]) perTokenReserves;
-    bytes internal getConvSig;
+    mapping(address=>address[]) resrevesPerTokenSrc; //reserves supporting token to eth
+    mapping(address=>address[]) resrevesPerTokenDest;//reserves support eth to token
 
     function KyberNetwork(address _admin) public {
         require(_admin != address(0));
-        getConvSig = abi.encodeWithSignature("getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber)");
         admin = _admin;
     }
 
@@ -135,44 +134,61 @@ contract KyberNetwork is Withdrawable, Utils {
     /// @notice can be called only by admin
     /// @dev allow or prevent a specific reserve to trade a pair of tokens
     /// @param reserve The reserve address.
-    /// @param src Src token
-    /// @param dest Destination token
-    /// @param add If true then enable trade, otherwise delist pair.
-    function listPairForReserve(address reserve, ERC20 src, ERC20 dest, bool add) public onlyAdmin {
-        (perReserveListedPairs[reserve])[keccak256(src, dest)] = add;
-        ERC20 token;
+    /// @param token token address
+    /// @param ethToToken will it support ether to token trade
+    /// @param tokenToEth will it support token to ether trade
+    /// @param add If true then list this pair, otherwise unlist it.
+    function listPairForReserve(address reserve, ERC20 token, bool ethToToken, bool tokenToEth, bool add) public onlyAdmin {
+        require(isReserve(reserve));
+        address [] storage reservs;
+        uint i;
 
-        if (src != ETH_TOKEN_ADDRESS) {
-            token = src;
-            if (add) {
-                src.approve(reserve, 2**255); // approve infinity
-            } else {
-                src.approve(reserve, 0);
-            }
-        } else {
-            token = dest;
-        }
-
-        if (add) {
-            //make sure not added already
-            for (int i = 0; i < perTokenReserves[token].length; i++) {
-                require(reserve != perTokenReserves[token][i]);
-            }
-            //add
-            perTokenReserves[token].push(reserve);
-        } else {
-            for (int i = 0; i < perTokenReserves[token].length; i++) {
-                if(reserve == perTokenReserves[token][i]) {
-                    perTokenReserves[token][i] = perTokenReserves[token][perTokenReserves[token].length - 1];
-                    perTokenReserves[token].length--;
+        if (ethToToken) {
+            reservs = resrevesPerTokenDest[token];
+            for (i = 0; i < reservs.length; i++) {
+                if (reserve == reservs[i]) {
+                    if(add) {
+                        break; //already added
+                    } else {
+                        //remove
+                        reservs[i] = reservs[reservs.length - 1];
+                        reservs.length--;
+                    }
                 }
             }
+
+            if (add && i < reservs.length) {
+                reservs.push(reserve);
+            }
         }
 
-        setDecimals(src);
-        setDecimals(dest);
+        if (tokenToEth) {
+            reservs = resrevesPerTokenSrc[token];
+            for (i = 0; i < reservs.length; i++) {
+                if (reserve == reservs[i]) {
+                    if(add) {
+                        break; //already added
+                    } else {
+                        //remove
+                        reservs[i] = reservs[reservs.length - 1];
+                        reservs.length--;
+                    }
+                }
+            }
 
-        ListReservePairs(reserve, src, dest, add);
+            if (add && i < reservs.length) {
+                reservs.push(reserve);
+                token.approve(reserve, 2**255); // approve infinity
+            }
+            if (!add) {
+                token.approve(reserve, 0);
+            }
+        }
+
+        setDecimals(token);
+
+        if (ethToToken) ListReservePairs(reserve, ETH_TOKEN_ADDRESS, token, add);
+        if (tokenToEth) ListReservePairs(reserve, token, ETH_TOKEN_ADDRESS, add);
     }
 
     function setParams(
@@ -189,7 +205,7 @@ contract KyberNetwork is Withdrawable, Utils {
         require(_feeBurner != address(0));
         require(_expectedRate != address(0));
         require(_negligibleRateDiff <= 100 * 100); // at most 100%
-        
+
         whiteListContract = _whiteList;
         expectedRateContract = _expectedRate;
         feeBurnerContract = _feeBurner;
@@ -257,6 +273,7 @@ contract KyberNetwork is Withdrawable, Utils {
     }
 
     /* solhint-disable code-complexity */
+    //@dev this function always src or dest are ether. can't do token to token
     function searchBestRate(ERC20 src, ERC20 dest, uint srcQty) internal view returns(uint, uint) {
         uint bestRate = 0;
         uint bestReserve = 0;
@@ -265,21 +282,20 @@ contract KyberNetwork is Withdrawable, Utils {
         //return 1 for ether to ether
         if (src == dest) return (bestReserve, PRECISION);
 
+        uint numReserves = reserves.length;
         ERC20 token;
-        if (src != ETH_TOKEN_ADDRESS) token = src;
-        else token = dest;
+        if (src == ETH_TOKEN_ADDRESS) {
+            to
+        }
 
-        uint numReserves = perTokenReserves[token].length;
         uint[] memory rates = new uint[](numReserves);
         uint[] memory reserveCandidates = new uint[](numReserves);
 
         for (uint i = 0; i < numReserves; i++) {
             //list all reserves that have this token.
-//            if (!(perReserveListedPairs[reserves[i]])[keccak256(src, dest)]) continue;
-//            rates[i] = perTokenReserves[token][i].getConversionRate(src, dest, srcQty, block.number);
-            if(!address(perTokenReserves[token][i]).call(getConvSig)(src, dest, srcQty, block.number)) continue;
+            if (!(perReserveListedPairs[reserves[i]])[keccak256(src, dest)]) continue;
 
-            returndatacopy(rate[i],0,returndatasize)
+            rates[i] = reserves[i].getConversionRate(src, dest, srcQty, block.number);
 
             if (rates[i] > bestRate) {
                 //best rate is highest rate
