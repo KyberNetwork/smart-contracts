@@ -247,6 +247,16 @@
       "internal use": true,
       "listed": true
     },
+    "ABT": {
+      "name": "ArcBlock",
+      "decimals": 18,
+      "address": "0xb98d4c97425d9908e66e53a6fdf673acca0be986",
+      "minimalRecordResolution": "100000000000000",
+      "maxPerBlockImbalance": "5461044951947117854720",
+      "maxTotalImbalance": "6043192343824681664512",
+      "internal use": true,
+      "listed": true
+    },
     "ETH": {
       "name": "Ethereum",
       "decimals": 18,
