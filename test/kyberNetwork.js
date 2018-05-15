@@ -1221,40 +1221,37 @@ contract('KyberNetwork', function(accounts) {
 
             // first token to eth rate
             let expectedSellRate = (new BigNumber(baseSellRate2[tokenSrcInd]));
-            log('expectedSellRate base ' + expectedSellRate);
+//            log('expectedSellRate base ' + expectedSellRate);
 
             let extraBps = getExtraBpsForSellQuantity(srcAmountTwei);
             expectedSellRate = addBps(expectedSellRate, extraBps);
-            log('expectedSellRate after qty step ' + expectedSellRate);
+//            log('expectedSellRate after qty step ' + expectedSellRate);
 
             extraBps = getExtraBpsForImbalanceSellQuantity(reserve2TokenImbalance[tokenSrcInd].valueOf());
             expectedSellRate = addBps(expectedSellRate, extraBps);
-
-            log('total imalbance ' + reserve2TokenImbalance[tokenSrcInd]);
-            log('expectedSellRate ' + expectedSellRate);
             let expectedEthQtyWei = expectedSellRate.mul(srcAmountTwei).div(precisionUnits).floor();
-            log ("expectedEthQtyWei " + expectedEthQtyWei.valueOf());
+//            log ("expectedEthQtyWei " + expectedEthQtyWei.valueOf());
 
             //eth to token
             let expectedBuyRate = (new BigNumber(baseBuyRate1[tokenDestInd]));
-            log('expectedBuyRate base ' + expectedBuyRate);
+//            log('expectedBuyRate base ' + expectedBuyRate);
             let dstQty = (expectedEthQtyWei).mul(expectedBuyRate).div(precisionUnits).floor();
-            log('dest Token qty before valid rate ' + dstQty);
+//            log('dest Token qty before valid rate ' + dstQty);
 
             extraBps = getExtraBpsForBuyQuantity(dstQty);
             expectedBuyRate = addBps(expectedBuyRate, extraBps);
-            log('expectedBuyRate after step bps change ' + expectedBuyRate);
+//            log('expectedBuyRate after step bps change ' + expectedBuyRate);
 
             reserve1TokenImbalance[tokenDestInd] = reserve1TokenImbalance[tokenDestInd].add(dstQty);
             extraBps = getExtraBpsForImbalanceBuyQuantity(reserve1TokenImbalance[tokenDestInd].valueOf());
             expectedBuyRate = addBps(expectedBuyRate, extraBps);
-            log('expectedBuyRate after imbalance change' + expectedBuyRate);
+//            log('expectedBuyRate after imbalance change' + expectedBuyRate);
 
             let combinedRate = expectedSellRate.mul(expectedBuyRate).div(precisionUnits);
-            console.log('combinedRate ' + combinedRate.valueOf())
+//            console.log('combinedRate ' + combinedRate.valueOf())
 
             expectedDestTokensTwei = combinedRate.mul(srcAmountTwei).div(precisionUnits).floor();
-            console.log('expectedDestTokensTwei ' + expectedDestTokensTwei.valueOf());
+//            console.log('expectedDestTokensTwei ' + expectedDestTokensTwei.valueOf());
             reserve1TokenBalance[tokenDestInd] = reserve1TokenBalance[tokenDestInd].sub(expectedDestTokensTwei);
 
   //        check correct rate calculated
@@ -1270,9 +1267,8 @@ contract('KyberNetwork', function(accounts) {
 
     //        function trade(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, walletId)
             result = await network.trade(tokenAdd[tokenSrcInd], srcAmountTwei, tokenAdd[tokenDestInd], user2, maxDestAmount, buyRate[1].valueOf(), walletId, {from:user1});
-            log(result.logs[0].args);
-            log(result.logs[1].args);
-            log(result.logs[4].args);
+//            log(result.logs[0].args);
+//            log(result.logs[1].args);
 
     //        check token balances
             ///////////////////
@@ -1379,7 +1375,7 @@ contract('KyberNetwork', function(accounts) {
 
         //calc real ethers
         expectedEthQtyWei = maxDestAmount.mul(precisionUnits).div(expectedBuyRate).floor().add(1); //src value rounded up
-        log('expectedEthQtyWei for maxDest amount' + expectedEthQtyWei);
+//        log('expectedEthQtyWei for maxDest amount ' + expectedEthQtyWei);
 
         let expectedDestTwei = expectedEthQtyWei.mul(expectedBuyRate).div(precisionUnits).floor();
 //        log('expectedDestTwei ' + expectedDestTwei);
