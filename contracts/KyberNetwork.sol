@@ -213,7 +213,7 @@ contract KyberNetwork is Withdrawable, Utils {
     /// @dev best conversion rate for a pair of tokens, if number of reserves have small differences. randomize
     /// @param src Src token
     /// @param dest Destination token
-    function findBestRate(ERC20 src, ERC20 dest, uint srcQty) public returns(uint noUse, uint rate) {
+    function findBestRate(ERC20 src, ERC20 dest, uint srcQty) public view returns(uint noUse, uint rate) {
         uint noUse2;
         uint noUse3;
         uint noUse4;
@@ -222,7 +222,7 @@ contract KyberNetwork is Withdrawable, Utils {
         (rate, noUse, noUse2, ethAmount, noUse3, noUse4) = findBestRateTokenToToken(src, dest, srcQty);
     }
 
-    function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcQty) public
+    function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcQty) internal view
         returns(uint rate, uint reserve1, uint reserve2, uint ethAmount, uint rateSrcToEth, uint rateEthToDest)
     {
         (reserve1, rateSrcToEth) = searchBestRate(src, ETH_TOKEN_ADDRESS, srcQty);
@@ -233,7 +233,7 @@ contract KyberNetwork is Withdrawable, Utils {
     }
 
     /* solhint-disable code-complexity */
-    function searchBestRate(ERC20 src, ERC20 dest, uint srcQty) public returns(uint, uint) {
+    function searchBestRate(ERC20 src, ERC20 dest, uint srcQty) internal view returns(uint, uint) {
         uint bestRate = 0;
         uint bestReserve = 0;
         uint numRelevantReserves = 0;
