@@ -127,7 +127,6 @@ contract KyberNetwork is Withdrawable, Utils {
     }
 
     event ListReservePairs(address reserve, ERC20 src, ERC20 dest, bool add);
-
     /// @notice can be called only by admin
     /// @dev allow or prevent a specific reserve to trade a pair of tokens
     /// @param reserve The reserve address.
@@ -136,7 +135,7 @@ contract KyberNetwork is Withdrawable, Utils {
     /// @param tokenToEth will it support token to ether trade
     /// @param add If true then list this pair, otherwise unlist it.
     function listPairForReserve(address reserve, ERC20 token, bool ethToToken, bool tokenToEth, bool add) public onlyAdmin {
-        require(isReserve(reserve));
+        require(isReserve[reserve]);
         address [] storage reservs;
         uint i;
 
@@ -154,7 +153,8 @@ contract KyberNetwork is Withdrawable, Utils {
                 }
             }
 
-            if (add && i < reservs.length) {
+            if (add && i == reservs.length) {
+                //if reserve wasn't found add it
                 reservs.push(reserve);
             }
         }
@@ -173,7 +173,8 @@ contract KyberNetwork is Withdrawable, Utils {
                 }
             }
 
-            if (add && i < reservs.length) {
+            if (add && i == reservs.length) {
+                //reserve wasn't found
                 reservs.push(reserve);
                 token.approve(reserve, 2**255); // approve infinity
             }
@@ -250,8 +251,8 @@ contract KyberNetwork is Withdrawable, Utils {
     /// @dev best conversion rate for a pair of tokens, if number of reserves have small differences. randomize
     /// @param src Src token
     /// @param dest Destination token
-    function findBestRate(ERC20 src, ERC20 dest, uint srcQty) public returns(uint noUse, uint rate) {
-        uint noUse2;
+    function findBestRate(ERC20 src, ERC20 dest, uint srcQty) public view returns(address noUse, uint rate) {
+        address noUse2;
         uint noUse3;
         uint noUse4;
         uint ethAmount;
@@ -259,8 +260,8 @@ contract KyberNetwork is Withdrawable, Utils {
         (rate, noUse, noUse2, ethAmount, noUse3, noUse4) = findBestRateTokenToToken(src, dest, srcQty);
     }
 
-    function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcQty) public
-        returns(uint rate, uint reserve1, uint reserve2, uint ethAmount, uint rateSrcToEth, uint rateEthToDest)
+    function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcQty) internal view
+        returns(uint rate, address reserve1, address reserve2, uint ethAmount, uint rateSrcToEth, uint rateEthToDest)
     {
         (reserve1, rateSrcToEth) = searchBestRate(src, ETH_TOKEN_ADDRESS, srcQty);
         ethAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcQty, rateSrcToEth);
@@ -271,28 +272,27 @@ contract KyberNetwork is Withdrawable, Utils {
 
     /* solhint-disable code-complexity */
     //@dev this function always src or dest are ether. can't do token to token
-    function searchBestRate(ERC20 src, ERC20 dest, uint srcQty) internal view returns(uint, uint) {
+    function searchBestRate(ERC20 src, ERC20 dest, uint srcQty) internal view returns(address, uint) {
         uint bestRate = 0;
         uint bestReserve = 0;
         uint numRelevantReserves = 0;
 
         //return 1 for ether to ether
-        if (src == dest) return (bestReserve, PRECISION);
+        if (src == dest) return (reserves[bestReserve], PRECISION);
 
-        uint numReserves = reserves.length;
-        ERC20 token;
+        address [] storage reservs;
         if (src == ETH_TOKEN_ADDRESS) {
-            to
+            reservs = resrevesPerTokenDest[dest];
+        } else {
+            reservs = resrevesPerTokenSrc[src];
         }
 
-        uint[] memory rates = new uint[](numReserves);
-        uint[] memory reserveCandidates = new uint[](numReserves);
+        uint[] memory rates = new uint[](reservs.length);
+        uint[] memory reserveCandidates = new uint[](reservs.length);
 
-        for (uint i = 0; i < numReserves; i++) {
+        for (uint i = 0; i < reservs.length; i++) {
             //list all reserves that have this token.
-            if (!(perReserveListedPairs[reserves[i]])[keccak256(src, dest)]) continue;
-
-            rates[i] = reserves[i].getConversionRate(src, dest, srcQty, block.number);
+            rates[i] = (KyberReserveInterface(reservs[i])).getConversionRate(src, dest, srcQty, block.number);
 
             if (rates[i] > bestRate) {
                 //best rate is highest rate
@@ -304,7 +304,7 @@ contract KyberNetwork is Withdrawable, Utils {
             uint random = 0;
             uint smallestRelevantRate = (bestRate * 10000) / (10000 + negligibleRateDiff);
 
-            for (i = 0; i < numReserves; i++) {
+            for (i = 0; i < reservs.length; i++) {
                 if (rates[i] >= smallestRelevantRate) {
                     reserveCandidates[numRelevantReserves++] = i;
                 }
@@ -319,7 +319,7 @@ contract KyberNetwork is Withdrawable, Utils {
             bestRate = rates[bestReserve];
         }
 
-        return (bestReserve, bestRate);
+        return (reservs[bestReserve], bestRate);
     }
     /* solhint-enable code-complexity */
 
@@ -357,8 +357,8 @@ contract KyberNetwork is Withdrawable, Utils {
         require(validateTradeInput(src, srcAmount, destAddress));
 
         Amount memory amount;
-        uint reserve1;
-        uint reserve2;
+        address reserve1;
+        address reserve2;
         uint rate;
         uint rateSrcToEth;
         uint rateEthToDest;
@@ -393,7 +393,7 @@ contract KyberNetwork is Withdrawable, Utils {
                 ETH_TOKEN_ADDRESS,
                 this,
                 amount.eth,
-                reserves[reserve1],
+                KyberReserveInterface(reserve1),
                 rateSrcToEth,
                 true));
 
@@ -404,14 +404,14 @@ contract KyberNetwork is Withdrawable, Utils {
                 dest,
                 destAddress,
                 amount.actualDest,
-                reserves[reserve2],
+                KyberReserveInterface(reserve2),
                 rateEthToDest,
                 true));
 
         //when src is ether, reserve1 is doing a "fake" trade. (ether to ether) - don't burn.
         //when dest is ether, reserve2 is doing a "fake" trade. (ether to ether) - don't burn.
-        if (src != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(amount.eth, reserves[reserve1], walletId));
-        if (dest != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(amount.eth, reserves[reserve2], walletId));
+        if (src != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(amount.eth, reserve1, walletId));
+        if (dest != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(amount.eth, reserve2, walletId));
 
         ExecuteNetworkTrade(msg.sender, src, dest, amount.actualSrc, amount.actualDest);
         return amount.actualDest;
