@@ -1,4 +1,4 @@
-let ConversionRates = artifacts.require("./ConversionRates.sol");
+let ConversionRates = artifacts.require("./mockContracts/MockConversionRate.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 let Reserve = artifacts.require("./KyberReserve.sol");
 let Network = artifacts.require("./KyberNetwork.sol");
@@ -23,6 +23,8 @@ let reserve1TokenBalance = [];
 let reserve2TokenBalance = [];
 let reserve1TokenImbalance = [];
 let reserve2TokenImbalance = [];
+let reserve1StartTokenBalance = [];
+let reserve2StartTokenBalance = [];
 
 //permission groups
 let admin;
@@ -76,8 +78,8 @@ let baseSellRate1 = [];
 let baseSellRate2 = [];
 
 //quantity buy steps
-let qtyBuyStepX = [-1400, -700, -150, 0, 150, 350, 700,  1400];
-let qtyBuyStepY = [ 1000,   75,   25, 0,  0, -70, -160, -3000];
+let qtyBuyStepX = [0, 150, 350, 700,  1400];
+let qtyBuyStepY = [0,  0, -70, -160, -3000];
 
 //imbalance buy steps
 let imbalanceBuyStepX = [-8500, -2800, -1500, 0, 1500, 2800,  4500];
@@ -85,8 +87,8 @@ let imbalanceBuyStepY = [ 1300,   130,    43, 0,   0, -110, -1600];
 
 //sell
 //sell price will be 1 / buy (assuming no spread) so sell is actually buy price in other direction
-let qtySellStepX = [-1400, -700, -150, 0, 150, 350, 700, 1400];
-let qtySellStepY = [-300,   -80,  -15, 0,   0, 120, 170, 3000];
+let qtySellStepX = [0, 150, 350, 700, 1400];
+let qtySellStepY = [0,   0, 120, 170, 3000];
 
 //sell imbalance step
 let imbalanceSellStepX = [-8500, -2800, -1500, 0, 1500, 2800,  4500];
@@ -157,6 +159,16 @@ contract('KyberNetwork', function(accounts) {
             baseSellRate2.push(ethersPerToken.valueOf()  * 10000 / 10300);
         }
 
+//        console.log('baseBuyRate2')
+//        console.log(baseBuyRate2)
+//        console.log('baseSellRate2')
+//        console.log(baseSellRate2)
+//
+//        console.log('baseBuyRate1')
+//        console.log(baseBuyRate1)
+//        console.log('baseSellRate1')
+//        console.log(baseSellRate1)
+
         assert.equal(baseBuyRate1.length, tokens.length);
         assert.equal(baseBuyRate2.length, tokens.length);
         assert.equal(baseSellRate1.length, tokens.length);
@@ -203,9 +215,9 @@ contract('KyberNetwork', function(accounts) {
         await reserve1.addAlerter(alerter);
         await reserve2.addAlerter(alerter);
 
-        //set reserve balance. 10000 wei ether + per token 1000 wei ether value according to base rate.
-        let reserveEtherInit = 5000 * 2;
-        await Helper.sendEtherWithPromise(accounts[8], reserve1.address, reserveEtherInit);
+        //set reserve balance. 10**18 wei ether + per token 10**18 wei ether value according to base rate.
+        let reserveEtherInit = (new BigNumber(10)).pow(18);
+        await Helper.sendEtherWithPromise(accounts[7], reserve1.address, reserveEtherInit);
         await Helper.sendEtherWithPromise(accounts[8], reserve2.address, reserveEtherInit);
 
         let balance = await Helper.getBalancePromise(reserve1.address);
@@ -219,8 +231,10 @@ contract('KyberNetwork', function(accounts) {
         for (let i = 0; i < numTokens; ++i) {
             token = tokens[i];
             let amount1 = (new BigNumber(reserveEtherInit)).div(precisionUnits).mul(baseBuyRate1[i]).floor();
+            reserve1StartTokenBalance[i] = amount1;
             await token.transfer(reserve1.address, amount1.valueOf());
             let amount2 = (new BigNumber(reserveEtherInit)).div(precisionUnits).mul(baseBuyRate2[i]).floor();
+            reserve2StartTokenBalance[i] = amount2
             await token.transfer(reserve2.address, amount2.valueOf());
             let balance = await token.balanceOf(reserve1.address);
             assert.equal(amount1.valueOf(), balance.valueOf());
@@ -262,7 +276,7 @@ contract('KyberNetwork', function(accounts) {
     it("should disable 1 reserve. perform buy and check: balances changed as expected.", async function () {
         let tokenInd = 1;
         let token = tokens[tokenInd]; //choose some token
-        let amountWei = 4 * 1;
+        let amountWei = 330 * 1;
 
         //disable reserve 1
         await reserve1.disableTrade({from:alerter});
@@ -273,19 +287,19 @@ contract('KyberNetwork', function(accounts) {
             let dstQty = (new BigNumber(amountWei).mul(baseBuyRate2[tokenInd])).div(precisionUnits).floor();
             let extraBps = getExtraBpsForBuyQuantity(dstQty);
             expectedRate = addBps(expectedRate, extraBps);
-            //let extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
-            //expectedRate = addBps(expectedRate, extraBps);
+            extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
+            expectedRate = addBps(expectedRate, extraBps);
 
             //check correct rate calculated
             assert.equal(buyRate[0].valueOf(), expectedRate.valueOf(), "unexpected rate.");
 
             //perform trade
-            let txData = await network.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, 100, buyRate[1].valueOf(), walletId, {from:user1, value:amountWei});
+            let txData = await network.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, 50000, buyRate[1].valueOf(), walletId, {from:user1, value:amountWei});
             console.log("trade with one reserve and one disabled. " + txData.receipt.gasUsed)
 
             //check higher ether balance on reserve
-            expectedReserve2BalanceWei = (expectedReserve2BalanceWei * 1) + amountWei;
-            expectedReserve2BalanceWei -= expectedReserve2BalanceWei % 1;
+            expectedReserve2BalanceWei = (expectedReserve2BalanceWei * 1) + amountWei * 1;
+//            expectedReserve2BalanceWei -= expectedReserve2BalanceWei % 1;
             let balance = await Helper.getBalancePromise(reserve2.address);
             assert.equal(balance.valueOf(), expectedReserve2BalanceWei, "bad reserve balance wei");
 
@@ -485,14 +499,13 @@ contract('KyberNetwork', function(accounts) {
 
         let actualTradedTokens2 = post2ndTokenBalUser2.valueOf()*1 - postTokenBalUser2.valueOf()*1;
 
-        assert.equal((post2ndTokenBalUser2.valueOf()*1 - postTokenBalUser2.valueOf()*1), maxDestAmountLow, "unexpected token balance");
         assert.equal(actualTradedTokens2*1, maxDestAmountLow, "unexpected token balance");
     });
 
     it("should set reserve rate diff < negligibleDiff (negligible diff) perform 20 buys in loop. make sure buys from both reserves.", async function () {
         let tokenInd = 3;
         let token = tokens[tokenInd]; //choose some token
-        let amountWei = 10;
+        let amountWei = 100;
 
         //compare reserve buy rates for token
         let buyRate1 = await reserve1.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock + 10);
@@ -507,32 +520,32 @@ contract('KyberNetwork', function(accounts) {
         }
 
         //take initial balance from both reserves
-        let tokPreBalance1 = await token.balanceOf(reserve1.address);
-        let tokPreBalance2 = await token.balanceOf(reserve2.address);
-        let ethPreBalance1 = await Helper.getBalancePromise(reserve1.address);
-        let ethPreBalance2 = await Helper.getBalancePromise(reserve2.address);
+        let tokPreBalance1 = new BigNumber(await token.balanceOf(reserve1.address));
+        let tokPreBalance2 = new BigNumber(await token.balanceOf(reserve2.address));
+        let ethPreBalance1 = new BigNumber(await Helper.getBalancePromise(reserve1.address));
+        let ethPreBalance2 = new BigNumber(await Helper.getBalancePromise(reserve2.address));
 
         //perform 20 trades
         let minRate = 0;
         let maxDestAmount = 2000;
         for (let i = 0; i < 20; i++){
             let txData = await network.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, maxDestAmount, minRate, walletId, {from:user1, value:amountWei});
-            if (i == 0) console.log("trade ether to token with randomize. gas used: " + txData.receipt.gasUsed)
+            if (i == 0) console.log("trade ether to token loop. gas used: " + txData.receipt.gasUsed)
         }
 
         //again take balance from both reserves
-        let tokPostBalance1 = await token.balanceOf(reserve1.address);
-        let tokPostBalance2 = await token.balanceOf(reserve2.address);
-        let ethPostBalance1 = await Helper.getBalancePromise(reserve1.address);
-        let ethPostBalance2 = await Helper.getBalancePromise(reserve2.address);
+        let tokPostBalance1 = new BigNumber(await token.balanceOf(reserve1.address));
+        let tokPostBalance2 = new BigNumber(await token.balanceOf(reserve2.address));
+        let ethPostBalance1 = new BigNumber(await Helper.getBalancePromise(reserve1.address));
+        let ethPostBalance2 = new BigNumber(await Helper.getBalancePromise(reserve2.address));
 
         //check higher ether balance on both
-        assert(ethPostBalance2*1 > ethPreBalance2*1, "expected more ether here.");
-        assert(ethPostBalance1*1 > ethPreBalance1*1, "expected more ether here.");
+        assert(ethPostBalance2.gt(ethPreBalance2), "expected more ether here.");
+        assert(ethPostBalance1.gt(ethPreBalance1), "expected more ether here.");
 
         //check lower token balance on both
-        assert(tokPostBalance1 < tokPreBalance1, "expected more token here.");
-        assert(tokPostBalance2 < tokPreBalance2, "expected more token here.");
+        assert(tokPostBalance1.lt(tokPreBalance1), "expected more token here.");
+        assert(tokPostBalance2.lt(tokPreBalance2), "expected more token here.");
 
         await network.setParams(whiteList.address, expectedRate.address, feeBurner.address, gasPrice.valueOf(), negligibleRateDiff);
     });
@@ -540,7 +553,7 @@ contract('KyberNetwork', function(accounts) {
     it("should set reserve rate diff < negligibleDiff perform 20 sells in loop. make sure sells from both reserves.", async function () {
         let tokenInd = 3;
         let token = tokens[tokenInd]; //choose some token
-        let amountTWei = 60;
+        let amountTWei = 119;
         let numLoops = 20;
 
         // transfer funds to user and approve funds to network
@@ -561,10 +574,10 @@ contract('KyberNetwork', function(accounts) {
         }
 
         //take initial balance from both reserves
-        let tokPreBalance1 = await token.balanceOf(reserve1.address);
-        let tokPreBalance2 = await token.balanceOf(reserve2.address);
-        let ethPreBalance1 = await Helper.getBalancePromise(reserve1.address);
-        let ethPreBalance2 = await Helper.getBalancePromise(reserve2.address);
+        let tokPreBalance1 = new BigNumber(await token.balanceOf(reserve1.address));
+        let tokPreBalance2 = new BigNumber(await token.balanceOf(reserve2.address));
+        let ethPreBalance1 = new BigNumber(await Helper.getBalancePromise(reserve1.address));
+        let ethPreBalance2 = new BigNumber(await Helper.getBalancePromise(reserve2.address));
 
         //perform 20 trades
         let minRate = 0;
@@ -575,19 +588,19 @@ contract('KyberNetwork', function(accounts) {
         }
 
         //again take balance from both reserves
-        let tokPostBalance1 = await token.balanceOf(reserve1.address);
-        let tokPostBalance2 = await token.balanceOf(reserve2.address);
-        let ethPostBalance1 = await Helper.getBalancePromise(reserve1.address);
-        let ethPostBalance2 = await Helper.getBalancePromise(reserve2.address);
+        let tokPostBalance1 = new BigNumber(await token.balanceOf(reserve1.address));
+        let tokPostBalance2 = new BigNumber(await token.balanceOf(reserve2.address));
+        let ethPostBalance1 = new BigNumber(await Helper.getBalancePromise(reserve1.address));
+        let ethPostBalance2 = new BigNumber(await Helper.getBalancePromise(reserve2.address));
 
         //check lower eth balance on both
-        assert(ethPostBalance2*1 < ethPreBalance2*1, "expected more ether here.");
-        assert(ethPostBalance1*1 < ethPreBalance1*1, "expected more ether here.");
+        assert(ethPostBalance2.lt(ethPreBalance2), "expected more ether here.");
+        assert(ethPostBalance1.lt(ethPreBalance1), "expected more ether here.");
 
 
         //check higher token balance on both
-        assert(tokPostBalance1*1 > tokPreBalance1*1, "expected more token here.");
-        assert(tokPostBalance2*1 > tokPreBalance2*1, "expected more token here.");
+        assert(tokPostBalance1.gt(tokPreBalance1), "expected more token here.");
+        assert(tokPostBalance2.gt(tokPreBalance2), "expected more token here.");
 
         await network.setParams(whiteList.address, expectedRate.address, feeBurner.address, gasPrice.valueOf(), negligibleRateDiff);
     });
@@ -595,7 +608,7 @@ contract('KyberNetwork', function(accounts) {
     it("should verify trade reverted when network disabled.", async function () {
         let tokenInd = 0;
         let token = tokens[tokenInd]; //choose some token
-        let amountWei = 4 * 1;
+        let amountWei = 221 * 1;
         let minConversionRate = 0;
 
         //disable trade
@@ -817,6 +830,7 @@ contract('KyberNetwork', function(accounts) {
         await network.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, 2000,
                   minConversionRate, walletId, {from:user2, value:amountWei});
     });
+
     it("should verify trade reverted src amount > max src amount (10**28).", async function () {
         let tokenInd = 2;
         let token = tokens[tokenInd]; //choose some token
@@ -982,6 +996,10 @@ contract('KyberNetwork', function(accounts) {
 
         await network.addReserve(reserve1.address, true);
         await network.addReserve(reserve2.address, true);
+
+        numRes = await network.getNumReserves();
+
+        assert.equal(numRes.valueOf(), 2, "unexpected number of reserves.");
     });
 
     it("should test can't init this contract with empty contracts (address 0).", async function () {
@@ -1077,230 +1095,345 @@ contract('KyberNetwork', function(accounts) {
     });
 
     it("should test token to token trade 1 reserve.", async function () {
-        let tokenFromInd = 1;
-        let tokenToInd = 0;
-        let tokenFrom = tokens[tokenFromInd];
-        let tokenTo = tokens[tokenToInd];
-        let amountTwei = 10 * 1;
+        let tokenSrcInd = 1;
+        let tokenDestInd = 0;
+        let tokenSrc = tokens[tokenSrcInd];
+        let tokenDest = tokens[tokenDestInd];
+        let srcAmountTwei = 1450 * 1;
         let maxDestAmount = (new BigNumber(10)).pow(18);
+
+        //reset max imbalance values - for working with higher numbers
+        currentBlock = await Helper.getCurrentBlock();
+
+//        await pricing1.setBaseRate(tokenAdd, baseBuyRate1, baseSellRate1, buys, sells, currentBlock, indices, {from: operator});
+//        await pricing2.setBaseRate(tokenAdd, baseBuyRate2, baseSellRate2, buys, sells, currentBlock, indices, {from: operator});
+
+        maxPerBlockImbalance = 60000000;
+        maxTotalImbalance = 12 * maxPerBlockImbalance;
+
+        //set higher imbalance values - and get imbalacne values since local imbalance isn't in sync
+        for (let i = 0; i < numTokens; ++i) {
+            await pricing1.setTokenControlInfo(tokenAdd[i], minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
+            await pricing2.setTokenControlInfo(tokenAdd[i], minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
+            //update balance in imbalance values
+            reserve2TokenBalance[i] = new BigNumber(await tokens[i].balanceOf(reserve2.address));
+            let values = await pricing2.mockGetImbalance(tokenAdd[i], priceUpdateBlock, currentBlock);
+            reserve2TokenImbalance[i] = new BigNumber(values[0]);
+            reserve1TokenBalance[i] = new BigNumber(await tokens[i].balanceOf(reserve1.address));
+            values = await pricing1.mockGetImbalance(tokenAdd[i], priceUpdateBlock, currentBlock);
+            reserve1TokenImbalance[i] = new BigNumber(values[0]);
+        }
 
         await reserve1.disableTrade({from:alerter});
 
-        //verify base rate
-        let buyRate = await network.getExpectedRate(tokenAdd[tokenFromInd], tokenAdd[tokenToInd], amountTwei);
+        try {
+            //verify base rate
+            let buyRate = await network.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], srcAmountTwei);
 
-        // first token to eth rate
-        let expectedSellRate = (new BigNumber(baseSellRate2[tokenFromInd]));
-        let dstEthQty = (new BigNumber(amountTwei).mul(baseSellRate2[tokenFromInd])).div(precisionUnits).floor();
-        let extraBps = getExtraBpsForSellQuantity(dstEthQty);
-        expectedSellRate = addBps(expectedSellRate, extraBps);
-        let expectedEthQtyWei = expectedSellRate.mul(amountTwei).div(precisionUnits).floor();
+            //update imbalance
+            reserve2TokenBalance[tokenSrcInd] = (reserve2TokenBalance[tokenSrcInd]).add(srcAmountTwei);
+            reserve2TokenImbalance[tokenSrcInd] = reserve2TokenImbalance[tokenSrcInd].sub(srcAmountTwei);
 
-        //eth to token
-        let expectedBuyRate = (new BigNumber(baseBuyRate2[tokenToInd]));
-        let dstQty = (new BigNumber(expectedEthQtyWei).mul(baseBuyRate2[tokenToInd])).div(precisionUnits).floor();
-        extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedBuyRate = addBps(expectedBuyRate, extraBps);
+            // first token to eth rate
+            let expectedSellRate = (new BigNumber(baseSellRate2[tokenSrcInd]));
+            let extraBps = getExtraBpsForSellQuantity(srcAmountTwei);
+            expectedSellRate = addBps(expectedSellRate, extraBps);
+            extraBps = getExtraBpsForImbalanceSellQuantity(reserve2TokenImbalance[tokenSrcInd].valueOf());
+            expectedSellRate = addBps(expectedSellRate, extraBps);
 
-        let combinedRate = expectedSellRate.mul(expectedBuyRate).div(precisionUnits);
+            let expectedEthQtyWei = expectedSellRate.mul(srcAmountTwei).div(precisionUnits).floor();
+//            log('expectedEthQtyWei ' + expectedEthQtyWei)
 
-//        //check correct rate calculated
-//        assert.equal(buyRate[0].valueOf(), combinedRate.valueOf(), "unexpected rate.");
+            //eth to token
+            let expectedBuyRate = (new BigNumber(baseBuyRate2[tokenDestInd]));
+            let dstQty = (new BigNumber(expectedEthQtyWei).mul(baseBuyRate2[tokenDestInd])).div(precisionUnits).floor();
+            extraBps = getExtraBpsForBuyQuantity(dstQty);
+            expectedBuyRate = addBps(expectedBuyRate, extraBps);
+            reserve2TokenImbalance[tokenDestInd] =  reserve2TokenImbalance[tokenDestInd].add(dstQty); //- cause more missing tokens on reserve.
+            extraBps = getExtraBpsForImbalanceBuyQuantity(reserve2TokenImbalance[tokenDestInd].valueOf());
+            expectedBuyRate = addBps(expectedBuyRate, extraBps);
 
-        reserve2TokenBalance[tokenFromInd] = await tokenFrom.balanceOf(reserve2.address);
-        reserve2TokenBalance[tokenToInd] = await tokenTo.balanceOf(reserve2.address);
-        //perform trade
-        // transfer funds to user and approve funds to network - for all trades in this 'it'
-        await tokenFrom.transfer(user1, amountTwei);
-        await tokenFrom.approve(network.address, amountTwei, {from:user1})
+            expectedDestTokensTwei = expectedEthQtyWei.mul(expectedBuyRate).div(precisionUnits).floor();
+//            console.log('expectedDestTokensTwei ' + expectedDestTokensTwei.valueOf());
 
-        let startBalanceTokenToUser2 = await tokenTo.balanceOf(user2);
-        let startBalanceTokenFromUser1 = await tokenFrom.balanceOf(user1);
-//        function trade(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, walletId)
-        await network.trade(tokenAdd[tokenFromInd], amountTwei, tokenAdd[tokenToInd], user2, maxDestAmount, buyRate[1].valueOf(), walletId, {from:user1});
+            reserve2TokenBalance[tokenDestInd] = reserve2TokenBalance[tokenDestInd].sub(expectedDestTokensTwei);
 
-        //check token balances
-        ///////////////////////
+            let combinedRate = expectedSellRate.mul(expectedBuyRate).div(precisionUnits);
 
-        //check higher tokenTo balance on user2
-        let rate = new BigNumber(buyRate[0].valueOf());
-        let tokenToUser2Balance = await tokenTo.balanceOf(user2);
-        let expectedBalanceTokenToUser2 = startBalanceTokenToUser2.add(rate.mul(amountTwei).div(precisionUnits).floor());
-        assert.equal(expectedBalanceTokenToUser2.valueOf(), tokenToUser2Balance.valueOf(), "bad token balance");
+            //check correct rate calculated
+            assert.equal(buyRate[0].valueOf(), combinedRate.valueOf(), "unexpected rate.");
 
-        //check lower tokenFrom balance on user1
-        let tokenFromUser1Balance = await tokenFrom.balanceOf(user1);
-        let expectedBalanceTokenFromUser1 = startBalanceTokenFromUser1.sub(amountTwei);
-        assert.equal(tokenFromUser1Balance.valueOf(), expectedBalanceTokenFromUser1.valueOf(), "bad token balance");
+            //perform trade
+            // transfer funds to user and approve funds to network - for all trades in this 'it'
+            await tokenSrc.transfer(user1, srcAmountTwei);
+            await tokenSrc.approve(network.address, srcAmountTwei, {from:user1})
 
-        //check token balance on reserve
-        //tokenFrom
-        reserve2TokenBalance[tokenFromInd] = (reserve2TokenBalance[tokenFromInd] * 1) + (amountTwei * 1);
-        reserve2TokenImbalance[tokenFromInd] -= (amountTwei * 1); //imbalance represents how many missing tokens
-        reportedBalance = await tokenFrom.balanceOf(reserve2.address);
-        assert.equal(reportedBalance.valueOf(), reserve2TokenBalance[tokenFromInd], "bad token balance on reserve");
+            let startBalanceTokenDestUser2 = await tokenDest.balanceOf(user2);
+            let startBalanceTokenSrcUser1 = await tokenSrc.balanceOf(user1);
+    //        function trade(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, walletId)
+            let result = await network.trade(tokenAdd[tokenSrcInd], srcAmountTwei, tokenAdd[tokenDestInd], user2, maxDestAmount, buyRate[1].valueOf(), walletId, {from:user1});
 
-        //tokenTo
-        reserve2TokenBalance[tokenToInd] -= (rate.mul(amountTwei).div(precisionUnits).floor()).valueOf();
-        reserve2TokenImbalance[tokenToInd] += (rate.mul(amountTwei).div(precisionUnits).floor()).valueOf(); //imbalance represents how many missing tokens
-        reportedBalance = await tokenTo.balanceOf(reserve2.address);
-        assert.equal(reportedBalance.valueOf(), reserve2TokenBalance[tokenToInd].valueOf(), "bad token balance on reserve");
+            //check token balances
+            ///////////////////////
 
+            //check higher tokenDest balance on user2
+            let rate = new BigNumber(buyRate[0].valueOf());
+            let tokenDestUser2Balance = await tokenDest.balanceOf(user2);
+            let expectedBalanceTokenDestUser2 = startBalanceTokenDestUser2.add(rate.mul(srcAmountTwei).div(precisionUnits).floor());
+            assert.equal(expectedBalanceTokenDestUser2.valueOf(), tokenDestUser2Balance.valueOf(), "bad token balance");
+
+            //check lower tokenSrc balance on user1
+            let tokenSrcUser1Balance = await tokenSrc.balanceOf(user1);
+            let expectedBalanceTokenSrcUser1 = startBalanceTokenSrcUser1.sub(srcAmountTwei);
+            assert.equal(tokenSrcUser1Balance.valueOf(), expectedBalanceTokenSrcUser1.valueOf(), "bad token balance");
+
+            //check token balance on reserve
+            //tokenSrc
+            reportedBalance = await tokenSrc.balanceOf(reserve2.address);
+            assert.equal(reportedBalance.valueOf(), reserve2TokenBalance[tokenSrcInd].valueOf(), "bad token balance on reserve");
+
+            //tokenDest
+            reportedBalance = await tokenDest.balanceOf(reserve2.address);
+            assert.equal(reportedBalance.valueOf(), reserve2TokenBalance[tokenDestInd].valueOf(), "bad token balance on reserve");
+        } catch(e) {
+            await reserve1.enableTrade({from:admin});
+            throw(e);
+        }
         await reserve1.enableTrade({from:admin});
     });
-
+//
     it("should test token to token trade 2 different reserves.", async function () {
-        let tokenFromInd = 1;
-        let tokenToInd = 3;
-        let tokenFrom = tokens[tokenFromInd];
-        let tokenTo = tokens[tokenToInd];
-        let amountTwei = 19 * 1;
+        let tokenSrcInd = 1;
+        let tokenDestInd = 3;
+        let tokenSrc = tokens[tokenSrcInd];
+        let tokenDest = tokens[tokenDestInd];
+        let srcAmountTwei = 1355;
         let maxDestAmount = (new BigNumber(10)).pow(18);
 
-        await pricing1.disableTokenTrade(tokenAdd[tokenFromInd], {from: alerter});
-        await pricing2.disableTokenTrade(tokenAdd[tokenToInd], {from: alerter});
+        await pricing1.disableTokenTrade(tokenAdd[tokenSrcInd], {from: alerter});
+        await pricing2.disableTokenTrade(tokenAdd[tokenDestInd], {from: alerter});
+
+        try {
+            //rate
+            let buyRate = await network.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], srcAmountTwei);
+            reserve2TokenBalance[tokenSrcInd] = reserve2TokenBalance[tokenSrcInd].add(srcAmountTwei);
+            reserve2TokenImbalance[tokenSrcInd] = reserve2TokenImbalance[tokenSrcInd].sub(srcAmountTwei); // less missing tokens.
+
+            // first token to eth rate
+            let expectedSellRate = (new BigNumber(baseSellRate2[tokenSrcInd]));
+            log('expectedSellRate base ' + expectedSellRate);
+
+            let extraBps = getExtraBpsForSellQuantity(srcAmountTwei);
+            expectedSellRate = addBps(expectedSellRate, extraBps);
+            log('expectedSellRate after qty step ' + expectedSellRate);
+
+            extraBps = getExtraBpsForImbalanceSellQuantity(reserve2TokenImbalance[tokenSrcInd].valueOf());
+            expectedSellRate = addBps(expectedSellRate, extraBps);
+
+            log('total imalbance ' + reserve2TokenImbalance[tokenSrcInd]);
+            log('expectedSellRate ' + expectedSellRate);
+            let expectedEthQtyWei = expectedSellRate.mul(srcAmountTwei).div(precisionUnits).floor();
+            log ("expectedEthQtyWei " + expectedEthQtyWei.valueOf());
+
+            //eth to token
+            let expectedBuyRate = (new BigNumber(baseBuyRate1[tokenDestInd]));
+            log('expectedBuyRate base ' + expectedBuyRate);
+            let dstQty = (expectedEthQtyWei).mul(expectedBuyRate).div(precisionUnits).floor();
+            log('dest Token qty before valid rate ' + dstQty);
+
+            extraBps = getExtraBpsForBuyQuantity(dstQty);
+            expectedBuyRate = addBps(expectedBuyRate, extraBps);
+            log('expectedBuyRate after step bps change ' + expectedBuyRate);
+
+            reserve1TokenImbalance[tokenDestInd] = reserve1TokenImbalance[tokenDestInd].add(dstQty);
+            extraBps = getExtraBpsForImbalanceBuyQuantity(reserve1TokenImbalance[tokenDestInd].valueOf());
+            expectedBuyRate = addBps(expectedBuyRate, extraBps);
+            log('expectedBuyRate after imbalance change' + expectedBuyRate);
+
+            let combinedRate = expectedSellRate.mul(expectedBuyRate).div(precisionUnits);
+            console.log('combinedRate ' + combinedRate.valueOf())
+
+            expectedDestTokensTwei = combinedRate.mul(srcAmountTwei).div(precisionUnits).floor();
+            console.log('expectedDestTokensTwei ' + expectedDestTokensTwei.valueOf());
+            reserve1TokenBalance[tokenDestInd] = reserve1TokenBalance[tokenDestInd].sub(expectedDestTokensTwei);
+
+  //        check correct rate calculated
+            assert.equal(buyRate[0].valueOf(), combinedRate.valueOf(), "unexpected rate.");
+
+            //perform trade
+            // transfer funds to user and approve funds to network - for all trades in this 'it'
+            await tokenSrc.transfer(user1, srcAmountTwei);
+            await tokenSrc.approve(network.address, srcAmountTwei, {from:user1})
+
+            let startBalanceTokenDestUser2 = await tokenDest.balanceOf(user2);
+            let startBalanceTokenSrcUser1 = await tokenSrc.balanceOf(user1);
+
+    //        function trade(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, walletId)
+            result = await network.trade(tokenAdd[tokenSrcInd], srcAmountTwei, tokenAdd[tokenDestInd], user2, maxDestAmount, buyRate[1].valueOf(), walletId, {from:user1});
+            log(result.logs[0].args);
+            log(result.logs[1].args);
+            log(result.logs[4].args);
+
+    //        check token balances
+            ///////////////////
+
+            //check tokenDest balance on user2
+            let rate = new BigNumber(buyRate[0].valueOf());
+            let tokenDestUser2Balance = await tokenDest.balanceOf(user2);
+            let expectedBalanceTokenDestUser2 = startBalanceTokenDestUser2.add(rate.mul(srcAmountTwei).div(precisionUnits).floor());
+            assert.equal(expectedBalanceTokenDestUser2.valueOf(), tokenDestUser2Balance.valueOf(), "bad token balance");
+
+            //check tokenSrc balance on user1
+            let tokenSrcUser1Balance = await tokenSrc.balanceOf(user1);
+            let expectedBalanceTokenSrcUser1 = startBalanceTokenSrcUser1.sub(srcAmountTwei);
+            assert.equal(tokenSrcUser1Balance.valueOf(), expectedBalanceTokenSrcUser1.valueOf(), "bad token balance");
+
+            //check token balance on reserve
+            //tokenSrc
+            reportedBalance = await tokenSrc.balanceOf(reserve2.address);
+            assert.equal(reportedBalance.valueOf(), reserve2TokenBalance[tokenSrcInd].valueOf(), "bad token balance on reserve");
+
+            //tokenDest
+            reportedBalance = await tokenDest.balanceOf(reserve1.address);
+            assert.equal(reportedBalance.valueOf(), reserve1TokenBalance[tokenDestInd].valueOf(), "bad token balance on reserve");
+            reportedBalance = await tokenDest.balanceOf(reserve2.address);
+            assert.equal(reportedBalance.valueOf(), reserve2TokenBalance[tokenDestInd].valueOf(), "bad token balance on reserve");
+
+            await pricing1.enableTokenTrade(tokenAdd[tokenSrcInd]);
+            await pricing2.enableTokenTrade(tokenAdd[tokenDestInd]);
+        } catch(e) {
+            await pricing1.enableTokenTrade(tokenAdd[tokenSrcInd]);
+            await pricing2.enableTokenTrade(tokenAdd[tokenDestInd]);
+            throw(e);
+        }
+    });
+
+    it("should test token to token trade with limited max dest amount.", async function () {
+        //when limiting max dest amount can't work with small numbers.
+        //it has some issue as follows:
+//        when user request maxDestAmount for a trade, we re-calculate the src amount so he would get the exact amount he requested.
+//
+//        lets assume user wants SOME token which converts 1 eth to 100 SOME.
+//        what could happen
+//
+//        user requests max dest amount of 101 SOME tokens.
+//        we re calculate source amount and round it up to 2 (the naive calculation would round it to 1).
+//        now trade it 2 ether --> 101 SOME.
+//        on the end of our trade a check sure user wasn't "cheated" with this formula:
+//        require(
+//        (userDestBalanceAfter - userDestBalanceBefore)
+//        >=
+//        calcDstQty((userSrcBalanceBefore - userSrcBalanceAfter), ..., ...., minConversionRate));
+//        min conversion rate here could be around 95-100 so according to this calculation user should get "at least" 190 SOME. but he got only 101 so - trade is reverted.
+
+        let tokenSrcInd = 1;
+        let tokenDestInd = 3;
+        let tokenSrc = tokens[tokenSrcInd];
+        let tokenDest = tokens[tokenDestInd];
+        let srcAmountTwei = (new BigNumber(10)).pow(5);
+        let maxDestAmount = (new BigNumber(10)).pow(5);
+
+        await pricing2.disableTokenTrade(tokenAdd[tokenSrcInd], {from: alerter});
+        await pricing1.disableTokenTrade(tokenAdd[tokenDestInd], {from: alerter});
+
+        reportedBalance = await tokenDest.balanceOf(reserve2.address);
+        assert.equal(reportedBalance.valueOf(), reserve2TokenBalance[tokenDestInd].valueOf(), "bad token balance on reserve");
 
         //check rate
-        let buyRate = await network.getExpectedRate(tokenAdd[tokenFromInd], tokenAdd[tokenToInd], amountTwei);
+         // first token to eth rate
+        let expectedSellRate = (new BigNumber(baseSellRate1[tokenSrcInd]));
+//        log('expectedSellRate base ' + expectedSellRate);
+        let extraBps = getExtraBpsForSellQuantity(srcAmountTwei);
+        expectedSellRate = addBps(expectedSellRate, extraBps);
+        let relevantImbalance = reserve1TokenImbalance[tokenSrcInd].sub(srcAmountTwei);
+//        log('relevantImbalance ' + relevantImbalance);
+        extraBps = getExtraBpsForImbalanceSellQuantity(relevantImbalance.valueOf());
+        expectedSellRate = addBps(expectedSellRate, extraBps);
+//        log('expectedSellRate after imbalance step ' + expectedSellRate);
 
-        // first token to eth rate
-        console.log('baseSellRate2[tokenFromInd]')
-        console.log(baseSellRate2[tokenFromInd])
-        let expectedSellRate = (new BigNumber(baseSellRate2[tokenFromInd]));
-        let dstEthQty = (new BigNumber(amountTwei).mul(baseSellRate2[tokenFromInd])).div(precisionUnits).floor();
-        let extraBps = getExtraBpsForSellQuantity(dstEthQty);
-//        expectedSellRate = addBps(expectedSellRate, extraBps);
-        let expectedEthQtyWei = expectedSellRate.mul(amountTwei).div(precisionUnits).floor();
+        let expectedEthQtyWei = expectedSellRate.mul(srcAmountTwei).div(precisionUnits).floor();
+//        log('expectedEthQtyWei full amount' + expectedEthQtyWei);
 
         //eth to token
-        let expectedBuyRate = (new BigNumber(baseBuyRate1[tokenToInd]));
-        let dstQty = (new BigNumber(expectedEthQtyWei).mul(baseBuyRate1[tokenToInd])).div(precisionUnits).floor();
+        let expectedBuyRate = (new BigNumber(baseBuyRate2[tokenDestInd]));
+//        log('expectedBuyRate base ' + expectedBuyRate);
+        let dstQty = (new BigNumber(expectedEthQtyWei).mul(expectedBuyRate)).div(precisionUnits).floor();
         extraBps = getExtraBpsForBuyQuantity(dstQty);
         expectedBuyRate = addBps(expectedBuyRate, extraBps);
+//        log('expectedBuyRate after qty step ' + expectedBuyRate);
+        relevantImbalance = reserve2TokenImbalance[tokenDestInd].add(dstQty);
+//        log('relevantImbalance ' + relevantImbalance);
+        extraBps = getExtraBpsForImbalanceBuyQuantity(relevantImbalance.valueOf());
+        expectedBuyRate = addBps(expectedBuyRate, extraBps);
+//        log('expectedBuyRate after imbalance step ' + expectedBuyRate);
 
         let combinedRate = expectedSellRate.mul(expectedBuyRate).div(precisionUnits);
+//        console.log('combinedRate ' + combinedRate.valueOf())
 
-        //check correct rate calculated
-//        assert.equal(buyRate[0].valueOf(), combinedRate.valueOf(), "unexpected rate.");
+//       check correct rate calculated
+        let buyRate = await network.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], srcAmountTwei.valueOf());
+        assert.equal(buyRate[0].valueOf(), combinedRate.valueOf(), "unexpected rate.");
 
-        reserve1TokenBalance[tokenToInd] = await tokenTo.balanceOf(reserve1.address);
+        reserve1TokenImbalance[tokenDestInd] = reserve1TokenImbalance[tokenDestInd].add(dstQty);
+        reserve1TokenBalance[tokenDestInd] = reserve1TokenBalance[tokenDestInd].sub(dstQty);
 
-        //perform trade
+        //calc real ethers
+        expectedEthQtyWei = maxDestAmount.mul(precisionUnits).div(expectedBuyRate).floor().add(1); //src value rounded up
+        log('expectedEthQtyWei for maxDest amount' + expectedEthQtyWei);
+
+        let expectedDestTwei = expectedEthQtyWei.mul(expectedBuyRate).div(precisionUnits).floor();
+//        log('expectedDestTwei ' + expectedDestTwei);
+        let expectedSrcForMaxAmount = precisionUnits.mul(maxDestAmount).div(combinedRate).add(1).floor(); //src is rounded up
+//        log('expectedSrcForMaxAmount ' + expectedSrcForMaxAmount.valueOf())
+
+        // perform trade
         // transfer funds to user and approve funds to network - for all trades in this 'it'
-        await tokenFrom.transfer(user1, amountTwei);
-        await tokenFrom.approve(network.address, amountTwei, {from:user1})
+        await tokenSrc.transfer(user2, srcAmountTwei);
+        await tokenSrc.approve(network.address, srcAmountTwei, {from:user2})
 
-        let startBalanceTokenToUser2 = await tokenTo.balanceOf(user2);
-        let startBalanceTokenFromUser1 = await tokenFrom.balanceOf(user1);
+        let startBalanceTokenDestUser1 = await tokenDest.balanceOf(user1);
+        let startBalanceTokenSrcUser2 = await tokenSrc.balanceOf(user2);
 //        function trade(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, walletId)
-        await network.trade(tokenAdd[tokenFromInd], amountTwei, tokenAdd[tokenToInd], user2, maxDestAmount, buyRate[1].valueOf(), walletId, {from:user1});
+        result = await network.trade(tokenAdd[tokenSrcInd], srcAmountTwei, tokenAdd[tokenDestInd], user1, maxDestAmount,
+                            buyRate[1].valueOf(), walletId, {from:user2});
+//        console.log(result.logs);
+//        console.log(result.logs[0].args);
+//        console.log(result.logs[1].args);
+//        console.log(result.logs[4].args);
 
 //        check token balances
         /////////////////////
 
-        //check higher tokenTo balance on user2
+        //check tokenDest balance on user1
         let rate = new BigNumber(buyRate[0].valueOf());
-        let tokenToUser2Balance = await tokenTo.balanceOf(user2);
-        let expectedBalanceTokenToUser2 = startBalanceTokenToUser2.add(rate.mul(amountTwei).div(precisionUnits).floor());
-        assert.equal(expectedBalanceTokenToUser2.valueOf(), tokenToUser2Balance.valueOf(), "bad token balance");
+        let tokenDestUser1Balance = await tokenDest.balanceOf(user1);
+        let expectedBalanceTokenDestUser1 = startBalanceTokenDestUser1.add(maxDestAmount);
+        assert.equal(expectedBalanceTokenDestUser1.valueOf(), tokenDestUser1Balance.valueOf(), "bad token balance");
 
-        //check lower tokenFrom balance on user1
-        let tokenFromUser1Balance = await tokenFrom.balanceOf(user1);
-        let expectedBalanceTokenFromUser1 = startBalanceTokenFromUser1.sub(amountTwei);
-        assert.equal(tokenFromUser1Balance.valueOf(), expectedBalanceTokenFromUser1.valueOf(), "bad token balance");
+        //check tokenSrc balance on user2
+        let expectedUsageTokenSrc = maxDestAmount.mul(precisionUnits).div(rate).add(1).floor(); //value rounded up in contract
+        let expectedUsageEthersWei = maxDestAmount.mul(precisionUnits).div(rate).add(1).floor(); //value rounded up in contract
+
+        let tokenSrcUser2Balance = await tokenSrc.balanceOf(user2);
+        let expectedBalanceTokenSrcUser2 = startBalanceTokenSrcUser2.sub(expectedUsageTokenSrc);
+        assert.equal(tokenSrcUser2Balance.valueOf(), expectedBalanceTokenSrcUser2.valueOf(), "bad token balance");
 
         //check token balance on reserve
-        //tokenFrom
-        reserve2TokenBalance[tokenFromInd] = (reserve2TokenBalance[tokenFromInd] * 1) + (amountTwei * 1);
-        reserve2TokenImbalance[tokenFromInd] -= (amountTwei * 1); //imbalance represents how many missing tokens
-        reportedBalance = await tokenFrom.balanceOf(reserve2.address);
-        assert.equal(reportedBalance.valueOf(), reserve2TokenBalance[tokenFromInd], "bad token balance on reserve");
+        //tokenSrc
+        reserve1TokenBalance[tokenSrcInd] = reserve1TokenBalance[tokenSrcInd].add(expectedUsageTokenSrc);
+        reserve1TokenImbalance[tokenSrcInd] = reserve1TokenImbalance[tokenSrcInd].sub(expectedUsageTokenSrc); //imbalance represents how many missing tokens
+        reportedBalance = await tokenSrc.balanceOf(reserve1.address);
+        assert.equal(reportedBalance.valueOf(), reserve1TokenBalance[tokenSrcInd], "bad token balance on reserve");
 
-        //tokenTo
-        reserve1TokenBalance[tokenToInd] -= (rate.mul(amountTwei).div(precisionUnits).floor()).valueOf();
-        reserve1TokenImbalance[tokenToInd] += (rate.mul(amountTwei).div(precisionUnits).floor()).valueOf(); //imbalance represents how many missing tokens
-        reportedBalance = await tokenTo.balanceOf(reserve1.address);
-        assert.equal(reportedBalance.valueOf(), reserve1TokenBalance[tokenToInd].valueOf(), "bad token balance on reserve");
+        //tokenDest
+        reserve2TokenBalance[tokenDestInd] = reserve2TokenBalance[tokenDestInd].sub(expectedDestTwei);
+        //notice here the reserve sends expectedDestTwei - its not aware of max dest amount
+        reserve2TokenImbalance[tokenDestInd] = reserve2TokenImbalance[tokenDestInd].add(expectedDestTwei); //imbalance represents how many missing tokens
+        reportedBalance = await tokenDest.balanceOf(reserve2.address);
+        assert.equal(reportedBalance.valueOf(), reserve2TokenBalance[tokenDestInd].valueOf(), "bad token balance on reserve");
 
-        await pricing1.enableTokenTrade(tokenAdd[tokenFromInd]);
-        await pricing2.enableTokenTrade(tokenAdd[tokenToInd]);
-    });
-
-    it("should test token to token trade with limited max dest amount.", async function () {
-        let srcTokenInd = 1;
-        let destTokenInd = 3;
-        let srcToken = tokens[srcTokenInd];
-        let destToken = tokens[destTokenInd];
-        let amountTwei = 19 * 1;
-        let maxDestAmount = 20;
-
-        await pricing1.disableTokenTrade(tokenAdd[srcTokenInd], {from: alerter});
-        await pricing2.disableTokenTrade(tokenAdd[destTokenInd], {from: alerter});
-
-        //check rate
-        let buyRate = await network.getExpectedRate(tokenAdd[srcTokenInd], tokenAdd[destTokenInd], amountTwei);
-
-        // first token to eth rate
-        console.log('baseSellRate2[srcTokenInd]')
-        console.log(baseSellRate2[srcTokenInd])
-        let expectedSellRate = (new BigNumber(baseSellRate2[srcTokenInd]));
-        let dstEthQty = (new BigNumber(amountTwei).mul(baseSellRate2[srcTokenInd])).div(precisionUnits).floor();
-        let extraBps = getExtraBpsForSellQuantity(dstEthQty);
-        //        expectedSellRate = addBps(expectedSellRate, extraBps);
-        let expectedEthQtyWei = expectedSellRate.mul(amountTwei).div(precisionUnits).floor();
-
-        //eth to token
-        let expectedBuyRate = (new BigNumber(baseBuyRate1[destTokenInd]));
-        let dstQty = (new BigNumber(expectedEthQtyWei).mul(baseBuyRate1[destTokenInd])).div(precisionUnits).floor();
-        extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedBuyRate = addBps(expectedBuyRate, extraBps);
-
-        let combinedRate = expectedSellRate.mul(expectedBuyRate).div(precisionUnits);
-
-        //check correct rate calculated
-        assert.equal(buyRate[0].valueOf(), combinedRate.valueOf(), "unexpected rate.");
-
-        reserve1TokenBalance[destTokenInd] = await destToken.balanceOf(reserve1.address);
-
-        //perform trade
-        // transfer funds to user and approve funds to network - for all trades in this 'it'
-        await srcToken.transfer(user1, amountTwei);
-        await srcToken.approve(network.address, amountTwei, {from:user1})
-
-        let startBalancedestTokenUser2 = await destToken.balanceOf(user2);
-        let startBalancesrcTokenUser1 = await srcToken.balanceOf(user1);
-        //        function trade(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, walletId)
-        await network.trade(tokenAdd[srcTokenInd], amountTwei, tokenAdd[destTokenInd], user2, maxDestAmount, buyRate[1].valueOf(), walletId, {from:user1});
-
-        //        check token balances
-        /////////////////////
-
-        //check higher destToken balance on user2
-        let rate = new BigNumber(buyRate[0].valueOf());
-        let destTokenUser2Balance = await destToken.balanceOf(user2);
-        let expectedBalancedestTokenUser2 = startBalancedestTokenUser2.add(rate.mul(amountTwei).div(precisionUnits).floor());
-        assert.equal(expectedBalancedestTokenUser2.valueOf(), destTokenUser2Balance.valueOf(), "bad token balance");
-
-        //check lower srcToken balance on user1
-        let srcTokenUser1Balance = await srcToken.balanceOf(user1);
-        let expectedBalancesrcTokenUser1 = startBalancesrcTokenUser1.sub(amountTwei);
-        assert.equal(srcTokenUser1Balance.valueOf(), expectedBalancesrcTokenUser1.valueOf(), "bad token balance");
-
-        //check token balance on reserve
-        //srcToken
-        reserve2TokenBalance[srcTokenInd] = (reserve2TokenBalance[srcTokenInd] * 1) + (amountTwei * 1);
-        reserve2TokenImbalance[srcTokenInd] -= (amountTwei * 1); //imbalance represents how many missing tokens
-        reportedBalance = await srcToken.balanceOf(reserve2.address);
-        assert.equal(reportedBalance.valueOf(), reserve2TokenBalance[srcTokenInd], "bad token balance on reserve");
-
-        //destToken
-        reserve1TokenBalance[destTokenInd] -= (rate.mul(amountTwei).div(precisionUnits).floor()).valueOf();
-        reserve1TokenImbalance[destTokenInd] += (rate.mul(amountTwei).div(precisionUnits).floor()).valueOf(); //imbalance represents how many missing tokens
-        reportedBalance = await destToken.balanceOf(reserve1.address);
-        assert.equal(reportedBalance.valueOf(), reserve1TokenBalance[destTokenInd].valueOf(), "bad token balance on reserve");
-
-        await pricing1.enableTokenTrade(tokenAdd[srcTokenInd]);
-        await pricing2.enableTokenTrade(tokenAdd[destTokenInd]);
+        await pricing1.enableTokenTrade(tokenAdd[tokenSrcInd]);
+        await pricing2.enableTokenTrade(tokenAdd[tokenDestInd]);
     });
 });
 
@@ -1347,4 +1480,8 @@ function compareRates (receivedRate, expectedRate) {
     expectedRate = expectedRate - (expectedRate % 10);
     receivedRate = receivedRate - (receivedRate % 10);
     assert.equal(expectedRate, receivedRate, "different rates");
+};
+
+function log (string) {
+    console.log(string);
 };
