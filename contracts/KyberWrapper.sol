@@ -60,7 +60,9 @@ contract KyberWrapper is Withdrawable, Utils {
             userSrcBalanceBefore += msg.value;
         userDestBalanceBefore = getBalance(dest, destAddress);
 
-        uint actualDestAmount = kyberNetworkContract.doTrade(src,
+        uint actualDestAmount = kyberNetworkContract.doTrade(
+            msg.sender,
+            src,
             srcAmount,
             dest,
             destAddress,

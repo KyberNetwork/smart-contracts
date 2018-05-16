@@ -269,6 +269,7 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
 
     event ExecuteNetworkTrade(address indexed sender, ERC20 src, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
     function doTrade(
+        address sender,
         ERC20 src,
         uint srcAmount,
         ERC20 dest,
@@ -303,16 +304,17 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
             amount.actualSrc = calcSrcAmount(src, ETH_TOKEN_ADDRESS, amount.eth, rateSrcToEth);
             require(amount.actualSrc <= srcAmount);
             if ((amount.actualSrc < srcAmount) && (src == ETH_TOKEN_ADDRESS)) {
-                msg.sender.transfer(srcAmount - amount.actualSrc);
+                sender.transfer(srcAmount - amount.actualSrc);
             }
         }
 
         // do the trade
         // verify trade size is smaller than user cap
-        require(amount.eth <= getUserCapInWei(msg.sender));
+        require(amount.eth <= getUserCapInWei(sender));
 
         //src to ETH
         require(doReserveTrade(
+                sender,
                 src,
                 amount.actualSrc,
                 ETH_TOKEN_ADDRESS,
@@ -324,6 +326,7 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
 
         //Eth to dest
         require(doReserveTrade(
+                sender,
                 ETH_TOKEN_ADDRESS,
                 amount.eth,
                 dest,
@@ -338,7 +341,7 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         if (src != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(amount.eth, reserve1, walletId));
         if (dest != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(amount.eth, reserve2, walletId));
 
-        ExecuteNetworkTrade(msg.sender, src, dest, amount.actualSrc, amount.actualDest);
+        ExecuteNetworkTrade(sender, src, dest, amount.actualSrc, amount.actualDest);
         return amount.actualDest;
     }
 
@@ -352,6 +355,7 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
     /// @param validate If true, additional validations are applicable
     /// @return true if trade is successful
     function doReserveTrade(
+        address sender,
         ERC20 src,
         uint amount,
         ERC20 dest,
@@ -377,7 +381,7 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
             callValue = amount;
         } else {
             // take src tokens to this contract
-            src.transferFrom(msg.sender, this, amount);
+            src.transferFrom(sender, this, amount);
         }
 
         // reserve sends tokens/eth to network. network sends it to destination
