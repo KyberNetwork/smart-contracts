@@ -257,6 +257,16 @@
       "internal use": true,
       "listed": true
     },
+    "ENJ": {
+      "name": "EnjinCoin",
+      "decimals": 18,
+      "address": "0xf629cbd94d3791c9250152bd8dfbdf380e2a3b9c",
+      "minimalRecordResolution": "100000000000000",
+      "maxPerBlockImbalance": "5461044951947117854720",
+      "maxTotalImbalance": "6043192343824681664512",
+      "internal use": true,
+      "listed": true
+    },
     "ETH": {
       "name": "Ethereum",
       "decimals": 18,
@@ -285,7 +295,12 @@
       "BQX": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
       "ZIL": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
       "AST": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-      "LINK": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"
+      "LINK": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "ENJ" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"
+    },
+    "huobi": {
+      "ETH": "0x0c8fd73eaf6089ef1b91231d0a07d0d2ca2b9d66",
+      "ABT": "0x0c8fd73eaf6089ef1b91231d0a07d0d2ca2b9d66"
     },
     "stable_exchange": {
       "ETH": "0xFDF28Bf25779ED4cA74e958d54653260af604C20",
