@@ -90,7 +90,11 @@ async function waitForTx(txHash) {
             }
             else
             {
+                console.log()
+                console.log()
                 console.log("unsuccesfull tx", txHash)
+                console.log()
+                console.log()
                 errors++;
             }
             return;
@@ -207,7 +211,11 @@ async function validateReserveKNCWallet(reserveAddress) {
 
     if (BigNumber(walletUsableKnc).lt(totalFeesToBurnAndSend))
     {
+        console.log()
+        console.log()
         console.log("validation error. walletUsableKnc " + kncWeiToKNCString(walletUsableKnc) + " is less than totalFeesToBurnAndSend " + kncWeiToKNCString(totalFeesToBurnAndSend))
+        console.log()
+        console.log()
         errors += 1
         return false
     }
@@ -268,7 +276,6 @@ async function doMain() {
 
     // get additional contracts from abis and additional addresses
     feeBurnerContract = new web3.eth.Contract(JSON.parse(feeBurnerAbi), feeBurnerAddress);
-
     // get run specific attributes
     getSender()
     console.log("sender", sender);
@@ -285,7 +292,9 @@ async function doMain() {
     // burn and send fees
     for (let reserve_index in reserves) {
         let reserveAddress = reserves[reserve_index];
+        console.log();
         console.log("reserveAddress", reserveAddress)
+        console.log("-------------------------------------");
         canHandleReserve = await validateReserveKNCWallet(reserveAddress)
         if (canHandleReserve) {
             await burnReservesFees(reserveAddress);
