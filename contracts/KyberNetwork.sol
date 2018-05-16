@@ -136,11 +136,10 @@ contract KyberNetwork is Withdrawable, Utils {
     /// @param add If true then list this pair, otherwise unlist it.
     function listPairForReserve(address reserve, ERC20 token, bool ethToToken, bool tokenToEth, bool add) public onlyAdmin {
         require(isReserve[reserve]);
-        address [] storage reservs;
+        address [] storage reservs  = resrevesPerTokenDest[token];
         uint i;
 
         if (ethToToken) {
-            reservs = resrevesPerTokenDest[token];
             for (i = 0; i < reservs.length; i++) {
                 if (reserve == reservs[i]) {
                     if(add) {
@@ -280,11 +279,9 @@ contract KyberNetwork is Withdrawable, Utils {
         //return 1 for ether to ether
         if (src == dest) return (reserves[bestReserve], PRECISION);
 
-        address [] storage reservs;
+        address [] storage reservs = resrevesPerTokenSrc[src];
         if (src == ETH_TOKEN_ADDRESS) {
             reservs = resrevesPerTokenDest[dest];
-        } else {
-            reservs = resrevesPerTokenSrc[src];
         }
 
         uint[] memory rates = new uint[](reservs.length);
