@@ -102,7 +102,7 @@ contract BasicToken is ERC20Basic {
      */
     modifier onlyPayloadSize(uint size) {
         if (msg.data.length < size + 4) {
-         revert();
+            revert();
         }
         _;
     }
@@ -115,7 +115,7 @@ contract BasicToken is ERC20Basic {
     }
 
     function balanceOf(address _owner) public view returns (uint balance) {
-      return balances[_owner];
+        return balances[_owner];
     }
 }
 
@@ -133,7 +133,7 @@ contract StandardToken is BasicToken, ERC20 {
 
     mapping (address => mapping (address => uint)) allowed;
 
-        function transferFrom(address _from, address _to, uint _value) public returns(bool){
+    function transferFrom(address _from, address _to, uint _value) public returns(bool){
 
         var _allowance = allowed[_from][msg.sender];
 
