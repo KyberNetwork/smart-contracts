@@ -11,14 +11,12 @@ import "./KyberNetworkInterface.sol";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network Wrap main contract
-contract KyberWrapper is Withdrawable, Utils {
+contract KyberNetworkWrapper is Withdrawable, Utils {
 
     KyberNetworkInterface public kyberNetworkContract;
-    uint                  public maxGasPrice = 50 * 1000 * 1000 * 1000; // 50 gwei
-    bool                  public enabled = false; // network is enabled
     mapping(bytes32=>uint) public info; // this is only a UI field for external app.
 
-    function KyberWrapper(address _admin) public {
+    function KyberNetworkWrapper(address _admin) public {
         require(_admin != address(0));
         admin = _admin;
     }
@@ -46,10 +44,6 @@ contract KyberWrapper is Withdrawable, Utils {
         payable
         returns(uint)
     {
-        require(enabled);
-        require(validateTradeInput(src, srcAmount, destAddress));
-        require(tx.gasprice <= maxGasPrice);
-
         uint userSrcBalanceBefore;
         uint userSrcBalanceAfter;
         uint userDestBalanceBefore;
@@ -85,6 +79,7 @@ contract KyberWrapper is Withdrawable, Utils {
         return actualDestAmount;
     }
 
+    event KyberNetworkSet(address networkContract);
     function setKyberNetworkContract(
         KyberNetworkInterface _kyberNetworkContract
     )
@@ -93,29 +88,7 @@ contract KyberWrapper is Withdrawable, Utils {
     {
         require(_kyberNetworkContract != address(0));
         kyberNetworkContract = _kyberNetworkContract;
-    }
-
-    function setMaxGasPrice(uint gasPrice) public onlyAdmin {
-        require(gasPrice > 0);
-        maxGasPrice = gasPrice;
-    }
-
-
-    function setEnable(bool _enable) public onlyAdmin {
-        if (_enable) {
-            require(kyberNetworkContract != address(0));
-        }
-        enabled = _enable;
-    }
-
-    function setInfo(bytes32 field, uint value) public onlyOperator {
-        info[field] = value;
-    }
-
-    /// @dev returns number of reserves
-    /// @return number of reserves
-    function getNumReserves() public view returns(uint) {
-        return kyberNetworkContract.getNumReserves();
+        KyberNetworkSet(kyberNetworkContract);
     }
 
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
@@ -129,6 +102,18 @@ contract KyberWrapper is Withdrawable, Utils {
         return kyberNetworkContract.getUserCapInWei(user);
     }
 
+    function getMaxGasPriceWei() public view returns (uint) {
+        return kyberNetworkContract.maxGasPrice();
+    }
+
+    function enalbed() public view returns (bool) {
+        return kyberNetworkContract.isEnabled();
+    }
+
+    function info(bytes32 id) public view returns(uint) {
+        kyberNetworkContract.getInfo(id);
+    }
+
     /// @dev get the balance of a user.
     /// @param token The token type
     /// @return The balance
@@ -137,25 +122,5 @@ contract KyberWrapper is Withdrawable, Utils {
             return user.balance;
         else
             return token.balanceOf(user);
-    }
-
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev checks that user sent ether/tokens to contract before trade
-    /// @param src Src token
-    /// @param srcAmount amount of src tokens
-    /// @return true if input is valid
-    function validateTradeInput(ERC20 src, uint srcAmount, address destAddress) internal view returns(bool) {
-        if ((srcAmount >= MAX_QTY) || (srcAmount == 0) || (destAddress == 0))
-            return false;
-
-        if (src == ETH_TOKEN_ADDRESS) {
-            if (msg.value != srcAmount)
-                return false;
-        } else {
-            if ((msg.value != 0) || (src.allowance(msg.sender, this) < srcAmount))
-                return false;
-        }
-
-        return true;
     }
 }

@@ -22,6 +22,7 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
     WhiteListInterface public whiteListContract;
     ExpectedRateInterface public expectedRateContract;
     FeeBurnerInterface    public feeBurnerContract;
+    uint                  public maxGasPrice = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool                  public enabled = false; // network is enabled
     mapping(bytes32=>uint) public info; // this is only a UI field for external app.
     mapping(address=>address[]) resrevesPerTokenSrc; //reserves supporting token to eth
@@ -133,6 +134,7 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         WhiteListInterface    _whiteList,
         ExpectedRateInterface _expectedRate,
         FeeBurnerInterface    _feeBurner,
+        uint                  _maxGasPrice,
         uint                  _negligibleRateDiff
     )
         public
@@ -146,6 +148,7 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         whiteListContract = _whiteList;
         expectedRateContract = _expectedRate;
         feeBurnerContract = _feeBurner;
+        maxGasPrice = _maxGasPrice;
         negligibleRateDiff = _negligibleRateDiff;
     }
 
@@ -179,13 +182,15 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
     /// @dev best conversion rate for a pair of tokens, if number of reserves have small differences. randomize
     /// @param src Src token
     /// @param dest Destination token
-    function findBestRate(ERC20 src, ERC20 dest, uint srcQty) public view returns(address noUse, uint rate) {
+    function findBestRate(ERC20 src, ERC20 dest, uint srcQty) public view returns(uint noUse, uint rate) {
+        address noUse1;
         address noUse2;
         uint noUse3;
         uint noUse4;
         uint ethAmount;
 
-        (rate, noUse, noUse2, ethAmount, noUse3, noUse4) = findBestRateTokenToToken(src, dest, srcQty);
+        noUse = 0;
+        (rate, noUse1, noUse2, ethAmount, noUse3, noUse4) = findBestRateTokenToToken(src, dest, srcQty);
     }
 
     function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcQty) internal view
@@ -282,6 +287,9 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         payable
         returns(uint)
     {
+    	require(tx.gasprice <= maxGasPrice);
+        require(validateTradeInput(sender, src, srcAmount, destAddress));
+
         Amount memory amount;
         address reserve1;
         address reserve2;
@@ -406,5 +414,33 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
 
     function calcSrcAmount(ERC20 src, ERC20 dest, uint destAmount, uint rate) internal view returns(uint) {
         return calcSrcQty(destAmount, getDecimals(src), getDecimals(dest), rate);
+    }
+
+    function isEnabled() public view returns (bool) {
+        return enabled;
+    }
+
+    function getInfo(bytes32 id) public view returns (uint) {
+        return info[id];
+    }
+
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev checks that user sent ether/tokens to contract before trade
+    /// @param src Src token
+    /// @param srcAmount amount of src tokens
+    /// @return true if input is valid
+    function validateTradeInput(address sender, ERC20 src, uint srcAmount, address destAddress) internal view returns(bool) {
+        if ((srcAmount >= MAX_QTY) || (srcAmount == 0) || (destAddress == 0))
+            return false;
+
+        if (src == ETH_TOKEN_ADDRESS) {
+            if (msg.value != srcAmount)
+                return false;
+        } else {
+            if ((msg.value != 0) || (src.allowance(sender, this) < srcAmount))
+                return false;
+        }
+
+        return true;
     }
 }
