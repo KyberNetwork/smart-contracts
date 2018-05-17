@@ -189,7 +189,7 @@ contract ConversionRates is ConversionRatesInterface, VolumeImbalanceRecorder, U
 
         if (rateUpdateBlock == 0) rateUpdateBlock = getRateUpdateBlock(token);
 
-        return addImbalance(token, buyAmount, rateUpdateBlock, currentBlock);
+        addImbalance(token, buyAmount, rateUpdateBlock, currentBlock);
     }
 
     /* solhint-disable function-max-lines */
