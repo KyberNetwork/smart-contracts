@@ -5,6 +5,7 @@ import "./ERC20Interface.sol";
 import "./KyberReserveInterface.sol";
 import "./Withdrawable.sol";
 import "./Utils.sol";
+import "./Utils2.sol";
 import "./PermissionGroups.sol";
 import "./WhiteListInterface.sol";
 import "./ExpectedRateInterface.sol";
@@ -13,7 +14,7 @@ import "./FeeBurnerInterface.sol";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
-contract KyberNetwork is Withdrawable, Utils {
+contract KyberNetwork is Withdrawable, Utils2 {
 
     uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
     KyberReserveInterface[] public reserves;
@@ -188,26 +189,36 @@ contract KyberNetwork is Withdrawable, Utils {
         if (tokenToEth) ListReservePairs(reserve, token, ETH_TOKEN_ADDRESS, add);
     }
 
-    function setParams(
-        WhiteListInterface    _whiteList,
-        ExpectedRateInterface _expectedRate,
-        FeeBurnerInterface    _feeBurner,
-        uint                  _maxGasPrice,
-        uint                  _negligibleRateDiff
-    )
-        public
-        onlyAdmin
-    {
+    function setWhiteListContract(WhiteListInterface _whiteList) public onlyAdmin {
         require(_whiteList != address(0));
-        require(_feeBurner != address(0));
-        require(_expectedRate != address(0));
-        require(_negligibleRateDiff <= 100 * 100); // at most 100%
 
         whiteListContract = _whiteList;
+    }
+
+    function setExpectedRate(ExpectedRateInterface _expectedRate) public onlyAdmin {
+        require(_expectedRate != address(0));
+
         expectedRateContract = _expectedRate;
+    }
+
+    function setFeeBurner(FeeBurnerInterface _feeBurner) public onlyAdmin {
+        require(_feeBurner != address(0));
+
         feeBurnerContract = _feeBurner;
-        maxGasPrice = _maxGasPrice;
+    }
+
+
+    function setNegligibleRateDiff(uint _negligibleRateDiff) public onlyAdmin {
+        require(_negligibleRateDiff <= 100 * 100); // at most 100%
+        require(_negligibleRateDiff > 0);
+
         negligibleRateDiff = _negligibleRateDiff;
+    }
+
+    function setMaxGasPrice(uint _maxGasPrice) public onlyAdmin {
+        require(_maxGasPrice > 0);
+
+        maxGasPrice = _maxGasPrice;
     }
 
     function setEnable(bool _enable) public onlyAdmin {
