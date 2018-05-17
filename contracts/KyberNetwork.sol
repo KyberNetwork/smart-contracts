@@ -22,6 +22,7 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
     WhiteListInterface public whiteListContract;
     ExpectedRateInterface public expectedRateContract;
     FeeBurnerInterface    public feeBurnerContract;
+    address               public kyberNetworkWrapper;
     uint                  public maxGasPrice = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool                  public enabled = false; // network is enabled
     mapping(bytes32=>uint) public info; // this is only a UI field for external app.
@@ -130,6 +131,88 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         if (tokenToEth) ListReservePairs(reserve, token, ETH_TOKEN_ADDRESS, add);
     }
 
+    event ExecuteNetworkTrade(address indexed sender, ERC20 src, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
+    function doTrade(
+        address sender,
+        ERC20 src,
+        uint srcAmount,
+        ERC20 dest,
+        address destAddress,
+        uint maxDestAmount,
+        uint minConversionRate,
+        address walletId
+    )
+        public
+        payable
+        returns(uint)
+    {
+        require(tx.gasprice <= maxGasPrice);
+        require(validateTradeInput(sender, src, srcAmount, destAddress));
+        require(msg.sender == kyberNetworkWrapper);
+
+        Amount memory amount;
+        address reserve1;
+        address reserve2;
+        uint rate;
+        uint rateSrcToEth;
+        uint rateEthToDest;
+
+        (rate, reserve1, reserve2, amount.eth, rateSrcToEth, rateEthToDest) =
+        findBestRateTokenToToken(src, dest, srcAmount);
+
+        require(rate > 0);
+        require(rate < MAX_RATE);
+        require(rate >= minConversionRate);
+
+        amount.actualSrc = srcAmount;
+        amount.actualDest = calcDestAmount(src, dest, amount.actualSrc, rate);
+        if (amount.actualDest > maxDestAmount) {
+            amount.actualDest = maxDestAmount;
+            amount.eth = calcSrcAmount(ETH_TOKEN_ADDRESS, dest, amount.actualDest, rateEthToDest);
+            amount.actualSrc = calcSrcAmount(src, ETH_TOKEN_ADDRESS, amount.eth, rateSrcToEth);
+            require(amount.actualSrc <= srcAmount);
+            if ((amount.actualSrc < srcAmount) && (src == ETH_TOKEN_ADDRESS)) {
+                sender.transfer(srcAmount - amount.actualSrc);
+            }
+        }
+
+        // do the trade
+        // verify trade size is smaller than user cap
+        require(amount.eth <= getUserCapInWei(sender));
+
+        //src to ETH
+        require(doReserveTrade(
+                sender,
+                src,
+                amount.actualSrc,
+                ETH_TOKEN_ADDRESS,
+                this,
+                amount.eth,
+                KyberReserveInterface(reserve1),
+                rateSrcToEth,
+                true));
+
+        //Eth to dest
+        require(doReserveTrade(
+                sender,
+                ETH_TOKEN_ADDRESS,
+                amount.eth,
+                dest,
+                destAddress,
+                amount.actualDest,
+                KyberReserveInterface(reserve2),
+                rateEthToDest,
+                true));
+
+        //when src is ether, reserve1 is doing a "fake" trade. (ether to ether) - don't burn.
+        //when dest is ether, reserve2 is doing a "fake" trade. (ether to ether) - don't burn.
+        if (src != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(amount.eth, reserve1, walletId));
+        if (dest != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(amount.eth, reserve2, walletId));
+
+        ExecuteNetworkTrade(sender, src, dest, amount.actualSrc, amount.actualDest);
+        return amount.actualDest;
+    }
+
     function setParams(
         WhiteListInterface    _whiteList,
         ExpectedRateInterface _expectedRate,
@@ -163,6 +246,11 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
 
     function setInfo(bytes32 field, uint value) public onlyOperator {
         info[field] = value;
+    }
+
+    function setKyberWrapper(address wrapper) public onlyAdmin {
+        require(wrapper != address(0));
+        kyberNetworkWrapper = wrapper;
     }
 
     /// @dev returns number of reserves
@@ -270,87 +358,6 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         uint eth;
         uint actualDest;
         uint actualSrc;
-    }
-
-    event ExecuteNetworkTrade(address indexed sender, ERC20 src, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
-    function doTrade(
-        address sender,
-        ERC20 src,
-        uint srcAmount,
-        ERC20 dest,
-        address destAddress,
-        uint maxDestAmount,
-        uint minConversionRate,
-        address walletId
-    )
-        public
-        payable
-        returns(uint)
-    {
-    	require(tx.gasprice <= maxGasPrice);
-        require(validateTradeInput(sender, src, srcAmount, destAddress));
-
-        Amount memory amount;
-        address reserve1;
-        address reserve2;
-        uint rate;
-        uint rateSrcToEth;
-        uint rateEthToDest;
-
-        (rate, reserve1, reserve2, amount.eth, rateSrcToEth, rateEthToDest) =
-            findBestRateTokenToToken(src, dest, srcAmount);
-
-        require(rate > 0);
-        require(rate < MAX_RATE);
-        require(rate >= minConversionRate);
-
-        amount.actualSrc = srcAmount;
-        amount.actualDest = calcDestAmount(src, dest, amount.actualSrc, rate);
-        if (amount.actualDest > maxDestAmount) {
-            amount.actualDest = maxDestAmount;
-            amount.eth = calcSrcAmount(ETH_TOKEN_ADDRESS, dest, amount.actualDest, rateEthToDest);
-            amount.actualSrc = calcSrcAmount(src, ETH_TOKEN_ADDRESS, amount.eth, rateSrcToEth);
-            require(amount.actualSrc <= srcAmount);
-            if ((amount.actualSrc < srcAmount) && (src == ETH_TOKEN_ADDRESS)) {
-                sender.transfer(srcAmount - amount.actualSrc);
-            }
-        }
-
-        // do the trade
-        // verify trade size is smaller than user cap
-        require(amount.eth <= getUserCapInWei(sender));
-
-        //src to ETH
-        require(doReserveTrade(
-                sender,
-                src,
-                amount.actualSrc,
-                ETH_TOKEN_ADDRESS,
-                this,
-                amount.eth,
-                KyberReserveInterface(reserve1),
-                rateSrcToEth,
-                true));
-
-        //Eth to dest
-        require(doReserveTrade(
-                sender,
-                ETH_TOKEN_ADDRESS,
-                amount.eth,
-                dest,
-                destAddress,
-                amount.actualDest,
-                KyberReserveInterface(reserve2),
-                rateEthToDest,
-                true));
-
-        //when src is ether, reserve1 is doing a "fake" trade. (ether to ether) - don't burn.
-        //when dest is ether, reserve2 is doing a "fake" trade. (ether to ether) - don't burn.
-        if (src != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(amount.eth, reserve1, walletId));
-        if (dest != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(amount.eth, reserve2, walletId));
-
-        ExecuteNetworkTrade(sender, src, dest, amount.actualSrc, amount.actualDest);
-        return amount.actualDest;
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
