@@ -250,13 +250,15 @@ contract KyberNetwork is Withdrawable, Utils {
     /// @dev best conversion rate for a pair of tokens, if number of reserves have small differences. randomize
     /// @param src Src token
     /// @param dest Destination token
-    function findBestRate(ERC20 src, ERC20 dest, uint srcQty) public view returns(address noUse, uint rate) {
+    function findBestRate(ERC20 src, ERC20 dest, uint srcQty) public view returns(uint noUse, uint rate) {
+        address noUse1;
         address noUse2;
         uint noUse3;
         uint noUse4;
         uint ethAmount;
 
-        (rate, noUse, noUse2, ethAmount, noUse3, noUse4) = findBestRateTokenToToken(src, dest, srcQty);
+        noUse = 0;
+        (rate, noUse1, noUse2, ethAmount, noUse3, noUse4) = findBestRateTokenToToken(src, dest, srcQty);
     }
 
     function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcQty) internal view
