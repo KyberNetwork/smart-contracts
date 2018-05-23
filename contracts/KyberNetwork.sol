@@ -328,7 +328,7 @@ contract KyberNetwork is Withdrawable, Utils {
         require(rate >= minConversionRate);
 
         amount.actualSrc = srcAmount;
-        amount.actualDest = calcDestAmount(src, dest, amount.actualSrc, rate);
+        amount.actualDest = calcDestAmount(ETH_TOKEN_ADDRESS, dest, amount.eth, rateEthToDest);
         if (amount.actualDest > maxDestAmount) {
             amount.actualDest = maxDestAmount;
             amount.eth = calcSrcAmount(ETH_TOKEN_ADDRESS, dest, amount.actualDest, rateEthToDest);
