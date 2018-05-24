@@ -97,8 +97,12 @@ contract Exponent {
 
 
 contract LiquidityFormula is Exponent {
+    function PE(uint r,uint Pmin,uint E,uint precision) pure public returns(uint) {
+        return Pmin*exp(r*E,precision*precision,precision) / precision;
+    }
+
     function rPE(uint r,uint Pmin,uint E,uint precision) pure public returns(uint) {
-        return r*Pmin*exp(r*E,precision*precision,precision) / (precision*precision);
+        return r*PE(r,Pmin,E,precision) / precision;
     }
 
     function deltaTFunc(uint r,uint Pmin,uint E,uint deltaE,uint precision) pure public returns(uint) {
