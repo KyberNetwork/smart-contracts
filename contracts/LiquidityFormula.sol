@@ -1,11 +1,17 @@
 pragma solidity ^0.4.18;
 
 contract Exponent {
+    uint public constant BIG_NUMBER = (uint(1)<<uint(200));
+
     function checkMultOverflow(uint x, uint y) public pure returns(bool) {
         if(y == 0) return false;
         return (((x*y) / y) != x);
     }
 
+    function compactFraction(uint p, uint q, uint precision) public pure returns(uint,uint) {
+        if(q < precision * precision) return (p,q);
+        return compactFraction(p/precision,q/precision,precision);
+    }
 
     function exp(uint p, uint q, uint precision) public pure returns(uint){
         uint n = 0;
@@ -35,6 +41,8 @@ contract Exponent {
             currentP *= p;
             currentQ *= q;
             nFact *= n;
+
+            (currentP, currentQ) = compactFraction(currentP,currentQ,precision);
         }
 
     }
@@ -62,6 +70,8 @@ contract Exponent {
         uint two = 2 * one;
         uint addition = one;
 
+        require((x>=one) && (x<=two));
+        require(numPrecisionBits < 125);
 
         for(uint i = numPrecisionBits ; i > 0 ; i--) {
             x = (x*x) / one;
@@ -77,12 +87,23 @@ contract Exponent {
 
     function log_2(uint p, uint q, uint numPrecisionBits) pure public returns(uint) {
         uint n = 0;
+        uint precision = (uint(1)<<numPrecisionBits);
+
         if(p > q) {
             n = countLeadingZeros(p,q);
         }
 
-        uint y = p * (uint(1)<<numPrecisionBits) / (q * (uint(1)<<n));
-        return n * (uint(1)<<numPrecisionBits) + log2ForSmallNumber(y,numPrecisionBits);
+        require(!checkMultOverflow(p,precision));
+        require(!checkMultOverflow(n,precision));
+        require(!checkMultOverflow(uint(1)<<n,q));
+
+        uint y = p * precision / (q * (uint(1)<<n));
+        uint log2Small = log2ForSmallNumber(y,numPrecisionBits);
+
+        require(n*precision <= BIG_NUMBER);
+        require(log2Small <= BIG_NUMBER);
+
+        return n * precision + log2Small;
     }
 
     function ln(uint p, uint q, uint numPrecisionBits) pure public returns(uint) {
@@ -91,6 +112,8 @@ contract Exponent {
 
         uint log2x = log_2(p,q,numPrecisionBits);
 
+        require(!checkMultOverflow(ln2Numerator,log2x));
+
         return ln2Numerator * log2x / ln2Denomerator;
     }
 }
@@ -98,22 +121,35 @@ contract Exponent {
 
 contract LiquidityFormula is Exponent {
     function PE(uint r,uint Pmin,uint E,uint precision) pure public returns(uint) {
-        return Pmin*exp(r*E,precision*precision,precision) / precision;
+        uint expRE = exp(r*E,precision*precision,precision);
+        require(!checkMultOverflow(expRE,Pmin));
+        return Pmin*expRE / precision;
     }
 
     function rPE(uint r,uint Pmin,uint E,uint precision) pure public returns(uint) {
-        return r*PE(r,Pmin,E,precision) / precision;
+        uint PEValue = PE(r,Pmin,E,precision);
+        require(!checkMultOverflow(r,PEValue));
+        return r*PEValue / precision;
     }
 
     function deltaTFunc(uint r,uint Pmin,uint E,uint deltaE,uint precision) pure public returns(uint) {
         uint rpe = rPE(r,Pmin,E,precision);
         uint erdeltaE = exp(r*deltaE,precision*precision,precision);
+
+        require(erdeltaE >= precision);
+        require(!checkMultOverflow(erdeltaE - precision,precision));
+        require(!checkMultOverflow((erdeltaE - precision)*precision,precision));
+        require(!checkMultOverflow(rpe,erdeltaE));
+
         return (erdeltaE - precision) * precision * precision / (rpe*erdeltaE);
     }
 
     function deltaEFunc(uint r,uint Pmin,uint E,uint deltaT,uint precision,uint numPrecisionBits) pure public returns(uint) {
         uint rpe = rPE(r,Pmin,E,precision);
         uint lnPart = ln(precision*precision + rpe*deltaT,precision*precision,numPrecisionBits);
+
+        require(!checkMultOverflow(lnPart,precision));
+
         return lnPart * precision / r;
     }
 
