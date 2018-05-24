@@ -229,7 +229,13 @@ contract KyberNetwork is Withdrawable, Utils {
         ethAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcQty, rateSrcToEth);
 
         (reserve2, rateEthToDest) = searchBestRate(ETH_TOKEN_ADDRESS, dest, ethAmount);
-        rate = rateSrcToEth * rateEthToDest / PRECISION;
+        uint destQty = calcDestAmount(ETH_TOKEN_ADDRESS, dest, ethAmount, rateEthToDest);
+
+        if (rateSrcToEth == PRECISION) rate = rateEthToDest;
+        else if (rateEthToDest == PRECISION) rate = rateSrcToEth;
+        //First divide since on actual trade after first trade (token to ether) number is rounded. Here the same.
+        else rate = calcRateFromQty(srcQty, destQty, getDecimals(src), getDecimals(dest));
+//        else rate = ((srcQty * rateSrcToEth / PRECISION) * rateEthToDest) / srcQty;
     }
 
     /* solhint-disable code-complexity */
@@ -339,10 +345,10 @@ contract KyberNetwork is Withdrawable, Utils {
             }
         }
 
-        // do the trade
         // verify trade size is smaller than user cap
         require(amount.eth <= getUserCapInWei(msg.sender));
 
+        //do the trade
         //src to ETH
         require(doReserveTrade(
                 src,
@@ -399,7 +405,7 @@ contract KyberNetwork is Withdrawable, Utils {
         uint callValue = 0;
 
         if (src == dest) {
-            //this is for a "fake" trade when both src and dest are ehters.
+            //this is for a "fake" trade when both src and dest are ethers.
             if (destAddress != (address(this)))
                 destAddress.transfer(amount);
             return true;
@@ -434,6 +440,19 @@ contract KyberNetwork is Withdrawable, Utils {
 
     function calcSrcAmount(ERC20 src, ERC20 dest, uint destAmount, uint rate) internal view returns(uint) {
         return calcSrcQty(destAmount, getDecimals(src), getDecimals(dest), rate);
+    }
+
+    function calcRateFromQty(uint srcQty, uint destQty, uint srcDecimals, uint dstDecimals) internal pure returns(uint) {
+        require(srcQty <= MAX_QTY);
+        require(destQty <= MAX_QTY);
+
+        if (dstDecimals >= srcDecimals) {
+            require((dstDecimals - srcDecimals) <= MAX_DECIMALS);
+            return (destQty * PRECISION / ((10**(dstDecimals - srcDecimals)) * srcQty));
+        } else {
+            require((srcDecimals - dstDecimals) <= MAX_DECIMALS);
+            return (destQty * PRECISION * (10**(srcDecimals - dstDecimals)) / srcQty);
+        }
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
