@@ -13,6 +13,8 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
     uint public maxCapSellInFp;
     uint public collectedFeesInTwei;
     uint public feeInBps;
+    uint public maxRateInPRECISION;
+    uint public minRateInPRECISION;
     address public reserveContract;
 
     function LiquidityConversionRates(address _admin, ERC20 _token, address _reserveContract) public{
@@ -22,9 +24,9 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         setDecimals(token);
     }
 
-    event SetLiquidityParams(uint rInFp, uint PminInFp, uint numFpBits, uint maxCapBuyInFp, uint maxCapSellInFp, uint feeInBps, uint formulaPrecision);
+    event SetLiquidityParams(uint rInFp, uint PminInFp, uint numFpBits, uint maxCapBuyInFp, uint maxCapSellInFp, uint feeInBps, uint formulaPrecision, uint maxRateInPRECISION, uint minRateInPRECISION);
 
-    function setLiquidityParams(uint _rInFp, uint _PminInFp, uint _numFpBits, uint _maxCapBuyInWei, uint _maxCapSellInWei, uint _feeInBps) public onlyAdmin {
+    function setLiquidityParams(uint _rInFp, uint _PminInFp, uint _numFpBits, uint _maxCapBuyInWei, uint _maxCapSellInWei, uint _feeInBps, uint _maxRateInPRECISION, uint _minRateInPRECISION) public onlyAdmin {
           rInFp = _rInFp;
           PminInFp = _PminInFp;
           formulaPrecision = uint(1)<<_numFpBits;
@@ -34,8 +36,10 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
           collectedFeesInTwei = 0;
           require(_feeInBps < 10000);
           feeInBps = _feeInBps;
+          maxRateInPRECISION = _maxRateInPRECISION;
+          minRateInPRECISION = _minRateInPRECISION;
 
-          SetLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInFp, maxCapSellInFp, feeInBps, formulaPrecision);
+          SetLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInFp, maxCapSellInFp, feeInBps, formulaPrecision, maxRateInPRECISION, minRateInPRECISION);
     }
 
     function getRateWithE(ERC20 conversionToken, bool buy, uint qtyInSrcWei, uint EInFp) public view returns(uint) {
@@ -68,6 +72,10 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
             rateInPRECISION = sellRate(EInFp, deltaTInFp);
           }
           maxCap = maxCapSellInFp;
+        }
+
+        if ((rateInPRECISION > maxRateInPRECISION) || (rateInPRECISION < minRateInPRECISION)) {
+            return 0;
         }
 
         if(deltaEInFp > maxCap) return 0;
