@@ -15,15 +15,16 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
     uint public feeInBps;
     address public reserveContract;
 
-    function LiquidityConversionRates(address _admin) public{
+    function LiquidityConversionRates(address _admin, ERC20 _token, address _reserveContract) public{
         transferAdminQuickly(_admin);
+        token = _token;
+        reserveContract = _reserveContract;
+        setDecimals(token);
     }
 
-    event SetLiquidityParams(ERC20 token, uint rInFp, uint PminInFp, uint numFpBits, uint maxCapBuyInFp, uint maxCapSellInFp, uint feeInBps, uint formulaPrecision);
+    event SetLiquidityParams(uint rInFp, uint PminInFp, uint numFpBits, uint maxCapBuyInFp, uint maxCapSellInFp, uint feeInBps, uint formulaPrecision);
 
-    function setLiquidityParams(ERC20 _token, uint _rInFp, uint _PminInFp, uint _numFpBits, uint _maxCapBuyInWei, uint _maxCapSellInWei, uint _feeInBps) public onlyAdmin {
-          token = _token;
-          setDecimals(token);
+    function setLiquidityParams(uint _rInFp, uint _PminInFp, uint _numFpBits, uint _maxCapBuyInWei, uint _maxCapSellInWei, uint _feeInBps) public onlyAdmin {
           rInFp = _rInFp;
           PminInFp = _PminInFp;
           formulaPrecision = uint(1)<<_numFpBits;
@@ -34,7 +35,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
           require(_feeInBps < 10000);
           feeInBps = _feeInBps;
 
-          SetLiquidityParams(token, rInFp, PminInFp, numFpBits, maxCapBuyInFp, maxCapSellInFp, feeInBps, formulaPrecision);
+          SetLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInFp, maxCapSellInFp, feeInBps, formulaPrecision);
     }
 
     function getRateWithE(ERC20 conversionToken, bool buy, uint qtyInSrcWei, uint EInFp) public view returns(uint) {
@@ -80,11 +81,6 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         uint EInFp = fromWeiToFp(conversionToken.balance);
 
         return getRateWithE(token,buy,qtyInSrcWei,EInFp);
-    }
-
-    function setReserveAddress(address reserve) public onlyAdmin {
-        reserveContract = reserve;
-        //TODO - event
     }
 
     function recordImbalance(
