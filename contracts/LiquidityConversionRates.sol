@@ -5,81 +5,91 @@ import "./LiquidityFormula.sol";
 
 contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula, Withdrawable, Utils {
     ERC20 token;
-    uint public r;
-    uint public Pmin;
-    uint public qtyPrecision;
-    uint public numPrecisionBits;
-    uint public maxEthCapBuy;
-    uint public maxEthCapSell;
-    uint public collectedTokenFees;
+    uint public rInFp;
+    uint public PminInFp;
+    uint public formulaPrecision;
+    uint public numFpBits;
+    uint public maxCapBuyInFp;
+    uint public maxCapSellInFp;
+    uint public collectedFeesInTwei;
     uint public feeInBps;
+    address public reserveContract;
 
     function LiquidityConversionRates(address _admin) public{
-        admin = _admin;
+        transferAdminQuickly(_admin);
     }
 
-    function setLiquidityParams(ERC20 _token, uint _r, uint _Pmin, uint _numPrecisionBits, uint _maxEthCapBuy, uint _maxEthCapSell, uint _feeInBps) public onlyAdmin {
+    event SetLiquidityParams(ERC20 token, uint rInFp, uint PminInFp, uint numFpBits, uint maxCapBuyInFp, uint maxCapSellInFp, uint feeInBps, uint formulaPrecision);
+
+    function setLiquidityParams(ERC20 _token, uint _rInFp, uint _PminInFp, uint _numFpBits, uint _maxCapBuyInWei, uint _maxCapSellInWei, uint _feeInBps) public onlyAdmin {
           token = _token;
           setDecimals(token);
-          r = _r;
-          Pmin = _Pmin;
-          qtyPrecision = uint(1)<<_numPrecisionBits;
-          numPrecisionBits = _numPrecisionBits;
-          maxEthCapBuy = fromWeiToQty(_maxEthCapBuy);
-          maxEthCapSell = fromWeiToQty(_maxEthCapSell);
-          collectedTokenFees = 0;
+          rInFp = _rInFp;
+          PminInFp = _PminInFp;
+          formulaPrecision = uint(1)<<_numFpBits;
+          numFpBits = _numFpBits;
+          maxCapBuyInFp = fromWeiToFp(_maxCapBuyInWei);
+          maxCapSellInFp = fromWeiToFp(_maxCapSellInWei);
+          collectedFeesInTwei = 0;
           require(_feeInBps < 10000);
           feeInBps = _feeInBps;
+
+          SetLiquidityParams(token, rInFp, PminInFp, numFpBits, maxCapBuyInFp, maxCapSellInFp, feeInBps, formulaPrecision);
     }
 
-    function getRateWithE(ERC20 conversionToken, bool buy, uint qty, uint E) public view returns(uint) {
-        uint deltaE;
-        uint deltaT;
-        uint rate;
+    function getRateWithE(ERC20 conversionToken, bool buy, uint qtyInSrcWei, uint EInFp) public view returns(uint) {
+        uint deltaEInFp;
+        uint deltaTInFp;
+        uint rateInPRECISION;
         uint maxCap;
 
         if(conversionToken != token) return 0;
 
         if(buy) {
           // ETH goes in, token goes out
-          deltaE = fromWeiToQty(qty);
-          if(deltaE == 0) deltaE = 1;
+          deltaEInFp = fromWeiToFp(qtyInSrcWei);
 
-          deltaT = deltaTFunc(r,Pmin,E,deltaE,qtyPrecision);
-          deltaT = reduceFee(deltaT);
-
-          rate = deltaT * PRECISION / deltaE;
-
-          maxCap = maxEthCapBuy;
+          if(deltaEInFp == 0) {
+            rateInPRECISION = buyRateZeroQuantity(EInFp);
+          }
+          else {
+            rateInPRECISION = buyRate(EInFp, deltaEInFp);
+          }
+          maxCap = maxCapBuyInFp;
         }
         else {
-          deltaT = fromDecimalsToQty(qty);
-          deltaT = reduceFee(deltaT);
-          if(deltaT == 0) deltaT = 1;
-
-          deltaE = deltaEFunc(r,Pmin,E,deltaT,qtyPrecision,numPrecisionBits);
-          rate = deltaE * PRECISION / deltaT;
-
-          maxCap = maxEthCapSell;
+          deltaTInFp = fromTweiToFp(qtyInSrcWei);
+          deltaTInFp = reduceFee(deltaTInFp);
+          if(deltaTInFp == 0) {
+              rateInPRECISION = sellRateZeroQuantity(EInFp);
+          }
+          else {
+            rateInPRECISION = sellRate(EInFp, deltaTInFp);
+          }
+          maxCap = maxCapSellInFp;
         }
 
-        if(deltaE > maxCap) return 0;
-        return rate;
+        if(deltaEInFp > maxCap) return 0;
+        return rateInPRECISION;
     }
 
-    function getRate(ERC20 conversionToken, uint currentBlockNumber, bool buy, uint qty) public view returns(uint) {
+    function getRate(ERC20 conversionToken, uint currentBlockNumber, bool buy, uint qtyInSrcWei) public view returns(uint) {
 
         currentBlockNumber;
 
-        uint E = fromWeiToQty(conversionToken.balance);
-        // Yaron - here we need to reduce what was calculated for fee? I think not since we deal with token fee now.
+        uint EInFp = fromWeiToFp(conversionToken.balance);
 
-        return getRateWithE(token,buy,qty,E);
+        return getRateWithE(token,buy,qtyInSrcWei,EInFp);
+    }
+
+    function setReserveAddress(address reserve) public onlyAdmin {
+        reserveContract = reserve;
+        //TODO - event
     }
 
     function recordImbalance(
         ERC20 conversionToken,
-        int buyAmount,
+        int buyAmountInTwei,
         uint rateUpdateBlock,
         uint currentBlock
     )
@@ -89,41 +99,56 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         rateUpdateBlock;
         currentBlock;
 
-        uint buyQty = fromDecimalsToQty(abs(buyAmount));
-        uint feeQty = getFee(buyQty);
-        collectedTokenFees += feeQty;
-
-        // Yaron - do we need? -require(msg.sender == reserveContract);
-        // Yaron - do we need? - if (rateUpdateBlock == 0) rateUpdateBlock = getRateUpdateBlock(token);
-        // Yaron - do we need it - return addImbalance(token, buyAmount, rateUpdateBlock, currentBlock);
+        require(msg.sender == reserveContract);
+        collectedFeesInTwei += calcCollectedFee(abs(buyAmountInTwei));
     }
 
-    function resetCollectedFees() public {
-        collectedTokenFees = 0;
+    event ResetCollectedFees(uint resetFeesInTwei);
+
+    function resetCollectedFees() public onlyAdmin {
+        uint resetFeesInTwei = collectedFeesInTwei;
+        collectedFeesInTwei = 0;
+
+        ResetCollectedFees(resetFeesInTwei);
     }
 
-    function getCollectedFees() public view returns(uint) { //Yaron - Do we need it?
-        return fromQtyToWei(collectedTokenFees);
+    function buyRate(uint EInFp, uint deltaEInFp) internal view returns(uint) {
+        uint deltaTInFp = deltaTFunc(rInFp,PminInFp,EInFp,deltaEInFp,formulaPrecision);
+        deltaTInFp = reduceFee(deltaTInFp);
+        return deltaTInFp * PRECISION / deltaEInFp;
     }
 
-    function fromDecimalsToQty(uint amount) internal view returns(uint) {
-        return amount * qtyPrecision / (10** getDecimals(token));
+    function buyRateZeroQuantity(uint EInFp) internal view returns(uint) {
+        return PE(rInFp, PminInFp, EInFp, formulaPrecision) * PRECISION / formulaPrecision;
     }
 
-    function fromWeiToQty(uint amount) internal view returns(uint) {
-        return amount * qtyPrecision / (10**ETH_DECIMALS);
+    function sellRate(uint EInFp, uint deltaTInFp) internal view returns(uint) {
+        uint deltaEInFp = deltaEFunc(rInFp,PminInFp,EInFp,deltaTInFp,formulaPrecision,numFpBits);
+        return deltaEInFp * PRECISION / deltaTInFp;
     }
 
-    function fromQtyToWei(uint qty) internal view returns(uint) {
-        return (qty * 10**ETH_DECIMALS) / qtyPrecision;
+    function sellRateZeroQuantity(uint EInFp) internal view returns(uint) {
+        return formulaPrecision * PRECISION / PE(rInFp, PminInFp, EInFp, formulaPrecision);
+    }
+
+    function fromTweiToFp(uint qtyInTwei) internal view returns(uint) { // TODO public, all view/pure..
+        return qtyInTwei * formulaPrecision / (10** getDecimals(token));
+    }
+
+    function fromWeiToFp(uint qtyInwei) internal view returns(uint) {
+        return qtyInwei * formulaPrecision / (10**ETH_DECIMALS);
+    }
+
+    function fromFpToWei(uint qtyInFp) internal view returns(uint) {
+        return (qtyInFp * 10**ETH_DECIMALS) / formulaPrecision;
     }
 
     function reduceFee(uint val) internal view returns(uint) {
         return ((10000 - feeInBps) * val) / 10000;
     }
 
-    function getFee(uint val) internal view returns(uint) {
-        return (feeInBps * val) / 10000;
+    function calcCollectedFee(uint val) internal view returns(uint) {
+        return val * (10000 - feeInBps) / 10000;
     }
  
     function abs(int val) internal pure returns(uint) {
