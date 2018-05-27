@@ -4,6 +4,7 @@ const Helper = require("./helper.js");
 const BigNumber = require('bignumber.js');
 
 const e = new BigNumber("2.7182818284590452353602874713527");
+const expectedDiffInPct = new BigNumber(1/100);
 
 let liquidityContract;
 
@@ -40,9 +41,23 @@ contract('FeeBurner', function(accounts) {
         const expectedResult = Helper.exp(e,new BigNumber(p).div(q)).mul(precision);
         const result = await liquidityContract.exp(p,q,precision);
 
-        assert(Helper.checkAbsDiff(expectedResult,result,precision.div(0.001)),
+        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
                "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
     });
+
+    it("check ln with fixed input", async function () {
+        const precisionBits = 20;
+        const precision = new BigNumber(2).pow(precisionBits);
+        const q = precision.mul(precision);
+        const p = new BigNumber("1245651").mul(q.div(2**3));
+
+        const expectedResult = Helper.ln(new BigNumber(p).div(q)).mul(precision);
+        const result = await liquidityContract.ln(p,q,precisionBits);
+
+        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
+               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
+    });
+
 
 
 });
