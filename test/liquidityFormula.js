@@ -58,6 +58,32 @@ contract('FeeBurner', function(accounts) {
                "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
     });
 
+    it("check P(E) and rP(E) with fixed input", async function () {
+        const precisionBits = 30;
+        const precision = new BigNumber(2).pow(precisionBits);
+        const E = new BigNumber("45.2352");
+        const r = new BigNumber("0.02");
+        const Pmin = new BigNumber("0.0123");
+
+        // P(E) = Pmin * e^(rE)
+        const expectedResult = Helper.exp(e,r.mul(E)).mul(Pmin).mul(precision);
+        const result = await liquidityContract.PE(r.mul(precision),
+                                                  Pmin.mul(precision),
+                                                  E.mul(precision),
+                                                  precision);
+
+        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
+               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
+
+        const expectedResult2 = expectedResult.mul(r);
+        const result2 = await liquidityContract.rPE(r.mul(precision),
+                                                  Pmin.mul(precision),
+                                                  E.mul(precision),
+                                                  precision);
+
+        assert(Helper.checkAbsDiff(expectedResult2,result2,expectedDiffInPct),
+               "exp result diff is " + Helper.absDiff(expectedResult2,result2).toString(10));
+    });
 
 
 });
