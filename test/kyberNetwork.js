@@ -199,6 +199,7 @@ contract('KyberNetwork', function(accounts) {
         await pricing1.setCompactData(buys, sells, currentBlock, indices, {from: operator});
         await pricing2.setCompactData(buys, sells, currentBlock, indices, {from: operator});
 
+
         //all start with same step functions.
         for (let i = 0; i < numTokens; ++i) {
             await pricing1.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
