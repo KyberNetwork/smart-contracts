@@ -58,10 +58,10 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
           deltaEInFp = fromWeiToFp(qtyInSrcWei, formulaPrecision);
 
           if(deltaEInFp == 0) {
-            rateInPRECISION = buyRateZeroQuantity(EInFp, rInFp, PminInFp, formulaPrecision, PRECISION);
+            rateInPRECISION = buyRateZeroQuantity(EInFp);
           }
           else {
-            rateInPRECISION = buyRate(feeInBps, deltaEInFp, EInFp, rInFp, PminInFp, formulaPrecision, PRECISION);
+            rateInPRECISION = buyRate(EInFp, deltaEInFp);
           }
           maxCap = maxCapBuyInFp;
         }
@@ -69,10 +69,10 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
           deltaTInFp = fromTweiToFp(token, qtyInSrcWei, formulaPrecision);
           deltaTInFp = reduceFee(deltaTInFp, feeInBps);
           if(deltaTInFp == 0) {
-              rateInPRECISION = sellRateZeroQuantity(EInFp, rInFp, PminInFp, formulaPrecision, PRECISION);
+              rateInPRECISION = sellRateZeroQuantity(EInFp);
           }
           else {
-            rateInPRECISION = sellRate(deltaTInFp, EInFp, rInFp, PminInFp, formulaPrecision, PRECISION, numFpBits);
+            rateInPRECISION = sellRate(EInFp, deltaTInFp);
           }
           maxCap = maxCapSellInFp;
         }
@@ -119,23 +119,23 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         ResetCollectedFees(resetFeesInTwei);
     }
 
-    function buyRate(uint _feeInBps, uint _deltaEInFp, uint _EInFp, uint _rInFp, uint _PminInFp, uint _formulaPrecision, uint _PRECISION) public pure returns(uint) {
-        uint deltaTInFp = deltaTFunc(_rInFp,_PminInFp,_EInFp,_deltaEInFp,_formulaPrecision);
-        deltaTInFp = reduceFee(deltaTInFp, _feeInBps);
-        return deltaTInFp * _PRECISION / _deltaEInFp;
+    function buyRate(uint _EInFp, uint _deltaEInFp) public view returns(uint) {
+        uint deltaTInFp = deltaTFunc(rInFp,PminInFp,_EInFp,_deltaEInFp,formulaPrecision);
+        deltaTInFp = reduceFee(deltaTInFp, feeInBps);
+        return deltaTInFp * PRECISION / _deltaEInFp;
     }
 
-    function buyRateZeroQuantity(uint _EInFp, uint _rInFp, uint _PminInFp, uint _formulaPrecision, uint _PRECISION) public pure returns(uint) {
-        return PE(_rInFp, _PminInFp, _EInFp, _formulaPrecision) * _PRECISION / _formulaPrecision;
+    function buyRateZeroQuantity(uint _EInFp) public view returns(uint) {
+        return PE(rInFp, PminInFp, _EInFp, formulaPrecision) * PRECISION / formulaPrecision;
     }
 
-    function sellRate(uint _deltaTInFp, uint _EInFp, uint _rInFp, uint _PminInFp, uint _formulaPrecision, uint _PRECISION, uint _numFpBits) public pure returns(uint) {
-        uint deltaEInFp = deltaEFunc(_rInFp,_PminInFp,_EInFp,_deltaTInFp,_formulaPrecision,_numFpBits);
-        return deltaEInFp * _PRECISION / _deltaTInFp;
+    function sellRate(uint _EInFp, uint _deltaTInFp) public view returns(uint) {
+        uint deltaEInFp = deltaEFunc(rInFp,PminInFp,_EInFp,_deltaTInFp,formulaPrecision,numFpBits);
+        return deltaEInFp * PRECISION / _deltaTInFp;
     }
 
-    function sellRateZeroQuantity(uint _EInFp, uint _rInFp, uint _PminInFp, uint _formulaPrecision, uint _PRECISION) public pure returns(uint) {
-        return _formulaPrecision * _PRECISION / PE(_rInFp, _PminInFp, _EInFp, _formulaPrecision);
+    function sellRateZeroQuantity(uint _EInFp) public view returns(uint) {
+        return formulaPrecision * PRECISION / PE(rInFp, PminInFp, _EInFp, formulaPrecision);
     }
 
     function fromTweiToFp(ERC20 _token, uint qtyInTwei, uint _formulaPrecision) public view returns(uint) {
