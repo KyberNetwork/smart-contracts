@@ -62,7 +62,48 @@ let comID_SellRateStpImbalanceParamX = 13;
 let comID_SellRateStpImbalanceYLength = 14;
 let comID_SellRateStpImbalanceParamY = 15;
 
+//////////////////////////////
+const e = new BigNumber("2.7182818284590452353602874713527");
+const expectedDiffInPct = new BigNumber(1/100);
+const PRECISION = BigNumber(10).pow(18);
 let liqConvRatesInst;
+
+
+
+
+function pOfE(r, Pmin) { 
+  //P(E) = Pmin*e^(r·E)
+    return Helper.exp(e, BigNumber(r).mul(E)).mul(Pmin);
+}
+
+function calcDeltaT(r, Pmin, deltaE) {
+    eMinusRDeltaE = Helper.exp(e, BigNumber(-r).mul(deltaE))
+    //console.log("eMinusRDeltaE: " + eMinusRDeltaE.valueOf())
+    eMinus1 = eMinusRDeltaE.minus(1)
+    //console.log("eMinus1: " + eMinus1.valueOf())
+    rP = BigNumber(r).mul(pOfE(r, Pmin))
+    return eMinus1.div(rP)
+}
+
+function calcDeltaE(r, Pmin, deltaT) {
+    rPdeltaT = BigNumber(r).mul(pOfE(r, Pmin)).mul(deltaT)
+    onePlusRPdeltaT = BigNumber(1).plus(rPdeltaT)
+    lnOnePlusrPdeltaT = Helper.ln(onePlusRPdeltaT)
+    return lnOnePlusrPdeltaT.mul(-1).div(r)
+}
+
+function priceForDeltaE(feePercent, r, Pmin, deltaE) { 
+    deltaT = calcDeltaT(r, Pmin, deltaE).absoluteValue();
+    factor = (100-feePercent)/100
+    deltaTAfterReducedFee = deltaT.mul(factor)
+    return BigNumber(deltaTAfterReducedFee).div(deltaE);
+}
+
+function priceForDeltaT(r, Pmin, deltaT) {
+    deltaE = calcDeltaE(r, Pmin, deltaT).absoluteValue();
+    return deltaE.div(deltaT);
+}
+
 
 contract('LiquidityConversionRates', function(accounts) {
     it("should init globals", function() {
@@ -83,18 +124,18 @@ contract('LiquidityConversionRates', function(accounts) {
     it("should test abs.", async function () {
         input = new BigNumber(10).pow(18).mul(7);
         output = new BigNumber(10).pow(18).mul(7);
-        res = await liqConvRatesInst.abs(input);
-        assert.equal(res.valueOf(), output.valueOf(), "bad result");
+        result = await liqConvRatesInst.abs(input);
+        assert.equal(result.valueOf(), output.valueOf(), "bad result");
 
         input = new BigNumber(10).pow(18).mul(-5);
         output = new BigNumber(10).pow(18).mul(5);
-        res = await liqConvRatesInst.abs(input);
-        assert.equal(res.valueOf(), output.valueOf(), "bad result");
+        result = await liqConvRatesInst.abs(input);
+        assert.equal(result.valueOf(), output.valueOf(), "bad result");
 
         input = new BigNumber(10).pow(18).mul(0);
         output = new BigNumber(10).pow(18).mul(0);
-        res = await liqConvRatesInst.abs(input);
-        assert.equal(res.valueOf(), output.valueOf(), "bad result");
+        result = await liqConvRatesInst.abs(input);
+        assert.equal(result.valueOf(), output.valueOf(), "bad result");
     });
 
     it("should test calculation of collected fee.", async function () {
@@ -107,13 +148,13 @@ contract('LiquidityConversionRates', function(accounts) {
         input = 1458 * precision
         feePercent = 3.7
         expectedValueBeforeReducingFee = input / ((100 - feePercent)/100)
-        expectedOutput = (feePercent / 100) * expectedValueBeforeReducingFee
+        expectedResult = (feePercent / 100) * expectedValueBeforeReducingFee
 
         feeInBps = feePercent * 100
-        res =  await liqConvRatesInst.calcCollectedFee(input, feeInBps);
-        console.log("expectedOutput: " + expectedOutput)
-        console.log("res: " + res)
-        assert.equal(Math.floor(res), Math.floor(expectedOutput), "bad result");
+        result =  await liqConvRatesInst.calcCollectedFee(input, feeInBps);
+        console.log("expectedResult: " + expectedResult)
+        console.log("result: " + result)
+        assert.equal(Math.floor(result), Math.floor(expectedResult), "bad result");
     });
 
     it("should test reducing fees from amount.", async function () {
@@ -121,24 +162,24 @@ contract('LiquidityConversionRates', function(accounts) {
         input = 5763 * precision;
         feePercent = 2.67
         feeInBps = feePercent * 100
-        expectedOutput =  input * (100 - feePercent) / 100;
+        expectedResult =  input * (100 - feePercent) / 100;
 
-        res =  await liqConvRatesInst.reduceFee(input, feeInBps);
-        console.log("expectedOutput: " + expectedOutput)
-        console.log("res: " + res)
-        assert.equal(Math.floor(res.valueOf()), Math.floor(expectedOutput), "bad result");
+        result =  await liqConvRatesInst.reduceFee(input, feeInBps);
+        console.log("expectedResult: " + expectedResult)
+        console.log("result: " + result)
+        assert.equal(Math.floor(result.valueOf()), Math.floor(expectedResult), "bad result");
     });
 
     it("should test converting from wei to formula precision.", async function () {
         precision = 100000
         input = BigNumber(10).pow(18).mul(7); // 7*10^18 wei
         weiDecimalsPrecision = BigNumber(10).pow(18)
-        expectedOutput = input.mul(precision).div(weiDecimalsPrecision) 
+        expectedResult = input.mul(precision).div(weiDecimalsPrecision) 
 
-        res =  await liqConvRatesInst.fromWeiToFp(input, precision);
-        console.log("expectedOutput: " + expectedOutput)
-        console.log("res: " + res)
-        assert.equal(Math.floor(res.valueOf()), Math.floor(expectedOutput), "bad result");
+        result =  await liqConvRatesInst.fromWeiToFp(input, precision);
+        console.log("expectedResult: " + expectedResult)
+        console.log("result: " + result)
+        assert.equal(Math.floor(result.valueOf()), Math.floor(expectedResult), "bad result");
     });
 
     it("should test converting from token wei to formula precision.", async function () {
@@ -149,35 +190,149 @@ contract('LiquidityConversionRates', function(accounts) {
         precision = BigNumber(2).pow(precision_bits)
 
         input = BigNumber(10).pow(token_decimals).mul(17); // 17*10^token wei
-        expectedOutput = input.mul(precision).div(tokenPrecision) 
+        expectedResult = input.mul(precision).div(tokenPrecision) 
 
-        res =  await liqConvRatesInst.fromTweiToFp(token.address, input, precision);
-        console.log("expectedOutput: " + expectedOutput);
-        console.log("res: " + res);
-        assert.equal(Math.floor(res.valueOf()), Math.floor(expectedOutput), "bad result");
+        result =  await liqConvRatesInst.fromTweiToFp(token.address, input, precision);
+        console.log("expectedResult: " + expectedResult);
+        console.log("result: " + result);
+        assert.equal(Math.floor(result.valueOf()), Math.floor(expectedResult), "bad result");
     });
 
     it("should test calculation of buy rate for zero quantity.", async function () {
-        //P_0 = 0.1, P_min = 0.05, P_max = 0.2, rate = 0.01 ,fee_spread=0.0, liq_spread=0.0
-        //state: 69.31 E, 500.00 T, rate: 0.010000 , price: 0.100
-
-        precision_bits = 30; // remove _
+        precision_bits = 30;
         precision = BigNumber(2).pow(precision_bits)
-        EInFp = BigNumber(69.31).mul(precision);
-        rInFp = BigNumber(0.01).mul(precision);
-        PminInFp = BigNumber(0.05).mul(precision);
-        PRECISION = BigNumber(10).pow(18);
+        E = 69.31
+        r = 0.01
+        Pmin = 0.05
+        expectedResult = pOfE(r, Pmin).mul(PRECISION).valueOf()
 
-        expectedOutput = BigNumber(10).pow(18).mul(0.1);
+        EInFp = BigNumber(E).mul(precision);
+        rInFp = BigNumber(r).mul(precision);
+        PminInFp = BigNumber(Pmin).mul(precision);
+        result =  await liqConvRatesInst.buyRateZeroQuantity(EInFp, rInFp, PminInFp, precision, PRECISION);
 
-        res =  await liqConvRatesInst.buyRateZeroQuantity(EInFp, rInFp, PminInFp, precision, PRECISION);
-        //res =  await liqConvRatesInst.PE(rInFp, PminInFp, EInFp, precision);
-        //PE(uint r,uint Pmin,uint E,uint precision)
-        console.log("expectedOutput: " + expectedOutput);
-        console.log("res: " + res);
-        assert.equal(Math.floor(res.valueOf()), Math.floor(expectedOutput.valueOf()), "bad result");
+        console.log("expectedResult: " + expectedResult);
+        console.log("result: " + result);
+
+        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
+               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
     });
 
+    it("should test calculation of sell rate for zero quantity.", async function () {
+        precision_bits = 30;
+        precision = BigNumber(2).pow(precision_bits)
+        E = 69.31
+        r = 0.01
+        Pmin = 0.05
+        buy_rate = pOfE(r, Pmin)
+        expectedResult = (BigNumber(1).div(buy_rate)).mul(PRECISION).valueOf()
+
+        EInFp = BigNumber(E).mul(precision);
+        rInFp = BigNumber(r).mul(precision);
+        PminInFp = BigNumber(Pmin).mul(precision);
+        result =  await liqConvRatesInst.sellRateZeroQuantity(EInFp, rInFp, PminInFp, precision, PRECISION);
+
+        console.log("expectedResult: " + expectedResult);
+        console.log("result: " + result);
+
+        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
+               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
+    });
+
+    it("should test calculation of deltaT.", async function () {
+        precision_bits = 30;
+        precision = BigNumber(2).pow(precision_bits)
+        E = 69.31
+        r = 0.01
+        Pmin = 0.05
+        deltaE = 30.0
+        expectedResult = calcDeltaT(r, Pmin, deltaE).absoluteValue().mul(precision).valueOf()
+
+        EInFp = BigNumber(E).mul(precision);
+        rInFp = BigNumber(r).mul(precision);
+        PminInFp = BigNumber(Pmin).mul(precision);
+        deltaEInFp = BigNumber(deltaE).mul(precision);
+        result =  await liqConvRatesInst.deltaTFunc(rInFp, PminInFp, EInFp, deltaEInFp, precision);
+
+        console.log("expectedResult: " + expectedResult);
+        console.log("result: " + result);
+
+        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
+               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10) +
+               " actual result diff in percents is " + Helper.absDiffInPercent(expectedResult,result).toString(5));
+
+    });
+
+    it("should test calculation of buy rate for non zero quantity.", async function () {
+        precision_bits = 30;
+        precision = BigNumber(2).pow(precision_bits)
+        E = 69.31
+        r = 0.01
+        Pmin = 0.05
+        feePercent = 2.678
+        deltaE = 30.0
+        expectedResult = priceForDeltaE(feePercent, r, Pmin, deltaE).mul(PRECISION).valueOf()
+
+        EInFp = BigNumber(E).mul(precision);
+        rInFp = BigNumber(r).mul(precision);
+        PminInFp = BigNumber(Pmin).mul(precision);
+        deltaEInFp = BigNumber(deltaE).mul(precision);
+        feeInBps = feePercent * 100
+        result =  await liqConvRatesInst.buyRate(feeInBps, deltaEInFp, EInFp, rInFp, PminInFp, precision, PRECISION)
+
+        console.log("expectedResult: " + expectedResult);
+        console.log("result: " + result);
+
+        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
+               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10) +
+               " actual result diff in percents is " + Helper.absDiffInPercent(expectedResult,result).toString(5));
+    });
+
+    it("should test calculation of deltaE.", async function () {
+        precision_bits = 30;
+        precision = BigNumber(2).pow(precision_bits)
+        E = 69.31
+        r = 0.01
+        Pmin = 0.05
+        deltaT = 120.0
+        expectedResult = calcDeltaE(r, Pmin, deltaT).absoluteValue().mul(precision).valueOf()
+
+        EInFp = BigNumber(E).mul(precision);
+        rInFp = BigNumber(r).mul(precision);
+        PminInFp = BigNumber(Pmin).mul(precision);
+        deltaTInFp = BigNumber(deltaT).mul(precision);
+        result =  await liqConvRatesInst.deltaEFunc(rInFp, PminInFp, EInFp, deltaTInFp, precision, precision_bits);
+
+        console.log("expectedResult: " + expectedResult);
+        console.log("result: " + result);
+
+        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
+               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10) +
+               " actual result diff in percents is " + Helper.absDiffInPercent(expectedResult,result).toString(5));
+    });
+
+    it("should test calculation of sell rate for non zero quantity.", async function () {
+        precision_bits = 30;
+        precision = BigNumber(2).pow(precision_bits)
+        E = 69.31
+        r = 0.01
+        Pmin = 0.05
+        deltaT = 120.0
+        expectedResult = priceForDeltaT(r, Pmin, deltaT).mul(PRECISION).valueOf()
+
+        EInFp = BigNumber(E).mul(precision);
+        rInFp = BigNumber(r).mul(precision);
+        PminInFp = BigNumber(Pmin).mul(precision);
+        deltaTInFp = BigNumber(deltaT).mul(precision);
+        result =  await liqConvRatesInst.sellRate(deltaTInFp, EInFp, rInFp, PminInFp, precision, PRECISION, precision_bits);
+
+        console.log("expectedResult: " + expectedResult);
+        console.log("result: " + result);
+
+        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
+               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10) +
+               " actual result diff in percents is " + Helper.absDiffInPercent(expectedResult,result).toString(5));
+    });
 
     return;
     it("should set base rates for all tokens then get and verify.", async function () {
