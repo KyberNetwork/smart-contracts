@@ -24,8 +24,8 @@ contract KyberNetwork is Withdrawable, Utils {
     uint                  public maxGasPrice = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool                  public enabled = false; // network is enabled
     mapping(bytes32=>uint) public info; // this is only a UI field for external app.
-    mapping(address=>address[]) resrevesPerTokenSrc; //reserves supporting token to eth
-    mapping(address=>address[]) resrevesPerTokenDest;//reserves support eth to token
+    mapping(address=>address[]) public reservesPerTokenSrc; //reserves supporting token to eth
+    mapping(address=>address[]) public reservesPerTokenDest;//reserves support eth to token
 
     function KyberNetwork(address _admin) public {
         require(_admin != address(0));
@@ -137,7 +137,7 @@ contract KyberNetwork is Withdrawable, Utils {
     /// @param add If true then list this pair, otherwise unlist it.
     function listPairForReserve(address reserve, ERC20 token, bool ethToToken, bool tokenToEth, bool add) public onlyAdmin {
         require(isReserve[reserve]);
-        address [] storage reservs = resrevesPerTokenDest[token];
+        address [] storage reservs = reservesPerTokenDest[token];
         uint i;
 
         if (ethToToken) {
@@ -160,7 +160,7 @@ contract KyberNetwork is Withdrawable, Utils {
         }
 
         if (tokenToEth) {
-            reservs = resrevesPerTokenSrc[token];
+            reservs = reservesPerTokenSrc[token];
             for (i = 0; i < reservs.length; i++) {
                 if (reserve == reservs[i]) {
                     if(add) {
@@ -260,7 +260,7 @@ contract KyberNetwork is Withdrawable, Utils {
         uint ethAmount;
 
         noUse = 0;
-        (rate, noUse, noUse2, ethAmount, noUse3, noUse4, noUse5) = findBestRateTokenToToken(src, dest, srcQty);
+        (rate, noUse1, noUse2, ethAmount, noUse3, noUse4, noUse5) = findBestRateTokenToToken(src, dest, srcQty);
     }
 
     function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcQty) internal view
@@ -287,9 +287,9 @@ contract KyberNetwork is Withdrawable, Utils {
         //return 1 for ether to ether
         if (src == dest) return (reserves[bestReserve], PRECISION);
 
-        address [] storage reservs = resrevesPerTokenSrc[src];
+        address[] storage reservs = reservesPerTokenSrc[src];
         if (src == ETH_TOKEN_ADDRESS) {
-            reservs = resrevesPerTokenDest[dest];
+            reservs = reservesPerTokenDest[dest];
         }
 
         uint[] memory rates = new uint[](reservs.length);

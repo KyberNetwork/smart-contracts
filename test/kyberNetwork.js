@@ -274,10 +274,8 @@ contract('KyberNetwork', function(accounts) {
 
         //list tokens per reserve
         for (let i = 0; i < numTokens; i++) {
-            await network.listPairForReserve(reserve1.address, ethAddress, tokenAdd[i], true);
-            await network.listPairForReserve(reserve1.address, tokenAdd[i], ethAddress, true);
-            await network.listPairForReserve(reserve2.address, ethAddress, tokenAdd[i], true);
-            await network.listPairForReserve(reserve2.address, tokenAdd[i], ethAddress, true);
+            await network.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true);
+            await network.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true);
         }
     });
 
@@ -788,8 +786,8 @@ contract('KyberNetwork', function(accounts) {
         let minConversionRate = 0;
 
         //unlist and verify trade reverted.
-        await network.listPairForReserve(reserve1.address, ethAddress, tokenAdd[tokenInd], false);
-        await network.listPairForReserve(reserve2.address, ethAddress, tokenAdd[tokenInd], false);
+        await network.listPairForReserve(reserve1.address, tokenAdd[tokenInd], true, false, false);
+        await network.listPairForReserve(reserve2.address, tokenAdd[tokenInd], true, false, false);
 
         //perform trade
         try {
@@ -801,8 +799,8 @@ contract('KyberNetwork', function(accounts) {
         }
 
         //list back
-        await network.listPairForReserve(reserve1.address, ethAddress, tokenAdd[tokenInd], true);
-        await network.listPairForReserve(reserve2.address, ethAddress, tokenAdd[tokenInd], true);
+        await network.listPairForReserve(reserve1.address, tokenAdd[tokenInd], true, false, true);
+        await network.listPairForReserve(reserve2.address, tokenAdd[tokenInd], true, false, true);
 
         await network.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, 2000,
                 minConversionRate, walletId, {from:user1, value:amountWei});
@@ -820,8 +818,8 @@ contract('KyberNetwork', function(accounts) {
         await token.approve(network.address, amountTWei*2, {from:user1});
 
         //unlist and verify trade reverted.
-        await network.listPairForReserve(reserve1.address, tokenAdd[tokenInd], ethAddress, false);
-        await network.listPairForReserve(reserve2.address, tokenAdd[tokenInd], ethAddress, false);
+        await network.listPairForReserve(reserve1.address, tokenAdd[tokenInd], false, true, false);
+        await network.listPairForReserve(reserve2.address, tokenAdd[tokenInd], false, true, false);
 
         //perform trade
         try {
@@ -833,8 +831,8 @@ contract('KyberNetwork', function(accounts) {
         }
 
         //list back
-        await network.listPairForReserve(reserve1.address, tokenAdd[tokenInd], ethAddress, true);
-        await network.listPairForReserve(reserve2.address, tokenAdd[tokenInd], ethAddress, true);
+        await network.listPairForReserve(reserve1.address, tokenAdd[tokenInd], false, true, true);
+        await network.listPairForReserve(reserve2.address, tokenAdd[tokenInd], false, true, true);
 
         await network.trade(tokenAdd[tokenInd], amountTWei, ethAddress, user2, maxDestAmount,
             minConversionRate, walletId, {from:user1});
@@ -1269,7 +1267,7 @@ contract('KyberNetwork', function(accounts) {
         let tokenDestInd = 3;
         let tokenSrc = tokens[tokenSrcInd];
         let tokenDest = tokens[tokenDestInd];
-        let srcAmountTwei = 1575;
+        let srcAmountTwei = 706;
         let maxDestAmount = (new BigNumber(10)).pow(18);
 
         await pricing1.disableTokenTrade(tokenAdd[tokenSrcInd], {from: alerter});
@@ -1295,7 +1293,7 @@ contract('KyberNetwork', function(accounts) {
             let combinedRate = calcCombinedRate(srcAmountTwei, expectedSellRate, expectedBuyRate, tokenDecimals[tokenSrcInd], tokenDecimals[tokenDestInd], expectedDestTokensTwei);
 
  //        check correct rate calculated
-//            assert.equal(buyRate[0].valueOf(), combinedRate.valueOf(), "unexpected rate.");
+            assert.equal(buyRate[0].valueOf(), combinedRate.valueOf(), "unexpected rate.");
 
              //perform trade
             // transfer funds to user and approve funds to network
