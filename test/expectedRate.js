@@ -338,25 +338,25 @@ contract('ExpectedRates', function(accounts) {
         assert.equal(rxFactor, legalFactor);
     });
 
-//    it("should verify set min slippage reverts when > 100 * 100.", async function() {
-//        let legalSlippage = 100 * 100;
-//        let illegalSlippage = 100 * 100 + 1 * 1;
-//
-//        await expectedRates.setMinSlippageFactor(legalSlippage, {from: operator});
-//        let rxSlippage = await expectedRates.minSlippageFactorInBps();
-//
-//        assert.equal(rxSlippage, legalSlippage);
-//
-//        try {
-//            await expectedRates.setMinSlippageFactor(illegalSlippage, {from: operator});
-//            assert(false, "throw was expected in line above.")
-//        } catch(e){
-//            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-//        }
-//
-//        rxSlippage = await expectedRates.minSlippageFactorInBps();
-//        assert.equal(rxSlippage, legalSlippage);
-//    });
+    it("should verify set min slippage reverts when > 100 * 100.", async function() {
+        let legalSlippage = 100 * 100;
+        let illegalSlippage = 100 * 100 + 1 * 1;
+
+        await expectedRates.setMinSlippageFactor(legalSlippage, {from: operator});
+        let rxSlippage = await expectedRates.minSlippageFactorInBps();
+
+        assert.equal(rxSlippage, legalSlippage);
+
+        try {
+            await expectedRates.setMinSlippageFactor(illegalSlippage, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        rxSlippage = await expectedRates.minSlippageFactorInBps();
+        assert.equal(rxSlippage, legalSlippage);
+    });
 
     it("should verify get expected rate reverts when qty > MAX QTY.", async function() {
         let legalQty = (new BigNumber(10).pow(28));
