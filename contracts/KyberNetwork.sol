@@ -41,6 +41,7 @@ contract KyberNetwork is Withdrawable, Utils {
     }
     /* solhint-enable no-complex-fallback */
 
+    event expected(uint actualDest, uint expectedDest);
     event ExecuteNetworkTrade(address indexed sender, ERC20 src, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev makes a trade between src and dest token and send dest token to destAddress
@@ -255,20 +256,25 @@ contract KyberNetwork is Withdrawable, Utils {
         address noUse2;
         uint noUse3;
         uint noUse4;
+        uint noUse5;
         uint ethAmount;
 
         noUse = 0;
-        (rate, noUse1, noUse2, ethAmount, noUse3, noUse4) = findBestRateTokenToToken(src, dest, srcQty);
+        (rate, noUse, noUse2, ethAmount, noUse3, noUse4, noUse5) = findBestRateTokenToToken(src, dest, srcQty);
     }
 
     function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcQty) internal view
-        returns(uint rate, address reserve1, address reserve2, uint ethAmount, uint rateSrcToEth, uint rateEthToDest)
+        returns(uint rate, address reserve1, address reserve2, uint ethAmount, uint rateSrcToEth, uint rateEthToDest, uint actualDest)
     {
         (reserve1, rateSrcToEth) = searchBestRate(src, ETH_TOKEN_ADDRESS, srcQty);
         ethAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcQty, rateSrcToEth);
 
         (reserve2, rateEthToDest) = searchBestRate(ETH_TOKEN_ADDRESS, dest, ethAmount);
-        rate = rateSrcToEth * rateEthToDest / PRECISION;
+        actualDest = calcDestAmount(ETH_TOKEN_ADDRESS, dest, ethAmount, rateEthToDest);
+
+        if (rateSrcToEth == PRECISION) rate = rateEthToDest;
+        else if (rateEthToDest == PRECISION) rate = rateSrcToEth;
+        else rate = calcRateFromQty(srcQty, actualDest, getDecimals(src), getDecimals(dest));
     }
 
     /* solhint-disable code-complexity */
@@ -362,7 +368,7 @@ contract KyberNetwork is Withdrawable, Utils {
         uint rateSrcToEth;
         uint rateEthToDest;
 
-        (rate, reserve1, reserve2, amount.eth, rateSrcToEth, rateEthToDest) =
+        (rate, reserve1, reserve2, amount.eth, rateSrcToEth, rateEthToDest, amount.actualDest) =
             findBestRateTokenToToken(src, dest, srcAmount);
 
         require(rate > 0);
@@ -370,7 +376,6 @@ contract KyberNetwork is Withdrawable, Utils {
         require(rate >= minConversionRate);
 
         amount.actualSrc = srcAmount;
-        amount.actualDest = calcDestAmount(src, dest, amount.actualSrc, rate);
         if (amount.actualDest > maxDestAmount) {
             amount.actualDest = maxDestAmount;
             amount.eth = calcSrcAmount(ETH_TOKEN_ADDRESS, dest, amount.actualDest, rateEthToDest);
@@ -381,10 +386,10 @@ contract KyberNetwork is Withdrawable, Utils {
             }
         }
 
-        // do the trade
         // verify trade size is smaller than user cap
         require(amount.eth <= getUserCapInWei(msg.sender));
 
+        //do the trade
         //src to ETH
         require(doReserveTrade(
                 src,
@@ -441,7 +446,7 @@ contract KyberNetwork is Withdrawable, Utils {
         uint callValue = 0;
 
         if (src == dest) {
-            //this is for a "fake" trade when both src and dest are ehters.
+            //this is for a "fake" trade when both src and dest are ethers.
             if (destAddress != (address(this)))
                 destAddress.transfer(amount);
             return true;
@@ -475,7 +480,21 @@ contract KyberNetwork is Withdrawable, Utils {
     }
 
     function calcSrcAmount(ERC20 src, ERC20 dest, uint destAmount, uint rate) internal view returns(uint) {
+        if(src == dest) return destAmount;
         return calcSrcQty(destAmount, getDecimals(src), getDecimals(dest), rate);
+    }
+
+    function calcRateFromQty(uint srcQty, uint destQty, uint srcDecimals, uint dstDecimals) internal pure returns(uint) {
+        require(srcQty <= MAX_QTY);
+        require(destQty <= MAX_QTY);
+
+        if (dstDecimals >= srcDecimals) {
+            require((dstDecimals - srcDecimals) <= MAX_DECIMALS);
+            return (destQty * PRECISION / ((10**(dstDecimals - srcDecimals)) * srcQty));
+        } else {
+            require((srcDecimals - dstDecimals) <= MAX_DECIMALS);
+            return (destQty * PRECISION * (10**(srcDecimals - dstDecimals)) / srcQty);
+        }
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
