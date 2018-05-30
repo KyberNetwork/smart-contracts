@@ -40,6 +40,7 @@ contract KyberNetwork is Withdrawable, Utils {
     }
     /* solhint-enable no-complex-fallback */
 
+    event expected(uint actualDest, uint expectedDest);
     event ExecuteNetworkTrade(address indexed sender, ERC20 src, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev makes a trade between src and dest token and send dest token to destAddress
@@ -217,25 +218,24 @@ contract KyberNetwork is Withdrawable, Utils {
         uint noUse2;
         uint noUse3;
         uint noUse4;
+        uint noUse5;
         uint ethAmount;
 
-        (rate, noUse, noUse2, ethAmount, noUse3, noUse4) = findBestRateTokenToToken(src, dest, srcQty);
+        (rate, noUse, noUse2, ethAmount, noUse3, noUse4, noUse5) = findBestRateTokenToToken(src, dest, srcQty);
     }
 
     function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcQty) internal view
-        returns(uint rate, uint reserve1, uint reserve2, uint ethAmount, uint rateSrcToEth, uint rateEthToDest)
+        returns(uint rate, uint reserve1, uint reserve2, uint ethAmount, uint rateSrcToEth, uint rateEthToDest, uint actualDest)
     {
         (reserve1, rateSrcToEth) = searchBestRate(src, ETH_TOKEN_ADDRESS, srcQty);
         ethAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcQty, rateSrcToEth);
 
         (reserve2, rateEthToDest) = searchBestRate(ETH_TOKEN_ADDRESS, dest, ethAmount);
-        uint destQty = calcDestAmount(ETH_TOKEN_ADDRESS, dest, ethAmount, rateEthToDest);
+        actualDest = calcDestAmount(ETH_TOKEN_ADDRESS, dest, ethAmount, rateEthToDest);
 
         if (rateSrcToEth == PRECISION) rate = rateEthToDest;
         else if (rateEthToDest == PRECISION) rate = rateSrcToEth;
-        //First divide since on actual trade after first trade (token to ether) number is rounded. Here the same.
-        else rate = calcRateFromQty(srcQty, destQty, getDecimals(src), getDecimals(dest));
-//        else rate = ((srcQty * rateSrcToEth / PRECISION) * rateEthToDest) / srcQty;
+        else rate = calcRateFromQty(srcQty, actualDest, getDecimals(src), getDecimals(dest));
     }
 
     /* solhint-disable code-complexity */
@@ -326,7 +326,7 @@ contract KyberNetwork is Withdrawable, Utils {
         uint rateSrcToEth;
         uint rateEthToDest;
 
-        (rate, reserve1, reserve2, amount.eth, rateSrcToEth, rateEthToDest) =
+        (rate, reserve1, reserve2, amount.eth, rateSrcToEth, rateEthToDest, amount.actualDest) =
             findBestRateTokenToToken(src, dest, srcAmount);
 
         require(rate > 0);
@@ -334,7 +334,6 @@ contract KyberNetwork is Withdrawable, Utils {
         require(rate >= minConversionRate);
 
         amount.actualSrc = srcAmount;
-        amount.actualDest = calcDestAmount(ETH_TOKEN_ADDRESS, dest, amount.eth, rateEthToDest);
         if (amount.actualDest > maxDestAmount) {
             amount.actualDest = maxDestAmount;
             amount.eth = calcSrcAmount(ETH_TOKEN_ADDRESS, dest, amount.actualDest, rateEthToDest);
@@ -439,6 +438,7 @@ contract KyberNetwork is Withdrawable, Utils {
     }
 
     function calcSrcAmount(ERC20 src, ERC20 dest, uint destAmount, uint rate) internal view returns(uint) {
+        if(src == dest) return destAmount;
         return calcSrcQty(destAmount, getDecimals(src), getDecimals(dest), rate);
     }
 
