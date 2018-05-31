@@ -40,7 +40,6 @@ contract KyberNetwork is Withdrawable, Utils {
     }
     /* solhint-enable no-complex-fallback */
 
-    event expected(uint actualDest, uint expectedDest);
     event ExecuteTrade(address indexed sender, ERC20 src, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev makes a trade between src and dest token and send dest token to destAddress
