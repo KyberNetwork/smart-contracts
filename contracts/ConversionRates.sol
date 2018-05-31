@@ -217,6 +217,7 @@ contract ConversionRates is ConversionRatesInterface, VolumeImbalanceRecorder, U
         if (buy) {
             // start with base rate
             rate = tokenData[token].baseBuyRate;
+            
             // add rate update
             rateUpdate = getRateByteFromCompactData(compactData, token, true);
             extraBps = int(rateUpdate) * 10;
