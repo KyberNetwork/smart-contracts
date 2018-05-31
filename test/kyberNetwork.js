@@ -200,6 +200,10 @@ contract('KyberNetwork', function(accounts) {
         await pricing2.setReserveAddress(reserve2.address);
         await reserve1.addAlerter(alerter);
         await reserve2.addAlerter(alerter);
+        for (i = 0; i < numTokens; ++i) {
+            await reserve1.approveWithdrawAddress(tokenAdd[i],accounts[0],true);
+            await reserve2.approveWithdrawAddress(tokenAdd[i],accounts[0],true);
+        }
 
         //set reserve balance. 10000 wei ether + per token 1000 wei ether value according to base rate.
         let reserveEtherInit = 5000 * 2;
@@ -654,7 +658,7 @@ contract('KyberNetwork', function(accounts) {
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }   
+        }
 
         //perform same trade
         await network.trade(tokenAdd[tokenInd], amountTWei.valueOf(), ethAddress, user2, 5000, 0, walletId, {from:user1, value: 0});

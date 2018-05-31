@@ -170,11 +170,15 @@ contract('KyberReserve', function(accounts) {
         await reserveInst.addOperator(operator);
         await reserveInst.addAlerter(alerter);
         await convRatesInst.setReserveAddress(reserveInst.address);
+        for (let i = 0; i < numTokens; ++i) {
+            await reserveInst.approveWithdrawAddress(tokenAdd[i],accounts[0],true);
+        }
+
 
         //set reserve balance. 10000 wei ether + per token 1000 wei ether value according to base price.
         let reserveEtherInit = 5000 * 2;
         await Helper.sendEtherWithPromise(accounts[9], reserveInst.address, reserveEtherInit);
-        
+
         let balance = await Helper.getBalancePromise(reserveInst.address);
         expectedReserveBalanceWei = balance.valueOf();
 
