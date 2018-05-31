@@ -96,6 +96,7 @@ contract('KyberReserve', function(accounts) {
         withDrawAddress = accounts[6];
         sanityRate = accounts[7];
         alerter = accounts[8];
+        walletForToken = accounts[9];
 
         currentBlock = priceUpdateBlock = await Helper.getCurrentBlock();
 
@@ -281,6 +282,63 @@ contract('KyberReserve', function(accounts) {
         let tokenTweiBalance = await token.balanceOf(user1);
         assert.equal(tokenTweiBalance.valueOf(), totalExpectedTwei.valueOf(), "bad token balance");
     });
+
+    it("should perform a few buys with steps and check: correct balances change, rate is expected rate. Also tokens are in a wallet", async function () {
+        let tokenInd = 1;
+        let token = tokens[tokenInd]; //choose some token
+        let amountWei;
+        let totalWei = 0 * 1;
+        let totalExpectedTwei = 0 * 1;
+
+        // transfer tokens to wallet
+        await reserveInst.withdrawToken(token.address,
+                                        await token.balanceOf(reserveInst.address),
+                                        walletForToken);
+
+        // set allowance
+        await token.approve(reserveInst.address,new BigNumber(2).pow(255),{from:walletForToken});
+
+        // set wallet address
+        await reserveInst.setTokenWallet(token.address,walletForToken);
+
+        for (let i = 0; i > 19; i++) {
+            amountWei = (7 * i) + 1;
+            let buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
+
+            //verify price/rate against set price
+            let expectedRate = (new BigNumber(baseBuyRate[tokenInd]));
+            //first calculate number of destination tokens according to basic rate
+            let destQty = (new BigNumber(amountWei).mul(baseBuyRate[tokenInd])).div(precisionUnits);
+            let extraBps = getExtraBpsForBuyQuantity(destQty);
+            expectedRate = addBps(expectedRate, extraBps);
+            extraBps = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[token]);
+            expectedRate = addBps(expectedRate, extraBps);
+
+            assert.equal(buyRate.valueOf(), expectedRate.valueOf(0), "unexpected rate.");
+
+            let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits);
+            totalExpectedTwei += (1 * expectedTweiAmount);
+            reserveTokenBalance[tokenInd].sub(expectedTweiAmount);
+
+            await reserveInst.trade(ethAddress, amountWei, tokenAdd[tokenInd], user1, buyRate, true, {from : network, value:amountWei});
+            totalWei += (1 * amountWei);
+        };
+
+        //check higher ether balance on reserve
+        expectedReserveBalanceWei = (expectedReserveBalanceWei * 1) + totalWei;
+        expectedReserveBalanceWei -= expectedReserveBalanceWei % 1;
+        let balance = await Helper.getBalancePromise(reserveInst.address);
+        assert.equal(balance.valueOf(), expectedReserveBalanceWei, "bad reserve balance");
+
+        //check lower token balance in reserve
+        let reportedBalance = await token.balanceOf(walletForToken);
+        assert.equal(reportedBalance.valueOf(), reserveTokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
+
+        //check token balance on user1
+        let tokenTweiBalance = await token.balanceOf(user1);
+        assert.equal(tokenTweiBalance.valueOf(), totalExpectedTwei.valueOf(), "bad token balance");
+    });
+
 
     it("should perform small sell and check: balances changed, rate is expected rate.", async function () {
         let tokenInd = 3;
@@ -662,7 +720,7 @@ contract('KyberReserve', function(accounts) {
         await reserveInst.withdraw(tokenAdd[tokenInd], amount, withDrawAddress, {from: operator});
 
         reserveTokenBalance[tokenInd] -= amount;
-        let reportedBalance = await token.balanceOf(reserveInst.address);
+        let   reportedBalance = await token.balanceOf(walletForToken);
         assert.equal(reportedBalance.valueOf(), reserveTokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
 
         reportedBalance = await token.balanceOf(withDrawAddress);
@@ -704,6 +762,26 @@ contract('KyberReserve', function(accounts) {
         //make sure withdraw reverted to non approved address
         try {
             await reserveInst.withdraw(tokenAdd[tokenInd], amount, accounts[9], {from: operator});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it ("should test reverted scenarios for setTokenWallet", async function() {
+        let tokenInd = 1;
+
+        try {
+            await reserveInst.setTokenWallet(tokenAdd[tokenInd], 0, {from:admin});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await reserveInst.setTokenWallet(tokenAdd[tokenInd], 2, {from:operator});
             assert(false, "throw was expected in line above.")
         }
         catch(e){
@@ -823,16 +901,23 @@ contract('KyberReserve', function(accounts) {
         let token = tokens[tokenInd];
         let srcQty = 50; //some high number of figure out ~rate
 
+        await token.approve(reserveInst.address,0,{from:walletForToken});
+        let rate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], srcQty, currentBlock);
+        assert.equal(rate.valueOf(), 0, "expected rate 0");
 
-        let balance = await token.balanceOf(reserveInst.address);
+        await token.approve(reserveInst.address,new BigNumber(2).pow(255),{from:walletForToken});
+        rate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], srcQty, currentBlock);
+        assert.notEqual(rate.valueOf(), 0, "expected rate is not 0");
+
+        let balance = await token.balanceOf(walletForToken);
         await reserveInst.approveWithdrawAddress(tokenAdd[tokenInd], withDrawAddress, true);
         await reserveInst.withdraw(tokenAdd[tokenInd], balance, withDrawAddress, {from: operator});
 
-        balance = await token.balanceOf(reserveInst.address);
+        balance = await token.balanceOf(walletForToken);
 
         assert.equal(balance.valueOf(0), 0, "expected balance 0");
 
-        let rate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], srcQty, currentBlock);
+        rate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], srcQty, currentBlock);
         assert.equal(rate.valueOf(), 0, "expected rate 0");
     });
 

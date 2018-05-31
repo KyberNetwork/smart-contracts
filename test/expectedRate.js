@@ -141,6 +141,9 @@ contract('ExpectedRates', function(accounts) {
         reserve1 = await Reserve.new(network.address, pricing1.address, admin);
         await pricing1.setReserveAddress(reserve1.address);
         await reserve1.addAlerter(alerter);
+        for (i = 0; i < numTokens; ++i) {
+            await reserve1.approveWithdrawAddress(tokenAdd[i],accounts[0],true);
+        }
 
         //set reserve balance. 10000 wei ether + per token 1000 wei ether value according to base rate.
         let reserveEtherInit = 5000 * 2;
