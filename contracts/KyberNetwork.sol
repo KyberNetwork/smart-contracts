@@ -316,25 +316,24 @@ contract KyberNetwork is Withdrawable, Utils {
         require(tx.gasprice <= maxGasPrice);
         require(validateTradeInput(src, srcAmount, destAddress));
 
-        BestRateResult memory result = findBestRateTokenToToken(src, dest, srcAmount);
+        BestRateResult memory rateResult = findBestRateTokenToToken(src, dest, srcAmount);
 
-        require(result.rate > 0);
-        require(result.rate < MAX_RATE);
-        require(result.rate >= minConversionRate);
+        require(rateResult.rate > 0);
+        require(rateResult.rate < MAX_RATE);
+        require(rateResult.rate >= minConversionRate);
 
-        uint actualSrc = srcAmount;
-        if (result.actualDest > maxDestAmount) {
-            result.actualDest = maxDestAmount;
-            result.ethAmount = calcSrcAmount(ETH_TOKEN_ADDRESS, dest, result.actualDest, result.rateEthToDest);
-            actualSrc = calcSrcAmount(src, ETH_TOKEN_ADDRESS, result.ethAmount, result.rateSrcToEth);
-            require(actualSrc <= srcAmount);
-            if ((actualSrc < srcAmount) && (src == ETH_TOKEN_ADDRESS)) {
-                msg.sender.transfer(srcAmount - actualSrc);
-            }
+        uint actualDest;
+        uint ethAmount;
+        uint actualSrc;
+
+        (actualSrc, ethAmount, actualDest) = calcActualAmounts(src, dest, srcAmount, maxDestAmount, rateResult);
+
+        if ((actualSrc < srcAmount) && (src == ETH_TOKEN_ADDRESS)) {
+            msg.sender.transfer(srcAmount - actualSrc);
         }
 
         // verify trade size is smaller than user cap
-        require(result.ethAmount <= getUserCapInWei(msg.sender));
+        require(ethAmount <= getUserCapInWei(msg.sender));
 
         //do the trade
         //src to ETH
@@ -343,29 +342,44 @@ contract KyberNetwork is Withdrawable, Utils {
                 actualSrc,
                 ETH_TOKEN_ADDRESS,
                 this,
-                result.ethAmount,
-                reserves[result.reserve1],
-                result.rateSrcToEth,
+                ethAmount,
+                reserves[rateResult.reserve1],
+                rateResult.rateSrcToEth,
                 true));
 
         //Eth to dest
         require(doReserveTrade(
                 ETH_TOKEN_ADDRESS,
-                result.ethAmount,
+                ethAmount,
                 dest,
                 destAddress,
-                result.actualDest,
-                reserves[result.reserve2],
-                result.rateEthToDest,
+                actualDest,
+                reserves[rateResult.reserve2],
+                rateResult.rateEthToDest,
                 true));
 
         //when src is ether, reserve1 is doing a "fake" trade. (ether to ether) - don't burn.
         //when dest is ether, reserve2 is doing a "fake" trade. (ether to ether) - don't burn.
-        if (src != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(result.ethAmount, reserves[result.reserve1], walletId));
-        if (dest != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(result.ethAmount, reserves[result.reserve2], walletId));
+        if (src != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(ethAmount, reserves[rateResult.reserve1], walletId));
+        if (dest != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(ethAmount, reserves[rateResult.reserve2], walletId));
 
-        ExecuteTrade(msg.sender, src, dest, actualSrc, result.actualDest);
-        return result.actualDest;
+        ExecuteTrade(msg.sender, src, dest, actualSrc, actualDest);
+        return actualDest;
+    }
+
+    function calcActualAmounts (ERC20 src, ERC20 dest, uint srcAmount, uint maxDestAmount, BestRateResult rateResult)
+        internal view returns(uint actualSrc, uint ethAmount, uint actualDest)
+    {
+        if (rateResult.actualDest > maxDestAmount) {
+            actualDest = maxDestAmount;
+            ethAmount = calcSrcAmount(ETH_TOKEN_ADDRESS, dest, actualDest, rateResult.rateEthToDest);
+            actualSrc = calcSrcAmount(src, ETH_TOKEN_ADDRESS, ethAmount, rateResult.rateSrcToEth);
+            require(actualSrc <= srcAmount);
+        } else {
+            actualDest = rateResult.actualDest;
+            actualSrc = srcAmount;
+            ethAmount = rateResult.ethAmount;
+        }
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
