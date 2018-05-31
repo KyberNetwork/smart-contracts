@@ -102,6 +102,7 @@ contract KyberNetwork is Withdrawable, Utils {
     }
 
     event AddReserveToNetwork(KyberReserveInterface reserve, bool add);
+
     /// @notice can be called only by admin
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
@@ -128,6 +129,7 @@ contract KyberNetwork is Withdrawable, Utils {
     }
 
     event ListReservePairs(address reserve, ERC20 src, ERC20 dest, bool add);
+
     /// @notice can be called only by admin
     /// @dev allow or prevent a specific reserve to trade a pair of tokens
     /// @param reserve The reserve address.
