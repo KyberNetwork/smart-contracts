@@ -138,45 +138,45 @@ contract KyberNetwork is Withdrawable, Utils {
     /// @param add If true then list this pair, otherwise unlist it.
     function listPairForReserve(address reserve, ERC20 token, bool ethToToken, bool tokenToEth, bool add) public onlyAdmin {
         require(isReserve[reserve]);
-        address[] storage reservs = reservesPerTokenDest[token];
+        address[] storage reserveArr = reservesPerTokenDest[token];
         uint i;
 
         if (ethToToken) {
-            for (i = 0; i < reservs.length; i++) {
-                if (reserve == reservs[i]) {
+            for (i = 0; i < reserveArr.length; i++) {
+                if (reserve == reserveArr[i]) {
                     if(add) {
                         break; //already added
                     } else {
                         //remove
-                        reservs[i] = reservs[reservs.length - 1];
-                        reservs.length--;
+                        reserveArr[i] = reserveArr[reserveArr.length - 1];
+                        reserveArr.length--;
                     }
                 }
             }
 
-            if (add && i == reservs.length) {
+            if (add && i == reserveArr.length) {
                 //if reserve wasn't found add it
-                reservs.push(reserve);
+                reserveArr.push(reserve);
             }
         }
 
         if (tokenToEth) {
-            reservs = reservesPerTokenSrc[token];
-            for (i = 0; i < reservs.length; i++) {
-                if (reserve == reservs[i]) {
+            reserveArr = reservesPerTokenSrc[token];
+            for (i = 0; i < reserveArr.length; i++) {
+                if (reserve == reserveArr[i]) {
                     if(add) {
                         break; //already added
                     } else {
                         //remove
-                        reservs[i] = reservs[reservs.length - 1];
-                        reservs.length--;
+                        reserveArr[i] = reserveArr[reserveArr.length - 1];
+                        reserveArr.length--;
                     }
                 }
             }
 
-            if (add && i == reservs.length) {
+            if (add && i == reserveArr.length) {
                 //reserve wasn't found
-                reservs.push(reserve);
+                reserveArr.push(reserve);
                 token.approve(reserve, 2**255); // approve infinity
             }
             if (!add) {
@@ -290,17 +290,17 @@ contract KyberNetwork is Withdrawable, Utils {
         //return 1 for ether to ether
         if (src == dest) return (reserves[bestReserve], PRECISION);
 
-        address[] storage reservs = reservesPerTokenSrc[src];
+        address[] storage reserveArr = reservesPerTokenSrc[src];
         if (src == ETH_TOKEN_ADDRESS) {
-            reservs = reservesPerTokenDest[dest];
+            reserveArr = reservesPerTokenDest[dest];
         }
 
-        uint[] memory rates = new uint[](reservs.length);
-        uint[] memory reserveCandidates = new uint[](reservs.length);
+        uint[] memory rates = new uint[](reserveArr.length);
+        uint[] memory reserveCandidates = new uint[](reserveArr.length);
 
-        for (uint i = 0; i < reservs.length; i++) {
+        for (uint i = 0; i < reserveArr.length; i++) {
             //list all reserves that have this token.
-            rates[i] = (KyberReserveInterface(reservs[i])).getConversionRate(src, dest, srcAmount, block.number);
+            rates[i] = (KyberReserveInterface(reserveArr[i])).getConversionRate(src, dest, srcAmount, block.number);
 
             if (rates[i] > bestRate) {
                 //best rate is highest rate
@@ -312,7 +312,7 @@ contract KyberNetwork is Withdrawable, Utils {
             uint random = 0;
             uint smallestRelevantRate = (bestRate * 10000) / (10000 + negligibleRateDiff);
 
-            for (i = 0; i < reservs.length; i++) {
+            for (i = 0; i < reserveArr.length; i++) {
                 if (rates[i] >= smallestRelevantRate) {
                     reserveCandidates[numRelevantReserves++] = i;
                 }
@@ -327,7 +327,7 @@ contract KyberNetwork is Withdrawable, Utils {
             bestRate = rates[bestReserve];
         }
 
-        return (reservs[bestReserve], bestRate);
+        return (reserveArr[bestReserve], bestRate);
     }
     /* solhint-enable code-complexity */
 
