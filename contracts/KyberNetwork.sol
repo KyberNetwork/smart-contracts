@@ -255,7 +255,7 @@ contract KyberNetwork is Withdrawable, Utils {
         uint ethAmount;
         uint rateSrcToEth;
         uint rateEthToDest;
-        uint actualDest;
+        uint actualDestAmount;
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
@@ -275,9 +275,9 @@ contract KyberNetwork is Withdrawable, Utils {
         result.ethAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcAmount, result.rateSrcToEth);
 
         (result.reserve2, result.rateEthToDest) = searchBestRate(ETH_TOKEN_ADDRESS, dest, result.ethAmount);
-        result.actualDest = calcDestAmount(ETH_TOKEN_ADDRESS, dest, result.ethAmount, result.rateEthToDest);
+        result.actualDestAmount = calcDestAmount(ETH_TOKEN_ADDRESS, dest, result.ethAmount, result.rateEthToDest);
 
-        result.rate = calcRateFromQty(srcAmount, result.actualDest, getDecimals(src), getDecimals(dest));
+        result.rate = calcRateFromQty(srcAmount, result.actualDestAmount, getDecimals(src), getDecimals(dest));
     }
 
     /* solhint-disable code-complexity */
@@ -339,7 +339,6 @@ contract KyberNetwork is Withdrawable, Utils {
         returns (uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
-//        if(srcAmount == 1234567) return (2000, 3033);
         return expectedRateContract.getExpectedRate(src, dest, srcAmount);
     }
 
@@ -368,14 +367,14 @@ contract KyberNetwork is Withdrawable, Utils {
         require(rateResult.rate < MAX_RATE);
         require(rateResult.rate >= minConversionRate);
 
-        uint actualDest;
+        uint actualDestAmount;
         uint ethAmount;
-        uint actualSrc;
+        uint actualSrcAmount;
 
-        (actualSrc, ethAmount, actualDest) = calcActualAmounts(src, dest, srcAmount, maxDestAmount, rateResult);
+        (actualSrcAmount, ethAmount, actualDestAmount) = calcActualAmounts(src, dest, srcAmount, maxDestAmount, rateResult);
 
-        if ((actualSrc < srcAmount) && (src == ETH_TOKEN_ADDRESS)) {
-            msg.sender.transfer(srcAmount - actualSrc);
+        if ((actualSrcAmount < srcAmount) && (src == ETH_TOKEN_ADDRESS)) {
+            msg.sender.transfer(srcAmount - actualSrcAmount);
         }
 
         // verify trade size is smaller than user cap
@@ -385,7 +384,7 @@ contract KyberNetwork is Withdrawable, Utils {
         //src to ETH
         require(doReserveTrade(
                 src,
-                actualSrc,
+                actualSrcAmount,
                 ETH_TOKEN_ADDRESS,
                 this,
                 ethAmount,
@@ -399,7 +398,7 @@ contract KyberNetwork is Withdrawable, Utils {
                 ethAmount,
                 dest,
                 destAddress,
-                actualDest,
+                actualDestAmount,
                 KyberReserveInterface(rateResult.reserve2),
                 rateResult.rateEthToDest,
                 true));
@@ -409,21 +408,21 @@ contract KyberNetwork is Withdrawable, Utils {
         if (src != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(ethAmount, rateResult.reserve1, walletId));
         if (dest != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(ethAmount, rateResult.reserve2, walletId));
 
-        ExecuteTrade(msg.sender, src, dest, actualSrc, actualDest);
-        return actualDest;
+        ExecuteTrade(msg.sender, src, dest, actualSrcAmount, actualDestAmount);
+        return actualDestAmount;
     }
 
     function calcActualAmounts (ERC20 src, ERC20 dest, uint srcAmount, uint maxDestAmount, BestRateResult rateResult)
-        internal view returns(uint actualSrc, uint ethAmount, uint actualDest)
+        internal view returns(uint actualSrcAmount, uint ethAmount, uint actualDestAmount)
     {
-        if (rateResult.actualDest > maxDestAmount) {
-            actualDest = maxDestAmount;
-            ethAmount = calcSrcAmount(ETH_TOKEN_ADDRESS, dest, actualDest, rateResult.rateEthToDest);
-            actualSrc = calcSrcAmount(src, ETH_TOKEN_ADDRESS, ethAmount, rateResult.rateSrcToEth);
-            require(actualSrc <= srcAmount);
+        if (rateResult.actualDestAmount > maxDestAmount) {
+            actualDestAmount = maxDestAmount;
+            ethAmount = calcSrcAmount(ETH_TOKEN_ADDRESS, dest, actualDestAmount, rateResult.rateEthToDest);
+            actualSrcAmount = calcSrcAmount(src, ETH_TOKEN_ADDRESS, ethAmount, rateResult.rateSrcToEth);
+            require(actualSrcAmount <= srcAmount);
         } else {
-            actualDest = rateResult.actualDest;
-            actualSrc = srcAmount;
+            actualDestAmount = rateResult.actualDestAmount;
+            actualSrcAmount = srcAmount;
             ethAmount = rateResult.ethAmount;
         }
     }
