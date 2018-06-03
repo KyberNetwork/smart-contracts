@@ -824,12 +824,16 @@ it("set eth to dgd rate", function() {
   it("print addresses", function() {
     tokensDict = {};
     console.log("\ntokens");
-    tokensDict["ETH"] = {"address" : "0x" + ethAddress.toString(16), "name" : "Ethereum", "decimals" : 18 };
+    tokensDict["ETH"] = {"address" : "0x" + ethAddress.toString(16), 
+                         "name" : "Ethereum", 
+                         "decimals" : 18,
+                         "internal use": true};
     for( var i = 0 ; i < tokenSymbol.length ; i++ ) {
       //console.log(tokenSymbol[i] + " : " + tokenInstance[i].address );
       tokenDict = {"address" : tokenInstance[i].address,
                    "name" : tokenName[i],
-                   "decimals" : tokenDecimals[i]};
+                   "decimals" : tokenDecimals[i],
+                   "internal use": true};
       tokensDict[tokenSymbol[i]] = tokenDict;
     }
 

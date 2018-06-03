@@ -76,7 +76,7 @@ async function processEvents(events){
             uniqueToday = {};
             console.log("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t\t%s",
                 day, numTradesToday, numSmallTrades, uniqueAddressToday, newAddressToday,
-                numEthersToday, (numEthersToday / numTradesToday).toFixed(2), firstBlockToday,
+                numEthersToday.toFixed(2), (numEthersToday / numTradesToday).toFixed(2), firstBlockToday,
                 await dateTimeFromBlock(firstBlockToday));
 
             firstBlockToday = endDayBlock;
@@ -105,7 +105,8 @@ async function processEvents(events){
             wei = web3.utils.toBN(event.actualDestAmount);
         }
 
-        let ethers = wei.div(web3.utils.toBN(10).pow(web3.utils.toBN(18)));
+        let ethers = wei.div(web3.utils.toBN(10).pow(web3.utils.toBN(15)));
+        ethers = ethers / 1000;
 
         numEthersToday += 1 * ethers.valueOf();
 
