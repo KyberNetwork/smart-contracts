@@ -142,9 +142,9 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         uint minConversionRate,
         address walletId
     )
-        public
-        payable
-        returns(uint)
+    public
+    payable
+    returns(uint)
     {
         require(tx.gasprice <= maxGasPrice);
         require(validateTradeInput(sender, src, srcAmount, destAddress));
@@ -220,8 +220,8 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         uint                  _maxGasPrice,
         uint                  _negligibleRateDiff
     )
-        public
-        onlyAdmin
+    public
+    onlyAdmin
     {
         require(_whiteList != address(0));
         require(_feeBurner != address(0));
@@ -282,7 +282,7 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
     }
 
     function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcQty) internal view
-        returns(uint rate, address reserve1, address reserve2, uint ethAmount, uint rateSrcToEth, uint rateEthToDest)
+    returns(uint rate, address reserve1, address reserve2, uint ethAmount, uint rateSrcToEth, uint rateEthToDest)
     {
         (reserve1, rateSrcToEth) = searchBestRate(src, ETH_TOKEN_ADDRESS, srcQty);
         ethAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcQty, rateSrcToEth);
@@ -343,8 +343,8 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
     /* solhint-enable code-complexity */
 
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
-        public view
-        returns (uint expectedRate, uint slippageRate)
+    public view
+    returns (uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
         return expectedRateContract.getExpectedRate(src, dest, srcQty);
@@ -380,8 +380,8 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         uint conversionRate,
         bool validate
     )
-        internal
-        returns(bool)
+    internal
+    returns(bool)
     {
         uint callValue = 0;
 
