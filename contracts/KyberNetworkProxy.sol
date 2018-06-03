@@ -11,7 +11,7 @@ import "./KyberNetworkInterface.sol";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network Wrap main contract
-contract KyberNetworkWrapper is Withdrawable, Utils {
+contract KyberNetworkProxy is Withdrawable, Utils {
 
     KyberNetworkInterface public kyberNetworkContract;
     mapping(bytes32=>uint) public info; // this is only a UI field for external app.
@@ -40,9 +40,9 @@ contract KyberNetworkWrapper is Withdrawable, Utils {
         uint minConversionRate,
         address walletId
     )
-    public
-    payable
-    returns(uint)
+        public
+        payable
+        returns(uint)
     {
         address[] memory reserveHint = new address[](0);
 
@@ -80,9 +80,9 @@ contract KyberNetworkWrapper is Withdrawable, Utils {
         address walletId,
         address[] reserveHint
     )
-    public
-    payable
-    returns(uint)
+        public
+        payable
+        returns(uint)
     {
         uint userSrcBalanceBefore;
         uint userDestBalanceBefore;
@@ -113,7 +113,7 @@ contract KyberNetworkWrapper is Withdrawable, Utils {
 
     function validateNoUserLoss(uint srcBalanceBefore, uint destBalanceBefore, ERC20 src, ERC20 dest,
         address destAddress, uint minConversionRate)
-    internal view returns(bool)
+        internal view returns(bool)
     {
         uint userSrcBalanceAfter;
         uint userDestBalanceAfter;
@@ -135,8 +135,8 @@ contract KyberNetworkWrapper is Withdrawable, Utils {
     function setKyberNetworkContract(
         KyberNetworkInterface _kyberNetworkContract
     )
-    public
-    onlyAdmin
+        public
+        onlyAdmin
     {
         require(_kyberNetworkContract != address(0));
         KyberNetworkSet(_kyberNetworkContract, kyberNetworkContract);
@@ -144,15 +144,15 @@ contract KyberNetworkWrapper is Withdrawable, Utils {
     }
 
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
-    public view
-    returns (uint expectedRate, uint slippageRate)
+        public view
+        returns (uint expectedRate, uint slippageRate)
     {
         return kyberNetworkContract.getExpectedRate(src, dest, srcQty);
     }
 
     function getExpectedRateWithHint(ERC20 src, ERC20 dest, uint srcQty)
-    public view
-    returns (uint expectedRate, uint slippageRate, address[4] reserveArr)
+        public view
+        returns (uint expectedRate, uint slippageRate, address[4] reserveArr)
     {
         //        uint[] memory reserves = new uint[](reserves.length);
         //        (expectedRate, slippageRate, reserves) = kyberNetworkContract.getExpectedRateWithHint(src, dest, srcQty);
