@@ -44,17 +44,55 @@ contract KyberNetworkWrapper is Withdrawable, Utils {
         payable
         returns(uint)
     {
+        address[] memory reserveHint = new address[](0);
+
+        return tradeWithHint(
+            src,
+            srcAmount,
+            dest,
+            destAddress,
+            maxDestAmount,
+            minConversionRate,
+            walletId,
+            reserveHint
+        );
+    }
+
+    event ExecuteNetworkProxyTrade(address indexed trader, ERC20 src, ERC20 dest, uint srcAmount, uint actualDestAmount);
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev makes a trade between src and dest token and send dest token to destAddress
+    /// @param src Src token
+    /// @param srcAmount amount of src tokens
+    /// @param dest Destination token
+    /// @param destAddress Address to send tokens to
+    /// @param maxDestAmount A limit on the amount of dest tokens
+    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
+    /// @param walletId is the wallet ID to send part of the fees
+    /// @param reserveHint will list best reserve addresses for this trade
+    /// @return amount of actual dest tokens
+    function tradeWithHint(
+        ERC20 src,
+        uint srcAmount,
+        ERC20 dest,
+        address destAddress,
+        uint maxDestAmount,
+        uint minConversionRate,
+        address walletId,
+        address[] reserveHint
+    )
+        public
+        payable
+        returns(uint)
+    {
         uint userSrcBalanceBefore;
-        uint userSrcBalanceAfter;
         uint userDestBalanceBefore;
-        uint userDestBalanceAfter;
 
         userSrcBalanceBefore = getBalance(src, msg.sender);
         if (src == ETH_TOKEN_ADDRESS)
             userSrcBalanceBefore += msg.value;
         userDestBalanceBefore = getBalance(dest, destAddress);
 
-        uint actualDestAmount = kyberNetworkContract.doTrade(
+        uint actualDestAmount = kyberNetworkContract.tradeWithHint(
             msg.sender,
             src,
             srcAmount,
@@ -62,24 +100,38 @@ contract KyberNetworkWrapper is Withdrawable, Utils {
             destAddress,
             maxDestAmount,
             minConversionRate,
-            walletId
+            walletId,
+            reserveHint
         );
         require(actualDestAmount > 0);
 
-        userSrcBalanceAfter = getBalance(src, msg.sender);
-        userDestBalanceAfter = getBalance(dest, destAddress);
+        require(validateNoUserLoss(userSrcBalanceBefore, userDestBalanceBefore, src, dest, destAddress, minConversionRate));
 
-        require(userSrcBalanceAfter < userSrcBalanceBefore);
-        require(userDestBalanceAfter > userDestBalanceBefore);
-
-        require((userDestBalanceAfter - userDestBalanceBefore) >=
-            calcDstQty((userSrcBalanceBefore - userSrcBalanceAfter), getDecimals(src), getDecimals(dest),
-                minConversionRate));
-
+        ExecuteNetworkProxyTrade(msg.sender, src, dest, srcAmount, actualDestAmount);
         return actualDestAmount;
     }
 
-    event KyberNetworkSet(address networkContract);
+    function validateNoUserLoss(uint srcBalanceBefore, uint destBalanceBefore, ERC20 src, ERC20 dest,
+        address destAddress, uint minConversionRate)
+        internal view returns(bool)
+    {
+        uint userSrcBalanceAfter;
+        uint userDestBalanceAfter;
+        userSrcBalanceAfter = getBalance(src, msg.sender);
+        userDestBalanceAfter = getBalance(dest, destAddress);
+
+        if(userSrcBalanceAfter >= srcBalanceBefore) return false;
+        if(userDestBalanceAfter <= destBalanceBefore) return false;
+
+        if ((userDestBalanceAfter - destBalanceBefore) <
+            calcDstQty((srcBalanceBefore - userSrcBalanceAfter), getDecimals(src), getDecimals(dest),
+                minConversionRate))
+            return false;
+
+        return true;
+    }
+
+    event KyberNetworkSet(address newNetworkContract, address oldNetworkContract);
     function setKyberNetworkContract(
         KyberNetworkInterface _kyberNetworkContract
     )
@@ -87,8 +139,8 @@ contract KyberNetworkWrapper is Withdrawable, Utils {
         onlyAdmin
     {
         require(_kyberNetworkContract != address(0));
+        KyberNetworkSet(_kyberNetworkContract, kyberNetworkContract);
         kyberNetworkContract = _kyberNetworkContract;
-        KyberNetworkSet(kyberNetworkContract);
     }
 
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
@@ -96,6 +148,18 @@ contract KyberNetworkWrapper is Withdrawable, Utils {
         returns (uint expectedRate, uint slippageRate)
     {
         return kyberNetworkContract.getExpectedRate(src, dest, srcQty);
+    }
+
+    function getExpectedRateWithHint(ERC20 src, ERC20 dest, uint srcQty)
+        public view
+        returns (uint expectedRate, uint slippageRate, address[4] reserveArr)
+    {
+//        uint[] memory reserves = new uint[](reserves.length);
+//        (expectedRate, slippageRate, reserves) = kyberNetworkContract.getExpectedRateWithHint(src, dest, srcQty);
+//        for(uint i = 0; i < reserves.length; i++) {
+//            reserveArr[i] = reserves[i];
+//        }
+        return kyberNetworkContract.getExpectedRateWithHint(src, dest, srcQty);
     }
 
     function getUserCapInWei(address user) public view returns(uint) {
