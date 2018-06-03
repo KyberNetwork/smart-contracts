@@ -291,9 +291,12 @@ contract KyberNetwork is Withdrawable, Utils {
         if (src == dest) return (reserves[bestReserve], PRECISION);
 
         address[] storage reserveArr = reservesPerTokenSrc[src];
+
         if (src == ETH_TOKEN_ADDRESS) {
             reserveArr = reservesPerTokenDest[dest];
         }
+
+        if(reserveArr.length == 0) return (reserves[bestReserve], bestRate);
 
         uint[] memory rates = new uint[](reserveArr.length);
         uint[] memory reserveCandidates = new uint[](reserveArr.length);
@@ -336,6 +339,7 @@ contract KyberNetwork is Withdrawable, Utils {
         returns (uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
+//        if(srcAmount == 1234567) return (2000, 3033);
         return expectedRateContract.getExpectedRate(src, dest, srcAmount);
     }
 
