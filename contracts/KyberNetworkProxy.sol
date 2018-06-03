@@ -154,11 +154,6 @@ contract KyberNetworkProxy is Withdrawable, Utils {
         public view
         returns (uint expectedRate, uint slippageRate, address[4] reserveArr)
     {
-        //        uint[] memory reserves = new uint[](reserves.length);
-        //        (expectedRate, slippageRate, reserves) = kyberNetworkContract.getExpectedRateWithHint(src, dest, srcQty);
-        //        for(uint i = 0; i < reserves.length; i++) {
-        //            reserveArr[i] = reserves[i];
-        //        }
         return kyberNetworkContract.getExpectedRateWithHint(src, dest, srcQty);
     }
 
