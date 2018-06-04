@@ -213,7 +213,7 @@ contract('KyberNetwork', function(accounts) {
         }
     });
 
-    it("should init network and 2 reserves and set all reserve data including balances", async function () {
+    it("should init network and reserves and set all reserve data including balances", async function () {
         network = await Network.new(admin);
         await network.addOperator(operator);
         reserve1 = await Reserve.new(network.address, pricing1.address, admin);
