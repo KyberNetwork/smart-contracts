@@ -45,6 +45,7 @@ let reserve3;
 let whiteList;
 let expectedRate;
 let network;
+let networkProxy;
 let feeBurner;
 
 //block data
@@ -118,6 +119,7 @@ contract('KyberNetwork', function(accounts) {
         user1 = accounts[4];
         user2 = accounts[5];
         walletId = accounts[6];
+        networkProxy = accounts[0];
 
         currentBlock = priceUpdateBlock = await Helper.getCurrentBlock();
 
@@ -234,14 +236,17 @@ contract('KyberNetwork', function(accounts) {
     });
 
     it("should init network and 2 reserves and set all reserve data including balances", async function () {
-        network = await Network.new(admin);
+        network = await Network.new(admin, {gas: 6700000});
         await network.addOperator(operator);
+        log("1")
         reserve1 = await Reserve.new(network.address, pricing1.address, admin);
         reserve2 = await Reserve.new(network.address, pricing2.address, admin);
         reserve3 = await Reserve.new(network.address, pricing3.address, admin);
+        log("2")
         await pricing1.setReserveAddress(reserve1.address);
         await pricing2.setReserveAddress(reserve2.address);
         await pricing3.setReserveAddress(reserve3.address);
+
         await reserve1.addAlerter(alerter);
         await reserve2.addAlerter(alerter);
         await reserve3.addAlerter(alerter);
@@ -282,6 +287,8 @@ contract('KyberNetwork', function(accounts) {
         // add reserves
         await network.addReserve(reserve1.address, true);
         await network.addReserve(reserve2.address, true);
+
+        await network.setKyberProxy(networkProxy);
 
         //set contracts
         feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address);
