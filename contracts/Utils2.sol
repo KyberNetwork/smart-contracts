@@ -12,10 +12,10 @@ contract Utils2 is Utils{
 
     function decimalGetterSetter(ERC20 token) internal returns(uint decimal) {
 
-        if (decimals[token] > 0)
-            return decimals[token];
-        else
-            return betterGetDecimals(token);
+        if (decimals[token] == 0)
+            decimals[token] = betterGetDecimals(token);
+
+        return decimals[token];
     }
 
     function betterGetDecimals(ERC20 token) internal returns(uint) {
@@ -23,13 +23,11 @@ contract Utils2 is Utils{
 
         if(!address(token).call(bytes4(keccak256("decimals()")))) {
             // call failed
-            decimals[token] = 18;
             return 18;
         } else {
             assembly {
                 returndatacopy(value, 0, returndatasize)
             }
-            decimals[token] = uint(value[0]);
             return value[0];
         }
     }

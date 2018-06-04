@@ -129,7 +129,7 @@ contract KyberNetworkProxy is Withdrawable, Utils2 {
 
     function calculateTradeOutcome (uint srcBalanceBefore, uint destBalanceBefore, ERC20 src, ERC20 dest,
         address destAddress, uint minConversionRate)
-        internal view returns(TradeOutcome outcome)
+        internal returns(TradeOutcome outcome)
     {
         uint userSrcBalanceAfter;
         uint userDestBalanceAfter;
@@ -142,7 +142,7 @@ contract KyberNetworkProxy is Withdrawable, Utils2 {
         require(outcome.userDeltaSource > 0);
 
         outcome.userMinExpectedDeltaDest =
-            calcDstQty(uint(outcome.userDeltaSource), getDecimals(src), getDecimals(dest), minConversionRate);
+            calcDstQty(uint(outcome.userDeltaSource), decimalGetterSetter(src), decimalGetterSetter(dest), minConversionRate);
     }
 
     function validateNoUserLoss(uint srcBalanceBefore, uint destBalanceBefore, ERC20 src, ERC20 dest,
