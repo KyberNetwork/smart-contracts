@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity 0.4.18;
 
 import "./ConversionRatesInterface.sol";
 import "./LiquidityFormula.sol";
@@ -7,9 +7,9 @@ import "./Utils.sol";
 
 
 contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula, Withdrawable, Utils {
-    ERC20 token;
+    ERC20 public token;
     uint public rInFp;
-    uint public PminInFp;
+    uint public pMinInFp;
     uint public formulaPrecision;
     uint public numFpBits;
     uint public maxCapBuyInFp;
@@ -27,117 +27,79 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         token = _token;
         reserveContract = _reserveContract;
         setDecimals(token);
-        // check that token decimals is smaller than max decimals (also from utils)
+        // TODO: require that token decimals is smaller than max decimals (also from utils).
     }
 
-    event SetLiquidityParams(uint rInFp,
-                             uint PminInFp,
-                             uint numFpBits,
-                             uint maxCapBuyInFp,
-                             uint maxCapSellInFp,
-                             uint feeInBps,
-                             uint formulaPrecision,
-                             uint maxBuyRateInPRECISION,
-                             uint minBuyRateInPRECISION,
-                             uint maxSellRateInPRECISION,
-                             uint minSellRateInPRECISION
+    event LiquidityParamsSet(
+        uint rInFp,
+        uint pMinInFp,
+        uint numFpBits,
+        uint maxCapBuyInFp,
+        uint maxCapSellInFp,
+        uint feeInBps,
+        uint formulaPrecision,
+        uint maxBuyRateInPRECISION,
+        uint minBuyRateInPRECISION,
+        uint maxSellRateInPRECISION,
+        uint minSellRateInPRECISION
     );
 
-    function setLiquidityParams(uint _rInFp,
-                                uint _PminInFp,
-                                uint _numFpBits,
-                                uint _maxCapBuyInWei,
-                                uint _maxCapSellInWei,
-                                uint _feeInBps,
-                                uint _maxBuyRateInPRECISION,
-                                uint _minBuyRateInPRECISION,
-                                uint _maxSellRateInPRECISION,
-                                uint _minSellRateInPRECISION
+    function setLiquidityParams(
+        uint _rInFp,
+        uint _pMinInFp,
+        uint _numFpBits,
+        uint _maxCapBuyInWei,
+        uint _maxCapSellInWei,
+        uint _feeInBps,
+        uint _maxBuyRateInPRECISION,
+        uint _minBuyRateInPRECISION,
+        uint _maxSellRateInPRECISION,
+        uint _minSellRateInPRECISION
     ) public onlyAdmin {
-          rInFp = _rInFp;
-          PminInFp = _PminInFp;
-          formulaPrecision = uint(1)<<_numFpBits; // validate _numFpBits smaller than 256.
-          numFpBits = _numFpBits;
-          maxCapBuyInFp = fromWeiToFp(_maxCapBuyInWei, formulaPrecision);
-          maxCapSellInFp = fromWeiToFp(_maxCapSellInWei, formulaPrecision);
-          collectedFeesInTwei = 0;
-          require(_feeInBps < 10000);
-          feeInBps = _feeInBps;
-          maxBuyRateInPRECISION = _maxBuyRateInPRECISION;
-          minBuyRateInPRECISION = _minBuyRateInPRECISION;
-          maxSellRateInPRECISION = _maxSellRateInPRECISION;
-          minSellRateInPRECISION = _minSellRateInPRECISION;
 
-          SetLiquidityParams(rInFp,
-                             PminInFp,
-                             numFpBits,
-                             maxCapBuyInFp,
-                             maxCapSellInFp,
-                             feeInBps,
-                             formulaPrecision,
-                             maxBuyRateInPRECISION,
-                             minBuyRateInPRECISION,
-                             maxSellRateInPRECISION,
-                             minSellRateInPRECISION
-          );
+        rInFp = _rInFp;
+        pMinInFp = _pMinInFp;
+        formulaPrecision = uint(1)<<_numFpBits; // TODO: require _numFpBits smaller than 256.
+        numFpBits = _numFpBits;
+        maxCapBuyInFp = fromWeiToFp(_maxCapBuyInWei, formulaPrecision);
+        maxCapSellInFp = fromWeiToFp(_maxCapSellInWei, formulaPrecision);
+        collectedFeesInTwei = 0;
+        require(_feeInBps < 10000);
+        feeInBps = _feeInBps;
+        maxBuyRateInPRECISION = _maxBuyRateInPRECISION;
+        minBuyRateInPRECISION = _minBuyRateInPRECISION;
+        maxSellRateInPRECISION = _maxSellRateInPRECISION;
+        minSellRateInPRECISION = _minSellRateInPRECISION;
+
+        LiquidityParamsSet(
+            rInFp,
+            pMinInFp,
+            numFpBits,
+            maxCapBuyInFp,
+            maxCapSellInFp,
+            feeInBps,
+            formulaPrecision,
+            maxBuyRateInPRECISION,
+            minBuyRateInPRECISION,
+            maxSellRateInPRECISION,
+            minSellRateInPRECISION
+        );
     }
 
-    function getRateWithE(ERC20 conversionToken, bool buy, uint qtyInSrcWei, uint EInFp) public view returns(uint) {
-        uint deltaEInFp;
-        uint deltaTInFp;
-        uint rateInPRECISION;
-        uint maxCap;
-        //TODO: also here qtyInSrcWei < maxQty. since public
+    function getRate(
+            ERC20 conversionToken,
+            uint currentBlockNumber,
+            bool buy,
+            uint qtyInSrcWei
+    ) public view returns(uint) {
 
-        if(conversionToken != token) return 0;
-
-        if(buy) {
-          // ETH goes in, token goes out
-          deltaEInFp = fromWeiToFp(qtyInSrcWei, formulaPrecision);
-
-          if(deltaEInFp == 0) {
-            rateInPRECISION = buyRateZeroQuantity(EInFp);
-          }
-          else {
-            rateInPRECISION = buyRate(EInFp, deltaEInFp);
-          }
-
-          if ((rateInPRECISION > maxBuyRateInPRECISION) || (rateInPRECISION < minBuyRateInPRECISION)) {
-            return 0;
-          }
-          maxCap = maxCapBuyInFp;
-        }
-        else {
-          deltaTInFp = fromTweiToFp(token, qtyInSrcWei, formulaPrecision);
-          deltaTInFp = reduceFee(deltaTInFp, feeInBps);
-          if(deltaTInFp == 0) {
-              rateInPRECISION = sellRateZeroQuantity(EInFp);
-          }
-          else {
-            rateInPRECISION = sellRate(EInFp, deltaTInFp);
-          }
-
-          if ((rateInPRECISION > maxSellRateInPRECISION) || (rateInPRECISION < minSellRateInPRECISION)) {
-            return 0;
-          }
-
-          maxCap = maxCapSellInFp;
-        }
-
-        if(deltaEInFp > maxCap) return 0;
-        return rateInPRECISION;
-    }
-
-    function getRate(ERC20 conversionToken, uint currentBlockNumber, bool buy, uint qtyInSrcWei) public view returns(uint) {
-
-    //TODO: qtyInSrcWei < maxQty.
-    //TODO: deltaT, deltaE < 10^30.
+    // TODO: require qtyInSrcWei < maxQty.
+    // TODO: deltaT, deltaE < 10^30. ??? everywhere we calculate them?
 
         currentBlockNumber;
 
-        uint EInFp = fromWeiToFp(reserveContract.balance, formulaPrecision);
-
-        return getRateWithE(conversionToken,buy,qtyInSrcWei,EInFp);
+        uint eInFp = fromWeiToFp(reserveContract.balance, formulaPrecision);
+        return getRateWithE(conversionToken, buy, qtyInSrcWei, eInFp);
     }
 
     function recordImbalance(
@@ -153,60 +115,116 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         currentBlock;
 
         require(msg.sender == reserveContract);
-        collectedFeesInTwei += calcCollectedFee(abs(buyAmountInTwei),feeInBps);
+        collectedFeesInTwei += calcCollectedFee(abs(buyAmountInTwei), feeInBps);
     }
 
-    event ResetCollectedFees(uint resetFeesInTwei);
+    event CollectedFeesReset(uint resetFeesInTwei);
 
     function resetCollectedFees() public onlyAdmin {
         uint resetFeesInTwei = collectedFeesInTwei;
         collectedFeesInTwei = 0;
 
-        ResetCollectedFees(resetFeesInTwei);
+        CollectedFeesReset(resetFeesInTwei);
     }
 
-    function buyRate(uint _EInFp, uint _deltaEInFp) public view returns(uint) {
-        uint deltaTInFp = deltaTFunc(rInFp,PminInFp,_EInFp,_deltaEInFp,formulaPrecision); // TODO: check if smaller than maxqty in precision (save in constructor maxqty in precision or divide each time, take it as constant from utils) 
+    function getRateWithE(ERC20 conversionToken, bool buy, uint qtyInSrcWei, uint eInFp) public view returns(uint) {
+        uint deltaEInFp;
+        uint deltaTInFp;
+        uint rateInPRECISION;
+        //TODO: also here - require qtyInSrcWei < maxQty (since it's public.)
+
+        if (conversionToken != token) return 0;
+
+        if (buy) {
+            // ETH goes in, token goes out
+            deltaEInFp = fromWeiToFp(qtyInSrcWei, formulaPrecision);
+            if (deltaEInFp > maxCapBuyInFp) return 0;
+
+            if (deltaEInFp == 0) {
+                rateInPRECISION = buyRateZeroQuantity(eInFp);
+            } else {
+                rateInPRECISION = buyRate(eInFp, deltaEInFp);
+            }
+        } else {
+            deltaTInFp = fromTweiToFp(token, qtyInSrcWei, formulaPrecision);
+            deltaTInFp = reduceFee(deltaTInFp, feeInBps);
+            if (deltaTInFp == 0) {
+                rateInPRECISION = sellRateZeroQuantity(eInFp);
+                deltaEInFp = 0;
+            } else {
+                deltaEInFp = deltaEFunc(rInFp, pMinInFp, eInFp, deltaTInFp, formulaPrecision, numFpBits);
+                // TODO: after the call deltaEFunc - check if smaller than maxqty in precision
+                // (save in constructor maxqty in
+                // precision or divide each time, take it as constant from utils)
+                rateInPRECISION = deltaEInFp * PRECISION / deltaTInFp;
+            }
+
+            if (deltaEInFp > maxCapSellInFp) return 0;
+        }
+
+        rateInPRECISION = validateRate(rateInPRECISION, buy);
+        return rateInPRECISION;
+    }
+
+    function validateRate(uint rateInPRECISION, bool buy) public view returns(uint) {
+        uint minAllowRateInPRECISION;
+        uint maxAllowedRateInPRECISION;
+
+        if (buy) {
+            minAllowRateInPRECISION = minBuyRateInPRECISION;
+            maxAllowedRateInPRECISION = maxBuyRateInPRECISION;
+        } else {
+            minAllowRateInPRECISION = minSellRateInPRECISION;
+            maxAllowedRateInPRECISION = maxSellRateInPRECISION;
+        }
+
+        if ((rateInPRECISION > maxAllowedRateInPRECISION) || (rateInPRECISION < minAllowRateInPRECISION)) {
+            return 0;
+        } else {
+            return rateInPRECISION;
+        }
+
+        // TODO: require smaller than MAX_RATE
+    }
+
+    function buyRate(uint _eInFp, uint _deltaEInFp) public view returns(uint) {
+        // TODO: after the call deltaTFunc - check if smaller than maxqty in precision (save in constructor maxqty in
+        // precision or divide each time, take it as constant from utils)
+        uint deltaTInFp = deltaTFunc(rInFp, pMinInFp, _eInFp, _deltaEInFp, formulaPrecision); 
         deltaTInFp = reduceFee(deltaTInFp, feeInBps);
         return deltaTInFp * PRECISION / _deltaEInFp;
     }
 
-    function buyRateZeroQuantity(uint _EInFp) public view returns(uint) {
-        return  formulaPrecision * PRECISION / PE(rInFp, PminInFp, _EInFp, formulaPrecision);
+    function buyRateZeroQuantity(uint _eInFp) public view returns(uint) {
+        return formulaPrecision * PRECISION / PE(rInFp, pMinInFp, _eInFp, formulaPrecision);
     }
 
-    function sellRate(uint _EInFp, uint _deltaTInFp) public view returns(uint) {
-        uint deltaEInFp = deltaEFunc(rInFp,PminInFp,_EInFp,_deltaTInFp,formulaPrecision,numFpBits);
-        return deltaEInFp * PRECISION / _deltaTInFp;
-    }
-
-    function sellRateZeroQuantity(uint _EInFp) public view returns(uint) {
-        return PE(rInFp, PminInFp, _EInFp, formulaPrecision) * PRECISION / formulaPrecision;
+    function sellRateZeroQuantity(uint _eInFp) public view returns(uint) {
+        return PE(rInFp, pMinInFp, _eInFp, formulaPrecision) * PRECISION / formulaPrecision;
     }
 
     function fromTweiToFp(ERC20 _token, uint qtyInTwei, uint _formulaPrecision) public view returns(uint) {
-        return qtyInTwei * _formulaPrecision / (10** getDecimals(_token));
+        return qtyInTwei * _formulaPrecision / (10 ** getDecimals(_token));
     }
 
-    function fromWeiToFp(uint qtyInwei, uint _formulaPrecision) public pure returns(uint) { // TODO: add requore that amount (input) is smaller than maxquantity 
+    function fromWeiToFp(uint qtyInwei, uint _formulaPrecision) public pure returns(uint) {
+        // TODO: require that amount (input) is smaller than maxquantity 
         return qtyInwei * _formulaPrecision / (10**ETH_DECIMALS);
     }
 
     function reduceFee(uint val, uint _feeInBps) public pure returns(uint) {
+        // TODO: require that val is smaller than maxquantity, also feeinbps if it stays public.
         return ((10000 - _feeInBps) * val) / 10000;
     }
 
     function calcCollectedFee(uint val, uint _feeInBps) public pure returns(uint) {
         return val * _feeInBps / (10000 - _feeInBps);
-        // 0.9975 = (10000 - fee) / 10000
-        // fee = (input / 0.9975) - input
     }
  
     function abs(int val) public pure returns(uint) {
-        if(val<0) {
+        if (val < 0) {
             return uint(val * (-1));
-        }
-        else {
+        } else { 
             return uint(val);
         }
     }

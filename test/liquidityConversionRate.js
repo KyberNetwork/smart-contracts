@@ -232,15 +232,6 @@ contract('LiquidityConversionRates', function(accounts) {
                " actual result diff in percents is " + Helper.absDiffInPercent(expectedResult,result).toString(10));
     });
 
-    it("should test calculation of sell rate for non zero quantity.", async function () {
-        expectedResult = priceForDeltaT(r, Pmin, deltaT, E).mul(PRECISION).valueOf()
-        result =  await liqConvRatesInst.sellRate(EInFp, deltaTInFp);
-
-        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
-               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10) +
-               " actual result diff in percents is " + Helper.absDiffInPercent(expectedResult,result).toString(10));
-    });
-
     it("should test recording of imbalance.", async function () {
         buyAmountInTwei = BigNumber(10).pow(token_decimals).mul(deltaT)
 
