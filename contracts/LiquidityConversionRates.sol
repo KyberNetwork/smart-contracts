@@ -103,7 +103,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
           }
 
           if ((rateInPRECISION > maxBuyRateInPRECISION) || (rateInPRECISION < minBuyRateInPRECISION)) {
-            return minBuyRateInPRECISION;
+            return 0;
           }
           maxCap = maxCapBuyInFp;
         }
@@ -118,7 +118,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
           }
 
           if ((rateInPRECISION > maxSellRateInPRECISION) || (rateInPRECISION < minSellRateInPRECISION)) {
-            return minSellRateInPRECISION;
+            return 0;
           }
 
           maxCap = maxCapSellInFp;
@@ -135,9 +135,9 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
 
         currentBlockNumber;
 
-        uint EInFp = fromWeiToFp(conversionToken.balance, formulaPrecision);
+        uint EInFp = fromWeiToFp(reserveContract.balance, formulaPrecision);
 
-        return getRateWithE(token,buy,qtyInSrcWei,EInFp);
+        return getRateWithE(conversionToken,buy,qtyInSrcWei,EInFp);
     }
 
     function recordImbalance(
