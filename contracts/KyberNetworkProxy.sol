@@ -192,8 +192,8 @@ contract KyberNetworkProxy is Withdrawable, Utils2 {
         return kyberNetworkContract.getUserCapInTokenWei(user, token);
     }
 
-    function getMaxGasPriceWei() public view returns (uint) {
-        return kyberNetworkContract.maxGasPrice();
+    function maxGasPrice() public view returns (uint) {
+        return kyberNetworkContract.getMaxGasPriceWei();
     }
 
     function enabled() public view returns (bool) {

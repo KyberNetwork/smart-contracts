@@ -7,9 +7,7 @@ import "./KyberReserveInterface.sol";
 
 /// @title Kyber Network interface
 contract KyberNetworkInterface {
-    function trade(address sender, ERC20 src, uint srcAmount, ERC20 dest, address destAddress, uint maxDestAmount,
-        uint minConversionRate, address walletId) public payable returns(uint);
-    function maxGasPrice() public view returns(uint);
+    function getMaxGasPriceWei() public view returns(uint);
     function getUserCapInWei(address user) public view returns(uint);
     function getUserCapInTokenWei(address user, ERC20 token) public view returns(uint);
     function isEnabled() public view returns(bool);

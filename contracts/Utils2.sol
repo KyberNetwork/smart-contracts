@@ -6,10 +6,10 @@ import "./Utils.sol";
 
 contract Utils2 is Utils {
 
-    function setDecimals(ERC20 token) internal {
-        if (token == ETH_TOKEN_ADDRESS) decimals[token] = ETH_DECIMALS;
-        else decimals[token] = betterGetDecimals(token);
-    }
+//    function setDecimals(ERC20 token) internal {
+//        if (token == ETH_TOKEN_ADDRESS) decimals[token] = ETH_DECIMALS;
+//        else decimals[token] = betterGetDecimals(token);
+//    }
 
     function decimalGetterSetter(ERC20 token) internal returns(uint decimal) {
 
