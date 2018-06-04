@@ -138,56 +138,51 @@ contract KyberNetwork is Withdrawable, Utils {
     /// @param add If true then list this pair, otherwise unlist it.
     function listPairForReserve(address reserve, ERC20 token, bool ethToToken, bool tokenToEth, bool add) public onlyAdmin {
         require(isReserve[reserve]);
-        address[] storage reserveArr = reservesPerTokenDest[token];
-        uint i;
 
         if (ethToToken) {
-            for (i = 0; i < reserveArr.length; i++) {
-                if (reserve == reserveArr[i]) {
-                    if(add) {
-                        break; //already added
-                    } else {
-                        //remove
-                        reserveArr[i] = reserveArr[reserveArr.length - 1];
-                        reserveArr.length--;
-                    }
-                }
-            }
+            listPairs(reserve, token, false, add);
 
-            if (add && i == reserveArr.length) {
-                //if reserve wasn't found add it
-                reserveArr.push(reserve);
-            }
+            ListReservePairs(reserve, ETH_TOKEN_ADDRESS, token, add);
         }
 
         if (tokenToEth) {
-            reserveArr = reservesPerTokenSrc[token];
-            for (i = 0; i < reserveArr.length; i++) {
-                if (reserve == reserveArr[i]) {
-                    if(add) {
-                        break; //already added
-                    } else {
-                        //remove
-                        reserveArr[i] = reserveArr[reserveArr.length - 1];
-                        reserveArr.length--;
-                    }
-                }
-            }
-
-            if (add && i == reserveArr.length) {
-                //reserve wasn't found
-                reserveArr.push(reserve);
+            listPairs(reserve, token, true, add);
+            if (add) {
                 token.approve(reserve, 2**255); // approve infinity
-            }
-            if (!add) {
+            } else {
                 token.approve(reserve, 0);
             }
+
+            ListReservePairs(reserve, token, ETH_TOKEN_ADDRESS, add);
         }
 
         setDecimals(token);
+    }
 
-        if (ethToToken) ListReservePairs(reserve, ETH_TOKEN_ADDRESS, token, add);
-        if (tokenToEth) ListReservePairs(reserve, token, ETH_TOKEN_ADDRESS, add);
+    function listPairs(address reserve, ERC20 token, bool isTokenToEth, bool add) internal {
+        uint i;
+        address[] storage reserveArr = reservesPerTokenDest[token];
+
+        if (isTokenToEth) {
+            reserveArr = reservesPerTokenSrc[token];
+        }
+
+        for (i = 0; i < reserveArr.length; i++) {
+            if (reserve == reserveArr[i]) {
+                if (add) {
+                    break; //already added
+                } else {
+                    //remove
+                    reserveArr[i] = reserveArr[reserveArr.length - 1];
+                    reserveArr.length--;
+                }
+            }
+        }
+
+        if (add && i == reserveArr.length) {
+            //if reserve wasn't found add it
+            reserveArr.push(reserve);
+        }
     }
 
     function setParams(
@@ -290,18 +285,21 @@ contract KyberNetwork is Withdrawable, Utils {
         //return 1 for ether to ether
         if (src == dest) return (reserves[bestReserve], PRECISION);
 
-        address[] storage reserveArr = reservesPerTokenSrc[src];
+        address[] storage reserveArr;
 
         if (src == ETH_TOKEN_ADDRESS) {
             reserveArr = reservesPerTokenDest[dest];
+        } else {
+            reserveArr = reservesPerTokenSrc[src];
         }
+        uint numReserves = reserveArr.length;
 
-        if(reserveArr.length == 0) return (reserves[bestReserve], bestRate);
+        if (numReserves == 0) return (reserves[bestReserve], bestRate);
 
-        uint[] memory rates = new uint[](reserveArr.length);
-        uint[] memory reserveCandidates = new uint[](reserveArr.length);
+        uint[] memory rates = new uint[](numReserves);
+        uint[] memory reserveCandidates = new uint[](numReserves);
 
-        for (uint i = 0; i < reserveArr.length; i++) {
+        for (uint i = 0; i < numReserves; i++) {
             //list all reserves that have this token.
             rates[i] = (KyberReserveInterface(reserveArr[i])).getConversionRate(src, dest, srcAmount, block.number);
 
@@ -312,10 +310,9 @@ contract KyberNetwork is Withdrawable, Utils {
         }
 
         if (bestRate > 0) {
-            uint random = 0;
             uint smallestRelevantRate = (bestRate * 10000) / (10000 + negligibleRateDiff);
 
-            for (i = 0; i < reserveArr.length; i++) {
+            for (i = 0; i < numReserves; i++) {
                 if (rates[i] >= smallestRelevantRate) {
                     reserveCandidates[numRelevantReserves++] = i;
                 }
@@ -323,10 +320,11 @@ contract KyberNetwork is Withdrawable, Utils {
 
             if (numRelevantReserves > 1) {
                 //when encountering small rate diff from bestRate. draw from relevant reserves
-                random = uint(block.blockhash(block.number-1)) % numRelevantReserves;
+                bestReserve = reserveCandidates[uint(block.blockhash(block.number-1)) % numRelevantReserves];
+            } else {
+                bestReserve = reserveCandidates[0];
             }
 
-            bestReserve = reserveCandidates[random];
             bestRate = rates[bestReserve];
         }
 
