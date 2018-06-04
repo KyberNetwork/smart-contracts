@@ -5,7 +5,7 @@ import "./ERC20Interface.sol";
 import "./KyberReserveInterface.sol";
 import "./KyberNetworkInterface.sol";
 import "./Withdrawable.sol";
-import "./Utils.sol";
+import "./Utils2.sol";
 import "./PermissionGroups.sol";
 import "./WhiteListInterface.sol";
 import "./ExpectedRateInterface.sol";
@@ -14,7 +14,7 @@ import "./FeeBurnerInterface.sol";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
-contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
+contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils2 {
 
     uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
     KyberReserveInterface[] public reserves;
@@ -22,7 +22,7 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
     WhiteListInterface public whiteListContract;
     ExpectedRateInterface public expectedRateContract;
     FeeBurnerInterface    public feeBurnerContract;
-    address               public kyberNetworkWrapper;
+    address               public kyberNetworkProxy;
     uint                  public maxGasPrice = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool                  public enabled = false; // network is enabled
     mapping(bytes32=>uint) public info; // this is only a UI field for external app.
@@ -44,7 +44,6 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
     /* solhint-enable no-complex-fallback */
 
 
-    event ExecuteTrade(address indexed trader, ERC20 src, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev trade api for kyber network.
     /// @param trader trader address.
@@ -65,11 +64,12 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         uint minConversionRate,
         address walletId
     )
-    public
-    payable
-    returns(uint)
+        public
+        payable
+        returns(uint)
     {
         require(tx.gasprice <= maxGasPrice);
+        require(msg.sender == kyberNetworkProxy);
         require(validateTradeInput(src, srcAmount, destAddress, trader));
 
         BestRateResult memory rateResult = findBestRateTokenToToken(src, dest, srcAmount);
@@ -84,8 +84,13 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
 
         (actualSrcAmount, ethAmount, actualDestAmount) = calcActualAmounts(src, dest, srcAmount, maxDestAmount, rateResult);
 
-        if ((actualSrcAmount < srcAmount) && (src == ETH_TOKEN_ADDRESS)) {
-            trader.transfer(srcAmount - actualSrcAmount);
+        if (actualSrcAmount < srcAmount) {
+            //if there is "change" send back to trader
+            if(src == ETH_TOKEN_ADDRESS) {
+                trader.transfer(srcAmount - actualSrcAmount);
+            } else {
+                src.transfer(trader, (srcAmount - actualSrcAmount));
+            }
         }
 
         // verify trade size is smaller than user cap
@@ -121,7 +126,6 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         if (src != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(ethAmount, rateResult.reserve1, walletId));
         if (dest != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(ethAmount, rateResult.reserve2, walletId));
 
-        ExecuteTrade(trader, src, dest, actualSrcAmount, actualDestAmount);
         return actualDestAmount;
     }
 
@@ -134,13 +138,13 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         uint maxDestAmount,
         uint minConversionRate,
         address walletId,
-        address[] reserveHint
+        bytes[] hint
     )
-    public
-    payable
-    returns(uint)
+        public
+        payable
+        returns(uint)
     {
-        require(reserveHint.length == 0);
+        require(hint.length == 0);
         return trade(trader, src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, walletId);
     }
 
@@ -233,24 +237,30 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         if (tokenToEth) ListReservePairs(reserve, token, ETH_TOKEN_ADDRESS, add);
     }
 
+    function setWhiteList(WhiteListInterface whiteList) public onlyAdmin {
+        require(whiteList != address(0));
+        whiteListContract = whiteList;
+    }
+
+    function setExpectedRate(ExpectedRateInterface expectedRate) public onlyAdmin {
+        require(expectedRate != address(0));
+        expectedRateContract = expectedRate;
+    }
+
+    function setFeeBurner(FeeBurnerInterface feeBurner) public onlyAdmin {
+        require(feeBurner != address(0));
+        feeBurnerContract = feeBurner;
+    }
+
     function setParams(
-        WhiteListInterface    _whiteList,
-        ExpectedRateInterface _expectedRate,
-        FeeBurnerInterface    _feeBurner,
         uint                  _maxGasPrice,
         uint                  _negligibleRateDiff
     )
-    public
-    onlyAdmin
+        public
+        onlyAdmin
     {
-        require(_whiteList != address(0));
-        require(_feeBurner != address(0));
-        require(_expectedRate != address(0));
         require(_negligibleRateDiff <= 100 * 100); // at most 100%
 
-        whiteListContract = _whiteList;
-        expectedRateContract = _expectedRate;
-        feeBurnerContract = _feeBurner;
         maxGasPrice = _maxGasPrice;
         negligibleRateDiff = _negligibleRateDiff;
     }
@@ -268,9 +278,9 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         info[field] = value;
     }
 
-    function setKyberWrapper(address wrapper) public onlyAdmin {
-        require(wrapper != address(0));
-        kyberNetworkWrapper = wrapper;
+    function setKyberProxy(address networkProxy) public onlyAdmin {
+        require(networkProxy != address(0));
+        kyberNetworkProxy = networkProxy;
     }
 
     /// @dev returns number of reserves
@@ -284,17 +294,6 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
     /// @return An array of all reserves
     function getReserves() public view returns(KyberReserveInterface[]) {
         return reserves;
-    }
-
-
-    /// @dev get the balance of a user.
-    /// @param token The token type
-    /// @return The balance
-    function getBalance(ERC20 token, address user) public view returns(uint) {
-        if (token == ETH_TOKEN_ADDRESS)
-            return user.balance;
-        else
-            return token.balanceOf(user);
     }
 
     struct BestRateResult {
@@ -318,7 +317,7 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
     }
 
     function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcAmount) internal view
-    returns(BestRateResult result)
+        returns(BestRateResult result)
     {
         (result.reserve1, result.rateSrcToEth) = searchBestRate(src, ETH_TOKEN_ADDRESS, srcAmount);
         result.ethAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcAmount, result.rateSrcToEth);
@@ -384,8 +383,8 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
     /* solhint-enable code-complexity */
 
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
-    public view
-    returns (uint expectedRate, uint slippageRate)
+        public view
+        returns (uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
         return expectedRateContract.getExpectedRate(src, dest, srcQty);
@@ -399,19 +398,23 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
     /// @return slippageRate worst expected rate for this trade.
     /// @return addresses of best reserves to perform this trade. to be used in trade API.
     function getExpectedRateWithHint(ERC20 src, ERC20 dest, uint srcQty)
-    public view
-    returns (uint expectedRate, uint slippageRate, address[4] reserveArr)
+        public view
+        returns (uint expectedRate, uint slippageRate, bytes hint)
     {
         (expectedRate, slippageRate) = getExpectedRate(src, dest, srcQty);
-        reserveArr[0] = 0;
     }
 
     function getUserCapInWei(address user) public view returns(uint) {
         return whiteListContract.getUserCapInWei(user);
     }
 
+    function getUserCapInTokenWei(address user, ERC20 token) public view returns(uint) {
+        //future feature
+        require(false);
+    }
+
     function calcActualAmounts (ERC20 src, ERC20 dest, uint srcAmount, uint maxDestAmount, BestRateResult rateResult)
-    internal view returns(uint actualSrcAmount, uint ethAmount, uint actualDestAmount)
+        internal view returns(uint actualSrcAmount, uint ethAmount, uint actualDestAmount)
     {
         if (rateResult.actualDestAmount > maxDestAmount) {
             actualDestAmount = maxDestAmount;
@@ -445,8 +448,8 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         uint conversionRate,
         bool validate
     )
-    internal
-    returns(bool)
+        internal
+        returns(bool)
     {
         uint callValue = 0;
 
@@ -459,9 +462,6 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
 
         if (src == ETH_TOKEN_ADDRESS) {
             callValue = amount;
-        } else {
-            // take src tokens to this contract
-            src.transferFrom(trader, this, amount);
         }
 
         // reserve sends tokens/eth to network. network sends it to destination
@@ -477,28 +477,6 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils {
         }
 
         return true;
-    }
-
-    function calcDestAmount(ERC20 src, ERC20 dest, uint srcAmount, uint rate) internal view returns(uint) {
-        if (src == dest) return srcAmount;
-        return calcDstQty(srcAmount, getDecimals(src), getDecimals(dest), rate);
-    }
-
-    function calcSrcAmount(ERC20 src, ERC20 dest, uint destAmount, uint rate) internal view returns(uint) {
-        return calcSrcQty(destAmount, getDecimals(src), getDecimals(dest), rate);
-    }
-
-    function calcRateFromQty(uint srcAmount, uint destQty, uint srcDecimals, uint dstDecimals) internal pure returns(uint) {
-        require(srcAmount <= MAX_QTY);
-        require(destQty <= MAX_QTY);
-
-        if (dstDecimals >= srcDecimals) {
-            require((dstDecimals - srcDecimals) <= MAX_DECIMALS);
-            return (destQty * PRECISION / ((10**(dstDecimals - srcDecimals)) * srcAmount));
-        } else {
-            require((srcDecimals - dstDecimals) <= MAX_DECIMALS);
-            return (destQty * PRECISION * (10**(srcDecimals - dstDecimals)) / srcAmount);
-        }
     }
 
     function isEnabled() public view returns (bool) {

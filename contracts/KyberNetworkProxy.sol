@@ -3,7 +3,7 @@ pragma solidity 0.4.18;
 
 import "./ERC20Interface.sol";
 import "./Withdrawable.sol";
-import "./Utils.sol";
+import "./Utils2.sol";
 import "./PermissionGroups.sol";
 import "./KyberReserveInterface.sol";
 import "./KyberNetworkInterface.sol";
@@ -11,7 +11,7 @@ import "./KyberNetworkInterface.sol";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network Wrap main contract
-contract KyberNetworkProxy is Withdrawable, Utils {
+contract KyberNetworkProxy is Withdrawable, Utils2 {
 
     KyberNetworkInterface public kyberNetworkContract;
     mapping(bytes32=>uint) public info; // this is only a UI field for external app.
@@ -44,7 +44,7 @@ contract KyberNetworkProxy is Withdrawable, Utils {
         payable
         returns(uint)
     {
-        address[] memory reserveHint = new address[](0);
+        bytes memory hint;
 
         return tradeWithHint(
             src,
@@ -54,11 +54,17 @@ contract KyberNetworkProxy is Withdrawable, Utils {
             maxDestAmount,
             minConversionRate,
             walletId,
-            reserveHint
+            hint
         );
     }
 
-    event ExecuteNetworkProxyTrade(address indexed trader, ERC20 src, ERC20 dest, uint srcAmount, uint actualDestAmount);
+    struct TradeOutcome {
+        int userDeltaSource;
+        int userDeltaDest;
+        uint userMinExpectedDeltaDest;
+    }
+
+    event ExecuteTrade(address indexed trader, ERC20 src, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev makes a trade between src and dest token and send dest token to destAddress
     /// @param src Src token
@@ -68,7 +74,7 @@ contract KyberNetworkProxy is Withdrawable, Utils {
     /// @param maxDestAmount A limit on the amount of dest tokens
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
     /// @param walletId is the wallet ID to send part of the fees
-    /// @param reserveHint will list best reserve addresses for this trade
+    /// @param hint will give hints for the trade.
     /// @return amount of actual dest tokens
     function tradeWithHint(
         ERC20 src,
@@ -78,7 +84,7 @@ contract KyberNetworkProxy is Withdrawable, Utils {
         uint maxDestAmount,
         uint minConversionRate,
         address walletId,
-        address[] reserveHint
+        bytes hint
     )
         public
         payable
@@ -87,12 +93,19 @@ contract KyberNetworkProxy is Withdrawable, Utils {
         uint userSrcBalanceBefore;
         uint userDestBalanceBefore;
 
+        uint sendVal = 0;
+
         userSrcBalanceBefore = getBalance(src, msg.sender);
-        if (src == ETH_TOKEN_ADDRESS)
-            userSrcBalanceBefore += msg.value;
         userDestBalanceBefore = getBalance(dest, destAddress);
 
-        uint actualDestAmount = kyberNetworkContract.tradeWithHint(
+        if (src == ETH_TOKEN_ADDRESS) {
+            userSrcBalanceBefore += msg.value;
+            sendVal = msg.value;
+        } else {
+            require(src.transferFrom(msg.sender, kyberNetworkContract, srcAmount));
+        }
+
+        kyberNetworkContract.tradeWithHint(
             msg.sender,
             src,
             srcAmount,
@@ -101,19 +114,40 @@ contract KyberNetworkProxy is Withdrawable, Utils {
             maxDestAmount,
             minConversionRate,
             walletId,
-            reserveHint
+            hint
         );
-        require(actualDestAmount > 0);
 
-        require(validateNoUserLoss(userSrcBalanceBefore, userDestBalanceBefore, src, dest, destAddress, minConversionRate));
+        TradeOutcome memory tradeOutcome =
+            calculateTradeOutcome(userSrcBalanceBefore, userDestBalanceBefore, src, dest, destAddress, minConversionRate);
 
-        ExecuteNetworkProxyTrade(msg.sender, src, dest, srcAmount, actualDestAmount);
-        return actualDestAmount;
+        require(tradeOutcome.userDeltaDest > 0);
+        require(tradeOutcome.userDeltaDest >= int(tradeOutcome.userMinExpectedDeltaDest));
+
+        ExecuteTrade(msg.sender, src, dest, uint(tradeOutcome.userDeltaSource), uint(tradeOutcome.userDeltaDest));
+        return uint(tradeOutcome.userDeltaDest);
+    }
+
+    function calculateTradeOutcome (uint srcBalanceBefore, uint destBalanceBefore, ERC20 src, ERC20 dest,
+        address destAddress, uint minConversionRate)
+        internal view returns(TradeOutcome outcome)
+    {
+        uint userSrcBalanceAfter;
+        uint userDestBalanceAfter;
+        userSrcBalanceAfter = getBalance(src, msg.sender);
+        userDestBalanceAfter = getBalance(dest, destAddress);
+
+        outcome.userDeltaDest = int(userDestBalanceAfter - destBalanceBefore);
+        outcome.userDeltaSource = int(srcBalanceBefore - userSrcBalanceAfter);
+
+        require(outcome.userDeltaSource > 0);
+
+        outcome.userMinExpectedDeltaDest =
+            calcDstQty(uint(outcome.userDeltaSource), getDecimals(src), getDecimals(dest), minConversionRate);
     }
 
     function validateNoUserLoss(uint srcBalanceBefore, uint destBalanceBefore, ERC20 src, ERC20 dest,
         address destAddress, uint minConversionRate)
-        internal view returns(bool)
+        internal view returns(bool userLos)
     {
         uint userSrcBalanceAfter;
         uint userDestBalanceAfter;
@@ -150,22 +184,29 @@ contract KyberNetworkProxy is Withdrawable, Utils {
         return kyberNetworkContract.getExpectedRate(src, dest, srcQty);
     }
 
-    function getExpectedRateWithHint(ERC20 src, ERC20 dest, uint srcQty)
-        public view
-        returns (uint expectedRate, uint slippageRate, address[4] reserveArr)
-    {
-        return kyberNetworkContract.getExpectedRateWithHint(src, dest, srcQty);
-    }
+//    function getExpectedRateWithHint(ERC20 src, ERC20 dest, uint srcQty)
+//        public view
+//        returns (uint expectedRate, uint slippageRate, bytes hint)
+//    {
+////        bytes memory rc;
+////        (expectedRate, slippageRate, rc) = kyberNetworkContract.getExpectedRateWithHint(src, dest, srcQty);
+//        return kyberNetworkContract.getExpectedRateWithHint(src, dest, srcQty);
+////        return(expectedRate, slippageRate, rc);
+//    }
 
     function getUserCapInWei(address user) public view returns(uint) {
         return kyberNetworkContract.getUserCapInWei(user);
+    }
+
+    function getUserCapInTokenWei(address user, ERC20 token) public view returns(uint) {
+        return kyberNetworkContract.getUserCapInTokenWei(user, token);
     }
 
     function getMaxGasPriceWei() public view returns (uint) {
         return kyberNetworkContract.maxGasPrice();
     }
 
-    function enalbed() public view returns (bool) {
+    function enabled() public view returns (bool) {
         return kyberNetworkContract.isEnabled();
     }
 
