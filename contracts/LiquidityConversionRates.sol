@@ -20,14 +20,15 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
     uint public minBuyRateInPRECISION;
     uint public maxSellRateInPRECISION;
     uint public minSellRateInPRECISION;
+    uint public maxQtyInFp;
     address public reserveContract;
 
     function LiquidityConversionRates(address _admin, ERC20 _token, address _reserveContract) public {
         transferAdminQuickly(_admin);
-        token = _token;
         reserveContract = _reserveContract;
+        token = _token;
         setDecimals(token);
-        // TODO: require that token decimals is smaller than max decimals (also from utils).
+        require(getDecimals(token) <= MAX_DECIMALS);
     }
 
     event LiquidityParamsSet(
@@ -38,6 +39,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         uint maxCapSellInFp,
         uint feeInBps,
         uint formulaPrecision,
+        uint maxQtyInFp,
         uint maxBuyRateInPRECISION,
         uint minBuyRateInPRECISION,
         uint maxSellRateInPRECISION,
@@ -59,7 +61,10 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
 
         rInFp = _rInFp;
         pMinInFp = _pMinInFp;
-        formulaPrecision = uint(1)<<_numFpBits; // TODO: require _numFpBits smaller than 256.
+        require(_numFpBits < 256);
+        formulaPrecision = uint(1)<<_numFpBits;
+        require(formulaPrecision < MAX_QTY);
+        maxQtyInFp = MAX_QTY / formulaPrecision;
         numFpBits = _numFpBits;
         maxCapBuyInFp = fromWeiToFp(_maxCapBuyInWei);
         maxCapSellInFp = fromWeiToFp(_maxCapSellInWei);
@@ -79,6 +84,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
             maxCapSellInFp,
             feeInBps,
             formulaPrecision,
+            maxQtyInFp,
             maxBuyRateInPRECISION,
             minBuyRateInPRECISION,
             maxSellRateInPRECISION,
@@ -93,13 +99,14 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
             uint qtyInSrcWei
     ) public view returns(uint) {
 
-    // TODO: require qtyInSrcWei < maxQty.
-    // TODO: deltaT, deltaE < 10^30. ??? everywhere we calculate them?
-
+        uint rateInPRECISION;
         currentBlockNumber;
 
+        require(qtyInSrcWei < MAX_QTY);
         uint eInFp = fromWeiToFp(reserveContract.balance);
-        return getRateWithE(conversionToken, buy, qtyInSrcWei, eInFp);
+        rateInPRECISION = getRateWithE(conversionToken, buy, qtyInSrcWei, eInFp);
+        require(rateInPRECISION < MAX_RATE);
+        return rateInPRECISION;
     }
 
     function recordImbalance(
@@ -131,7 +138,9 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         uint deltaEInFp;
         uint deltaTInFp;
         uint rateInPRECISION;
-        //TODO: also here - require qtyInSrcWei < maxQty (since it's public.)
+
+        require(qtyInSrcWei < MAX_QTY);
+        require(eInFp < maxQtyInFp);
 
         if (conversionToken != token) return 0;
 
@@ -159,6 +168,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         }
 
         rateInPRECISION = validateRate(rateInPRECISION, buy);
+        require(rateInPRECISION < MAX_RATE);
         return rateInPRECISION;
     }
 
@@ -179,49 +189,52 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         } else {
             return rateInPRECISION;
         }
-
-        // TODO: require smaller than MAX_RATE
     }
 
     function buyRate(uint eInFp, uint deltaEInFp) public view returns(uint) {
-        // TODO: after the call deltaTFunc - check if smaller than maxqty in precision (save in constructor maxqty in
-        // precision or divide each time, take it as constant from utils)
-        uint deltaTInFp = deltaTFunc(rInFp, pMinInFp, eInFp, deltaEInFp, formulaPrecision); 
+        require(deltaEInFp < maxQtyInFp);
+        require(eInFp < maxQtyInFp);
+        uint deltaTInFp = deltaTFunc(rInFp, pMinInFp, eInFp, deltaEInFp, formulaPrecision);
+        require(deltaTInFp < maxQtyInFp);
         deltaTInFp = reduceFee(deltaTInFp);
         return deltaTInFp * PRECISION / deltaEInFp;
     }
 
     function buyRateZeroQuantity(uint eInFp) public view returns(uint) {
+        require(eInFp < maxQtyInFp);
         return formulaPrecision * PRECISION / PE(rInFp, pMinInFp, eInFp, formulaPrecision);
     }
 
     function sellRate(uint eInFp, uint deltaTInFp) public view returns(uint rateInPRECISION, uint deltaEInFp) {
+        require(deltaTInFp < maxQtyInFp);
+        require(eInFp < maxQtyInFp);
         deltaEInFp = deltaEFunc(rInFp, pMinInFp, eInFp, deltaTInFp, formulaPrecision, numFpBits);
-                // TODO: after the call deltaEFunc - check if smaller than maxqty in precision
-                // (save in constructor maxqty in
-                // precision or divide each time, take it as constant from utils)
+        require(deltaEInFp < maxQtyInFp);
         rateInPRECISION = deltaEInFp * PRECISION / deltaTInFp;
     }
 
     function sellRateZeroQuantity(uint eInFp) public view returns(uint) {
+        require(eInFp < maxQtyInFp);
         return PE(rInFp, pMinInFp, eInFp, formulaPrecision) * PRECISION / formulaPrecision;
     }
 
     function fromTweiToFp(uint qtyInTwei) public view returns(uint) {
+        require(qtyInTwei < MAX_QTY);
         return qtyInTwei * formulaPrecision / (10 ** getDecimals(token));
     }
 
-    function fromWeiToFp(uint qtyInwei) public view returns(uint) {
-        // TODO: require that amount (input) is smaller than maxquantity 
+    function fromWeiToFp(uint qtyInwei) public view returns(uint) { 
+        require(qtyInwei < MAX_QTY);
         return qtyInwei * formulaPrecision / (10**ETH_DECIMALS);
     }
 
     function reduceFee(uint val) public view returns(uint) {
-        // TODO: require that val is smaller than maxquantity, also feeinbps if it stays public.
+        require( val < MAX_QTY);
         return ((10000 - feeInBps) * val) / 10000;
     }
 
     function calcCollectedFee(uint val) public view returns(uint) {
+        require( val < MAX_QTY);
         return val * feeInBps / (10000 - feeInBps);
     }
  
