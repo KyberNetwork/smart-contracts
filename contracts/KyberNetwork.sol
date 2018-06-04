@@ -285,21 +285,20 @@ contract KyberNetwork is Withdrawable, Utils {
         //return 1 for ether to ether
         if (src == dest) return (reserves[bestReserve], PRECISION);
 
-        address[] storage reserveArr;
+        address[] memory reserveArr;
 
         if (src == ETH_TOKEN_ADDRESS) {
             reserveArr = reservesPerTokenDest[dest];
         } else {
             reserveArr = reservesPerTokenSrc[src];
         }
-        uint numReserves = reserveArr.length;
 
-        if (numReserves == 0) return (reserves[bestReserve], bestRate);
+        if (reserveArr.length == 0) return (reserves[bestReserve], bestRate);
 
-        uint[] memory rates = new uint[](numReserves);
-        uint[] memory reserveCandidates = new uint[](numReserves);
+        uint[] memory rates = new uint[](reserveArr.length);
+        uint[] memory reserveCandidates = new uint[](reserveArr.length);
 
-        for (uint i = 0; i < numReserves; i++) {
+        for (uint i = 0; i < reserveArr.length; i++) {
             //list all reserves that have this token.
             rates[i] = (KyberReserveInterface(reserveArr[i])).getConversionRate(src, dest, srcAmount, block.number);
 
@@ -311,8 +310,9 @@ contract KyberNetwork is Withdrawable, Utils {
 
         if (bestRate > 0) {
             uint smallestRelevantRate = (bestRate * 10000) / (10000 + negligibleRateDiff);
+            uint random = 0;
 
-            for (i = 0; i < numReserves; i++) {
+            for (i = 0; i < reserveArr.length; i++) {
                 if (rates[i] >= smallestRelevantRate) {
                     reserveCandidates[numRelevantReserves++] = i;
                 }
@@ -320,10 +320,10 @@ contract KyberNetwork is Withdrawable, Utils {
 
             if (numRelevantReserves > 1) {
                 //when encountering small rate diff from bestRate. draw from relevant reserves
-                bestReserve = reserveCandidates[uint(block.blockhash(block.number-1)) % numRelevantReserves];
-            } else {
-                bestReserve = reserveCandidates[0];
+                random = (uint(block.blockhash(block.number-1))) % numRelevantReserves;
             }
+
+            bestReserve = reserveCandidates[random];
 
             bestRate = rates[bestReserve];
         }
