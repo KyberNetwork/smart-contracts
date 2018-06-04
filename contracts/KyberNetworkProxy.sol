@@ -184,16 +184,6 @@ contract KyberNetworkProxy is Withdrawable, Utils2 {
         return kyberNetworkContract.getExpectedRate(src, dest, srcQty);
     }
 
-//    function getExpectedRateWithHint(ERC20 src, ERC20 dest, uint srcQty)
-//        public view
-//        returns (uint expectedRate, uint slippageRate, bytes hint)
-//    {
-////        bytes memory rc;
-////        (expectedRate, slippageRate, rc) = kyberNetworkContract.getExpectedRateWithHint(src, dest, srcQty);
-//        return kyberNetworkContract.getExpectedRateWithHint(src, dest, srcQty);
-////        return(expectedRate, slippageRate, rc);
-//    }
-
     function getUserCapInWei(address user) public view returns(uint) {
         return kyberNetworkContract.getUserCapInWei(user);
     }

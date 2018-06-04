@@ -99,7 +99,6 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils2 {
         //do the trade
         //src to ETH
         require(doReserveTrade(
-                trader,
                 src,
                 actualSrcAmount,
                 ETH_TOKEN_ADDRESS,
@@ -111,7 +110,6 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils2 {
 
         //Eth to dest
         require(doReserveTrade(
-                trader,
                 ETH_TOKEN_ADDRESS,
                 ethAmount,
                 dest,
@@ -390,26 +388,14 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils2 {
         return expectedRateContract.getExpectedRate(src, dest, srcQty);
     }
 
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @param src source token
-    /// @param dest destination token
-    /// @param srcQty amount to be traded.
-    /// @return expectedRate best rate found for this trade and amount.
-    /// @return slippageRate worst expected rate for this trade.
-    /// @return addresses of best reserves to perform this trade. to be used in trade API.
-    function getExpectedRateWithHint(ERC20 src, ERC20 dest, uint srcQty)
-        public view
-        returns (uint expectedRate, uint slippageRate, bytes hint)
-    {
-        (expectedRate, slippageRate) = getExpectedRate(src, dest, srcQty);
-    }
-
     function getUserCapInWei(address user) public view returns(uint) {
         return whiteListContract.getUserCapInWei(user);
     }
 
     function getUserCapInTokenWei(address user, ERC20 token) public view returns(uint) {
         //future feature
+        user;
+        token;
         require(false);
     }
 
@@ -438,7 +424,6 @@ contract KyberNetwork is KyberNetworkInterface, Withdrawable, Utils2 {
     /// @param validate If true, additional validations are applicable
     /// @return true if trade is successful
     function doReserveTrade(
-        address trader,
         ERC20 src,
         uint amount,
         ERC20 dest,
