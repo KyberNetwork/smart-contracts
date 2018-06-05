@@ -23,9 +23,9 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     ExpectedRateInterface public expectedRateContract;
     FeeBurnerInterface    public feeBurnerContract;
     address               public kyberNetworkProxyContract;
-    uint                  private maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
-    bool                  private isEnabled = false; // network is enabled
-    mapping(bytes32=>uint) private infoFields; // this is only a UI field for external app.
+    uint                  public maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
+    bool                  public isEnabled = false; // network is enabled
+    mapping(bytes32=>uint) public infoFields; // this is only a UI field for external app.
     mapping(address=>address[]) public reservesPerTokenSrc; //reserves supporting token to eth
     mapping(address=>address[]) public reservesPerTokenDest;//reserves support eth to token
 
@@ -53,70 +53,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         uint minConversionRate;
         address walletId;
         bytes hint;
-    }
-
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev trade api for kyber network.
-    /// @param tradeInput structure of trade inputs
-    function trade(TradeInput tradeInput) internal returns(uint) {
-        require(isEnabled);
-        require(tx.gasprice <= maxGasPriceValue);
-        require(validateTradeInput(tradeInput.src, tradeInput.srcAmount, tradeInput.destAddress));
-
-        BestRateResult memory rateResult = findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount);
-
-        require(rateResult.rate > 0);
-        require(rateResult.rate < MAX_RATE);
-        require(rateResult.rate >= tradeInput.minConversionRate);
-
-        uint actualDestAmount;
-        uint ethAmount;
-        uint actualSrcAmount;
-
-        (actualSrcAmount, ethAmount, actualDestAmount) =
-            calcActualAmounts(tradeInput.src, tradeInput.dest, tradeInput.srcAmount, tradeInput.maxDestAmount, rateResult);
-
-        if (actualSrcAmount < tradeInput.srcAmount) {
-            //if there is "change" send back to trader
-            if (tradeInput.src == ETH_TOKEN_ADDRESS) {
-                tradeInput.trader.transfer(tradeInput.srcAmount - actualSrcAmount);
-            } else {
-                tradeInput.src.transfer(tradeInput.trader, (tradeInput.srcAmount - actualSrcAmount));
-            }
-        }
-
-        // verify trade size is smaller than user cap
-        require(ethAmount <= getUserCapInWei(tradeInput.trader));
-
-        //do the trade
-        //src to ETH
-        require(doReserveTrade(
-                tradeInput.src,
-                actualSrcAmount,
-                ETH_TOKEN_ADDRESS,
-                this,
-                ethAmount,
-                KyberReserveInterface(rateResult.reserve1),
-                rateResult.rateSrcToEth,
-                true));
-
-        //Eth to dest
-        require(doReserveTrade(
-                ETH_TOKEN_ADDRESS,
-                ethAmount,
-                tradeInput.dest,
-                tradeInput.destAddress,
-                actualDestAmount,
-                KyberReserveInterface(rateResult.reserve2),
-                rateResult.rateEthToDest,
-                true));
-
-        //when src is ether, reserve1 is doing a "fake" trade. (ether to ether) - don't burn.
-        //when dest is ether, reserve2 is doing a "fake" trade. (ether to ether) - don't burn.
-        if (tradeInput.src != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(ethAmount, rateResult.reserve1, tradeInput.walletId));
-        if (tradeInput.dest != ETH_TOKEN_ADDRESS) require(feeBurnerContract.handleFees(ethAmount, rateResult.reserve2, tradeInput.walletId));
-
-        return actualDestAmount;
     }
 
     function tradeWithHint(
@@ -153,6 +89,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     }
 
     event AddReserveToNetwork(KyberReserveInterface reserve, bool add);
+
     /// @notice can be called only by admin
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
@@ -179,6 +116,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     }
 
     event ListReservePairs(address reserve, ERC20 src, ERC20 dest, bool add);
+
     /// @notice can be called only by admin
     /// @dev allow or prevent a specific reserve to trade a pair of tokens
     /// @param reserve The reserve address.
@@ -186,7 +124,9 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     /// @param ethToToken will it support ether to token trade
     /// @param tokenToEth will it support token to ether trade
     /// @param add If true then list this pair, otherwise unlist it.
-    function listPairForReserve(address reserve, ERC20 token, bool ethToToken, bool tokenToEth, bool add) public onlyAdmin {
+    function listPairForReserve(address reserve, ERC20 token, bool ethToToken, bool tokenToEth, bool add)
+        public onlyAdmin
+    {
         require(isReserve[reserve]);
 
         if (ethToToken) {
@@ -207,32 +147,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         }
 
         setDecimals(token);
-    }
-
-    function listPairs(address reserve, ERC20 token, bool isTokenToEth, bool add) internal {
-        uint i;
-        address[] storage reserveArr = reservesPerTokenDest[token];
-
-        if (isTokenToEth) {
-            reserveArr = reservesPerTokenSrc[token];
-        }
-
-        for (i = 0; i < reserveArr.length; i++) {
-            if (reserve == reserveArr[i]) {
-                if (add) {
-                    break; //already added
-                } else {
-                    //remove
-                    reserveArr[i] = reserveArr[reserveArr.length - 1];
-                    reserveArr.length--;
-                }
-            }
-        }
-
-        if (add && i == reserveArr.length) {
-            //if reserve wasn't found add it
-            reserveArr.push(reserve);
-        }
     }
 
     function setWhiteList(WhiteListInterface whiteList) public onlyAdmin {
@@ -277,6 +191,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     }
 
     event KyberProxySet(address proxy, address sender);
+
     function setKyberProxy(address networkProxy) public onlyAdmin {
         require(networkProxy != address(0));
         kyberNetworkProxyContract = networkProxy;
@@ -320,6 +235,14 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         return(0, result.rate);
     }
 
+    function enabled() public view returns(bool) {
+        return isEnabled;
+    }
+
+    function info(bytes32 id) public view returns(uint) {
+        return infoFields[id];
+    }
+
     function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcAmount) internal view
         returns(BestRateResult result)
     {
@@ -331,6 +254,104 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
         result.rate = calcRateFromQty(srcAmount, result.destAmount, getDecimals(src), getDecimals(dest));
     }
+
+    function listPairs(address reserve, ERC20 token, bool isTokenToEth, bool add) internal {
+        uint i;
+        address[] storage reserveArr = reservesPerTokenDest[token];
+
+        if (isTokenToEth) {
+            reserveArr = reservesPerTokenSrc[token];
+        }
+
+        for (i = 0; i < reserveArr.length; i++) {
+            if (reserve == reserveArr[i]) {
+                if (add) {
+                    break; //already added
+                } else {
+                    //remove
+                    reserveArr[i] = reserveArr[reserveArr.length - 1];
+                    reserveArr.length--;
+                }
+            }
+        }
+
+        if (add && i == reserveArr.length) {
+            //if reserve wasn't found add it
+            reserveArr.push(reserve);
+        }
+    }
+
+    /* solhint-disable function-max-lines */
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev trade api for kyber network.
+    /// @param tradeInput structure of trade inputs
+    function trade(TradeInput tradeInput) internal returns(uint) {
+        require(isEnabled);
+        require(tx.gasprice <= maxGasPriceValue);
+        require(validateTradeInput(tradeInput.src, tradeInput.srcAmount, tradeInput.destAddress));
+
+        BestRateResult memory rateResult =
+        findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount);
+
+        require(rateResult.rate > 0);
+        require(rateResult.rate < MAX_RATE);
+        require(rateResult.rate >= tradeInput.minConversionRate);
+
+        uint actualDestAmount;
+        uint ethAmount;
+        uint actualSrcAmount;
+
+        (actualSrcAmount, ethAmount, actualDestAmount) = calcActualAmounts(tradeInput.src,
+            tradeInput.dest,
+            tradeInput.srcAmount,
+            tradeInput.maxDestAmount,
+            rateResult);
+
+        if (actualSrcAmount < tradeInput.srcAmount) {
+            //if there is "change" send back to trader
+            if (tradeInput.src == ETH_TOKEN_ADDRESS) {
+                tradeInput.trader.transfer(tradeInput.srcAmount - actualSrcAmount);
+            } else {
+                tradeInput.src.transfer(tradeInput.trader, (tradeInput.srcAmount - actualSrcAmount));
+            }
+        }
+
+        // verify trade size is smaller than user cap
+        require(ethAmount <= getUserCapInWei(tradeInput.trader));
+
+        //do the trade
+        //src to ETH
+        require(doReserveTrade(
+                tradeInput.src,
+                actualSrcAmount,
+                ETH_TOKEN_ADDRESS,
+                this,
+                ethAmount,
+                KyberReserveInterface(rateResult.reserve1),
+                rateResult.rateSrcToEth,
+                true));
+
+        //Eth to dest
+        require(doReserveTrade(
+                ETH_TOKEN_ADDRESS,
+                ethAmount,
+                tradeInput.dest,
+                tradeInput.destAddress,
+                actualDestAmount,
+                KyberReserveInterface(rateResult.reserve2),
+                rateResult.rateEthToDest,
+                true));
+
+        //when src is ether, reserve1 is doing a "fake" trade. (ether to ether) - don't burn.
+        //when dest is ether, reserve2 is doing a "fake" trade. (ether to ether) - don't burn.
+        if (tradeInput.src != ETH_TOKEN_ADDRESS)
+            require(feeBurnerContract.handleFees(ethAmount, rateResult.reserve1, tradeInput.walletId));
+        if (tradeInput.dest != ETH_TOKEN_ADDRESS)
+            require(feeBurnerContract.handleFees(ethAmount, rateResult.reserve2, tradeInput.walletId));
+
+        return actualDestAmount;
+    }
+    /* solhint-enable function-max-lines */
 
     /* solhint-disable code-complexity */
     //@dev this function always src or dest are ether. can't do token to token
@@ -387,25 +408,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         return (reserveArr[bestReserve], bestRate);
     }
     /* solhint-enable code-complexity */
-
-    function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
-        public view
-        returns(uint expectedRate, uint slippageRate)
-    {
-        require(expectedRateContract != address(0));
-        return expectedRateContract.getExpectedRate(src, dest, srcQty);
-    }
-
-    function getUserCapInWei(address user) public view returns(uint) {
-        return whiteListContract.getUserCapInWei(user);
-    }
-
-    function getUserCapInTokenWei(address user, ERC20 token) public view returns(uint) {
-        //future feature
-        user;
-        token;
-        return 0;
-    }
 
     function calcActualAmounts (ERC20 src, ERC20 dest, uint srcAmount, uint maxDestAmount, BestRateResult rateResult)
         internal view returns(uint actualSrcAmount, uint ethAmount, uint actualDestAmount)
@@ -470,14 +472,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         }
 
         return true;
-    }
-
-    function enabled() public view returns(bool) {
-        return isEnabled;
-    }
-
-    function info(bytes32 id) public view returns(uint) {
-        return infoFields[id];
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether

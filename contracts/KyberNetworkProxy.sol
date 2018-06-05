@@ -64,6 +64,7 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
     }
 
     event ExecuteTrade(address indexed trader, ERC20 src, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
+
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev makes a trade between src and dest token and send dest token to destAddress
     /// @param src Src token
@@ -130,6 +131,7 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
     }
 
     event KyberNetworkSet(address newNetworkContract, address oldNetworkContract);
+
     function setKyberNetworkContract(KyberNetworkInterface _kyberNetworkContract) public onlyAdmin {
 
         require(_kyberNetworkContract != address(0));

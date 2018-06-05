@@ -25,6 +25,7 @@ contract Utils2 is Utils {
         return decimals[token];
     }
 
+    /* solhint-disable no-inline-assembly */
     /// @dev notice, overrides previous implementation.
     function setDecimals(ERC20 token) internal {
         uint decimal;
@@ -34,7 +35,7 @@ contract Utils2 is Utils {
         } else {
             uint[1] memory value;
 
-            if (!address(token).call(bytes4(keccak256("decimals()")))) {
+            if (!address(token).call(bytes4(keccak256("decimals()")))) {/* solhint-disable-line avoid-low-level-calls */
                 // call failed
                 decimal = 18;
             } else {
@@ -47,6 +48,7 @@ contract Utils2 is Utils {
 
         decimals[token] = decimal;
     }
+    /* solhint-enable no-inline-assembly */
 
     function calcDestAmount(ERC20 src, ERC20 dest, uint srcAmount, uint rate) internal view returns(uint) {
         return calcDstQty(srcAmount, getDecimals(src), getDecimals(dest), rate);
@@ -56,7 +58,9 @@ contract Utils2 is Utils {
         return calcSrcQty(destAmount, getDecimals(src), getDecimals(dest), rate);
     }
 
-    function calcRateFromQty(uint srcAmount, uint destAmount, uint srcDecimals, uint dstDecimals) internal pure returns(uint) {
+    function calcRateFromQty(uint srcAmount, uint destAmount, uint srcDecimals, uint dstDecimals)
+        internal pure returns(uint)
+    {
         require(srcAmount <= MAX_QTY);
         require(destAmount <= MAX_QTY);
 
