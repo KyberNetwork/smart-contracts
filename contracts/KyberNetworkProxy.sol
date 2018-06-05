@@ -14,7 +14,6 @@ import "./KyberNetworkInterface.sol";
 contract KyberNetworkProxy is Withdrawable, Utils2 {
 
     KyberNetworkInterface public kyberNetworkContract;
-    mapping(bytes32=>uint) public info; // this is only a UI field for external app.
 
     function KyberNetworkWrapper(address _admin) public {
         require(_admin != address(0));
@@ -58,10 +57,9 @@ contract KyberNetworkProxy is Withdrawable, Utils2 {
         );
     }
 
-    struct TradeOutcome {
-        int userDeltaSource;
-        int userDeltaDest;
-        uint userMinExpectedDeltaDest;
+    struct UserBalance {
+        uint srcBalance;
+        uint destBalance;
     }
 
     event ExecuteTrade(address indexed trader, ERC20 src, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
@@ -90,22 +88,21 @@ contract KyberNetworkProxy is Withdrawable, Utils2 {
         payable
         returns(uint)
     {
-        uint userSrcBalanceBefore;
-        uint userDestBalanceBefore;
+        UserBalance memory userBalanceBefore;
 
         uint sendVal = 0;
 
-        userSrcBalanceBefore = getBalance(src, msg.sender);
-        userDestBalanceBefore = getBalance(dest, destAddress);
+        userBalanceBefore.srcBalance = getBalance(src, msg.sender);
+        userBalanceBefore.destBalance = getBalance(dest, destAddress);
 
         if (src == ETH_TOKEN_ADDRESS) {
-            userSrcBalanceBefore += msg.value;
+            userBalanceBefore.srcBalance += msg.value;
             sendVal = msg.value;
         } else {
             require(src.transferFrom(msg.sender, kyberNetworkContract, srcAmount));
         }
 
-        kyberNetworkContract.tradeWithHint(
+        kyberNetworkContract.tradeWithHint.value(sendVal)(
             msg.sender,
             src,
             srcAmount,
@@ -118,13 +115,19 @@ contract KyberNetworkProxy is Withdrawable, Utils2 {
         );
 
         TradeOutcome memory tradeOutcome =
-            calculateTradeOutcome(userSrcBalanceBefore, userDestBalanceBefore, src, dest, destAddress, minConversionRate);
+            calculateTradeOutcome(userBalanceBefore.srcBalance, userBalanceBefore.destBalance, src, dest, destAddress, minConversionRate);
 
-        require(tradeOutcome.userDeltaDest > 0);
-        require(tradeOutcome.userDeltaDest >= int(tradeOutcome.userMinExpectedDeltaDest));
+        require(tradeOutcome.userDeltaDestAmount > 0);
+        require(tradeOutcome.userDeltaDestAmount >= tradeOutcome.userMinExpectedDeltaDestAmount);
 
-        ExecuteTrade(msg.sender, src, dest, uint(tradeOutcome.userDeltaSource), uint(tradeOutcome.userDeltaDest));
-        return uint(tradeOutcome.userDeltaDest);
+        ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSourceAmount, tradeOutcome.userDeltaDestAmount);
+        return tradeOutcome.userDeltaDestAmount;
+    }
+
+    struct TradeOutcome {
+        uint userDeltaSourceAmount;
+        uint userDeltaDestAmount;
+        uint userMinExpectedDeltaDestAmount;
     }
 
     function calculateTradeOutcome (uint srcBalanceBefore, uint destBalanceBefore, ERC20 src, ERC20 dest,
@@ -133,36 +136,19 @@ contract KyberNetworkProxy is Withdrawable, Utils2 {
     {
         uint userSrcBalanceAfter;
         uint userDestBalanceAfter;
+
         userSrcBalanceAfter = getBalance(src, msg.sender);
         userDestBalanceAfter = getBalance(dest, destAddress);
 
-        outcome.userDeltaDest = int(userDestBalanceAfter - destBalanceBefore);
-        outcome.userDeltaSource = int(srcBalanceBefore - userSrcBalanceAfter);
+        outcome.userDeltaDestAmount = userDestBalanceAfter - destBalanceBefore;
+        outcome.userDeltaSourceAmount = srcBalanceBefore - userSrcBalanceAfter;
 
-        require(outcome.userDeltaSource > 0);
+        //make sure no overflow
+        require(outcome.userDeltaDestAmount < userDestBalanceAfter);
+        require(outcome.userDeltaSourceAmount < srcBalanceBefore);
 
-        outcome.userMinExpectedDeltaDest =
-            calcDstQty(uint(outcome.userDeltaSource), decimalGetterSetter(src), decimalGetterSetter(dest), minConversionRate);
-    }
-
-    function validateNoUserLoss(uint srcBalanceBefore, uint destBalanceBefore, ERC20 src, ERC20 dest,
-        address destAddress, uint minConversionRate)
-        internal view returns(bool userLos)
-    {
-        uint userSrcBalanceAfter;
-        uint userDestBalanceAfter;
-        userSrcBalanceAfter = getBalance(src, msg.sender);
-        userDestBalanceAfter = getBalance(dest, destAddress);
-
-        if(userSrcBalanceAfter >= srcBalanceBefore) return false;
-        if(userDestBalanceAfter <= destBalanceBefore) return false;
-
-        if ((userDestBalanceAfter - destBalanceBefore) <
-            calcDstQty((srcBalanceBefore - userSrcBalanceAfter), getDecimals(src), getDecimals(dest),
-                minConversionRate))
-            return false;
-
-        return true;
+        outcome.userMinExpectedDeltaDestAmount =
+            calcDstQty(outcome.userDeltaSourceAmount, decimalGetterSetter(src), decimalGetterSetter(dest), minConversionRate);
     }
 
     event KyberNetworkSet(address newNetworkContract, address oldNetworkContract);
