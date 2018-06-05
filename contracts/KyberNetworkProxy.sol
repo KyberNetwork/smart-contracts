@@ -116,27 +116,26 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
             hint
         );
 
-        tradeOutcome =
+        (tradeOutcome.userDeltaSrcAmount, tradeOutcome.userDeltaDestAmount, tradeOutcome.userMinExpectedDeltaDestAmount) =
             calculateTradeOutcome(userBalanceBefore.srcBalance, userBalanceBefore.destBalance, src, dest, destAddress, minConversionRate);
 
         require(tradeOutcome.reportedDestAmount == tradeOutcome.userDeltaDestAmount);
-        require(tradeOutcome.userDeltaDestAmount > 0);
         require(tradeOutcome.userDeltaDestAmount >= tradeOutcome.userMinExpectedDeltaDestAmount);
 
-        ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSourceAmount, tradeOutcome.userDeltaDestAmount);
+        ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcAmount, tradeOutcome.userDeltaDestAmount);
         return tradeOutcome.userDeltaDestAmount;
     }
 
     struct TradeOutcome {
         uint reportedDestAmount;
-        uint userDeltaSourceAmount;
+        uint userDeltaSrcAmount;
         uint userDeltaDestAmount;
         uint userMinExpectedDeltaDestAmount;
     }
 
     function calculateTradeOutcome (uint srcBalanceBefore, uint destBalanceBefore, ERC20 src, ERC20 dest,
         address destAddress, uint minConversionRate)
-        internal returns(TradeOutcome outcome)
+        internal returns(uint userDeltaSrcAmount, uint userDeltaDestAmount, uint userMinExpectedDeltaDestAmount)
     {
         uint userSrcBalanceAfter;
         uint userDestBalanceAfter;
@@ -144,15 +143,15 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
         userSrcBalanceAfter = getBalance(src, msg.sender);
         userDestBalanceAfter = getBalance(dest, destAddress);
 
-        outcome.userDeltaDestAmount = userDestBalanceAfter - destBalanceBefore;
-        outcome.userDeltaSourceAmount = srcBalanceBefore - userSrcBalanceAfter;
+        userDeltaDestAmount = userDestBalanceAfter - destBalanceBefore;
+        userDeltaSrcAmount = srcBalanceBefore - userSrcBalanceAfter;
 
         //make sure no overflow
-        require(outcome.userDeltaDestAmount < userDestBalanceAfter);
-        require(outcome.userDeltaSourceAmount < srcBalanceBefore);
+        require(userDeltaDestAmount <= userDestBalanceAfter);
+        require(userDeltaSrcAmount <= srcBalanceBefore);
 
-        outcome.userMinExpectedDeltaDestAmount =
-            calcDstQty(outcome.userDeltaSourceAmount, decimalGetterSetter(src), decimalGetterSetter(dest), minConversionRate);
+        userMinExpectedDeltaDestAmount =
+            calcDstQty(userDeltaSrcAmount, decimalGetterSetter(src), decimalGetterSetter(dest), minConversionRate);
     }
 
     event KyberNetworkSet(address newNetworkContract, address oldNetworkContract);

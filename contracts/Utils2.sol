@@ -6,31 +6,32 @@ import "./Utils.sol";
 
 contract Utils2 is Utils {
 
-//    function setDecimals(ERC20 token) internal {
-//        if (token == ETH_TOKEN_ADDRESS) decimals[token] = ETH_DECIMALS;
-//        else decimals[token] = betterGetDecimals(token);
-//    }
-
     function decimalGetterSetter(ERC20 token) internal returns(uint decimal) {
 
-        if (decimals[token] == 0)
-            decimals[token] = betterGetDecimals(token);
+        if (decimals[token] == 0) {
+            if (token == ETH_TOKEN_ADDRESS) decimals[token] = ETH_DECIMALS;
+            else decimals[token] = betterGetDecimals(token);
+        }
 
         return decimals[token];
     }
 
+    event betterDec(ERC20 token, uint decimals);
     function betterGetDecimals(ERC20 token) internal returns(uint) {
         uint[1] memory value;
+        uint decimals;
 
         if(!address(token).call(bytes4(keccak256("decimals()")))) {
             // call failed
-            return 18;
+            decimals = 18;
         } else {
             assembly {
                 returndatacopy(value, 0, returndatasize)
             }
-            return value[0];
+            decimals = value[0];
         }
+        betterDec(token, decimals);
+        return decimals;
     }
 
     /// @dev get the balance of a user.
