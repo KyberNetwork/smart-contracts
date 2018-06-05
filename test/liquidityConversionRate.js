@@ -268,6 +268,8 @@ contract('LiquidityConversionRates', function(accounts) {
     /////////// from here it's not only flat function testing /////////////
 
     it("should test getrate for buy=true and qtyInSrcWei = non_0.", async function () {
+        await liqConvRatesInst.enableTrade();
+
         expectedResult = priceForDeltaE(feePercent, r, Pmin, deltaE, E).mul(PRECISION).valueOf()
         qtyInSrcWei = BigNumber(deltaE).mul(weiDecimalsPrecision)
         result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,EInFp);
