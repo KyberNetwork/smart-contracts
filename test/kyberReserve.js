@@ -245,7 +245,7 @@ contract('KyberReserve', function(accounts) {
         let totalWei = 0 * 1;
         let totalExpectedTwei = 0 * 1;
 
-        for (let i = 0; i > 19; i++) {
+        for (let i = 0; i < 19; i++) {
             amountWei = (7 * i) + 1;
             let buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
 
