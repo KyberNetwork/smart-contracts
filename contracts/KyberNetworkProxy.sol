@@ -10,12 +10,12 @@ import "./KyberNetworkInterface.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// @title Kyber Network Wrap main contract
+/// @title Kyber Network proxy for main contract
 contract KyberNetworkProxy is KyberNetworkInterface, Withdrawable, Utils2 {
 
     KyberNetworkInterface public kyberNetworkContract;
 
-    function KyberNetworkWrapper(address _admin) public {
+    function KyberNetworkProxy(address _admin) public {
         require(_admin != address(0));
         admin = _admin;
     }
