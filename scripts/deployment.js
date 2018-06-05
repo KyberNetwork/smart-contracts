@@ -15,6 +15,9 @@ var tokenSymbol = [];//["OMG", "DGD", "CVC", "FUN", "MCO", "GNT", "ADX", "PAY",
 var tokenName = [];//[ "OmiseGO", "Digix", "Civic", "FunFair", "Monaco", "Golem",
 //"Adex", "TenX", "BasicAttention", "KyberNetwork", "Eos", "ChainLink" ];
 
+var internalUseTokens = []
+var listedTokens = []
+
 var tokenDecimals = [];//[18,9,8,8,8,18,4,18,18,18,18,18]
 
 var tokenInitialReserveBalance = [];
@@ -109,6 +112,9 @@ var parseInput = function( jsonInput ) {
       tokenDecimals.push(decimals);
       tokenInitialReserveBalance.push(initialBalance);
     });
+
+    internalUseTokens = jsonInput["internal use tokens"]
+    listedTokens = jsonInput["listed tokens"]
 
     // exchanges
     var exchangeInfo = jsonInput["exchanges"];
@@ -824,12 +830,21 @@ it("set eth to dgd rate", function() {
   it("print addresses", function() {
     tokensDict = {};
     console.log("\ntokens");
-    tokensDict["ETH"] = {"address" : "0x" + ethAddress.toString(16), "name" : "Ethereum", "decimals" : 18 };
+    tokensDict["ETH"] = {"address" : "0x" + ethAddress.toString(16), 
+                         "name" : "Ethereum", 
+                         "decimals" : 18,
+                         "internal use": true,
+                         "listed": true};
     for( var i = 0 ; i < tokenSymbol.length ; i++ ) {
       //console.log(tokenSymbol[i] + " : " + tokenInstance[i].address );
-      tokenDict = {"address" : tokenInstance[i].address,
-                   "name" : tokenName[i],
-                   "decimals" : tokenDecimals[i]};
+      var symbol = tokenSymbol[i].toLowerCase();
+      tokenDict = {
+        "address" : tokenInstance[i].address,
+        "name" : tokenName[i],
+        "decimals" : tokenDecimals[i],
+        "internal use": internalUseTokens.indexOf(symbol) >= 0,
+        "listed": listedTokens.indexOf(symbol) >= 0
+      };
       tokensDict[tokenSymbol[i]] = tokenDict;
     }
 
@@ -848,6 +863,7 @@ it("set eth to dgd rate", function() {
     dict["wrapper"] = wrapper.address;
     dict["feeburner"] = feeBurner.address;
     dict["KGT address"] = kgtInstance.address;
+    dict["third_party_reserves"] = [];
 
     var json = JSON.stringify(dict, null, 2);
 

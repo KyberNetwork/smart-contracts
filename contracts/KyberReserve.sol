@@ -17,6 +17,7 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
     ConversionRatesInterface public conversionRatesContract;
     SanityRatesInterface public sanityRatesContract;
     mapping(bytes32=>bool) public approvedWithdrawAddresses; // sha3(token,address)=>bool
+    mapping(address=>address) public tokenWallet;
 
     function KyberReserve(address _kyberNetwork, ConversionRatesInterface _ratesContract, address _admin) public {
         require(_admin != address(0));
@@ -86,6 +87,18 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
         WithdrawAddressApproved(token, addr, approve);
 
         setDecimals(token);
+        if((tokenWallet[token] == address(0x0)) && (token != ETH_TOKEN_ADDRESS)) {
+            tokenWallet[token] = this; // by default
+            require(token.approve(this,2**255));
+        }
+    }
+
+    event NewTokenWallet(ERC20 token, address wallet);
+
+    function setTokenWallet(ERC20 token, address wallet) public onlyAdmin {
+        require(wallet!=address(0x0));
+        tokenWallet[token] = wallet;
+        NewTokenWallet(token,wallet);
     }
 
     event WithdrawFunds(ERC20 token, uint amount, address destination);
@@ -96,7 +109,7 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
         if (token == ETH_TOKEN_ADDRESS) {
             destination.transfer(amount);
         } else {
-            require(token.transfer(destination, amount));
+            require(token.transferFrom(tokenWallet[token],destination, amount));
         }
 
         WithdrawFunds(token, amount, destination);
@@ -127,7 +140,11 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
         if (token == ETH_TOKEN_ADDRESS)
             return this.balance;
         else
-            return token.balanceOf(this);
+            address wallet = tokenWallet[token];
+            uint balanceOfWallet = token.balanceOf(wallet);
+            uint allowanceOfWallet = token.allowance(wallet,this);
+
+            return (balanceOfWallet < allowanceOfWallet) ? balanceOfWallet : allowanceOfWallet;
     }
 
     function getDestQty(ERC20 src, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {
@@ -224,14 +241,14 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
 
         // collect src tokens
         if (srcToken != ETH_TOKEN_ADDRESS) {
-            require(srcToken.transferFrom(msg.sender, this, srcAmount));
+            require(srcToken.transferFrom(msg.sender, tokenWallet[srcToken], srcAmount));
         }
 
         // send dest tokens
         if (destToken == ETH_TOKEN_ADDRESS) {
             destAddress.transfer(destAmount);
         } else {
-            require(destToken.transfer(destAddress, destAmount));
+            require(destToken.transferFrom(tokenWallet[destToken], destAddress, destAmount));
         }
 
         TradeExecute(msg.sender, srcToken, srcAmount, destToken, destAmount, destAddress);

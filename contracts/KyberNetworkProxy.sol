@@ -11,7 +11,7 @@ import "./KyberNetworkInterface.sol";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network Wrap main contract
-contract KyberNetworkProxy is Withdrawable, Utils2 {
+contract KyberNetworkProxy is KyberNetworkInterface, Withdrawable, Utils2 {
 
     KyberNetworkInterface public kyberNetworkContract;
 
@@ -102,7 +102,7 @@ contract KyberNetworkProxy is Withdrawable, Utils2 {
             require(src.transferFrom(msg.sender, kyberNetworkContract, srcAmount));
         }
 
-        kyberNetworkContract.tradeWithHint.value(sendVal)(
+        uint destAmount = kyberNetworkContract.tradeWithHint.value(sendVal)(
             msg.sender,
             src,
             srcAmount,
@@ -117,6 +117,7 @@ contract KyberNetworkProxy is Withdrawable, Utils2 {
         TradeOutcome memory tradeOutcome =
             calculateTradeOutcome(userBalanceBefore.srcBalance, userBalanceBefore.destBalance, src, dest, destAddress, minConversionRate);
 
+        require(destAmount == tradeOutcome.userDeltaDestAmount);
         require(tradeOutcome.userDeltaDestAmount > 0);
         require(tradeOutcome.userDeltaDestAmount >= tradeOutcome.userMinExpectedDeltaDestAmount);
 
@@ -179,15 +180,15 @@ contract KyberNetworkProxy is Withdrawable, Utils2 {
     }
 
     function maxGasPrice() public view returns (uint) {
-        return kyberNetworkContract.getMaxGasPriceWei();
+        return kyberNetworkContract.maxGasPrice();
     }
 
     function enabled() public view returns (bool) {
-        return kyberNetworkContract.isEnabled();
+        return kyberNetworkContract.enabled();
     }
 
     function info(bytes32 id) public view returns(uint) {
-        kyberNetworkContract.getInfo(id);
+        kyberNetworkContract.info(id);
     }
 
     /// @dev get the balance of a user.
