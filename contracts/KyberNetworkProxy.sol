@@ -12,7 +12,7 @@ import "./KyberNetworkProxyInterface.sol";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network proxy for main contract
-contract KyberNetworkProxy is KyberNetworkProxyInterface, gitWithdrawable, Utils2 {
+contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
 
     KyberNetworkInterface public kyberNetworkContract;
 
