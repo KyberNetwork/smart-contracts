@@ -58,6 +58,11 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
         );
     }
 
+    struct UserBalance {
+        uint srcBalance;
+        uint destBalance;
+    }
+
     event ExecuteTrade(address indexed trader, ERC20 src, ERC20 dest, uint actualSrcAmount, uint actualDestAmount);
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev makes a trade between src and dest token and send dest token to destAddress
@@ -84,28 +89,53 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
         payable
         returns(uint)
     {
-        TradeInput memory tradeInput;
-        tradeInput.src = src;
-        tradeInput.srcAmount = srcAmount;
-        tradeInput.dest = dest;
-        tradeInput.destAddress = destAddress;
-        tradeInput.maxDestAmount = maxDestAmount;
-        tradeInput.minConversionRate = minConversionRate;
-        tradeInput.walletId = walletId;
-        tradeInput.hint = hint;
 
-        return doTrade(tradeInput);
+        UserBalance memory userBalanceBefore;
+
+        userBalanceBefore.srcBalance = getBalance(src, msg.sender);
+        userBalanceBefore.destBalance = getBalance(dest, destAddress);
+
+        if (src == ETH_TOKEN_ADDRESS) {
+            userBalanceBefore.srcBalance += msg.value;
+        } else {
+            require(src.transferFrom(msg.sender, kyberNetworkContract, srcAmount));
+        }
+
+        uint reportedDestAmount = kyberNetworkContract.tradeWithHint.value(src == ETH_TOKEN_ADDRESS ? msg.value : 0)(
+            msg.sender,
+            src,
+            srcAmount,
+            dest,
+            destAddress,
+            maxDestAmount,
+            minConversionRate,
+            walletId,
+            hint
+        );
+
+        TradeOutcome memory tradeOutcome = calculateTradeOutcome(
+            userBalanceBefore.srcBalance,
+            userBalanceBefore.destBalance,
+            src,
+            dest,
+            destAddress,
+            minConversionRate
+        );
+
+        require(reportedDestAmount == tradeOutcome.userDeltaDestAmount);
+        require(tradeOutcome.userDeltaDestAmount >= tradeOutcome.userMinExpectedDeltaDestAmount);
+
+        ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcAmount, tradeOutcome.userDeltaDestAmount);
+        return tradeOutcome.userDeltaDestAmount;
     }
 
     event KyberNetworkSet(address newNetworkContract, address oldNetworkContract);
-    function setKyberNetworkContract(
-        KyberNetworkInterface _kyberNetworkContract
-    )
-        public
-        onlyAdmin
-    {
+    function setKyberNetworkContract(KyberNetworkInterface _kyberNetworkContract) public onlyAdmin {
+
         require(_kyberNetworkContract != address(0));
+
         KyberNetworkSet(_kyberNetworkContract, kyberNetworkContract);
+
         kyberNetworkContract = _kyberNetworkContract;
     }
 
@@ -134,66 +164,6 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
 
     function info(bytes32 id) public view returns(uint) {
         kyberNetworkContract.info(id);
-    }
-
-    struct TradeInput {
-        ERC20 src;
-        uint srcAmount;
-        ERC20 dest;
-        address destAddress;
-        uint maxDestAmount;
-        uint minConversionRate;
-        address walletId;
-        bytes hint;
-    }
-
-    struct UserBalance {
-        uint srcBalance;
-        uint destBalance;
-    }
-
-    function doTrade(TradeInput tradeInput) internal returns(uint) {
-
-        UserBalance memory userBalanceBefore;
-
-        userBalanceBefore.srcBalance = getBalance(tradeInput.src, msg.sender);
-        userBalanceBefore.destBalance = getBalance(tradeInput.dest, tradeInput.destAddress);
-
-        uint amount = 0;
-
-        if (tradeInput.src == ETH_TOKEN_ADDRESS) {
-            userBalanceBefore.srcBalance += msg.value;
-            amount = msg.value;
-        } else {
-            require(tradeInput.src.transferFrom(msg.sender, kyberNetworkContract, tradeInput.srcAmount));
-        }
-
-        amount = kyberNetworkContract.tradeWithHint.value(amount)(
-            msg.sender,
-            tradeInput.src,
-            tradeInput.srcAmount,
-            tradeInput.dest,
-            tradeInput.destAddress,
-            tradeInput.maxDestAmount,
-            tradeInput.minConversionRate,
-            tradeInput.walletId,
-            tradeInput.hint
-        );
-
-        TradeOutcome memory tradeOutcome = calculateTradeOutcome(
-            userBalanceBefore.srcBalance,
-            userBalanceBefore.destBalance,
-            tradeInput.src,
-            tradeInput.dest,
-            tradeInput.destAddress,
-            tradeInput.minConversionRate
-            );
-
-        require(amount == tradeOutcome.userDeltaDestAmount);
-        require(tradeOutcome.userDeltaDestAmount >= tradeOutcome.userMinExpectedDeltaDestAmount);
-
-        ExecuteTrade(msg.sender, tradeInput.src, tradeInput.dest, tradeOutcome.userDeltaSrcAmount, tradeOutcome.userDeltaDestAmount);
-        return tradeOutcome.userDeltaDestAmount;
     }
 
     struct TradeOutcome {
