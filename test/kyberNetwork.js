@@ -249,10 +249,11 @@ contract('KyberNetwork', function(accounts) {
         await reserve3.addAlerter(alerter);
       
         for (i = 0; i < numTokens; ++i) {
-            await reserve1.approveWithdrawAddress(tokenAdd[i],accounts[0],true);
-            await reserve2.approveWithdrawAddress(tokenAdd[i],accounts[0],true);
+            await reserve1.approveWithdrawAddress(tokenAdd[i], accounts[0], true);
+            await reserve2.approveWithdrawAddress(tokenAdd[i], accounts[0], true);
         }
-     
+        await reserve3.approveWithdrawAddress(uniqueToken.address, accounts[0], true);
+
         //set reserve balance. 10**18 wei ether + per token 10**18 wei ether value according to base rate.
         let reserveEtherInit = (new BigNumber(10)).pow(19);
         await Helper.sendEtherWithPromise(accounts[8], reserve1.address, reserveEtherInit);
@@ -1629,7 +1630,11 @@ contract('KyberNetwork', function(accounts) {
             //update balance in imbalance values
             reserve2TokenBalance[i] = new BigNumber(await tokens[i].balanceOf(reserve2.address));
             reserve2TokenImbalance[i] = new BigNumber(0);
-            reserve1TokenBalance[i] = new BigNumber(await tokens[i].balanceOf(reserve1.address));
+            if (i == 0) {
+                reserve1TokenBalance[i] = new BigNumber(await tokens[i].balanceOf(walletForToken));
+            } else {
+                reserve1TokenBalance[i] = new BigNumber(await tokens[i].balanceOf(reserve1.address));
+            }
             reserve1TokenImbalance[i] = new BigNumber(0);
 //            log(i + " reserve2TokenImbalance: " + reserve2TokenImbalance[i] + " reserve1TokenImbalance: " + reserve1TokenImbalance[i])
         }
@@ -1856,7 +1861,12 @@ contract('KyberNetwork', function(accounts) {
             assert.equal(reportedBalance.valueOf(), reserve2TokenBalance[tokenSrcInd].valueOf(), "bad token balance on reserve");
 
             //tokenDest
-            reportedBalance = await tokenDest.balanceOf(reserve1.address);
+            if (tokenDestInd != 0) {
+                reportedBalance = await tokenDest.balanceOf(reserve1.address);
+            } else {
+                reportedBalance = await tokenDest.balanceOf(walletForToken);
+            }
+
             assert.equal(reportedBalance.valueOf(), reserve1TokenBalance[tokenDestInd].valueOf(), "bad token balance on reserve");
             reportedBalance = await tokenDest.balanceOf(reserve2.address);
             assert.equal(reportedBalance.valueOf(), reserve2TokenBalance[tokenDestInd].valueOf(), "bad token balance on reserve");
@@ -1961,7 +1971,11 @@ contract('KyberNetwork', function(accounts) {
         //tokenSrc
         reserve1TokenBalance[tokenSrcInd] = reserve1TokenBalance[tokenSrcInd].add(expectedSrcTweiForWeiAmount);
         reserve1TokenImbalance[tokenSrcInd] = reserve1TokenImbalance[tokenSrcInd].sub(expectedSrcTweiForWeiAmount); //imbalance represents how many missing tokens
-        reportedBalance = await tokenSrc.balanceOf(reserve1.address);
+        if(tokenSrcInd != 0) {
+            reportedBalance = await tokenSrc.balanceOf(reserve1.address);
+        } else {
+            reportedBalance = await tokenSrc.balanceOf(walletForToken);
+        }
         assert.equal(reportedBalance.valueOf(), reserve1TokenBalance[tokenSrcInd], "bad token balance on reserve");
 
         //tokenDest
