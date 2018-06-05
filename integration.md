@@ -113,8 +113,8 @@ A typical value would be 50000000000, which stands for 50 gwei.
 The contract is currently deployed on Ethereum mainnet and Ropsten testnet.
 The mainnet contract address is [`kybernetwork.eth`](https://etherscan.io/address/kybernetwork.eth).
 
-The ropsten addresses can be found [here](https://github.com/KyberNetwork/smart-contracts/blob/ropsten/web3deployment/ropsten.json).
+The ropsten addresses can be found [here](https://github.com/KyberNetwork/smart-contracts/blob/master/web3deployment/ropsten.json).
 For wallets the relevant addresses are those of kyber network contract and the token addresses.
-The kyber network contract address can be found [here](https://github.com/KyberNetwork/smart-contracts/blob/ropsten/web3deployment/ropsten.json#L171), while the token addresses are [here](https://github.com/KyberNetwork/smart-contracts/blob/ropsten/web3deployment/ropsten.json#L2).
+The kyber network contract address can be found [here](https://github.com/KyberNetwork/smart-contracts/blob/master/web3deployment/ropsten.json#L393), while the token addresses are [here](https://github.com/KyberNetwork/smart-contracts/blob/master/web3deployment/ropsten.json#L3).
 
 The contracts source code and abi are also available at etherscan.
