@@ -390,7 +390,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
         public view
-        returns (uint expectedRate, uint slippageRate)
+        returns(uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
         return expectedRateContract.getExpectedRate(src, dest, srcQty);
@@ -472,11 +472,11 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         return true;
     }
 
-    function enabled() public view returns (bool) {
+    function enabled() public view returns(bool) {
         return isEnabled;
     }
 
-    function info(bytes32 id) public view returns (uint) {
+    function info(bytes32 id) public view returns(uint) {
         return infoFields[id];
     }
 

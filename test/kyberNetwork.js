@@ -405,7 +405,7 @@ contract('KyberNetwork', function(accounts) {
             expectedRate = calcCombinedRate(amountTwei, expectedRate, precisionUnits, tokenDecimals[tokenInd], 18, expectedAmountWei);
 
             //check correct rate calculated
-//            assert.equal(rate[0].valueOf(), expectedRate.valueOf(), "unexpected rate.");
+            assert.equal(rate[0].valueOf(), expectedRate.valueOf(), "unexpected rate.");
 
             await token.transfer(network.address, amountTwei);
 //            await token.approve(network.address, amountTwei, {from:user1})

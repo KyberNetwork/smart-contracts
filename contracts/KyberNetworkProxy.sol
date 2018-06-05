@@ -7,11 +7,12 @@ import "./Utils2.sol";
 import "./PermissionGroups.sol";
 import "./KyberReserveInterface.sol";
 import "./KyberNetworkInterface.sol";
+import "./KyberNetworkProxyInterface.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network proxy for main contract
-contract KyberNetworkProxy is KyberNetworkInterface, Withdrawable, Utils2 {
+contract KyberNetworkProxy is KyberNetworkProxyInterface, gitWithdrawable, Utils2 {
 
     KyberNetworkInterface public kyberNetworkContract;
 
@@ -89,6 +90,7 @@ contract KyberNetworkProxy is KyberNetworkInterface, Withdrawable, Utils2 {
         returns(uint)
     {
         UserBalance memory userBalanceBefore;
+        TradeOutcome memory tradeOutcome;
 
         uint sendVal = 0;
 
@@ -102,7 +104,7 @@ contract KyberNetworkProxy is KyberNetworkInterface, Withdrawable, Utils2 {
             require(src.transferFrom(msg.sender, kyberNetworkContract, srcAmount));
         }
 
-        uint destAmount = kyberNetworkContract.tradeWithHint.value(sendVal)(
+        tradeOutcome.reportedDestAmount = kyberNetworkContract.tradeWithHint.value(sendVal)(
             msg.sender,
             src,
             srcAmount,
@@ -114,10 +116,10 @@ contract KyberNetworkProxy is KyberNetworkInterface, Withdrawable, Utils2 {
             hint
         );
 
-        TradeOutcome memory tradeOutcome =
+        tradeOutcome =
             calculateTradeOutcome(userBalanceBefore.srcBalance, userBalanceBefore.destBalance, src, dest, destAddress, minConversionRate);
 
-        require(destAmount == tradeOutcome.userDeltaDestAmount);
+        require(tradeOutcome.reportedDestAmount == tradeOutcome.userDeltaDestAmount);
         require(tradeOutcome.userDeltaDestAmount > 0);
         require(tradeOutcome.userDeltaDestAmount >= tradeOutcome.userMinExpectedDeltaDestAmount);
 
@@ -126,6 +128,7 @@ contract KyberNetworkProxy is KyberNetworkInterface, Withdrawable, Utils2 {
     }
 
     struct TradeOutcome {
+        uint reportedDestAmount;
         uint userDeltaSourceAmount;
         uint userDeltaDestAmount;
         uint userMinExpectedDeltaDestAmount;
@@ -166,7 +169,7 @@ contract KyberNetworkProxy is KyberNetworkInterface, Withdrawable, Utils2 {
 
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
         public view
-        returns (uint expectedRate, uint slippageRate)
+        returns(uint expectedRate, uint slippageRate)
     {
         return kyberNetworkContract.getExpectedRate(src, dest, srcQty);
     }
@@ -179,11 +182,11 @@ contract KyberNetworkProxy is KyberNetworkInterface, Withdrawable, Utils2 {
         return kyberNetworkContract.getUserCapInTokenWei(user, token);
     }
 
-    function maxGasPrice() public view returns (uint) {
+    function maxGasPrice() public view returns(uint) {
         return kyberNetworkContract.maxGasPrice();
     }
 
-    function enabled() public view returns (bool) {
+    function enabled() public view returns(bool) {
         return kyberNetworkContract.enabled();
     }
 
