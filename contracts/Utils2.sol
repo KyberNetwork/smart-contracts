@@ -16,7 +16,6 @@ contract Utils2 is Utils {
         return decimals[token];
     }
 
-    event betterDec(ERC20 token, uint decimals);
     function betterGetDecimals(ERC20 token) internal returns(uint) {
         uint[1] memory value;
         uint decimals;
@@ -30,7 +29,7 @@ contract Utils2 is Utils {
             }
             decimals = value[0];
         }
-        betterDec(token, decimals);
+
         return decimals;
     }
 
