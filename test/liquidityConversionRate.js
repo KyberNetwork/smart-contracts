@@ -123,12 +123,10 @@ contract('LiquidityConversionRates', function(accounts) {
         reserveAddress = accounts[3];
     })
 
-    it("should init LiquidityConversionRates Inst.", async function () {
-        //create token
+    it("should init LiquidityConversionRates Inst and seeting of reserve address", async function () {
         token = await TestToken.new("test", "tst", token_decimals);
-
-        //init contracts
-        liqConvRatesInst = await LiquidityConversionRates.new(admin, token.address, reserveAddress);
+        liqConvRatesInst = await LiquidityConversionRates.new(admin, token.address);
+        liqConvRatesInst.setReserveAddress(reserveAddress)
     });
 
     it("should test abs.", async function () {
