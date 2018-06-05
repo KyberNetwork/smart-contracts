@@ -6,33 +6,6 @@ import "./Utils.sol";
 
 contract Utils2 is Utils {
 
-    function decimalGetterSetter(ERC20 token) internal returns(uint decimal) {
-
-        if (decimals[token] == 0) {
-            if (token == ETH_TOKEN_ADDRESS) decimals[token] = ETH_DECIMALS;
-            else decimals[token] = betterGetDecimals(token);
-        }
-
-        return decimals[token];
-    }
-
-    function betterGetDecimals(ERC20 token) internal returns(uint) {
-        uint[1] memory value;
-        uint decimals;
-
-        if(!address(token).call(bytes4(keccak256("decimals()")))) {
-            // call failed
-            decimals = 18;
-        } else {
-            assembly {
-                returndatacopy(value, 0, returndatasize)
-            }
-            decimals = value[0];
-        }
-
-        return decimals;
-    }
-
     /// @dev get the balance of a user.
     /// @param token The token type
     /// @return The balance
@@ -43,8 +16,39 @@ contract Utils2 is Utils {
             return token.balanceOf(user);
     }
 
+    function getDecimalsSafe(ERC20 token) internal returns(uint) {
+
+        if (decimals[token] == 0) {
+            setDecimals(token);
+        }
+
+        return decimals[token];
+    }
+
+    /// @dev notice, overrides previous implementation.
+    function setDecimals(ERC20 token) internal {
+        uint decimal;
+
+        if (token == ETH_TOKEN_ADDRESS) {
+            decimal = ETH_DECIMALS;
+        } else {
+            uint[1] memory value;
+
+            if (!address(token).call(bytes4(keccak256("decimals()")))) {
+                // call failed
+                decimal = 18;
+            } else {
+                assembly {
+                    returndatacopy(value, 0, returndatasize)
+                }
+                decimal = value[0];
+            }
+        }
+
+        decimals[token] = decimal;
+    }
+
     function calcDestAmount(ERC20 src, ERC20 dest, uint srcAmount, uint rate) internal view returns(uint) {
-        if (src == dest) return srcAmount;
         return calcDstQty(srcAmount, getDecimals(src), getDecimals(dest), rate);
     }
 
@@ -58,10 +62,10 @@ contract Utils2 is Utils {
 
         if (dstDecimals >= srcDecimals) {
             require((dstDecimals - srcDecimals) <= MAX_DECIMALS);
-            return (destAmount * PRECISION / ((10**(dstDecimals - srcDecimals)) * srcAmount));
+            return (destAmount * PRECISION / ((10 ** (dstDecimals - srcDecimals)) * srcAmount));
         } else {
             require((srcDecimals - dstDecimals) <= MAX_DECIMALS);
-            return (destAmount * PRECISION * (10**(srcDecimals - dstDecimals)) / srcAmount);
+            return (destAmount * PRECISION * (10 ** (srcDecimals - dstDecimals)) / srcAmount);
         }
     }
 }
