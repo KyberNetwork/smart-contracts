@@ -31,7 +31,7 @@ contract('WhiteList', function(accounts) {
         await whiteListInst.addOperator(operator, {from: admin});
         await whiteListInst.setSgdToEthRate(sgdToEthRateInWei, {from : operator});
 
-        kgtCategory = await whiteListInst.kgtHolderCategory();
+        kgtCategory = await whiteListInst.KGT_HOLDER_CATEGORY();
 
         // set defaultUserCapSgd SGD cap for category 0 which is the default for all users.
         await whiteListInst.setCategoryCap(0, defaultUserCapSgd, {from : operator});
