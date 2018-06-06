@@ -88,15 +88,15 @@ let compactSellArr = [];
 //////////////////////////////////////////////
 
 const e = new BigNumber("2.7182818284590452353602874713527");
-const expectedDiffInPct = new BigNumber(0.2);
+const expectedDiffInPct = new BigNumber(0.4);
 const PRECISION = BigNumber(10).pow(18);
 const precision_bits = 30;
 const precision = BigNumber(2).pow(precision_bits)
 const token_decimals = 18
 const weiDecimalsPrecision = BigNumber(10).pow(18)
 const tokenPrecision = BigNumber(10).pow(token_decimals)
-const E = 69.3167596
-const T = 1000000.02 //from Pmax
+const E = 69.3147180559
+const T = 1000000.0 //from Pmax
 const r = 0.01
 const P0 = 0.00005
 const Pmin = 0.5 * P0
@@ -104,7 +104,7 @@ const Pmax = 2 * P0
 const feePercent = 0.25
 const deltaE = 2.7
 const deltaT = 120.0
-const maxCapBuyInEth = 8
+const maxCapBuyInEth = 61
 const maxCapSellInEth = 8
 
 const EInFp = BigNumber(E).mul(precision);
@@ -265,14 +265,27 @@ contract('KyberReserve', function(accounts) {
             currentTInTokens = currentTInTwei.div(tokenPrecision)
             currentUserTokenTweiBalance = await token.balanceOf(user1);
 
+            console.log("***********" + currentEInEth.toString())
+            console.log("currentEInEth: " + currentEInEth.toString())
+            console.log("currentTInTokens: " + currentTInTokens.toString())
+
             // choose amount to trade
-            amountEth = 5.00
+            if (prevBuyRate == 0) {
+                amountEth = 50.0;
+            }
+            else {
+                amountEth = 2.0;
+            }
             amountWei = BigNumber(amountEth).mul(weiDecimalsPrecision);
 
             // get expected and actual rate
             expectedRate = priceForDeltaE(feePercent, r, Pmin, amountEth, currentEInEth).mul(PRECISION)
             expectedDestQty = calcDeltaT(r, Pmin, amountEth, currentEInEth)
             buyRate = await reserveInst.getConversionRate(ethAddress, token.address, amountWei, currentBlock);
+
+            console.log("buyRate: " + buyRate.toString())
+            expectedDestQty = calcDeltaT(r, Pmin, amountEth, currentEInEth)
+            console.log("expectedDestQty: " + expectedDestQty.toString())
 
             // expect to eventually get 0 rate when tokens are depleted or rate went lower than min buy rate. 
             if (buyRate == 0) {
@@ -314,11 +327,25 @@ contract('KyberReserve', function(accounts) {
             assert(Helper.checkAbsDiff(reportedBalance.toString(), reserveTokenBalance.toString(), expectedDiffInPct),
                     "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
         };
+
+        // calculate amount of taxes
+        //tokenTweiBalance = await token.balanceOf(user1);
+        reportedBalance = await token.balanceOf(reserveInst.address);
+        collectedFeesInTwei = await liquidityConvRatesInst.collectedFeesInTwei()
+        console.log("reportedBalance: " + reportedBalance.toString());
+        console.log("collectedFeesInTwei: " + collectedFeesInTwei.toString());
     });
 
-    return;
     it("should perform a series of sells and check: correct balances change, rate is expected rate.", async function () {
-        let prevSellRate = 0; 
+        let prevSellRate = 0;
+
+        //no need to transfer initial balance to user
+        //in the full scenario. user approves network which collects the tokens and approves reserve
+        //which collects tokens from network.
+        //so here transfer tokens to network and approve allowance from network to reserve.
+        Tx4InTwei = BigNumber(T).mul(4).mul(tokenPrecision)
+        await token.transfer(network, Tx4InTwei);
+
         while (true) {
             // get current E and T
             currentEInWei = await Helper.getBalancePromise(reserveInst.address);
@@ -327,36 +354,57 @@ contract('KyberReserve', function(accounts) {
             currentTInTokens = currentTInTwei.div(tokenPrecision)
             currentUserTokenTweiBalance = await token.balanceOf(user1);
 
+            console.log("***********")
+            console.log("currentEInEth: " + currentEInEth.toString())
+            console.log("currentTInTokens: " + currentTInTokens.toString())
+
             // choose amount to trade
-            amountTokens = 5.00
-            amountWei = BigNumber(amountEth).mul(weiDecimalsPrecision);
+            amountTokens = 50000.00
+            amountTwei = BigNumber(amountTokens).mul(tokenPrecision)
+            amountTokensAfterFees = amountTokens * (100 - feePercent) / 100;
+            //amountWei = BigNumber(amountEth).mul(weiDecimalsPrecision);
 
             // get expected and actual rate
             //priceForDeltaT(r, Pmin, deltaT, curE)
-            expectedRate = priceForDelta(feePercent, r, Pmin, amountEth, currentEInEth).mul(PRECISION)
-            expectedDestQty = calcDeltaT(r, Pmin, amountEth, currentEInEth)
-            buyRate = await reserveInst.getConversionRate(ethAddress, token.address, amountWei, currentBlock);
+            expectedRate = priceForDeltaT(r, Pmin, amountTokensAfterFees, currentEInEth).mul(PRECISION).valueOf();
+            expectedDestQty = calcDeltaE(r, Pmin, amountTokensAfterFees, currentEInEth) ;
+            sellRate = await reserveInst.getConversionRate(token.address, ethAddress, amountTwei, currentBlock);
+            //buyRate = await reserveInst.getConversionRate(ethAddress, token.address, amountWei, currentBlock);
 
+            console.log("expectedRate: " + expectedRate.toString());
+            console.log("sellRate: " + sellRate.toString());
+            console.log("expectedDestQty: " + expectedDestQty.toString());
             // expect to eventually get 0 rate when tokens are depleted or rate went lower than min buy rate. 
-            if (buyRate == 0) {
-                assert((expectedDestQty < currentTInTokens) || (BigNumber(expectedRate).lt(minBuyRateInPRECISION)),
+            if ((sellRate == 0 || sellRate == 222 || sellRate == 333)) {
+                assert((expectedDestQty < currentEInEth) || (BigNumber(expectedRate).gt(maxSellRateInPRECISION)),
                        "got 0 rate without justification ")
                 break;
             }
 
             // make sure prices are getting lower as tokens are depleted.
-            if (!prevBuyRate) {
-                prevBuyRate = buyRate;
-            } else {
-                assert(buyRate.lt(prevBuyRate));
-                prevBuyRate = buyRate;
-            }
-            assert(Helper.checkAbsDiff(buyRate, expectedRate, expectedDiffInPct),
+            //if (!prevBuyRate) {
+            //    prevBuyRate = buyRate;
+            //} else {
+            //    assert(buyRate.lt(prevBuyRate));
+            //    prevBuyRate = buyRate;
+            //}
+            assert(Helper.checkAbsDiff(sellRate, expectedRate, expectedDiffInPct),
                     "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
 
             //perform trade
-            await reserveInst.trade(ethAddress, amountWei, token.address, user1, buyRate, true, {from:network, value:amountWei});
+            console.log("tokenAdd: " + tokenAdd.toString());
+            console.log("amountTwei: " + amountTwei.toString());
+            console.log("ethAddress: " + ethAddress.toString());
+            console.log("user2: " + user2.toString());
+            console.log("sellRate: " + sellRate.toString());
+            balance = await token.balanceOf(admin);
+            console.log("balance: " + balance.toString());
+            
+            //pre trade step, approve allowance from user to network.
+            await token.approve(reserveInst.address, amountTwei, {from: network});
 
+            await reserveInst.trade(token.address, amountTwei, ethAddress, user2, sellRate, true, {from:network});
+/*
             // check reserve eth balance after the trade (got more eth) is as expected.
             expectedReserveBalanceWei = currentEInWei.add(amountWei);
             let balance = await Helper.getBalancePromise(reserveInst.address);
@@ -376,6 +424,7 @@ contract('KyberReserve', function(accounts) {
             reportedBalance = await token.balanceOf(reserveInst.address);
             assert(Helper.checkAbsDiff(reportedBalance.toString(), reserveTokenBalance.toString(), expectedDiffInPct),
                     "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
+*/
         };
     });
 
