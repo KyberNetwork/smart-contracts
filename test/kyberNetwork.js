@@ -463,7 +463,7 @@ contract('KyberNetwork', function(accounts) {
         //perform trade
         let txData = await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user1, 800, rates[1].valueOf(),
                             walletId, 0, {from:networkProxy, value:amountWei});
-        console.log('trade ether to token without randomize reserve .gasUsed: ' + txData.receipt.gasUsed);
+        console.log('trade ether to token without randomize reserve. gasUsed: ' + txData.receipt.gasUsed);
 
         //check higher ether balance on reserve 2
         expectedReserve2BalanceWei = expectedReserve2BalanceWei.add(amountWei);
@@ -515,7 +515,7 @@ contract('KyberNetwork', function(accounts) {
         //API: trade(ERC20 src, srcAmount, ERC20 dest, destAddress, maxDestAmount, minConversionRate, walletId)
         let txData = await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, ethAddress, user2, 300000, rates[1].valueOf(),
                         walletId, 0, {from:networkProxy, value:0});
-        console.log('trade token to ether without randomize reserve .gasUsed: ' + txData.receipt.gasUsed);
+        console.log('trade token to ether without randomize reserve. gasUsed: ' + txData.receipt.gasUsed);
 
         //check ether balances, reserve 1 and user2
         let expectedWeiAmount = calcDstQty(amountTwei, tokenDecimals[tokenInd], 18, sellRate1);
