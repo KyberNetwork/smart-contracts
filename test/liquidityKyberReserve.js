@@ -212,8 +212,6 @@ contract('KyberReserve', function(accounts) {
 
         reserveTokenBalance = amount;
         reserveTokenImbalance = 0;
-
-        await liquidityConvRatesInst.enableTrade();
     });
 
     it("should test getConversionRate of buy rate for zero quantity.", async function () {

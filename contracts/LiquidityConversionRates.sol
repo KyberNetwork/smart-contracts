@@ -9,7 +9,6 @@ import "./Utils.sol";
 contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula, Withdrawable, Utils {
     ERC20 public token;
     address public reserveContract;
-    bool tradeEnabled;
 
     uint public numFpBits;
     uint public formulaPrecision;
@@ -104,14 +103,6 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         );
     }
 
-    function enableTrade() public onlyAdmin {
-        tradeEnabled = true;
-    }
-
-    function disableTrade() public onlyAlerter {
-        tradeEnabled = false;
-    }
-
     function getRate(
             ERC20 conversionToken,
             uint currentBlockNumber,
@@ -121,7 +112,6 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
 
         currentBlockNumber;
 
-        if (!tradeEnabled) return 0;
         require(qtyInSrcWei < MAX_QTY);
         uint eInFp = fromWeiToFp(reserveContract.balance);
         uint rateInPrecision = getRateWithE(conversionToken, buy, qtyInSrcWei, eInFp);
