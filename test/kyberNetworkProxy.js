@@ -1858,6 +1858,42 @@ contract('KyberNetworkProxy', function(accounts) {
                      rate[0].valueOf(), walletId, {from:user1});
         await reserve1.enableTrade({from:admin});
     });
+
+    it("verify buy with malicious network steal reverts", async function () {
+        //trade data
+        let tokenInd = 2;
+        let token = tokens[tokenInd]; //choose some token
+        let amountWei = 960;
+
+        // trade with steeling reverts
+        //////////////////////////////
+
+        //set steal amount to 1 wei
+        let myFee = 1;
+        await maliciousNetwork.setMyFeeWei(myFee);
+        let rxFeeWei = await maliciousNetwork.myFeeWei();
+        assert.equal(rxFeeWei.valueOf(), myFee);
+
+        //get rate
+        let rate = await networkProxy.getExpectedRate(ethAddress, tokenAdd[tokenInd], amountWei);
+
+        //see trade reverts
+        try {
+            await networkProxy.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, 500000,
+                 rate[0].valueOf(), walletId, {from:user1, value: amountWei});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
+        }
+
+        //set steal fee to 0 and see trade success
+        await maliciousNetwork.setMyFeeWei(0);
+        rxFeeWei = await maliciousNetwork.myFeeWei();
+        assert.equal(rxFeeWei.valueOf(), 0);
+        
+        await networkProxy.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, 500000,
+                rate[0].valueOf(), walletId, {from:user1, value: amountWei});
+    });
 });
 
 function convertRateToConversionRatesRate (baseRate) {
