@@ -2415,7 +2415,6 @@ function calcSrcQty(dstQty, srcDecimals, dstDecimals, rate) {
 
 function calcCombinedRate(srcQty, sellRate, buyRate, srcDecimals, dstDecimals, destQty) {
     // calculates rate from src and expected dest amount.
-
     let rate;
 
     if (dstDecimals >= srcDecimals) {

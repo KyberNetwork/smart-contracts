@@ -3,7 +3,8 @@ pragma solidity 0.4.18;
 
 import "./ERC20Interface.sol";
 
-/// @title Kyber Reserve contract
+
+/// @title Kyber Reserve Interface
 interface KyberReserveInterface {
 
     function trade(

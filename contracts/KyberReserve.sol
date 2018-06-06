@@ -87,18 +87,18 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
         WithdrawAddressApproved(token, addr, approve);
 
         setDecimals(token);
-        if((tokenWallet[token] == address(0x0)) && (token != ETH_TOKEN_ADDRESS)) {
+        if ((tokenWallet[token] == address(0x0)) && (token != ETH_TOKEN_ADDRESS)) {
             tokenWallet[token] = this; // by default
-            require(token.approve(this,2**255));
+            require(token.approve(this, 2 ** 255));
         }
     }
 
     event NewTokenWallet(ERC20 token, address wallet);
 
     function setTokenWallet(ERC20 token, address wallet) public onlyAdmin {
-        require(wallet!=address(0x0));
+        require(wallet != address(0x0));
         tokenWallet[token] = wallet;
-        NewTokenWallet(token,wallet);
+        NewTokenWallet(token, wallet);
     }
 
     event WithdrawFunds(ERC20 token, uint amount, address destination);
@@ -109,7 +109,7 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
         if (token == ETH_TOKEN_ADDRESS) {
             destination.transfer(amount);
         } else {
-            require(token.transferFrom(tokenWallet[token],destination, amount));
+            require(token.transferFrom(tokenWallet[token], destination, amount));
         }
 
         WithdrawFunds(token, amount, destination);
@@ -119,7 +119,11 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
 
     event SetContractAddresses(address network, address rate, address sanity);
 
-    function setContracts(address _kyberNetwork, ConversionRatesInterface _conversionRates, SanityRatesInterface _sanityRates)
+    function setContracts(
+        address _kyberNetwork,
+        ConversionRatesInterface _conversionRates,
+        SanityRatesInterface _sanityRates
+    )
         public
         onlyAdmin
     {
@@ -139,12 +143,13 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
     function getBalance(ERC20 token) public view returns(uint) {
         if (token == ETH_TOKEN_ADDRESS)
             return this.balance;
-        else
+        else {
             address wallet = tokenWallet[token];
             uint balanceOfWallet = token.balanceOf(wallet);
-            uint allowanceOfWallet = token.allowance(wallet,this);
+            uint allowanceOfWallet = token.allowance(wallet, this);
 
             return (balanceOfWallet < allowanceOfWallet) ? balanceOfWallet : allowanceOfWallet;
+        }
     }
 
     function getDestQty(ERC20 src, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {

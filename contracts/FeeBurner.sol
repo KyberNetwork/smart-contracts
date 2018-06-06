@@ -92,11 +92,11 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         return true;
     }
 
-
-    // this function is callable by anyone
     event BurnAssignedFees(address indexed reserve, address sender, uint quantity);
+
     event SendTaxFee(address indexed reserve, address sender, address taxWallet, uint quantity);
 
+    // this function is callable by anyone
     function burnReserveFees(address reserve) public {
         uint burnAmount = reserveFeeToBurn[reserve];
         uint taxToSend = 0;
@@ -107,7 +107,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
             require(burnAmount - 1 > taxToSend);
             burnAmount -= taxToSend;
             if (taxToSend > 0) {
-                require (knc.transferFrom(reserveKNCWallet[reserve], taxWallet, taxToSend));
+                require(knc.transferFrom(reserveKNCWallet[reserve], taxWallet, taxToSend));
                 SendTaxFee(reserve, msg.sender, taxWallet, taxToSend);
             }
         }
