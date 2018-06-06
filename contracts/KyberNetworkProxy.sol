@@ -165,8 +165,8 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
         return kyberNetworkContract.enabled();
     }
 
-    function info(bytes32 id) public view returns(uint) {
-        kyberNetworkContract.info(id);
+    function info(bytes32 field) public view returns(uint) {
+        return kyberNetworkContract.info(field);
     }
 
     struct TradeOutcome {

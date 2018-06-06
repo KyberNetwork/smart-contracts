@@ -258,8 +258,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         return isEnabled;
     }
 
-    function info(bytes32 id) public view returns(uint) {
-        return infoFields[id];
+    function info(bytes32 field) public view returns(uint) {
+        return infoFields[field];
     }
 
     function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcAmount) internal view
