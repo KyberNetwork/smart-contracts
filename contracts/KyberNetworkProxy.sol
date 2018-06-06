@@ -90,7 +90,8 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
         payable
         returns(uint)
     {
-
+        require(src == ETH_TOKEN_ADDRESS || msg.value == 0);
+        
         UserBalance memory userBalanceBefore;
 
         userBalanceBefore.srcBalance = getBalance(src, msg.sender);
@@ -102,7 +103,7 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
             require(src.transferFrom(msg.sender, kyberNetworkContract, srcAmount));
         }
 
-        uint reportedDestAmount = kyberNetworkContract.tradeWithHint.value(src == ETH_TOKEN_ADDRESS ? msg.value : 0)(
+        uint reportedDestAmount = kyberNetworkContract.tradeWithHint.value(msg.value)(
             msg.sender,
             src,
             srcAmount,
