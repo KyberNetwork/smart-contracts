@@ -90,8 +90,8 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
         payable
         returns(uint)
     {
-        require(validateTradeInput(src, srcAmount));
-
+        require(src == ETH_TOKEN_ADDRESS || msg.value == 0);
+        
         UserBalance memory userBalanceBefore;
 
         userBalanceBefore.srcBalance = getBalance(src, msg.sender);
@@ -194,17 +194,5 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
 
         outcome.userMinExpectedDeltaDestAmount =
             calcDstQty(outcome.userDeltaSrcAmount, getDecimalsSafe(src), getDecimalsSafe(dest), minConversionRate);
-    }
-
-    function validateTradeInput(ERC20 src, uint srcAmount) internal returns(bool) {
-        if (src == ETH_TOKEN_ADDRESS) {
-            if (msg.value != srcAmount)
-                return false;
-        } else {
-            if (msg.value != 0)
-                return false;
-        }
-
-        return true;
     }
 }
