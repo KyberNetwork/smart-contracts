@@ -215,6 +215,25 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         return maxGasPriceValue;
     }
 
+    function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
+        public view
+        returns(uint expectedRate, uint slippageRate)
+    {
+        require(expectedRateContract != address(0));
+        return expectedRateContract.getExpectedRate(src, dest, srcQty);
+    }
+
+    function getUserCapInWei(address user) public view returns(uint) {
+        return whiteListContract.getUserCapInWei(user);
+    }
+
+    function getUserCapInTokenWei(address user, ERC20 token) public view returns(uint) {
+        //future feature
+        user;
+        token;
+        return 0;
+    }
+
     struct BestRateResult {
         uint rate;
         address reserve1;
