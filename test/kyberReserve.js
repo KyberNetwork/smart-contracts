@@ -241,24 +241,28 @@ contract('KyberReserve', function(accounts) {
         let tokenInd = 2;
         let token = tokens[tokenInd]; //choose some token
         let amountWei;
-        let totalWei = 0 * 1;
-        let totalExpectedTwei = 0 * 1;
+        let totalWei = 0;
+        let totalExpectedTwei = 0;
 
-        for (let i = 0; i < 19; i++) {
+        for (let i = 0; i > 19; i++) {
             amountWei = (7 * i) + 11 * 1;
             let buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
 
             //verify price/rate against set price
             let expectedRate = (new BigNumber(baseBuyRate[tokenInd]));
             //first calculate number of destination tokens according to basic rate
-            console.log("expected1" + expectedRate)
+//            console.log("expected1" + expectedRate)
             let destQty = (new BigNumber(amountWei).mul(expectedRate)).div(precisionUnits);
             let extraBps = getExtraBpsForBuyQuantity(destQty);
             expectedRate = addBps(expectedRate, extraBps);
-            console.log("expected2" + expectedRate)
+//            console.log("expected2" + expectedRate)
             extraBps = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[tokenInd].valueOf());
             expectedRate = addBps(expectedRate, extraBps);
-console.log("expected3" + expectedRate)
+//console.log("expected3" + expectedRate)
+
+            //function calculateRateAmount(isBuy, tokenInd, srcQty, maxDestAmount)
+//            let expected = calculateRateAmount(true, tokenInd, amountWei)
+//            console.log("expected from function" + expected);
             assert.equal(buyRate.valueOf(), expectedRate.valueOf(), "unexpected rate. loop: " + i);
 
             let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits);
@@ -1011,3 +1015,57 @@ function compareRates (receivedRate, expectedRate) {
     receivedRate = receivedRate - (receivedRate % 10);
     assert.equal(expectedRate, receivedRate, "different prices");
 };
+
+function calculateRateAmount(isBuy, tokenInd, srcQty, maxDestAmount) {
+    let expectedRate;
+    let expectedAmount;
+    let baseArray;
+    let imbalanceArray;
+    let expected = [];
+
+    imbalanceArray = reserveTokenImbalance;
+
+
+    if (isBuy) {
+        baseArray = baseBuyRate;
+    } else {
+        baseArray = baseSellRate;
+    }
+
+    if (isBuy) {
+        expectedRate = (new BigNumber(baseArray[tokenInd]));
+        let dstQty = calcDstQty(srcQty, 18, tokenDecimals[tokenInd], expectedRate);
+        let extraBps = getExtraBpsForBuyQuantity(dstQty);
+        expectedRate = addBps(expectedRate, extraBps);
+        let relevantImbalance = imbalanceArray[tokenInd] * 1 + dstQty * 1;
+        extraBps = getExtraBpsForImbalanceBuyQuantity(relevantImbalance);
+        expectedRate = addBps(expectedRate, extraBps);
+        expectedAmount = calcDstQty(srcQty, 18, tokenDecimals[tokenInd], expectedRate);
+    } else {
+        expectedRate = (new BigNumber(baseArray[tokenInd]));
+        let extraBps = getExtraBpsForSellQuantity(srcQty);
+        expectedRate = addBps(expectedRate, extraBps);
+        let relevantImbalance = imbalanceArray[tokenInd] - srcQty;
+        extraBps = getExtraBpsForImbalanceSellQuantity(relevantImbalance.valueOf());
+        expectedRate = addBps(expectedRate, extraBps);
+        expectedAmount = calcDstQty(srcQty, tokenDecimals[tokenInd], 18, expectedRate);
+    }
+    expectedAmount = expectedAmount.floor();
+    expectedRate = expectedRate.floor();
+
+    expected = [expectedRate, expectedAmount];
+    return expected;
+}
+
+
+function calcDstQty(srcQty, srcDecimals, dstDecimals, rate) {
+    rate = new BigNumber(rate);
+    if (dstDecimals >= srcDecimals) {
+        let decimalDiff = (new BigNumber(10)).pow(dstDecimals - srcDecimals);
+        return (rate.mul(srcQty).mul(decimalDiff).div(precisionUnits)).floor();
+    } else {
+        let decimalDiff = (new BigNumber(10)).pow(srcDecimals - dstDecimals);
+        return (rate.mul(srcQty).div(decimalDiff.mul(precisionUnits))).floor();
+    }
+}
+
