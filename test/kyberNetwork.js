@@ -2415,14 +2415,10 @@ function calcSrcQty(dstQty, srcDecimals, dstDecimals, rate) {
 
 function calcCombinedRate(srcQty, sellRate, buyRate, srcDecimals, dstDecimals, destQty) {
     let rate;
-    if (false) {
-        rate = (sellRate.mul(srcQty).div(precisionUnits).floor()).mul(buyRate).div(srcQty).floor();
+    if (dstDecimals >= srcDecimals) {
+        rate = (precisionUnits.mul(destQty)).div(((new BigNumber(10)).pow(dstDecimals - srcDecimals)).mul(srcQty));
     } else {
-        if (dstDecimals >= srcDecimals) {
-            rate = (precisionUnits.mul(destQty)).div(((new BigNumber(10)).pow(dstDecimals - srcDecimals)).mul(srcQty));
-        } else {
-            rate = (precisionUnits.mul(destQty).mul((new BigNumber(10)).pow(srcDecimals - dstDecimals))).div(srcQty);
-        }
+        rate = (precisionUnits.mul(destQty).mul((new BigNumber(10)).pow(srcDecimals - dstDecimals))).div(srcQty);
     }
     return rate.floor();
 }
