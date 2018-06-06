@@ -11,7 +11,7 @@ contract WhiteList is WhiteListInterface, Withdrawable {
     uint public weiPerSgd; // amount of weis in 1 singapore dollar
     mapping (address=>uint) public userCategory; // each user has a category defining cap on trade. 0 for standard.
     mapping (uint=>uint)    public categoryCap;  // will define cap on trade amount per category in singapore Dollar.
-    uint constant public KGT_HOLDER_CATEGORY = 2;
+    uint constant public kgtHolderCategory = 2;
     ERC20 public kgtToken;
 
     function WhiteList(address _admin, ERC20 _kgtToken) public {
@@ -52,7 +52,7 @@ contract WhiteList is WhiteListInterface, Withdrawable {
         if (category == 0) {
             //0 = default category. means category wasn't set.
             if (kgtToken.balanceOf(user) > 0) {
-                category = KGT_HOLDER_CATEGORY;
+                category = kgtHolderCategory;
             }
         }
         return category;
