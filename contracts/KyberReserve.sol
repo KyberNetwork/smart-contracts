@@ -248,7 +248,7 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
         if (destToken == ETH_TOKEN_ADDRESS) {
             destAddress.transfer(destAmount);
         } else {
-            require(destToken.transferFrom(tokenWallet[destToken],destAddress, destAmount));
+            require(destToken.transferFrom(tokenWallet[destToken], destAddress, destAmount));
         }
 
         TradeExecute(msg.sender, srcToken, srcAmount, destToken, destAmount, destAddress);
