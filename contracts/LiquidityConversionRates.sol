@@ -146,6 +146,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
 
     function getRateWithE(ERC20 conversionToken, bool buy, uint qtyInSrcWei, uint eInFp) public view returns(uint) {
         uint deltaEInFp;
+        uint sellInputQtyInFp;
         uint deltaTInFp;
         uint rateInPrecision;
 
@@ -165,13 +166,13 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
                 rateInPrecision = buyRate(eInFp, deltaEInFp);
             }
         } else {
-            deltaTInFp = fromTweiToFp(qtyInSrcWei);
-            deltaTInFp = reduceFee(deltaTInFp);
+            sellInputQtyInFp = fromTweiToFp(qtyInSrcWei);
+            deltaTInFp = reduceFee(sellInputQtyInFp);
             if (deltaTInFp == 0) {
                 rateInPrecision = sellRateZeroQuantity(eInFp);
                 deltaEInFp = 0;
             } else {
-                (rateInPrecision, deltaEInFp) = sellRate(eInFp, deltaTInFp);
+                (rateInPrecision, deltaEInFp) = sellRate(eInFp, sellInputQtyInFp, deltaTInFp);
             }
 
             if (deltaEInFp > maxEthCapSellInFp) return 0;
@@ -215,12 +216,17 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         return formulaPrecision * PRECISION / PE(rInFp, pMinInFp, eInFp, formulaPrecision);
     }
 
-    function sellRate(uint eInFp, uint deltaTInFp) public view returns(uint rateInPrecision, uint deltaEInFp) {
+    function sellRate(
+        uint eInFp,
+        uint sellInputQtyInFp,
+        uint deltaTInFp
+    ) public view returns(uint rateInPrecision, uint deltaEInFp) {
+        require(sellInputQtyInFp < maxQtyInFp);
         require(deltaTInFp < maxQtyInFp);
         require(eInFp < maxQtyInFp);
         deltaEInFp = deltaEFunc(rInFp, pMinInFp, eInFp, deltaTInFp, formulaPrecision, numFpBits);
         require(deltaEInFp < maxQtyInFp);
-        rateInPrecision = deltaEInFp * PRECISION / deltaTInFp;
+        rateInPrecision = deltaEInFp * PRECISION / sellInputQtyInFp;
     }
 
     function sellRateZeroQuantity(uint eInFp) public view returns(uint) {

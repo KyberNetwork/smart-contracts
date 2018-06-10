@@ -109,9 +109,10 @@ function priceForDeltaE(feePercent, r, Pmin, deltaE, curE) {
     return BigNumber(deltaTAfterReducedFee).div(deltaE);
 }
 
-function priceForDeltaT(r, Pmin, deltaT, curE) {
-    let deltaE = calcDeltaE(r, Pmin, deltaT, curE).abs();
-    return deltaE.div(deltaT);
+function priceForDeltaT(feePercent, r, Pmin, qtyBeforeReduce, curE) {
+    let deltaTAfterReducingFee = qtyBeforeReduce * (100 - feePercent) / 100;
+    let deltaE = calcDeltaE(r, Pmin, deltaTAfterReducingFee, curE).abs();
+    return deltaE.div(qtyBeforeReduce);
 }
 
 
@@ -231,8 +232,9 @@ contract('LiquidityConversionRates', function(accounts) {
     });
 
     it("should test calculation of sell rate for non zero quantity.", async function () {
-        expectedResult = priceForDeltaT(r, Pmin, deltaT, E).mul(PRECISION).valueOf()
-        result =  await liqConvRatesInst.sellRate(EInFp, deltaTInFp);
+        expectedResult = priceForDeltaT(feePercent, r, Pmin, deltaT, E).mul(PRECISION).valueOf()
+        deltaTAfterReducingFeeInFp = BigNumber(deltaTInFp).mul((100 - feePercent) / 100);
+        result =  await liqConvRatesInst.sellRate(EInFp, deltaTInFp, deltaTAfterReducingFeeInFp);
         result = result[0]
         assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
                "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10) +
@@ -290,8 +292,7 @@ contract('LiquidityConversionRates', function(accounts) {
 
     it("should test getrate for buy=false and qtyInSrcWei = non_0.", async function () {
         qtyInSrcWei = BigNumber(deltaT).mul(tokenPrecision)
-        deltaTAfterReducingFee = deltaT * (100 - feePercent) / 100; //reduce fee, as done in getRateWithE
-        expectedResult = priceForDeltaT(r, Pmin, deltaTAfterReducingFee, E).mul(PRECISION).valueOf()
+        expectedResult = priceForDeltaT(feePercent, r, Pmin, deltaT, E).mul(PRECISION).valueOf()
         result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,EInFp);
 
         assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
@@ -364,7 +365,7 @@ contract('LiquidityConversionRates', function(accounts) {
     it("should test max sell rate smaller then expected rate and min sell rate larger then expected rate .", async function () {
         qtyInSrcWei = BigNumber(deltaT).mul(tokenPrecision)
         deltaTAfterReducingFee = deltaT * (100 - feePercent) / 100; //reduce fee, as done in getRateWithE
-        expectedResult = priceForDeltaT(r, Pmin, deltaTAfterReducingFee, E).mul(PRECISION).valueOf()
+        expectedResult = priceForDeltaT(feePercent, r, Pmin, deltaTAfterReducingFee, E).mul(PRECISION).valueOf()
         result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,EInFp);
         got_result = result
 

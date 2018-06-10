@@ -105,7 +105,7 @@ const feePercent = 0.25
 const deltaE = 2.7
 const deltaT = 120.0
 const maxCapBuyInEth = 61
-const maxCapSellInEth = 8
+const maxCapSellInEth = 101
 
 const EInFp = BigNumber(E).mul(precision);
 const rInFp = BigNumber(r).mul(precision);
@@ -157,11 +157,11 @@ function priceForDeltaE(feePercent, r, Pmin, deltaE, curE) {
     return BigNumber(deltaTAfterReducedFee).div(deltaE);
 }
 
-function priceForDeltaT(r, Pmin, deltaT, curE) {
-    let deltaE = calcDeltaE(r, Pmin, deltaT, curE).abs();
-    return deltaE.div(deltaT);
+function priceForDeltaT(feePercent, r, Pmin, qtyBeforeReduce, curE) {
+    let deltaTAfterReducingFee = qtyBeforeReduce * (100 - feePercent) / 100;
+    let deltaE = calcDeltaE(r, Pmin, deltaTAfterReducingFee, curE).abs();
+    return deltaE.div(qtyBeforeReduce);
 }
-
 /////////////////////////////
 
 contract('KyberReserve', function(accounts) {
@@ -244,7 +244,7 @@ contract('KyberReserve', function(accounts) {
     });
 
     it("should test getConversionRate of sell rate for non zero quantity.", async function () {
-        expectedResult = priceForDeltaT(r, Pmin, deltaT, E).mul(PRECISION).valueOf()
+        expectedResult = priceForDeltaT(feePercent, r, Pmin, deltaT, E).mul(PRECISION).valueOf()
         amountWei = BigNumber(10).pow(token_decimals).mul(deltaT)
         result = await reserveInst.getConversionRate(token.address, ethAddress, amountWei, currentBlock);
 
@@ -263,9 +263,9 @@ contract('KyberReserve', function(accounts) {
             currentTInTokens = currentTInTwei.div(tokenPrecision)
             currentUserTokenTweiBalance = await token.balanceOf(user1);
 
-            console.log("***********" + currentEInEth.toString())
-            console.log("currentEInEth: " + currentEInEth.toString())
-            console.log("currentTInTokens: " + currentTInTokens.toString())
+            //console.log("***********" + currentEInEth.toString())
+            //console.log("currentEInEth: " + currentEInEth.toString())
+            //console.log("currentTInTokens: " + currentTInTokens.toString())
 
             // choose amount to trade
             if (prevBuyRate == 0) {
@@ -281,18 +281,18 @@ contract('KyberReserve', function(accounts) {
             expectedDestQty = calcDeltaT(r, Pmin, amountEth, currentEInEth)
             buyRate = await reserveInst.getConversionRate(ethAddress, token.address, amountWei, currentBlock);
 
-            console.log("buyRate: " + buyRate.toString())
+            //console.log("buyRate: " + buyRate.toString())
             expectedDestQty = calcDeltaT(r, Pmin, amountEth, currentEInEth)
-            console.log("expectedDestQty: " + expectedDestQty.toString())
+            //console.log("expectedDestQty: " + expectedDestQty.toString())
 
             // expect to eventually get 0 rate when tokens are depleted or rate went lower than min buy rate. 
-            if (buyRate == 0) {
+            if (buyRate == 0 || buyRate == 222 || buyRate == 333) {
                 assert((expectedDestQty < currentTInTokens) || (BigNumber(expectedRate).lt(minBuyRateInPRECISION)),
                        "got 0 rate without justification ")
                 break;
             }
 
-            // make sure prices are getting lower as tokens are depleted.
+            // make sure prices (tokens/eth) are getting lower as tokens are depleted.
             if (!prevBuyRate) {
                 prevBuyRate = buyRate;
             } else {
@@ -319,7 +319,7 @@ contract('KyberReserve', function(accounts) {
 
             //check reserve token balance after the trade (lost some tokens) is as expected.
             tradeActualTweiAmount = buyRate.mul(amountWei).div(PRECISION)
-            reserveTokenBalance -= tradeActualTweiAmount;
+            reserveTokenBalance = reserveTokenBalance.minus(tradeActualTweiAmount);
             reserveTokenImbalance += (tradeActualTweiAmount * 1); //imbalance represents how many missing tokens
             reportedBalance = await token.balanceOf(reserveInst.address);
             assert(Helper.checkAbsDiff(reportedBalance.toString(), reserveTokenBalance.toString(), expectedDiffInPct),
@@ -350,80 +350,110 @@ contract('KyberReserve', function(accounts) {
             currentEInEth = currentEInWei.div(weiDecimalsPrecision)
             currentTInTwei = await token.balanceOf(reserveInst.address);
             currentTInTokens = currentTInTwei.div(tokenPrecision)
-            currentUserTokenTweiBalance = await token.balanceOf(user1);
+            currentNetworkTokenTweiBalance = await token.balanceOf(network);
 
-            console.log("***********")
-            console.log("currentEInEth: " + currentEInEth.toString())
-            console.log("currentTInTokens: " + currentTInTokens.toString())
+            //console.log("***********")
+            //console.log("currentEInEth: " + currentEInEth.toString())
+            //console.log("currentTInTokens: " + currentTInTokens.toString())
 
             // choose amount to trade
-            amountTokens = 50000.00
+            if (prevSellRate == 0) {
+                amountTokens = 1900000.00
+            }
+            else {
+                amountTokens = 50000.00
+            }
+
             amountTwei = BigNumber(amountTokens).mul(tokenPrecision)
             amountTokensAfterFees = amountTokens * (100 - feePercent) / 100;
             //amountWei = BigNumber(amountEth).mul(weiDecimalsPrecision);
 
             // get expected and actual rate
             //priceForDeltaT(r, Pmin, deltaT, curE)
-            expectedRate = priceForDeltaT(r, Pmin, amountTokensAfterFees, currentEInEth).mul(PRECISION).valueOf();
+            expectedRate = priceForDeltaT(feePercent, r, Pmin, amountTokens, currentEInEth).mul(PRECISION).valueOf();
             expectedDestQty = calcDeltaE(r, Pmin, amountTokensAfterFees, currentEInEth) ;
             sellRate = await reserveInst.getConversionRate(token.address, ethAddress, amountTwei, currentBlock);
             //buyRate = await reserveInst.getConversionRate(ethAddress, token.address, amountWei, currentBlock);
 
-            console.log("expectedRate: " + expectedRate.toString());
-            console.log("sellRate: " + sellRate.toString());
-            console.log("expectedDestQty: " + expectedDestQty.toString());
+            //rateFor0 = await liquidityConvRatesInst.getRate(tokenAdd, 0, false, 0)
+            //console.log("rateFor0: " + rateFor0.toString());
+
+            //console.log("expectedRate: " + expectedRate.toString());
+            //console.log("sellRate: " + sellRate.toString());
+            //console.log("expectedDestQty: " + expectedDestQty.toString());
             // expect to eventually get 0 rate when tokens are depleted or rate went lower than min buy rate. 
             if ((sellRate == 0 || sellRate == 222 || sellRate == 333)) {
-                assert((expectedDestQty < currentEInEth) || (BigNumber(expectedRate).gt(maxSellRateInPRECISION)),
+                assert((expectedDestQty < currentEInEth) || (BigNumber(expectedRate).lt(maxSellRateInPRECISION)),
                        "got 0 rate without justification ")
                 break;
             }
 
-            // make sure prices are getting lower as tokens are depleted.
-            //if (!prevBuyRate) {
-            //    prevBuyRate = buyRate;
-            //} else {
-            //    assert(buyRate.lt(prevBuyRate));
-            //    prevBuyRate = buyRate;
-            //}
             assert(Helper.checkAbsDiff(sellRate, expectedRate, expectedDiffInPct),
                     "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
 
-            //perform trade
-            console.log("tokenAdd: " + tokenAdd.toString());
-            console.log("amountTwei: " + amountTwei.toString());
-            console.log("ethAddress: " + ethAddress.toString());
-            console.log("user2: " + user2.toString());
-            console.log("sellRate: " + sellRate.toString());
-            balance = await token.balanceOf(admin);
-            console.log("balance: " + balance.toString());
+            // make sure prices (the/token) are getting lower as ether is depleted.
+            if (!prevSellRate) {
+                prevSellRate = sellRate;
+            } else {
+                assert(sellRate.lt(prevSellRate));
+                prevSellRate = sellRate;
+            }
+
+            //console.log("tokenAdd: " + tokenAdd.toString());
+            //console.log("amountTwei: " + amountTwei.toString());
+            //console.log("ethAddress: " + ethAddress.toString());
+            //console.log("user2: " + user2.toString());
+            //console.log("sellRate: " + sellRate.toString());
+            //balance = await token.balanceOf(admin);
+            //console.log("balance: " + balance.toString());
             
             //pre trade step, approve allowance from user to network.
             await token.approve(reserveInst.address, amountTwei, {from: network});
-
             await reserveInst.trade(token.address, amountTwei, ethAddress, user2, sellRate, true, {from:network});
-/*
-            // check reserve eth balance after the trade (got more eth) is as expected.
-            expectedReserveBalanceWei = currentEInWei.add(amountWei);
-            let balance = await Helper.getBalancePromise(reserveInst.address);
-            assert.equal(balance.valueOf(), expectedReserveBalanceWei.valueOf(), "bad reserve balance wei");
 
-            //check token balance on user1 after the trade (got more tokens) is as expected. 
-            tokenTweiBalance = await token.balanceOf(user1);
-            tradeExpectedTweiAmount = expectedRate.mul(amountWei).div(PRECISION)
-            expectedTweiAmount = currentUserTokenTweiBalance.plus(tradeExpectedTweiAmount);
+            // check reserve eth balance after the trade (reserve lost some eth) is as expected.
+            tradeExpectedWeiAmount = BigNumber(expectedDestQty).mul(PRECISION).abs()
+            console.log("tradeExpectedWeiAmount: " + tradeExpectedWeiAmount.toString())
+            expectedReserveBalanceWei = currentEInWei.minus(tradeExpectedWeiAmount);
+            console.log("expectedReserveBalanceWei: " + expectedReserveBalanceWei.toString())
+            let balance = await Helper.getBalancePromise(reserveInst.address);
+            //assert.equal(balance.valueOf(), expectedReserveBalanceWei.valueOf(), "bad reserve balance wei");
+            assert(Helper.checkAbsDiff(balance, expectedReserveBalanceWei, expectedDiffInPct),
+                    "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
+
+
+            //check token balance on network after the trade (lost some tokens) is as expected. 
+            tokenTweiBalance = await token.balanceOf(network);
+            tradeExpectedTweiAmount = amountTwei;
+            expectedTweiAmount = currentNetworkTokenTweiBalance.minus(tradeExpectedTweiAmount);
+            console.log("tradeExpectedTweiAmount: " + tradeExpectedTweiAmount.toString())
+            console.log("expectedTweiAmount: " + expectedTweiAmount.toString())
+            console.log("tokenTweiBalance: " + tokenTweiBalance.toString())
             assert(Helper.checkAbsDiff(tokenTweiBalance, expectedTweiAmount, expectedDiffInPct),
                     "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
 
-            //check reserve token balance after the trade (lost some tokens) is as expected.
-            tradeActualTweiAmount = buyRate.mul(amountWei).div(PRECISION)
-            reserveTokenBalance -= tradeActualTweiAmount;
-            reserveTokenImbalance += (tradeActualTweiAmount * 1); //imbalance represents how many missing tokens
+
+            //check reserve token balance after the trade (got some tokens) is as expected.
+            tradeActualTweiAmount = amountTwei //sellRate.mul(amountWei).div(PRECISION)
+            console.log("reserveTokenBalance: " + reserveTokenBalance.toString())
+            console.log("tradeActualTweiAmount: " + tradeActualTweiAmount.toString())
+            reserveTokenBalance = reserveTokenBalance.plus(tradeActualTweiAmount);
+            console.log("reserveTokenBalance: " + reserveTokenBalance.toString())
+            //reserveTokenImbalance -= (tradeActualTweiAmount * 1); //imbalance represents how many missing tokens
             reportedBalance = await token.balanceOf(reserveInst.address);
             assert(Helper.checkAbsDiff(reportedBalance.toString(), reserveTokenBalance.toString(), expectedDiffInPct),
                     "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
-*/
+
         };
+
+        // calculate amount of taxes
+        //tokenTweiBalance = await token.balanceOf(user1);
+        //reportedBalance = await token.balanceOf(reserveInst.address);
+        collectedFeesInTwei = await liquidityConvRatesInst.collectedFeesInTwei()
+        //console.log("reportedBalance: " + reportedBalance.toString());
+        console.log("collectedFeesInTwei: " + collectedFeesInTwei.toString());
+        console.log("minSellRateInPRECISION: " + minSellRateInPRECISION.toString())
+
     });
 
     
