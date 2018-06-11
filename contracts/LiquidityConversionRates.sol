@@ -75,7 +75,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         require(_numFpBits < 256);
         formulaPrecision = uint(1)<<_numFpBits;
         require(formulaPrecision < MAX_QTY);
-        maxQtyInFp = MAX_QTY / formulaPrecision;
+        maxQtyInFp = fromWeiToFp(MAX_QTY);
         numFpBits = _numFpBits;
         maxEthCapBuyInFp = fromWeiToFp(_maxCapBuyInWei);
         maxEthCapSellInFp = fromWeiToFp(_maxCapSellInWei);
@@ -132,7 +132,14 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         currentBlock;
 
         require(msg.sender == reserveContract);
-        collectedFeesInTwei += calcCollectedFee(abs(buyAmountInTwei));
+        if (buyAmountInTwei > 0) {
+            // Buy case
+            collectedFeesInTwei += calcCollectedFee(abs(buyAmountInTwei));
+        }
+        else {
+            // Sell case
+            collectedFeesInTwei += abs(buyAmountInTwei) * feeInBps / 10000;
+        }
     }
 
     event CollectedFeesReset(uint resetFeesInTwei);
@@ -152,7 +159,6 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
 
         require(qtyInSrcWei < MAX_QTY);
         require(eInFp < maxQtyInFp);
-
         if (conversionToken != token) return 0;
 
         if (buy) {
@@ -240,7 +246,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
     }
 
     function fromWeiToFp(uint qtyInwei) public view returns(uint) { 
-        require(qtyInwei < MAX_QTY);
+        require(qtyInwei <= MAX_QTY);
         return qtyInwei * formulaPrecision / (10**ETH_DECIMALS);
     }
 

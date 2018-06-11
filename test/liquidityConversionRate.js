@@ -40,9 +40,9 @@ let BigNumber = require('bignumber.js');
 
 
 const e = new BigNumber("2.7182818284590452353602874713527");
-const expectedDiffInPct = new BigNumber(0.2);
+const expectedDiffInPct = new BigNumber(0.001);
 const PRECISION = BigNumber(10).pow(18);
-const precision_bits = 30;
+const precision_bits = 40;
 const precision = BigNumber(2).pow(precision_bits)
 const token_decimals = 18
 const weiDecimalsPrecision = BigNumber(10).pow(18)
@@ -151,16 +151,27 @@ contract('LiquidityConversionRates', function(accounts) {
         await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxBuyRateInPRECISION, minBuyRateInPRECISION, maxSellRateInPRECISION, minSellRateInPRECISION) 
     });
 
-    it("should test calculation of collected fee.", async function () {
-        //input 1458
-        //fee percent = 3.7
-        //before fees = 1458 / ((100 - 3.7)/100) = 1514.01869159
-        //expected output = 0.037 * 1514.01869159 = 3.7 * 1514.01869159
+    it("should test calculation of collected fee for buy case.", async function () {
+        await liqConvRatesInst.resetCollectedFees()
+
         input = 1458 * precision
         expectedValueBeforeReducingFee = input / ((100 - feePercent)/100)
         expectedResult = (feePercent / 100) * expectedValueBeforeReducingFee
 
-        result =  await liqConvRatesInst.calcCollectedFee(input);
+        await liqConvRatesInst.recordImbalance(token.address, input, 0, 0, {from: reserveAddress})
+        result = await liqConvRatesInst.collectedFeesInTwei()
+        assert.equal(Math.floor(result), Math.floor(expectedResult), "bad result");
+
+    });
+
+    it("should test calculation of collected fee for sell case.", async function () {
+        await liqConvRatesInst.resetCollectedFees()
+
+        input = -1458 * precision
+        expectedResult = (-input) * (feePercent / 100)
+
+        await liqConvRatesInst.recordImbalance(token.address, input, 0, 0, {from: reserveAddress})
+        result = await liqConvRatesInst.collectedFeesInTwei()
         assert.equal(Math.floor(result), Math.floor(expectedResult), "bad result");
     });
 
