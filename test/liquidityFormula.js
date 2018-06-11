@@ -58,7 +58,7 @@ contract('FeeBurner', function(accounts) {
                "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
     });
 
-    it("check P(E) and rP(E) with fixed input", async function () {
+    it("check P(E) with fixed input", async function () {
         const precisionBits = 30;
         const precision = new BigNumber(2).pow(precisionBits);
         const E = new BigNumber("45.2352");
@@ -74,15 +74,67 @@ contract('FeeBurner', function(accounts) {
 
         assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
                "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
+    });
 
-        const expectedResult2 = expectedResult.mul(r);
-        const result2 = await liquidityContract.rPE(r.mul(precision),
-                                                  Pmin.mul(precision),
-                                                  E.mul(precision),
-                                                  precision);
+    it("check deltaT with fixed input", async function () {
+        const precisionBits = 30;
+        const precision = new BigNumber(2).pow(precisionBits);
+        const E = new BigNumber("69.3147180559");
+        const deltaE = new BigNumber("10");
+        const r = new BigNumber("0.01");
+        const Pmin = new BigNumber("0.000025");
 
+
+        const pe = Helper.exp(e,r.mul(E)).mul(Pmin).mul(precision);
+        const pdelta = (Helper.exp(e,r.mul(deltaE).mul(-1)).sub(1)).mul(precision);
+
+
+        const expectedResult = pdelta.div(pe.mul(r)).mul(precision).mul(-1);
+        const result = await liquidityContract.deltaTFunc(r.mul(precision),
+                                                          Pmin.mul(precision),
+                                                          E.mul(precision),
+                                                          deltaE.mul(precision),
+                                                          precision);
+
+        console.log(result.div(precision).toString(10));
+        console.log(expectedResult.div(precision).toString(10));
+
+        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
+               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
+
+                                                      /*
         assert(Helper.checkAbsDiff(expectedResult2,result2,expectedDiffInPct),
-               "exp result diff is " + Helper.absDiff(expectedResult2,result2).toString(10));
+               "exp result diff is " + Helper.absDiff(expectedResult2,result2).toString(10));*/
+    });
+
+    it("check deltaE with fixed input", async function () {
+        const precisionBits = 30;
+        const precision = new BigNumber(2).pow(precisionBits);
+        const E = new BigNumber("69.3147180559");
+        const deltaT = new BigNumber("10.123").mul(10000);
+        const r = new BigNumber("0.01");
+        const Pmin = new BigNumber("0.000025");
+
+
+        const pe = Helper.exp(e,r.mul(E)).mul(Pmin);
+        const lnPart = Helper.ln((r.mul(deltaT).mul(pe)).add(1));
+        const expectedResult = (lnPart.div(r)).mul(precision);
+        const result = await liquidityContract.deltaEFunc(r.mul(precision),
+                                                          Pmin.mul(precision),
+                                                          E.mul(precision),
+                                                          deltaT.mul(precision),
+                                                          precision,
+                                                          precisionBits);
+
+        console.log(result.div(precision).toString(10));
+        console.log(expectedResult.div(precision).toString(10));
+
+        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
+               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
+
+                                                      /*
+        assert(Helper.checkAbsDiff(expectedResult2,result2,expectedDiffInPct),
+               "exp result diff is " + Helper.absDiff(expectedResult2,result2).toString(10));*/
     });
 
 

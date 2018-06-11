@@ -126,31 +126,31 @@ contract LiquidityFormula is Exponent {
         return Pmin*expRE / precision;
     }
 
-    function rPE(uint r,uint Pmin,uint E,uint precision) pure public returns(uint) {
-        uint PEValue = PE(r,Pmin,E,precision);
-        require(!checkMultOverflow(r,PEValue));
-        return r*PEValue / precision;
-    }
-
     function deltaTFunc(uint r,uint Pmin,uint E,uint deltaE,uint precision) pure public returns(uint) {
-        uint rpe = rPE(r,Pmin,E,precision);
+        uint pe = PE(r,Pmin,E,precision);
+        uint rpe = r * pe;
         uint erdeltaE = exp(r*deltaE,precision*precision,precision);
 
         require(erdeltaE >= precision);
         require(!checkMultOverflow(erdeltaE - precision,precision));
         require(!checkMultOverflow((erdeltaE - precision)*precision,precision));
+        require(!checkMultOverflow((erdeltaE - precision)*precision*precision,precision));
         require(!checkMultOverflow(rpe,erdeltaE));
+        require(!checkMultOverflow(r,pe));
 
-        return (erdeltaE - precision) * precision * precision / (rpe*erdeltaE);
+        return (erdeltaE - precision) * precision * precision * precision / (rpe*erdeltaE);
     }
 
     function deltaEFunc(uint r,uint Pmin,uint E,uint deltaT,uint precision,uint numPrecisionBits) pure public returns(uint) {
-        uint rpe = rPE(r,Pmin,E,precision);
-        uint lnPart = ln(precision*precision + rpe*deltaT,precision*precision,numPrecisionBits);
+        uint pe = PE(r,Pmin,E,precision);
+        uint rpe = r * pe;
+        uint lnPart = ln(precision*precision + rpe*deltaT/precision,precision*precision,numPrecisionBits);
 
+        require(!checkMultOverflow(r,pe));
+        require(!checkMultOverflow(precision,precision));
+        require(!checkMultOverflow(rpe,deltaT));
         require(!checkMultOverflow(lnPart,precision));
 
         return lnPart * precision / r;
     }
-
 }
