@@ -148,7 +148,7 @@ contract('LiquidityConversionRates', function(accounts) {
     });
 
     it("should set liquidity params", async function () {
-        await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxBuyRateInPRECISION, minBuyRateInPRECISION, maxSellRateInPRECISION, minSellRateInPRECISION) 
+        await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPRECISION, minSellRateInPRECISION) 
     });
 
     it("should test calculation of collected fee for buy case.", async function () {
@@ -326,11 +326,11 @@ contract('LiquidityConversionRates', function(accounts) {
     it("should test set liquidity params with illegal fee in BPS configuration.", async function () {
         //try once to see it's working
         let currentFeeInBps = feeInBps
-        await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, currentFeeInBps, maxBuyRateInPRECISION, minBuyRateInPRECISION, maxSellRateInPRECISION, minSellRateInPRECISION)
+        await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, currentFeeInBps, maxSellRateInPRECISION, minSellRateInPRECISION)
 
         currentFeeInBps = 10001
         try {
-            await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, currentFeeInBps, maxBuyRateInPRECISION, minBuyRateInPRECISION, maxSellRateInPRECISION, minSellRateInPRECISION) 
+            await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, currentFeeInBps, maxSellRateInPRECISION, minSellRateInPRECISION) 
             assert(false, "expected to throw error in line above.")
         }
         catch(e){
@@ -344,33 +344,6 @@ contract('LiquidityConversionRates', function(accounts) {
         qtyInSrcWei = BigNumber(deltaE).mul(weiDecimalsPrecision)
         result =  await liqConvRatesInst.getRateWithE(other_token.address,true,qtyInSrcWei,EInFp);
         assert.equal(result, 0, "bad result");
-    });
-
-    it("should test max buy rate smaller then expected rate and min buy rate larger then expected rate .", async function () {
-        expectedResult = priceForDeltaE(feePercent, r, Pmin, deltaE, E).mul(PRECISION).valueOf()
-        qtyInSrcWei = BigNumber(deltaE).mul(weiDecimalsPrecision)
-        result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,EInFp);
-        got_result = result
-
-        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
-               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10) +
-               " actual result diff in percents is " + Helper.absDiffInPercent(expectedResult,result).toString(10));
-        assert.notEqual(result, 0, "bad result");
-
-        let currentMaxBuyRateInPRECISION = got_result.minus(100)
-        let currentMinBuyRateInPRECISION = minBuyRateInPRECISION
-        await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, currentMaxBuyRateInPRECISION, minBuyRateInPRECISION, maxSellRateInPRECISION, minSellRateInPRECISION)
-        result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,EInFp);
-        assert.equal(result, 0, "bad result");
-
-        currentMaxBuyRateInPRECISION = maxBuyRateInPRECISION
-        currentMinBuyRateInPRECISION = got_result.plus(100)
-        await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, currentMaxBuyRateInPRECISION, currentMinBuyRateInPRECISION, maxSellRateInPRECISION, minSellRateInPRECISION)
-        result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,EInFp);
-        assert.equal(result, 0, "bad result");
-
-        //return things to normal
-        await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxBuyRateInPRECISION, minBuyRateInPRECISION, maxSellRateInPRECISION, minSellRateInPRECISION)
     });
 
     it("should test max sell rate smaller then expected rate and min sell rate larger then expected rate .", async function () {
@@ -387,18 +360,18 @@ contract('LiquidityConversionRates', function(accounts) {
 
         let currentMaxSellRateInPRECISION = got_result.minus(100)
         let currentMinSellRateInPRECISION = minSellRateInPRECISION
-        await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxBuyRateInPRECISION, minBuyRateInPRECISION, currentMaxSellRateInPRECISION, currentMinSellRateInPRECISION)
+        await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, currentMaxSellRateInPRECISION, currentMinSellRateInPRECISION)
         result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,EInFp);
         assert.equal(result, 0, "bad result");
 
         currentMaxSellRateInPRECISION = maxSellRateInPRECISION
         currentMinSellRateInPRECISION = got_result.plus(100)
-        await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxBuyRateInPRECISION, minBuyRateInPRECISION, currentMaxSellRateInPRECISION, currentMinSellRateInPRECISION)
+        await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, currentMaxSellRateInPRECISION, currentMinSellRateInPRECISION)
         result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,EInFp);
         assert.equal(result, 0, "bad result");
 
         //return things to normal
-        await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxBuyRateInPRECISION, minBuyRateInPRECISION, maxSellRateInPRECISION, minSellRateInPRECISION)
+        await liqConvRatesInst.setLiquidityParams(rInFp, PminInFp, numFpBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPRECISION, minSellRateInPRECISION)
     });
 
     it("should test exceeding max cap buy", async function () {

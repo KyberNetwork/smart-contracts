@@ -159,8 +159,6 @@ contract('KyberReserve', function(accounts) {
                 maxCapBuyInWei,
                 maxCapSellInWei,
                 feeInBps,
-                maxBuyRateInPrecision,
-                minBuyRateInPrecision,
                 maxSellRateInPrecision,
                 minSellRateInPrecision
             ) 
@@ -220,7 +218,7 @@ contract('KyberReserve', function(accounts) {
         assertAbsDiff(expectedResult, result, expectedDiffInPct);
     });
 
-    it("should perform a series of buys and check: correct balances change, rate is expected rate.", async function () {
+    it("should perform a series of buys and check: correct balances change, rates and fees as expected.", async function () {
         let prevBuyRate = 0;
         let amountEth, amountWei;
         let buyRate, expectedRate;
@@ -296,7 +294,7 @@ contract('KyberReserve', function(accounts) {
         assert(iterations > 3, "not enough iterations, bad run");
     });
 
-    it("should perform a series of sells and check: correct balances change, rate is expected rate.", async function () {
+    it("should perform a series of sells and check: correct balances change, rates and fees as expected.", async function () {
         let prevSellRate = 0;
         let iterations = 0;
         let amountTokens, amountTwei, amountTokensAfterFees;
