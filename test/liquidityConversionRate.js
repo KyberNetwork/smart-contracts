@@ -304,6 +304,16 @@ contract('LiquidityConversionRates', function(accounts) {
         assert.equal(result, expectedResult, "bad result");
     });
 
+    it("should test resetting of imbalance not by admin.", async function () {
+        try {
+            await liqConvRatesInst.resetCollectedFees({from:operator})
+            assert(false, "expected to throw error in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
     it("should test getrate for buy=true and qtyInSrcWei = non_0.", async function () {
         let expectedResult = priceForDeltaE(feePercent, r, pMin, deltaE, e0).mul(precision).valueOf()
         let qtyInSrcWei = BigNumber(deltaE).mul(precision)
@@ -330,6 +340,20 @@ contract('LiquidityConversionRates', function(accounts) {
         let qtyInSrcWei = 0
         let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
         assertAbsDiff(result, expectedResult, expectedDiffInPct)
+    });
+
+    it("should test set liquidity params not as admin.", async function () {
+        //try once to see it's working
+        await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision, {from: admin})
+
+        currentFeeInBps = 10001
+        try {
+            await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision, {from: operator}) 
+            assert(false, "expected to throw error in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
     });
 
     it("should test set liquidity params with illegal fee in BPS configuration.", async function () {
