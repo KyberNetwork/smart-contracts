@@ -45,8 +45,8 @@ contract Exponent {
 
             (currentP, currentQ) = compactFraction(currentP, currentQ, precision);
         }
-
     }
+    /* solhint-enable code-complexity */
 
     function countLeadingZeros(uint p, uint q) public pure returns (uint) {
         uint denomator = (uint(1)<<255);
