@@ -133,8 +133,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         if (buyAmountInTwei > 0) {
             // Buy case
             collectedFeesInTwei += calcCollectedFee(abs(buyAmountInTwei));
-        }
-        else {
+        } else {
             // Sell case
             collectedFeesInTwei += abs(buyAmountInTwei) * feeInBps / 10000;
         }
