@@ -67,7 +67,7 @@ contract('FeeBurner', function(accounts) {
 
         // P(E) = Pmin * e^(rE)
         const expectedResult = Helper.exp(e,r.mul(E)).mul(Pmin).mul(precision);
-        const result = await liquidityContract.PE(r.mul(precision),
+        const result = await liquidityContract.pE(r.mul(precision),
                                                   Pmin.mul(precision),
                                                   E.mul(precision),
                                                   precision);

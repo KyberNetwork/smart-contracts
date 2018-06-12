@@ -57,7 +57,6 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
     {
         require(tradeEnabled);
         require(msg.sender == kyberNetwork);
-
         require(doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate));
 
         return true;

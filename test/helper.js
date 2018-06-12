@@ -58,6 +58,10 @@ module.exports.absDiff = function(num1, num2) {
     return _absDiff(num1,num2);
 }
 
+module.exports.absDiffInPercent = function(num1, num2) {
+    return (_absDiff(num1,num2).div(num1)).mul(100)
+}
+
 module.exports.checkAbsDiff = function(num1, num2, maxDiffInPercentage) {
     const maxDiffBig = new BigNumber(maxDiffInPercentage);
     const diff = _absDiff(num1,num2);
