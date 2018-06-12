@@ -389,7 +389,7 @@ contract('LiquidityConversionRates', function(accounts) {
 
     it("should test exceeding max cap sell", async function () {
         let qtyInSrcWei = BigNumber(maxCapSellInEth + 1.0).mul(precision)
-        let result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,eInFp);
+        let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
         assert.equal(result, 0, "bad result");
     });
 
