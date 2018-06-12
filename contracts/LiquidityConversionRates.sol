@@ -216,7 +216,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
 
     function buyRateZeroQuantity(uint eInFp) public view returns(uint) {
         require(eInFp <= maxQtyInFp);
-        return formulaPrecision * PRECISION / PE(rInFp, pMinInFp, eInFp, formulaPrecision);
+        return formulaPrecision * PRECISION / pE(rInFp, pMinInFp, eInFp, formulaPrecision);
     }
 
     function sellRate(
@@ -234,7 +234,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
 
     function sellRateZeroQuantity(uint eInFp) public view returns(uint) {
         require(eInFp <= maxQtyInFp);
-        return PE(rInFp, pMinInFp, eInFp, formulaPrecision) * PRECISION / formulaPrecision;
+        return pE(rInFp, pMinInFp, eInFp, formulaPrecision) * PRECISION / formulaPrecision;
     }
 
     function fromTweiToFp(uint qtyInTwei) public view returns(uint) {
