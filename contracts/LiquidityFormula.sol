@@ -1,7 +1,7 @@
 pragma solidity 0.4.18;
 
 
-contract Exponent {
+contract UtilMath {
     uint public constant BIG_NUMBER = (uint(1)<<uint(200));
 
     function checkMultOverflow(uint x, uint y) public pure returns(bool) {
@@ -85,7 +85,7 @@ contract Exponent {
         return res;
     }
 
-    function logOf2 (uint p, uint q, uint numPrecisionBits) public pure returns (uint) {
+    function logBase2 (uint p, uint q, uint numPrecisionBits) public pure returns (uint) {
         uint n = 0;
         uint precision = (uint(1)<<numPrecisionBits);
 
@@ -110,7 +110,7 @@ contract Exponent {
         uint ln2Numerator   = 6931471805599453094172;
         uint ln2Denomerator = 10000000000000000000000;
 
-        uint log2x = logOf2(p, q, numPrecisionBits);
+        uint log2x = logBase2(p, q, numPrecisionBits);
 
         require(!checkMultOverflow(ln2Numerator, log2x));
 
@@ -119,7 +119,7 @@ contract Exponent {
 }
 
 
-contract LiquidityFormula is Exponent {
+contract LiquidityFormula is UtilMath {
     function pE(uint r, uint pMIn, uint e, uint precision) public pure returns (uint) {
         uint expRE = exp(r*e, precision*precision, precision);
         require(!checkMultOverflow(expRE, pMIn));

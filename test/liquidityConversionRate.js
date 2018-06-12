@@ -72,12 +72,16 @@ function pOfE(r, pMin, curE) {
 }
 
 function buyPriceForZeroQuant(r, pMin, curE) { 
-    pOfERes = pOfE(r, pMin, curE);
-    return BigNumber(1).div(pOfERes);
+    let pOfERes = pOfE(r, pMin, curE);
+    let buyPrice = BigNumber(1).div(pOfERes);
+    let buyPriceAfterFeesReduction = buyPrice.mul((100-feePercent)/100)
+    return buyPriceAfterFeesReduction;
 }
 
 function sellPriceForZeroQuant(r, pMin, curE) { 
-      return pOfE(r, pMin, curE);
+    let sellPrice = pOfE(r, pMin, curE);
+    let sellPriceAfterFeeReduction = sellPrice.mul((100-feePercent)/100)
+    return sellPriceAfterFeeReduction;
 }
 
 function calcDeltaT(r, pMin, deltaE, curE) {
@@ -119,19 +123,20 @@ function eForCurPWithoutFees(r, curSellPrice) {
     return (Helper.ln(curSellPrice/pMin)/r).toString()
 }
 
-async function sellRateForZeroQuantInPrecision() {
-    let rate = await liqConvRatesInst.getRate(tokenAdd, 0, false, 0);
-    return rate;
+async function sellRateForZeroQuantInPrecision(eInEth) {
+    let eFp = eInEth.mul(formulaPrecision); 
+    let rateInPrecision = await liqConvRatesInst.sellRateZeroQuantity(eFp)
+    return rateInPrecision;
 }
 
-async function buyRateForZeroQuantInPrecision() {
-    let rate = await liqConvRatesInst.getRate(tokenAdd, 0, true, 0);
-    return rate;
+async function buyRateForZeroQuantInPrecision(eInEth) {
+    let eFp = eInEth.mul(formulaPrecision); 
+    let rateInPrecision = await liqConvRatesInst.buyRateZeroQuantity(eFp)
+    return rateInPrecision;
 }
 
-async function getExpectedTWithoutFees() {
-    let rateFor0InPrecision = await sellRateForZeroQuantInPrecision();
-    let rateFor0 = rateFor0InPrecision.div(precision);
+async function getExpectedTWithoutFees(curE) {
+    let rateFor0 = pOfE(r, pMin, curE);
     return tForCurPWithoutFees(r, rateFor0.valueOf());
 }
 
@@ -225,7 +230,7 @@ contract('LiquidityConversionRates', function(accounts) {
     it("should test reducing fees from amount.", async function () {
         let input = 5763 * formulaPrecision;
         let expectedResult =  input * (100 - feePercent) / 100;
-        let result =  await liqConvRatesInst.reduceFee(input);
+        let result =  await liqConvRatesInst.valueAfterReducingFee(input);
         assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
@@ -328,6 +333,14 @@ contract('LiquidityConversionRates', function(accounts) {
         assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
+    it("should test getrate for buy=true and qtyInSrcWei very small.", async function () {
+        let expectedResult = buyPriceForZeroQuant(r, pMin, e0).mul(precision).valueOf()
+        let qtyInSrcWei = 10 // this is assumed to be rounded to 0 by fromTweiToFp.
+        let result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,eInFp);
+        assertAbsDiff(result, expectedResult, expectedDiffInPct)
+        assert(result.valueOf != 0)
+    });
+
     it("should test getrate for buy=false and qtyInSrcWei = non_0.", async function () {
         let qtyInSrcWei = BigNumber(deltaT).mul(tokenPrecision)
         let expectedResult = priceForDeltaT(feePercent, r, pMin, deltaT, e0).mul(precision).valueOf()
@@ -340,6 +353,14 @@ contract('LiquidityConversionRates', function(accounts) {
         let qtyInSrcWei = 0
         let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
         assertAbsDiff(result, expectedResult, expectedDiffInPct)
+    });
+
+    it("should test getrate for buy=false and qtyInSrcWei very small.", async function () {
+        let expectedResult = sellPriceForZeroQuant(r, pMin, e0).mul(precision).valueOf()
+        let qtyInSrcWei = 10 // this is assumed to be rounded to 0 by fromTweiToFp.
+        let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
+        assertAbsDiff(result, expectedResult, expectedDiffInPct)
+        assert(result.valueOf != 0)
     });
 
     it("should test set liquidity params not as admin.", async function () {
@@ -545,7 +566,7 @@ contract('KyberReserve', function(accounts) {
 
             // make sure buys are only ended when we are around 1/Pmax 
             if (buyRate == 0) {
-                let rateFor0 = await buyRateForZeroQuantInPrecision();
+                let rateFor0 = await buyRateForZeroQuantInPrecision((balancesBefore["EInEth"]));
                 let expectedMinRate = (BigNumber(1).div(pMax)).mul(precision);
                 let thresholdPriceexpectedDiffInPct = BigNumber(10.0);
                 assertAbsDiff(rateFor0, expectedMinRate, thresholdPriceexpectedDiffInPct);
@@ -596,7 +617,7 @@ contract('KyberReserve', function(accounts) {
 
             // check amount of extra tokens is at least as collected fees
             if (feePercent != 0) {
-                expectedTWithoutFees = await getExpectedTWithoutFees();
+                expectedTWithoutFees = await getExpectedTWithoutFees(balancesAfter["EInEth"]);
                 expectedFeesAccordingToTheory = balancesAfter["TInTokens"].minus(expectedTWithoutFees);
                 assertAbsDiff(balancesAfter["collectedFeesInTokens"], expectedFeesAccordingToTheory, expectedDiffInPct);
             };
@@ -637,7 +658,7 @@ contract('KyberReserve', function(accounts) {
 
             // make sure sells are only ended when we are around Pmin
             if (sellRate == 0) {
-                let rateFor0 = await sellRateForZeroQuantInPrecision();
+                let rateFor0 = await sellRateForZeroQuantInPrecision(balancesBefore["EInEth"]);
                 let expectedMinRate = BigNumber(pMin).mul(precision);
                 let thresholdPriceexpectedDiffInPct = BigNumber(10.0);
                 assertAbsDiff(rateFor0, expectedMinRate, thresholdPriceexpectedDiffInPct);
@@ -686,7 +707,7 @@ contract('KyberReserve', function(accounts) {
 
             // check amount of extra tokens is at least as collected fees
             if (feePercent != 0) {
-                expectedTWithoutFees = await getExpectedTWithoutFees();
+                expectedTWithoutFees = await getExpectedTWithoutFees(balancesAfter["EInEth"]);
                 expectedFeesAccordingToTheory = balancesAfter["TInTokens"].minus(expectedTWithoutFees);
                 assertAbsDiff(balancesAfter["collectedFeesInTokens"], expectedFeesAccordingToTheory, expectedDiffInPct);
             };
