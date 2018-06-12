@@ -21,7 +21,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
     uint public maxQtyInFp;
 
     uint public feeInBps;
-    uint public collectedFeesInTwei;
+    uint public collectedFeesInTwei = 0;
 
     uint public maxBuyRateInPrecision;
     uint public minBuyRateInPrecision;
@@ -64,26 +64,27 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         uint _maxCapBuyInWei,
         uint _maxCapSellInWei,
         uint _feeInBps,
-        uint _maxEthToTokenRateInPrecision,
-        uint _minEthToTokenRateInPrecision
+        uint _maxTokenToEthRateInPrecision,
+        uint _minTokenToEthRateInPrecision
     ) public onlyAdmin {
+
+        require(_numFpBits < 256);
+        require(formulaPrecision <= MAX_QTY);
+        require(_feeInBps < 10000);
+        require(_minTokenToEthRateInPrecision < _maxTokenToEthRateInPrecision);
 
         rInFp = _rInFp;
         pMinInFp = _pMinInFp;
-        require(_numFpBits <= 256);
         formulaPrecision = uint(1)<<_numFpBits;
-        require(formulaPrecision <= MAX_QTY);
         maxQtyInFp = fromWeiToFp(MAX_QTY);
         numFpBits = _numFpBits;
         maxEthCapBuyInFp = fromWeiToFp(_maxCapBuyInWei);
         maxEthCapSellInFp = fromWeiToFp(_maxCapSellInWei);
-        collectedFeesInTwei = 0;
-        require(_feeInBps < 10000);
         feeInBps = _feeInBps;
-        maxBuyRateInPrecision = PRECISION * PRECISION / _minEthToTokenRateInPrecision;
-        minBuyRateInPrecision = PRECISION * PRECISION / _maxEthToTokenRateInPrecision;
-        maxSellRateInPrecision = _maxEthToTokenRateInPrecision;
-        minSellRateInPrecision = _minEthToTokenRateInPrecision;
+        maxBuyRateInPrecision = PRECISION * PRECISION / _minTokenToEthRateInPrecision;
+        minBuyRateInPrecision = PRECISION * PRECISION / _maxTokenToEthRateInPrecision;
+        maxSellRateInPrecision = _maxTokenToEthRateInPrecision;
+        minSellRateInPrecision = _minTokenToEthRateInPrecision;
 
         LiquidityParamsSet(
             rInFp,
@@ -99,22 +100,6 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
             maxSellRateInPrecision,
             minSellRateInPrecision
         );
-    }
-
-    function getRate(
-            ERC20 conversionToken,
-            uint currentBlockNumber,
-            bool buy,
-            uint qtyInSrcWei
-    ) public view returns(uint) {
-
-        currentBlockNumber;
-
-        require(qtyInSrcWei <= MAX_QTY);
-        uint eInFp = fromWeiToFp(reserveContract.balance);
-        uint rateInPrecision = getRateWithE(conversionToken, buy, qtyInSrcWei, eInFp);
-        require(rateInPrecision <= MAX_RATE);
-        return rateInPrecision;
     }
 
     function recordImbalance(
@@ -148,9 +133,25 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         CollectedFeesReset(resetFeesInTwei);
     }
 
+    function getRate(
+            ERC20 conversionToken,
+            uint currentBlockNumber,
+            bool buy,
+            uint qtyInSrcWei
+    ) public view returns(uint) {
+
+        currentBlockNumber;
+
+        require(qtyInSrcWei <= MAX_QTY);
+        uint eInFp = fromWeiToFp(reserveContract.balance);
+        uint rateInPrecision = getRateWithE(conversionToken, buy, qtyInSrcWei, eInFp);
+        require(rateInPrecision <= MAX_RATE);
+        return rateInPrecision;
+    }
+
     function getRateWithE(ERC20 conversionToken, bool buy, uint qtyInSrcWei, uint eInFp) public view returns(uint) {
         uint deltaEInFp;
-        uint sellInputQtyInFp;
+        uint sellInputTokenQtyInFp;
         uint deltaTInFp;
         uint rateInPrecision;
 
@@ -169,24 +170,23 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
                 rateInPrecision = buyRate(eInFp, deltaEInFp);
             }
         } else {
-            sellInputQtyInFp = fromTweiToFp(qtyInSrcWei);
-            deltaTInFp = reduceFee(sellInputQtyInFp);
+            sellInputTokenQtyInFp = fromTweiToFp(qtyInSrcWei);
+            deltaTInFp = valueAfterReducingFee(sellInputTokenQtyInFp);
             if (deltaTInFp == 0) {
                 rateInPrecision = sellRateZeroQuantity(eInFp);
                 deltaEInFp = 0;
             } else {
-                (rateInPrecision, deltaEInFp) = sellRate(eInFp, sellInputQtyInFp, deltaTInFp);
+                (rateInPrecision, deltaEInFp) = sellRate(eInFp, sellInputTokenQtyInFp, deltaTInFp);
             }
 
             if (deltaEInFp > maxEthCapSellInFp) return 0;
         }
 
-        rateInPrecision = rateAfterMinMaxValidation(rateInPrecision, buy);
-        require(rateInPrecision <= MAX_RATE);
+        rateInPrecision = rateAfterValidation(rateInPrecision, buy);
         return rateInPrecision;
     }
 
-    function rateAfterMinMaxValidation(uint rateInPrecision, bool buy) public view returns(uint) {
+    function rateAfterValidation(uint rateInPrecision, bool buy) public view returns(uint) {
         uint minAllowRateInPrecision;
         uint maxAllowedRateInPrecision;
 
@@ -200,41 +200,38 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
 
         if ((rateInPrecision > maxAllowedRateInPrecision) || (rateInPrecision < minAllowRateInPrecision)) {
             return 0;
+        } else if (rateInPrecision > MAX_RATE) {
+            return 0;
         } else {
             return rateInPrecision;
         }
     }
 
     function buyRate(uint eInFp, uint deltaEInFp) public view returns(uint) {
-        require(deltaEInFp <= maxQtyInFp);
-        require(eInFp <= maxQtyInFp);
         uint deltaTInFp = deltaTFunc(rInFp, pMinInFp, eInFp, deltaEInFp, formulaPrecision);
         require(deltaTInFp <= maxQtyInFp);
-        deltaTInFp = reduceFee(deltaTInFp);
+        deltaTInFp = valueAfterReducingFee(deltaTInFp);
         return deltaTInFp * PRECISION / deltaEInFp;
     }
 
     function buyRateZeroQuantity(uint eInFp) public view returns(uint) {
-        require(eInFp <= maxQtyInFp);
-        return formulaPrecision * PRECISION / pE(rInFp, pMinInFp, eInFp, formulaPrecision);
+        uint ratePreReductionInPrecision = formulaPrecision * PRECISION / pE(rInFp, pMinInFp, eInFp, formulaPrecision);
+        return valueAfterReducingFee(ratePreReductionInPrecision);
     }
 
     function sellRate(
         uint eInFp,
-        uint sellInputQtyInFp,
+        uint sellInputTokenQtyInFp,
         uint deltaTInFp
     ) public view returns(uint rateInPrecision, uint deltaEInFp) {
-        require(sellInputQtyInFp <= maxQtyInFp);
-        require(deltaTInFp <= maxQtyInFp);
-        require(eInFp <= maxQtyInFp);
         deltaEInFp = deltaEFunc(rInFp, pMinInFp, eInFp, deltaTInFp, formulaPrecision, numFpBits);
         require(deltaEInFp <= maxQtyInFp);
-        rateInPrecision = deltaEInFp * PRECISION / sellInputQtyInFp;
+        rateInPrecision = deltaEInFp * PRECISION / sellInputTokenQtyInFp;
     }
 
     function sellRateZeroQuantity(uint eInFp) public view returns(uint) {
-        require(eInFp <= maxQtyInFp);
-        return pE(rInFp, pMinInFp, eInFp, formulaPrecision) * PRECISION / formulaPrecision;
+        uint ratePreReductionInPrecision = pE(rInFp, pMinInFp, eInFp, formulaPrecision) * PRECISION / formulaPrecision;
+        return valueAfterReducingFee(ratePreReductionInPrecision);
     }
 
     function fromTweiToFp(uint qtyInTwei) public view returns(uint) {
@@ -244,11 +241,11 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
 
     function fromWeiToFp(uint qtyInwei) public view returns(uint) { 
         require(qtyInwei <= MAX_QTY);
-        return qtyInwei * formulaPrecision / (10**ETH_DECIMALS);
+        return qtyInwei * formulaPrecision / (10 ** ETH_DECIMALS);
     }
 
-    function reduceFee(uint val) public view returns(uint) {
-        require(val <= MAX_QTY);
+    function valueAfterReducingFee(uint val) public view returns(uint) {
+        require(val <= BIG_NUMBER);
         return ((10000 - feeInBps) * val) / 10000;
     }
 
