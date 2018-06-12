@@ -48,8 +48,8 @@ const p0 = 0.00005
 const pMin = 0.5 * p0
 const pMax = 2 * p0
 const feePercent = 0.25
-const maxCapBuyInEth = 61
-const maxCapSellInEth = 201
+const maxCapBuyInEth = 15
+const maxCapSellInEth = 15
 
 // default values deducted from r, pMim and pMin/pMax ratio from p0
 const e0 = eForCurPWithoutFees(r, p0)
@@ -388,9 +388,10 @@ contract('LiquidityConversionRates', function(accounts) {
     });
 
     it("should test exceeding max cap sell", async function () {
-        let qtyInSrcWei = BigNumber(maxCapSellInEth + 1.0).mul(precision)
-        let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
-        assert.equal(result, 0, "bad result");
+        let sellQtyInTokens = (maxCapSellInEth / p0) * (1.1);
+        let sellQtyInTwi = BigNumber(sellQtyInTokens).mul(tokenPrecision)
+        let result =  await liqConvRatesInst.getRateWithE(token.address,false,sellQtyInTwi,eInFp);
+        assert.equal(result.valueOf(), 0, "bad result");
     });
 
     it("should test get rate", async function () {
@@ -511,7 +512,7 @@ contract('KyberReserve', function(accounts) {
         while (true) {
             iterations++;
             balancesBefore = await getBalances();
-            amountEth = (!prevBuyRate) ? 60.0 : 3.0
+            amountEth = (!prevBuyRate) ? 10.0 : 10.0
             amountWei = BigNumber(amountEth).mul(precision);
 
             // get expected and actual rate
@@ -522,7 +523,7 @@ contract('KyberReserve', function(accounts) {
             if (buyRate == 0) {
                 let rateFor0 = await buyRateForZeroQuantInPrecision();
                 let expectedMinRate = (BigNumber(1).div(pMax)).mul(precision);
-                let thresholdPriceexpectedDiffInPct = BigNumber(1.0);
+                let thresholdPriceexpectedDiffInPct = BigNumber(10.0);
                 assertAbsDiff(rateFor0, expectedMinRate, thresholdPriceexpectedDiffInPct);
             }
 
@@ -598,7 +599,7 @@ contract('KyberReserve', function(accounts) {
         while (true) {
             iterations++;
             balancesBefore = await getBalances();
-            amountTokens = (!prevSellRate) ? 1900000 : 50000
+            amountTokens = (!prevSellRate) ? 50000 : 50000
             amountTwei = BigNumber(amountTokens).mul(tokenPrecision)
             amountTokensAfterFees = amountTokens * (100 - feePercent) / 100;
 
@@ -614,7 +615,7 @@ contract('KyberReserve', function(accounts) {
             if (sellRate == 0) {
                 let rateFor0 = await sellRateForZeroQuantInPrecision();
                 let expectedMinRate = BigNumber(pMin).mul(precision);
-                let thresholdPriceexpectedDiffInPct = BigNumber(1.0);
+                let thresholdPriceexpectedDiffInPct = BigNumber(10.0);
                 assertAbsDiff(rateFor0, expectedMinRate, thresholdPriceexpectedDiffInPct);
             }
 
