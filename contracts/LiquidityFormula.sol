@@ -14,6 +14,7 @@ contract Exponent {
         return compactFraction(p/precision, q/precision, precision);
     }
 
+    /* solhint-disable code-complexity */
     function exp(uint p, uint q, uint precision) public pure returns (uint) {
         uint n = 0;
         uint nFact = 1;
