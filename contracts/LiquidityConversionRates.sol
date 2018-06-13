@@ -239,7 +239,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         return qtyInTwei * formulaPrecision / (10 ** getDecimals(token));
     }
 
-    function fromWeiToFp(uint qtyInwei) public view returns(uint) { 
+    function fromWeiToFp(uint qtyInwei) public view returns(uint) {
         require(qtyInwei <= MAX_QTY);
         return qtyInwei * formulaPrecision / (10 ** ETH_DECIMALS);
     }
@@ -253,11 +253,11 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         require(val <= MAX_QTY);
         return val * feeInBps / (10000 - feeInBps);
     }
- 
+
     function abs(int val) public pure returns(uint) {
         if (val < 0) {
             return uint(val * (-1));
-        } else { 
+        } else {
             return uint(val);
         }
     }
