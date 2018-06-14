@@ -44,16 +44,16 @@ const formulaPrecision = BigNumber(2).pow(formulaPrecisionBits)
 const tokenDecimals = 18
 const tokenPrecision = BigNumber(10).pow(tokenDecimals)
 const r = 0.01
-const p0 = 0.00005
-const pMin = 0.5 * p0
-const pMax = 2 * p0
+const p0 = 0.00002246
+const e0 = 69.315
+const t0 = 2226179
 const feePercent = 0.25
-const maxCapBuyInEth = 15
-const maxCapSellInEth = 15
+const maxCapBuyInEth = 3
+const maxCapSellInEth = 3
 
-// default values deducted from r, pMim and pMin/pMax ratio from p0
-const e0 = eForCurPWithoutFees(r, p0)
-const t0 = tForCurPWithoutFees(r, p0)
+// set pMIn, pMax according to r, p0, e0, t0
+const pMin = BigNumber(p0).div((Helper.exp(e, BigNumber(r).mul(e0))))
+const pMax = BigNumber((p0 / (1 - r * p0 * t0)).toString())
 
 // default values in contract common units
 const feeInBps = feePercent * 100
@@ -166,9 +166,9 @@ async function getBalances() {
 
 
 contract('LiquidityConversionRates', function(accounts) {
-    const deltaE = 2.7
+    const deltaE = 0.1
     const deltaEInFp = BigNumber(deltaE).mul(formulaPrecision);
-    const deltaT = 120.0
+    const deltaT = 2000
     const deltaTInFp = BigNumber(deltaT).mul(formulaPrecision);
 
     it("should init globals", function() {
@@ -202,6 +202,18 @@ contract('LiquidityConversionRates', function(accounts) {
     });
 
     it("should set liquidity params", async function () {
+
+        /*
+        console.log("rInFp: " + rInFp.toString())
+        console.log("pMinInFp: " + pMinInFp.toString())
+        console.log("formulaPrecisionBits: " + formulaPrecisionBits.toString())
+        console.log("maxCapBuyInWei: " + maxCapBuyInWei.toString())
+        console.log("maxCapSellInWei: " + maxCapSellInWei.toString())
+        console.log("feeInBps: " + feeInBps.toString())
+        console.log("maxSellRateInPrecision: " + maxSellRateInPrecision.toString())
+        console.log("minSellRateInPrecision: " + minSellRateInPrecision.toString())
+        */
+
         await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision) 
     });
 
@@ -434,7 +446,7 @@ contract('LiquidityConversionRates', function(accounts) {
 
     it("should test exceeding max cap sell", async function () {
         let sellQtyInTokens = (maxCapSellInEth / p0) * (1.1);
-        let sellQtyInTwi = BigNumber(sellQtyInTokens).mul(tokenPrecision)
+        let sellQtyInTwi = BigNumber(sellQtyInTokens.toString()).mul(tokenPrecision)
         let result =  await liqConvRatesInst.getRateWithE(token.address,false,sellQtyInTwi,eInFp);
         assert.equal(result.valueOf(), 0, "bad result");
     });
@@ -557,7 +569,7 @@ contract('KyberReserve', function(accounts) {
         while (true) {
             iterations++;
             balancesBefore = await getBalances();
-            amountEth = (!prevBuyRate) ? 10.0 : 10.0
+            amountEth = (!prevBuyRate) ? 2.9 : 2.9
             amountWei = BigNumber(amountEth).mul(precision);
 
             // get expected and actual rate
@@ -715,5 +727,46 @@ contract('KyberReserve', function(accounts) {
 
         // make sure at least a few iterations were done
         assert(iterations > 3, "not enough iterations, bad run");
+    });
+
+    it("should check setting liquidity params again with new p0 and adjusting pmin and pmax to existing balances.", async function () {
+        // assume price moved to 7/8 of current p0
+        let newP0 = p0 * (7/8)
+        let sameE0 = e0
+        let sameT0 = t0
+
+        // calculate new pmin and pmax to match the current price with existing inventory
+        let newPmin = BigNumber(newP0).div((Helper.exp(e, BigNumber(r).mul(sameE0))))
+        let newpMax = BigNumber((newP0 / (1 - r * newP0 * sameT0)).toString()) 
+
+        // set new params in contract units
+        let newEInFp = BigNumber(sameE0).mul(formulaPrecision);
+        let newPMinInFp = BigNumber(newPmin).mul(formulaPrecision);
+        let newMaxSellRateInPrecision = BigNumber(newpMax).mul(precision);
+        let newMinSellRateInPrecision = BigNumber(newPmin).mul(precision);
+
+        // set liquidity params again.
+        await liqConvRatesInst.setLiquidityParams(
+                rInFp,
+                newPMinInFp,
+                formulaPrecisionBits,
+                maxCapBuyInWei,
+                maxCapSellInWei,
+                feeInBps,
+                newMaxSellRateInPrecision,
+                newMinSellRateInPrecision) 
+
+        // check price is as expected
+        let deltaE = 1.2
+        let deltaEInFp = BigNumber(deltaE).mul(formulaPrecision);
+
+        let expectedResult = priceForDeltaE(feePercent, r, newPmin, deltaE, sameE0).mul(precision).valueOf()
+        let result =  await liqConvRatesInst.buyRate(newEInFp, deltaEInFp)
+        assertAbsDiff(result, expectedResult, expectedDiffInPct)
+
+        // make sure collected fees are not zeroed
+        let collectedFees = await liqConvRatesInst.collectedFeesInTwei()
+        assert.notEqual(collectedFees, 0, "bad result");
+
     });
 });
