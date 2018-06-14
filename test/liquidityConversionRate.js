@@ -769,4 +769,79 @@ contract('KyberReserve', function(accounts) {
         assert.notEqual(collectedFees, 0, "bad result");
 
     });
+
+    it("should check getting prices for random values.", async function () {
+
+        // changing values for this test
+        let formulaPrecisionBitsOptions = {"standard": 40}
+        let tokenDecimalsOptions = {"standard": 18, "like_dgx": 9, "like_btc:": 8, "small": 4}
+        let rOptions = {"standard": 0.01,
+                        "small_r": 0.001,
+                        "large_r": 0.1}
+        let pOptions = {"standard": 0.00023,
+                        "low_value":0.0000067,
+                        "high_price_comparing_to_eth": 0.2}
+        let deltaEOptions = {"standard": 0.1, "small": 1/100000, "large": 10.0}
+
+        for (let [key, randFormulaPrecisionBits] of Object.entries(formulaPrecisionBitsOptions)) {
+            for (let [key, randTokenDecimals] of Object.entries(tokenDecimalsOptions)) {
+                for (let [key, randR] of Object.entries(rOptions)) {
+                    for (let [key, randP0] of Object.entries(pOptions)) {
+                        for (let [key, randDeltaE] of Object.entries(deltaEOptions)) {
+
+                            let randE0 = e0
+                            let randT0 = t0
+                            let randFormulaPrecision = BigNumber(2).pow(randFormulaPrecisionBits)
+                            let randMaxCapBuyInEth = 11.0
+                            let randMaxCapSellInEth = 11.0
+                            let randFeePercent = feePercent
+    
+                            let randPmin = BigNumber(randP0).div((Helper.exp(e, BigNumber(randR).mul(randE0))))
+                            let randPmax = BigNumber((randP0 / (1 - randR * randP0 * randT0)).toString()) 
+    
+                            let randDeltaEInFp = BigNumber(randDeltaE).mul(formulaPrecision);
+                            let randEInFp = BigNumber(randE0).mul(randFormulaPrecision);
+                            let randRInFp = BigNumber(randR).mul(randFormulaPrecision);
+                            let randPminInFp = BigNumber(randPmin).mul(randFormulaPrecision);
+                            let randMaxCapBuyInWei = BigNumber(randMaxCapBuyInEth).mul(precision);
+                            let randMaxCapSellInWei = BigNumber(randMaxCapSellInEth).mul(precision);
+                            let randFeeInBps = randFeePercent * 100
+                            let randMaxSellRateInPrecision = BigNumber(randPmax).mul(precision);
+                            let randMinSellRateInPrecision = BigNumber(randPmin).mul(precision);
+
+                            let randToken = await TestToken.new("test", "tst", randTokenDecimals);
+                            liqConvRatesInst = await LiquidityConversionRates.new(admin, randToken.address);
+                            liqConvRatesInst.setReserveAddress(reserveAddress)
+
+                            await liqConvRatesInst.setLiquidityParams(
+                                    randRInFp,
+                                    randPminInFp,
+                                    randFormulaPrecisionBits,
+                                    randMaxCapBuyInWei,
+                                    randMaxCapSellInWei,
+                                    randFeeInBps,
+                                    randMaxSellRateInPrecision,
+                                    randMinSellRateInPrecision)
+
+                            let randQtyInSrcWei = BigNumber(randDeltaE).mul(precision)
+
+                            let result = await liqConvRatesInst.getRateWithE(
+                                    randToken.address,
+                                    true,
+                                    randQtyInSrcWei,
+                                    randEInFp);
+
+                            let expectedResult = priceForDeltaE(
+                                    randFeePercent,
+                                    randR,
+                                    randPmin,
+                                    randDeltaE,
+                                    randE0).mul(precision).valueOf()
+                            assertAbsDiff(result, expectedResult, expectedDiffInPct)
+                        }
+                    }
+                }
+            }  
+        }
+    });
 });
