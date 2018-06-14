@@ -760,6 +760,26 @@ contract('KyberNetwork', function(accounts) {
                 minConversionRate, walletId, 0, {from:networkProxy, value:amountWei});
     });
 
+    it("should verify trade reverted when sender isn't networkProxy.", async function () {
+        let tokenInd = 0;
+        let token = tokens[tokenInd]; //choose some token
+        let amountWei = 10000;
+        let minConversionRate = 0;
+
+        //perform trade
+        try {
+             await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 2000,
+                minConversionRate, walletId, 0, {from:user1, value:amountWei});
+             assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // same trade from network proxy
+        await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 2000,
+                minConversionRate, walletId, 0, {from:networkProxy, value:amountWei});
+    });
+
     it("should verify trade reverted when trade not sent from proxy.", async function () {
         let tokenInd = 0;
         let token = tokens[tokenInd]; //choose some token
