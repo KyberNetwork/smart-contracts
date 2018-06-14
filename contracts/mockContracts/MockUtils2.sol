@@ -6,7 +6,7 @@ import "../Utils2.sol";
 
 /// @title Kyber utils contract
 contract MockUtils2 is Utils2 {
-    function mockGetDecimalsSafe(ERC20 token) public view returns(uint) {
+    function mockGetDecimalsSafe(ERC20 token) public returns(uint) {
         return getDecimalsSafe(token);
     }
 }

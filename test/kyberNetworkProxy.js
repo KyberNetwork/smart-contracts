@@ -1128,7 +1128,7 @@ contract('KyberNetworkProxy', function(accounts) {
             walletId, {from:user1, value:amountWei});
     });
 
-    it("should test can't init this contract with empty contracts (address 0).", async function () {
+    it("should test can't init this contract with empty contracts (address 0) or with non admin.", async function () {
         let proxyTemp;
 
         try {
@@ -1140,6 +1140,14 @@ contract('KyberNetworkProxy', function(accounts) {
 
         proxyTemp = await NetworkProxy.new(admin);
 
+        let rxNetworkAddress = await proxyTemp.kyberNetworkContract();
+        assert.equal (rxNetworkAddress.valueOf(), 0);
+
+        await proxyTemp.setKyberNetworkContract(network.address);
+
+        rxNetworkAddress = await proxyTemp.kyberNetworkContract();
+        assert.equal (rxNetworkAddress.valueOf(), network.address);
+
         try {
             await proxyTemp.setKyberNetworkContract(0);
             assert(false, "throw was expected in line above.")
@@ -1147,10 +1155,65 @@ contract('KyberNetworkProxy', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
         }
 
-        await proxyTemp.setKyberNetworkContract(network.address);
+        rxNetworkAddress = await proxyTemp.kyberNetworkContract();
+        assert.equal (rxNetworkAddress.valueOf(), network.address);
     });
 
-    it("use setInfo (UI info) and see value returned in gettercheck value is set.", async function () {
+    it("should set kyberNetwork and test event.", async function () {
+
+        let tempNetworkAdd = accounts[7];
+        let result = await networkProxy.setKyberNetworkContract(tempNetworkAdd);
+
+//        log (result.logs[0].args)
+        assert.equal(result.logs[0].args.newNetworkContract, tempNetworkAdd);
+        assert.equal(result.logs[0].args.oldNetworkContract, network.address);
+
+        result = await networkProxy.setKyberNetworkContract(network.address);
+    });
+
+
+    it("should test getter. user cap in Wei.", async function () {
+
+        let capFromNetwork = await network.getUserCapInWei(user2);
+        let capFromProxy = await networkProxy.getUserCapInWei(user2);
+
+        assert.equal(capFromNetwork.valueOf(), capFromProxy.valueOf(), "cap in wei should match");
+    });
+
+    it("should test getter. user cap in token Wei.", async function () {
+        let tokenAddress = tokenAdd[2];
+
+        let capFromNetwork = await network.getUserCapInTokenWei(user2, tokenAddress);
+        let capFromProxy = await networkProxy.getUserCapInTokenWei(user2, tokenAddress);
+
+        assert.equal(capFromNetwork.valueOf(), capFromProxy.valueOf(), "cap in wei should match");
+    });
+
+    it("should test getter. max gas price.", async function () {
+        let maxGasFromNetwork = await network.maxGasPrice();
+        let maxGasFromProxy = await networkProxy.maxGasPrice();
+
+        assert.equal(maxGasFromNetwork.valueOf(), maxGasFromProxy.valueOf(), "values from proxy and network should match.");
+    });
+
+    it("should test getter. max gas price.", async function () {
+
+        await network.setEnable(false);
+
+        let enabledFromNetwork = await network.enabled();
+        let enabledFromProxy = await networkProxy.enabled();
+
+        assert.equal(enabledFromNetwork.valueOf(), enabledFromProxy.valueOf(), "values from proxy and network should match.");
+
+        await network.setEnable(true);
+
+        enabledFromNetwork = await network.enabled();
+        enabledFromProxy = await networkProxy.enabled();
+
+        assert.equal(enabledFromNetwork.valueOf(), enabledFromProxy.valueOf(), "values from proxy and network should match.");
+    });
+
+    it("use setInfo (UI info) and see value returned in getter.", async function () {
         let info = 15;
         let field = 10;
 
@@ -1705,7 +1768,7 @@ contract('KyberNetworkProxy', function(accounts) {
         let user1SrcTokBalanceBefore = new BigNumber(await tokenSrc.balanceOf(user1));
         let user2DestTokBalanceBefore = new BigNumber(await tokenDest.balanceOf(user2));
 
-        //            log("trade " + i + " srcInd: " + tokenSrcInd + " dest ind: " + tokenDestInd + " srcQty: " + srcAmountTwei);
+        //log("trade " + i + " srcInd: " + tokenSrcInd + " dest ind: " + tokenDestInd + " srcQty: " + srcAmountTwei);
         let result = await networkProxy.trade(tokenSrc.address, srcAmountTwei.valueOf(), tokenDest.address, user2, maxDestAmount.valueOf(),
                            rate[1].valueOf(), walletId, {from:user1});
 
@@ -1817,7 +1880,7 @@ contract('KyberNetworkProxy', function(accounts) {
         }
     });
 
-    it("verify sell with malicious network steal reverts", async function () {
+    it("verify sell with malicious network reverts", async function () {
         //trade data
         let tokenInd = 2;
         let token = tokens[tokenInd]; //choose some token
@@ -1829,8 +1892,11 @@ contract('KyberNetworkProxy', function(accounts) {
         // trade with steeling reverts
         //////////////////////////////
 
+        let myWalletAddress = await maliciousNetwork.myWallet();
+        let myWallBalance = await Helper.getBalancePromise(myWalletAddress);
+
         //set steal amount to 1 wei
-        let myFee = 1;
+        let myFee = 8;
         await maliciousNetwork.setMyFeeWei(myFee);
         let rxFeeWei = await maliciousNetwork.myFeeWei();
         assert.equal(rxFeeWei.valueOf(), myFee);
@@ -1854,6 +1920,7 @@ contract('KyberNetworkProxy', function(accounts) {
         await maliciousNetwork.setMyFeeWei(0);
         rxFeeWei = await maliciousNetwork.myFeeWei();
         assert.equal(rxFeeWei.valueOf(), 0);
+
         await networkProxy.trade(tokenAdd[tokenInd], amountTwei, ethAddress, user2, 500000,
                      rate[0].valueOf(), walletId, {from:user1});
         await reserve1.enableTrade({from:admin});
@@ -1869,7 +1936,7 @@ contract('KyberNetworkProxy', function(accounts) {
         //////////////////////////////
 
         //set "myFee" (malicious) amount to 1 wei
-        let myFee = 1;
+        let myFee = 2;
         await maliciousNetwork.setMyFeeWei(myFee);
         let rxFeeWei = await maliciousNetwork.myFeeWei();
         assert.equal(rxFeeWei.valueOf(), myFee);
@@ -1888,9 +1955,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //set steal fee to 0 and see trade success
         await maliciousNetwork.setMyFeeWei(0);
-        rxFeeWei = await maliciousNetwork.myFeeWei();
-        assert.equal(rxFeeWei.valueOf(), 0);
-        
+
         await networkProxy.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, 500000,
                 rate[0].valueOf(), walletId, {from:user1, value: amountWei});
     });
@@ -1908,7 +1973,7 @@ contract('KyberNetworkProxy', function(accounts) {
         let rate = await networkProxy.getExpectedRate(ethAddress, tokenAdd[tokenInd], amountWei);
 
         //use "small fee"
-        let mySmallFee = 1;
+        let mySmallFee = 4;
         await maliciousNetwork.setMyFeeWei(mySmallFee);
         let rxFeeWei = await maliciousNetwork.myFeeWei();
         assert.equal(rxFeeWei.valueOf(), mySmallFee);
@@ -1917,9 +1982,8 @@ contract('KyberNetworkProxy', function(accounts) {
         await networkProxy.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, 500000,
                 rate[1].valueOf(), walletId, {from:user1, value: amountWei});
 
-
         //with higher fee should revert
-        mySmallFee = 100 ;
+        mySmallFee = 6;
         await maliciousNetwork.setMyFeeWei(mySmallFee);
         rxFeeWei = await maliciousNetwork.myFeeWei();
         assert.equal(rxFeeWei.valueOf(), mySmallFee);
@@ -1934,6 +1998,42 @@ contract('KyberNetworkProxy', function(accounts) {
         }
 
     });
+
+    it("verify when user sets mirate to 0 all tokens can be stolen", async function () {
+        //trade data
+        let tokenInd = 3;
+        let token = tokens[tokenInd]; //choose some token
+        let amountWei = 125;
+
+        // trade with steeling reverts
+        //////////////////////////////
+        //get rate
+        let myWalletAddress = await maliciousNetwork.myWallet();
+        let myWallBalance = await Helper.getBalancePromise(myWalletAddress);
+
+        let rate = await networkProxy.getExpectedRate(ethAddress, tokenAdd[tokenInd], amountWei);
+
+        //calc dest amount
+        let expectedDest = (new BigNumber(amountWei)).mul(rate[0].valueOf()).div(precisionUnits);
+
+        let mySmallFee = expectedDest;
+        await maliciousNetwork.setMyFeeWei(mySmallFee);
+        let rxFeeWei = await maliciousNetwork.myFeeWei();
+        assert.equal(rxFeeWei.valueOf(), mySmallFee);
+
+        let myWalletStartBalance =  await token.balanceOf(myWalletAddress);
+
+        //with min rate 0
+        await networkProxy.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, 500000,
+                0, walletId, {from:user1, value: amountWei});
+
+        let myWalletExpectedBalance = (new BigNumber(myWalletStartBalance)).add(mySmallFee);
+        let balance = await token.balanceOf(myWalletAddress);
+
+        assert.equal(balance.valueOf(), myWalletExpectedBalance.valueOf())
+    });
+
+
 });
 
 function convertRateToConversionRatesRate (baseRate) {
