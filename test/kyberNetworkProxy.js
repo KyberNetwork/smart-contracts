@@ -1938,7 +1938,7 @@ contract('KyberNetworkProxy', function(accounts) {
         //////////////////////////////
 
         //set "myFee" (malicious) amount to 1 wei
-        let myFee = 2;
+        let myFee = 1;
         await maliciousNetwork.setMyFeeWei(myFee);
         let rxFeeWei = await maliciousNetwork.myFeeWei();
         assert.equal(rxFeeWei.valueOf(), myFee);
