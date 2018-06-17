@@ -164,7 +164,7 @@ contract StandardToken is BasicToken, ERC20 {
  * to the creator. Note they can later distribute these tokens
  * as they wish using `transfer` and other `StandardToken` functions.
  */
-contract TokenNoDecimalApi is StandardToken {
+contract TokenNoDecimal is StandardToken {
 
     string public name = "Test";
     string public symbol = "TST";
