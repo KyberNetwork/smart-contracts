@@ -124,6 +124,7 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
         );
 
         require(reportedDestAmount == tradeOutcome.userDeltaDestAmount);
+        require(tradeOutcome.userDeltaDestAmount <= maxDestAmount);
         require(tradeOutcome.actualRate >= minConversionRate);
 
         ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcAmount, tradeOutcome.userDeltaDestAmount);
