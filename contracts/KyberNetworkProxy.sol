@@ -104,28 +104,27 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
         }
 
         uint reportedDestAmount = kyberNetworkContract.tradeWithHint.value(msg.value)(
-            msg.sender,
-            src,
-            srcAmount,
-            dest,
-            destAddress,
-            maxDestAmount,
-            minConversionRate,
-            walletId,
-            hint
-        );
+                msg.sender,
+                src,
+                srcAmount,
+                dest,
+                destAddress,
+                maxDestAmount,
+                minConversionRate,
+                walletId,
+                hint
+            );
 
         TradeOutcome memory tradeOutcome = calculateTradeOutcome(
-            userBalanceBefore.srcBalance,
-            userBalanceBefore.destBalance,
-            src,
-            dest,
-            destAddress,
-            minConversionRate
-        );
+                userBalanceBefore.srcBalance,
+                userBalanceBefore.destBalance,
+                src,
+                dest,
+                destAddress
+            );
 
         require(reportedDestAmount == tradeOutcome.userDeltaDestAmount);
-        require(tradeOutcome.userDeltaDestAmount >= tradeOutcome.userMinExpectedDeltaDestAmount);
+        require(tradeOutcome.actualRate >= minConversionRate);
 
         ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcAmount, tradeOutcome.userDeltaDestAmount);
         return tradeOutcome.userDeltaDestAmount;
@@ -172,11 +171,11 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
     struct TradeOutcome {
         uint userDeltaSrcAmount;
         uint userDeltaDestAmount;
-        uint userMinExpectedDeltaDestAmount;
+        uint actualRate;
     }
 
     function calculateTradeOutcome (uint srcBalanceBefore, uint destBalanceBefore, ERC20 src, ERC20 dest,
-        address destAddress, uint minConversionRate)
+        address destAddress)
         internal returns(TradeOutcome outcome)
     {
         uint userSrcBalanceAfter;
@@ -185,14 +184,18 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
         userSrcBalanceAfter = getBalance(src, msg.sender);
         userDestBalanceAfter = getBalance(dest, destAddress);
 
+        //check for overflow.
+        require(userDestBalanceAfter >= destBalanceBefore);
+        require(srcBalanceBefore >= userSrcBalanceAfter);
+
         outcome.userDeltaDestAmount = userDestBalanceAfter - destBalanceBefore;
         outcome.userDeltaSrcAmount = srcBalanceBefore - userSrcBalanceAfter;
 
-        //make sure no overflow
-        require(outcome.userDeltaDestAmount <= userDestBalanceAfter);
-        require(outcome.userDeltaSrcAmount <= srcBalanceBefore);
-
-        outcome.userMinExpectedDeltaDestAmount =
-            calcDstQty(outcome.userDeltaSrcAmount, getDecimalsSafe(src), getDecimalsSafe(dest), minConversionRate);
+        outcome.actualRate = calcRateFromQty(
+                outcome.userDeltaSrcAmount,
+                outcome.userDeltaDestAmount,
+                getDecimalsSafe(src),
+                getDecimalsSafe(dest)
+            );
     }
 }
