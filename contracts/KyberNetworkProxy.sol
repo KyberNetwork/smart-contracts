@@ -104,24 +104,24 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
         }
 
         uint reportedDestAmount = kyberNetworkContract.tradeWithHint.value(msg.value)(
-                msg.sender,
-                src,
-                srcAmount,
-                dest,
-                destAddress,
-                maxDestAmount,
-                minConversionRate,
-                walletId,
-                hint
-            );
+            msg.sender,
+            src,
+            srcAmount,
+            dest,
+            destAddress,
+            maxDestAmount,
+            minConversionRate,
+            walletId,
+            hint
+        );
 
         TradeOutcome memory tradeOutcome = calculateTradeOutcome(
-                userBalanceBefore.srcBalance,
-                userBalanceBefore.destBalance,
-                src,
-                dest,
-                destAddress
-            );
+            userBalanceBefore.srcBalance,
+            userBalanceBefore.destBalance,
+            src,
+            dest,
+            destAddress
+        );
 
         require(reportedDestAmount == tradeOutcome.userDeltaDestAmount);
         require(tradeOutcome.actualRate >= minConversionRate);
