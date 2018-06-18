@@ -8,7 +8,7 @@ const expectedDiffInPct = new BigNumber(1/100);
 
 let liquidityContract;
 
-contract('FeeBurner', function(accounts) {
+contract('LiquidityFormula', function(accounts) {
     it("deploy liquidity contract", async function () {
         liquidityContract = await Liquidity.new();
     });
@@ -96,8 +96,8 @@ contract('FeeBurner', function(accounts) {
                                                           deltaE.mul(precision),
                                                           precision);
 
-        console.log(result.div(precision).toString(10));
-        console.log(expectedResult.div(precision).toString(10));
+        // console.log(result.div(precision).toString(10));
+        // console.log(expectedResult.div(precision).toString(10));
 
         assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
                "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
@@ -126,8 +126,8 @@ contract('FeeBurner', function(accounts) {
                                                           precision,
                                                           precisionBits);
 
-        console.log(result.div(precision).toString(10));
-        console.log(expectedResult.div(precision).toString(10));
+        // console.log(result.div(precision).toString(10));
+        // console.log(expectedResult.div(precision).toString(10));
 
         assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
                "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));

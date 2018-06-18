@@ -7,23 +7,23 @@ import "./Utils.sol";
 
 
 contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula, Withdrawable, Utils {
-    ERC20 public token;
+    ERC20 public token; // only token for this conversion rate contract.
     address public reserveContract;
 
     uint public numFpBits;
-    uint public formulaPrecision;
+    uint public formulaPrecision; // common multiplier to allow calculations with integers.
 
-    uint public rInFp;
-    uint public pMinInFp;
+    uint public rInFp; // price change rate. r = 0.01 means 1% price change per 1 eth inventory change.
+    uint public pMinInFp; // minimal token to eth price allowed. 
 
-    uint public maxEthCapBuyInFp;
-    uint public maxEthCapSellInFp;
+    uint public maxEthCapBuyInFp; // maximal allowed buy transaction.
+    uint public maxEthCapSellInFp; // maximal allowed sell transaction.
     uint public maxQtyInFp;
 
-    uint public feeInBps;
-    uint public collectedFeesInTwei = 0;
+    uint public feeInBps; // fee percent to collect in basic steps. one step is 1 / 10000 of the rate.
+    uint public collectedFeesInTwei = 0; // amount of inventory tokens which should be regarded as acquired fees.
 
-    uint public maxBuyRateInPrecision;
+    uint public maxBuyRateInPrecision; // precision is a common pricing multiplier.
     uint public minBuyRateInPrecision;
     uint public maxSellRateInPrecision;
     uint public minSellRateInPrecision;
@@ -46,7 +46,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         uint rInFp,
         uint pMinInFp,
         uint numFpBits,
-        uint maxCapBuyInFp,
+        uint maxEthCapBuyInFp,
         uint maxEthCapSellInFp,
         uint feeInBps,
         uint formulaPrecision,
@@ -68,19 +68,22 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         uint _minTokenToEthRateInPrecision
     ) public onlyAdmin {
 
-        require(_numFpBits < 256);
-        require(formulaPrecision <= MAX_QTY);
+        require(_numFpBits < 90);
         require(_feeInBps < 10000);
         require(_minTokenToEthRateInPrecision < _maxTokenToEthRateInPrecision);
 
         rInFp = _rInFp;
         pMinInFp = _pMinInFp;
-        formulaPrecision = uint(1)<<_numFpBits;
-        maxQtyInFp = fromWeiToFp(MAX_QTY);
         numFpBits = _numFpBits;
+        feeInBps = _feeInBps;
+
+        formulaPrecision = uint(1)<<_numFpBits;
+        require(formulaPrecision <= MAX_QTY);
+
+        maxQtyInFp = fromWeiToFp(MAX_QTY);
         maxEthCapBuyInFp = fromWeiToFp(_maxCapBuyInWei);
         maxEthCapSellInFp = fromWeiToFp(_maxCapSellInWei);
-        feeInBps = _feeInBps;
+
         maxBuyRateInPrecision = PRECISION * PRECISION / _minTokenToEthRateInPrecision;
         minBuyRateInPrecision = PRECISION * PRECISION / _maxTokenToEthRateInPrecision;
         maxSellRateInPrecision = _maxTokenToEthRateInPrecision;
@@ -110,11 +113,13 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
     )
         public
     {
+
+        require(msg.sender == reserveContract);
+
         conversionToken;
         rateUpdateBlock;
         currentBlock;
 
-        require(msg.sender == reserveContract);
         if (buyAmountInTwei > 0) {
             // Buy case
             collectedFeesInTwei += calcCollectedFee(abs(buyAmountInTwei));
@@ -142,14 +147,15 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
 
         currentBlockNumber;
 
-        require(qtyInSrcWei <= MAX_QTY);
+        if (conversionToken != token) return 0;
+
         uint eInFp = fromWeiToFp(reserveContract.balance);
-        uint rateInPrecision = getRateWithE(conversionToken, buy, qtyInSrcWei, eInFp);
+        uint rateInPrecision = getRateWithE(buy, qtyInSrcWei, eInFp);
         require(rateInPrecision <= MAX_RATE);
         return rateInPrecision;
     }
 
-    function getRateWithE(ERC20 conversionToken, bool buy, uint qtyInSrcWei, uint eInFp) public view returns(uint) {
+    function getRateWithE(bool buy, uint qtyInSrcWei, uint eInFp) public view returns(uint) {
         uint deltaEInFp;
         uint sellInputTokenQtyInFp;
         uint deltaTInFp;
@@ -157,7 +163,6 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
 
         require(qtyInSrcWei <= MAX_QTY);
         require(eInFp <= maxQtyInFp);
-        if (conversionToken != token) return 0;
 
         if (buy) {
             // ETH goes in, token goes out

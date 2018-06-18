@@ -49,24 +49,24 @@ contract UtilMath {
     /* solhint-enable code-complexity */
 
     function countLeadingZeros(uint p, uint q) public pure returns (uint) {
-        uint denomator = (uint(1)<<255);
+        uint denominator = (uint(1) << 255);
         for (int i = 255; i >= 0; i--) {
-            if ((q*denomator)/denomator != q) {
+            if ((q * denominator) / denominator != q) {
                 // overflow
-                denomator = denomator/2;
+                denominator = denominator/2;
                 continue;
             }
-            if (p/(q*denomator) > 0) return uint(i);
-            denomator = denomator/2;
+            if (p/(q * denominator) > 0) return uint(i);
+            denominator = denominator/2;
         }
 
         return uint(-1);
     }
 
-    // log2 for a number that it in [1,2)
+    // log2 for a number that is in [1,2)
     function log2ForSmallNumber(uint x, uint numPrecisionBits) public pure returns (uint) {
         uint res = 0;
-        uint one = (uint(1)<<numPrecisionBits);
+        uint one = (uint(1) << numPrecisionBits);
         uint two = 2 * one;
         uint addition = one;
 
@@ -74,10 +74,10 @@ contract UtilMath {
         require(numPrecisionBits < 125);
 
         for (uint i = numPrecisionBits; i > 0; i--) {
-            x = (x*x) / one;
+            x = (x * x) / one;
             addition = addition/2;
             if (x >= two) {
-                x = x/2;
+                x = x / 2;
                 res += addition;
             }
         }
@@ -100,7 +100,7 @@ contract UtilMath {
         uint y = p * precision / (q * (uint(1)<<n));
         uint log2Small = log2ForSmallNumber(y, numPrecisionBits);
 
-        require(n*precision <= BIG_NUMBER);
+        require(n * precision <= BIG_NUMBER);
         require(log2Small <= BIG_NUMBER);
 
         return n * precision + log2Small;
@@ -108,13 +108,13 @@ contract UtilMath {
 
     function ln(uint p, uint q, uint numPrecisionBits) public pure returns (uint) {
         uint ln2Numerator   = 6931471805599453094172;
-        uint ln2Denomerator = 10000000000000000000000;
+        uint ln2Denominator = 10000000000000000000000;
 
         uint log2x = logBase2(p, q, numPrecisionBits);
 
         require(!checkMultOverflow(ln2Numerator, log2x));
 
-        return ln2Numerator * log2x / ln2Denomerator;
+        return ln2Numerator * log2x / ln2Denominator;
     }
 }
 
@@ -147,7 +147,7 @@ contract LiquidityFormula is UtilMath {
     {
         uint pe = pE(r, pMIn, e, precision);
         uint rpe = r * pe;
-        uint lnPart = ln(precision*precision + rpe*deltaT/precision, precision*precision, numPrecisionBits);
+        uint lnPart = ln(precision * precision + rpe * deltaT / precision, precision * precision, numPrecisionBits);
 
         require(!checkMultOverflow(r, pe));
         require(!checkMultOverflow(precision, precision));

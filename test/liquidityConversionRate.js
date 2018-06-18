@@ -44,9 +44,9 @@ const formulaPrecision = BigNumber(2).pow(formulaPrecisionBits)
 const tokenDecimals = 18
 const tokenPrecision = BigNumber(10).pow(tokenDecimals)
 const r = 0.01
-const p0 = 0.00002246
+const p0 = 0.00002146
 const e0 = 69.315
-const t0 = 2226179
+const t0 = 2329916.12
 const feePercent = 0.25
 const maxCapBuyInEth = 3
 const maxCapSellInEth = 3
@@ -54,6 +54,14 @@ const maxCapSellInEth = 3
 // set pMIn, pMax according to r, p0, e0, t0
 const pMin = BigNumber(p0).div((Helper.exp(e, BigNumber(r).mul(e0))))
 const pMax = BigNumber((p0 / (1 - r * p0 * t0)).toString())
+
+pMinRatio = pMin.div(p0)
+pMaxRatio = pMax.div(p0)
+// console.log("pMin: " + pMin.toString())
+// console.log("pMax: " + pMax.toString())
+// console.log("pMinRatio: " + pMinRatio.toString())
+// console.log("pMaxRatio: " + pMaxRatio.toString())
+
 
 // default values in contract common units
 const feeInBps = feePercent * 100
@@ -203,16 +211,14 @@ contract('LiquidityConversionRates', function(accounts) {
 
     it("should set liquidity params", async function () {
 
-        /*
-        console.log("rInFp: " + rInFp.toString())
-        console.log("pMinInFp: " + pMinInFp.toString())
-        console.log("formulaPrecisionBits: " + formulaPrecisionBits.toString())
-        console.log("maxCapBuyInWei: " + maxCapBuyInWei.toString())
-        console.log("maxCapSellInWei: " + maxCapSellInWei.toString())
-        console.log("feeInBps: " + feeInBps.toString())
-        console.log("maxSellRateInPrecision: " + maxSellRateInPrecision.toString())
-        console.log("minSellRateInPrecision: " + minSellRateInPrecision.toString())
-        */
+        // console.log("rInFp: " + rInFp.toString())
+        // console.log("pMinInFp: " + pMinInFp.toString())
+        // console.log("formulaPrecisionBits: " + formulaPrecisionBits.toString())
+        // console.log("maxCapBuyInWei: " + maxCapBuyInWei.toString())
+        // console.log("maxCapSellInWei: " + maxCapSellInWei.toString())
+        // console.log("feeInBps: " + feeInBps.toString())
+        // console.log("maxSellRateInPrecision: " + maxSellRateInPrecision.toString())
+        // console.log("minSellRateInPrecision: " + minSellRateInPrecision.toString())
 
         await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision) 
     });
@@ -311,6 +317,21 @@ contract('LiquidityConversionRates', function(accounts) {
         assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
+    it("should test resetting of imbalance not by admin.", async function () {
+        let beforeReset = await liqConvRatesInst.collectedFeesInTwei();
+        assert.notEqual(beforeReset, 0, "bad result");
+        try {
+            await liqConvRatesInst.resetCollectedFees({from:operator})
+            assert(false, "expected to throw error in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+        let afterReset = await liqConvRatesInst.collectedFeesInTwei();
+        assert.notEqual(afterReset, 0, "bad result");
+
+    });
+
     it("should test resetting of imbalance.", async function () {
         let beforeReset = await liqConvRatesInst.collectedFeesInTwei();
         assert.notEqual(beforeReset, 0, "bad result");
@@ -321,34 +342,24 @@ contract('LiquidityConversionRates', function(accounts) {
         assert.equal(result, expectedResult, "bad result");
     });
 
-    it("should test resetting of imbalance not by admin.", async function () {
-        try {
-            await liqConvRatesInst.resetCollectedFees({from:operator})
-            assert(false, "expected to throw error in line above.")
-        }
-        catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-    });
-
     it("should test getrate for buy=true and qtyInSrcWei = non_0.", async function () {
         let expectedResult = priceForDeltaE(feePercent, r, pMin, deltaE, e0).mul(precision).valueOf()
         let qtyInSrcWei = BigNumber(deltaE).mul(precision)
-        let result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,eInFp);
+        let result =  await liqConvRatesInst.getRateWithE(true,qtyInSrcWei,eInFp);
         assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test getrate for buy=true and qtyInSrcWei = 0.", async function () {
         let expectedResult = buyPriceForZeroQuant(r, pMin, e0).mul(precision).valueOf()
         let qtyInSrcWei = 0
-        let result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,eInFp);
+        let result =  await liqConvRatesInst.getRateWithE(true,qtyInSrcWei,eInFp);
         assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test getrate for buy=true and qtyInSrcWei very small.", async function () {
         let expectedResult = buyPriceForZeroQuant(r, pMin, e0).mul(precision).valueOf()
         let qtyInSrcWei = 10 // this is assumed to be rounded to 0 by fromTweiToFp.
-        let result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,eInFp);
+        let result =  await liqConvRatesInst.getRateWithE(true,qtyInSrcWei,eInFp);
         assertAbsDiff(result, expectedResult, expectedDiffInPct)
         assert(result.valueOf != 0)
     });
@@ -356,21 +367,21 @@ contract('LiquidityConversionRates', function(accounts) {
     it("should test getrate for buy=false and qtyInSrcWei = non_0.", async function () {
         let qtyInSrcWei = BigNumber(deltaT).mul(tokenPrecision)
         let expectedResult = priceForDeltaT(feePercent, r, pMin, deltaT, e0).mul(precision).valueOf()
-        let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
+        let result =  await liqConvRatesInst.getRateWithE(false,qtyInSrcWei,eInFp);
         assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test getrate for buy=false and qtyInSrcWei = 0.", async function () {
         let expectedResult = sellPriceForZeroQuant(r, pMin, e0).mul(precision).valueOf()
         let qtyInSrcWei = 0
-        let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
+        let result =  await liqConvRatesInst.getRateWithE(false,qtyInSrcWei,eInFp);
         assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test getrate for buy=false and qtyInSrcWei very small.", async function () {
         let expectedResult = sellPriceForZeroQuant(r, pMin, e0).mul(precision).valueOf()
         let qtyInSrcWei = 10 // this is assumed to be rounded to 0 by fromTweiToFp.
-        let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
+        let result =  await liqConvRatesInst.getRateWithE(false,qtyInSrcWei,eInFp);
         assertAbsDiff(result, expectedResult, expectedDiffInPct)
         assert(result.valueOf != 0)
     });
@@ -408,7 +419,7 @@ contract('LiquidityConversionRates', function(accounts) {
         let otherToken = await TestToken.new("otherToken", "oth", tokenDecimals);
         let expectedResult = priceForDeltaE(feePercent, r, pMin, deltaE, e0).mul(precision).valueOf()
         let qtyInSrcWei = BigNumber(deltaE).mul(precision)
-        let result =  await liqConvRatesInst.getRateWithE(otherToken.address,true,qtyInSrcWei,eInFp);
+        let result =  await liqConvRatesInst.getRate(otherToken.address,0,true,qtyInSrcWei);        
         assert.equal(result, 0, "bad result");
     });
 
@@ -416,7 +427,7 @@ contract('LiquidityConversionRates', function(accounts) {
         let qtyInSrcWei = BigNumber(deltaT).mul(tokenPrecision)
         let deltaTAfterReducingFee = deltaT * (100 - feePercent) / 100; //reduce fee, as done in getRateWithE
         let expectedResult = priceForDeltaT(feePercent, r, pMin, deltaTAfterReducingFee, e0).mul(precision).valueOf()
-        let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
+        let result =  await liqConvRatesInst.getRateWithE(false,qtyInSrcWei,eInFp);
         let gotResult = result
 
         assertAbsDiff(result, expectedResult, expectedDiffInPct)
@@ -425,13 +436,13 @@ contract('LiquidityConversionRates', function(accounts) {
         let currentMaxSellRateInPrecision= gotResult.minus(100)
         let currentMinSellRateInPrecision= minSellRateInPrecision
         await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, currentMaxSellRateInPrecision, currentMinSellRateInPrecision)
-        result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
+        result =  await liqConvRatesInst.getRateWithE(false,qtyInSrcWei,eInFp);
         assert.equal(result, 0, "bad result");
 
         currentMaxSellRateInPrecision = maxSellRateInPrecision
         currentMinSellRateInPrecision = gotResult.plus(100)
         await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, currentMaxSellRateInPrecision, currentMinSellRateInPrecision)
-        result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
+        result =  await liqConvRatesInst.getRateWithE(false,qtyInSrcWei,eInFp);
         assert.equal(result, 0, "bad result");
 
         //return things to normal
@@ -440,14 +451,14 @@ contract('LiquidityConversionRates', function(accounts) {
 
     it("should test exceeding max cap buy", async function () {
         let qtyInSrcWei = BigNumber(maxCapBuyInEth + 0.2).mul(precision)
-        let result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,eInFp);
+        let result =  await liqConvRatesInst.getRateWithE(true,qtyInSrcWei,eInFp);
         assert.equal(result, 0, "bad result");
     });
 
     it("should test exceeding max cap sell", async function () {
         let sellQtyInTokens = (maxCapSellInEth / p0) * (1.1);
         let sellQtyInTwi = BigNumber(sellQtyInTokens.toString()).mul(tokenPrecision)
-        let result =  await liqConvRatesInst.getRateWithE(token.address,false,sellQtyInTwi,eInFp);
+        let result =  await liqConvRatesInst.getRateWithE(false,sellQtyInTwi,eInFp);
         assert.equal(result.valueOf(), 0, "bad result");
     });
 
@@ -475,7 +486,7 @@ contract('LiquidityConversionRates', function(accounts) {
 });
 
 
-contract('KyberReserve', function(accounts) {
+contract('kyberReserve for Liquidity', function(accounts) {
     it("should init globals. init ConversionRates Inst, token, set liquidity params .", async function () {
         // set account addresses
         admin = accounts[0];
@@ -826,7 +837,6 @@ contract('KyberReserve', function(accounts) {
                             let randQtyInSrcWei = BigNumber(randDeltaE).mul(precision)
 
                             let result = await liqConvRatesInst.getRateWithE(
-                                    randToken.address,
                                     true,
                                     randQtyInSrcWei,
                                     randEInFp);
