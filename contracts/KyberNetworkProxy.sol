@@ -72,7 +72,6 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, SimpleKyberInterface, 
         uint minConversionRate
     )
         public
-        payable
         returns(uint)
     {
         bytes memory hint;
