@@ -238,7 +238,7 @@ contract('KyberNetwork', function(accounts) {
     });
 
     it("should init network and reserves and set all reserve data including balances", async function () {
-        network = await Network.new(admin, {gas: 6700000});
+        network = await Network.new(admin);
         await network.addOperator(operator);
 
         reserve1 = await Reserve.new(network.address, pricing1.address, admin);
@@ -1602,6 +1602,17 @@ contract('KyberNetwork', function(accounts) {
            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
+        try {
+            await networkTemp.setKyberProxy(0);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should test can't set enable if any mandatory contract has zero value = wasn't set.", async function () {
+        const networkTemp = await Network.new(admin);
+
         //verify can't enable without set contracts
         try {
             await networkTemp.setEnable(true);
@@ -1618,16 +1629,6 @@ contract('KyberNetwork', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await networkTemp.setExpectedRate(expectedRate.address);
-        try {
-            await networkTemp.setEnable(true);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        networkTemp = await Network.new(admin);
-
         await networkTemp.setFeeBurner(feeBurner.address);
         try {
             await networkTemp.setEnable(true);
@@ -1636,9 +1637,15 @@ contract('KyberNetwork', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await networkTemp.setWhiteList(whiteList.address);
         await networkTemp.setExpectedRate(expectedRate.address);
-
+//        try {
+//            await networkTemp.setEnable(true);
+//            assert(false, "throw was expected in line above.")
+//        } catch(e){
+//            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+//        }
+//
+//        await networkTemp.setKyberProxy(networkProxy);
         await networkTemp.setEnable(true);
     });
 
@@ -2323,7 +2330,7 @@ contract('KyberNetwork', function(accounts) {
         }
 
         let avgGas = cumulativeGas.div(numTrades);
-        log("average gas usage " + numTrades + " buys. token to ether: " + avgGas.floor().valueOf());
+        log("average gas usage " + numTrades + " buys. token to token: " + avgGas.floor().valueOf());
     });
 });
 

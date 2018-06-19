@@ -13,4 +13,10 @@ contract MockUtils2 is Utils2 {
     function mockSetDecimalsSafe(ERC20 token) public {
         setDecimals(token);
     }
+
+    function mockCalcRateFromQty(uint srcAmount, uint destAmount, uint srcDecimals, uint dstDecimals)
+        public pure returns(uint rateResult)
+    {
+        rateResult = calcRateFromQty(srcAmount, destAmount, srcDecimals, dstDecimals);
+    }
 }

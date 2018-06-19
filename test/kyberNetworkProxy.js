@@ -505,6 +505,30 @@ contract('KyberNetworkProxy', function(accounts) {
         await reserve1.enableTrade({from:admin});
     });
 
+    it("use trade with hint. see hint size > 0 reverts", async function () {
+        let tokenInd = 1;
+        let token = tokens[tokenInd]; //choose some token
+        let amountWei = 330 * 1;
+
+        let buyRate = await networkProxy.getExpectedRate(ethAddress, tokenAdd[tokenInd], amountWei);
+
+        let hint = '0x123';
+
+        let user2BalanceBefore = await token.balanceOf(user2);
+
+        //perform trade
+        try {
+            await networkProxy.tradeWithHint(ethAddress, amountWei, tokenAdd[tokenInd], user2, 50000,
+                buyRate[1].valueOf(), walletId, hint, {from:user1, value:amountWei});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
+        }
+
+        let user2BalanceAfter = await token.balanceOf(user2);
+        assert.equal(user2BalanceAfter.valueOf(), user2BalanceBefore.valueOf());
+    });
+
     it("use trade with hint. disable 1 reserve. perform sell and check: balances changed as expected.", async function () {
         let tokenInd = 2;
         let token = tokens[tokenInd]; //choose some token
@@ -1749,6 +1773,7 @@ contract('KyberNetworkProxy', function(accounts) {
         await pricing1.enableTokenTrade(tokenAdd[tokenDestInd]);
     });
 
+
     it("should test token to token trade with same src and dest token.", async function () {
         let tokenSrcInd = 1;
         let tokenDestInd = 1;
@@ -1850,6 +1875,7 @@ contract('KyberNetworkProxy', function(accounts) {
             assert(user2DestTokBalanceAfter.valueOf() >= expectedUser2DestTokBalanceAfter.valueOf(), "not enough dest token transferred");
         };
     });
+
 
     it("init smart malicious network and set all contracts and params", async function () {
         maliciousNetwork = await MaliciousNetwork.new(admin);
@@ -1962,7 +1988,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 rate[0].valueOf(), walletId, {from:user1, value: amountWei});
     });
 
-    it("verify buy with malicious network reverts when using slippage rate as min rate - depending on stolen amount", async function () {
+    it("verify buy with malicious network reverts when using slippage rate as min rate - depending on taken amount", async function () {
         //trade data
         let tokenInd = 2;
         let token = tokens[tokenInd]; //choose some token
@@ -2216,7 +2242,7 @@ contract('KyberNetworkProxy', function(accounts) {
         await reserve1.enableTrade({from:admin});
     });
 
-    it("verify buy with network without max dest reverts if dest amount in below actual dest amount", async function () {
+    it("verify buy with network without max dest reverts if dest amount is below actual dest amount", async function () {
         //trade data
         let tokenInd = 2;
         let token = tokens[tokenInd]; //choose some token
