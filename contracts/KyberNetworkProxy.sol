@@ -8,12 +8,12 @@ import "./PermissionGroups.sol";
 import "./KyberReserveInterface.sol";
 import "./KyberNetworkInterface.sol";
 import "./KyberNetworkProxyInterface.sol";
-import "./SimpleKyberInterface.sol";
+import "./SimpleNetworkInterface.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network proxy for main contract
-contract KyberNetworkProxy is KyberNetworkProxyInterface, SimpleKyberInterface, Withdrawable, Utils2 {
+contract KyberNetworkProxy is KyberNetworkProxyInterface, SimpleNetworkInterface, Withdrawable, Utils2 {
 
     KyberNetworkInterface public kyberNetworkContract;
 
