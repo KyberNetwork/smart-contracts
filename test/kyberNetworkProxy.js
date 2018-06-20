@@ -1,11 +1,13 @@
 let NetworkProxy = artifacts.require("./KyberNetworkProxy.sol");
 let ConversionRates = artifacts.require("./mockContracts/MockConversionRate.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
+let TokenReverseSend = artifacts.require("./mockContracts/TokenReverseSend.sol");
 let Reserve = artifacts.require("./KyberReserve.sol");
 let Network = artifacts.require("./KyberNetwork.sol");
 let NetworkNoMaxDest = artifacts.require("./mockContracts/KyberNetworkNoMaxDest.sol");
 let MaliciousNetwork = artifacts.require("./mockContracts/MaliciousKyberNetwork.sol");
 let MaliciousNetwork2 = artifacts.require("./mockContracts/MaliciousKyberNetwork2.sol");
+let GenerousNetwork = artifacts.require("./mockContracts/GenerousKyberNetwork.sol");
 let WhiteList = artifacts.require("./WhiteList.sol");
 let ExpectedRate = artifacts.require("./ExpectedRate.sol");
 let FeeBurner = artifacts.require("./FeeBurner.sol");
@@ -53,6 +55,7 @@ let network;
 let networkNoMaxDest;
 let maliciousNetwork;
 let maliciousNetwork2;
+let generousNetwork;
 let networkProxy;
 let feeBurner;
 
@@ -145,7 +148,11 @@ contract('KyberNetworkProxy', function(accounts) {
         //create and add token addresses...
         for (let i = 0; i < numTokens; ++i) {
             tokenDecimals[i] = 15 * 1 + 1 * i;
-            token = await TestToken.new("test" + i, "tst" + i, tokenDecimals[i]);
+            if (i == numTokens - 1) {
+                token = await TokenReverseSend.new("test" + i, "tst" + i, tokenDecimals[i]);
+            } else {
+                token = await TestToken.new("test" + i, "tst" + i, tokenDecimals[i]);
+            }
             tokens[i] = token;
             tokenAdd[i] = token.address;
 
@@ -2272,6 +2279,99 @@ contract('KyberNetworkProxy', function(accounts) {
         await networkProxy.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, (expectedDestTokensTwei + 15),
                 rate[0].valueOf(), walletId, {from:user1, value: amountWei});
         await reserve1.enableTrade({from:admin});
+    });
+
+    it("init 'generous' network with trade reverse direction, could result in overflow.", async function () {
+        // in next tests - testing strange situasions that could cause overflow.
+        // 1. if src token amount after trade is higher then src amount before trade.
+        // 2. if dest amount for dest toekn after trade is lower then before trade
+        generousNetwork = await GenerousNetwork.new(admin);
+        await generousNetwork.addOperator(operator);
+
+        await reserve1.setContracts(generousNetwork.address, pricing1.address, 0);
+        await reserve2.setContracts(generousNetwork.address, pricing2.address, 0);
+
+        // add reserves
+        await generousNetwork.addReserve(reserve1.address, true);
+        await generousNetwork.addReserve(reserve2.address, true);
+
+        await generousNetwork.setKyberProxy(networkProxy.address);
+
+        await networkProxy.setKyberNetworkContract(generousNetwork.address);
+
+        //set contracts
+        await generousNetwork.setWhiteList(whiteList.address);
+        await generousNetwork.setExpectedRate(expectedRate.address);
+        feeBurner = await FeeBurner.new(admin, tokenAdd[0], generousNetwork.address);
+        await generousNetwork.setFeeBurner(feeBurner.address);
+        await generousNetwork.setParams(gasPrice.valueOf(), negligibleRateDiff);
+        await generousNetwork.setEnable(true);
+        let price = await generousNetwork.maxGasPrice();
+        assert.equal(price.valueOf(), gasPrice.valueOf());
+
+        //list tokens per reserve
+        for (let i = 0; i < numTokens; i++) {
+            await generousNetwork.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true);
+            await generousNetwork.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true);
+        }
+    });
+
+    it("verify trade with reverses trade = (src address before is lower then source address after), reverts.", async function () {
+        //trade data
+        let tokenInd = numTokens - 1;
+        let token = tokens[tokenInd]; //choose some token
+        let amountTwei = 1313;
+
+        //get rate
+        let rate = await networkProxy.getExpectedRate(tokenAdd[tokenInd], ethAddress, amountTwei);
+        log("rate " + rate[0])
+        log("reverse token : " + tokenAdd[tokenInd])
+
+                let balanceBefore = await token.balanceOf(operator);
+        log("balance " + balanceBefore)
+        await token.transferFrom(operator, operator, 755)
+        balanceBefore = await token.balanceOf(operator);
+                log("balance " + balanceBefore)
+        await token.transferFrom(operator, operator, 855)
+        balanceBefore = await token.balanceOf(operator);
+                log("balance " + balanceBefore)
+
+        await token.transfer(user1, amountTwei);
+        await token.approve(networkProxy.address, amountTwei, {from:user1})
+
+        //see trade reverts
+        try {
+            await networkProxy.trade(tokenAdd[tokenInd], amountTwei, ethAddress, user2, 9000000,
+                 rate[1].valueOf(), walletId, {from:user1});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
+        }
+        assert(false)
+    });
+
+    it("verify trade with reverses trade = (dest address after is lower then dest address before), reverts.", async function () {
+        //trade data
+        let tokenInd = numTokens - 1;
+        let token = tokens[tokenInd]; //choose some token
+        let amountWei = 1515;
+
+        //get rate
+        let rate = await networkProxy.getExpectedRate(ethAddress, tokenAdd[tokenInd], amountWei);
+        log("rate " + rate[0])
+
+        //want user 2 to have some initial balance
+        await token.transfer(user2, 2000);
+
+        //see trade reverts
+        try {
+            await networkProxy.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, 9000000,
+                 rate[1].valueOf(), walletId, {from:user1, value: amountWei});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
+        }
+        assert(false)
     });
 });
 

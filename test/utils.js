@@ -43,7 +43,7 @@ contract('utils', function(accounts) {
 
     it("check dest qty calculation for high quantities.", async function () {
         let srcQty = MAX_QTY;
-        let rate = PRECISION.div(2); //1 to 2. in PRECISION units
+        let rate = PRECISION.div(2).floor();
 
         //first check when dest decimals > src decimals
         let srcDecimal = 10;
@@ -58,6 +58,31 @@ contract('utils', function(accounts) {
 
         //should revert
         srcQty = MAX_QTY.add(1);
+        try {
+            reportedDstQty = await utils.mockCalcDstQty(srcQty.valueOf(), srcDecimal, dstDecimal, rate.valueOf());
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("check dest qty calculation for high quantities.", async function () {
+        let srcQty = MAX_QTY.div(2).floor();
+        let rate = MAX_RATE;
+
+        //first check when dest decimals > src decimals
+        let srcDecimal = 10;
+        let dstDecimal = 20;
+
+        //should work with max Qty
+        let expectedDestQty = calcDestQty(srcQty, rate, srcDecimal, dstDecimal);
+
+        let reportedDstQty = await utils.mockCalcDstQty(srcQty.valueOf(), srcDecimal, dstDecimal, rate.valueOf());
+
+        assert.equal(expectedDestQty.valueOf(), reportedDstQty.valueOf(), "unexpected dst qty");
+
+        //should revert
+        rate = MAX_RATE.add(1);
         try {
             reportedDstQty = await utils.mockCalcDstQty(srcQty.valueOf(), srcDecimal, dstDecimal, rate.valueOf());
             assert(false, "throw was expected in line above.")
@@ -103,6 +128,31 @@ contract('utils', function(accounts) {
 
         //here should revert
         dstQty = MAX_QTY.add(1);
+
+        try {
+            reportedSrcQty = await utils.mockCalcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("check src qty calculation with high rate.", async function () {
+        let dstQty = MAX_QTY.div(2).floor();
+        let rate = MAX_RATE;
+
+        //check when dest decimals > src decimals
+        let srcDecimal = 10;
+        let dstDecimal = 16;
+
+        let expectedSrcQty = calcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
+        let reportedSrcQty = await utils.mockCalcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
+
+//        console.log(reportedSrcQty.logs[0].args)
+//        assert.equal(expectedSrcQty.valueOf(), reportedSrcQty.valueOf(), "unexpected src qty. expected: " + expectedSrcQty.valueOf());
+
+        //here should revert
+        rate = MAX_RATE.add(1);
 
         try {
             reportedSrcQty = await utils.mockCalcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
@@ -194,6 +244,7 @@ function calcSrcQty(dstQty, srcDecimals, dstDecimals, rate) {
         numerator = PRECISION.mul(dstQty);
         denominator = (new BigNumber(rate)).mul((new BigNumber(10)).pow(dstDecimals - srcDecimals));
     }
-    return ((numerator.add(denominator.sub(1))).div(denominator)).floor(); //avoid rounding down errors
+//    console.log("numerator: " + numerator.valueOf() + " denominator: " + denominator.valueOf())
+    return (((numerator.add(denominator).sub(1)).div(denominator)).floor()); //avoid rounding down errors
 }
 
