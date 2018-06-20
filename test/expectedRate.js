@@ -400,7 +400,7 @@ contract('ExpectedRates', function(accounts) {
         }
     });
 
-    it("should verify when qty 0, expected rate isn't 0.", async function() {
+    it("should verify when qty 0, expected rate correct. expected isn't 0. slippage is 0", async function() {
         let tokenInd = 2;
         let qty = 0;
         quantityFactor = 2;
@@ -412,17 +412,17 @@ contract('ExpectedRates', function(accounts) {
 
         assert(rates[0].valueOf() != 0, "unexpected rate");
         assert.equal(rates[0].valueOf(), expectedRate[1].valueOf(), "unexpected rate");
-        assert(rates[1].valueOf() != 0, "unexpected rate");
+        assert.equal(rates[1].valueOf(), 0, "we expect slippage to be 0");
     });
 
-    it("should verify when qty small, expected rate isn't 0.", async function() {
+    it("should verify when qty small, expected rate isn't 0. slippage is 0", async function() {
         let tokenInd = 2;
         let qty = 1;
 
         rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
         let expectedRate = await network.searchBestRate(tokenAdd[tokenInd], ethAddress, qty);
         assert.equal(rates[0].valueOf(), expectedRate[1].valueOf(), "unexpected rate");
-        assert(rates[1].valueOf() != 0, "unexpected rate");
+        assert(rates[1].valueOf() == 0, "unexpected rate");
     });
 
     it("should verify when qty 0, token to token rate as expected.", async function() {
@@ -438,6 +438,7 @@ contract('ExpectedRates', function(accounts) {
 
         assert(rates[0].valueOf() != 0, "unexpected rate");
         assert.equal(rates[0].valueOf(), srcToEthRate.mul(ethToDestRate).div(precisionUnits).floor(), "unexpected rate");
+        assert.equal(rates[1].valueOf(), 0, "unexpected rate");
     });
 });
 
