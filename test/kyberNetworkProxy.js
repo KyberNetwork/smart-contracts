@@ -2347,7 +2347,6 @@ contract('KyberNetworkProxy', function(accounts) {
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
         }
-        assert(false)
     });
 
     it("verify trade with reverses trade = (dest address after is lower then dest address before), reverts.", async function () {
@@ -2371,7 +2370,6 @@ contract('KyberNetworkProxy', function(accounts) {
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
         }
-        assert(false)
     });
 });
 
