@@ -8,11 +8,12 @@ import "./PermissionGroups.sol";
 import "./KyberReserveInterface.sol";
 import "./KyberNetworkInterface.sol";
 import "./KyberNetworkProxyInterface.sol";
+import "./SimpleNetworkInterface.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network proxy for main contract
-contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
+contract KyberNetworkProxy is KyberNetworkProxyInterface, SimpleNetworkInterface, Withdrawable, Utils2 {
 
     KyberNetworkInterface public kyberNetworkContract;
 
@@ -54,6 +55,74 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
             maxDestAmount,
             minConversionRate,
             walletId,
+            hint
+        );
+    }
+
+    /// @dev makes a trade between src and dest token and send dest tokens to msg sender
+    /// @param src Src token
+    /// @param srcAmount amount of src tokens
+    /// @param dest Destination token
+    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
+    /// @return amount of actual dest tokens
+    function swapTokenToToken(
+        ERC20 src,
+        uint srcAmount,
+        ERC20 dest,
+        uint minConversionRate
+    )
+        public
+        returns(uint)
+    {
+        bytes memory hint;
+
+        return tradeWithHint(
+            src,
+            srcAmount,
+            dest,
+            msg.sender,
+            MAX_QTY,
+            minConversionRate,
+            0,
+            hint
+        );
+    }
+
+    /// @dev makes a trade from Ether to token. Sends token to msg sender
+    /// @param token Destination token
+    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
+    /// @return amount of actual dest tokens
+    function swapEtherToToken(ERC20 token, uint minConversionRate) public payable returns(uint) {
+        bytes memory hint;
+
+        return tradeWithHint(
+            ETH_TOKEN_ADDRESS,
+            msg.value,
+            token,
+            msg.sender,
+            MAX_QTY,
+            minConversionRate,
+            0,
+            hint
+        );
+    }
+
+    /// @dev makes a trade from token to Ether, sends Ether to msg sender
+    /// @param token Src token
+    /// @param srcAmount amount of src tokens
+    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
+    /// @return amount of actual dest tokens
+    function swapTokenToEther(ERC20 token, uint srcAmount, uint minConversionRate) public returns(uint) {
+        bytes memory hint;
+
+        return tradeWithHint(
+            token,
+            srcAmount,
+            ETH_TOKEN_ADDRESS,
+            msg.sender,
+            MAX_QTY,
+            minConversionRate,
+            0,
             hint
         );
     }
@@ -120,12 +189,12 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
             userBalanceBefore.destBalance,
             src,
             dest,
-            destAddress,
-            minConversionRate
+            destAddress
         );
 
         require(reportedDestAmount == tradeOutcome.userDeltaDestAmount);
-        require(tradeOutcome.userDeltaDestAmount >= tradeOutcome.userMinExpectedDeltaDestAmount);
+        require(tradeOutcome.userDeltaDestAmount <= maxDestAmount);
+        require(tradeOutcome.actualRate >= minConversionRate);
 
         ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcAmount, tradeOutcome.userDeltaDestAmount);
         return tradeOutcome.userDeltaDestAmount;
@@ -172,11 +241,11 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
     struct TradeOutcome {
         uint userDeltaSrcAmount;
         uint userDeltaDestAmount;
-        uint userMinExpectedDeltaDestAmount;
+        uint actualRate;
     }
 
     function calculateTradeOutcome (uint srcBalanceBefore, uint destBalanceBefore, ERC20 src, ERC20 dest,
-        address destAddress, uint minConversionRate)
+        address destAddress)
         internal returns(TradeOutcome outcome)
     {
         uint userSrcBalanceAfter;
@@ -185,14 +254,18 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, Withdrawable, Utils2 {
         userSrcBalanceAfter = getBalance(src, msg.sender);
         userDestBalanceAfter = getBalance(dest, destAddress);
 
+        //check for overflow.
+        require(userDestBalanceAfter >= destBalanceBefore);
+        require(srcBalanceBefore >= userSrcBalanceAfter);
+
         outcome.userDeltaDestAmount = userDestBalanceAfter - destBalanceBefore;
         outcome.userDeltaSrcAmount = srcBalanceBefore - userSrcBalanceAfter;
 
-        //make sure no overflow
-        require(outcome.userDeltaDestAmount <= userDestBalanceAfter);
-        require(outcome.userDeltaSrcAmount <= srcBalanceBefore);
-
-        outcome.userMinExpectedDeltaDestAmount =
-            calcDstQty(outcome.userDeltaSrcAmount, getDecimalsSafe(src), getDecimalsSafe(dest), minConversionRate);
+        outcome.actualRate = calcRateFromQty(
+                outcome.userDeltaSrcAmount,
+                outcome.userDeltaDestAmount,
+                getDecimalsSafe(src),
+                getDecimalsSafe(dest)
+            );
     }
 }

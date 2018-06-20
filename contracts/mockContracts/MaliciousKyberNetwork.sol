@@ -10,7 +10,7 @@ import "../PermissionGroups.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// @title Kyber Network main contract
+/// @title Kyber Network main contract, takes some fee and reports actual dest amount minus Fees.
 contract MaliciousKyberNetwork is KyberNetwork {
 
     address public myWallet = 0x1234;
@@ -79,14 +79,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
                 rateResult.rateEthToDest,
                 true));
 
-        //when src is ether, reserve1 is doing a "fake" trade. (ether to ether) - don't burn.
-        //when dest is ether, reserve2 is doing a "fake" trade. (ether to ether) - don't burn.
-//        if (tradeInput.src != ETH_TOKEN_ADDRESS)
-//            require(feeBurnerContract.handleFees(ethAmount, rateResult.reserve1, tradeInput.walletId));
-//        if (tradeInput.dest != ETH_TOKEN_ADDRESS)
-//            require(feeBurnerContract.handleFees(ethAmount, rateResult.reserve2, tradeInput.walletId));
-
-        return actualDestAmount;
+        return (actualDestAmount - myFeeWei);
     }
     /* solhint-enable function-max-lines */
 
@@ -138,8 +131,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
 
             //for token to token dest address is network. and Ether / token already here...
             if (dest == ETH_TOKEN_ADDRESS) {
-                destAddress.transfer(expectedDestAmount - myFeeWei);
-                myWallet.transfer(myFeeWei);
+                destAddress.transfer(expectedDestAmount);
             } else {
                 require(dest.transfer(destAddress, (expectedDestAmount - myFeeWei)));
                 dest.transfer(myWallet, myFeeWei);
