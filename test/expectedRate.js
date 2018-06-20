@@ -11,6 +11,8 @@ let BigNumber = require('bignumber.js');
 
 
 let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+let precisionUnits = (new BigNumber(10).pow(18));
+
 let bps = 10000;
 let minSlippageBps = 400;
 let quantityFactor = 3;
@@ -32,7 +34,6 @@ let tokenAdd = [];
 contract('ExpectedRates', function(accounts) {
     it("should init kyber network and all its components.", async function () {
         let gasPrice = (new BigNumber(10).pow(9).mul(50));
-        let precisionUnits = (new BigNumber(10).pow(18));
 
         //block data
         let priceUpdateBlock;
@@ -399,7 +400,7 @@ contract('ExpectedRates', function(accounts) {
         }
     });
 
-    it("should verify when qty 0, returned rate isn't 0.", async function() {
+    it("should verify when qty 0, expected rate isn't 0.", async function() {
         let tokenInd = 2;
         let qty = 0;
         quantityFactor = 2;
@@ -407,10 +408,36 @@ contract('ExpectedRates', function(accounts) {
         await expectedRates.setMinSlippageFactor(minSlippageBps, {from: operator});
 
         rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
-        log('rates');
-        log(rates);
+        let expectedRate = await network.searchBestRate(tokenAdd[tokenInd], ethAddress, qty);
+
         assert(rates[0].valueOf() != 0, "unexpected rate");
+        assert.equal(rates[0].valueOf(), expectedRate[1].valueOf(), "unexpected rate");
         assert(rates[1].valueOf() != 0, "unexpected rate");
+    });
+
+    it("should verify when qty small, expected rate isn't 0.", async function() {
+        let tokenInd = 2;
+        let qty = 1;
+
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        let expectedRate = await network.searchBestRate(tokenAdd[tokenInd], ethAddress, qty);
+        assert.equal(rates[0].valueOf(), expectedRate[1].valueOf(), "unexpected rate");
+        assert(rates[1].valueOf() != 0, "unexpected rate");
+    });
+
+    it("should verify when qty 0, token to token rate as expected.", async function() {
+        let tokenSrcInd = 2;
+        let tokenDestInd = 1;
+        let qty = 0;
+
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], qty);
+        let srcToEthRate = await network.searchBestRate(tokenAdd[tokenSrcInd], ethAddress, qty);
+        srcToEthRate = new BigNumber(srcToEthRate[1].valueOf());
+        let ethToDestRate = await network.searchBestRate(ethAddress, tokenAdd[tokenDestInd], qty);
+        ethToDestRate = new BigNumber(ethToDestRate[1].valueOf());
+
+        assert(rates[0].valueOf() != 0, "unexpected rate");
+        assert.equal(rates[0].valueOf(), srcToEthRate.mul(ethToDestRate).div(precisionUnits).floor(), "unexpected rate");
     });
 });
 
