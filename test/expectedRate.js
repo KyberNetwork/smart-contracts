@@ -261,7 +261,7 @@ contract('ExpectedRates', function(accounts) {
         assert.equal(rates[1].valueOf(), qtySlippageRate, "unexpected rate");
     });
 
-    it("should test token to eth. use slippage.", async function() {
+    it("should test token to eth. use qty slippage.", async function() {
         let tokenInd = 2;
         let qty = 300;
 
@@ -324,7 +324,7 @@ contract('ExpectedRates', function(accounts) {
     });
 
     it("should verify set quantity factor reverts when > 100.", async function() {
-            let legalFactor = 100;
+        let legalFactor = 100;
         let illegalFactor = 101;
 
         await expectedRates.setQuantityFactor(legalFactor, {from: operator});
@@ -344,25 +344,25 @@ contract('ExpectedRates', function(accounts) {
         assert.equal(rxFactor, legalFactor);
     });
 
-//    it("should verify set min slippage reverts when > 100 * 100.", async function() {
-//        let legalSlippage = 100 * 100;
-//        let illegalSlippage = 100 * 100 + 1 * 1;
-//
-//        await expectedRates.setMinSlippageFactor(legalSlippage, {from: operator});
-//        let rxSlippage = await expectedRates.minSlippageFactorInBps();
-//
-//        assert.equal(rxSlippage, legalSlippage);
-//
-//        try {
-//            await expectedRates.setMinSlippageFactor(illegalSlippage, {from: operator});
-//            assert(false, "throw was expected in line above.")
-//        } catch(e){
-//            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-//        }
-//
-//        rxSlippage = await expectedRates.minSlippageFactorInBps();
-//        assert.equal(rxSlippage, legalSlippage);
-//    });
+    it("should verify set min slippage reverts when > 100 * 100.", async function() {
+        let legalSlippage = 100 * 100;
+        let illegalSlippage = 100 * 100 + 1 * 1;
+
+        await expectedRates.setMinSlippageFactor(legalSlippage, {from: operator});
+        let rxSlippage = await expectedRates.minSlippageFactorInBps();
+
+        assert.equal(rxSlippage, legalSlippage);
+
+        try {
+            await expectedRates.setMinSlippageFactor(illegalSlippage, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        rxSlippage = await expectedRates.minSlippageFactorInBps();
+        assert.equal(rxSlippage, legalSlippage);
+    });
 
     it("should verify get expected rate reverts when qty > MAX QTY.", async function() {
         let legalQty = (new BigNumber(10).pow(28));
@@ -398,4 +398,23 @@ contract('ExpectedRates', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     });
- });
+
+    it("should verify when qty 0, returned rate isn't 0.", async function() {
+        let tokenInd = 2;
+        let qty = 0;
+        quantityFactor = 2;
+
+        await expectedRates.setMinSlippageFactor(minSlippageBps, {from: operator});
+
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        log('rates');
+        log(rates);
+        assert(rates[0].valueOf() != 0, "unexpected rate");
+        assert(rates[1].valueOf() != 0, "unexpected rate");
+    });
+});
+
+
+function log (string) {
+    console.log(string);
+};

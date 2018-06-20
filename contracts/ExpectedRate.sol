@@ -32,7 +32,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
     event MinSlippageFactorSet (uint newMin, uint oldMin, address sender);
 
     function setMinSlippageFactor(uint bps) public onlyOperator {
-        require(minSlippageFactorInBps <= 100 * 100);
+        require(bps <= 100 * 100);
 
         MinSlippageFactorSet(bps, minSlippageFactorInBps, msg.sender);
         minSlippageFactorInBps = bps;
@@ -46,19 +46,36 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
         require(srcQty <= MAX_QTY);
         require(srcQty * quantityFactor <= MAX_QTY);
 
+        if (srcQty == 0) srcQty = 1;
+
         uint bestReserve;
         uint minSlippage;
 
         (bestReserve, expectedRate) = kyberNetwork.findBestRate(src, dest, srcQty);
         (bestReserve, slippageRate) = kyberNetwork.findBestRate(src, dest, (srcQty * quantityFactor));
 
+        if (expectedRate == 0) {
+            expectedRate = expectedRateSmallQty(src, dest);
+        }
+
         require(expectedRate <= MAX_RATE);
 
         minSlippage = ((10000 - minSlippageFactorInBps) * expectedRate) / 10000;
-        if (slippageRate >= minSlippage) {
+        if ((slippageRate >= minSlippage) || (slippageRate == 0)) {
             slippageRate = minSlippage;
         }
 
         return (expectedRate, slippageRate);
+    }
+
+    //@dev for small src quantities dest qty might be 0, then returned rate is zero.
+    //@dev for backward compatibility we would like to return non zero rate (correct one) for small src qty
+    function expectedRateSmallQty(ERC20 src, ERC20 dest) internal view returns(uint) {
+        address reserve;
+        uint rateSrcToEth;
+        uint rateEthToDest;
+        (reserve, rateSrcToEth) = kyberNetwork.searchBestRate(src, ETH_TOKEN_ADDRESS, 0);
+        (reserve, rateEthToDest) = kyberNetwork.searchBestRate(ETH_TOKEN_ADDRESS, dest, 0);
+        return rateSrcToEth * rateEthToDest / PRECISION;
     }
 }
