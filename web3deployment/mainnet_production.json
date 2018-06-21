@@ -230,6 +230,43 @@
       "internal use": false,
       "listed": true
     },
+    "MOT": {
+      "name": "Olympus Labs",
+      "decimals": 18,
+      "address": "0x263c618480dbe35c300d8d5ecda19bbb986acaed",
+      "internal use": false,
+      "listed": true
+    },
+    "DGX": {
+      "name": "Digix Gold",
+      "decimals": 9,
+      "address": "0x4f3afec4e5a3f2a6a1a411def7d7dfe50ee057bf",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "2711997842670896021504",
+      "maxTotalImbalance": "3833713935933528080384",
+      "internal use": true,
+      "listed": true
+    },
+    "ABT": {
+      "name": "ArcBlock",
+      "decimals": 18,
+      "address": "0xb98d4c97425d9908e66e53a6fdf673acca0be986",
+      "minimalRecordResolution": "100000000000000",
+      "maxPerBlockImbalance": "5461044951947117854720",
+      "maxTotalImbalance": "6043192343824681664512",
+      "internal use": true,
+      "listed": true
+    },
+    "ENJ": {
+      "name": "EnjinCoin",
+      "decimals": 18,
+      "address": "0xf629cbd94d3791c9250152bd8dfbdf380e2a3b9c",
+      "minimalRecordResolution": "100000000000000",
+      "maxPerBlockImbalance": "5461044951947117854720",
+      "maxTotalImbalance": "6043192343824681664512",
+      "internal use": true,
+      "listed": true
+    },
     "ETH": {
       "name": "Ethereum",
       "decimals": 18,
@@ -258,7 +295,16 @@
       "BQX": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
       "ZIL": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
       "AST": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-      "LINK": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"
+      "LINK": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "ENJ" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"
+    },
+    "huobi": {
+      "ETH": "0x0c8fd73eaf6089ef1b91231d0a07d0d2ca2b9d66",
+      "ABT": "0x0c8fd73eaf6089ef1b91231d0a07d0d2ca2b9d66"
+    },
+    "stable_exchange": {
+      "ETH": "0xFDF28Bf25779ED4cA74e958d54653260af604C20",
+      "DGX": "0xFDF28Bf25779ED4cA74e958d54653260af604C20"
     }
   },
   "wallets": {
@@ -311,7 +357,8 @@
         "0xf214dde57f32f3f34492ba3148641693058d4a9e",
         "0xd0643BC0D0C879F175556509dbcEe9373379D5C3",
         "0x342F4057110bE50957d0f156F4939a929944C69e",
-        "0x3A9b02c14d967333cE68E353a64653E258da2BAa"
+        "0x3A9b02c14d967333cE68E353a64653E258da2BAa",
+        "0x7D5a75e27B3E9d07aB63c7b7F18f544b0a6a96a0"
       ],
       "alerter": []
     },
@@ -326,7 +373,8 @@
     "SanityRate": {
       "admin": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
       "operator": [
-        "0x0a3d5c8894bbe1e9113e4ed6f0c3b0d4fa6b131e"
+        "0x0a3d5c8894bbe1e9113e4ed6f0c3b0d4fa6b131e",
+        "0xd0643BC0D0C879F175556509dbcEe9373379D5C3"
       ],
       "alerter": []
     }
@@ -406,7 +454,7 @@
     "email cap": 5000,
     "KYC category": 4,
     "KYC cap": 10000,
-    "default cap": 0,
+    "default cap": 5000,
     "wei per SGD": 850000000000000
   },
   "max gas price": "50000000000",
@@ -425,6 +473,7 @@
   "feeburner": "0x07f6e905f2a1559cd9fd43cb92f8a1062a3ca706",
   "whitelist" : "0x6e106a75d369d09a9ea1dcc16da844792aa669a3",
   "third_party_reserves": [
-    "0x2aab2b157a03915c8a73adae735d0cf51c872f31"
+    "0x2aab2b157a03915c8a73adae735d0cf51c872f31",
+    "0x6f50e41885fdc44dbdf7797df0393779a9c0a3a6"
   ]
 }
