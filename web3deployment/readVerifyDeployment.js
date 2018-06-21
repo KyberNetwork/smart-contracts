@@ -759,13 +759,14 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
 
     let feeToBurn = await FeeBurner.methods.reserveFeeToBurn(reserveAddress).call();
     myLog(0, 0, ("reserveFeeToBurn: " + feeToBurn + " twei == " + getAmountTokens(feeToBurn, jsonKNCAddress) + " KNC tokens."));
-    let KNCAddress = (await FeeBurner.methods.knc().call()).toLowerCase();
-    raiseFlag = isKyberReserve && (KNCAddress != jsonKNCAddress);
-    myLog(raiseFlag, 0, ("KNCAddress: " + KNCAddress));
-    let kncPerEthRate = await FeeBurner.methods.kncPerETHRate().call();
-    SpyrosDict["kncPerEthRate"] = kncPerEthRate.valueOf();
-    myLog((kncPerEthRate.valueOf() == 0), (kncPerEthRate != jsonKNC2EthRate), ("kncPerEthRate: " + kncPerEthRate));
     if (isKyberReserve) {
+        let KNCAddress = (await FeeBurner.methods.knc().call()).toLowerCase();
+        raiseFlag = isKyberReserve && (KNCAddress != jsonKNCAddress);
+        myLog(raiseFlag, 0, ("KNCAddress: " + KNCAddress));
+        let kncPerEthRate = await FeeBurner.methods.kncPerETHRate().call();
+        SpyrosDict["kncPerEthRate"] = kncPerEthRate.valueOf();
+        myLog((kncPerEthRate.valueOf() == 0), (kncPerEthRate != jsonKNC2EthRate), ("kncPerEthRate: " + kncPerEthRate));
+
         let kyberNetwork = (await FeeBurner.methods.kyberNetwork().call()).toLowerCase();
         myLog((kyberNetwork != kyberNetworkAdd), 0, ("kyberNetworkAdd: " + kyberNetwork));
         let taxFeeBps = await FeeBurner.methods.taxFeeBps().call()
@@ -823,8 +824,9 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index, 
 //        myLog(1, 0, "blockchain Code:");
 //        myLog(0, 0, blockCode);
         myLog(0, 0, '');
-        myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
+        myLog(1, 0, "Byte code from block chain doesn't match locally compiled code. probably liquidity...")
         myLog(0, 0, '')
+        return;
     } else {
         myLog(0, 0, "Code on blockchain matches locally compiled code");
          myLog(0, 0, '');
