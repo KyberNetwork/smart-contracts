@@ -307,6 +307,13 @@
       "DGX": "0xFDF28Bf25779ED4cA74e958d54653260af604C20"
     }
   },
+  "wallets": {
+    "olympus": "0x09227deaeE08a5Ba9D6Eb057F922aDfAd191c36c",
+    "imtoken": "0xb9E29984Fe50602E7A619662EBED4F90D93824C7",
+    "trust": "0xf1aa99c69715f423086008eb9d06dc1e35cc504d",
+    "cipher": "0xDD61803d4a56C597E0fc864F7a20eC7158c6cBA5",
+    "mew:": "0xDECAF9CD2367cdbb726E904cD6397eDFcAe6068D"
+  },
   "permission": {
     "KyberNetwork": {
       "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
