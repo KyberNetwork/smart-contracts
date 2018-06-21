@@ -881,8 +881,8 @@ it("set eth to dgd rate", function() {
     dict["bank"] = bank.address;
     dict["reserve"] = reserve.address;
     dict["pricing"] = conversionRates.address;
-    dict["network"] = network.address;
-    dict["network proxy"] = networkProxy.address;
+    dict["network"] = networkProxy.address;
+    dict["internal network"] = network.address;
     dict["wrapper"] = wrapper.address;
     dict["feeburner"] = feeBurner.address;
     dict["KGT address"] = kgtInstance.address;
