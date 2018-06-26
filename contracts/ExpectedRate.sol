@@ -38,7 +38,8 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
         worstCaseRateFactorInBps = bps;
     }
 
-    //@dev when srcQty too small or 0 the expected rate will be calculated without quantity to get some basic rate reference
+    //@dev when srcQty too small or 0 the expected rate will be calculated without quantity,
+    // will enable rate reference before committing to any quantity
     //@dev when srcQty too small (no actual dest qty) slippage rate will be 0.
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
         public view
