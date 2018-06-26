@@ -10,10 +10,11 @@ contract Utils2 is Utils {
     /// @param token The token type
     /// @return The balance
     function getBalance(ERC20 token, address user) public view returns(uint) {
-        if (token == ETH_TOKEN_ADDRESS)
+        if (token == ETH_TOKEN_ADDRESS) {
             return user.balance;
-        else
+        } else {
             return token.balanceOf(user);
+        }
     }
 
     function getDecimalsSafe(ERC20 token) internal returns(uint) {
@@ -26,6 +27,8 @@ contract Utils2 is Utils {
     }
 
     /* solhint-disable no-inline-assembly */
+    // some tokens don't support decimal API. we will try to get decimals using assembly and low level calls.
+    // if it fails we avoid revert and just use 18 for this token.
     /// @dev notice, overrides previous implementation.
     function setDecimals(ERC20 token) internal {
         uint decimal;
@@ -36,6 +39,7 @@ contract Utils2 is Utils {
             uint[1] memory value;
 
             if (!address(token).call(bytes4(keccak256("decimals()")))) {/* solhint-disable-line avoid-low-level-calls */
+              //above code can only be performed with low level call. otherwise operation will revert. disable solhint.
                 // call failed
                 decimal = 18;
             } else {
