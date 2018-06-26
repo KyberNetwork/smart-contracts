@@ -403,25 +403,25 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         //do the trade
         //src to ETH
         require(doReserveTrade(
-            tradeInput.src,
-            actualSrcAmount,
-            ETH_TOKEN_ADDRESS,
-            this,
-            weiAmount,
-            KyberReserveInterface(rateResult.reserve1),
-            rateResult.rateSrcToEth,
-            true));
+                tradeInput.src,
+                actualSrcAmount,
+                ETH_TOKEN_ADDRESS,
+                this,
+                weiAmount,
+                KyberReserveInterface(rateResult.reserve1),
+                rateResult.rateSrcToEth,
+                true));
 
         //Eth to dest
         require(doReserveTrade(
-            ETH_TOKEN_ADDRESS,
-            weiAmount,
-            tradeInput.dest,
-            tradeInput.destAddress,
-            actualDestAmount,
-            KyberReserveInterface(rateResult.reserve2),
-            rateResult.rateEthToDest,
-            true));
+                ETH_TOKEN_ADDRESS,
+                weiAmount,
+                tradeInput.dest,
+                tradeInput.destAddress,
+                actualDestAmount,
+                KyberReserveInterface(rateResult.reserve2),
+                rateResult.rateEthToDest,
+                true));
 
         //when src is ether, reserve1 is doing a "fake" trade. (ether to ether) - don't burn.
         //when dest is ether, reserve2 is doing a "fake" trade. (ether to ether) - don't burn.
