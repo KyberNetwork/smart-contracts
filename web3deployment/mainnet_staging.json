@@ -28,7 +28,7 @@
       "minimalRecordResolution": "1000000000000000",
       "maxPerBlockImbalance": "1210345280560014819328",
       "maxTotalImbalance": "1784654116185741721600",
-      "internal use": true,
+      "internal use": false,
       "listed": true
     },
     "SNT": {
@@ -239,10 +239,94 @@
       "internal use": false,
       "listed": true
     },
+    "ABT": {
+      "name": "ArcBlock",
+      "decimals": 18,
+      "address": "0xb98d4c97425d9908e66e53a6fdf673acca0be986",
+      "internal use": true,
+      "listed": true
+    },
+    "ENJ": {
+      "name": "EnjinCoin",
+      "decimals": 18,
+      "address": "0xf629cbd94d3791c9250152bd8dfbdf380e2a3b9c",
+      "internal use": true,
+      "listed": true
+    },
+    "AION": {
+      "name": "Aion",
+      "decimals": 8,
+      "address": "0x4CEdA7906a5Ed2179785Cd3A40A69ee8bc99C466",
+      "internal use": true,
+      "listed": true
+    },
+    "AE": {
+      "name": "Aeternity",
+      "decimals": 18,
+      "address": "0x5ca9a71b1d01849c0a95490cc00559717fcf0d1d",
+      "internal use": true,
+      "listed": true
+    },
+    "BLZ": {
+      "name": "Bluezelle",
+      "decimals": 18,
+      "address": "0x5732046a883704404f284ce41ffadd5b007fd668",
+      "internal use": true,
+      "listed": true
+    },
+    "PAL": {
+      "name": "PolicyPal Network",
+      "decimals": 18,
+      "address": "0xfedae5642668f8636a11987ff386bfd215f942ee",
+      "internal use": false,
+      "listed": true
+    },
+    "ELEC": {
+      "name": "ElectrifyAsia",
+      "decimals": 18,
+      "address": "0xd49ff13661451313ca1553fd6954bd1d9b6e02b9",
+      "internal use": false,
+      "listed": true
+    },
+    "BBO": {
+      "name": "Bigbom",
+      "decimals": 18,
+      "address": "0x84f7c44b6fed1080f647e354d552595be2cc602f",
+      "internal use": false,
+      "listed": true
+    },
     "ETH": {
       "name": "Ethereum",
       "decimals": 18,
       "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "internal use": true,
+      "listed": true
+    },
+    "POLY": {
+      "name": "Polymath",
+      "decimals": 18,
+      "address": "0x9992ec3cf6a55b00978cddf2b27bc6882d88d1ec",
+      "internal use": true,
+      "listed": true
+    },
+    "LBA": {
+      "name": "Libra Credit",
+      "decimals": 18,
+      "address": "0xfe5f141bf94fe84bc28ded0ab966c16b17490657",
+      "internal use": true,
+      "listed": true
+    },
+    "EDU": {
+      "name": "EduCoin",
+      "decimals": 18,
+      "address": "0xf263292e14d9d8ecd55b58dad1f1df825a874b7c",
+      "internal use": true,
+      "listed": true
+    },
+    "CVC": {
+      "name": "Civic",
+      "decimals": 8,
+      "address": "0x41e5560054824eA6B0732E656E3Ad64E20e94E45",
       "internal use": true,
       "listed": true
     }
@@ -253,7 +337,6 @@
       "OMG": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "KNC": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "SNT": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
-      "EOS": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "ELF": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "POWR": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "MANA": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
@@ -267,18 +350,23 @@
       "BQX": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "ZIL": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "AST": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
-      "LINK": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547"
+      "LINK": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "ENJ":  "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "AION":  "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "AE":  "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "BLZ":  "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547"
     },
-
-    "bittrex": {
-      "ETH": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23",
-      "OMG": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23",
-      "SNT": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23",
-      "POWR": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23",
-      "MANA": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23",
-      "BAT": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23",
-      "ENG": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23",
-      "SALT": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23"
+    "huobi": {
+      "ETH": "0xb48ee85467bf613a22244084c1a46c2deac18dd0",
+      "ABT": "0xb48ee85467bf613a22244084c1a46c2deac18dd0",
+      "POLY": "0xb48ee85467bf613a22244084c1a46c2deac18dd0",
+      "LBA": "0xb48ee85467bf613a22244084c1a46c2deac18dd0",
+      "EDU": "0xb48ee85467bf613a22244084c1a46c2deac18dd0",
+      "CVC": "0xb48ee85467bf613a22244084c1a46c2deac18dd0"
+    },
+    "stable_exchange": {
+      "ETH": "0xFDF28Bf25779ED4cA74e958d54653260af604C20",
+      "DGX": "0xFDF28Bf25779ED4cA74e958d54653260af604C20"
     }
   },
   "permission": {
