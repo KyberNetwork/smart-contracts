@@ -183,6 +183,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
             require(whiteListContract != address(0));
             require(feeBurnerContract != address(0));
             require(expectedRateContract != address(0));
+            require(kyberNetworkProxyContract != address(0));
         }
         isEnabled = _enable;
     }

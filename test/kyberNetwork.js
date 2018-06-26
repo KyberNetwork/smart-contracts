@@ -1684,14 +1684,14 @@ contract('KyberNetwork', function(accounts) {
         }
 
         await networkTemp.setExpectedRate(expectedRate.address);
-//        try {
-//            await networkTemp.setEnable(true);
-//            assert(false, "throw was expected in line above.")
-//        } catch(e){
-//            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-//        }
-//
-//        await networkTemp.setKyberProxy(networkProxy);
+        try {
+            await networkTemp.setEnable(true);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        await networkTemp.setKyberProxy(networkProxy);
         await networkTemp.setEnable(true);
     });
 
