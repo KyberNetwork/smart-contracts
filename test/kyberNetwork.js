@@ -1433,7 +1433,7 @@ contract('KyberNetwork', function(accounts) {
     it("should verify trade reverted src amount > max src amount (10**28).", async function () {
         let tokenInd = 3;
         let token = tokens[tokenInd]; //choose some token
-        let amountTWei = new BigNumber(10).pow(28);
+        let amountTWei = (new BigNumber(10).pow(28)).add(1);
 
         // transfer funds to user and approve funds to network - for all trades in this 'it'
         await token.transfer(network.address, amountTWei);
@@ -2296,18 +2296,24 @@ contract('KyberNetwork', function(accounts) {
         let user2DestTokBalanceBefore = new BigNumber(await tokenDest.balanceOf(user2));
 
         await tokenSrc.transferFrom(user1, network.address, srcAmountTwei, {from: networkProxy});
-        //            log("trade " + i + " srcInd: " + tokenSrcInd + " dest ind: " + tokenDestInd + " srcQty: " + srcAmountTwei);
-        let result = await network.tradeWithHint(user1, tokenSrc.address, srcAmountTwei.valueOf(), tokenDest.address, user2, maxDestAmount.valueOf(),
-                           rate[1].valueOf(), walletId, 0, {from:networkProxy});
+
+        //see trade reverts
+        try {
+            let result = await network.tradeWithHint(user1, tokenSrc.address, srcAmountTwei.valueOf(), tokenDest.address, user2, maxDestAmount.valueOf(),
+                            rate[1].valueOf(), walletId, 0, {from:networkProxy});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
+        }
 
         let expectedUser1SrcTokBalanceAfter = user1SrcTokBalanceBefore.sub(srcAmountTwei);
-        let expectedUser2DestTokBalanceAfter = user2DestTokBalanceBefore.add(expectedDestAmount);
+        let expectedUser2DestTokBalanceAfter = user2DestTokBalanceBefore;
 
         let user1SrcTokBalanceAfter = await tokenSrc.balanceOf(user1);
         let user2DestTokBalanceAfter = await tokenDest.balanceOf(user2);
 
         assert.equal(user1SrcTokBalanceAfter.valueOf(), expectedUser1SrcTokBalanceAfter.valueOf());
-        assert(1 >= (user2DestTokBalanceAfter.sub(expectedUser2DestTokBalanceAfter)).valueOf(), " diff from calculated rate to actual balance should be 1")
+        assert.equal(user2DestTokBalanceAfter.valueOf(), expectedUser2DestTokBalanceAfter.valueOf(), " diff from calculated rate to actual balance should be 1")
         //            log("expected trade value: " + expectedDestAmount)
         assert(user2DestTokBalanceAfter.valueOf() >= expectedUser2DestTokBalanceAfter.valueOf(), "not enough dest token transferred");
 
