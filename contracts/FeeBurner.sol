@@ -78,12 +78,12 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         require(fee >= walletFee);
         uint feeToBurn = fee - walletFee;
 
-        if (walletFee != 0) {
+        if (walletFee > 0) {
             reserveFeeToWallet[reserve][wallet] += walletFee;
             AssignFeeToWallet(reserve, wallet, walletFee);
         }
 
-        if (feeToBurn != 0) {
+        if (feeToBurn > 0) {
             AssignBurnFees(reserve, feeToBurn);
             reserveFeeToBurn[reserve] += feeToBurn;
         }
@@ -97,23 +97,23 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
 
     // this function is callable by anyone
     function burnReserveFees(address reserve) public {
-        uint burnAmount = reserveFeeToBurn[reserve] - 1;
+        uint burnAmount = reserveFeeToBurn[reserve];
         uint taxToSend = 0;
-        require(burnAmount > 1);
+        require(burnAmount > 2);
         reserveFeeToBurn[reserve] = 1; // leave 1 twei to avoid spikes in gas fee
         if (taxWallet != address(0) && taxFeeBps != 0) {
-            taxToSend = (burnAmount) * taxFeeBps / 10000;
-            require(burnAmount > taxToSend);
+            taxToSend = (burnAmount - 1) * taxFeeBps / 10000;
+            require(burnAmount - 1 > taxToSend);
             burnAmount -= taxToSend;
-            if (taxToSend != 0) {
+            if (taxToSend > 0) {
                 require(knc.transferFrom(reserveKNCWallet[reserve], taxWallet, taxToSend));
                 SendTaxFee(reserve, msg.sender, taxWallet, taxToSend);
             }
         }
-        require(knc.burnFrom(reserveKNCWallet[reserve], burnAmount));
+        require(knc.burnFrom(reserveKNCWallet[reserve], burnAmount - 1));
 
         //update reserve "payments" so far
-        feePayedPerReserve[reserve] += (taxToSend + burnAmount);
+        feePayedPerReserve[reserve] += (taxToSend + (burnAmount - 1));
 
         BurnAssignedFees(reserve, msg.sender, burnAmount);
     }
@@ -122,12 +122,12 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
 
     // this function is callable by anyone
     function sendFeeToWallet(address wallet, address reserve) public {
-        uint feeAmount = reserveFeeToWallet[reserve][wallet] - 1;
-        require(feeAmount != 0);
+        uint feeAmount = reserveFeeToWallet[reserve][wallet];
+        require(feeAmount > 1);
         reserveFeeToWallet[reserve][wallet] = 1; // leave 1 twei to avoid spikes in gas fee
-        require(knc.transferFrom(reserveKNCWallet[reserve], wallet, feeAmount));
+        require(knc.transferFrom(reserveKNCWallet[reserve], wallet, feeAmount - 1));
 
-        feePayedPerReserve[reserve] += feeAmount;
+        feePayedPerReserve[reserve] += (feeAmount - 1);
         SendWalletFees(wallet, reserve, msg.sender);
     }
 }

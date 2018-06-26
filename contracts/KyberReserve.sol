@@ -59,8 +59,7 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
         require(tradeEnabled);
         require(msg.sender == kyberNetwork);
 
-        validate; //keep this variable to avoid API change.
-        require(doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate));
+        require(doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate));
 
         return true;
     }
@@ -142,9 +141,9 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
     /// status functions ///////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
     function getBalance(ERC20 token) public view returns(uint) {
-        if (token == ETH_TOKEN_ADDRESS) {
+        if (token == ETH_TOKEN_ADDRESS)
             return this.balance;
-        } else {
+        else {
             address wallet = tokenWallet[token];
             uint balanceOfWallet = token.balanceOf(wallet);
             uint allowanceOfWallet = token.allowance(wallet, this);
@@ -171,7 +170,7 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
         ERC20 token;
         bool  isBuy;
 
-        if (!tradeEnabled) { return 0; }
+        if (!tradeEnabled) return 0;
 
         if (ETH_TOKEN_ADDRESS == src) {
             isBuy = true;
@@ -186,7 +185,7 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
         uint rate = conversionRatesContract.getRate(token, blockNumber, isBuy, srcQty);
         uint destQty = getDestQty(src, dest, srcQty, rate);
 
-        if (getBalance(dest) < destQty) { return 0; }
+        if (getBalance(dest) < destQty) return 0;
 
         if (sanityRatesContract != address(0)) {
             uint sanityRate = sanityRatesContract.getSanityRate(src, dest);
@@ -207,21 +206,24 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
         uint srcAmount,
         ERC20 destToken,
         address destAddress,
-        uint conversionRate
+        uint conversionRate,
+        bool validate
     )
         internal
         returns(bool)
     {
-        require(conversionRate != 0);
-        if (srcToken == ETH_TOKEN_ADDRESS) {
-            require(msg.value == srcAmount);
-        } else {
-            require(msg.value == 0);
+        if (validate) {
+            require(conversionRate > 0);
+            if (srcToken == ETH_TOKEN_ADDRESS) {
+                require(msg.value == srcAmount);
+            } else {
+                require(msg.value == 0);
+            }
         }
 
         uint destAmount = getDestQty(srcToken, destToken, srcAmount, conversionRate);
         // sanity check
-        require(destAmount != 0);
+        require(destAmount > 0);
 
         // add to imbalance
         ERC20 token;

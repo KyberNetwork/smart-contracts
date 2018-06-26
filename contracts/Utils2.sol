@@ -10,11 +10,10 @@ contract Utils2 is Utils {
     /// @param token The token type
     /// @return The balance
     function getBalance(ERC20 token, address user) public view returns(uint) {
-        if (token == ETH_TOKEN_ADDRESS) {
+        if (token == ETH_TOKEN_ADDRESS)
             return user.balance;
-        } else {
+        else
             return token.balanceOf(user);
-        }
     }
 
     function getDecimalsSafe(ERC20 token) internal returns(uint) {

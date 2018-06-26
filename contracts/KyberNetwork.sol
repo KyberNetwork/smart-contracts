@@ -272,10 +272,11 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         uint bestRate = 0;
         uint bestReserve = 0;
         uint numRelevantReserves = 0;
-        address[] memory reserveArr;
 
         //return 1 for ether to ether
-        if (src == dest) { return (reserves[bestReserve], PRECISION); }
+        if (src == dest) return (reserves[bestReserve], PRECISION);
+
+        address[] memory reserveArr;
 
         if (src == ETH_TOKEN_ADDRESS) {
             reserveArr = reservesPerTokenDest[dest];
@@ -283,7 +284,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
             reserveArr = reservesPerTokenSrc[src];
         }
 
-        if (reserveArr.length == 0) { return (reserves[bestReserve], bestRate); }
+        if (reserveArr.length == 0) return (reserves[bestReserve], bestRate);
 
         uint[] memory rates = new uint[](reserveArr.length);
         uint[] memory reserveCandidates = new uint[](reserveArr.length);
@@ -298,7 +299,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
             }
         }
 
-        if (bestRate != 0) {
+        if (bestRate > 0) {
             uint random = 0;
             uint smallestRelevantRate = (bestRate * 10000) / (10000 + negligibleRateDiff);
 
@@ -359,18 +360,21 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         }
     }
 
+    /* solhint-disable function-max-lines */
+    // actually this function is not so long. many lines consist of function calls spread over a few lines. farther
+    //      splitting this function would make code less readable and not vice versa.
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev trade api for kyber network.
     /// @param tradeInput structure of trade inputs
     function trade(TradeInput tradeInput) internal returns(uint) {
         require(isEnabled);
         require(tx.gasprice <= maxGasPriceValue);
-        validateTradeInput(tradeInput.src, tradeInput.srcAmount, tradeInput.dest, tradeInput.destAddress);
+        require(validateTradeInput(tradeInput.src, tradeInput.srcAmount, tradeInput.dest, tradeInput.destAddress));
 
         BestRateResult memory rateResult =
             findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount);
 
-        require(rateResult.rate != 0);
+        require(rateResult.rate > 0);
         require(rateResult.rate < MAX_RATE);
         require(rateResult.rate >= tradeInput.minConversionRate);
 
@@ -378,8 +382,11 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         uint weiAmount;
         uint actualSrcAmount;
 
-        (actualSrcAmount, weiAmount, actualDestAmount) = calcActualAmounts(tradeInput.src, tradeInput.dest,
-            tradeInput.srcAmount, tradeInput.maxDestAmount, rateResult);
+        (actualSrcAmount, weiAmount, actualDestAmount) = calcActualAmounts(tradeInput.src,
+            tradeInput.dest,
+            tradeInput.srcAmount,
+            tradeInput.maxDestAmount,
+            rateResult);
 
         if (actualSrcAmount < tradeInput.srcAmount) {
             //if there is "change" send back to trader
@@ -395,21 +402,31 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
         //do the trade
         //src to ETH
-        require(doReserveTrade(tradeInput.src, actualSrcAmount, ETH_TOKEN_ADDRESS, this, weiAmount,
-            KyberReserveInterface(rateResult.reserve1), rateResult.rateSrcToEth, true));
+        require(doReserveTrade(tradeInput.src,
+            actualSrcAmount,
+            ETH_TOKEN_ADDRESS,
+            this,
+            weiAmount,
+            KyberReserveInterface(rateResult.reserve1),
+            rateResult.rateSrcToEth,
+            true));
 
         //Eth to dest
-        require(doReserveTrade(ETH_TOKEN_ADDRESS, weiAmount, tradeInput.dest, tradeInput.destAddress, actualDestAmount,
-            KyberReserveInterface(rateResult.reserve2), rateResult.rateEthToDest, true));
+        require(doReserveTrade(ETH_TOKEN_ADDRESS,
+            weiAmount,
+            tradeInput.dest,
+            tradeInput.destAddress,
+            actualDestAmount,
+            KyberReserveInterface(rateResult.reserve2),
+            rateResult.rateEthToDest,
+            true));
 
         //when src is ether, reserve1 is doing a "fake" trade. (ether to ether) - don't burn.
         //when dest is ether, reserve2 is doing a "fake" trade. (ether to ether) - don't burn.
-        if (tradeInput.src != ETH_TOKEN_ADDRESS) {
+        if (tradeInput.src != ETH_TOKEN_ADDRESS)
             require(feeBurnerContract.handleFees(weiAmount, rateResult.reserve1, tradeInput.walletId));
-        }
-        if (tradeInput.dest != ETH_TOKEN_ADDRESS) {
+        if (tradeInput.dest != ETH_TOKEN_ADDRESS)
             require(feeBurnerContract.handleFees(weiAmount, rateResult.reserve2, tradeInput.walletId));
-        }
 
         return actualDestAmount;
     }
@@ -455,9 +472,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
         if (src == dest) {
             //this is for a "fake" trade when both src and dest are ethers.
-            if (destAddress != (address(this))) {
+            if (destAddress != (address(this)))
                 destAddress.transfer(amount);
-            }
             return true;
         }
 
@@ -500,5 +516,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
             //funds should have been moved to this contract already.
             require(src.balanceOf(this) >= srcAmount);
         }
+        return true;
     }
 }
