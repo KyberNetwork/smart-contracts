@@ -1034,7 +1034,7 @@ contract('KyberNetworkProxy', function(accounts) {
     it("should verify trade reverted src amount > max src amount (10**28).", async function () {
         let tokenInd = 3;
         let token = tokens[tokenInd]; //choose some token
-        let amountTWei = new BigNumber(10).pow(28);
+        let amountTWei = (new BigNumber(10).pow(28)).add(1);
 
         // transfer funds to user and approve funds to network - for all trades in this 'it'
         await token.transfer(user1, amountTWei);
@@ -1215,13 +1215,15 @@ contract('KyberNetworkProxy', function(accounts) {
         assert.equal(capFromNetwork.valueOf(), capFromProxy.valueOf(), "cap in wei should match");
     });
 
-    it("should test getter. user cap in token Wei.", async function () {
+    it("should test getter. user cap in token Wei. see reverts", async function () {
         let tokenAddress = tokenAdd[2];
 
-        let capFromNetwork = await network.getUserCapInTokenWei(user2, tokenAddress);
-        let capFromProxy = await networkProxy.getUserCapInTokenWei(user2, tokenAddress);
-
-        assert.equal(capFromNetwork.valueOf(), capFromProxy.valueOf(), "cap in wei should match");
+        try {
+            let capFromNetwork = await network.getUserCapInTokenWei(user2, tokenAddress);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
+        }
     });
 
     it("should test getter. max gas price.", async function () {
@@ -1781,7 +1783,7 @@ contract('KyberNetworkProxy', function(accounts) {
     });
 
 
-    it("should test token to token trade with same src and dest token.", async function () {
+    it("should verify revert when token to token trade with same src and dest token.", async function () {
         let tokenSrcInd = 1;
         let tokenDestInd = 1;
         let tokenSrc = tokens[tokenSrcInd];
@@ -1805,20 +1807,24 @@ contract('KyberNetworkProxy', function(accounts) {
         let user2DestTokBalanceBefore = new BigNumber(await tokenDest.balanceOf(user2));
 
         //log("trade " + i + " srcInd: " + tokenSrcInd + " dest ind: " + tokenDestInd + " srcQty: " + srcAmountTwei);
-        let result = await networkProxy.trade(tokenSrc.address, srcAmountTwei.valueOf(), tokenDest.address, user2, maxDestAmount.valueOf(),
-                           rate[1].valueOf(), walletId, {from:user1});
+        //see trade reverts
+        try {
+            let result = await networkProxy.trade(tokenSrc.address, srcAmountTwei.valueOf(), tokenDest.address, user2, maxDestAmount.valueOf(),
+                  rate[1].valueOf(), walletId, {from:user1});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
+        }
 
-        let expectedUser1SrcTokBalanceAfter = user1SrcTokBalanceBefore.sub(srcAmountTwei);
-        let expectedUser2DestTokBalanceAfter = user2DestTokBalanceBefore.add(expectedDestAmount);
+        let expectedUser1SrcTokBalanceAfter = user1SrcTokBalanceBefore;
+        let expectedUser2DestTokBalanceAfter = user2DestTokBalanceBefore;
 
         let user1SrcTokBalanceAfter = await tokenSrc.balanceOf(user1);
         let user2DestTokBalanceAfter = await tokenDest.balanceOf(user2);
 
         assert.equal(user1SrcTokBalanceAfter.valueOf(), expectedUser1SrcTokBalanceAfter.valueOf());
-        assert(1 >= (user2DestTokBalanceAfter.sub(expectedUser2DestTokBalanceAfter)).valueOf(), " diff from calculated rate to actual balance should be 1")
-        //            log("expected trade value: " + expectedDestAmount)
+        assert.equal(user2DestTokBalanceAfter.valueOf(), expectedUser2DestTokBalanceAfter.valueOf(), "expect no balance change...")
         assert(user2DestTokBalanceAfter.valueOf() >= expectedUser2DestTokBalanceAfter.valueOf(), "not enough dest token transferred");
-
     });
 
     it("test token to token, a few trades, both reserves.", async function () {
@@ -2324,18 +2330,14 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //get rate
         let rate = await networkProxy.getExpectedRate(tokenAdd[tokenInd], ethAddress, amountTwei);
-        log("rate " + rate[0])
-        log("reverse token : " + tokenAdd[tokenInd])
 
-                let balanceBefore = await token.balanceOf(operator);
-        log("balance " + balanceBefore)
+        let balanceBefore = await token.balanceOf(operator);
+//        log("balance " + balanceBefore)
         await token.transferFrom(operator, operator, 755)
         balanceBefore = await token.balanceOf(operator);
-                log("balance " + balanceBefore)
         await token.transferFrom(operator, operator, 855)
         balanceBefore = await token.balanceOf(operator);
-                log("balance " + balanceBefore)
-
+       
         await token.transfer(user1, amountTwei);
         await token.approve(networkProxy.address, amountTwei, {from:user1})
 
@@ -2357,7 +2359,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //get rate
         let rate = await networkProxy.getExpectedRate(ethAddress, tokenAdd[tokenInd], amountWei);
-        log("rate " + rate[0])
+//        log("rate " + rate[0])
 
         //want user 2 to have some initial balance
         await token.transfer(user2, 2000);

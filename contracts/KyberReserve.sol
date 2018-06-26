@@ -59,7 +59,8 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
         require(tradeEnabled);
         require(msg.sender == kyberNetwork);
 
-        require(doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate));
+        validate; //keep this variable to avoid API change.
+        require(doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate));
 
         return true;
     }
@@ -141,9 +142,9 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
     /// status functions ///////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
     function getBalance(ERC20 token) public view returns(uint) {
-        if (token == ETH_TOKEN_ADDRESS)
+        if (token == ETH_TOKEN_ADDRESS) {
             return this.balance;
-        else {
+        } else {
             address wallet = tokenWallet[token];
             uint balanceOfWallet = token.balanceOf(wallet);
             uint allowanceOfWallet = token.allowance(wallet, this);
@@ -168,24 +169,24 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
 
     function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
         ERC20 token;
-        bool  buy;
+        bool  isBuy;
 
-        if (!tradeEnabled) return 0;
+        if (!tradeEnabled) { return 0; }
 
         if (ETH_TOKEN_ADDRESS == src) {
-            buy = true;
+            isBuy = true;
             token = dest;
         } else if (ETH_TOKEN_ADDRESS == dest) {
-            buy = false;
+            isBuy = false;
             token = src;
         } else {
             return 0; // pair is not listed
         }
 
-        uint rate = conversionRatesContract.getRate(token, blockNumber, buy, srcQty);
+        uint rate = conversionRatesContract.getRate(token, blockNumber, isBuy, srcQty);
         uint destQty = getDestQty(src, dest, srcQty, rate);
 
-        if (getBalance(dest) < destQty) return 0;
+        if (getBalance(dest) < destQty) { return 0; }
 
         if (sanityRatesContract != address(0)) {
             uint sanityRate = sanityRatesContract.getSanityRate(src, dest);
@@ -200,46 +201,42 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
     /// @param srcAmount Amount of src token
     /// @param destToken Destination token
     /// @param destAddress Destination address to send tokens to
-    /// @param validate If true, additional validations are applicable
     /// @return true iff trade is successful
     function doTrade(
         ERC20 srcToken,
         uint srcAmount,
         ERC20 destToken,
         address destAddress,
-        uint conversionRate,
-        bool validate
+        uint conversionRate
     )
         internal
         returns(bool)
     {
-        // can skip validation if done at kyber network level
-        if (validate) {
-            require(conversionRate > 0);
-            if (srcToken == ETH_TOKEN_ADDRESS)
-                require(msg.value == srcAmount);
-            else
-                require(msg.value == 0);
+        require(conversionRate != 0);
+        if (srcToken == ETH_TOKEN_ADDRESS) {
+            require(msg.value == srcAmount);
+        } else {
+            require(msg.value == 0);
         }
 
         uint destAmount = getDestQty(srcToken, destToken, srcAmount, conversionRate);
         // sanity check
-        require(destAmount > 0);
+        require(destAmount != 0);
 
         // add to imbalance
         ERC20 token;
-        int buy;
+        int tradeAmount;
         if (srcToken == ETH_TOKEN_ADDRESS) {
-            buy = int(destAmount);
+            tradeAmount = int(destAmount);
             token = destToken;
         } else {
-            buy = -1 * int(srcAmount);
+            tradeAmount = -1 * int(srcAmount);
             token = srcToken;
         }
 
         conversionRatesContract.recordImbalance(
             token,
-            buy,
+            tradeAmount,
             0,
             block.number
         );
