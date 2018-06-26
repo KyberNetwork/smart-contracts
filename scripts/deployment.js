@@ -1,14 +1,15 @@
-var TestToken = artifacts.require("./TestToken.sol");
-var Reserve = artifacts.require("./KyberReserve.sol");
-var Network = artifacts.require("./KyberNetwork.sol");
-var ConversionRates = artifacts.require("./ConversionRates.sol");
-var Bank   = artifacts.require("./MockCentralBank.sol");
-var Whitelist  = artifacts.require("./WhiteList.sol");
-var FeeBurner = artifacts.require("./FeeBurner.sol");
-var ExpectedRate = artifacts.require("./ExpectedRate.sol");
-var Wrapper   = artifacts.require("./Wrapper.sol");
-var CentralizedExchange = artifacts.require("./MockExchange.sol");
-var BigNumber = require('bignumber.js');
+const TestToken = artifacts.require("./TestToken.sol");
+const Reserve = artifacts.require("./KyberReserve.sol");
+const Network = artifacts.require("./KyberNetwork.sol");
+const NetworkProxy = artifacts.require("./KyberNetworkProxy.sol");
+const ConversionRates = artifacts.require("./ConversionRates.sol");
+const Bank   = artifacts.require("./MockCentralBank.sol");
+const Whitelist  = artifacts.require("./WhiteList.sol");
+const FeeBurner = artifacts.require("./FeeBurner.sol");
+const ExpectedRate = artifacts.require("./ExpectedRate.sol");
+const Wrapper   = artifacts.require("./Wrapper.sol");
+const CentralizedExchange = artifacts.require("./MockExchange.sol");
+const BigNumber = require('bignumber.js');
 
 var tokenSymbol = [];//["OMG", "DGD", "CVC", "FUN", "MCO", "GNT", "ADX", "PAY",
                    //"BAT", "KNC", "EOS", "LINK"];
@@ -40,6 +41,9 @@ var validBlockDuration = 256;
 const maxGas = 4612388;
 
 var tokenOwner;
+
+var networkProxy;
+var networkProxyOwner;
 
 var network;
 var networkOwner;
@@ -429,13 +433,8 @@ var listTokens = function( owner, reserve, network, expBlock, rate, convRate ) {
       }).then(function(){
         return network.listPairForReserve(reserve.address,
                                           tokenAddress,
-                                          ethAddress,
                                           true,
-                                          {from:networkOwner});
-      }).then(function(){
-        return network.listPairForReserve(reserve.address,
-                                          ethAddress,
-                                          tokenAddress,
+                                          true,
                                           true,
                                           {from:networkOwner});
       });
@@ -552,6 +551,14 @@ contract('Deployment', function(accounts) {
     });
   });
 
+  it("create network proxy", function() {
+    this.timeout(31000000);
+    networkProxyOwner = accounts[0];
+    return NetworkProxy.new(networkProxyOwner,{gas:maxGas}).then(function(instance){
+      networkProxy = instance;
+    });
+  });
+
   it("create conversionRates", function() {
     this.timeout(31000000);
     return ConversionRates.new(accounts[0],{gas:maxGas}).then(function(instance){
@@ -649,14 +656,29 @@ contract('Deployment', function(accounts) {
     }).then(function(){
         return expectedRate.addOperator(accounts[0]);
     }).then(function(){
-        return expectedRate.setMinSlippageFactor(500);
+        return expectedRate.setWorstCaseRateFactor(500);
     });
+  });
+
+  it("set network proxy params", function() {
+    this.timeout(31000000);
+    // set contracts and enable network
+    return networkProxy.setKyberNetworkContract(network.address);
   });
 
   it("set network params", function() {
     this.timeout(31000000);
     // set contracts and enable network
-    return network.setParams(whitelist.address,expectedRate.address,feeBurner.address,50*10**9,15).then( function() {
+
+    return network.setWhiteList(whitelist.address).then(function(){
+        return network.setExpectedRate(expectedRate.address);
+    }).then(function(){
+        return network.setFeeBurner(feeBurner.address);
+    }).then(function(){
+        return network.setKyberProxy(networkProxy.address);
+    }).then(function(){
+        return network.setParams(50*10**9, 15); //50 gwei, 15 negligible diff
+    }).then( function() {
         return network.setEnable(true);
     });
   });
@@ -774,7 +796,7 @@ it("set eth to dgd rate", function() {
     var expectedDgd = (ethAmount * rate / 10**18) / (10**18 / 10**tokenDecimals[1]);
     var destAddress = "0x001adbc838ede392b5b054a47f8b8c28f2fa9f3c";
 
-    return network.trade(ethAddress,
+    return networkProxy.trade(ethAddress,
                          ethAmount,
                          dgdAddress,
                          destAddress,
@@ -806,8 +828,8 @@ it("set eth to dgd rate", function() {
     var rate = conversionRate;
     var destAddress = "0x001adbc838ede392b5b054a47f8b8c28f2fa9f3c";
 
-    return tokenInstance[1].approve(network.address,dgdAmount).then(function(){
-      return network.trade(dgdAddress,
+    return tokenInstance[1].approve(networkProxy.address,dgdAmount).then(function(){
+      return networkProxy.trade(dgdAddress,
                            dgdAmount,
                            ethAddress,
                            destAddress,
@@ -859,7 +881,8 @@ it("set eth to dgd rate", function() {
     dict["bank"] = bank.address;
     dict["reserve"] = reserve.address;
     dict["pricing"] = conversionRates.address;
-    dict["network"] = network.address;
+    dict["network"] = networkProxy.address;
+    dict["internal network"] = network.address;
     dict["wrapper"] = wrapper.address;
     dict["feeburner"] = feeBurner.address;
     dict["KGT address"] = kgtInstance.address;
