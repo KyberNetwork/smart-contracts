@@ -656,7 +656,7 @@ contract('Deployment', function(accounts) {
     }).then(function(){
         return expectedRate.addOperator(accounts[0]);
     }).then(function(){
-        return expectedRate.setMinSlippageFactor(500);
+        return expectedRate.setWorstCaseRateFactor(500);
     });
   });
 
