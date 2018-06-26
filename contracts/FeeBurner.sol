@@ -113,9 +113,9 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         require(knc.burnFrom(reserveKNCWallet[reserve], burnAmount - 1));
 
         //update reserve "payments" so far
-        feePayedPerReserve[reserve] += (taxToSend + (burnAmount - 1));
+        feePayedPerReserve[reserve] += (taxToSend + burnAmount - 1);
 
-        BurnAssignedFees(reserve, msg.sender, burnAmount);
+        BurnAssignedFees(reserve, msg.sender, (burnAmount - 1));
     }
 
     event SendWalletFees(address indexed wallet, address reserve, address sender);

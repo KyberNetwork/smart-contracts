@@ -402,7 +402,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
         //do the trade
         //src to ETH
-        require(doReserveTrade(tradeInput.src,
+        require(doReserveTrade(
+            tradeInput.src,
             actualSrcAmount,
             ETH_TOKEN_ADDRESS,
             this,
@@ -412,7 +413,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
             true));
 
         //Eth to dest
-        require(doReserveTrade(ETH_TOKEN_ADDRESS,
+        require(doReserveTrade(
+            ETH_TOKEN_ADDRESS,
             weiAmount,
             tradeInput.dest,
             tradeInput.destAddress,

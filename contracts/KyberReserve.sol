@@ -200,6 +200,7 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
     /// @param srcAmount Amount of src token
     /// @param destToken Destination token
     /// @param destAddress Destination address to send tokens to
+    /// @param validate If true, additional validations are applicable
     /// @return true iff trade is successful
     function doTrade(
         ERC20 srcToken,
@@ -212,13 +213,13 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
         internal
         returns(bool)
     {
+        // can skip validation if done at kyber network level
         if (validate) {
             require(conversionRate > 0);
-            if (srcToken == ETH_TOKEN_ADDRESS) {
+            if (srcToken == ETH_TOKEN_ADDRESS)
                 require(msg.value == srcAmount);
-            } else {
+            else
                 require(msg.value == 0);
-            }
         }
 
         uint destAmount = getDestQty(srcToken, destToken, srcAmount, conversionRate);
