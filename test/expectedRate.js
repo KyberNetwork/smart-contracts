@@ -23,6 +23,7 @@ let admin;
 let operator;
 let alerter;
 let sanityRates;
+let networkProxy;
 let network;
 
 //tokens data
@@ -173,12 +174,13 @@ contract('ExpectedRates', function(accounts) {
         await whiteList.addOperator(operator);
         await whiteList.setCategoryCap(0, 1000, {from:operator});
         await whiteList.setSgdToEthRate(30000, {from:operator});
-//await network.setParams(whiteList.address, expectedRates.address, feeBurner.address, gasPrice.valueOf(), 15);
 
         expectedRates = await ExpectedRate.new(network.address, admin);
         await network.setWhiteList(whiteList.address);
         await network.setExpectedRate(expectedRates.address);
         await network.setFeeBurner(feeBurner.address);
+        networkProxy = accounts[9];
+        await network.setKyberProxy(networkProxy);
         await network.setParams(gasPrice.valueOf(), 15);
         await network.setEnable(true);
         let price = await network.maxGasPrice();
