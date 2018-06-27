@@ -34,10 +34,10 @@ contract MaliciousKyberNetwork is KyberNetwork {
         require(rateResult.rate >= tradeInput.minConversionRate);
 
         uint actualDestAmount;
-        uint ethAmount;
+        uint weiAmount;
         uint actualSrcAmount;
 
-        (actualSrcAmount, ethAmount, actualDestAmount) = calcActualAmounts(tradeInput.src,
+        (actualSrcAmount, weiAmount, actualDestAmount) = calcActualAmounts(tradeInput.src,
             tradeInput.dest,
             tradeInput.srcAmount,
             tradeInput.maxDestAmount,
@@ -53,7 +53,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
         }
 
         // verify trade size is smaller than user cap
-        require(ethAmount <= getUserCapInWei(tradeInput.trader));
+        require(weiAmount <= getUserCapInWei(tradeInput.trader));
 
         //do the trade
         //src to ETH
@@ -62,7 +62,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
                 actualSrcAmount,
                 ETH_TOKEN_ADDRESS,
                 this,
-                ethAmount,
+                weiAmount,
                 KyberReserveInterface(rateResult.reserve1),
                 rateResult.rateSrcToEth,
                 true));
@@ -70,7 +70,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
         //Eth to dest
         require(doReserveTrade(
                 ETH_TOKEN_ADDRESS,
-                ethAmount,
+                weiAmount,
                 tradeInput.dest,
                 tradeInput.destAddress,
                 actualDestAmount,

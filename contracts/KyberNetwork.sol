@@ -240,7 +240,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         uint rate;
         address reserve1;
         address reserve2;
-        uint ethAmount;
+        uint weiAmount;
         uint rateSrcToEth;
         uint rateEthToDest;
         uint destAmount;
@@ -326,10 +326,10 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         returns(BestRateResult result)
     {
         (result.reserve1, result.rateSrcToEth) = searchBestRate(src, ETH_TOKEN_ADDRESS, srcAmount);
-        result.ethAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcAmount, result.rateSrcToEth);
+        result.weiAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcAmount, result.rateSrcToEth);
 
-        (result.reserve2, result.rateEthToDest) = searchBestRate(ETH_TOKEN_ADDRESS, dest, result.ethAmount);
-        result.destAmount = calcDestAmount(ETH_TOKEN_ADDRESS, dest, result.ethAmount, result.rateEthToDest);
+        (result.reserve2, result.rateEthToDest) = searchBestRate(ETH_TOKEN_ADDRESS, dest, result.weiAmount);
+        result.destAmount = calcDestAmount(ETH_TOKEN_ADDRESS, dest, result.weiAmount, result.rateEthToDest);
 
         result.rate = calcRateFromQty(srcAmount, result.destAmount, getDecimals(src), getDecimals(dest));
     }
@@ -379,10 +379,10 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         require(rateResult.rate >= tradeInput.minConversionRate);
 
         uint actualDestAmount;
-        uint ethAmount;
+        uint weiAmount;
         uint actualSrcAmount;
 
-        (actualSrcAmount, ethAmount, actualDestAmount) = calcActualAmounts(tradeInput.src,
+        (actualSrcAmount, weiAmount, actualDestAmount) = calcActualAmounts(tradeInput.src,
             tradeInput.dest,
             tradeInput.srcAmount,
             tradeInput.maxDestAmount,
@@ -398,7 +398,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         }
 
         // verify trade size is smaller than user cap
-        require(ethAmount <= getUserCapInWei(tradeInput.trader));
+        require(weiAmount <= getUserCapInWei(tradeInput.trader));
 
         //do the trade
         //src to ETH
@@ -407,7 +407,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
                 actualSrcAmount,
                 ETH_TOKEN_ADDRESS,
                 this,
-                ethAmount,
+                weiAmount,
                 KyberReserveInterface(rateResult.reserve1),
                 rateResult.rateSrcToEth,
                 true));
@@ -415,7 +415,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         //Eth to dest
         require(doReserveTrade(
                 ETH_TOKEN_ADDRESS,
-                ethAmount,
+                weiAmount,
                 tradeInput.dest,
                 tradeInput.destAddress,
                 actualDestAmount,
@@ -426,26 +426,26 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         //when src is ether, reserve1 is doing a "fake" trade. (ether to ether) - don't burn.
         //when dest is ether, reserve2 is doing a "fake" trade. (ether to ether) - don't burn.
         if (tradeInput.src != ETH_TOKEN_ADDRESS)
-            require(feeBurnerContract.handleFees(ethAmount, rateResult.reserve1, tradeInput.walletId));
+            require(feeBurnerContract.handleFees(weiAmount, rateResult.reserve1, tradeInput.walletId));
         if (tradeInput.dest != ETH_TOKEN_ADDRESS)
-            require(feeBurnerContract.handleFees(ethAmount, rateResult.reserve2, tradeInput.walletId));
+            require(feeBurnerContract.handleFees(weiAmount, rateResult.reserve2, tradeInput.walletId));
 
         return actualDestAmount;
     }
     /* solhint-enable function-max-lines */
 
     function calcActualAmounts (ERC20 src, ERC20 dest, uint srcAmount, uint maxDestAmount, BestRateResult rateResult)
-        internal view returns(uint actualSrcAmount, uint ethAmount, uint actualDestAmount)
+        internal view returns(uint actualSrcAmount, uint weiAmount, uint actualDestAmount)
     {
         if (rateResult.destAmount > maxDestAmount) {
             actualDestAmount = maxDestAmount;
-            ethAmount = calcSrcAmount(ETH_TOKEN_ADDRESS, dest, actualDestAmount, rateResult.rateEthToDest);
-            actualSrcAmount = calcSrcAmount(src, ETH_TOKEN_ADDRESS, ethAmount, rateResult.rateSrcToEth);
+            weiAmount = calcSrcAmount(ETH_TOKEN_ADDRESS, dest, actualDestAmount, rateResult.rateEthToDest);
+            actualSrcAmount = calcSrcAmount(src, ETH_TOKEN_ADDRESS, weiAmount, rateResult.rateSrcToEth);
             require(actualSrcAmount <= srcAmount);
         } else {
             actualDestAmount = rateResult.destAmount;
             actualSrcAmount = srcAmount;
-            ethAmount = rateResult.ethAmount;
+            weiAmount = rateResult.weiAmount;
         }
     }
 
