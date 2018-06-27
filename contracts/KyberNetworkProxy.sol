@@ -4,8 +4,6 @@ pragma solidity 0.4.18;
 import "./ERC20Interface.sol";
 import "./Withdrawable.sol";
 import "./Utils2.sol";
-import "./PermissionGroups.sol";
-import "./KyberReserveInterface.sol";
 import "./KyberNetworkInterface.sol";
 import "./KyberNetworkProxyInterface.sol";
 import "./SimpleNetworkInterface.sol";
@@ -254,9 +252,9 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, SimpleNetworkInterface
         userSrcBalanceAfter = getBalance(src, msg.sender);
         userDestBalanceAfter = getBalance(dest, destAddress);
 
-        //check for overflow.
-        require(userDestBalanceAfter >= destBalanceBefore);
-        require(srcBalanceBefore >= userSrcBalanceAfter);
+        //protect from underflow
+        require(userDestBalanceAfter > destBalanceBefore);
+        require(srcBalanceBefore > userSrcBalanceAfter);
 
         outcome.userDeltaDestAmount = userDestBalanceAfter - destBalanceBefore;
         outcome.userDeltaSrcAmount = srcBalanceBefore - userSrcBalanceAfter;

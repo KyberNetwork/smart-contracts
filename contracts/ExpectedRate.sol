@@ -11,7 +11,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
 
     KyberNetwork public kyberNetwork;
     uint public quantityFactor = 2;
-    uint public minSlippageFactorInBps = 50;
+    uint public worstCaseRateFactorInBps = 50;
 
     function ExpectedRate(KyberNetwork _kyberNetwork, address _admin) public {
         require(_admin != address(0));
@@ -25,20 +25,21 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
     function setQuantityFactor(uint newFactor) public onlyOperator {
         require(newFactor <= 100);
 
-        QuantityFactorSet(quantityFactor, newFactor, msg.sender);
+        QuantityFactorSet(newFactor, quantityFactor, msg.sender);
         quantityFactor = newFactor;
     }
 
     event MinSlippageFactorSet (uint newMin, uint oldMin, address sender);
 
-    function setMinSlippageFactor(uint bps) public onlyOperator {
+    function setWorstCaseRateFactor(uint bps) public onlyOperator {
         require(bps <= 100 * 100);
 
-        MinSlippageFactorSet(bps, minSlippageFactorInBps, msg.sender);
-        minSlippageFactorInBps = bps;
+        MinSlippageFactorSet(bps, worstCaseRateFactorInBps, msg.sender);
+        worstCaseRateFactorInBps = bps;
     }
 
-    //@dev when srcQty too small or 0 the expected rate will be calculated without quantity to get some basic rate reference
+    //@dev when srcQty too small or 0 the expected rate will be calculated without quantity,
+    // will enable rate reference before committing to any quantity
     //@dev when srcQty too small (no actual dest qty) slippage rate will be 0.
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
         public view
@@ -51,7 +52,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
         if (srcQty == 0) srcQty = 1;
 
         uint bestReserve;
-        uint minSlippage;
+        uint worstCaseSlippageRate;
 
         (bestReserve, expectedRate) = kyberNetwork.findBestRate(src, dest, srcQty);
         (bestReserve, slippageRate) = kyberNetwork.findBestRate(src, dest, (srcQty * quantityFactor));
@@ -62,9 +63,9 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
 
         require(expectedRate <= MAX_RATE);
 
-        minSlippage = ((10000 - minSlippageFactorInBps) * expectedRate) / 10000;
-        if (slippageRate >= minSlippage) {
-            slippageRate = minSlippage;
+        worstCaseSlippageRate = ((10000 - worstCaseRateFactorInBps) * expectedRate) / 10000;
+        if (slippageRate >= worstCaseSlippageRate) {
+            slippageRate = worstCaseSlippageRate;
         }
 
         return (expectedRate, slippageRate);
