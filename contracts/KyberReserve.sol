@@ -168,21 +168,21 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
 
     function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
         ERC20 token;
-        bool  buy;
+        bool  isBuy;
 
         if (!tradeEnabled) return 0;
 
         if (ETH_TOKEN_ADDRESS == src) {
-            buy = true;
+            isBuy = true;
             token = dest;
         } else if (ETH_TOKEN_ADDRESS == dest) {
-            buy = false;
+            isBuy = false;
             token = src;
         } else {
             return 0; // pair is not listed
         }
 
-        uint rate = conversionRatesContract.getRate(token, blockNumber, buy, srcQty);
+        uint rate = conversionRatesContract.getRate(token, blockNumber, isBuy, srcQty);
         uint destQty = getDestQty(src, dest, srcQty, rate);
 
         if (getBalance(dest) < destQty) return 0;
@@ -228,18 +228,18 @@ contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
 
         // add to imbalance
         ERC20 token;
-        int buy;
+        int tradeAmount;
         if (srcToken == ETH_TOKEN_ADDRESS) {
-            buy = int(destAmount);
+            tradeAmount = int(destAmount);
             token = destToken;
         } else {
-            buy = -1 * int(srcAmount);
+            tradeAmount = -1 * int(srcAmount);
             token = srcToken;
         }
 
         conversionRatesContract.recordImbalance(
             token,
-            buy,
+            tradeAmount,
             0,
             block.number
         );
