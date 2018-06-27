@@ -5,7 +5,7 @@ import "./ERC20Interface.sol";
 
 
 /// @title Kyber Network interface
-contract KyberNetworkInterface {
+interface KyberNetworkInterface {
     function maxGasPrice() public view returns(uint);
     function getUserCapInWei(address user) public view returns(uint);
     function getUserCapInTokenWei(address user, ERC20 token) public view returns(uint);
