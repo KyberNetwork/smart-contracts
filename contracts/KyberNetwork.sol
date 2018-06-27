@@ -6,7 +6,6 @@ import "./KyberReserveInterface.sol";
 import "./KyberNetworkInterface.sol";
 import "./Withdrawable.sol";
 import "./Utils2.sol";
-import "./PermissionGroups.sol";
 import "./WhiteListInterface.sol";
 import "./ExpectedRateInterface.sol";
 import "./FeeBurnerInterface.sol";
