@@ -23,6 +23,7 @@ let admin;
 let operator;
 let alerter;
 let sanityRates;
+let networkProxy;
 let network;
 
 //tokens data
@@ -173,12 +174,13 @@ contract('ExpectedRates', function(accounts) {
         await whiteList.addOperator(operator);
         await whiteList.setCategoryCap(0, 1000, {from:operator});
         await whiteList.setSgdToEthRate(30000, {from:operator});
-//await network.setParams(whiteList.address, expectedRates.address, feeBurner.address, gasPrice.valueOf(), 15);
 
         expectedRates = await ExpectedRate.new(network.address, admin);
         await network.setWhiteList(whiteList.address);
         await network.setExpectedRate(expectedRates.address);
         await network.setFeeBurner(feeBurner.address);
+        networkProxy = accounts[9];
+        await network.setKyberProxy(networkProxy);
         await network.setParams(gasPrice.valueOf(), 15);
         await network.setEnable(true);
         let price = await network.maxGasPrice();
@@ -192,7 +194,7 @@ contract('ExpectedRates', function(accounts) {
 
     it("should init expected rates.", async function () {
         await expectedRates.addOperator(operator);
-        await expectedRates.setMinSlippageFactor(minSlippageBps, {from: operator});
+        await expectedRates.setWorstCaseRateFactor(minSlippageBps, {from: operator});
     });
 
     it("should test can't init expected rate with empty contracts (address 0).", async function () {
@@ -349,19 +351,19 @@ contract('ExpectedRates', function(accounts) {
         let legalSlippage = 100 * 100;
         let illegalSlippage = 100 * 100 + 1 * 1;
 
-        await expectedRates.setMinSlippageFactor(legalSlippage, {from: operator});
-        let rxSlippage = await expectedRates.minSlippageFactorInBps();
+        await expectedRates.setWorstCaseRateFactor(legalSlippage, {from: operator});
+        let rxSlippage = await expectedRates.worstCaseRateFactorInBps();
 
         assert.equal(rxSlippage, legalSlippage);
 
         try {
-            await expectedRates.setMinSlippageFactor(illegalSlippage, {from: operator});
+            await expectedRates.setWorstCaseRateFactor(illegalSlippage, {from: operator});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        rxSlippage = await expectedRates.minSlippageFactorInBps();
+        rxSlippage = await expectedRates.worstCaseRateFactorInBps();
         assert.equal(rxSlippage, legalSlippage);
     });
 
@@ -387,7 +389,7 @@ contract('ExpectedRates', function(accounts) {
         let illegalQty = (new BigNumber(10).pow(28)).div(2).add(1);
         let tokenInd = 1;
 
-        //with quantity factor 2
+        //with quantity factor 2a
         await expectedRates.setQuantityFactor(2, {from: operator});
         rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, legalQty);
 
@@ -405,7 +407,7 @@ contract('ExpectedRates', function(accounts) {
         let qty = 0;
         quantityFactor = 2;
 
-        await expectedRates.setMinSlippageFactor(minSlippageBps, {from: operator});
+        await expectedRates.setWorstCaseRateFactor(minSlippageBps, {from: operator});
 
         rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
         let expectedRate = await network.searchBestRate(tokenAdd[tokenInd], ethAddress, qty);

@@ -16,7 +16,7 @@ contract KyberNetworkNoMaxDest is KyberNetwork {
     function KyberNetworkNoMaxDest(address _admin) public KyberNetwork(_admin) { }
 
     function calcActualAmounts (ERC20 src, ERC20 dest, uint srcAmount, uint maxDestAmount, BestRateResult rateResult)
-        internal view returns(uint actualSrcAmount, uint ethAmount, uint actualDestAmount)
+        internal view returns(uint actualSrcAmount, uint weiAmount, uint actualDestAmount)
     {
         src;
         dest;
@@ -24,6 +24,6 @@ contract KyberNetworkNoMaxDest is KyberNetwork {
 
         actualDestAmount = rateResult.destAmount;
         actualSrcAmount = srcAmount;
-        ethAmount = rateResult.ethAmount;
+        weiAmount = rateResult.weiAmount;
     }
 }
