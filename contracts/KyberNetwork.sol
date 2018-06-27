@@ -511,7 +511,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     {
         require(srcAmount <= MAX_QTY);
         require(srcAmount != 0);
-        require(destAddress != 0);
+        require(destAddress != address(0));
         require(src != dest);
 
         if (src == ETH_TOKEN_ADDRESS) {

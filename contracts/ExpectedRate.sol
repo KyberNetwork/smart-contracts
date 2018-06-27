@@ -42,8 +42,8 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
     // will enable rate reference before committing to any quantity
     //@dev when srcQty too small (no actual dest qty) slippage rate will be 0.
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
-    public view
-    returns (uint expectedRate, uint worstCaseRate)
+        public view
+        returns (uint expectedRate, uint slippageRate)
     {
         require(quantityFactor != 0);
         require(srcQty <= MAX_QTY);
@@ -55,7 +55,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
         uint worstCaseSlippageRate;
 
         (bestReserve, expectedRate) = kyberNetwork.findBestRate(src, dest, srcQty);
-        (bestReserve, worstCaseRate) = kyberNetwork.findBestRate(src, dest, (srcQty * quantityFactor));
+        (bestReserve, slippageRate) = kyberNetwork.findBestRate(src, dest, (srcQty * quantityFactor));
 
         if (expectedRate == 0) {
             expectedRate = expectedRateSmallQty(src, dest);
@@ -64,11 +64,11 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
         require(expectedRate <= MAX_RATE);
 
         worstCaseSlippageRate = ((10000 - worstCaseRateFactorInBps) * expectedRate) / 10000;
-        if (worstCaseRate >= worstCaseSlippageRate) {
-            worstCaseRate = worstCaseSlippageRate;
+        if (slippageRate >= worstCaseSlippageRate) {
+            slippageRate = worstCaseSlippageRate;
         }
 
-        return (expectedRate, worstCaseRate);
+        return (expectedRate, slippageRate);
     }
 
     //@dev for small src quantities dest qty might be 0, then returned rate is zero.
