@@ -37,6 +37,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     event EtherReceival(address indexed sender, uint amount);
 
     /* solhint-disable no-complex-fallback */
+    // To avoid users trying to swap tokens using default payable function. We added this short code
+    //  to verify Ethers will be received only from reserves if transferred without a specific function call.
     function() public payable {
         require(isReserve[msg.sender]);
         EtherReceival(msg.sender, msg.value);
@@ -263,6 +265,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     }
 
     /* solhint-disable code-complexity */
+    // Not sure how solhing defines complexity. Anyway, from our point of view, below code follows the required
+    //  algorithm to choose a reserve, it has been tested, reviewed and found to be clear enough.
     //@dev this function always src or dest are ether. can't do token to token
     function searchBestRate(ERC20 src, ERC20 dest, uint srcAmount) public view returns(address, uint) {
         uint bestRate = 0;
@@ -357,6 +361,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     }
 
     /* solhint-disable function-max-lines */
+    // Most of the lins here are functions calls spread over multiple lines. We find this function readable enough
+    //  and keep its size as is.
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev trade api for kyber network.
     /// @param tradeInput structure of trade inputs
