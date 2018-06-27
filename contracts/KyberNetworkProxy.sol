@@ -255,8 +255,8 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, SimpleNetworkInterface
         userDestBalanceAfter = getBalance(dest, destAddress);
 
         //check for overflow.
-        require(userDestBalanceAfter >= destBalanceBefore);
-        require(srcBalanceBefore >= userSrcBalanceAfter);
+        require(userDestBalanceAfter > destBalanceBefore);
+        require(srcBalanceBefore > userSrcBalanceAfter);
 
         outcome.userDeltaDestAmount = userDestBalanceAfter - destBalanceBefore;
         outcome.userDeltaSrcAmount = srcBalanceBefore - userSrcBalanceAfter;
