@@ -10,7 +10,7 @@ import "../PermissionGroups.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// @title Kyber Network main contract
+/// @title Kyber Network main contract, takes some fee and reports actual dest amount minus Fees.
 contract MaliciousKyberNetwork is KyberNetwork {
 
     address public myWallet = 0x1234;

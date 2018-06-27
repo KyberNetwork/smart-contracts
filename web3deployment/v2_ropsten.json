@@ -1,0 +1,82 @@
+{
+  "permission": {
+    "KyberNetwork": {
+      "admin": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
+      "operator": [
+        "0x1be6064ca70e40a39473372be0ac8a5e16f7be45"
+      ],
+      "alerter": []
+    },
+    "ExpectedRate": {
+      "admin": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
+      "operator": [
+        "0x1be6064ca70e40a39473372be0ac8a5e16f7be45"
+      ],
+      "alerter": []
+    },
+    "FeeBurner": {
+      "admin": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
+      "operator": [
+        "0x1be6064ca70e40a39473372be0ac8a5e16f7be45"
+      ],
+      "alerter": []
+    }
+  },
+
+  "reserves" : {
+    "kyber" : {
+      "address" : "0xeb52ce516a8d054a574905bdc3d4a176d3a2d51a",
+      "KNC wallet" : "0xeb52ce516a8d054a574905bdc3d4a176d3a2d51a",
+      "fees" : "25",
+      "tokens" : [ "0x4bfba4a8f28755cb2061c413459ee562c6b9c51b",
+                   "0x4e470dc7321e84ca96fcaedd0c8abcebbaeb68c6",
+                   "0xd5b4218b950a53ff07985e2d88346925c335eae7",
+                   "0xbf5d8683b9be6c43fca607eb2a6f2626a18837a6",
+                   "0x9fcc27c7320703c43368cf1a4bf076402cd0d6b4",
+                   "0xa577731515303f0c0d00e236041855a5c4f114dc",
+                   "0x72fd6c7c1397040a66f33c2ecc83a0f71ee46d5c",
+                   "0xdb0040451f373949a4be60dcd7b6b8d6e42658b6",
+                   "0xb43d10bbe7222519da899b72bf2c7f094b6f79d7",
+                   "0xe55c607d58c53b2b06a8e38f67f4c0fcaeed2c31",
+                   "0x5422ef695ed0b1213e2b953cfa877029637d9d26",
+                   "0x2799f05b55d56be756ca01af40bf7350787f48d4",
+                   "0x95cc8d8f29d0f7fcc425e8708893e759d1599c97",
+                   "0xb47f1a9b121ba114d5e98722a8948e274d0f4042",
+                   "0x9504a86a881f63da06302fb3639d4582022097db",
+                   "0x499990db50b34687cdafb2c8dabae4e99d6f38a7",
+                   "0xef06f410c26a0ff87b3a43927459cce99268a2ef",
+                   "0x99338aa9218c6c23aa9d8cc2f3efaf29954ea26b",
+                   "0xad78afbbe48ba7b670fbc54c65708cbc17450167",
+                   "0xad6d458402f60fd3bd25163575031acdce07538d",
+                   "0xb4f7332ed719eb4839f091eddb2a3ba309739521",
+                   "0x27db28a6c4ac3d82a08d490cfb746e6f02bc467c",
+                   "0x8fff7de21de8ad9c510704407337542073fdc44b" ]
+    },
+    "anton" :{
+      "address" : "0x1df1c1E1ba17AcDD36419Fb2Be3b2387Df5E4f5E",
+      "KNC wallet" : "0xeb52ce516a8d054a574905bdc3d4a176d3a2d51a",
+      "fees" : "25",
+      "tokens" : [ "0xb43d10bbe7222519da899b72bf2c7f094b6f79d7",
+                   "0xd5b4218b950a53ff07985e2d88346925c335eae7" ]
+    }
+  },
+
+  "wallets" : {
+    "mew" : {
+      "id" : "0xeb52ce516a8d054a574905bdc3d4a176d3a2d51a",
+      "fees" : "4000"
+    },
+    "imToken" : {
+      "id" : "0x3452ce516a8d054a574905bdc3d4a176d3a2d51a",
+      "fees" : "5000"
+    }
+  },
+
+  "max gas price" : "50000000000",
+  "neg diff in bps": 20,
+  "KNC to ETH rate": 500,
+  "tax wallet address": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
+  "tax fees bps": 2000,
+  "min expected rate slippage" : 300,
+  "whitelist" : "0x0f69ea3fa0f1766f91caca1962e2e85d6a7c20a6"
+}

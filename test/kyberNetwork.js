@@ -238,7 +238,7 @@ contract('KyberNetwork', function(accounts) {
     });
 
     it("should init network and reserves and set all reserve data including balances", async function () {
-        network = await Network.new(admin, {gas: 6700000});
+        network = await Network.new(admin);
         await network.addOperator(operator);
 
         reserve1 = await Reserve.new(network.address, pricing1.address, admin);
@@ -875,6 +875,7 @@ contract('KyberNetwork', function(accounts) {
 
         let sellRate1 = await reserve1.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTweiLow, currentBlock + 10);
         rates = await network.getExpectedRate(tokenAdd[tokenInd], ethAddress, amountTweiLow);
+//        log("rates = " + rates[0].valueOf())
         minRate = rates[1].valueOf();
 
         //try with low amount Twei
@@ -891,6 +892,51 @@ contract('KyberNetwork', function(accounts) {
         let destAmount = await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTWeiHi, ethAddress, user2, 3000,
             minRate, walletId, 0, {from:networkProxy});
     });
+
+    it("should verify trade reverted (token to token) when dest amount (actual amount) is 0.", async function () {
+        let tokenSrcInd = 3;
+        let tokenDestInd = 2;
+        let token = tokens[tokenSrcInd]; //choose some token
+        let amountTweiLow = 1;
+        let amountTWeiHi = 600;
+
+        // transfer funds to user and approve funds to network
+        await token.transfer(network.address, amountTWeiHi);
+//        await token.approve(network.address, amountTWeiHi, {from:user1})
+
+        rates = await network.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], amountTweiLow);
+//        log("rates = " + rates[0].valueOf() + " min rate " + rates[1].valueOf())
+        minRate = rates[1].valueOf();
+
+        //try with low amount Twei
+        try {
+            await network.tradeWithHint(user1, tokenAdd[tokenSrcInd], amountTweiLow, tokenAdd[tokenDestInd], user2, 3000, minRate,
+                    walletId, 0, {from:networkProxy});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //perform same trade with higher value to see success
+        await network.tradeWithHint(user1, tokenAdd[tokenSrcInd], amountTWeiHi, tokenAdd[tokenDestInd], user2, 300000, minRate,
+                            walletId, 0, {from:networkProxy});
+    });
+
+//    it("should verify for qty 0 return rate is 0", async function () {
+//        let tokenSrcInd = 3;
+//        let tokenDestInd = 2;
+//        let token = tokens[tokenSrcInd]; //choose some token
+//        let amountTweiLow = 1;
+//        let amountTWeiHi = 600;
+//
+//        // transfer funds to user and approve funds to network
+//        await token.transfer(network.address, amountTWeiHi);
+////        await token.approve(network.address, amountTWeiHi, {from:user1})
+//
+//        rates = await network.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], 0);
+////        assert.equal(0, rates[0].valueOf());
+//    });
 
     it("should test listing and unlisting pairs. compare to listed pairs API.", async function () {
         let tokenInd = 2;
@@ -1602,6 +1648,17 @@ contract('KyberNetwork', function(accounts) {
            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
+        try {
+            await networkTemp.setKyberProxy(0);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should test can't set enable if any mandatory contract has zero value = wasn't set.", async function () {
+        const networkTemp = await Network.new(admin);
+
         //verify can't enable without set contracts
         try {
             await networkTemp.setEnable(true);
@@ -1618,16 +1675,6 @@ contract('KyberNetwork', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await networkTemp.setExpectedRate(expectedRate.address);
-        try {
-            await networkTemp.setEnable(true);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        networkTemp = await Network.new(admin);
-
         await networkTemp.setFeeBurner(feeBurner.address);
         try {
             await networkTemp.setEnable(true);
@@ -1636,9 +1683,15 @@ contract('KyberNetwork', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await networkTemp.setWhiteList(whiteList.address);
         await networkTemp.setExpectedRate(expectedRate.address);
-
+//        try {
+//            await networkTemp.setEnable(true);
+//            assert(false, "throw was expected in line above.")
+//        } catch(e){
+//            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+//        }
+//
+//        await networkTemp.setKyberProxy(networkProxy);
         await networkTemp.setEnable(true);
     });
 
@@ -2323,7 +2376,7 @@ contract('KyberNetwork', function(accounts) {
         }
 
         let avgGas = cumulativeGas.div(numTrades);
-        log("average gas usage " + numTrades + " buys. token to ether: " + avgGas.floor().valueOf());
+        log("average gas usage " + numTrades + " buys. token to token: " + avgGas.floor().valueOf());
     });
 });
 

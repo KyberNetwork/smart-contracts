@@ -11,6 +11,8 @@ let BigNumber = require('bignumber.js');
 
 
 let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+let precisionUnits = (new BigNumber(10).pow(18));
+
 let bps = 10000;
 let minSlippageBps = 400;
 let quantityFactor = 3;
@@ -32,7 +34,6 @@ let tokenAdd = [];
 contract('ExpectedRates', function(accounts) {
     it("should init kyber network and all its components.", async function () {
         let gasPrice = (new BigNumber(10).pow(9).mul(50));
-        let precisionUnits = (new BigNumber(10).pow(18));
 
         //block data
         let priceUpdateBlock;
@@ -261,7 +262,7 @@ contract('ExpectedRates', function(accounts) {
         assert.equal(rates[1].valueOf(), qtySlippageRate, "unexpected rate");
     });
 
-    it("should test token to eth. use slippage.", async function() {
+    it("should test token to eth. use qty slippage.", async function() {
         let tokenInd = 2;
         let qty = 300;
 
@@ -324,7 +325,7 @@ contract('ExpectedRates', function(accounts) {
     });
 
     it("should verify set quantity factor reverts when > 100.", async function() {
-            let legalFactor = 100;
+        let legalFactor = 100;
         let illegalFactor = 101;
 
         await expectedRates.setQuantityFactor(legalFactor, {from: operator});
@@ -344,25 +345,25 @@ contract('ExpectedRates', function(accounts) {
         assert.equal(rxFactor, legalFactor);
     });
 
-//    it("should verify set min slippage reverts when > 100 * 100.", async function() {
-//        let legalSlippage = 100 * 100;
-//        let illegalSlippage = 100 * 100 + 1 * 1;
-//
-//        await expectedRates.setMinSlippageFactor(legalSlippage, {from: operator});
-//        let rxSlippage = await expectedRates.minSlippageFactorInBps();
-//
-//        assert.equal(rxSlippage, legalSlippage);
-//
-//        try {
-//            await expectedRates.setMinSlippageFactor(illegalSlippage, {from: operator});
-//            assert(false, "throw was expected in line above.")
-//        } catch(e){
-//            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-//        }
-//
-//        rxSlippage = await expectedRates.minSlippageFactorInBps();
-//        assert.equal(rxSlippage, legalSlippage);
-//    });
+    it("should verify set min slippage reverts when > 100 * 100.", async function() {
+        let legalSlippage = 100 * 100;
+        let illegalSlippage = 100 * 100 + 1 * 1;
+
+        await expectedRates.setMinSlippageFactor(legalSlippage, {from: operator});
+        let rxSlippage = await expectedRates.minSlippageFactorInBps();
+
+        assert.equal(rxSlippage, legalSlippage);
+
+        try {
+            await expectedRates.setMinSlippageFactor(illegalSlippage, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        rxSlippage = await expectedRates.minSlippageFactorInBps();
+        assert.equal(rxSlippage, legalSlippage);
+    });
 
     it("should verify get expected rate reverts when qty > MAX QTY.", async function() {
         let legalQty = (new BigNumber(10).pow(28));
@@ -398,4 +399,50 @@ contract('ExpectedRates', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     });
- });
+
+    it("should verify when qty 0, expected rate correct. expected isn't 0. slippage is 0", async function() {
+        let tokenInd = 2;
+        let qty = 0;
+        quantityFactor = 2;
+
+        await expectedRates.setMinSlippageFactor(minSlippageBps, {from: operator});
+
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        let expectedRate = await network.searchBestRate(tokenAdd[tokenInd], ethAddress, qty);
+
+        assert(rates[0].valueOf() != 0, "unexpected rate");
+        assert.equal(rates[0].valueOf(), expectedRate[1].valueOf(), "unexpected rate");
+        assert.equal(rates[1].valueOf(), 0, "we expect slippage to be 0");
+    });
+
+    it("should verify when qty small, expected rate isn't 0. slippage is 0", async function() {
+        let tokenInd = 2;
+        let qty = 1;
+
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        let expectedRate = await network.searchBestRate(tokenAdd[tokenInd], ethAddress, qty);
+        assert.equal(rates[0].valueOf(), expectedRate[1].valueOf(), "unexpected rate");
+        assert(rates[1].valueOf() == 0, "unexpected rate");
+    });
+
+    it("should verify when qty 0, token to token rate as expected.", async function() {
+        let tokenSrcInd = 2;
+        let tokenDestInd = 1;
+        let qty = 0;
+
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], qty);
+        let srcToEthRate = await network.searchBestRate(tokenAdd[tokenSrcInd], ethAddress, qty);
+        srcToEthRate = new BigNumber(srcToEthRate[1].valueOf());
+        let ethToDestRate = await network.searchBestRate(ethAddress, tokenAdd[tokenDestInd], qty);
+        ethToDestRate = new BigNumber(ethToDestRate[1].valueOf());
+
+        assert(rates[0].valueOf() != 0, "unexpected rate");
+        assert.equal(rates[0].valueOf(), srcToEthRate.mul(ethToDestRate).div(precisionUnits).floor(), "unexpected rate");
+        assert.equal(rates[1].valueOf(), 0, "unexpected rate");
+    });
+});
+
+
+function log (string) {
+    console.log(string);
+};
