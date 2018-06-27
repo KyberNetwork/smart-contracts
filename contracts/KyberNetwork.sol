@@ -368,7 +368,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     function trade(TradeInput tradeInput) internal returns(uint) {
         require(isEnabled);
         require(tx.gasprice <= maxGasPriceValue);
-        require(validateTradeInput(tradeInput.src, tradeInput.srcAmount, tradeInput.destAddress));
+        require(validateTradeInput(tradeInput.src, tradeInput.srcAmount, tradeInput.dest, tradeInput.destAddress));
 
         BestRateResult memory rateResult =
         findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount);
@@ -503,7 +503,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     /// @param src Src token
     /// @param srcAmount amount of src tokens
     /// @return true if tradeInput is valid
-    function validateTradeInput(ERC20 src, uint srcAmount, address destAddress)
+    function validateTradeInput(ERC20 src, uint srcAmount, ERC20 dest, address destAddress)
         internal
         view
         returns(bool)
@@ -511,6 +511,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         require(srcAmount <= MAX_QTY);
         require(srcAmount != 0);
         require(destAddress != 0);
+        require(src != dest);
 
         if (src == ETH_TOKEN_ADDRESS) {
             require(msg.value == srcAmount);
