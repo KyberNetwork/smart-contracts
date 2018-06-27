@@ -25,7 +25,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
     function setQuantityFactor(uint newFactor) public onlyOperator {
         require(newFactor <= 100);
 
-        QuantityFactorSet(quantityFactor, newFactor, msg.sender);
+        QuantityFactorSet(newFactor, quantityFactor, msg.sender);
         quantityFactor = newFactor;
     }
 
