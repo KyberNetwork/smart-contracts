@@ -232,7 +232,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         //future feature
         user;
         token;
-        return 0;
+        require(false);
     }
 
     struct BestRateResult {
