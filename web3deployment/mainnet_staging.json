@@ -371,14 +371,14 @@
   },
   "permission": {
     "KyberNetwork": {
-      "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "admin": "0xF9eF59dB62f56aF114380A7496Fd51172dafD41d",
       "operator": [
         "0xf214dDE57f32F3F34492Ba3148641693058D4A9e"
       ],
       "alerter": []
     },
     "KyberReserve": {
-      "admin": "0x7c8cff2c659a3ee23869497a56129f3da92e8f38",
+      "admin": "0xF9eF59dB62f56aF114380A7496Fd51172dafD41d",
       "operator": [
         "0x8C3151b751F2409697E35F62D016713593F64Eef"
       ],
