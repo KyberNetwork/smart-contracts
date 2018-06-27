@@ -498,16 +498,21 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     /// @param src Src token
     /// @param srcAmount amount of src tokens
     /// @return true if tradeInput is valid
-    function validateTradeInput(ERC20 src, uint srcAmount, address destAddress) internal view returns(bool) {
-        if ((srcAmount >= MAX_QTY) || (srcAmount == 0) || (destAddress == 0))
-            return false;
+    function validateTradeInput(ERC20 src, uint srcAmount, address destAddress)
+        internal
+        view
+        returns(bool)
+    {
+        require(srcAmount <= MAX_QTY);
+        require(srcAmount != 0);
+        require(destAddress != 0);
 
         if (src == ETH_TOKEN_ADDRESS) {
-            if (msg.value != srcAmount)
-                return false;
+            require(msg.value == srcAmount);
         } else {
-            if ((msg.value != 0) || (src.balanceOf(this) < srcAmount))
-                return false;
+            require(msg.value == 0);
+            //funds should have been moved to this contract already.
+            require(src.balanceOf(this) >= srcAmount);
         }
 
         return true;
