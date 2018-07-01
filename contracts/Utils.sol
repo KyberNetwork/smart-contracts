@@ -16,10 +16,8 @@ contract Utils {
     mapping(address=>uint) internal decimals;
 
     function setDecimals(ERC20 token) internal {
-        if (token == ETH_TOKEN_ADDRESS)
-            decimals[token] = ETH_DECIMALS;
-        else
-            decimals[token] = token.decimals();
+        if (token == ETH_TOKEN_ADDRESS) decimals[token] = ETH_DECIMALS;
+        else decimals[token] = token.decimals();
     }
 
     function getDecimals(ERC20 token) internal view returns(uint) {
@@ -28,7 +26,7 @@ contract Utils {
         // technically, there might be token with decimals 0
         // moreover, very possible that old tokens have decimals 0
         // these tokens will just have higher gas fees.
-        if (tokenDecimals == 0) return token.decimals();
+        if(tokenDecimals == 0) return token.decimals();
 
         return tokenDecimals;
     }
