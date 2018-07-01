@@ -2153,7 +2153,8 @@ contract('KyberNetworkProxy', function(accounts) {
         //calc dest amount
         let expectedDest = (new BigNumber(amountWei)).mul(rate[0].valueOf()).div(precisionUnits);
 
-        let mySmallFee = expectedDest;
+        //expected dest has 1 wei error
+        let mySmallFee = expectedDest - 1;
         await maliciousNetwork.setMyFeeWei(mySmallFee);
         let rxFeeWei = await maliciousNetwork.myFeeWei();
         assert.equal(rxFeeWei.valueOf(), mySmallFee);
