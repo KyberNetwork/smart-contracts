@@ -359,6 +359,15 @@ contract('KyberNetwork', function(accounts) {
             let txData = await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 50000,
                 buyRate[1].valueOf(), walletId, 0, {from:networkProxy, value:amountWei});
 
+//            log(txData.logs[0].args)
+            let exactEthAdd = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+            assert.equal(txData.logs[0].args.srcAddress, user1, "src address");
+            assert.equal(txData.logs[0].args.srcToken, exactEthAdd, "src token");
+            assert.equal(txData.logs[0].args.srcAmount.valueOf(), amountWei);
+            assert.equal(txData.logs[0].args.destAddress, user2);
+            assert.equal(txData.logs[0].args.destToken, tokenAdd[tokenInd]);
+            assert.equal(txData.logs[0].args.destAmount.valueOf(), expectedTweiAmount.valueOf());
+
             //check higher ether balance on reserve
             expectedReserve2BalanceWei = expectedReserve2BalanceWei.add(amountWei);
             let balance = await Helper.getBalancePromise(reserve2.address);
