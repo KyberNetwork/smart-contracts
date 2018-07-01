@@ -360,6 +360,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         }
     }
 
+    event KyberTrade(address srcAddress, ERC20 srcToken, uint srcAmount, address destAddress, ERC20 destToken,
+        uint destAmount);
     /* solhint-disable function-max-lines */
     // Most of the lins here are functions calls spread over multiple lines. We find this function readable enough
     //  and keep its size as is.
@@ -429,6 +431,9 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
             require(feeBurnerContract.handleFees(weiAmount, rateResult.reserve1, tradeInput.walletId));
         if (tradeInput.dest != ETH_TOKEN_ADDRESS)
             require(feeBurnerContract.handleFees(weiAmount, rateResult.reserve2, tradeInput.walletId));
+
+        KyberTrade(tradeInput.trader, tradeInput.src, actualSrcAmount, tradeInput.destAddress, tradeInput.dest,
+            actualDestAmount);
 
         return actualDestAmount;
     }

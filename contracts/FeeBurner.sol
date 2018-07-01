@@ -36,26 +36,34 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         knc = kncToken;
     }
 
+    event ReserveDataSet(address reserve, uint feeInBps, address kncWallet);
     function setReserveData(address reserve, uint feesInBps, address kncWallet) public onlyAdmin {
         require(feesInBps < 100); // make sure it is always < 1%
         require(kncWallet != address(0));
         reserveFeesInBps[reserve] = feesInBps;
         reserveKNCWallet[reserve] = kncWallet;
+        ReserveDataSet(reserve, feesInBps, kncWallet);
     }
 
+    event WalletFeesSet(address wallet, uint feesInBps);
     function setWalletFees(address wallet, uint feesInBps) public onlyAdmin {
         require(feesInBps < 10000); // under 100%
         walletFeesInBps[wallet] = feesInBps;
+        WalletFeesSet(wallet, feesInBps);
     }
 
+    event TaxFeesSet(uint feesInBps);
     function setTaxInBps(uint _taxFeeBps) public onlyAdmin {
         require(_taxFeeBps < 10000); // under 100%
         taxFeeBps = _taxFeeBps;
+        TaxFeesSet(_taxFeeBps);
     }
 
+    event TaxWalletSet(address taxWallet);
     function setTaxWallet(address _taxWallet) public onlyAdmin {
         require(_taxWallet != address(0));
         taxWallet = _taxWallet;
+        TaxWalletSet(_taxWallet);
     }
 
     function setKNCRate(uint rate) public onlyAdmin {
