@@ -20,20 +20,23 @@ contract('utils2', function(accounts) {
         utils2 = await MockUtils2.new();
     });
 
-    it("should check get decimals for token without decimals API.", async function () {
-        let tokenNoDecimal18 = await TokenNoDecimal.new("noDec",  "dec", 18);
-        let tokenNoDecimal15 = await TokenNoDecimal.new("noDec",  "dec", 15);
+    it("should check get decimals for token without decimals API. see reverts", async function () {
+        let tokenNoDecimal = await TokenNoDecimal.new("noDec",  "dec", 18);
         let token = await TestToken.new("regular", "reg", 16);
 
-        await utils2.mockSetDecimalsSafe(tokenNoDecimal15.address);
-        await utils2.mockSetDecimalsSafe(tokenNoDecimal18.address);
+        try {
+            await utils2.mockSetDecimalsSafe(tokenNoDecimal.address);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //this should succeed.
         await utils2.mockSetDecimalsSafe(token.address);
-
-        let decimals = await utils2.mockGetDecimalsSafe(tokenNoDecimal18.address);
-        assert.equal(decimals.valueOf(), 18);
-
-        decimals = await utils2.mockGetDecimalsSafe(tokenNoDecimal15.address);
-        assert.equal(decimals.valueOf(), 18);
+	
+	//now get deicmals to see values
+	let decimals = await utils2.mockGetDecimalsSafe(tokenNoDecimal.address);
+        assert.equal(decimals.valueOf(), 0, "decimals should be 0 since values wasn't set");
 
         decimals = await utils2.mockGetDecimalsSafe(token.address);
         assert.equal(decimals.valueOf(), 16);
