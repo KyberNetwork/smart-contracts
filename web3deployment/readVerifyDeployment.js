@@ -327,7 +327,7 @@ async function readKyberNetwork(kyberNetworkAdd){
     let solcCode = '0x' + (solcOutput.contracts["KyberNetwork.sol:KyberNetwork"].runtimeBytecode);
 
     myLog(0, 0, (""));
-    myLog(0, 0, ("kyberNetworkAdd: " + kyberNetworkAdd));
+    myLog(0, 0, ("internal network: " + kyberNetworkAdd));
     myLog(0, 0, ("------------------------------------------------------------"));
 
     if (blockCode != solcCode){
@@ -347,7 +347,7 @@ async function readKyberNetwork(kyberNetworkAdd){
     expectedRateAdd = (await Network.methods.expectedRateContract().call()).toLowerCase();
 
     myLog(0, 1, ("enable: " + await Network.methods.enabled().call() + "!!!"));
-    await printAdminAlertersOperators(Network, "InternalNetwork");
+    await printAdminAlertersOperators(Network, "internal network");
     myLog((feeBurnerAdd!=jsonFeeBurnerAdd), 0, ("feeBurnerAdd: " + feeBurnerAdd));
     myLog((whiteListAdd == 0), 0, ("whiteListAdd: " + whiteListAdd));
     myLog((expectedRateAdd == 0), 0, ("expectedRateAdd: " + expectedRateAdd));
@@ -1454,6 +1454,9 @@ async function printAdminAlertersOperators(contract, jsonKey) {
     } catch (e) {
         jsonPendingAdmin = '';
     }
+
+    if (jsonAlerters == undefined) jsonAlerters = [];
+    if (jsonOperators == undefined) jsonOperators = [];
 
     //admin
     let admin = await contract.methods.admin().call();
