@@ -353,7 +353,7 @@ async function readKyberNetwork(kyberNetworkAdd){
     await readExpectedRateData(expectedRateAdd);
 
     // now reserves
-    for (let i = 1; i < numReserves; i++) {
+    for (let i = 0; i < numReserves; i++) {
         await readReserve(reservesAdd[i], i, (reservesAdd[i] == jsonReserveAdd));
     }
 };
