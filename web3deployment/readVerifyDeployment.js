@@ -15,8 +15,8 @@ const contractPath = "../contracts/";
 const input = {
   "ConversionRatesInterface.sol" : fs.readFileSync(contractPath + 'ConversionRatesInterface.sol', 'utf8'),
   "ConversionRates.sol" : fs.readFileSync(contractPath + 'ConversionRates.sol', 'utf8'),
-//  "LiquidityConversionRates.sol" : fs.readFileSync(contractPath + 'LiquidityConversionRates.sol', 'utf8'),
-//  "LiquidityFormula.sol" : fs.readFileSync(contractPath + 'LiquidityFormula.sol', 'utf8'),
+  "LiquidityConversionRates.sol" : fs.readFileSync(contractPath + 'LiquidityConversionRates.sol', 'utf8'),
+  "LiquidityFormula.sol" : fs.readFileSync(contractPath + 'LiquidityFormula.sol', 'utf8'),
   "PermissionGroups.sol" : fs.readFileSync(contractPath + 'PermissionGroups.sol', 'utf8'),
   "ERC20Interface.sol" : fs.readFileSync(contractPath + 'ERC20Interface.sol', 'utf8'),
   "MockERC20.sol" : fs.readFileSync(contractPath + 'mockContracts/MockERC20.sol', 'utf8'),
@@ -39,28 +39,16 @@ const input = {
   "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
   "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
   "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
+  "KyberReserveV1.sol" : fs.readFileSync(contractPath + 'previousContracts/KyberReserveV1.sol', 'utf8'),
   "WrapConversionRate.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapConversionRate.sol', 'utf8'),
   "WrapperBase.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapperBase.sol', 'utf8'),
   "WrapReadTokenData.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapReadTokenData.sol', 'utf8')
 };
 
+//below is sha3 of reserve code for previous version (V1)
 const reserveV1Sha3BlockCode = '0x8da19d456dc61d48ed44c94ffb9bb4c20c644a13724860bb0fce8951150208d7';
 
-const prevCodeInput = {
-    "ConversionRatesInterface.sol" : fs.readFileSync(contractPath + 'ConversionRatesInterface.sol', 'utf8'),
-    "PermissionGroups.sol" : fs.readFileSync(contractPath + 'PermissionGroups.sol', 'utf8'),
-    "ERC20Interface.sol" : fs.readFileSync(contractPath + 'ERC20Interface.sol', 'utf8'),
-    "SanityRatesInterface.sol" : fs.readFileSync(contractPath + 'SanityRatesInterface.sol', 'utf8'),
-    "Utils.sol" : fs.readFileSync(contractPath + 'Utils.sol', 'utf8'),
-    "VolumeImbalanceRecorder.sol" : fs.readFileSync(contractPath + 'VolumeImbalanceRecorder.sol', 'utf8'),
-    "KyberNetworkInterface.sol" : fs.readFileSync(contractPath + 'KyberNetworkInterface.sol', 'utf8'),
-    "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
-    "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
-    "KyberReserve.sol" : fs.readFileSync(contractPath + 'previousContracts/KyberReserve.sol', 'utf8'),
-};
-
 let solcOutput;
-let solcOutputPrevCode;
 
 const ethAddress = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 
@@ -184,8 +172,6 @@ async function main (){
     }
 
     await getCompiledContracts();
-    solcOutputPrevCode = await solc.compile({ sources: prevCodeInput }, 1);
-    console.log(solcOutputPrevCode.errors);
 
     await init(infuraUrl);
 
@@ -276,8 +262,6 @@ function printHelp () {
     console.log("Ex: \'node readVerifyDeployment.js m mainnet.json\'");
     console.log("Another example: \'node readVerifyDeployment.js k kovanOut.json\'");
 }
-
-
 
 async function readNetworkProxy(networkProxyAdd){
     let abi = solcOutput.contracts["KyberNetworkProxy.sol:KyberNetworkProxy"].interface;
@@ -655,7 +639,7 @@ async function readReserve(reserveAdd, index, isKyberReserve){
     if (needReadReserveV1ABI == 1) {
         needReadReserveV1ABI = 0;
         try {
-            let abi = solcOutputPrevCode.contracts["KyberReserve.sol:KyberReserve"].interface;
+            let abi = solcOutput.contracts["KyberReserveV1.sol:KyberReserve"].interface;
             reserveV1ABI = JSON.parse(abi);
         } catch (e) {
             myLog(0, 0, e);
@@ -1773,6 +1757,7 @@ async function getCompiledContracts() {
         myLog(0, 0, "starting compilation");
         solcOutput = await solc.compile({ sources: input }, 1);
         console.log(solcOutput.errors);
+        console.log(solcOutput);
         myLog(0, 0, "finished compilation");
         let solcOutJson = JSON.stringify(solcOutput, null, 2);
         fs.writeFileSync(solcOutputPath, solcOutJson, function(err) {
