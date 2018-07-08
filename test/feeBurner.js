@@ -39,7 +39,12 @@ contract('FeeBurner', function(accounts) {
 
         //set parameters in fee burner.
         await feeBurnerInst.setKNCRate(kncPerEtherRate);
-        await feeBurnerInst.setReserveData(mockReserve, burnFeeInBPS, mockKNCWallet);
+        let result = await feeBurnerInst.setReserveData(mockReserve, burnFeeInBPS, mockKNCWallet);
+//        console.log("result")
+//        console.log(result.logs[0].args)
+        assert.equal(result.logs[0].args.reserve, mockReserve);
+        assert.equal(result.logs[0].args.feeInBps.valueOf(), burnFeeInBPS);
+        assert.equal(result.logs[0].args.kncWallet, mockKNCWallet);
 
         //allowance to fee burner to enable burning
         await kncToken.approve(feeBurnerInst.address, initialKNCWalletBalance / 10, {from: mockKNCWallet});
@@ -68,7 +73,11 @@ contract('FeeBurner', function(accounts) {
         let feeSize = tradeSizeWei * kncPerEtherRate * burnFeeInBPS / totalBPS;
 
         //set other wallet fee
-        await feeBurnerInst.setWalletFees(someExternalWallet, totalBPS/2);
+        let result = await feeBurnerInst.setWalletFees(someExternalWallet, totalBPS/2);
+//        console.log("result")
+//        console.log(result.logs[0].args)
+        assert.equal(result.logs[0].args.wallet, someExternalWallet);
+        assert.equal(result.logs[0].args.feesInBps.valueOf(), totalBPS/2);
 
         await feeBurnerInst.handleFees(tradeSizeWei, mockReserve, someExternalWallet, {from: mockKyberNetwork});
 
