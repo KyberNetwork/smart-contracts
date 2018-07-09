@@ -7,7 +7,7 @@ import "./Withdrawable.sol";
 import "./ExpectedRateInterface.sol";
 
 
-contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
+contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
 
     KyberNetwork public kyberNetwork;
     uint public quantityFactor = 2;
@@ -58,7 +58,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
         (bestReserve, slippageRate) = kyberNetwork.findBestRate(src, dest, (srcQty * quantityFactor));
 
         if (expectedRate == 0) {
-            expectedRate = expectedRateSmallQty(src, dest);
+            expectedRate = expectedRateSmallQty(src, dest, srcQty);
         }
 
         require(expectedRate <= MAX_RATE);
@@ -73,12 +73,15 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils {
 
     //@dev for small src quantities dest qty might be 0, then returned rate is zero.
     //@dev for backward compatibility we would like to return non zero rate (correct one) for small src qty
-    function expectedRateSmallQty(ERC20 src, ERC20 dest) internal view returns(uint) {
+    function expectedRateSmallQty(ERC20 src, ERC20 dest, uint srcQty) internal view returns(uint) {
         address reserve;
         uint rateSrcToEth;
         uint rateEthToDest;
-        (reserve, rateSrcToEth) = kyberNetwork.searchBestRate(src, ETH_TOKEN_ADDRESS, 0);
-        (reserve, rateEthToDest) = kyberNetwork.searchBestRate(ETH_TOKEN_ADDRESS, dest, 0);
+        (reserve, rateSrcToEth) = kyberNetwork.searchBestRate(src, ETH_TOKEN_ADDRESS, srcQty);
+
+        uint ethQty = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcQty, rateSrcToEth);
+
+        (reserve, rateEthToDest) = kyberNetwork.searchBestRate(ETH_TOKEN_ADDRESS, dest, ethQty);
         return rateSrcToEth * rateEthToDest / PRECISION;
     }
 }
