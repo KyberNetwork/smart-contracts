@@ -87,8 +87,6 @@ let jsonTokenList = [];
 let jsonKyberTokenList = [];
 let jsonWithdrawAddresses = [];
 let minRecordResolutionPerToken = {};
-let maxPerBlockImbalancePerToken = {};
-let maxTotalImbalancePerToken = {};
 let decimalsPerToken = {};
 let whiteListedAddresses = [];
 let jsonTestersCat;
@@ -742,7 +740,7 @@ async function reportReserveBalance(reserveAddress, index, tokens, reserveInst, 
 
         if (isExternalWallet) {
             fundsAddress = await reserveInst.methods.tokenWallet(tokens[i]).call();
-            myLog(1, 0, fundsAddress);
+//            myLog(1, 0, fundsAddress);
         }
         let inst = await new web3.eth.Contract(jsonForERC20, tokens[i]);
 
@@ -1193,14 +1191,12 @@ async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, re
         getAmountTokens(controlInfo[0], tokenAdd) + " tokens."));
 
     //print max per block data
-    raiseFlag = isKyberReserve && (controlInfo[1] != maxPerBlockImbalancePerToken[tokenAdd]);
-    myLog(0, raiseFlag, ("maxPerBlockImbalance: " + controlInfo[1] + " = " +
+    myLog(0, 0, ("maxPerBlockImbalance: " + controlInfo[1] + " = " +
         getAmountTokens(controlInfo[1], tokenAdd) + " tokens."));
     tokenDict['maxPerBlockImbalance'] = controlInfo[1].valueOf();
 
     //print max total imbalance data
-    raiseFlag = isKyberReserve && (controlInfo[2] != maxTotalImbalancePerToken[tokenAdd]);
-    myLog(0, raiseFlag, ("maxTotalImbalance: " + controlInfo[2] + " = " +
+    myLog(0, 0, ("maxTotalImbalance: " + controlInfo[2] + " = " +
         getAmountTokens(controlInfo[2], tokenAdd) + " tokens."));
     tokenDict['maxTotalImbalance'] = controlInfo[2].valueOf();
 
@@ -1695,8 +1691,6 @@ async function jsonVerifyTokenData (tokenData, symbol) {
     }
 
     minRecordResolutionPerToken[address] = tokenData["minimalRecordResolution"];
-    maxPerBlockImbalancePerToken[address] = tokenData["maxPerBlockImbalance"];
-    maxTotalImbalancePerToken[address] = tokenData["maxTotalImbalance"];
 
     // read from web: symbol, name, decimal and see matching what we have
     let abi = solcOutput.contracts["MockERC20.sol:MockERC20"].interface;
@@ -1804,7 +1798,7 @@ async function getCompiledContracts() {
         myLog(0, 0, "starting compilation");
         solcOutput = await solc.compile({ sources: input }, 1);
         console.log(solcOutput.errors);
-        console.log(solcOutput);
+//        console.log(solcOutput);
         myLog(0, 0, "finished compilation");
         let solcOutJson = JSON.stringify(solcOutput, null, 2);
         fs.writeFileSync(solcOutputPath, solcOutJson, function(err) {
