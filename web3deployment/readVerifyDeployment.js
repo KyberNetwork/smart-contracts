@@ -915,11 +915,12 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index, 
             throw e;
         }
 
+        tokenReader = await new web3.eth.Contract(wrapReadTokenDataABI, tokenReaderAddress);
+
         try {
-            tokenReader = await new web3.eth.Contract(wrapReadTokenDataABI, tokenReaderAddress);
+            let values = await tokenReader.methods.readQtyStepFunctions(conversionRateAddress, tokenAdd).call();
             haveTokenReader = true;
-        } catch (e) {
-            myLog(0, 1, "oops, no token reader " + e.message);
+        } catch(e) {
             haveTokenReader = false;
         }
     }
