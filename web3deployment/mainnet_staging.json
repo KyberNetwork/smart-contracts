@@ -332,6 +332,16 @@
       "AE": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "BLZ": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547"
     },
+    "bittrex": {
+      "ETH": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23",
+      "OMG": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23",
+      "SNT": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23",
+      "POWR": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23",
+      "MANA": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23",
+      "BAT": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23",
+      "ENG": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23",
+      "SALT": "0xe0355aa3cc0a4e0e4b2a70acd90c2fa961f61b23"
+    },
     "huobi": {
       "ETH": "0xb48ee85467bf613a22244084c1a46c2deac18dd0",
       "ABT": "0xb48ee85467bf613a22244084c1a46c2deac18dd0",
@@ -482,7 +492,7 @@
   "max gas price": "50000000000",
   "neg diff in bps": 20,
   "min expected rate slippage": 300,
-  "KNC wallet": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+  "KNC wallet": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
   "KNC to ETH rate": 550,
   "valid duration block": 60,
   "tax fees bps": 2000,
