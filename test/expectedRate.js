@@ -15,7 +15,7 @@ let precisionUnits = (new BigNumber(10).pow(18));
 
 let bps = 10000;
 let minSlippageBps = 400;
-let quantityFactor = 3;
+let quantityFactor = 2;
 let expectedRates;
 
 //permission groups
@@ -32,6 +32,11 @@ let numTokens = 3;
 let tokens = [];
 let tokenAdd = [];
 
+// imbalance data
+let minimalRecordResolution = 2; //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
+let maxPerBlockImbalance = 4000;
+let maxTotalImbalance = maxPerBlockImbalance * 12;
+
 contract('ExpectedRates', function(accounts) {
     it("should init kyber network and all its components.", async function () {
         let gasPrice = (new BigNumber(10).pow(9).mul(50));
@@ -40,11 +45,6 @@ contract('ExpectedRates', function(accounts) {
         let priceUpdateBlock;
         let currentBlock;
         let validRateDurationInBlocks = 1000;
-
-        // imbalance data
-        let minimalRecordResolution = 2; //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
-        let maxPerBlockImbalance = 4000;
-        let maxTotalImbalance = maxPerBlockImbalance * 12;
 
         //base buy and sell rates (prices)
         let baseBuyRate1 = [];
@@ -425,6 +425,36 @@ contract('ExpectedRates', function(accounts) {
         let expectedRate = await network.searchBestRate(tokenAdd[tokenInd], ethAddress, qty);
         assert.equal(rates[0].valueOf(), expectedRate[1].valueOf(), "unexpected rate");
         assert(rates[1].valueOf() == 0, "unexpected rate");
+    });
+
+    it("test qty above max trade value, expected rate 0. slippage is 0", async function() {
+        let tokenInd = 2;
+        let qty = maxPerBlockImbalance;
+
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        assert.equal(rates[0].valueOf(), 0)
+        assert.equal(rates[1].valueOf(), 0)
+    });
+
+    it("test qty as max trade value, quantity factor 2 expected rate OK. slippage is 0", async function() {
+        let tokenInd = 2;
+        let qty = maxPerBlockImbalance - 1;
+
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        assert(rates[0].valueOf() > 0)
+        assert.equal(rates[1].valueOf(), 0)
+    });
+
+    it("test qty as max trade value, quantity factor 1. expected rate OK. slippage little worse", async function() {
+        let tokenInd = 2;
+        let qty = maxPerBlockImbalance - 1;
+        await expectedRates.setQuantityFactor(1, {from: operator});
+
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        assert(rates[0].valueOf() > 0)
+        assert(rates[1].valueOf() > 0)
+        assert(rates[0].valueOf() > rates[1].valueOf())
+        await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
     });
 
     it("should verify when qty 0, token to token rate as expected.", async function() {

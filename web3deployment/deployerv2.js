@@ -330,7 +330,7 @@ async function main() {
   console.log("expected rate - add temp operator");
   await sendTx(expectedRateContract.methods.addOperator(sender));
   console.log("expected rate - set slippage to 3%");
-  await sendTx(expectedRateContract.methods.setMinSlippageFactor(minExpectedRateSlippage));
+  await sendTx(expectedRateContract.methods.setWorstCaseRateFactor(minExpectedRateSlippage));
   console.log("expected rate - set qty factor to 1");
   await sendTx(expectedRateContract.methods.setQuantityFactor(1));
   console.log("expected rate - remove temp operator");
