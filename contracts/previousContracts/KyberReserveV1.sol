@@ -10,7 +10,7 @@ import "../KyberReserveInterface.sol";
 
 
 /// @title Kyber Reserve contract
-contract KyberReserve is KyberReserveInterface, Withdrawable, Utils {
+contract KyberReserveV1 is KyberReserveInterface, Withdrawable, Utils {
 
     address public kyberNetwork;
     bool public tradeEnabled;
