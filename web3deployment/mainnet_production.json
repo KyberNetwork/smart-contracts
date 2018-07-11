@@ -420,8 +420,7 @@
     "ExpectedRate": {
       "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
       "operator": [
-        "0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
-        "0xf214dde57f32f3f34492ba3148641693058d4a9e"
+        "0xd0643BC0D0C879F175556509dbcEe9373379D5C3"
       ],
       "alerter": []
     },

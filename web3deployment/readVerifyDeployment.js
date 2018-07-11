@@ -637,7 +637,7 @@ async function readReserve(reserveAdd, index, isKyberReserve){
     if (needReadReserveV1ABI == 1) {
         needReadReserveV1ABI = 0;
         try {
-            let abi = solcOutput.contracts["KyberReserveV1.sol:KyberReserve"].interface;
+            let abi = solcOutput.contracts["KyberReserveV1.sol:KyberReserveV1"].interface;
             reserveV1ABI = JSON.parse(abi);
         } catch (e) {
             myLog(0, 0, e);
