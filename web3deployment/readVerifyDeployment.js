@@ -133,7 +133,7 @@ const runExpectedRate = 1;
 const runWhiteList = 1;
 const runFeeBurner = 1;
 const printAdminETC = 1;
-const showStepFunctions = 1;
+const showStepFunctions = 0;
 const readTokenDataInConvRate = true;
 const verifyWhitelistedAddresses = false;
 const saveSpyrosDict = false;
@@ -1153,7 +1153,7 @@ async function readConversionRateWrapper(convRateWrapperAddress) {
     }
 }
 
-const showStepFuncMsg = 1;
+let showStepFuncMsg = 1;
 
 async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, reserveIndex, isKyberReserve) {
     let Rate = ConversionRates[reserveIndex];
@@ -1203,7 +1203,7 @@ async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, re
 
     if (showStepFunctions == 0) {
         if (showStepFuncMsg) {
-            myLog(0, 1, "not showing step functions. set showStepFunctions = 1 to show it.");
+            myLog(0, 1, "not showing step functions. set showStepFunctions = 1 (in this script file) to show it.");
             showStepFuncMsg = 0;
         }
         return;

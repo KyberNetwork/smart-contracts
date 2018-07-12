@@ -303,6 +303,7 @@
       "name": "Wax",
       "decimals": 8,
       "address": "0x39bb259f66e1c59d5abef88375979b4d20d98022",
+      "minimalRecordResolution": "1000000",
       "internal use": true,
       "listed": true
     },
@@ -310,6 +311,7 @@
       "name": "Substratum",
       "decimals": 2,
       "address": "0x12480e24eb5bec1a9d4369cab6a80cad3c0a377a",
+      "minimalRecordResolution": "1",
       "internal use": true,
       "listed": true
     },
@@ -317,6 +319,7 @@
       "name": "Po.et",
       "decimals": 8,
       "address": "0x0e0989b1f9b8a38983c2ba8053269ca62ec9b195",
+      "minimalRecordResolution": "1000000",
       "internal use": true,
       "listed": true
     },
@@ -324,6 +327,7 @@
       "name": "TenX",
       "decimals": 18,
       "address": "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280",
+      "minimalRecordResolution": "1000000000000000",
       "internal use": true,
       "listed": true
     },
@@ -331,6 +335,7 @@
       "name": "Chatcoin",
       "decimals": 18,
       "address": "0x442bc47357919446eabc18c7211e57a13d983469",
+      "minimalRecordResolution": "10000000000000000",
       "internal use": true,
       "listed": true
     },
@@ -338,13 +343,15 @@
       "name": "Augur",
       "decimals": 18,
       "address": "0x1985365e9f78359a9b6ad760e32412f4a445e862",
-      "internal use": true,
+      "minimalRecordResolution": "100000",
+      "internal use": false,
       "listed": true
     },
     "DTA": {
       "name": "Data",
       "decimals": 18,
       "address": "0x69b148395ce0015c13e36bffbad63f49ef874e03",
+      "minimalRecordResolution": "100000000000000000",
       "internal use": true,
       "listed": true
     },
@@ -352,6 +359,7 @@
       "name": "Bancor",
       "decimals": 18,
       "address": "0x1f573d6fb3f13d689ff844b4ce37794d79a7ff1c",
+      "minimalRecordResolution": "1000000000000000",
       "internal use": true,
       "listed": true
     },
@@ -359,6 +367,7 @@
       "name": "TrueUSD",
       "decimals": 18,
       "address": "0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E",
+      "minimalRecordResolution": "10000000000000000",
       "internal use": true,
       "listed": true
     },
