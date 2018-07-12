@@ -1,6 +1,7 @@
 let FeeBurner = artifacts.require("./FeeBurner.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 let WrapFeeBurner = artifacts.require("./wrapperContracts/WrapFeeBurner.sol");
+let WrapFeeBurnerWrapper = artifacts.require("./wrapperContracts/WrapFeeBurnerWrapper.sol");
 
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
@@ -27,11 +28,13 @@ let mockKyberNetwork;
 let mock3rdPartyWallet;
 let permissionLessWallet1;
 let permissionLessWallet2;
+let permissionLessWallet3;
 let mock3rdPartyWalletFeeBps = 200;
 let taxFeeBps = 30;
 
 let burnerInst;
 let wrapBurnerInst;
+let wrapperWrapperInst;
 
 let kncRateRangeNonce = 0;
 let addReserveNonce = 0;
@@ -56,6 +59,7 @@ contract('WrapFeeBurner', function(accounts) {
 
         permissionLessWallet1 = accounts[1];
         permissionLessWallet2 = accounts[2];
+        permissionLessWallet3 = accounts[3];
 
         //init fee burner
         //move funds to knc wallet
@@ -554,6 +558,19 @@ contract('WrapFeeBurner', function(accounts) {
         otherWalletNonce++;
     });
 
+    it("test seting permission less wallet with wrapper wrapper and query values.", async function() {
+        wrapperWrapperInst = await WrapFeeBurnerWrapper.new(wrapBurnerInst.address);
+
+         //any address can register any wallet.
+        await wrapperWrapperInst.registerWallet(permissionLessWallet3);
+
+        let sharingWallets = await wrapBurnerInst.getFeeSharingWallets();
+
+        assert.equal(sharingWallets.length, 3);
+        assert.equal(sharingWallets[0], permissionLessWallet1);
+        assert.equal(sharingWallets[1], permissionLessWallet2);
+        assert.equal(sharingWallets[2], permissionLessWallet3);
+    });
 
     it("test set pending wallet tax data with illegal values is reverted.", async function() {
         try {
