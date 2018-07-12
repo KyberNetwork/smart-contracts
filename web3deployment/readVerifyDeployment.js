@@ -41,6 +41,7 @@ const input = {
   "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
   "KyberReserveV1.sol" : fs.readFileSync(contractPath + 'previousContracts/KyberReserveV1.sol', 'utf8'),
   "WrapConversionRate.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapConversionRate.sol', 'utf8'),
+  "WrapFeeBurner.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapFeeBurner.sol', 'utf8'),
   "WrapperBase.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapperBase.sol', 'utf8'),
   "WrapReadTokenData.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapReadTokenData.sol', 'utf8')
 };
@@ -115,6 +116,7 @@ let jsonTaxWalletAddress;
 let jsonFeeBurnerAdd;
 let jsonRatesAdd;
 let jsonWrapConversionRate;
+let jsonWrapFeeBurner;
 let jsonReserveAdd;
 
 let kyberNetworkAdd = '0x0';
@@ -848,10 +850,11 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
         myLog(0, 0, '');
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
         myLog(0, 0, '')
-   } else {
+    } else {
        myLog(0, 0, "Code on blockchain matches locally compiled code");
        myLog(0, 0, '');
-   }
+    }
+
 
     if (isKyberReserve) await printAdminAlertersOperators(FeeBurner, "FeeBurner");
     let reserveFees = await FeeBurner.methods.reserveFeesInBps(reserveAddress).call();
@@ -884,10 +887,53 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
     let payedSoFar = await FeeBurner.methods.feePayedPerReserve(reserveAddress).call();
     myLog(0, 0, "Fees payed so far by reserve (burn + tax): " + getAmountTokens(payedSoFar, jsonKNCAddress) + " knc tokens.");
 
+    if (isKyberReserve && jsonWrapFeeBurner != 0) {
+        //verify wrapper binary
+        let admin = (await FeeBurner.methods.admin().call()).toLowerCase();
+        myLog((admin != jsonWrapFeeBurner), 0, "Admin is wrapper contract: " + (admin == jsonWrapFeeBurner));
+        await readFeeBurnerWrapper(jsonWrapFeeBurner);
+    }
 
     //todo: get addresses for wallets that receive fees and print addresses + fees.
 //    myLog(0, 0, ("reserveFeeToWallet: " + await FeeBurner.methods.reserveFeeToWal let(reserveAddress).call());
 }
+
+let wrapFeeBurnerABI;
+async function readFeeBurnerWrapper(burnerWrapperAddress) {
+    try {
+        let abi = solcOutput.contracts["WrapFeeBurner.sol:WrapFeeBurner"].interface;
+        wrapFeeBurnerABI = JSON.parse(abi);
+    } catch (e) {
+        myLog(0, 0, e);
+        throw e;
+    }
+
+    let burnerWrapperInst = await new web3.eth.Contract(wrapFeeBurnerABI, burnerWrapperAddress);
+
+    myLog(0, 0, '');
+
+    myLog(0, 0, ("Fee Burner wrapper address: " +  burnerWrapperAddress));
+    myLog(0, 0, ("--------------------------------------------------------------------"));
+
+
+    //verify binary as expected.
+    let blockCode = await web3.eth.getCode(burnerWrapperAddress);
+    let solcCode = '0x' + (solcOutput.contracts["WrapFeeBurner.sol:WrapFeeBurner"].runtimeBytecode);
+
+    if (blockCode != solcCode){
+//        myLog(1, 0, "blockchain Code:");
+//        myLog(0, 0, blockCode);
+        myLog(0, 0, '');
+        myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
+        myLog(0, 0, '')
+    } else {
+        myLog(0, 0, "Code on blockchain matches locally compiled code");
+         myLog(0, 0, '');
+    }
+
+    await printAdminAlertersOperators(burnerWrapperInst, "FeeBurner Wrapper");
+}
+
 
 let conversionRatesABI;
 let needReadRatesABI = 1;
@@ -1153,7 +1199,7 @@ async function readConversionRateWrapper(convRateWrapperAddress) {
     }
 }
 
-const showStepFuncMsg = 1;
+let showStepFuncMsg = 1;
 
 async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, reserveIndex, isKyberReserve) {
     let Rate = ConversionRates[reserveIndex];
@@ -1593,6 +1639,14 @@ async function readDeploymentJSON(filePath) {
         jsonWrapConversionRate = address;
     } catch(e) {
         jsonWrapConversionRate = 0;
+    }
+
+    try {
+        address = (json["feeburner wrapper"]).toLowerCase();
+        addressesToNames[address] = "feeBurnerWrapper";
+        jsonWrapFeeBurner = address;
+    } catch(e) {
+        jsonWrapFeeBurner = 0;
     }
 
     //this is the proxy

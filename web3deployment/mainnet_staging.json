@@ -442,9 +442,17 @@
       "alerter": []
     },
     "FeeBurner": {
-      "admin": "0xd0643BC0D0C879F175556509dbcEe9373379D5C3",
+      "admin": "0xBe401c3cf8528DB1B963e2E40827a2E0e1d98Ee4",
       "operator": [
         "0xd0643BC0D0C879F175556509dbcEe9373379D5C3"
+      ],
+      "alerter": []
+    },
+    "FeeBurner Wrapper": {
+      "admin": "0x7C8cfF2c659A3eE23869497a56129F3da92E8F38",
+      "operator": [
+        "0x7C8cfF2c659A3eE23869497a56129F3da92E8F38",
+        "0x3A9b02c14d967333cE68E353a64653E258da2BAa"
       ],
       "alerter": []
     },
@@ -559,6 +567,7 @@
   "internal network": "0x706aBcE058DB29eB36578c463cf295F180a1Fe9C",
   "wrapper": "0x6172AFC8c00c46E0D07ce3AF203828198194620a",
   "feeburner": "0xd6703974Dc30155d768c058189A2936Cf7C62Da6",
+  "feeburner wrapper": "0xBe401c3cf8528DB1B963e2E40827a2E0e1d98Ee4",
   "whitelist": "0x1b8a28d2185a7ab86ae40303b39f33278cc42130",
   "third_party_reserves": [
     "0xe1213e46efcb8785b47ae0620a51f490f747f1da",
