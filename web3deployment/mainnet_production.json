@@ -299,6 +299,69 @@
       "internal use": true,
       "listed": true
     },
+    "WAX": {
+      "name": "Wax",
+      "decimals": 8,
+      "address": "0x39bb259f66e1c59d5abef88375979b4d20d98022",
+      "internal use": true,
+      "listed": true
+    },
+    "SUB": {
+      "name": "Substratum",
+      "decimals": 2,
+      "address": "0x12480e24eb5bec1a9d4369cab6a80cad3c0a377a",
+      "internal use": true,
+      "listed": true
+    },
+    "POE": {
+      "name": "Po.et",
+      "decimals": 8,
+      "address": "0x0e0989b1f9b8a38983c2ba8053269ca62ec9b195",
+      "internal use": true,
+      "listed": true
+    },
+    "PAY": {
+      "name": "TenX",
+      "decimals": 18,
+      "address": "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280",
+      "internal use": true,
+      "listed": true
+    },
+    "CHAT": {
+      "name": "Chatcoin",
+      "decimals": 18,
+      "address": "0x442bc47357919446eabc18c7211e57a13d983469",
+      "internal use": true,
+      "listed": true
+    },
+    "REP": {
+      "name": "Augur",
+      "decimals": 18,
+      "address": "0x1985365e9f78359a9b6ad760e32412f4a445e862",
+      "internal use": false,
+      "listed": true
+    },
+    "DTA": {
+      "name": "Data",
+      "decimals": 18,
+      "address": "0x69b148395ce0015c13e36bffbad63f49ef874e03",
+      "internal use": true,
+      "listed": true
+    },
+    "BNT": {
+      "name": "Bancor",
+      "decimals": 18,
+      "address": "0x1f573d6fb3f13d689ff844b4ce37794d79a7ff1c",
+      "internal use": true,
+      "listed": true
+    },
+    "TUSD": {
+      "name": "TrueUSD",
+      "decimals": 18,
+      "address": "0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E",
+      "internal use": true,
+      "listed": true
+    },
     "ETH": {
       "name": "Ethereum",
       "decimals": 18,
