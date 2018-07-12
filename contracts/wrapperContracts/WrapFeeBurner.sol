@@ -33,7 +33,7 @@ contract WrapFeeBurner is WrapperBase {
 
     //wallet fee parameters
     struct WalletFee {
-        address wAddress;
+        address walletAddress;
         uint feeBps;
     }
 
@@ -69,27 +69,17 @@ contract WrapFeeBurner is WrapperBase {
         feeSharingBps = feeBps;
     }
 
-    event walletRegisteredForFeeSharing(address sender, address walletAddress);
-    function registerWalletAddress(address walletAddress) public {
+    event WalletRegisteredForFeeSharing(address sender, address walletAddress);
+    function registerWalletForFeeSharing(address walletAddress) public {
         require(feeBurnerContract.walletFeesInBps(walletAddress) == 0);
 
         // if fee sharing value is 0. means the wallet wasn't added.
         feeBurnerContract.setWalletFees(walletAddress, feeSharingBps);
         feeSharingWallets.push(walletAddress);
-        walletRegisteredForFeeSharing(msg.sender, walletAddress);
+        WalletRegisteredForFeeSharing(msg.sender, walletAddress);
     }
 
-    function removeWallet(address walletAddress, uint hint) public onlyAdmin {
-        for (uint i = hint; i < feeSharingWallets.length; i++) {
-            if (feeSharingWallets[i] == walletAddress) {
-                feeSharingWallets[i] = feeSharingWallets[feeSharingWallets.length - 1];
-                feeSharingWallets.length -= 1;
-                break;
-            }
-        }
-    }
-
-    function getFeeSharingWallets() external view returns(address[]) {
+    function getFeeSharingWallets() public view returns(address[]) {
         return feeSharingWallets;
     }
 
@@ -180,7 +170,7 @@ contract WrapFeeBurner is WrapperBase {
     function setPendingWalletFee(address wallet, uint feeInBps) public onlyOperator {
         require(wallet != address(0));
         require(feeInBps > 0);
-        walletFee.wAddress = wallet;
+        walletFee.walletAddress = wallet;
         walletFee.feeBps = feeInBps;
         setNewData(WALLET_FEE_INDEX);
     }
@@ -188,14 +178,14 @@ contract WrapFeeBurner is WrapperBase {
     function approveWalletFeeData(uint nonce) public onlyOperator {
         if (addSignature(WALLET_FEE_INDEX, nonce, msg.sender)) {
             // can perform operation.
-            feeBurnerContract.setWalletFees(walletFee.wAddress, walletFee.feeBps);
+            feeBurnerContract.setWalletFees(walletFee.walletAddress, walletFee.feeBps);
         }
     }
 
     function getPendingWalletFeeData() public view returns(address wallet, uint feeBps, uint nonce) {
         address[] memory signatures;
         (signatures, nonce) = getDataTrackingParameters(WALLET_FEE_INDEX);
-        return(walletFee.wAddress, walletFee.feeBps, nonce);
+        return(walletFee.walletAddress, walletFee.feeBps, nonce);
     }
 
     function getWalletFeeSignatures() public view returns (address[] signatures) {
