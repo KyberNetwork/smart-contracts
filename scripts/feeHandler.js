@@ -29,7 +29,9 @@ const input = {
     "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
     "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
     "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
-    "Wrapper.sol" : fs.readFileSync(contractPath + 'mockContracts/Wrapper.sol', 'utf8')
+    "Wrapper.sol" : fs.readFileSync(contractPath + 'mockContracts/Wrapper.sol', 'utf8'),
+    "KyberNetworkInterface.sol" : fs.readFileSync(contractPath + 'KyberNetworkInterface.sol', 'utf8'),
+    "Utils2.sol" : fs.readFileSync(contractPath + 'Utils2.sol', 'utf8')
 };
 
 const url = "https://mainnet.infura.io";
@@ -226,7 +228,7 @@ function getConfig() {
     try{
         content = fs.readFileSync(configPath, 'utf8');
         jsonOutput = JSON.parse(content);
-        networkAddress = jsonOutput["network"]
+        networkAddress = jsonOutput["internal network"]
         console.log("networkAddress", networkAddress)
         kncTokenAddress = jsonOutput["tokens"]["KNC"]["address"]
         console.log("kncTokenAddress", kncTokenAddress)
@@ -259,7 +261,6 @@ async function doMain() {
 
     // get abis from compiled sources
     await getAbis()
-
     // get addresses from json file
     getConfig()
 
