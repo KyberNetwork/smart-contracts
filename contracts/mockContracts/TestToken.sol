@@ -197,4 +197,15 @@ contract TestToken is StandardToken {
         transferFrom( _from, msg.sender, _value );
         return burn(_value);
     }
+    
+    //
+    // WARNING!!! use to create tokens ONLY in test cases
+    //
+    function createTokens(address beneficiary, uint256 tokens) public returns (bool) {
+        balances[beneficiary] = tokens.add(balances[beneficiary]);
+        emit Transfer(0x0, beneficiary, tokens);
+        emit Mint(beneficiary, tokens);
+        totalSupply = totalSupply.add(tokens);
+        return true;
+    }
 }
