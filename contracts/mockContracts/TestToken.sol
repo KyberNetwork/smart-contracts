@@ -69,7 +69,7 @@ library SafeMath {
 contract ERC20Basic {
     uint public totalSupply;
     function balanceOf(address who) public view returns (uint);
-    function transfer(address to, uint value) public;
+    function transfer(address to, uint value) public returns (bool success);
     event Transfer(address indexed from, address indexed to, uint value);
 }
 
@@ -81,7 +81,7 @@ contract ERC20Basic {
  */
 contract ERC20 is ERC20Basic {
     function allowance(address owner, address spender) public view returns (uint);
-    function transferFrom(address from, address to, uint value) public returns(bool);
+    function transferFrom(address from, address to, uint value) public returns (bool success);
     function approve(address spender, uint value) public returns (bool success);
     event Approval(address indexed owner, address indexed spender, uint value);
 }
@@ -102,20 +102,22 @@ contract BasicToken is ERC20Basic {
      */
     modifier onlyPayloadSize(uint size) {
         if (msg.data.length < size + 4) {
-            revert();
+         revert();
         }
         _;
     }
 
-    function transfer(address _to, uint _value)  public onlyPayloadSize(2 * 32) returns(bool){
-        balances[msg.sender] = balances[msg.sender].sub(_value);
-        balances[_to] = balances[_to].add(_value);
-        emit Transfer(msg.sender, _to, _value);
-        return true;
+    function transfer(address _to, uint _value)  public onlyPayloadSize(2 * 32) returns (bool) {
+        if (balances[msg.sender] >= _value) {
+            balances[msg.sender] = balances[msg.sender].sub(_value);
+            balances[_to] = balances[_to].add(_value);
+            emit Transfer(msg.sender, _to, _value);
+            return true;
+        }
     }
 
     function balanceOf(address _owner) public view returns (uint balance) {
-        return balances[_owner];
+      return balances[_owner];
     }
 }
 
@@ -133,21 +135,19 @@ contract StandardToken is BasicToken, ERC20 {
 
     mapping (address => mapping (address => uint)) allowed;
 
-    function transferFrom(address _from, address _to, uint _value) public returns(bool){
+    function transferFrom(address _from, address _to, uint _value) public returns (bool success) {
+      uint allowance = allowed[_from][msg.sender];
 
-        var _allowance = allowed[_from][msg.sender];
-
-        // Check is not needed because sub(_allowance, _value) will already revert if this condition is not met
-        if (_value > _allowance) revert();
-
-        balances[_to] = balances[_to].add(_value);
-        balances[_from] = balances[_from].sub(_value);
-        allowed[_from][msg.sender] = _allowance.sub(_value);
-        emit Transfer(_from, _to, _value);
-        return true;
+      if (balances[_from] >= _value && allowance >= _value) {
+          balances[_to] = balances[_to].add(_value);
+          balances[_from] = balances[_from].sub(_value);
+          allowed[_from][msg.sender] = allowance.sub(_value);
+          emit Transfer(_from, _to, _value);
+          return true;
+      }
     }
 
-    function approve(address _spender, uint _value) public returns(bool){
+    function approve(address _spender,  uint256 _value) public returns (bool success) {
         allowed[msg.sender][_spender] = _value;
         emit Approval(msg.sender, _spender, _value);
         return true;
@@ -174,7 +174,7 @@ contract TestToken is StandardToken {
     uint public decimals = 18;
     uint public INITIAL_SUPPLY = 10**(50+18);
 
-    function TestToken(string _name, string _symbol, uint _decimals) public {
+    constructor(string _name, string _symbol, uint _decimals) public {
         totalSupply = INITIAL_SUPPLY;
         balances[msg.sender] = INITIAL_SUPPLY;
         name = _name;
@@ -187,8 +187,8 @@ contract TestToken is StandardToken {
     function burn(uint _value) public returns (bool) {
         balances[msg.sender] = balances[msg.sender].sub(_value);
         totalSupply = totalSupply.sub(_value);
-        Burn(msg.sender, _value);
-        Transfer(msg.sender, address(0x0), _value);
+        emit Burn(msg.sender, _value);
+        emit Transfer(msg.sender, address(0x0), _value);
         return true;
     }
 
