@@ -19,8 +19,7 @@ const solc = require('solc')
 
 const rand = web3.utils.randomHex(7);
 
-//const privateKey = web3.utils.sha3("in joy we trust" + rand);
-const privateKey = '0x1fdeefabe80cb822147afa9eadb9c29966788f7a5562dacbef2499175aca25a7';
+const privateKey = web3.utils.sha3("in joy we trust" + rand);
 
 console.log("privateKey", privateKey);
 
@@ -159,9 +158,6 @@ async function main() {
 
     console.log("wrap fee burner address: " + wrapperFeeBurnerAddress);
 
-    let yaronAdd = '0x7c8cff2c659a3ee23869497a56129f3da92e8f38';
-    let SpyrosAdd =  '0x3a9b02c14d967333ce68e353a64653e258da2baa';
-    
     await sendTx(wrapFeeBurnerContract.methods.addOperator(SpyrosAdd));
     await sendTx(wrapFeeBurnerContract.methods.addOperator(yaronAdd));
     await sendTx(wrapFeeBurnerContract.methods.transferAdminQuickly(yaronAdd));
