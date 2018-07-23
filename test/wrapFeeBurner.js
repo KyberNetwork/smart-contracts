@@ -463,15 +463,11 @@ contract('WrapFeeBurner', function(accounts) {
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
-        log("here0")
-        log("fees" + reserveFeeBps)
-        log("moxk res " + mockReserve)
-        log("knc wallet " + mockKNCWallet)
+
         //reserve data
-        await wrapBurnerInst.setPendingReserveData(mockReserve, mockKNCWallet, reserveFeeBps, {from: operator1});
+        await wrapBurnerInst.setPendingReserveData(mockReserve, reserveFeeBps, mockKNCWallet, {from: operator1});
         addReserveNonce++;
 
-        log("here 0.5")
         await wrapBurnerInst.approveAddReserveData(addReserveNonce, {from:operator1});
         try {
             await wrapBurnerInst.approveAddReserveData(addReserveNonce, {from:operator1});
@@ -480,8 +476,7 @@ contract('WrapFeeBurner', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        log("here1")
-        //3rd party wallet
+       //3rd party wallet
         await wrapBurnerInst.setPendingWalletFee(mock3rdPartyWallet, mock3rdPartyWalletFeeBps, {from: operator1});
         otherWalletNonce++;
 
@@ -572,7 +567,6 @@ contract('WrapFeeBurner', function(accounts) {
     });
 
     it("test setting permission less wallet with wrapper proxy and query values.", async function() {
-        log("wrapper address " + wrapBurnerInst.address);
         proxyWrapperInst = await FeeBurnerWrapperProxy.new(wrapBurnerInst.address);
 
          //any address can register any wallet.
