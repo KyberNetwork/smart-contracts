@@ -15,7 +15,9 @@ contract WrapperBase is Withdrawable {
 
     DataTracker[] internal dataInstances;
 
-    function WrapperBase(PermissionGroups _wrappedContract, address _admin, uint _numDataInstances) public {
+    function WrapperBase(PermissionGroups _wrappedContract, address _admin, uint _numDataInstances) public
+        Withdrawable()
+    {
         require(_wrappedContract != address(0));
         require(_admin != address(0));
         wrappedContract = _wrappedContract;
@@ -49,7 +51,7 @@ contract WrapperBase is Withdrawable {
         require(dataIndex < dataInstances.length);
         require(dataInstances[dataIndex].lastSetNonce == signedNonce);
 
-        for(uint i = 0; i < dataInstances[dataIndex].approveSignatureArray.length; i++) {
+        for (uint i = 0; i < dataInstances[dataIndex].approveSignatureArray.length; i++) {
             if (signer == dataInstances[dataIndex].approveSignatureArray[i]) revert();
         }
         dataInstances[dataIndex].approveSignatureArray.push(signer);

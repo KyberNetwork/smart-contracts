@@ -54,11 +54,11 @@ contract WrapFeeBurner is WrapperBase {
     uint internal constant LAST_DATA_INDEX = 4;
 
     //general functions
-    function WrapFeeBurner(FeeBurner _feeBurner, address _admin) public
-        WrapperBase(PermissionGroups(address(_feeBurner)), _admin, LAST_DATA_INDEX)
+    function WrapFeeBurner(FeeBurner feeBurner, address _admin) public
+        WrapperBase(PermissionGroups(address(feeBurner)), _admin, LAST_DATA_INDEX)
     {
-        require(_feeBurner != address(0));
-        feeBurnerContract = _feeBurner;
+        require(feeBurner != address(0));
+        feeBurnerContract = feeBurner;
     }
 
     //register wallets for fee sharing

@@ -1,16 +1,16 @@
-pragma solidity ^0.4.18;
+pragma solidity 0.4.18;
 
 
-interface FeeBurnerWrapperProxy {
+interface BurnerWrapperProxy {
     function registerWallet(address wallet) public;
 }
 
 
 contract KyberRegisterWallet {
 
-    FeeBurnerWrapperProxy public feeBurnerWrapperProxyContract;
+    BurnerWrapperProxy public feeBurnerWrapperProxyContract;
 
-    function KyberRegisterWallet(FeeBurnerWrapperProxy feeBurnerWrapperProxy) public {
+    function KyberRegisterWallet(BurnerWrapperProxy feeBurnerWrapperProxy) public {
         require(feeBurnerWrapperProxy != address(0));
 
         feeBurnerWrapperProxyContract = feeBurnerWrapperProxy;
