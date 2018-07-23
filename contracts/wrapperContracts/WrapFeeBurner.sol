@@ -1,7 +1,6 @@
 pragma solidity 0.4.18;
 
 
-import "../ERC20Interface.sol";
 import "../FeeBurner.sol";
 import "./WrapperBase.sol";
 
@@ -134,20 +133,20 @@ contract WrapFeeBurner is WrapperBase {
 
     //set reserve data
     //////////////////
-    function setPendingReserveData(address _reserve, uint feeBps, address kncWallet) public onlyOperator {
-        require(_reserve != address(0));
+    function setPendingReserveData(address reserveRes, uint feeBps, address kncWallet) public onlyOperator {
+        require(reserveRes != address(0));
         require(kncWallet != address(0));
         require(feeBps > 0);
         require(feeBps < 10000);
 
-        addReserve.reserve = _reserve;
+        addReserve.reserve = reserveRes;
         addReserve.feeBps = feeBps;
         addReserve.kncWallet = kncWallet;
         setNewData(ADD_RESERVE_INDEX);
     }
 
     function getPendingAddReserveData() public view
-        returns(address _reserve, uint feeBps, address kncWallet, uint nonce)
+        returns(address reserve, uint feeBps, address kncWallet, uint nonce)
     {
         address[] memory signatures;
         (signatures, nonce) = getDataTrackingParameters(ADD_RESERVE_INDEX);
@@ -200,12 +199,12 @@ contract WrapFeeBurner is WrapperBase {
 
     //tax parameters
     ////////////////
-    function setPendingTaxParameters(address _taxWallet, uint feeBps) public onlyOperator {
-        require(_taxWallet != address(0));
+    function setPendingTaxParameters(address taxWallet, uint feeBps) public onlyOperator {
+        require(taxWallet != address(0));
         require(feeBps > 0);
         require(feeBps < 10000);
 
-        taxData.wallet = _taxWallet;
+        taxData.wallet = taxWallet;
         taxData.feeBps = feeBps;
         setNewData(TAX_DATA_INDEX);
     }

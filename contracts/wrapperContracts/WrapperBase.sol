@@ -1,9 +1,7 @@
 pragma solidity 0.4.18;
 
 
-
 import "../Withdrawable.sol";
-import "../PermissionGroups.sol";
 
 
 contract WrapperBase is Withdrawable {
@@ -11,7 +9,7 @@ contract WrapperBase is Withdrawable {
     PermissionGroups public wrappedContract;
 
     struct DataTracker {
-        address [] approveSignatureArray;
+        address[] approveSignatureArray;
         uint lastSetNonce;
     }
 
