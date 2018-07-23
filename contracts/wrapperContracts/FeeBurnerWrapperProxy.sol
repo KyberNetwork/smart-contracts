@@ -8,6 +8,7 @@ interface WrapFeeBurner {
     function registerWalletForFeeSharing(address walletAddress) public;
 }
 
+
 contract FeeBurnerWrapperProxy is Withdrawable {
 
     WrapFeeBurner public feeBurnerWrapperContract;
