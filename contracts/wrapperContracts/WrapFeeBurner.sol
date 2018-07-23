@@ -133,13 +133,13 @@ contract WrapFeeBurner is WrapperBase {
 
     //set reserve data
     //////////////////
-    function setPendingReserveData(address reserveRes, uint feeBps, address kncWallet) public onlyOperator {
-        require(reserveRes != address(0));
+    function setPendingReserveData(address reserve, uint feeBps, address kncWallet) public onlyOperator {
+        require(reserve != address(0));
         require(kncWallet != address(0));
         require(feeBps > 0);
         require(feeBps < 10000);
 
-        addReserve.reserve = reserveRes;
+        addReserve.reserve = reserve;
         addReserve.feeBps = feeBps;
         addReserve.kncWallet = kncWallet;
         setNewData(ADD_RESERVE_INDEX);
