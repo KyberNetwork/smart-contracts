@@ -1,7 +1,9 @@
 pragma solidity 0.4.18;
 
 
+
 import "../Withdrawable.sol";
+import "../PermissionGroups.sol";
 
 
 contract WrapperBase is Withdrawable {
@@ -9,15 +11,13 @@ contract WrapperBase is Withdrawable {
     PermissionGroups public wrappedContract;
 
     struct DataTracker {
-        address[] approveSignatureArray;
+        address [] approveSignatureArray;
         uint lastSetNonce;
     }
 
     DataTracker[] internal dataInstances;
 
-    function WrapperBase(PermissionGroups _wrappedContract, address _admin, uint _numDataInstances) public
-        Withdrawable()
-    {
+    function WrapperBase(PermissionGroups _wrappedContract, address _admin, uint _numDataInstances) public {
         require(_wrappedContract != address(0));
         require(_admin != address(0));
         wrappedContract = _wrappedContract;
@@ -51,7 +51,7 @@ contract WrapperBase is Withdrawable {
         require(dataIndex < dataInstances.length);
         require(dataInstances[dataIndex].lastSetNonce == signedNonce);
 
-        for (uint i = 0; i < dataInstances[dataIndex].approveSignatureArray.length; i++) {
+        for(uint i = 0; i < dataInstances[dataIndex].approveSignatureArray.length; i++) {
             if (signer == dataInstances[dataIndex].approveSignatureArray[i]) revert();
         }
         dataInstances[dataIndex].approveSignatureArray.push(signer);
