@@ -1851,7 +1851,7 @@ async function getCompiledContracts() {
 //    try{
 //        solcOutput = JSON.parse(fs.readFileSync(solcOutputPath, 'utf8'));
 //    } catch(err) {
-        console.log(err.toString());
+//        console.log(err.toString());
         myLog(0, 0, "starting compilation");
         solcOutput = await solc.compile({ sources: input }, 1);
         console.log(solcOutput.errors);
