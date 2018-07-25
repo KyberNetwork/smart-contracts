@@ -442,7 +442,7 @@
       "alerter": []
     },
     "FeeBurner": {
-      "admin": "0xBe401c3cf8528DB1B963e2E40827a2E0e1d98Ee4",
+      "admin": "0x21F259eE25b7AA43DC19BFe7DBB3f149D6231d1b",
       "operator": [
         "0xd0643BC0D0C879F175556509dbcEe9373379D5C3"
       ],
@@ -566,7 +566,7 @@
   "internal network": "0x706aBcE058DB29eB36578c463cf295F180a1Fe9C",
   "wrapper": "0x6172AFC8c00c46E0D07ce3AF203828198194620a",
   "feeburner": "0xd6703974Dc30155d768c058189A2936Cf7C62Da6",
-  "feeburner wrapper": "0xebA1b66D89220Bc561a0Eb7DED318B124784D787",
+  "feeburner wrapper": "0x21F259eE25b7AA43DC19BFe7DBB3f149D6231d1b",
   "feeburner wrapper proxy": "0xa2617f04cc74ffb8099D1eb94C3927025a4e5401",
   "permission less wallet register": "0xa3f1f577b6Dd7Aaf3FdE5cC12fa99c4406f7C800",
   "whitelist": "0x1b8a28d2185a7ab86ae40303b39f33278cc42130",
