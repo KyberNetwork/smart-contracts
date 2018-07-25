@@ -449,7 +449,7 @@
       "alerter": []
     },
     "FeeBurner Wrapper": {
-      "admin": "0x466bA7c5094d112FD56D6Cbf1ad2D2776F211d7d",
+      "admin": "0x4A48312f6981484C4204D8501ad3d93f4f4571BF",
       "operator": [
         "0x4A48312f6981484C4204D8501ad3d93f4f4571BF",
         "0x3A9b02c14d967333cE68E353a64653E258da2BAa"
@@ -552,12 +552,12 @@
     "users cap": 5000,
     "default cap": 0
   },
-  "max gas price": "50000000000",
+  "max gas price": "200000000000",
   "neg diff in bps": 20,
   "min expected rate slippage": 300,
   "KNC wallet": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
   "KNC to ETH rate": 550,
-  "valid duration block": 60,
+  "valid duration block": 11520,
   "tax fees bps": 2000,
   "tax wallet address": "0x1BE6064cA70e40A39473372bE0ac8a5e16F7Be45",
   "reserve": "0x2C5a182d280EeB5824377B98CD74871f78d6b8BC",
