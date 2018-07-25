@@ -923,6 +923,8 @@ async function readFeeBurnerWrapper(burnerWrapperAddress) {
     if (blockCode != solcCode){
 //        myLog(1, 0, "blockchain Code:");
 //        myLog(0, 0, blockCode);
+//        myLog(1, 0, "\n\n\n\n\nsolc Code:");
+//        myLog(0, 0, solcCode);
         myLog(0, 0, '');
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
         myLog(0, 0, '')
@@ -1846,9 +1848,9 @@ function bpsToPercent (bpsValue) {
 };
 
 async function getCompiledContracts() {
-    try{
-        solcOutput = JSON.parse(fs.readFileSync(solcOutputPath, 'utf8'));
-    } catch(err) {
+//    try{
+//        solcOutput = JSON.parse(fs.readFileSync(solcOutputPath, 'utf8'));
+//    } catch(err) {
         console.log(err.toString());
         myLog(0, 0, "starting compilation");
         solcOutput = await solc.compile({ sources: input }, 1);
@@ -1863,7 +1865,7 @@ async function getCompiledContracts() {
 
             console.log("Saved solc output to: " + solcOutputPath);
         });
-    }
+//    }
 };
 
 function myLog(error, highlight, string) {
