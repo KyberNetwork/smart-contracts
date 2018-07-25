@@ -568,7 +568,7 @@
   "feeburner": "0xd6703974Dc30155d768c058189A2936Cf7C62Da6",
   "feeburner wrapper": "0x21F259eE25b7AA43DC19BFe7DBB3f149D6231d1b",
   "feeburner wrapper proxy": "0xa2617f04cc74ffb8099D1eb94C3927025a4e5401",
-  "permission less wallet register": "0xa3f1f577b6Dd7Aaf3FdE5cC12fa99c4406f7C800",
+  "kyber register wallet": "0xa3f1f577b6Dd7Aaf3FdE5cC12fa99c4406f7C800",
   "whitelist": "0x1b8a28d2185a7ab86ae40303b39f33278cc42130",
   "third_party_reserves": [
     "0xe1213e46efcb8785b47ae0620a51f490f747f1da",
