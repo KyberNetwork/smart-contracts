@@ -439,7 +439,8 @@
     "trust": "0xf1aa99c69715f423086008eb9d06dc1e35cc504d",
     "cipher": "0xDD61803d4a56C597E0fc864F7a20eC7158c6cBA5",
     "mew": "0xDECAF9CD2367cdbb726E904cD6397eDFcAe6068D",
-    "dex": "0x398d297BAB517770feC4d8Bb7a4127b486c244bB"
+    "dex": "0x398d297BAB517770feC4d8Bb7a4127b486c244bB",
+    "easwap": "0xa7615cd307f323172331865181dc8b80a2834324"
   },
   "permission": {
     "KyberNetwork": {
