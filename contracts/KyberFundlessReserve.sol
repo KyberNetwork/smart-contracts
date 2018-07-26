@@ -16,13 +16,8 @@ contract OtcInterface {
 }
 
 contract OasisDirectProxyInterface {
-    function withdrawAndSend(ERC20 wethToken, uint wethAmt) internal;
-    function sellAllAmount(OtcInterface otc, ERC20 payToken, uint payAmt, ERC20 buyToken, uint minBuyAmt) public returns (uint buyAmt);
     function sellAllAmountPayEth(OtcInterface otc, ERC20 wethToken, ERC20 buyToken, uint minBuyAmt) public payable returns (uint buyAmt);
     function sellAllAmountBuyEth(OtcInterface otc, ERC20 payToken, uint payAmt, ERC20 wethToken, uint minBuyAmt) public returns (uint wethAmt);
-    function buyAllAmount(OtcInterface otc, ERC20 buyToken, uint buyAmt, ERC20 payToken, uint maxPayAmt) public returns (uint payAmt);
-    function buyAllAmountPayEth(OtcInterface otc, ERC20 buyToken, uint buyAmt, ERC20 wethToken) public payable returns (uint wethAmt);
-    function buyAllAmountBuyEth(OtcInterface otc, ERC20 wethToken, uint wethAmt, ERC20 payToken, uint maxPayAmt) public returns (uint payAmt);
 }
 
 /// @title Kyber Reserve contract
@@ -31,15 +26,15 @@ contract KyberFundlessReserve is KyberReserveInterface, Withdrawable, Utils {
     address public kyberNetwork;
     OasisDirectProxyInterface public oasisDirectProxy;
     OtcInterface public otc;
-    ERC20 public wethToken; 
+    ERC20 public wethToken;
+    ERC20 public tradeToken;
     bool public tradeEnabled;
-    //mapping(bytes32=>bool) public approvedWithdrawAddresses; // sha3(token,address)=>bool
-    //mapping(address=>address) public tokenWallet;
 
     function KyberFundlessReserve(address _kyberNetwork,
                                   OasisDirectProxyInterface _oasisDirectProxy,
                                   OtcInterface _otc,
                                   ERC20 _wethToken,
+                                  ERC20 _tradeToken,
                                   address _admin
     ) public {
         // TODO - should get token as well?
@@ -47,10 +42,14 @@ contract KyberFundlessReserve is KyberReserveInterface, Withdrawable, Utils {
         require(_oasisDirectProxy != address(0));
         require(_kyberNetwork != address(0));
         require(_otc != address(0));
+        require(_wethToken != address(0));
+        require(_tradeToken != address(0));
+
         kyberNetwork = _kyberNetwork;
         oasisDirectProxy = _oasisDirectProxy;
         otc = _otc;
         wethToken = _wethToken;
+        tradeToken = _tradeToken;
         admin = _admin;
         tradeEnabled = true;
     }
@@ -77,6 +76,7 @@ contract KyberFundlessReserve is KyberReserveInterface, Withdrawable, Utils {
         payable
         returns(bool)
     {
+
         require(tradeEnabled);
         require(msg.sender == kyberNetwork);
 
@@ -101,43 +101,45 @@ contract KyberFundlessReserve is KyberReserveInterface, Withdrawable, Utils {
         return true;
     }
 
-//TODO - implement setContracts
-
-/*
-    event SetContractAddresses(address network, address rate);
+    event SetContractAddresses(
+        address kyberNetwork,
+        OasisDirectProxyInterface oasisDirectProxy,
+        OtcInterface otc,
+        ERC20 wethToken,
+        ERC20 tradeToken
+    );
 
     function setContracts(
         address _kyberNetwork,
-        ConversionRatesInterface _conversionRates,
+        OasisDirectProxyInterface _oasisDirectProxy,
+        OtcInterface _otc,
+        ERC20 _wethToken,
+        ERC20 _tradeToken
     )
         public
         onlyAdmin
     {
         require(_kyberNetwork != address(0));
-        require(_conversionRates != address(0));
+        require(_oasisDirectProxy != address(0));
+        require(_otc != address(0));
+        require(_wethToken != address(0));
+        require(_tradeToken != address(0));
 
         kyberNetwork = _kyberNetwork;
-        conversionRatesContract = _conversionRates;
+        oasisDirectProxy = _oasisDirectProxy;
+        otc = _otc;
+        wethToken = _wethToken;
+        tradeToken = _tradeToken;
 
-        SetContractAddresses(kyberNetwork, conversionRatesContract);
+        setContracts(kyberNetwork, oasisDirectProxy, otc, wethToken, tradeToken);
     }
-*/
 
-/*
     function getDestQty(ERC20 src, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {
         uint dstDecimals = getDecimals(dest);
         uint srcDecimals = getDecimals(src);
 
         return calcDstQty(srcQty, srcDecimals, dstDecimals, rate);
     }
-
-    function getSrcQty(ERC20 src, ERC20 dest, uint dstQty, uint rate) public view returns(uint) {
-        uint dstDecimals = getDecimals(dest);
-        uint srcDecimals = getDecimals(src);
-
-        return calcSrcQty(dstQty, srcDecimals, dstDecimals, rate);
-    }
-*/
 
     function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
         uint  rate;
@@ -148,11 +150,15 @@ contract KyberFundlessReserve is KyberReserveInterface, Withdrawable, Utils {
         if (!tradeEnabled) return 0;
 
         if ((ETH_TOKEN_ADDRESS != src) && (ETH_TOKEN_ADDRESS != dest)){
-            return 0; // pair is not listed
+            return 0;
+        }
+
+        if ((tradeToken != src) && (tradeToken != dest)){
+            return 0;
         }
 
         dstQty = otc.getBuyAmount(src, dest, srcQty);
-        rate = srcQty * PRECISION / dstQty;
+        rate = dstQty * PRECISION / srcQty;
 
         return rate;
     }
@@ -175,10 +181,14 @@ contract KyberFundlessReserve is KyberReserveInterface, Withdrawable, Utils {
         internal
         returns(bool)
     {
-        //TODO - what to do with conversionRate???
-        uint destAmount;
-        //TODO minBuyAmt = ???
-        uint minBuyAmt = 0;
+
+        if ((ETH_TOKEN_ADDRESS != srcToken) && (ETH_TOKEN_ADDRESS != destToken)){
+            return false;
+        }
+
+        if ((tradeToken != srcToken) && (tradeToken != destToken)){
+            return false;
+        }
 
         // can skip validation if done at kyber network level
         if (validate) {
@@ -189,23 +199,17 @@ contract KyberFundlessReserve is KyberReserveInterface, Withdrawable, Utils {
                 require(msg.value == 0);
         }
 
-        // TODO: need the getDestQty here?
-        /*
         uint destAmount = getDestQty(srcToken, destToken, srcAmount, conversionRate);
         // sanity check
         require(destAmount > 0);
-        */
-
-        //TODO: need recordImbalance?
-
 
         if (srcToken == ETH_TOKEN_ADDRESS) {
-            destAmount = oasisDirectProxy.sellAllAmountPayEth.value(msg.value)(otc, wethToken, destToken, minBuyAmt);
+            destAmount = oasisDirectProxy.sellAllAmountPayEth.value(msg.value)(otc, wethToken, destToken, destAmount);
             require(destToken.transferFrom(this, destAddress, destAmount));
         }
         else {
             //TODO - should approve moving from srcToken here??? 
-            destAmount = oasisDirectProxy.sellAllAmountBuyEth(otc, srcToken, srcAmount, wethToken, minBuyAmt);
+            destAmount = oasisDirectProxy.sellAllAmountBuyEth(otc, srcToken, srcAmount, wethToken, destAmount);
             destAddress.transfer(destAmount);
         }
 
