@@ -458,9 +458,17 @@
       "alerter": []
     },
     "FeeBurner": {
-      "admin": "0xd0643BC0D0C879F175556509dbcEe9373379D5C3",
+      "admin": "0x21F259eE25b7AA43DC19BFe7DBB3f149D6231d1b",
       "operator": [
         "0xd0643BC0D0C879F175556509dbcEe9373379D5C3"
+      ],
+      "alerter": []
+    },
+    "FeeBurner Wrapper": {
+      "admin": "0x4A48312f6981484C4204D8501ad3d93f4f4571BF",
+      "operator": [
+        "0x4A48312f6981484C4204D8501ad3d93f4f4571BF",
+        "0x3A9b02c14d967333cE68E353a64653E258da2BAa"
       ],
       "alerter": []
     },
@@ -473,10 +481,9 @@
       "alerter": []
     },
     "ExpectedRate": {
-      "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "admin": "0xd0643BC0D0C879F175556509dbcEe9373379D5C3",
       "operator": [
-        "0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
-        "0xeae89c711c02468dea8ee1ade4fa78b79ac9379a"
+        "0xd0643BC0D0C879F175556509dbcEe9373379D5C3"
       ],
       "alerter": []
     },
@@ -561,12 +568,12 @@
     "users cap": 5000,
     "default cap": 0
   },
-  "max gas price": "50000000000",
+  "max gas price": "200000000000",
   "neg diff in bps": 20,
   "min expected rate slippage": 300,
   "KNC wallet": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
   "KNC to ETH rate": 550,
-  "valid duration block": 60,
+  "valid duration block": 11520,
   "tax fees bps": 2000,
   "tax wallet address": "0x1BE6064cA70e40A39473372bE0ac8a5e16F7Be45",
   "reserve": "0x2C5a182d280EeB5824377B98CD74871f78d6b8BC",
@@ -575,6 +582,9 @@
   "internal network": "0x706aBcE058DB29eB36578c463cf295F180a1Fe9C",
   "wrapper": "0x6172AFC8c00c46E0D07ce3AF203828198194620a",
   "feeburner": "0xd6703974Dc30155d768c058189A2936Cf7C62Da6",
+  "feeburner wrapper": "0x21F259eE25b7AA43DC19BFe7DBB3f149D6231d1b",
+  "feeburner wrapper proxy": "0xa2617f04cc74ffb8099D1eb94C3927025a4e5401",
+  "kyber register wallet": "0xa3f1f577b6Dd7Aaf3FdE5cC12fa99c4406f7C800",
   "whitelist": "0x1b8a28d2185a7ab86ae40303b39f33278cc42130",
   "third_party_reserves": [
     "0xe1213e46efcb8785b47ae0620a51f490f747f1da",

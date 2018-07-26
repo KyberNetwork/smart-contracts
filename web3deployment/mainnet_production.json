@@ -479,10 +479,18 @@
       "alerter": []
     },
     "FeeBurner": {
-      "admin": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
+      "admin": "0xcC8fA5C8833F65Fa9d2eBD3FAD80Dc69bBdf65bb",
       "pending admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
       "operator": [
         "0xd0643bc0d0c879f175556509dbcee9373379d5c3"
+      ],
+      "alerter": []
+    },
+    "FeeBurner Wrapper": {
+      "admin": "0xd0643BC0D0C879F175556509dbcEe9373379D5C3",
+      "operator": [
+        "0x3A9b02c14d967333cE68E353a64653E258da2BAa",
+        "0xd0643BC0D0C879F175556509dbcEe9373379D5C3"
       ],
       "alerter": []
     },
@@ -610,6 +618,9 @@
   "internal network": "0x91a502C678605fbCe581eae053319747482276b9",
   "wrapper": "0x6172AFC8c00c46E0D07ce3AF203828198194620a",
   "feeburner": "0xed4f53268bfdff39b36e8786247ba3a02cf34b04",
+  "feeburner wrapper": "0xcC8fA5C8833F65Fa9d2eBD3FAD80Dc69bBdf65bb",
+  "feeburner wrapper proxy": "0x1DAbb09C85d80d6593e1570DEd731Cdd6e8d1Dce",
+  "kyber register wallet": "0xECa04bB23612857650D727B8ed008f80952654ee",
   "whitelist" : "0x6e106a75d369d09a9ea1dcc16da844792aa669a3",
   "begin_block_setrate": 5069586,
   "third_party_reserves": [
