@@ -157,11 +157,22 @@ contract KyberFundlessReserve is KyberReserveInterface, Withdrawable, Utils {
             return 0;
         }
 
-        dstQty = otc.getBuyAmount(src, dest, srcQty);
+        dstQty = otc.getBuyAmount(dest, src, srcQty);
         rate = dstQty * PRECISION / srcQty;
 
         return rate;
     }
+
+///////////// debugging events //////////
+
+event debugDestAmount(uint destAmount);
+event debugActualDestAmount(uint actualDestAmount);
+event debugMsgValue(uint msgValue);
+
+
+
+/////////////////////////////////////////
+
 
     /// @dev do a trade
     /// @param srcToken Src token
@@ -181,6 +192,8 @@ contract KyberFundlessReserve is KyberReserveInterface, Withdrawable, Utils {
         internal
         returns(bool)
     {
+
+        uint actualDestAmount;
 
         if ((ETH_TOKEN_ADDRESS != srcToken) && (ETH_TOKEN_ADDRESS != destToken)){
             return false;
@@ -203,18 +216,34 @@ contract KyberFundlessReserve is KyberReserveInterface, Withdrawable, Utils {
         // sanity check
         require(destAmount > 0);
 
+        debugDestAmount(destAmount);
+
         if (srcToken == ETH_TOKEN_ADDRESS) {
-            destAmount = oasisDirectProxy.sellAllAmountPayEth.value(msg.value)(otc, wethToken, destToken, destAmount);
-            require(destToken.transferFrom(this, destAddress, destAmount));
+            actualDestAmount = oasisDirectProxy.sellAllAmountPayEth.value(msg.value)(otc, wethToken, destToken, destAmount);
+            debugActualDestAmount(actualDestAmount);
+            require(actualDestAmount >= destAmount); //TODO: should we require these?
+            require(destToken.transfer(destAddress, actualDestAmount));
         }
         else {
-            //TODO - should approve moving from srcToken here??? 
-            destAmount = oasisDirectProxy.sellAllAmountBuyEth(otc, srcToken, srcAmount, wethToken, destAmount);
-            destAddress.transfer(destAmount);
+            debugMsgValue(srcAmount);
+            require(srcToken.transferFrom(msg.sender, this, srcAmount));
+
+            if (srcToken.allowance(this, oasisDirectProxy) < srcAmount) {
+                srcToken.approve(oasisDirectProxy, uint(-1)); //TODO - should we use -1 like in proxy??
+            }
+            actualDestAmount = oasisDirectProxy.sellAllAmountBuyEth(otc, srcToken, srcAmount, wethToken, destAmount);
+            require(actualDestAmount >= destAmount);
+            destAddress.transfer(actualDestAmount); //why doesn't this send anything???
         }
 
-        TradeExecute(msg.sender, srcToken, srcAmount, destToken, destAmount, destAddress);
+        TradeExecute(msg.sender, srcToken, srcAmount, destToken, actualDestAmount, destAddress);
 
         return true;
+    }
+
+    event DepositToken(ERC20 token, uint amount);
+
+    function() public payable {
+        DepositToken(ETH_TOKEN_ADDRESS, msg.value);
     }
 }

@@ -6,75 +6,102 @@ let KyberFundlessReserve = artifacts.require("./KyberFundlessReserve");
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
 
-//global variables
-//////////////////
-let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-let precision = new BigNumber(10).pow(18);
+const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const precision = new BigNumber(10).pow(18);
+const daisForEth = 481;
+
+let admin;
+let myWethToken;
+let myToken;
+let otc;
+let oasisDirectProxy;
+let oasisWeiInit;
+let supply;
+let reserve;
 
 contract('KyberFundlessReserve', function (accounts) {
-    it("should init an otc", async function (){
-        //global initialization in first test
-        otc = await MockOtc.new();
-
-        myWethToken = await TestToken.new("my weth token", "weth", 18);
-        //let supply = await myWethToken.INITIAL_SUPPLY();
-        //await myWethToken.transfer(centralBank.address, supply);
-
-        myToken = await TestToken.new("my token", "weth", 18);
-        //let supply = await myToken.INITIAL_SUPPLY();
-        //await myToken.transfer(centralBank.address, supply);
-
-        oasisDirectProxy = await MockOasisDirectProxy.new()
-
-        //move weth and tokens to the oasis direct proxy
-        let supply = await myWethToken.INITIAL_SUPPLY();
-        await myWethToken.transfer(oasisDirectProxy.address, supply);
-
-        supply = await myToken.INITIAL_SUPPLY();
-        await myToken.transfer(oasisDirectProxy.address, supply);
+    it("should init globals", async function (){
 
         // use admin address as network
         admin = accounts[0]
+            
+        // create test tokens. 
+        myWethToken = await TestToken.new("my weth token", "weth", 18);
+        myToken = await TestToken.new("my token", "tok", 18);
+
+        // create mock contracts.
+        otc = await MockOtc.new();
+        oasisDirectProxy = await MockOasisDirectProxy.new()
+
+        // move eth to the oasis direct proxy
+        oasisWeiInit = (new BigNumber(10)).pow(19); // 10 eth
+        await Helper.sendEtherWithPromise(accounts[8], oasisDirectProxy.address, oasisWeiInit);
+
+        // move tokens to the oasis direct proxy
+        supply = await myToken.INITIAL_SUPPLY();
+        await myToken.transfer(oasisDirectProxy.address, supply);
+
+        // create reserve, use admin as network
         reserve = await KyberFundlessReserve.new(admin, oasisDirectProxy.address, otc.address, myWethToken.address, myToken.address, admin);
 
-        // test get conversion rate
-        srcQty = new BigNumber(10).pow(18); // 1 eth
-        rate = await reserve.getConversionRate(ethAddress, myToken.address, srcQty, 0)
-        rateInTokenUnits = rate.div(precision)
-        console.log(rateInTokenUnits.toString())
+        // approve for reserveto claim tokens from admin
+        supply = await myToken.INITIAL_SUPPLY();
+        myToken.approve(reserve.address, supply);
+    });
 
-        // test buy (eth->token)
-        let balance = await Helper.getBalancePromise(admin);
-        console.log("balance before trade: " + balance.toString())
-        let tokenTweiBalance = await myToken.balanceOf(admin);
-        console.log("tokenTweiBalance before trade: " + tokenTweiBalance.toString())
+    it("should do a eth->token trade", async function (){
 
-        await reserve.trade(ethAddress, srcQty, myToken.address, admin, rate, true, {value: srcQty});
+        // get conversion rate
+        let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
+        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0)
 
-        balance = await Helper.getBalancePromise(admin);
-        console.log("balance after trade: " + balance.toString())
-        tokenTweiBalance = await myToken.balanceOf(admin);
-        console.log("tokenTweiBalance after trade: " + tokenTweiBalance.toString())
-        /*
-        Helper.sendEtherWithPromise(accounts[7], centralBank.address, 1000);
-        myToken = await TestToken.new("my token", "tok", 18);
-        let supply = await myToken.INITIAL_SUPPLY();
-        await myToken.transfer(centralBank.address, supply);
+        let buyRateInTokenUnits = buyRate.div(precision)
+        assert.equal(buyRateInTokenUnits, daisForEth, "wrong eth->token rate")
 
-        await Promise.all([centralBank.addOwner(accounts[2]), centralBank.addOwner(accounts[3])]);
-        myExchange = await MockExchange.new("first name", centralBank.address);
+        // buy
+        let balanceBefore = await Helper.getBalancePromise(admin);
+        let tweiBalanceBefore = await myToken.balanceOf(admin);
 
-        //start test
-        await myExchange.addOwner(accounts[2]);
+        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+        let tx = await web3.eth.getTransaction(txInfo.tx);
+        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
 
-        let payable = await TestToken.new("dont use", "ban", 12);
-        
-        await myExchange.addMockDepositAddress(myToken.address, {from:accounts[2]});
+        let balanceAfter = await Helper.getBalancePromise(admin);
+        let tweiBalanceAfter = await myToken.balanceOf(admin);
 
-        //withdraw with owner
-        await myExchange.withdraw(myToken.address, 100, payable.address, {from:accounts[2]})
-        let balance = await myToken.balanceOf(payable.address);
-        assert.equal(balance.valueOf(), 100);
-        */
+        let weiLost = balanceBefore.minus(balanceAfter)
+        let tWeiGained = tweiBalanceAfter.minus(tweiBalanceBefore)
+        let expecetedTweiGained = BigNumber(daisForEth).mul(weiSrcQty)
+
+        assert.equal(weiLost.valueOf(), weiSrcQty.plus(gasCost).valueOf(), "wrong wei amount lost in the trade")
+        assert.equal(tWeiGained.valueOf(), expecetedTweiGained.valueOf(), "wrong expected token wei gained")
+
+    });
+    it("should do a token->eth trade", async function (){
+
+        let tweiSrcQty = BigNumber(daisForEth).mul(BigNumber(10).pow(18)); // daisForEth amount of dai
+        let sellRate = await reserve.getConversionRate(myToken.address, ethAddress, tweiSrcQty, 0);
+
+        let sellRateInTokenUnits = sellRate.div(precision)
+        assert.equal(sellRateInTokenUnits.valueOf(), 1 / daisForEth, "wrong token->eth rate")
+
+        // sell
+        let balanceBefore = await Helper.getBalancePromise(admin);
+        let tweiBalanceBefore = await myToken.balanceOf(admin);
+
+        let txInfo = await reserve.trade(myToken.address, tweiSrcQty, ethAddress, admin, sellRate, true);
+        let tx = await web3.eth.getTransaction(txInfo.tx);
+        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
+
+        let balanceAfter = await Helper.getBalancePromise(admin);
+        let tweiBalanceAfter = await myToken.balanceOf(admin);
+
+        let weiGained = balanceAfter.minus(balanceBefore)
+        let tWeiLost = tweiBalanceBefore.minus(tweiBalanceAfter)
+        let expecetedWeiGained = BigNumber(tweiSrcQty).div(daisForEth)
+
+        assert.equal(weiGained.valueOf(), expecetedWeiGained.minus(gasCost).valueOf(), "wrong wei amount gained in the trade")
+        assert.equal(tWeiLost.valueOf(), tweiSrcQty.valueOf(), "wrong expected token wei lost")
+
     });
 });

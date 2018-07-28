@@ -12,25 +12,41 @@ contract MockOtc is Utils {
 
     function sellAllAmount(ERC20 pay_gem, uint pay_amt, ERC20 buy_gem, uint min_fill_amount)
         public
-        returns (uint fill_amt)
-    {
-        return 0;
+        returns (uint fill_amt) {
+        if(pay_gem == ETH_TOKEN_ADDRESS)
+        {
+            return 481 * pay_amt;
+        }
+        else
+        {
+            return pay_amt / 481;
+        }
     }
-
+/*
     function buyAllAmount(ERC20 buy_gem, uint buy_amt, ERC20 pay_gem, uint max_fill_amount)
         public
         returns (uint fill_amt)
     {
-        return 0;
+        return 555;
     }
-
+*/
     function getBuyAmount(ERC20 buy_gem, ERC20 pay_gem, uint pay_amt) public constant returns (uint fill_amt) {
-        return 481 * PRECISION;
+        if(pay_gem == ETH_TOKEN_ADDRESS)
+        {
+            return 481 * pay_amt;
+        }
+        else
+        {
+            return pay_amt / 481;
+        }
     }
 
+/*
     function getPayAmount(ERC20 pay_gem, ERC20 buy_gem, uint buy_amt) public constant returns (uint fill_amt) {
         return 0;
     }
+*/
+
 }
 
 /*
