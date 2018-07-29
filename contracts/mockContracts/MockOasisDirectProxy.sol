@@ -1,42 +1,36 @@
-pragma solidity ^0.4.16;
+pragma solidity 0.4.18;
 
-//import "ds-math/math.sol";
 import "../Utils.sol";
+import "../ERC20Interface.sol";
+
 
 contract OtcInterface {
     function sellAllAmount(address, uint, address, uint) public returns (uint);
-    function buyAllAmount(address, uint, address, uint) public returns (uint);
-    function getPayAmount(address, address, uint) public constant returns (uint);
 }
 
-contract TokenInterface {
-    function balanceOf(address) public returns (uint);
-    function allowance(address, address) public returns (uint);
-    function approve(address, uint) public;
-    function transfer(address,uint) public returns (bool);
-    function transferFrom(address, address, uint) public returns (bool);
-    function deposit() public payable;
-    function withdraw(uint) public;
-}
 
-contract MockOasisDirectProxy is Utils { ///is DSMath {
+contract MockOasisDirectProxy is Utils {
 
-//////////////// debug events //////////////////
-    event debugBuyAmt(uint buyAmt);
-////////////////////////////////////////////////
+    function() public payable {}
 
-    function sellAllAmountPayEth(OtcInterface otc, TokenInterface wethToken, TokenInterface buyToken, uint minBuyAmt) public payable returns (uint buyAmt) {
+    function sellAllAmountPayEth(OtcInterface otc, ERC20 wethToken, ERC20 buyToken, uint minBuyAmt)
+    public payable
+    returns(uint buyAmt) {
+
+        wethToken;
+
         buyAmt = otc.sellAllAmount(ETH_TOKEN_ADDRESS, msg.value, buyToken, minBuyAmt);
-        debugBuyAmt(buyAmt);
         require(buyToken.transfer(msg.sender, buyAmt));
     }
 
-    function sellAllAmountBuyEth(OtcInterface otc, TokenInterface payToken, uint payAmt, TokenInterface wethToken, uint minBuyAmt) public returns (uint wethAmt) {
+    function sellAllAmountBuyEth(OtcInterface otc, ERC20 payToken, uint payAmt, ERC20 wethToken, uint minBuyAmt)
+    public
+    returns (uint wethAmt) {
+
+        wethToken;
+
         require(payToken.transferFrom(msg.sender, this, payAmt));
         wethAmt = otc.sellAllAmount(payToken, payAmt, ETH_TOKEN_ADDRESS, minBuyAmt);
-        //problem is here:
         require(msg.sender.call.value(wethAmt)());
     }
-
-    function() public payable {}
 }
