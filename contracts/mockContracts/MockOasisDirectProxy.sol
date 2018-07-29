@@ -1,6 +1,5 @@
 pragma solidity 0.4.18;
 
-import "../Utils.sol";
 import "../ERC20Interface.sol";
 
 
@@ -9,7 +8,7 @@ contract OtcInterface {
 }
 
 
-contract MockOasisDirectProxy is Utils {
+contract MockOasisDirectProxy {
 
     function() public payable {}
 
@@ -17,9 +16,7 @@ contract MockOasisDirectProxy is Utils {
     public payable
     returns(uint buyAmt) {
 
-        wethToken;
-
-        buyAmt = otc.sellAllAmount(ETH_TOKEN_ADDRESS, msg.value, buyToken, minBuyAmt);
+        buyAmt = otc.sellAllAmount(wethToken, msg.value, buyToken, minBuyAmt);
         require(buyToken.transfer(msg.sender, buyAmt));
     }
 
@@ -27,10 +24,8 @@ contract MockOasisDirectProxy is Utils {
     public
     returns (uint wethAmt) {
 
-        wethToken;
-
         require(payToken.transferFrom(msg.sender, this, payAmt));
-        wethAmt = otc.sellAllAmount(payToken, payAmt, ETH_TOKEN_ADDRESS, minBuyAmt);
+        wethAmt = otc.sellAllAmount(payToken, payAmt, wethToken, minBuyAmt);
         require(msg.sender.call.value(wethAmt)());
     }
 }
