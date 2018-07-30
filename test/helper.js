@@ -1,3 +1,4 @@
+let BigNumber = require('bignumber.js');
 
 
 module.exports.isRevertErrorMessage = function( error ) {
@@ -74,3 +75,39 @@ module.exports.sendPromise = function(method, params) {
         });
     });
 };
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+function absDiffInPercent(num1, num2) {
+    return (absDiff(num1,num2).div(num1)).mul(100)
+}
+
+function checkAbsDiff(num1, num2, maxDiffInPercentage) {
+    const maxDiffBig = new BigNumber(maxDiffInPercentage);
+    const diff = absDiff(num1,num2);
+    return (diff.div(num1)).lte(maxDiffInPercentage.div(100));
+};
+
+function absDiff(num1,num2) {
+    const bigNum1 = new BigNumber(num1);
+    const bigNum2 = new BigNumber(num2);
+
+    if(bigNum1.gt(bigNum2)) {
+        return bigNum1.minus(bigNum2);
+    }
+    else {
+        return bigNum2.minus(bigNum1);
+    }
+};
+
+module.exports.assertAbsDiff = function(val1, val2, expectedDiffInPct, errorStr) {
+    val1 = val1.toString()
+    val2 = val2.toString()
+    assert(checkAbsDiff(val1,val2,expectedDiffInPct),
+            errorStr + 
+           " first val is " + val1 +
+           " second val is " + val2 +
+           " result diff is " + absDiff(val1, val2).toString(10) +
+           " actual result diff in percents is " + absDiffInPercent(val1,val2).toString(10));
+}

@@ -6,9 +6,12 @@ let KyberOasisReserve = artifacts.require("./KyberOasisReserve");
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
 
+const allowedDiffInPercent = BigNumber(0.0000000000001) 
 const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 const precision = new BigNumber(10).pow(18);
 const daisForEth = 481;
+const feePercent = 0.25
+const feeBps = feePercent * 100
 
 let admin;
 let myWethToken;
@@ -18,6 +21,12 @@ let oasisDirectProxy;
 let oasisWeiInit;
 let supply;
 let reserve;
+
+
+function valueAfterReducingFee(val, feePercent) { 
+    return val * (100-feePercent)/100;
+}
+
 
 contract('KyberOasisReserve', function (accounts) {
     it("should init globals", async function (){
@@ -42,9 +51,9 @@ contract('KyberOasisReserve', function (accounts) {
         await myToken.transfer(oasisDirectProxy.address, supply);
 
         // create reserve, use admin as network
-        reserve = await KyberOasisReserve.new(admin, oasisDirectProxy.address, otc.address, myWethToken.address, myToken.address, admin);
+        reserve = await KyberOasisReserve.new(admin, oasisDirectProxy.address, otc.address, myWethToken.address, myToken.address, admin, feeBps);
 
-        // approve for reserveto claim tokens from admin
+        // approve for reserve to claim tokens from admin
         supply = await myToken.INITIAL_SUPPLY();
         myToken.approve(reserve.address, supply);
     });
@@ -54,9 +63,9 @@ contract('KyberOasisReserve', function (accounts) {
         // get conversion rate
         let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
         let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0)
-
         let buyRateInTokenUnits = buyRate.div(precision)
-        assert.equal(buyRateInTokenUnits, daisForEth, "wrong eth->token rate")
+        let expectedRate = valueAfterReducingFee(daisForEth, feePercent)
+        assert.equal(buyRateInTokenUnits.valueOf(), expectedRate, "wrong rate")
 
         // buy
         let balanceBefore = await Helper.getBalancePromise(admin);
@@ -71,7 +80,7 @@ contract('KyberOasisReserve', function (accounts) {
 
         let weiLost = balanceBefore.minus(balanceAfter)
         let tWeiGained = tweiBalanceAfter.minus(tweiBalanceBefore)
-        let expecetedTweiGained = BigNumber(daisForEth).mul(weiSrcQty)
+        let expecetedTweiGained = BigNumber(expectedRate).mul(weiSrcQty)
 
         assert.equal(weiLost.valueOf(), weiSrcQty.plus(gasCost).valueOf(), "wrong wei amount lost in the trade")
         assert.equal(tWeiGained.valueOf(), expecetedTweiGained.valueOf(), "wrong expected token wei gained")
@@ -79,11 +88,12 @@ contract('KyberOasisReserve', function (accounts) {
     });
     it("should do a token->eth trade", async function (){
 
-        let tweiSrcQty = BigNumber(daisForEth).mul(BigNumber(10).pow(18)); // daisForEth amount of dai
+        let tweiSrcQty = await myToken.balanceOf(admin); // sell all we have
         let sellRate = await reserve.getConversionRate(myToken.address, ethAddress, tweiSrcQty, 0);
 
         let sellRateInTokenUnits = sellRate.div(precision)
-        assert.equal(sellRateInTokenUnits.valueOf(), 1 / daisForEth, "wrong token->eth rate")
+        let expectedRate = valueAfterReducingFee(1 / daisForEth, feePercent)
+        Helper.assertAbsDiff(sellRateInTokenUnits.valueOf(), expectedRate, allowedDiffInPercent, "wrong rate")
 
         // sell
         let balanceBefore = await Helper.getBalancePromise(admin);
@@ -98,10 +108,10 @@ contract('KyberOasisReserve', function (accounts) {
 
         let weiGained = balanceAfter.minus(balanceBefore)
         let tWeiLost = tweiBalanceBefore.minus(tweiBalanceAfter)
-        let expecetedWeiGained = BigNumber(tweiSrcQty).div(daisForEth)
+        let expecetedWeiGained = BigNumber(tweiSrcQty).mul(expectedRate.toString())
 
-        assert.equal(weiGained.valueOf(), expecetedWeiGained.minus(gasCost).valueOf(), "wrong wei amount gained in the trade")
-        assert.equal(tWeiLost.valueOf(), tweiSrcQty.valueOf(), "wrong expected token wei lost")
+        Helper.assertAbsDiff(weiGained, expecetedWeiGained.minus(gasCost), allowedDiffInPercent, "wrong expected wei gained");
+        assert.deepEqual(tWeiLost, tweiSrcQty, "wrong expected token wei lost")
 
     });
 });
