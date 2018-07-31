@@ -112,6 +112,5 @@ contract('KyberOasisReserve', function (accounts) {
 
         Helper.assertAbsDiff(weiGained, expecetedWeiGained.minus(gasCost), allowedDiffInPercent, "wrong expected wei gained");
         assert.deepEqual(tWeiLost, tweiSrcQty, "wrong expected token wei lost")
-
     });
 });

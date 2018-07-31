@@ -13,7 +13,7 @@ contract OtcInterface {
 
 
 contract OasisDirectInterface {
-    function sellAllAmountPayEth(OtcInterface, ERC20, ERC20, uint)public payable returns (uint);
+    function sellAllAmountPayEth(OtcInterface, ERC20, ERC20, uint) public payable returns (uint);
     function sellAllAmountBuyEth(OtcInterface, ERC20, uint, ERC20, uint) public returns (uint);
 }
 
@@ -159,39 +159,25 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
         uint  destQty;
         ERC20 wrappedSrc;
         ERC20 wrappedDest;
-        uint  actualSrcQty;
-        uint  actualDestQty;
-        bool  sellEth;
 
         blockNumber;
 
         if (!tradeEnabled) return 0;
         if ((tradeToken != src) && (tradeToken != dest)) return 0;
 
-        sellEth = (src == ETH_TOKEN_ADDRESS);
-
-        if (sellEth) {
+        if (src == ETH_TOKEN_ADDRESS) {
             wrappedSrc = wethToken;
             wrappedDest = dest;
-            actualSrcQty = valueAfterReducingFee(srcQty);
         } else if (dest == ETH_TOKEN_ADDRESS) {
             wrappedSrc = src;
             wrappedDest = wethToken;
-            actualSrcQty = srcQty;
         } else {
             return 0;
         }
 
-        destQty = otc.getBuyAmount(wrappedDest, wrappedSrc, actualSrcQty);
+        destQty = otc.getBuyAmount(wrappedDest, wrappedSrc, srcQty);
 
-        if (sellEth) {
-            actualDestQty = destQty;
-        } else {
-            actualDestQty = valueAfterReducingFee(destQty);
-        }
-
-        require(actualDestQty < MAX_QTY);
-        rate = actualDestQty * PRECISION / srcQty;
+        rate = valueAfterReducingFee(destQty) * PRECISION / srcQty;
 
         return rate;
     }
