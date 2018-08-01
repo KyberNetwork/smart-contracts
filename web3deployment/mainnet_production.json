@@ -371,6 +371,14 @@
       "internal use": true,
       "listed": true
     },
+    "MDS": {
+      "name": "MediShares Token",
+      "decimals": 18,
+      "address": "0x66186008C1050627F979d464eABb258860563dbE",
+      "minimalRecordResolution": "10000000000000000",
+      "internal use": true,
+      "listed": true
+    },
     "ETH": {
       "name": "Ethereum",
       "decimals": 18,
