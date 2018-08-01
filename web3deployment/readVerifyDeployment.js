@@ -143,7 +143,7 @@ const readTokenDataInConvRate = true;
 const verifyWhitelistedAddresses = false;
 const verifyTokenDataOnblockChain = false;
 
-const doSpyrosRun = true;
+const doSpyrosRun = false;
 const spyrosDictPath = './spyrosOutputfile.json';
 let SpyrosDict = {};
 
@@ -215,7 +215,6 @@ async function main (){
     if (doSpyrosRun == true) {
         myLog(0, 1, "write spyros dict to: " + spyrosDictPath);
         let spyrosJsonOut = JSON.stringify(SpyrosDict, null, 2);
-        console.log(spyrosJsonOut);
         fs.writeFileSync(spyrosDictPath, spyrosJsonOut);
     }
 }
