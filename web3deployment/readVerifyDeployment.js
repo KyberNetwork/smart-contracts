@@ -1156,7 +1156,7 @@ async function readLiquidityConversionRate(liquidityRateAddress, reserveAddress,
         " (1 eth = " + etherToToken + " " + await a2n(tokenAdd, 0) + ")"));
 
     //sell price
-    let hundredTokensInTwei = web3.utils.toBN(10).pow(web3.utils.toBN(decimalsPerToken[tokenAdd] + 2));
+    let hundredTokensInTwei = web3.utils.toBN(10).pow(web3.utils.toBN(await getTokenDecimals(tokenAdd) + 2));
     let sellRateXTwei = await Rate.methods.getRate(tokenAdd, blockNum, false, hundredTokensInTwei).call();
     tokensTweixToEth = (web3.utils.toBN(sellRateXTwei).div(precisionPartial)) / 10000;
     raiseFlag = isKyberReserve && (sellRateXTwei == 0);
@@ -1873,7 +1873,7 @@ async function getAmountTokens(amountTwei, tokenAdd) {
 async function getTokenDecimals (token) {
     if (decimalsPerToken[token] == undefined) {
         let abi = solcOutput.contracts["MockERC20.sol:MockERC20"].interface;
-        let ERC20 = await new web3.eth.Contract(JSON.parse(abi), address);
+        let ERC20 = await new web3.eth.Contract(JSON.parse(abi), token);
 
         decimalsPerToken[token] = await ERC20.methods.decimals().call();
     }
@@ -1894,10 +1894,13 @@ async function a2n(address, showAddWithName, isToken) {
                     name = await ERC20.methods.symbol().call();
                     if (name != undefined) {
                         addressesToNames[address.toLowerCase()] = name;
+                        if (showAddWithName) name += " " + address.toLowerCase();
                     }
                 } catch(e) {}
             }
-            if (name == undefined) name = address;
+            if (name == undefined) {
+                name = address;
+            }
         } else if (showAddWithName) {
             name += " " + address.toLowerCase();
         }
