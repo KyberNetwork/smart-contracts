@@ -451,7 +451,8 @@
       "alerter": []
     },
     "internal network": {
-      "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "admin": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
+      "pending admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
       "operator": [
         "0x8bc3da587def887b5c822105729ee1d6af05a5ca"
       ],
@@ -608,7 +609,7 @@
   "min expected rate slippage": 300,
   "KNC wallet": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
   "KNC to ETH rate": 450,
-  "tax fees bps": 2000,
+  "tax fees bps": 0,
   "tax wallet address": "0xc065900403f9ff07dfaecc0d08978c2e0dee1578",
   "valid duration block": 60,
   "reserve": "0x63825c174ab367968EC60f061753D3bbD36A0D8F",

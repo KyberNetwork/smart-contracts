@@ -131,16 +131,22 @@ let nodeId = 0;
 // show / not show
 // set to 0 to avoid showing in report
 //////////////////
-const runExpectedRate = 1;
-const runWhiteList = 1;
-const runFeeBurner = 1;
-const printAdminETC = 1;
-const showStepFunctions = 1;
+const runExpectedRate = true;
+const runWhiteList = true;
+const runFeeBurner = true;
+const printAdminETC = true;
+const showStepFunctions = true;
+const doReadSanityRateData = true;
+const doVerifyWithdrawAddresses = true;
 const readTokenDataInConvRate = true;
+
 const verifyWhitelistedAddresses = false;
-const saveSpyrosDict = false;
 const verifyTokenDataOnblockChain = false;
+
+const doSpyrosRun = true;
 const spyrosDictPath = './spyrosOutputfile.json';
+let SpyrosDict = {};
+
 
 // code
 ////////
@@ -157,9 +163,6 @@ const ropstenPublicNode = 'https://ropsten.infura.io';
 let infuraUrl = '';
 const localURL = 'http://localhost';
 const solcOutputPath = "./solcOuput.json";
-const SpyrosDict = {};
-
-
 let deployInputJsonPath = '';
 
 //run the code
@@ -186,25 +189,33 @@ async function main (){
 
     //write output logs
     let fileName = deployInputJsonPath + ".log";
+    myLog(0, 1, "write output log to: " + fileName);
+
     fs.writeFileSync(fileName, ouputLogString, function(err) {
         if(err) {
-            return console.log(err);
+            console.log(err);
+        } else {
+            myLog(0, 1, "saved log to: " + fileName);
         }
-
-        myLog(0, 1, "saved log to: " + fileName);
     });
+
 
     fileName = deployInputJsonPath + ".err";
+    myLog(0, 1, "write error log to: " + fileName);
+
     fs.writeFileSync(fileName, ouputErrString, function(err) {
         if(err) {
-            return console.log(err);
+            console.log(err);
+        } else {
+            myLog(0, 1, "saved error file to: " + fileName);
         }
-
-        myLog(0, 1, "saved error file to: " + fileName);
     });
 
-    if (saveSpyrosDict == true) {
-        const spyrosJsonOut = JSON.stringify(SpyrosDict, null, 2);
+
+    if (doSpyrosRun == true) {
+        myLog(0, 1, "write spyros dict to: " + spyrosDictPath);
+        let spyrosJsonOut = JSON.stringify(SpyrosDict, null, 2);
+        console.log(spyrosJsonOut);
         fs.writeFileSync(spyrosDictPath, spyrosJsonOut);
     }
 }
@@ -297,7 +308,7 @@ async function readNetworkProxy(networkProxyAdd){
     let maxGas = await NetworkProxy.methods.maxGasPrice().call();
     myLog((maxGas != jsonMaxGasPrice), maxGas < 10000, ("maxGas: " + maxGas + " = " + (maxGas  / 1000 / 1000 / 1000) + " gwei"));
 
-    readKyberNetwork(networkAddress);
+    await readKyberNetwork(networkAddress);
 };
 
 
@@ -361,8 +372,8 @@ async function readKyberNetwork(kyberNetworkAdd){
 async function readWhiteListData(whiteListAddress) {
     myLog(0, 0, '');
 
-    if (runWhiteList == 0) {
-        myLog(0, 1, "not showing WhiteList. set runWhiteList = 1 to show it.");
+    if ((runWhiteList == false)  || (doSpyrosRun == true)) {
+        myLog(0, 1, "not showing WhiteList. set runWhiteList = true to show it.");
         return;
     }
 
@@ -577,8 +588,8 @@ async function readWhiteListData(whiteListAddress) {
 async function readExpectedRateData(expectedRateAddress) {
     myLog(0, 0, '');
 
-    if (runExpectedRate == 0) {
-        myLog(0, 1, "not showing ExpectedRate. set runExpectedRate = 1 to show it.");
+    if ((runExpectedRate == false)  || (doSpyrosRun == true)) {
+        myLog(0, 1, "not showing ExpectedRate. set runExpectedRate = true to show it.");
         return;
     }
 
@@ -752,7 +763,12 @@ async function reportReserveBalance(reserveAddress, index, tokens, reserveInst, 
 }
 
 async function verifyApprovedWithdrawAddress (reserveContract, isKyberReserve) {
+
+    if ((doVerifyWithdrawAddresses == false) || (doSpyrosRun == true)) return;
+
     //verify approved withdrawal addresses are set
+
+
     let jsonWithDrawAdds = {};
     if (isKyberReserve) {
         myLog(0, 0, '');
@@ -822,10 +838,13 @@ async function verifyApprovedWithdrawAddress (reserveContract, isKyberReserve) {
 
 
 async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, index, isKyberReserve) {
+
+    if ((doSpyrosRun == true) && (isKyberReserve == false)) return;
+
     myLog(0, 0, '');
 
-    if (runFeeBurner == 0) {
-        myLog(0, 1, "not showing feeBurner. set runFeeBurner = 1 to show it.");
+    if (runFeeBurner == false) {
+        myLog(0, 1, "not showing feeBurner. set runFeeBurner = true to show it.");
         return;
     }
 
@@ -900,6 +919,9 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
 
 let wrapFeeBurnerABI;
 async function readFeeBurnerWrapper(burnerWrapperAddress) {
+
+    if (doSpyrosRun == true) return;
+
     try {
         let abi = solcOutput.contracts["WrapFeeBurner.sol:WrapFeeBurner"].interface;
         wrapFeeBurnerABI = JSON.parse(abi);
@@ -1121,17 +1143,21 @@ async function readLiquidityConversionRate(liquidityRateAddress, reserveAddress,
     let oneEtherInWei = web3.utils.toBN(10).pow(web3.utils.toBN(18));
     let precisionPartial = web3.utils.toBN(10).pow(web3.utils.toBN(12));
     let blockNum = await web3.eth.getBlockNumber();
+
+    //buy price
     let buyRate1Eth = await Rate.methods.getRate(tokenAdd, blockNum, true, oneEtherInWei).call();
     let etherToToken = (web3.utils.toBN(buyRate1Eth.valueOf()).div(precisionPartial)) / 1000000;
-
     let raiseFlag = isKyberReserve && (buyRate1Eth == 0);
     myLog(raiseFlag, 0, ("for 1 eth. eth to " + a2n(tokenAdd, 0) + " rate is: " + buyRate1Eth +
         " (1 eth = " + etherToToken + " " + a2n(tokenAdd, 0) + ")"));
-    let sellRateXTwei = await Rate.methods.getRate(tokenAdd, blockNum, false, 100000).call();
+
+    //sell price
+    let hundredTokensInTwei = web3.utils.toBN(10).pow(web3.utils.toBN(decimalsPerToken[tokenAdd] + 2));
+    let sellRateXTwei = await Rate.methods.getRate(tokenAdd, blockNum, false, hundredTokensInTwei).call();
     tokensTweixToEth = (web3.utils.toBN(sellRateXTwei).div(precisionPartial)) / 10000;
     raiseFlag = isKyberReserve && (sellRateXTwei == 0);
-    myLog(raiseFlag, 0, ("for 100000 " + a2n(tokenAdd, 0) + " tokens. Token to eth rate is " +
-        sellRateXTwei + " (100000 " + a2n(tokenAdd, 0) + " wei = " + tokensTweixToEth + " ether)"));
+    myLog(raiseFlag, 0, ("for 100 " + a2n(tokenAdd, 0) + " tokens. Token to eth rate is " +
+        sellRateXTwei + " (100 " + a2n(tokenAdd, 0) + " tokens = " + tokensTweixToEth + " ether)"));
 
     //verify token listed in network.
     let tokens = [tokenAdd];
@@ -1140,6 +1166,8 @@ async function readLiquidityConversionRate(liquidityRateAddress, reserveAddress,
 };
 
 async function verifyTokenListMatchingDeployJSON (reserveIndex, tokenList, isKyberReserve) {
+
+    if (doSpyrosRun == true) return;
 
     myLog(0, 0, '');
     myLog(0, 0, ("Verify all json token list is listed in conversion rate contract "));
@@ -1169,6 +1197,9 @@ async function verifyTokenListMatchingDeployJSON (reserveIndex, tokenList, isKyb
 };
 
 async function readConversionRateWrapper(convRateWrapperAddress) {
+
+    if (doSpyrosRun == true) return;
+
     try {
         let abi = solcOutput.contracts["WrapConversionRate.sol:WrapConversionRate"].interface;
         wrapConversionRatesABI = JSON.parse(abi);
@@ -1214,6 +1245,7 @@ async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, re
     let basic = await Rate.methods.getTokenBasicData(tokenAdd).call();
     myLog((basic[0] == false), (basic[1] == false), ("listed = " + basic[0] + ". Enabled = " + basic[1]));
 
+    //buy price
     let ether = web3.utils.toBN(10).pow(web3.utils.toBN(18));
     let precisionPartial = web3.utils.toBN(10).pow(web3.utils.toBN(12));
     let blockNum = await web3.eth.getBlockNumber();
@@ -1223,11 +1255,14 @@ async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, re
     let raiseFlag = isKyberReserve && (buyRate1Eth == 0);
     myLog(raiseFlag, 0, ("for 1 eth. eth to " + a2n(tokenAdd, 0) + " rate is: " + buyRate1Eth +
         " (1 eth = " + etherToToken + " " + a2n(tokenAdd, 0) + ")"));
-    let sellRateXTwei = await Rate.methods.getRate(tokenAdd, blockNum, false, 100000).call();
+
+    //sell price
+    let hundredTokensInTwei = web3.utils.toBN(10).pow(web3.utils.toBN(decimalsPerToken[tokenAdd] + 2));
+    let sellRateXTwei = await Rate.methods.getRate(tokenAdd, blockNum, false, hundredTokensInTwei).call();
     tokensTweixToEth = (web3.utils.toBN(sellRateXTwei).div(precisionPartial)) / 10000;
     raiseFlag = isKyberReserve && (sellRateXTwei == 0);
-    myLog(raiseFlag, 0, ("for 100000 " + a2n(tokenAdd, 0) + " twei. Token to eth rate is " +
-        sellRateXTwei + " (100000 " + a2n(tokenAdd, 0) + " wei = " + tokensTweixToEth + " ether)"));
+    myLog(raiseFlag, 0, ("for 100 " + a2n(tokenAdd, 0) + " tokens. Token to eth rate is " +
+        sellRateXTwei + " (100 " + a2n(tokenAdd, 0) + " tokens = " + tokensTweixToEth + " ether)"));
 
     //read imbalance info
     let tokenName = a2n(tokenAdd, 0);
@@ -1249,7 +1284,7 @@ async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, re
         getAmountTokens(controlInfo[2], tokenAdd) + " tokens."));
     tokenDict['maxTotalImbalance'] = controlInfo[2].valueOf();
 
-    if (showStepFunctions == 0) {
+    if (showStepFunctions == false) {
         if (showStepFuncMsg) {
             myLog(0, 1, "not showing step functions. set showStepFunctions = 1 (in this script file) to show it.");
             showStepFuncMsg = 0;
@@ -1349,6 +1384,9 @@ let sanityRatesABI;
 let needSanityRateABI = 1;
 
 async function readSanityRate(sanityRateAddress, reserveAddress, index, tokens, isKyberReserve) {
+
+    if ((doReadSanityRateData == false) || (doSpyrosRun == true)) return;
+
     if (sanityRateAddress == 0) {
         myLog(0, 0, "");
         myLog(0, 1, ("sanity rate not configured for reserve: " + reserveAddress));
@@ -1402,6 +1440,9 @@ async function readSanityRate(sanityRateAddress, reserveAddress, index, tokens, 
 };
 
 async function validateReserveTokensListedOnNetwork(tokens, index, reserveAddress) {
+
+    if (doSpyrosRun == true) return;
+
     let tokenListedSource;
     let tokenListedDest;
     let keccak;
@@ -1509,7 +1550,7 @@ async function twoStringsSoliditySha(str1, str2) {
 
 let adminAlerterMessage = 1;
 async function printAdminAlertersOperators(contract, jsonKey) {
-    if (printAdminETC == 0) {
+    if ((printAdminETC == false)  || (doSpyrosRun == true))  {
         if (adminAlerterMessage) {
             myLog(0, 1, "not showing Admin operator alerter. set printAdminETC = 1 to show it.");
             adminAlerterMessage = 0;
