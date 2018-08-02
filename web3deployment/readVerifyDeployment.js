@@ -143,7 +143,7 @@ const readTokenDataInConvRate = true;
 const verifyWhitelistedAddresses = false;
 const verifyTokenDataOnblockChain = false;
 
-const doSpyrosRun = true;
+const doSpyrosRun = false;
 const spyrosDictPath = './spyrosOutputfile.json';
 let SpyrosDict = {};
 
