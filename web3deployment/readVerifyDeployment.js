@@ -143,7 +143,7 @@ const readTokenDataInConvRate = true;
 const verifyWhitelistedAddresses = false;
 const verifyTokenDataOnblockChain = false;
 
-const doSpyrosRun = false;
+const doSpyrosRun = true;
 const spyrosDictPath = './spyrosOutputfile.json';
 let SpyrosDict = {};
 
@@ -371,7 +371,7 @@ async function readKyberNetwork(kyberNetworkAdd){
 async function readWhiteListData(whiteListAddress) {
     myLog(0, 0, '');
 
-    if ((runWhiteList == false)  || (doSpyrosRun == true)) {
+    if ((runWhiteList == false) ) {
         myLog(0, 1, "not showing WhiteList. set runWhiteList = true to show it.");
         return;
     }
@@ -400,6 +400,9 @@ async function readWhiteListData(whiteListAddress) {
     await printAdminAlertersOperators(WhiteList, "WhiteList");
     let weiPerSgd = await WhiteList.methods.weiPerSgd().call();
     SpyrosDict["weiPerSgd"] = weiPerSgd.valueOf();
+
+    if (doSpyrosRun == true) return;
+
     myLog((weiPerSgd == 0), (weiPerSgd != jsonWeiPerSGD), ("weiPerSgd: " + weiPerSgd + " = " + await getAmountTokens(weiPerSgd, ethAddress) + " tokens."));
     let kgtAddress = await WhiteList.methods.kgtToken().call();
     myLog((kgtAddress.toLowerCase() != jsonKGTAddress || kgtAddress == 0), 0, ("KGT Address: " + kgtAddress));
@@ -893,6 +896,9 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
         myLog(raiseFlag, 0, ("KNCAddress: " + KNCAddress));
         let kncPerEthRate = await FeeBurner.methods.kncPerETHRate().call();
         SpyrosDict["kncPerEthRate"] = kncPerEthRate.valueOf();
+
+        if (doSpyrosRun == true) return;
+
         myLog((kncPerEthRate.valueOf() == 0), (kncPerEthRate != jsonKNC2EthRate), ("kncPerEthRate: " + kncPerEthRate));
 
         let kyberNetwork = (await FeeBurner.methods.kyberNetwork().call()).toLowerCase();
