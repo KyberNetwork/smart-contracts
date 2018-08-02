@@ -1,7 +1,7 @@
 pragma solidity 0.4.18;
 
 import "./ERC20Interface.sol";
-import "./Utils.sol";
+import "./Utils2.sol";
 import "./Withdrawable.sol";
 import "./KyberReserveInterface.sol";
 
@@ -20,6 +20,7 @@ contract TokenInterface is ERC20 {
 
 contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
 
+    uint constant internal ETH_SRC_AMOUNT = (10**18);
     address public kyberNetwork;
     OtcInterface public otc;
     TokenInterface public wethToken;
@@ -41,6 +42,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
         require(_wethToken != address(0));
         require(_tradeToken != address(0));
         require(_feeBps < 10000);
+        require(getDecimals(_tradeToken) == MAX_DECIMALS);
 
         kyberNetwork = _kyberNetwork;
         otc = _otc;
@@ -49,11 +51,15 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
         admin = _admin;
         feeBps = _feeBps;
         tradeEnabled = true;
+
+        wethToken.approve(otc, 2**255);
+        tradeToken.approve(otc, 2**255);
     }
 
     event DepositToken(ERC20 token, uint amount);
 
     function() public payable {
+        require(msg.sender == address(wethToken));
         DepositToken(ETH_TOKEN_ADDRESS, msg.value);
     }
 
@@ -128,10 +134,15 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
         require(_feeBps < 10000);
 
         kyberNetwork = _kyberNetwork;
-        otc = _otc;
         wethToken = _wethToken;
         tradeToken = _tradeToken;
         feeBps = _feeBps;
+
+        wethToken.approve(otc, 0);
+        tradeToken.approve(otc, 0);
+        wethToken.approve(_otc, 2**255);
+        tradeToken.approve(_otc, 2**255);
+        otc = _otc;
 
         ReserveParamsSet(kyberNetwork, otc, wethToken, tradeToken, feeBps);
     }
@@ -151,6 +162,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
     function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
         uint  rate;
         uint  destQty;
+        uint  actualSrcQty;
         ERC20 wrappedSrc;
         ERC20 wrappedDest;
 
@@ -162,16 +174,22 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
         if (src == ETH_TOKEN_ADDRESS) {
             wrappedSrc = wethToken;
             wrappedDest = dest;
+            actualSrcQty = srcQty;
         } else if (dest == ETH_TOKEN_ADDRESS) {
             wrappedSrc = src;
             wrappedDest = wethToken;
+
+            if(srcQty < ETH_SRC_AMOUNT) {
+                actualSrcQty = ETH_SRC_AMOUNT;
+            } else {
+                actualSrcQty = srcQty;
+            }
         } else {
             return 0;
         }
 
-        destQty = otc.getBuyAmount(wrappedDest, wrappedSrc, srcQty);
-
-        rate = valueAfterReducingFee(destQty) * PRECISION / srcQty;
+        destQty = otc.getBuyAmount(wrappedDest, wrappedSrc, actualSrcQty);
+        rate = calcRateFromQty(actualSrcQty, valueAfterReducingFee(destQty), MAX_DECIMALS, MAX_DECIMALS);
 
         return rate;
     }
@@ -209,11 +227,6 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
         if (srcToken == ETH_TOKEN_ADDRESS) {
             wethToken.deposit.value(msg.value)();
 
-            //TODO - move to constructor...
-            if (wethToken.allowance(this, otc) < msg.value) {
-                wethToken.approve(otc, uint(-1));
-            }
-
             actualDestAmount = otc.sellAllAmount(wethToken, msg.value, destToken, destAmount);
             require(actualDestAmount >= destAmount);
 
@@ -221,11 +234,6 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
             require(destToken.transfer(destAddress, destAmount));
         } else {
             require(srcToken.transferFrom(msg.sender, this, srcAmount));
-
-            /* TODO - move to constructor  */
-            if (srcToken.allowance(this, otc) < srcAmount) {
-                srcToken.approve(otc, uint(-1));
-            }
  
             actualDestAmount = otc.sellAllAmount(srcToken, srcAmount, wethToken, destAmount);
             require(actualDestAmount >= destAmount);
