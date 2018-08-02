@@ -1017,7 +1017,7 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index, 
     if (blockCode != solcCode){
 //        myLog(1, 0, "blockchain Code:");
 //        myLog(0, 0, blockCode);
-        myLog(0, 1, "Byte code from block chain doesn't match conversion rate. checking liquidity conversion rate.")
+        myLog(0, 0, "Byte code from block chain doesn't match conversion rate. checking liquidity conversion rate.")
         await readLiquidityConversionRate(conversionRateAddress, reserveAddress, index, isKyberReserve);
         return;
     } else {
