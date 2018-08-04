@@ -18,7 +18,7 @@ contract TokenInterface is ERC20 {
 }
 
 
-contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
+contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
     uint constant internal ETH_SRC_AMOUNT = (10**18);
     address public kyberNetwork;
@@ -42,6 +42,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
         require(_wethToken != address(0));
         require(_tradeToken != address(0));
         require(_feeBps < 10000);
+        require(getDecimals(_wethToken) == MAX_DECIMALS);
         require(getDecimals(_tradeToken) == MAX_DECIMALS);
 
         kyberNetwork = _kyberNetwork;
@@ -58,10 +59,12 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
 
     event DepositToken(ERC20 token, uint amount);
 
+    /* solhint-disable no-complex-fallback */
     function() public payable {
         require(msg.sender == address(wethToken));
         DepositToken(ETH_TOKEN_ADDRESS, msg.value);
     }
+    /* solhint-enable no-complex-fallback */
 
     event TradeExecute(
         address indexed origin,
@@ -109,42 +112,62 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
         return true;
     }
 
-    event ReserveParamsSet(
-        address kyberNetwork,
-        OtcInterface otc,
-        TokenInterface wethToken,
-        ERC20 tradeToken,
-        uint feeBps
-    );
+    event KyberNetworkSet(address kyberNetwork);
 
-    function setReserveParams(
-        address _kyberNetwork,
-        OtcInterface _otc,
-        TokenInterface _wethToken,
-        ERC20 _tradeToken,
-        uint _feeBps
-    )
-        public
-        onlyAdmin
-    {
+    function setKyberNetwork(address _kyberNetwork) public onlyAdmin {
         require(_kyberNetwork != address(0));
-        require(_otc != address(0));
-        require(_wethToken != address(0));
-        require(_tradeToken != address(0));
-        require(_feeBps < 10000);
 
         kyberNetwork = _kyberNetwork;
-        wethToken = _wethToken;
-        tradeToken = _tradeToken;
-        feeBps = _feeBps;
+        KyberNetworkSet(kyberNetwork);
+    }
+
+    event OtcSet(address otc);
+
+    function setOtc(OtcInterface _otc) public onlyAdmin {
+        require(_otc != address(0));
 
         wethToken.approve(otc, 0);
         tradeToken.approve(otc, 0);
         wethToken.approve(_otc, 2**255);
         tradeToken.approve(_otc, 2**255);
-        otc = _otc;
 
-        ReserveParamsSet(kyberNetwork, otc, wethToken, tradeToken, feeBps);
+        otc = _otc;
+        OtcSet(otc);
+    }
+
+    event WethTokenSet(TokenInterface wethToken);
+
+    function setWethToken(TokenInterface _wethToken) public onlyAdmin {
+        require(_wethToken != address(0));
+        require(getDecimals(_wethToken) == MAX_DECIMALS);
+
+        wethToken.approve(otc, 0);
+        _wethToken.approve(otc, 2**255);
+
+        wethToken = _wethToken;
+        WethTokenSet(wethToken);
+    }
+
+    event TradeTokenSet(ERC20 tradeToken);
+
+    function setTradeToken(ERC20 _tradeToken) public onlyAdmin {
+        require(_tradeToken != address(0));
+        require(getDecimals(_tradeToken) == MAX_DECIMALS);
+
+        tradeToken.approve(otc, 0);
+        _tradeToken.approve(otc, 2**255);
+
+        tradeToken = _tradeToken;
+        TradeTokenSet(tradeToken);
+    }
+
+    event FeeBpsSet(uint feeBps);
+
+    function setFeeBps(uint _feeBps) public onlyAdmin {
+        require(_feeBps < 10000);
+
+        feeBps = _feeBps;
+        FeeBpsSet(feeBps);
     }
 
     function getDestQty(ERC20 src, ERC20 dest, uint srcQty, uint rate) public view returns(uint) {
@@ -179,7 +202,8 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
             wrappedSrc = src;
             wrappedDest = wethToken;
 
-            if(srcQty < ETH_SRC_AMOUNT) {
+            if (srcQty < ETH_SRC_AMOUNT) {
+                /* Assuming token is stable, use a minimal amount to get rate also for small token quant. */
                 actualSrcQty = ETH_SRC_AMOUNT;
             } else {
                 actualSrcQty = srcQty;
@@ -205,11 +229,10 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
         internal
         returns(bool)
     {
-
-        uint actualDestAmount;
-
         require((ETH_TOKEN_ADDRESS == srcToken) || (ETH_TOKEN_ADDRESS == destToken));
         require((tradeToken == srcToken) || (tradeToken == destToken));
+
+        uint actualDestAmount;
 
         // can skip validation if done at kyber network level
         if (validate) {
@@ -246,6 +269,5 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils {
         TradeExecute(msg.sender, srcToken, srcAmount, destToken, destAmount, destAddress);
 
         return true;
-
     }
 }

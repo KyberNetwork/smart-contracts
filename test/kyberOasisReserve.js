@@ -1,7 +1,6 @@
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 let WethToken = artifacts.require("./mockContracts/WethToken.sol"); 
 let MockOtc = artifacts.require("./mockContracts/MockOtc.sol");
-let MockOasisDirectProxy = artifacts.require("./mockContracts/MockOasisDirectProxy.sol");
 let KyberOasisReserve = artifacts.require("./KyberOasisReserve");
 
 let Helper = require("./helper.js");
@@ -39,9 +38,8 @@ contract('KyberOasisReserve', function (accounts) {
         myWethToken = await WethToken.new("my weth token", "weth", 18);
         myToken = await TestToken.new("my token", "tok", 18);
 
-        // create mock contracts.
-        otc = await MockOtc.new(myWethToken.address);
-        oasisDirectProxy = await MockOasisDirectProxy.new()
+        // create mock otc.
+        otc = await MockOtc.new(myWethToken.address, daisForEth);
 
         // move eth to the otc
         oasisWeiInit = (new BigNumber(10)).pow(19); // 10 eth

@@ -3,15 +3,18 @@ pragma solidity 0.4.18;
 
 import "../ERC20Interface.sol";
 
+
 contract MockOtc {
 
     ERC20 public wethToken;
+    uint public tokensForPayEth;
+
+    function MockOtc(ERC20 _wethToken, uint _tokensForPayEth) public {
+        wethToken = _wethToken;
+        tokensForPayEth = _tokensForPayEth;
+    }
 
     function() public payable {}
-
-    function MockOtc(ERC20 _wethToken) public {
-        wethToken = _wethToken;
-    }
 
     function sellAllAmount(ERC20 payGem, uint payAmt, ERC20 buyGem, uint minFillAmount)
     public
@@ -31,9 +34,9 @@ contract MockOtc {
         buyGem;
 
         if (payGem == wethToken) {
-            return 481 * payAmt;
+            return tokensForPayEth * payAmt;
         } else {
-            return payAmt / 481;
+            return payAmt / tokensForPayEth;
         }
     }
 }
