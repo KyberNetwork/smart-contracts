@@ -371,6 +371,42 @@
       "internal use": true,
       "listed": true
     },
+    "MDS": {
+      "name": "MediShares Token",
+      "decimals": 18,
+      "address": "0x66186008C1050627F979d464eABb258860563dbE",
+      "minimalRecordResolution": "10000000000000000",
+      "internal use": false,
+      "listed": true
+    },
+    "LEND": {
+      "name": "EthLend",
+      "decimals": 18,
+      "address": "0x80fB784B7eD66730e8b1DBd9820aFD29931aab03",
+      "internal use": false,
+      "listed": true
+    },
+    "WINGS": {
+      "name": "WINGS",
+      "decimals": 18,
+      "address": "0x667088b212ce3d06a1b553a7221E1fD19000d9aF",
+      "internal use": false,
+      "listed": true
+    },
+    "MTL": {
+      "name": "Metal",
+      "decimals": 8,
+      "address": "0xF433089366899D83a9f26A773D59ec7eCF30355e",
+      "internal use": false,
+      "listed": true
+    },
+    "WABI": {
+      "name": "WaBi",
+      "decimals": 18,
+      "address": "0x286BDA1413a2Df81731D4930ce2F862a35A609fE",
+      "internal use": false,
+      "listed": true
+    },
     "ETH": {
       "name": "Ethereum",
       "decimals": 18,
