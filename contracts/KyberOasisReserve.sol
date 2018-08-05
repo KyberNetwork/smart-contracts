@@ -64,7 +64,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
     }
 
     event TradeExecute(
-        address indexed origin,
+        address indexed sender,
         address src,
         uint srcAmount,
         address destToken,
