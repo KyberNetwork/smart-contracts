@@ -30,6 +30,9 @@ if (printPrivateKey) {
     });
 }
 
+
+const includeSetRatesAndSendTokens = false;
+
 const account = web3.eth.accounts.privateKeyToAccount(privateKey);
 const sender = account.address;
 const gasPrice = BigNumber(gasPriceGwei).mul(10 ** 9);
@@ -341,14 +344,18 @@ async function main() {
 
 
         //this will work if sender has tokens...
-        try{
-            let token = await new web3.eth.Contract(jsonForERC20, tokens[i]);
-            await sendTx(token.methods.transfer(reserveAddress, 10**22));
-            await sendTx(token.methods.transfer(reserveAddress, 10**22));
-        } catch(e) {
+        if (includeSetRatesAndSendTokens == true) {
+            try{
+                let token = await new web3.eth.Contract(jsonForERC20, tokens[i]);
+                console.log("try to send tokens to reserve from sender");
+                await sendTx(token.methods.transfer(reserveAddress, 10**22));
+                await sendTx(token.methods.transfer(reserveAddress, 10**22));
+            } catch(e) {
 
+            }
         }
     }
+
     console.log("set num listed pairs info");
     const numListPairsString = web3.utils.sha3("num listed pairs");
     await sendTx(internalNetworkContract.methods.setInfo(numListPairsString,tokens.length * 2));
@@ -360,19 +367,24 @@ async function main() {
     await sendTx(internalNetworkContract.methods.setParams(maxGasPrice,
                                                  negDiffInBps));
 
+    console.log("network set white list");
     await sendTx(internalNetworkContract.methods.setWhiteList(whitelistAddress));
+    console.log("network set expected rate");
     await sendTx(internalNetworkContract.methods.setExpectedRate(expectedRateAddress));
+    console.log("network set fee burner");
     await sendTx(internalNetworkContract.methods.setFeeBurner(feeBurnerAddress));
+    console.log("network set proxy address");
     await sendTx(internalNetworkContract.methods.setKyberProxy(proxyAddress));
 
     console.log("network enable");
     await sendTx(internalNetworkContract.methods.setEnable(true));
 
     // add operator
+    console.log("network set permissioned addresses");
     await setPermissions(internalNetworkContract, networkPermissions);
 
     // reserve
-    console.log("whitelist deposit addresses");
+    console.log("reserve approve withdraw addresses");
     for( i = 0 ; i < depositAddresses.length ; i++ ) {
         const dict = depositAddresses[i];
         const tokenSymbol = Object.keys(dict)[0];
@@ -408,6 +420,7 @@ async function main() {
         console.log(users[i]);
         await sendTx(whitelistContract.methods.setUserCategory(users[i],usersCat));
     }
+
     console.log("white list - set cat cap");
     await sendTx(whitelistContract.methods.setCategoryCap(usersCat, usersCap));
     console.log("white list - init tester list");
@@ -415,6 +428,7 @@ async function main() {
         console.log(testers[i]);
         await sendTx(whitelistContract.methods.setUserCategory(testers[i],testersCat));
     }
+
     console.log("white list - set cat cap");
     await sendTx(whitelistContract.methods.setCategoryCap(testersCat, testersCap));
     console.log("white list - remove temp opeator to set sgd rate");
@@ -490,7 +504,8 @@ async function main() {
     }
 
     //set some rates. for test network deploy
-    if (false) {
+    if (includeSetRatesAndSendTokens == true) {
+        console.log("conversion rate, set rates per token");
         for( let i = 0 ; i < tokens.length ; i++ ) {
             console.log(tokens[i]);
             ethToTokenRate = (new BigNumber(10).pow(18)).div((i + 1) * 5).floor();
@@ -504,8 +519,6 @@ async function main() {
         let bytes14 = '0x0000000000000000000000000000';
         await sendTx(rates.methods.setBaseRate(tokens, baseBuy, baseSell, [bytes14], [bytes14], 8104090, [0]));
     }
-
-
 
     console.log("conversion rate - remove temp operator");
     await sendTx(conversionRatesContract.methods.removeOperator(sender));
