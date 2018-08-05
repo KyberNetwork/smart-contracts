@@ -18,7 +18,7 @@ const web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
 const solc = require('solc')
 
 const rand = web3.utils.randomHex(7);
-let privateKey = web3.utils.sha3("js sucks" + rand);
+const privateKey = web3.utils.sha3("js sucks" + rand);
 
 if (printPrivateKey) {
     console.log("privateKey", privateKey);
