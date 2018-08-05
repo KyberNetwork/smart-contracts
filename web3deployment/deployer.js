@@ -182,31 +182,31 @@ function parseInput( jsonInput ) {
     // tokens
     const tokenInfo = jsonInput["tokens"];
     Object.keys(tokenInfo).forEach(function(key) {
-      const val = tokenInfo[key];
-      const symbol = key;
-      const name = val["name"];
-      const address = val["address"];
+        const val = tokenInfo[key];
+        const symbol = key;
+        const name = val["name"];
+        const address = val["address"];
 
-      tokenNameToAddress[symbol] = address;
+        tokenNameToAddress[symbol] = address;
 
-      tokens.push(address);
-      const dict = {
-        minimalRecordResolution : web3.utils.toBN(val["minimalRecordResolution"]),
-        maxPerBlockImbalance : web3.utils.toBN(val["maxPerBlockImbalance"]),
-        maxTotalImbalance : web3.utils.toBN(val["maxTotalImbalance"])
-      };
-      tokenControlInfo[address] = dict;
+        tokens.push(address);
+        const dict = {
+            minimalRecordResolution : web3.utils.toBN(val["minimalRecordResolution"]),
+            maxPerBlockImbalance : web3.utils.toBN(val["maxPerBlockImbalance"]),
+            maxTotalImbalance : web3.utils.toBN(val["maxTotalImbalance"])
+        };
+        tokenControlInfo[address] = dict;
     });
 
     // exchanges
     const exchangeInfo = jsonInput["exchanges"];
     Object.keys(exchangeInfo).forEach(function(exchange) {
-      Object.keys(exchangeInfo[exchange]).forEach(function(token){
-        const depositAddress = exchangeInfo[exchange][token];
-        const dict = {};
-        dict[token] = depositAddress;
-        depositAddresses.push(dict);
-      });
+        Object.keys(exchangeInfo[exchange]).forEach(function(token){
+            const depositAddress = exchangeInfo[exchange][token];
+            const dict = {};
+            dict[token] = depositAddress;
+            depositAddresses.push(dict);
+        });
     });
 
     networkPermissions = jsonInput.permission["KyberNetwork"];
@@ -238,22 +238,24 @@ function parseInput( jsonInput ) {
 };
 
 async function setPermissions(contract, permJson) {
-  console.log("set operator(s)");
-  for(let i = 0 ; i < permJson.operator.length ; i++ ) {
-    const operator = permJson.operator[i];
-    console.log(operator);
-    await sendTx(contract.methods.addOperator(operator));
-  }
-  console.log("set alerter(s)");
-  for(let i = 0 ; i < permJson.alerter.length ; i++ ) {
-    const alerter = permJson.alerter[i];
-    console.log(alerter);
-    await sendTx(contract.methods.addAlerter(alerter));
-  }
-  console.log("transferAdminQuickly");
-  const admin = permJson.admin;
-  console.log(admin);
-  await sendTx(contract.methods.transferAdminQuickly(admin));
+    console.log("set operator(s)");
+    for(let i = 0 ; i < permJson.operator.length ; i++ ) {
+        const operator = permJson.operator[i];
+        console.log(operator);
+        await sendTx(contract.methods.addOperator(operator));
+    }
+
+    console.log("set alerter(s)");
+    for(let i = 0 ; i < permJson.alerter.length ; i++ ) {
+        const alerter = permJson.alerter[i];
+        console.log(alerter);
+        await sendTx(contract.methods.addAlerter(alerter));
+    }
+
+    console.log("transferAdminQuickly");
+    const admin = permJson.admin;
+    console.log(admin);
+    await sendTx(contract.methods.transferAdminQuickly(admin));
 }
 
 
