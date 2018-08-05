@@ -1,0 +1,198 @@
+{
+  "tokens": {
+    "OMG": {
+      "name": "OmiseGO",
+      "decimals": 18,
+      "address": "0x8870946B0018E2996a7175e8380eb0d43dD09EFE",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "120000000000000000000",
+      "maxTotalImbalance": "180000000000000000000"
+    },
+    "KNC": {
+      "name": "KyberNetwork",
+      "decimals": 18,
+      "address": "0xB2f3dD487708ca7794f633D9Df57Fdb9347a7afF",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "550000000000000000000",
+      "maxTotalImbalance": "820000000000000000000"
+    },
+    "EOS": {
+      "name": "Eos",
+      "decimals": 18,
+      "address": "0x7DBbA6cE70EA67CD77325F89Ce243B39b2C12591",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "150000000000000000000",
+      "maxTotalImbalance": "230000000000000000000"
+    },
+    "SALT": {
+      "name": "SALT",
+      "decimals": 8,
+      "address": "0xCd43d7410295E54922a2C3CF6F2Dd1BD7D18AbD1",
+      "minimalRecordResolution": "100000",
+      "maxPerBlockImbalance": "25000000000",
+      "maxTotalImbalance": "37000000000"
+    },
+    "SNT": {
+      "name": "STATUS",
+      "decimals": 18,
+      "address": "0x0fA1727EE15Cc6afAB7305e03E06237de66B5EC4",
+      "minimalRecordResolution": "10000000000000000",
+      "maxPerBlockImbalance": "6850000000000000000000",
+      "maxTotalImbalance": "10300000000000000000000"
+    },
+    "ETH": {
+      "name": "Ethereum",
+      "decimals": 18,
+      "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  },
+  "exchanges": {
+    "binance": {
+      "ETH": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "OMG": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "KNC": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "SNT": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "SALT": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "EOS": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547"
+    }
+  },
+  "permission": {
+    "KyberNetwork": {
+      "admin": "0x7985405a348baa90c92164b86b383c8f43ad2d96",
+      "operator": [
+        "0x7985405a348baa90c92164b86b383c8f43ad2d96"
+      ],
+      "alerter": []
+    },
+    "KyberReserve": {
+      "admin": "0x7985405a348baa90c92164b86b383c8f43ad2d96",
+      "operator": [
+        "0x7985405a348baa90c92164b86b383c8f43ad2d96"
+      ],
+      "alerter": []
+    },
+    "ConversionRates": {
+      "admin": "0x7985405a348baa90c92164b86b383c8f43ad2d96",
+      "operator": [
+        "0xeAE89c711c02468deA8eE1AdE4fA78B79AC9379a",
+        "0x9224016462B204C57Eb70e1D69652f60bcAF53A8",
+        "0x7985405a348baa90c92164b86b383c8f43ad2d96"
+      ],
+      "alerter": []
+    },
+    "FeeBurner": {
+      "admin": "0x7985405a348baa90c92164b86b383c8f43ad2d96",
+      "operator": [
+        "0xeAE89c711c02468deA8eE1AdE4fA78B79AC9379a",
+        "0x7985405a348baa90c92164b86b383c8f43ad2d96"
+      ],
+      "alerter": []
+    },
+    "WhiteList": {
+      "admin": "0x7985405a348baa90c92164b86b383c8f43ad2d96",
+      "operator": [
+        "0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
+        "0xeAE89c711c02468deA8eE1AdE4fA78B79AC9379a",
+        "0x7985405a348baa90c92164b86b383c8f43ad2d96"
+      ],
+      "alerter": []
+    },
+    "ExpectedRate": {
+      "admin": "0x7985405a348baa90c92164b86b383c8f43ad2d96",
+      "operator": [
+        "0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
+        "0xeAE89c711c02468deA8eE1AdE4fA78B79AC9379a",
+        "0x7985405a348baa90c92164b86b383c8f43ad2d96"
+      ],
+      "alerter": []
+    }
+  },
+  "whitelist params": {
+    "testers": [
+      "0x053a9f418F7BE3391A2821BE23b418a909f42F54",
+      "0x0d225f12898e0ca01867290a61f4cbfe11a1da8a",
+      "0x12f0453c1947269842c5646df98905533c1b9519",
+      "0x42bbe426b1796b8eca6444928e874a58ee124973",
+      "0xb2d904d1981080C9002818D833819e33a58F8388",
+      "0x3Cf628d49Ae46b49b210F0521Fbd9F82B461A9E1",
+      "0xdde0a80664fbbdb56e2cd82f725cd3be1f9bb6d3",
+      "0xC825Ef342d94B687590E123BBB27994ccBfFcc35",
+      "0x8180a5CA4E3B94045e05A9313777955f7518D757",
+      "0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
+      "0xd0643bc0d0c879f175556509dbcee9373379d5c3"
+    ],
+    "testers category": 9,
+    "testers cap": 5000,
+    "KGT address": "0x9A654AA16679aaa647018Acf22f2666535054C5f",
+    "KGT cap": 0,
+    "users": [
+      "0x943252227f9cbfa10ee85912069171813e07b5df",
+      "0x85f160b182fe02d82cc771753a67425dc7da4bfd",
+      "0x3cf628d49ae46b49b210f0521fbd9f82b461a9e1",
+      "0xc137d86197f8df68038ca79df9464b5ed83b46f5",
+      "0x759604f9ae53af58905e2ed23ea2c6a7bcd4c881",
+      "0xbfe8d9a90bbebdb725333ecff6a947045514d86e",
+      "0x107d1e7d288525d8c0112a38e881a1119546ec99",
+      "0xc96dff7ddc0d9aebdc84572ea7f463341b0c3499",
+      "0xefb8085ef21ab0818bb070e5881bce01da322319",
+      "0x2c7f07e07459340025046bf77c2fdcc1c86fd4ff",
+      "0xcf298e820ec1c37d09378ed45f13081fe18af030",
+      "0x805e04be44fa0abe67c9daeb2d63dfe11ebb0b7a",
+      "0xb2d904d1981080c9002818d833819e33a58f8388",
+      "0xd64fd8f71b147071b58e849a172e443a34afb900",
+      "0xf214dde57f32f3f34492ba3148641693058d4a9e",
+      "0x7aab84d251f67a79126bc2188cf4a1e5e29f36b4",
+      "0x36890b6d03820f4d2b8dadd383a1045c05f2d89d",
+      "0x34409fda33b9ac5ad4c57f1e3113fe21c19a5294",
+      "0x538597d67c503fca3bc169e61790fc5003e5081d",
+      "0xfdc280b6733f3ae7f2420f3124cdcd9152de3827",
+      "0x759604f9ae53af58905e2ed23ea2c6a7bcd4c881",
+      "0x3f105f78359ad80562b4c34296a87b8e66c584c5",
+      "0x441bae4cda3c6feccfc98add2f2ed363d9ebc090",
+      "0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
+      "0x0c3b2b708b42f99df2c0c822b9fb8fc43a5e329e",
+      "0x80c2c1ceb335e39b7021c646fd3ec159faf9109d",
+      "0xffaa5d3ece144954bf5b98977857f521972f729c",
+      "0xcfc84a1061978527a41f561ae6ed8a86fa68d44c",
+      "0x8180a5ca4e3b94045e05a9313777955f7518d757",
+      "0xf214dde57f32f3f34492ba3148641693058d4a9e",
+      "0x6d15a2372efbe32550bc02831524f9c77fb05514",
+      "0xefb8085ef21ab0818bb070e5881bce01da322319",
+      "0xe2da6286d17d589a87f58c4a1aa136d5809ca617",
+      "0x43116e303b1b001bd08f6eaf8debea50d0a8cbc9",
+      "0x453c1e38772cfe2f8550da4a47a6624b8c5ccd39",
+      "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
+      "0x0f114bcde33f3d8b5c2034810d21a030808fbb61",
+      "0xffaa5d3ece144954bf5b98977857f521972f729c",
+      "0xcfc84a1061978527a41f561ae6ed8a86fa68d44c",
+      "0x42bbe426b1796b8eca6444928e874a58ee124973",
+      "0xc4ae4aedcb717b6f04cac9492c70ed85412048ed",
+      "0xfdc63f4f9ddfaeb7fbf0fca4e09178efac765a85",
+      "0x79c1565c052808bb81df554581888dc077567222",
+      "0x9e1fe268f3f84400cebd8fe6dda5fdb0f8ae9ea9",
+      "0x1c67a930777215c9d4c617511c229e55fa53d0f8",
+      "0x0d225f12898e0ca01867290a61f4cbfe11a1da8a",
+      "0x12f0453c1947269842c5646df98905533c1b9519",
+      "0x29641cd7f394dff57eaa6ebca31c88e5b84d6b4c",
+      "0xe9dcde10206cbbd76c52944ff0eec832c886bbc6"
+    ],
+    "users category": 1,
+    "users cap": 0,
+    "default cap": 5000
+  },
+  "max gas price": "50000000000",
+  "neg diff in bps": 20,
+  "min expected rate slippage": 300,
+  "KNC wallet": "0x7985405a348baa90c92164b86b383c8f43ad2d96",
+  "KNC to ETH rate": 300,
+  "tax wallet address": "0x7985405a348baa90c92164b86b383c8f43ad2d96",
+  "tax fees bps": 2000,
+  "valid duration block": 100000000,
+  "reserve": "0xcd2FC6Cf44aAC607771f7FBbE51E388CE1044408",
+  "pricing": "0xEddEeC7f5da5df29722D3252FC542E77D115a378",
+  "network": "0x7e6b8b9510D71BF8EF0f893902EbB9C865eEF4Df",
+  "internal network": "0xF27dbBeA1856f18142cDD3B575146199f7f3a7eA",
+  "wrapper": "0x2cF6Fb026aD23dDc1507e3BE8C09C78aBeB72c0a",
+  "feeburner": "0x742D26b77b28B785E56751c3B201De03CE4836EE",
+  "whitelist": "0x40B4C521d52E744E0fB6DaEF72BE37D4E99E2D2A"
+}
