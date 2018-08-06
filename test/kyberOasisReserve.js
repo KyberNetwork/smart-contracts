@@ -1,7 +1,7 @@
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let WethToken = artifacts.require("./mockContracts/WethToken.sol"); 
-let MockOtc = artifacts.require("./mockContracts/MockOtc.sol");
-let KyberOasisReserve = artifacts.require("./KyberOasisReserve");
+let WethToken = artifacts.require("./oasisContracts/mockContracts/WethToken.sol"); 
+let MockOtc = artifacts.require("./oasisContracts/mockContracts/MockOtc.sol");
+let KyberOasisReserve = artifacts.require("./oasisContracts/KyberOasisReserve");
 
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
@@ -10,8 +10,10 @@ const allowedDiffInPercent = BigNumber(0.0000000001)
 const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 const precision = new BigNumber(10).pow(18);
 const daisForEth = 481;
-const feePercent = 0.25
-const feeBps = feePercent * 100
+const feePercent = 0.25;
+const feeBps = feePercent * 100;
+const alternativeFeePercent = 0.13;
+const alternativeFeeBps = alternativeFeePercent * 100;
 
 let admin;
 let myWethToken;
@@ -121,5 +123,219 @@ contract('KyberOasisReserve', function (accounts) {
         Helper.assertAbsDiff(reserveWeiGained, expectedReserveWeiGained, allowedDiffInPercent, "wrong reserve wei gained in the trade")
         Helper.assertAbsDiff(weiGained, expecetedWeiGained.minus(gasCost), allowedDiffInPercent, "wrong expected wei gained");
         assert.deepEqual(tWeiLost, tweiSrcQty, "wrong expected token wei lost")
+    });
+    it("should disable trades in the reserve and see that getconversionrate reverts", async function (){
+
+        let alerter = accounts[0]
+        await reserve.addAlerter(alerter);
+        await reserve.disableTrade();
+        let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
+        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
+
+        try {
+            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+    it("should re-enable trades in the reserve and see that getconversionrate and trade does not revert", async function (){
+
+        await reserve.enableTrade();
+        let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
+        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
+        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+    });
+    it("should change network to another address and see that trade fails since sender is not network", async function (){
+
+        await reserve.setKyberNetwork(accounts[2]);
+        let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
+        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
+        try {
+            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+    it("should return network admin address and see that trade does not revert", async function (){
+
+        await reserve.setKyberNetwork(admin);
+        let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
+        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
+        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+    });
+    it("should set otc to a malicious address (reserve) and see that getconverisonrate reverts", async function (){
+
+        await reserve.setOtc(reserve.address);
+        let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
+        try {
+            let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+    it("should return otc correct address and see that getconverisonrate does not revert", async function (){
+
+        await reserve.setOtc(otc.address);
+        let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
+        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
+    });
+    it("should set fee to another value and make sure getconversionrate and trade pass", async function (){
+
+        await reserve.setFeeBps(alternativeFeeBps);
+        // get conversion rate
+        let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
+        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0)
+        let buyRateInTokenUnits = buyRate.div(precision)
+        let expectedRate = valueAfterReducingFee(daisForEth, alternativeFeePercent)
+        assert.equal(buyRateInTokenUnits.valueOf(), expectedRate, "wrong rate")
+
+        // buy
+        let reserveTweiBalanceBefore = await myToken.balanceOf(reserve.address);
+        let balanceBefore = await Helper.getBalancePromise(admin);
+        let tweiBalanceBefore = await myToken.balanceOf(admin);
+
+        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+        let tx = await web3.eth.getTransaction(txInfo.tx);
+        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
+
+        let reserveTweiBalanceAfter = await myToken.balanceOf(reserve.address);
+        let balanceAfter = await Helper.getBalancePromise(admin);
+        let tweiBalanceAfter = await myToken.balanceOf(admin);
+
+        let weiLost = balanceBefore.minus(balanceAfter)
+        let tWeiGained = tweiBalanceAfter.minus(tweiBalanceBefore)
+        let expecetedTweiGained = BigNumber(expectedRate).mul(weiSrcQty)
+        let reserveTweiGained = reserveTweiBalanceAfter.minus(reserveTweiBalanceBefore)
+        let expectedReserveTweiGained = weiSrcQty.mul(alternativeFeePercent/100).mul(daisForEth)
+
+        assert.equal(weiLost.valueOf(), weiSrcQty.plus(gasCost).valueOf(), "wrong wei amount lost in the trade")
+        assert.equal(tWeiGained.valueOf(), expecetedTweiGained.valueOf(), "wrong expected token wei gained")
+        assert.equal(reserveTweiGained.valueOf(), expectedReserveTweiGained.valueOf(), "wrong token wei gained by reserve")
+
+        // return fee to original value
+        await reserve.setFeeBps(feeBps);
+    });
+    it("should query rate for 0 amount of tokens and see we get rate as for 1 dai ", async function (){
+        let zeroTweiSrcQty = BigNumber(0);
+        let zeroSellRate = await reserve.getConversionRate(myToken.address, ethAddress, zeroTweiSrcQty, 0);
+
+        let oneTweiSrcQty = BigNumber(10).pow(18); // 1 token.
+        let oneSellRate = await reserve.getConversionRate(myToken.address, ethAddress, oneTweiSrcQty, 0);
+
+        assert.equal(zeroSellRate.valueOf(), oneSellRate.valueOf(), "sell rates for 0 and 1 token are not equal.");
+    });
+    it("should try getconversionrate for a token other than trade token and see it reverts", async function (){
+        let otherToken = await TestToken.new("other token", "oth", 18);
+        
+        let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
+        let buyRate = await reserve.getConversionRate(ethAddress, otherToken.address, weiSrcQty, 0);
+        try {
+            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+    it("should try getconversionrate for without eth as src or dest and see it reverts", async function (){
+
+        let weiSrcQty = new BigNumber(10).pow(18); // 1 token
+        let buyRate = await reserve.getConversionRate(myToken.address, myToken.address, weiSrcQty, 0);
+        try {
+            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+    it("should try getconversionrate for without eth as src or dest and see it reverts", async function (){
+
+        let weiSrcQty = new BigNumber(10).pow(18); // 1 token
+        let buyRate = await reserve.getConversionRate(myToken.address, myToken.address, weiSrcQty, 0);
+        try {
+            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+    it("should try trade but send src amount than specified", async function (){
+
+        let weiSrcQty = new BigNumber(10).pow(18); // 1 token
+        let halfWeiSrcQty = BigNumber(0.5).mul(BigNumber(10).pow(18));
+        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
+
+        try {
+            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: halfWeiSrcQty});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // make sure it does not revert when sending full amount
+        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+    });
+    it("should try to send eth to reserve and make sure default payable function throws", async function (){
+
+        let weiSrcQty = new BigNumber(10).pow(18); // 1 token
+        try {
+            await Helper.sendEtherWithPromise(accounts[8], reserve.address, weiSrcQty);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+    it("should try to trade but send from address other than network", async function (){
+
+        let weiSrcQty = new BigNumber(10).pow(18); // 1 token
+        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
+
+        try {
+            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty, from: accounts[3]});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // make sure it does not revert when sending from network (admin)
+        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty, from: admin});
+    });
+    it("should try to change network without being admin", async function (){
+
+        try {
+            await reserve.setKyberNetwork(admin, {from: accounts[2]});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // make sure it does not revert when doing it as admin)
+        await reserve.setKyberNetwork(admin, {from: admin});
+    });
+    it("should try to set otc without being admin", async function (){
+
+        try {
+            await reserve.setOtc(otc.address, {from: accounts[2]});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // make sure it does not revert when doing it as admin)
+        await reserve.setOtc(otc.address, {from: admin});
+    });
+    it("should try to set fee without being admin", async function (){
+
+        try {
+            await reserve.setFeeBps(feeBps, {from: accounts[2]});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // make sure it does not revert when doing it as admin)
+        await reserve.setFeeBps(feeBps, {from: admin});
     });
 });
