@@ -3,6 +3,7 @@ let ConversionRates = artifacts.require("./mockContracts/MockConversionRate.sol"
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 let TokenReverseSend = artifacts.require("./mockContracts/TokenReverseSend.sol");
 let Reserve = artifacts.require("./KyberReserve.sol");
+let MaliciousReserve = artifacts.require("../MaliciousReserve.sol");
 let Network = artifacts.require("./KyberNetwork.sol");
 let NetworkNoMaxDest = artifacts.require("./mockContracts/KyberNetworkNoMaxDest.sol");
 let MaliciousNetwork = artifacts.require("./mockContracts/MaliciousKyberNetwork.sol");
@@ -45,10 +46,14 @@ let walletId;
 //contracts
 let pricing1;
 let pricing2;
-let pricing3
+let pricing3;
+let pricing4;
+
 let reserve1;
 let reserve2;
 let reserve3;
+let reserve4Mal;
+
 let whiteList;
 let expectedRate;
 let network;
@@ -71,6 +76,8 @@ let tokens = [];
 let tokenAdd = [];
 let tokenDecimals = [];
 let uniqueToken;
+let tokenForMal;
+let scammer;
 
 // imbalance data
 let minimalRecordResolution = 2; //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
@@ -131,6 +138,7 @@ contract('KyberNetworkProxy', function(accounts) {
         user2 = accounts[5];
         walletId = accounts[6];
         walletForToken = accounts[7];
+        scammer = accounts[8];
 
         currentBlock = priceUpdateBlock = await Helper.getCurrentBlock();
 
@@ -139,11 +147,13 @@ contract('KyberNetworkProxy', function(accounts) {
         pricing1 = await ConversionRates.new(admin, {});
         pricing2 = await ConversionRates.new(admin, {});
         pricing3 = await ConversionRates.new(admin, {});
+        pricing4 = await ConversionRates.new(admin, {});
 
         //set pricing general parameters
         await pricing1.setValidRateDurationInBlocks(validRateDurationInBlocks);
         await pricing2.setValidRateDurationInBlocks(validRateDurationInBlocks);
         await pricing3.setValidRateDurationInBlocks(validRateDurationInBlocks);
+        await pricing4.setValidRateDurationInBlocks(validRateDurationInBlocks);
 
         //create and add token addresses...
         for (let i = 0; i < numTokens; ++i) {
@@ -171,12 +181,19 @@ contract('KyberNetworkProxy', function(accounts) {
         await pricing3.setTokenControlInfo(uniqueToken.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
         await pricing3.enableTokenTrade(uniqueToken.address);
 
+        tokenForMal = await TestToken.new("ForMal", "mal", 18);
+        await pricing4.addToken(tokenForMal.address);
+        await pricing4.setTokenControlInfo(tokenForMal.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
+        await pricing4.enableTokenTrade(tokenForMal.address);
+
         await pricing1.addOperator(operator);
         await pricing1.addAlerter(alerter);
         await pricing2.addOperator(operator);
         await pricing2.addAlerter(alerter);
         await pricing3.addOperator(operator);
         await pricing3.addAlerter(alerter);
+        await pricing4.addOperator(operator);
+        await pricing4.addAlerter(alerter);
         //        console.log(result.logs[0].args);
     });
 
@@ -219,6 +236,13 @@ contract('KyberNetworkProxy', function(accounts) {
         let baseSellUnique = [precisionUnits.div(18).valueOf()];
 //        log(uniqueAddArr + "  " + baseBuyUnique + "  " + baseSellUnique)
         await pricing3.setBaseRate(uniqueAddArr, baseBuyUnique, baseSellUnique, buys, sells, currentBlock, indices, {from: operator});
+
+        uniqueAddArr = [tokenForMal.address];
+        baseBuyUnique = [precisionUnits.mul(2).valueOf()];
+        baseSellUnique = [precisionUnits.div(2).valueOf()];
+//        log(uniqueAddArr + "  " + baseBuyUnique + "  " + baseSellUnique)
+        await pricing4.setBaseRate(uniqueAddArr, baseBuyUnique, baseSellUnique, buys, sells, currentBlock, indices, {from: operator});
+
         //set compact data
         compactBuyArr = [0, 0, 0, 0, 0, 06, 07, 08, 09, 1, 0, 11, 12, 13, 14];
         let compactBuyHex = Helper.bytesToHex(compactBuyArr);
@@ -236,6 +260,7 @@ contract('KyberNetworkProxy', function(accounts) {
         await pricing1.setCompactData(buys, sells, currentBlock, indices, {from: operator});
         await pricing2.setCompactData(buys, sells, currentBlock, indices, {from: operator});
         await pricing3.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        await pricing4.setCompactData(buys, sells, currentBlock, indices, {from: operator});
 
         //all start with same step functions.
         let zeroArr = [0];
@@ -248,6 +273,9 @@ contract('KyberNetworkProxy', function(accounts) {
 
         await pricing3.setQtyStepFunction(uniqueToken.address, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
         await pricing3.setImbalanceStepFunction(uniqueToken.address, imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+
+        await pricing4.setQtyStepFunction(tokenForMal.address, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+        await pricing4.setImbalanceStepFunction(tokenForMal.address, imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
     });
 
     it("should init network and reserves and set all reserve data including balances", async function () {
@@ -257,27 +285,33 @@ contract('KyberNetworkProxy', function(accounts) {
         reserve1 = await Reserve.new(network.address, pricing1.address, admin);
         reserve2 = await Reserve.new(network.address, pricing2.address, admin);
         reserve3 = await Reserve.new(network.address, pricing3.address, admin);
+        reserve4Mal = await MaliciousReserve.new(network.address, pricing4.address, admin, );
 
         await pricing1.setReserveAddress(reserve1.address);
         await pricing2.setReserveAddress(reserve2.address);
         await pricing3.setReserveAddress(reserve3.address);
+        await pricing4.setReserveAddress(reserve4Mal.address);
 
         await reserve1.addAlerter(alerter);
         await reserve2.addAlerter(alerter);
         await reserve3.addAlerter(alerter);
+        await reserve4Mal.addAlerter(alerter);
 
         for (i = 0; i < numTokens; ++i) {
             await reserve1.approveWithdrawAddress(tokenAdd[i], accounts[0], true);
             await reserve2.approveWithdrawAddress(tokenAdd[i], accounts[0], true);
         }
         await reserve3.approveWithdrawAddress(uniqueToken.address, accounts[0], true);
+        await reserve4Mal.approveWithdrawAddress(tokenForMal.address, accounts[0], true);
 
         //set reserve balance. 10**18 wei ether + per token 10**18 wei ether value according to base rate.
         let reserveEtherInit = (new BigNumber(10)).pow(19);
         await Helper.sendEtherWithPromise(accounts[8], reserve1.address, reserveEtherInit);
         await Helper.sendEtherWithPromise(accounts[9], reserve2.address, reserveEtherInit);
         await Helper.sendEtherWithPromise(accounts[6], reserve3.address, reserveEtherInit);
+        await Helper.sendEtherWithPromise(accounts[6], reserve4Mal.address, (reserveEtherInit.div(10)));
         await uniqueToken.transfer(reserve3.address, 1000000000000);
+        await tokenForMal.transfer(reserve4Mal.address, 1000000000000);
 
         let balance = await Helper.getBalancePromise(reserve1.address);
         expectedReserve1BalanceWei = new BigNumber (balance.valueOf());
@@ -321,12 +355,14 @@ contract('KyberNetworkProxy', function(accounts) {
         // add reserves
         await network.addReserve(reserve1.address, true);
         await network.addReserve(reserve2.address, true);
+        await network.addReserve(reserve4Mal.address, true);
 
         networkProxy = await NetworkProxy.new(admin);
 
         await network.setKyberProxy(networkProxy.address);
 
         await networkProxy.setKyberNetworkContract(network.address);
+        await reserve4Mal.setKyberProxy(networkProxy.address);
 
         //set contracts
         feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address);
@@ -350,6 +386,8 @@ contract('KyberNetworkProxy', function(accounts) {
             await network.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true);
             await network.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true);
         }
+
+        await network.listPairForReserve(reserve4Mal.address, tokenForMal.address, true, true, true);
     });
 
     it("should disable 1 reserve. perform buy and check: balances changed as expected.", async function () {
@@ -1878,6 +1916,40 @@ contract('KyberNetworkProxy', function(accounts) {
         await pricing1.enableTokenTrade(tokenAdd[tokenDestInd]);
     });
 
+    it("verify trade is reverted when malicious reserve tries recursive call = tries to call kyber trade function.", async function () {
+
+        await reserve4Mal.setDestAddress(scammer);
+        let rxScammer = await reserve4Mal.scammer();
+        assert.equal(rxScammer.valueOf(), scammer);
+
+        let scamTokenn = tokens[1];
+        await reserve4Mal.setDestToken(scamTokenn.address);
+        let rxToken = await reserve4Mal.scamToken();
+        assert.equal(rxToken, scamTokenn.address);
+
+        let amountWei = 330;
+
+        //first see we have rates
+        let buyRate = await networkProxy.getExpectedRate(ethAddress, tokenForMal.address, amountWei);
+        assert(buyRate[0] != 0);
+        assert(buyRate[1] != 0);
+
+        //test trade from malicious
+        let balanceBefore = await scamTokenn.balanceOf(scammer);
+        await reserve4Mal.doTrade();
+
+        let balanceAfter = await scamTokenn.balanceOf(scammer);
+        assert(balanceAfter > balanceBefore);
+
+        //see trade ether to token reverts
+        try {
+            await networkProxy.trade(ethAddress, amountWei, tokenForMal.address, user2, 50000,
+                         buyRate[1].valueOf(), walletId, {from:user1, value:amountWei});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
+        }
+    });
 
     it("should verify revert when token to token trade with same src and dest token.", async function () {
         let tokenSrcInd = 1;

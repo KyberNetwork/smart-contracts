@@ -15,7 +15,8 @@ import "./FeeBurnerInterface.sol";
 /// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
-    uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
+    uint public negligibleRateDiff = 10; //
+    uint public entranceCounter = 1;       // to block function re-entrance
     KyberReserveInterface[] public reserves;
     mapping(address=>bool) public isReserve;
     WhiteListInterface public whiteListContract;
@@ -74,6 +75,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         require(hint.length == 0);
         require(msg.sender == kyberNetworkProxyContract);
 
+        uint localCounter = ++entranceCounter;
+
         TradeInput memory tradeInput;
 
         tradeInput.trader = trader;
@@ -86,7 +89,11 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         tradeInput.walletId = walletId;
         tradeInput.hint = hint;
 
-        return trade(tradeInput);
+        uint actualDestAmount = trade(tradeInput);
+
+        // block function re-entrance.
+        require(localCounter == entranceCounter);
+        return actualDestAmount;
     }
 
     event AddReserveToNetwork(KyberReserveInterface reserve, bool add);
@@ -374,7 +381,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         require(validateTradeInput(tradeInput.src, tradeInput.srcAmount, tradeInput.dest, tradeInput.destAddress));
 
         BestRateResult memory rateResult =
-        findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount);
+            findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount);
 
         require(rateResult.rate > 0);
         require(rateResult.rate < MAX_RATE);
