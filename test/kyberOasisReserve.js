@@ -250,7 +250,7 @@ contract('KyberOasisReserve', function (accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     });
-    it("should try getconversionrate for without eth as src or dest and see it reverts", async function (){
+    it("should try getconversionrate without eth as src or dest and see it reverts", async function (){
 
         let weiSrcQty = new BigNumber(10).pow(18); // 1 token
         let buyRate = await reserve.getConversionRate(myToken.address, myToken.address, weiSrcQty, 0);

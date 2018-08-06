@@ -17,8 +17,9 @@ contract MockOtc {
     function() public payable {}
 
     function sellAllAmount(ERC20 payGem, uint payAmt, ERC20 buyGem, uint minFillAmount)
-    public
-    returns (uint fillAmount) {
+        public
+        returns (uint fillAmount)
+    {
 
         minFillAmount;
 
@@ -28,8 +29,9 @@ contract MockOtc {
     }
 
     function getBuyAmount(ERC20 buyGem, ERC20 payGem, uint payAmt)
-    public view
-    returns (uint fillAmount) {
+        public view
+        returns (uint fillAmount)
+    {
 
         buyGem;
 

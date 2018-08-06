@@ -37,7 +37,9 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         ERC20 _tradeToken,
         address _admin,
         uint _feeBps
-    ) public {
+    )
+        public
+    {
         require(_admin != address(0));
         require(_kyberNetwork != address(0));
         require(_otc != address(0));

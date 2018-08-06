@@ -41,44 +41,44 @@ let chainId = chainIdInput;
 console.log("from",sender);
 
 async function sendTx(txObject) {
-  const txTo = txObject._parent.options.address;
+    const txTo = txObject._parent.options.address;
 
-  let gasLimit;
-  try {
-    gasLimit = await txObject.estimateGas();
-  }
-  catch (e) {
-    gasLimit = 500 * 1000;
-  }
+    let gasLimit;
+    try {
+        gasLimit = await txObject.estimateGas();
+    }
+    catch (e) {
+        gasLimit = 500 * 1000;
+    }
 
-  if(txTo !== null) {
-    gasLimit = 500 * 1000;
-  }
+    if(txTo !== null) {
+        gasLimit = 500 * 1000;
+    }
 
     gasLimit *= 1.2;
     gasLimit -= gasLimit % 1;
 
-  const txData = txObject.encodeABI();
-  const txFrom = account.address;
-  const txKey = account.privateKey;
+    const txData = txObject.encodeABI();
+    const txFrom = account.address;
+    const txKey = account.privateKey;
 
-  const tx = {
-    from : txFrom,
-    to : txTo,
-    nonce : nonce,
-    data : txData,
-    gas : gasLimit,
-    chainId,
-    gasPrice
-  };
+    const tx = {
+        from : txFrom,
+        to : txTo,
+        nonce : nonce,
+        data : txData,
+        gas : gasLimit,
+        chainId,
+        gasPrice
+    };
 
-  const signedTx = await web3.eth.accounts.signTransaction(tx, txKey);
-  nonce++;
-  // don't wait for confirmation
-  signedTxs.push(signedTx.rawTransaction)
-  if (!dontSendTx) {
-    web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
-  }
+    const signedTx = await web3.eth.accounts.signTransaction(tx, txKey);
+    nonce++;
+    // don't wait for confirmation
+    signedTxs.push(signedTx.rawTransaction)
+    if (!dontSendTx) {
+        web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
+    } 
 }
 
 async function deployContract(solcOutput, contractName, ctorArgs) {
@@ -105,13 +105,13 @@ const oasisContractPath = path.join(__dirname, "../contracts/oasisContracts/");
 
 
 const input = {
-  "PermissionGroups.sol" : fs.readFileSync(contractPath + 'PermissionGroups.sol', 'utf8'),
-  "ERC20Interface.sol" : fs.readFileSync(contractPath + 'ERC20Interface.sol', 'utf8'),
-  "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
-  "Utils.sol" : fs.readFileSync(contractPath + 'Utils.sol', 'utf8'),
-  "Utils2.sol" : fs.readFileSync(contractPath + 'Utils2.sol', 'utf8'),
-  "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
-  "KyberOasisReserve.sol" : fs.readFileSync(oasisContractPath + 'KyberOasisReserve.sol', 'utf8')
+    "PermissionGroups.sol" : fs.readFileSync(contractPath + 'PermissionGroups.sol', 'utf8'),
+    "ERC20Interface.sol" : fs.readFileSync(contractPath + 'ERC20Interface.sol', 'utf8'),
+    "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
+    "Utils.sol" : fs.readFileSync(contractPath + 'Utils.sol', 'utf8'),
+    "Utils2.sol" : fs.readFileSync(contractPath + 'Utils2.sol', 'utf8'),
+    "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
+    "KyberOasisReserve.sol" : fs.readFileSync(oasisContractPath + 'KyberOasisReserve.sol', 'utf8')
 };
 
 
@@ -159,15 +159,15 @@ function sleep(ms){
 }
 
 async function waitForEth() {
-  while(true) {
-    const balance = await web3.eth.getBalance(sender);
-    console.log("waiting for balance to account " + sender);
-    if(balance.toString() !== "0") {
-      console.log("received " + balance.toString() + " wei");
-      return;
+    while(true) {
+        const balance = await web3.eth.getBalance(sender);
+        console.log("waiting for balance to account " + sender);
+        if(balance.toString() !== "0") {
+            console.log("received " + balance.toString() + " wei");
+            return;
+        }
+        else await sleep(10000)
     }
-    else await sleep(10000)
-  }
 }
 
 main();
