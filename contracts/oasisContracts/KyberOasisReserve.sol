@@ -8,7 +8,6 @@ import "../KyberReserveInterface.sol";
 
 contract OtcInterface {
     function getOffer(uint id) public constant returns (uint, ERC20, uint, ERC20);
-    function getBuyAmount(ERC20 buyGem, ERC20 payGem, uint payAmt) public constant returns (uint fillAmt);
     function sellAllAmount(ERC20 payGem, uint payAmt, ERC20 buyGem, uint minFillAmount) public returns (uint fillAmt);
     function getBestOffer(ERC20 sellGem, ERC20 buyGem) public constant returns(uint);
 }
@@ -157,11 +156,11 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
     function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
         uint  rate;
-        uint  destQty;
         uint  actualSrcQty;
         ERC20 wrappedSrc;
         ERC20 wrappedDest;
         uint  bestOfferId;
+        uint  bestOfferSrcQty;
         uint  bestOfferDestQty;
 
         blockNumber;
@@ -187,18 +186,14 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
             return 0;
         }
 
-        destQty = otc.getBuyAmount(wrappedDest, wrappedSrc, actualSrcQty);
+        bestOfferId = otc.getBestOffer(wrappedSrc, wrappedDest);
+        (bestOfferSrcQty, , bestOfferDestQty,) = otc.getOffer(bestOfferId);
 
         // make sure to take only first level of order book to avoid gas inflation.
-        bestOfferId = otc.getBestOffer(wrappedSrc, wrappedDest);
-        (, , bestOfferDestQty,) = otc.getOffer(bestOfferId);
-        if (destQty > bestOfferDestQty) {
-            return 0;
-        }
+        if (actualSrcQty > bestOfferSrcQty) return 0;
 
-        rate = calcRateFromQty(actualSrcQty, valueAfterReducingFee(destQty), COMMON_DECIMALS, COMMON_DECIMALS);
-
-        return rate;
+        rate = calcRateFromQty(bestOfferSrcQty, bestOfferDestQty, COMMON_DECIMALS, COMMON_DECIMALS);
+        return valueAfterReducingFee(rate);
     }
 
     function doTrade(
