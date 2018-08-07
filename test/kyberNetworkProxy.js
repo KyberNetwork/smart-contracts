@@ -1936,12 +1936,19 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //test trade from malicious
         let balanceBefore = await scamTokenn.balanceOf(scammer);
+        //here test the internal trade in malicious is valid
         await reserve4Mal.doTrade();
 
         let balanceAfter = await scamTokenn.balanceOf(scammer);
         assert(balanceAfter > balanceBefore);
 
-        //see trade ether to token reverts
+        //see trade success when numRecursive is 0
+        await reserve4Mal.setNumRecursive(0);
+        await networkProxy.trade(ethAddress, amountWei, tokenForMal.address, user2, 50000, buyRate[1].valueOf(), walletId, {from:user1, value:amountWei});
+
+        //see trade ether to token reverts when num recursive > 0
+        await reserve4Mal.setNumRecursive(1);
+
         try {
             await networkProxy.trade(ethAddress, amountWei, tokenForMal.address, user2, 50000,
                          buyRate[1].valueOf(), walletId, {from:user1, value:amountWei});

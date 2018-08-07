@@ -69,5 +69,9 @@ contract MaliciousReserve is KyberReserve {
     function setDestToken (ERC20 _token) public {
         scamToken = _token;
     }
+
+    function setNumRecursive(uint num)  public {
+        numRecursive = num;
+    }
 }
 

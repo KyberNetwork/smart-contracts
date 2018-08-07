@@ -11,12 +11,39 @@ import "./ExpectedRateInterface.sol";
 import "./FeeBurnerInterface.sol";
 
 
+/**
+ * @title Helps contracts guard against reentrancy attacks.
+ * @dev If you mark a function `nonReentrant`, you should also
+ * mark it `external`.
+ */
+contract ReentrancyGuard {
+
+    /// @dev counter to allow mutex lock with only one SSTORE operation
+    uint256 private guardCounter = 1;
+
+    /**
+     * @dev Prevents a contract from calling itself, directly or indirectly.
+     * If you mark a function `nonReentrant`, you should also
+     * mark it `external`. Calling one `nonReentrant` function from
+     * another is not supported. Instead, you can implement a
+     * `private` function doing the actual work, and an `external`
+     * wrapper marked as `nonReentrant`.
+     */
+    modifier nonReentrant() {
+        guardCounter += 1;
+        uint256 localCounter = guardCounter;
+        _;
+        require(localCounter == guardCounter);
+    }
+
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
-contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
+contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, ReentrancyGuard {
 
-    uint public negligibleRateDiff = 10; //
-    uint public entranceCounter = 1;       // to block function re-entrance
+    uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
     KyberReserveInterface[] public reserves;
     mapping(address=>bool) public isReserve;
     WhiteListInterface public whiteListContract;
@@ -68,14 +95,13 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         address walletId,
         bytes hint
     )
-        public
+        nonReentrant
+        external
         payable
         returns(uint)
     {
         require(hint.length == 0);
         require(msg.sender == kyberNetworkProxyContract);
-
-        uint localCounter = ++entranceCounter;
 
         TradeInput memory tradeInput;
 
@@ -91,8 +117,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
         uint actualDestAmount = trade(tradeInput);
 
-        // block function re-entrance.
-        require(localCounter == entranceCounter);
         return actualDestAmount;
     }
 
@@ -381,7 +405,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         require(validateTradeInput(tradeInput.src, tradeInput.srcAmount, tradeInput.dest, tradeInput.destAddress));
 
         BestRateResult memory rateResult =
-            findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount);
+        findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount);
 
         require(rateResult.rate > 0);
         require(rateResult.rate < MAX_RATE);
