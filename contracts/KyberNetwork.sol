@@ -115,9 +115,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         tradeInput.walletId = walletId;
         tradeInput.hint = hint;
 
-        uint actualDestAmount = trade(tradeInput);
-
-        return actualDestAmount;
+        return trade(tradeInput);
     }
 
     event AddReserveToNetwork(KyberReserveInterface reserve, bool add);
