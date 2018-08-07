@@ -14,6 +14,7 @@ const feePercent = 0.25;
 const feeBps = feePercent * 100;
 const alternativeFeePercent = 0.13;
 const alternativeFeeBps = alternativeFeePercent * 100;
+const otcOfferWeiValue =  BigNumber(3).mul(BigNumber(10).pow(18))
 
 let admin;
 let myWethToken;
@@ -41,7 +42,7 @@ contract('KyberOasisReserve', function (accounts) {
         myToken = await TestToken.new("my token", "tok", 18);
 
         // create mock otc.
-        otc = await MockOtc.new(myWethToken.address, daisForEth);
+        otc = await MockOtc.new(myWethToken.address, myToken.address, daisForEth);
 
         // move eth to the otc
         oasisWeiInit = (new BigNumber(10)).pow(19); // 10 eth
@@ -337,5 +338,24 @@ contract('KyberOasisReserve', function (accounts) {
 
         // make sure it does not revert when doing it as admin)
         await reserve.setFeeBps(feeBps, {from: admin});
+    });
+    it("verify that cannot get buy rate when exceeding order book first level", async function (){
+
+        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, otcOfferWeiValue, 0);
+        assert.notEqual(buyRate, 0, "buy rate should not be 0");
+
+        let exceedingOtcOfferWeiValue =  otcOfferWeiValue.mul(1.1);
+        buyRate = await reserve.getConversionRate(ethAddress, myToken.address, exceedingOtcOfferWeiValue, 0);
+        assert.equal(buyRate, 0, "buy rate should be 0");
+    });
+    it("verify that cannot get sell rate when exceeding order book first level", async function (){
+
+        let otcOfferTweiValue = otcOfferWeiValue.mul(daisForEth)
+        let sellRate = await reserve.getConversionRate(myToken.address, ethAddress, otcOfferTweiValue, 0);
+        assert.notEqual(sellRate, 0, "sell rate should not be 0");
+
+        let exceedingOtcOfferTweiValue =  otcOfferTweiValue.mul(1.1);
+        sellRate = await reserve.getConversionRate(myToken.address, ethAddress, exceedingOtcOfferTweiValue, 0);
+        assert.equal(sellRate, 0, "sell rate should be 0");
     });
 });
