@@ -2,12 +2,12 @@ pragma solidity 0.4.18;
 
 
 import "./Utils2.sol";
-import "./OrdersLinkedList.sol";
+import "./SortedLinkedList.sol";
 import "./KyberReserveInterface.sol";
 import "./FeeBurner.sol";
 
 
-contract PermissionLessReserve is OrdersLinkedList, KyberReserveInterface {
+contract PermissionLessReserve is SortedLinkedList, KyberReserveInterface {
 
     uint constant public MIN_ORDER_MAKE_VALUE_WEI = 2 * 10 ** 18;   // 2 Eth
     uint constant public MIN_ORDER_VALUE_WEI = 10 ** 18;            // 1 Eth

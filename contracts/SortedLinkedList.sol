@@ -4,7 +4,7 @@ pragma solidity 0.4.18;
 import "./Utils2.sol";
 
 
-contract OrdersLinkedList is Utils2 {
+contract SortedLinkedList is Utils2 {
 
     ///@dev using uint32 for order ID should be enough. 4,294,967,296 orders
     struct Order {
