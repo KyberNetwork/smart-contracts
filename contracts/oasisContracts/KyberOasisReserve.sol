@@ -160,8 +160,8 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         ERC20 wrappedSrc;
         ERC20 wrappedDest;
         uint  bestOfferId;
-        uint  bestOfferSrcQty;
-        uint  bestOfferDestQty;
+        uint  offerPayAmt;
+        uint  offerBuyAmt;
 
         blockNumber;
 
@@ -186,13 +186,14 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
             return 0;
         }
 
-        bestOfferId = otc.getBestOffer(wrappedSrc, wrappedDest);
-        (bestOfferSrcQty, , bestOfferDestQty,) = otc.getOffer(bestOfferId);
+        // getBestOffer's terminology is of offer maker, so their sellGem is our (the taker's) dest token.
+        bestOfferId = otc.getBestOffer(wrappedDest, wrappedSrc);
+        (offerPayAmt, , offerBuyAmt,) = otc.getOffer(bestOfferId);
 
         // make sure to take only first level of order book to avoid gas inflation.
-        if (actualSrcQty > bestOfferSrcQty) return 0;
+        if (actualSrcQty > offerBuyAmt) return 0;
 
-        rate = calcRateFromQty(bestOfferSrcQty, bestOfferDestQty, COMMON_DECIMALS, COMMON_DECIMALS);
+        rate = calcRateFromQty(offerBuyAmt, offerPayAmt, COMMON_DECIMALS, COMMON_DECIMALS);
         return valueAfterReducingFee(rate);
     }
 

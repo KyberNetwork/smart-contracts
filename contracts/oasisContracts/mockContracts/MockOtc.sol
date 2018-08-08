@@ -7,8 +7,8 @@ import "../../ERC20Interface.sol";
 contract MockOtc {
 
     uint constant internal OFFER_WEI_VALUE = 3 * (10**18);
-    uint constant internal PAY_WETH_OFFER_ID = 0;
-    uint constant internal PAY_TOKEN_OFFER_ID = 1;
+    uint constant internal MAKER_PAYS_TOKEN_OFFER_ID = 0;
+    uint constant internal MAKER_PAYS_WETH_OFFER_ID = 1;
     ERC20 public wethToken;
     ERC20 public tradeToken;
     uint public tokensForPayEth;
@@ -32,22 +32,23 @@ contract MockOtc {
         OfferInfo memory payWethInfo;
         OfferInfo memory payTokenInfo;
 
-        // create 1 buy order and 1 sell order. 
-        payWethInfo.payAmt = OFFER_WEI_VALUE;
-        payWethInfo.payGem = wethToken;
-        payWethInfo.buyAmt = OFFER_WEI_VALUE * _tokensForPayEth;
-        payWethInfo.buyGem = tradeToken;
+        // create 1 order where the maker buys weth and pays tokens.
+        payWethInfo.payAmt = OFFER_WEI_VALUE * _tokensForPayEth;
+        payWethInfo.payGem = tradeToken;
+        payWethInfo.buyAmt = OFFER_WEI_VALUE;
+        payWethInfo.buyGem = wethToken;
         payWethInfo.owner = 0;
         payWethInfo.timestamp = 0;
-        offers[PAY_WETH_OFFER_ID] = payWethInfo;
+        offers[MAKER_PAYS_TOKEN_OFFER_ID] = payWethInfo;
 
-        payTokenInfo.payAmt = OFFER_WEI_VALUE * _tokensForPayEth;
-        payTokenInfo.payGem = tradeToken;
-        payTokenInfo.buyAmt = OFFER_WEI_VALUE;
-        payTokenInfo.buyGem = wethToken;
+        // create 1 order where the maker buys tokens and pays weth.
+        payTokenInfo.payAmt = OFFER_WEI_VALUE;
+        payTokenInfo.payGem = wethToken;
+        payTokenInfo.buyAmt = OFFER_WEI_VALUE * _tokensForPayEth;
+        payTokenInfo.buyGem = tradeToken;
         payTokenInfo.owner = 0;
         payTokenInfo.timestamp = 0;
-        offers[PAY_TOKEN_OFFER_ID] = payTokenInfo;
+        offers[MAKER_PAYS_WETH_OFFER_ID] = payTokenInfo;
     }
 
     function() public payable {}
@@ -62,9 +63,11 @@ contract MockOtc {
         buyGem;
 
         if (sellGem == wethToken) {
-            return PAY_WETH_OFFER_ID;
+            // maker pays weth
+            return MAKER_PAYS_WETH_OFFER_ID;
         } else {
-            return PAY_TOKEN_OFFER_ID;
+            // maker pays tokens
+            return MAKER_PAYS_TOKEN_OFFER_ID;
         }
     }
 
@@ -73,24 +76,18 @@ contract MockOtc {
         returns (uint fillAmount)
     {
 
-        minFillAmount;
-
-        fillAmount = getBuyAmount(buyGem, payGem, payAmt);
-        require(payGem.transferFrom(msg.sender, this, payAmt));
-        require(buyGem.transfer(msg.sender, fillAmount));
-    }
-
-    function getBuyAmount(ERC20 buyGem, ERC20 payGem, uint payAmt)
-        public view
-        returns (uint fillAmount)
-    {
-
-        buyGem;
 
         if (payGem == wethToken) {
-            return payAmt * offers[PAY_WETH_OFFER_ID].buyAmt / offers[PAY_WETH_OFFER_ID].payAmt;
+            // taker pays weth, look for offer where maker pays tokens
+            fillAmount = payAmt * offers[MAKER_PAYS_TOKEN_OFFER_ID].payAmt / offers[MAKER_PAYS_TOKEN_OFFER_ID].buyAmt;
         } else {
-            return payAmt * offers[PAY_TOKEN_OFFER_ID].buyAmt / offers[PAY_TOKEN_OFFER_ID].payAmt;
+            // taker pays tokens, look for offer where maker pays weth
+            fillAmount = payAmt * offers[MAKER_PAYS_WETH_OFFER_ID].payAmt / offers[MAKER_PAYS_WETH_OFFER_ID].buyAmt;
         }
+
+        require(minFillAmount <= fillAmount);
+
+        require(payGem.transferFrom(msg.sender, this, payAmt));
+        require(buyGem.transfer(msg.sender, fillAmount));
     }
 }
