@@ -34,26 +34,7 @@ contract OrdersLinkedList is Utils2 {
         checkedRate > orderRate ? true : false;
     }
 
-    function insertMakeOrder (uint32 newOrderID, uint32 hintPrevOrder, uint32 head) internal {
-
-        if (hintPrevOrder != 0) {
-            require(verifyOrderPosition(hintPrevOrder, newOrderID));
-            insertOrder(newOrderID, hintPrevOrder);
-        }
-
-        uint32 currentOrder = head;
-
-        while (orders[currentOrder].nextOrderID != head) {
-
-            if (isOrderBetterRate(currentOrder, newOrderID)) break;
-
-            currentOrder = orders[currentOrder].nextOrderID;
-        }
-
-        insertOrder(currentOrder, newOrderID);
-    }
-
-    function removeMakeOrder(uint32 orderID) internal {
+    function removeOrder(uint32 orderID) internal {
         orders[orders[orderID].nextOrderID].prevOrderID = orders[orderID].prevOrderID;
         orders[orders[orderID].prevOrderID].nextOrderID = orders[orderID].nextOrderID;
     }

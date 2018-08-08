@@ -39,12 +39,14 @@ contract PermissionLessReserve is OrdersLinkedList, KyberReserveInterface {
     ERC20 public kncToken = ERC20(address(0xdd974D5C2e2928deA5F71b9825b8b646686BD200));
     uint public kncStakePerEtherBPS = 6000; //for validating orders
 
-    function PermissionLessReserve(address _kyberNetwork, address _admin) public {
+    function PermissionLessReserve(address _kyberNetwork, address _admin, ERC20 knc) public {
         require(_kyberNetwork != address(0));
         require(_admin != address(0));
+        require(knc != address(0));
 
         admin = _admin;
         kyberNetwork = _kyberNetwork;
+        kncToken = knc;
         tradeEnabled = true;
     }
 
@@ -133,7 +135,7 @@ contract PermissionLessReserve is OrdersLinkedList, KyberReserveInterface {
                 exchangedQty += order.exchangeAmount;
                 remainingSrcQty -= order.payAmount;
                 require(takeOrder(order.maker, srcToken, destToken, order.payAmount, order.exchangeAmount));
-                removeMakeOrder(orderID);
+                removeOrder(orderID);
             } else {
                 uint128 partialQty = order.exchangeAmount * remainingSrcQty / order.payAmount;
                 exchangedQty += partialQty;
@@ -243,6 +245,25 @@ contract PermissionLessReserve is OrdersLinkedList, KyberReserveInterface {
         return true;
     }
 
+    function insertMakeOrder (uint32 newOrderID, uint32 hintPrevOrder, uint32 head) internal {
+
+        if (hintPrevOrder != 0) {
+            require(verifyOrderPosition(hintPrevOrder, newOrderID));
+            insertOrder(newOrderID, hintPrevOrder);
+        }
+
+        uint32 currentOrder = head;
+
+        while (!isLastOrder(currentOrder)) {
+
+            if (isOrderBetterRate(currentOrder, newOrderID)) break;
+
+            currentOrder = orders[currentOrder].nextOrderID;
+        }
+
+        insertOrder(currentOrder, newOrderID);
+    }
+
     function cancelOrder(address maker, bool isEthToToken, ERC20 token, uint32 orderID) public returns(bool)
     {
         require(maker == msg.sender);
@@ -261,7 +282,7 @@ contract PermissionLessReserve is OrdersLinkedList, KyberReserveInterface {
 
         require(releaseOrderStakes(maker, calcKncStake(weiAmount), 0));
 
-        removeMakeOrder(orderID);
+        removeOrder(orderID);
         releaseOrderID(orderID);
 
         return true;
@@ -397,6 +418,18 @@ contract PermissionLessReserve is OrdersLinkedList, KyberReserveInterface {
         return true;
     }
 
+    function getMakerFreeFunds(address maker, ERC20 token) public view returns (uint) {
+        return (remainingFundsPerToken[keccak256(maker, token)]);
+    }
+
+    function getMakerFreeKNC(address maker) public view returns (uint) {
+        return (uint(makerKncFunds[maker].freeKnc));
+    }
+
+    function getMakerStakedKNC(address maker) public view returns (uint) {
+        return (uint(makerKncFunds[maker].kncOnStake));
+    }
+
     ///@dev funds are valid only when required knc amount can be staked for this order.
     function validateOrder(address maker, bool isEthToToken, ERC20 token, uint128 payAmount, uint128 exchangeAmount)
         internal returns(bool)
@@ -445,7 +478,7 @@ contract PermissionLessReserve is OrdersLinkedList, KyberReserveInterface {
             // remaining order amount too small. remove order and set remaining funds as free funds
             remainingFundsPerToken[keccak256(order.maker, dest)] += order.exchangeAmount;
             releaseOrderStakes(order.maker, remainingWeiValue, 0);
-            removeMakeOrder(orderID);
+            removeOrder(orderID);
         } else {
             // update order values in storage
             orders[orderID] = order;
