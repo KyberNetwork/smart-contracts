@@ -34,10 +34,29 @@ contract SortedLinkedList is Utils2 {
     }
 
     function add(uint128 srcAmount, uint128 dstAmount)
-    public
-    returns(uint64)
+        public
+        returns(uint64)
     {
         uint64 prevId = findPrevOrderId(srcAmount, dstAmount);
+        return addAfterValidId(srcAmount, dstAmount, prevId);
+    }
+
+    function addAfterId(uint128 srcAmount, uint128 dstAmount, uint64 prevId)
+        public
+        returns(uint64)
+    {
+        validatePrevId(srcAmount, dstAmount, prevId);
+        return addAfterValidId(srcAmount, dstAmount, prevId);
+    }
+
+    function addAfterValidId(
+        uint128 srcAmount,
+        uint128 dstAmount,
+        uint64 prevId
+    )
+        public
+        returns(uint64)
+    {
         Order storage prevOrder = orders[prevId];
 
         // Add new order
@@ -64,16 +83,15 @@ contract SortedLinkedList is Utils2 {
     }
 
     function getOrderDetails(uint64 orderId)
-    public
-    view
-    returns
-    (
-        address _maker,
-        uint128 _srcAmount,
-        uint128 _dstAmount,
-        uint64 _prevId,
-        uint64 _nextId
-    )
+        public
+        view
+        returns (
+            address _maker,
+            uint128 _srcAmount,
+            uint128 _dstAmount,
+            uint64 _prevId,
+            uint64 _nextId
+        )
     {
         Order storage order = orders[orderId];
         return (
@@ -86,17 +104,17 @@ contract SortedLinkedList is Utils2 {
     }
 
     function calculateOrderSortKey(uint128 srcAmount, uint128 dstAmount)
-    public
-    pure
-    returns(uint)
+        public
+        pure
+        returns(uint)
     {
         return dstAmount * PRECISION / srcAmount;
     }
 
     function findPrevOrderId(uint128 srcAmount, uint128 dstAmount)
-    public
-    view
-    returns(uint64)
+        public
+        view
+        returns(uint64)
     {
         uint newOrderKey = calculateOrderSortKey(srcAmount, dstAmount);
 
@@ -114,6 +132,23 @@ contract SortedLinkedList is Utils2 {
         return currId;
     }
 
-    // XXX: remove
-    // event DEBUG(uint64 x);
+    function validatePrevId(
+        uint128 srcAmount,
+        uint128 dstAmount,
+        uint64 prevId
+    )
+        public view
+    {
+        // Make sure prev is not the tail.
+        require(prevId != TAIL_ID);
+
+        // Make sure such order exists in mapping.
+        Order storage prev = orders[prevId];
+        require(prev.prevId != 0 || prev.nextId != 0);
+
+        // Make sure that the new order should be after the provided prev id.
+        uint prevKey = calculateOrderSortKey(prev.srcAmount, prev.dstAmount);
+        uint key = calculateOrderSortKey(srcAmount, dstAmount);
+        require(prevKey > key);
+    }
 }
