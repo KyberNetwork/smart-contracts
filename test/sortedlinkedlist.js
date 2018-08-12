@@ -7,9 +7,6 @@ require("chai")
 
 const SortedLinkedList = artifacts.require("SortedLinkedList");
 
-// let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-// let precisionUnits = (new BigNumber(10).pow(18));
-
 contract('SortedLinkedList test', async (accounts) => {
 
     beforeEach('setup contract for each test', async () => {
@@ -85,8 +82,8 @@ contract('SortedLinkedList test', async (accounts) => {
     });
 
     it("should add two orders so that -> head <-> first <-> second <-> tail", async () => {
-        let id1 = await addOrderGetId(10 /* srcAmount */, 100 /* dstAmount */);
-        let id2 = await addOrderGetId(10 /* srcAmount */, 200 /* dstAmount */);
+        let id1 = await addOrderGetId(10 /* srcAmount */, 200 /* dstAmount */);
+        let id2 = await addOrderGetId(10 /* srcAmount */, 100 /* dstAmount */);
 
         let head = await getOrderById(await list.HEAD_ID());
         let order1 = await getOrderById(id1)
@@ -120,6 +117,151 @@ contract('SortedLinkedList test', async (accounts) => {
         // head <- better <- worse
         worse.prevId.should.be.bignumber.equal(better.id);
         better.prevId.should.be.bignumber.equal(head.id);
+    });
+
+    it("should calculate order sort key", async () => {
+        worse = await list.calculateOrderSortKey(
+            10 /* srcAmount */,
+            100 /* dstAmount */
+        );
+        better = await list.calculateOrderSortKey(
+            10 /* srcAmount */,
+            200 /* dstAmount */
+        );
+
+        better.should.be.bignumber.greaterThan(worse);
+    });
+
+    it("find order prev in empty list", async () => {
+        let srcAmount = 10;
+        let dstAmount = 100;
+        let prevId = await list.findPrevOrderId(srcAmount, dstAmount);
+
+        prevId.should.be.bignumber.equal(await list.HEAD_ID());
+    });
+
+    it("find order prev in list with one better order", async () => {
+        let betterId = await addOrderGetId(
+            10 /* srcAmount */,
+            200 /* dstAmount */
+        );
+
+        let srcAmount = 10;
+        let dstAmount = 100;
+        let prevId = await list.findPrevOrderId(srcAmount, dstAmount);
+
+        prevId.should.be.bignumber.equal(betterId);
+    });
+
+    it("find order prev in list with one worse order", async () => {
+        let worseId = await addOrderGetId(
+            10 /* srcAmount */,
+            100 /* dstAmount */
+        );
+
+        let srcAmount = 10;
+        let dstAmount = 200;
+        let prevId = await list.findPrevOrderId(srcAmount, dstAmount);
+
+        prevId.should.be.bignumber.equal(await list.HEAD_ID());
+    });
+
+    it("find order prev in list with a worse order and a better one", async () => {
+        let betterId = await addOrderGetId(
+            10 /* srcAmount */,
+            300 /* dstAmount */
+        );
+        let worseId = await addOrderGetId(
+            10 /* srcAmount */,
+            100 /* dstAmount */
+        );
+
+        let srcAmount = 10;
+        let dstAmount = 200;
+        let prevId = await list.findPrevOrderId(srcAmount, dstAmount);
+
+        prevId.should.be.bignumber.equal(betterId);
+    });
+
+    it("add order to an empty list", async () => {
+        let srcAmount = 10;
+        let dstAmount = 100;
+        let order = await addOrder(srcAmount, dstAmount);
+
+        let head = await getOrderById(await list.HEAD_ID());
+        head.nextId.should.be.bignumber.equal(order.id);
+        order.nextId.should.be.bignumber.equal(await list.TAIL_ID());
+        order.prevId.should.be.bignumber.equal(await list.HEAD_ID());
+    });
+
+    it("add order to list with one better order", async () => {
+        let betterId = await addOrderGetId(
+            10 /* srcAmount */,
+            200 /* dstAmount */
+        );
+
+        let srcAmount = 10;
+        let dstAmount = 100;
+        let order = await addOrder(srcAmount, dstAmount);
+
+        let head = await getOrderById(await list.HEAD_ID());
+        let better = await getOrderById(betterId);
+        // head -> better -> order -> tail
+        head.nextId.should.be.bignumber.equal(better.id);
+        better.nextId.should.be.bignumber.equal(order.id);
+        order.nextId.should.be.bignumber.equal(await list.TAIL_ID());
+        // head <- better <- order
+        order.prevId.should.be.bignumber.equal(better.id);
+        better.prevId.should.be.bignumber.equal(await list.HEAD_ID());
+    });
+
+    it("add order to list with one worse order", async () => {
+        let worseId = await addOrderGetId(
+            10 /* srcAmount */,
+            100 /* dstAmount */
+        );
+
+        let srcAmount = 10;
+        let dstAmount = 200;
+        let order = await addOrder(srcAmount, dstAmount);
+
+        let head = await getOrderById(await list.HEAD_ID());
+        let worse = await getOrderById(worseId);
+        // head -> order -> worse -> tail
+        head.nextId.should.be.bignumber.equal(order.id);
+        order.nextId.should.be.bignumber.equal(worse.id);
+        worse.nextId.should.be.bignumber.equal(await list.TAIL_ID());
+        // head <- order <- worse
+        worse.prevId.should.be.bignumber.equal(order.id);
+        order.prevId.should.be.bignumber.equal(await list.HEAD_ID());
+    });
+
+    it("add order to list with a worse order and a better one", async () => {
+        let worseId = await addOrderGetId(
+            10 /* srcAmount */,
+            100 /* dstAmount */
+        );
+        let betterId = await addOrderGetId(
+            10 /* srcAmount */,
+            300 /* dstAmount */
+        );
+
+        let srcAmount = 10;
+        let dstAmount = 200;
+        let order = await addOrder(srcAmount, dstAmount);
+
+        let head = await getOrderById(await list.HEAD_ID());
+        let better = await getOrderById(betterId);
+        let worse = await getOrderById(worseId);
+        // head -> better -> order -> worse -> tail
+        head.nextId.should.be.bignumber.equal(better.id);
+        better.nextId.should.be.bignumber.equal(order.id);
+        order.nextId.should.be.bignumber.equal(worse.id);
+        worse.nextId.should.be.bignumber.equal(await list.TAIL_ID());
+        // head <- better <- order <- worse
+        worse.prevId.should.be.bignumber.equal(order.id);
+        order.prevId.should.be.bignumber.equal(better.id);
+        better.prevId.should.be.bignumber.equal(await list.HEAD_ID());
     });
 
     // TODO: Add order after specified order
