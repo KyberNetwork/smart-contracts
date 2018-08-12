@@ -5,6 +5,8 @@ require("chai")
     .use(require('chai-bignumber')(BigNumber))
     .should()
 
+let Helper = require("./helper.js");
+
 const SortedLinkedList = artifacts.require("SortedLinkedList");
 
 contract('SortedLinkedList test', async (accounts) => {
@@ -264,7 +266,93 @@ contract('SortedLinkedList test', async (accounts) => {
         better.prevId.should.be.bignumber.equal(await list.HEAD_ID());
     });
 
-    // TODO: Add order after specified order
+    it("add order after a specified order id", async () => {
+        let worseId = await addOrderGetId(
+            10 /* srcAmount */,
+            100 /* dstAmount */
+        );
+        let betterId = await addOrderGetId(
+            10 /* srcAmount */,
+            300 /* dstAmount */
+        );
+
+        let srcAmount = 10;
+        let dstAmount = 200;
+        let order = await addOrderAfterId(srcAmount, dstAmount, betterId);
+
+        let head = await getOrderById(await list.HEAD_ID());
+        let better = await getOrderById(betterId);
+        let worse = await getOrderById(worseId);
+        // head -> better -> order -> worse -> tail
+        head.nextId.should.be.bignumber.equal(better.id);
+        better.nextId.should.be.bignumber.equal(order.id);
+        order.nextId.should.be.bignumber.equal(worse.id);
+        worse.nextId.should.be.bignumber.equal(await list.TAIL_ID());
+        // head <- better <- order <- worse
+        worse.prevId.should.be.bignumber.equal(order.id);
+        order.prevId.should.be.bignumber.equal(better.id);
+        better.prevId.should.be.bignumber.equal(await list.HEAD_ID());
+    });
+
+    it("should reject adding after invalid order id: non-existant", async () => {
+        // Calling locally so that the order will not be in fact added to the
+        // list and thus the id will be invalid.
+        let nonExistantPrevId = await list.add.call(
+            10 /* srcAmount */,
+            100 /* dstAmount */
+        );
+
+        try {
+            let order = await addOrderAfterId(
+                10 /* srcAmount */,
+                200 /* dstAmount */,
+                nonExistantPrevId
+            );
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(
+                Helper.isRevertErrorMessage(e),
+                "expected revert but got: " + e);
+        }
+    });
+
+    it("should reject adding after invalid order id: is TAIL", async () => {
+        try {
+            let order = await addOrderAfterId(
+                10 /* srcAmount */,
+                200 /* dstAmount */,
+                // TAIL is technically a non-existant order, as the ID used for
+                // it should not have an order in it, but the verification was
+                // added to make this requirement explicit.
+                await list.TAIL_ID()
+            );
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(
+                Helper.isRevertErrorMessage(e),
+                "expected revert but got: " + e);
+        }
+    });
+
+    it("should reject adding after invalid order id: bad ordering", async () => {
+        let worseId = await addOrderGetId(
+            10 /* srcAmount */,
+            100 /* dstAmount */
+        );
+
+        try {
+            let order = await addOrderAfterId(
+                10 /* srcAmount */,
+                100 /* dstAmount */,
+                worseId);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(
+                Helper.isRevertErrorMessage(e),
+                "expected revert but got: " + e);
+        }
+    });
+
     // TODO: Add an order as one user and check make from another user
     // TODO: Do not allow removing / updating HEAD
     // TODO: Only allow maker or admin to remove / update order
@@ -297,7 +385,23 @@ async function addOrderGetId(srcAmount, dstAmount, args = {}) {
     return orderId;
 }
 
+async function addOrderAfterIdGetId(srcAmount, dstAmount, prevId, args = {}) {
+    // "Calling" the contract's add function does not return the id value so
+    // we first run add.call() to perform the action without changing the state
+    // of the blockchain, then actually running add to make the changes.
+    let orderId = await list.addAfterId.call(
+        srcAmount, dstAmount, prevId, args);
+    await list.addAfterId(srcAmount, dstAmount, prevId, args);
+    return orderId;
+}
+
 async function addOrder(srcAmount, dstAmount, args = {}) {
     let orderId = await addOrderGetId(srcAmount, dstAmount, args);
+    return await getOrderById(orderId);
+}
+
+async function addOrderAfterId(srcAmount, dstAmount, prevId, args = {}) {
+    let orderId = await addOrderAfterIdGetId(
+            srcAmount, dstAmount, prevId, args);
     return await getOrderById(orderId);
 }
