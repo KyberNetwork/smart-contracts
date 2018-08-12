@@ -103,6 +103,30 @@ contract SortedLinkedList is Utils2 {
         );
     }
 
+    function removeById(uint64 orderId) public {
+        verifyCanRemoveOrderById(orderId);
+
+        // Remove link from list
+        Order storage order = orders[orderId];
+        orders[order.prevId].nextId = order.nextId;
+        orders[order.nextId].prevId = order.prevId;
+
+        // Remove from mapping
+        delete orders[orderId];
+    }
+
+    function verifyCanRemoveOrderById(uint64 orderId) public view {
+        require(orderId != HEAD_ID);
+
+        Order storage order = orders[orderId];
+
+        // Make sure such order exists in mapping.
+        require(order.prevId != 0 || order.nextId != 0);
+
+        // Make sure order maker is current user.
+        require(order.maker == msg.sender);
+    }
+
     function calculateOrderSortKey(uint128 srcAmount, uint128 dstAmount)
         public
         pure
@@ -142,8 +166,9 @@ contract SortedLinkedList is Utils2 {
         // Make sure prev is not the tail.
         require(prevId != TAIL_ID);
 
-        // Make sure such order exists in mapping.
         Order storage prev = orders[prevId];
+
+        // Make sure such order exists in mapping.
         require(prev.prevId != 0 || prev.nextId != 0);
 
         // Make sure that the new order should be after the provided prev id.
