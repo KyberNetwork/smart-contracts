@@ -371,6 +371,42 @@
       "internal use": true,
       "listed": true
     },
+    "MDS": {
+      "name": "MediShares Token",
+      "decimals": 18,
+      "address": "0x66186008C1050627F979d464eABb258860563dbE",
+      "minimalRecordResolution": "10000000000000000",
+      "internal use": false,
+      "listed": true
+    },
+    "LEND": {
+      "name": "EthLend",
+      "decimals": 18,
+      "address": "0x80fB784B7eD66730e8b1DBd9820aFD29931aab03",
+      "internal use": false,
+      "listed": true
+    },
+    "WINGS": {
+      "name": "WINGS",
+      "decimals": 18,
+      "address": "0x667088b212ce3d06a1b553a7221E1fD19000d9aF",
+      "internal use": false,
+      "listed": true
+    },
+    "MTL": {
+      "name": "Metal",
+      "decimals": 8,
+      "address": "0xF433089366899D83a9f26A773D59ec7eCF30355e",
+      "internal use": false,
+      "listed": true
+    },
+    "WABI": {
+      "name": "WaBi",
+      "decimals": 18,
+      "address": "0x286BDA1413a2Df81731D4930ce2F862a35A609fE",
+      "internal use": false,
+      "listed": true
+    },
     "ETH": {
       "name": "Ethereum",
       "decimals": 18,
@@ -451,7 +487,8 @@
       "alerter": []
     },
     "internal network": {
-      "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "admin": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
+      "pending admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
       "operator": [
         "0x8bc3da587def887b5c822105729ee1d6af05a5ca"
       ],
@@ -608,7 +645,7 @@
   "min expected rate slippage": 300,
   "KNC wallet": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
   "KNC to ETH rate": 450,
-  "tax fees bps": 2000,
+  "tax fees bps": 0,
   "tax wallet address": "0xc065900403f9ff07dfaecc0d08978c2e0dee1578",
   "valid duration block": 60,
   "reserve": "0x63825c174ab367968EC60f061753D3bbD36A0D8F",
