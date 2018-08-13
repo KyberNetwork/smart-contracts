@@ -115,11 +115,28 @@ contract SortedLinkedList is Utils2 {
         delete orders[orderId];
     }
 
-    // function updateById(uint64 orderId, uint128 srcAmount, uint128 dstAmount)
-    //     internal
-    //     {
-    //
-    // }
+    // The updated order id is returned following the update.
+    function update(uint64 orderId, uint128 srcAmount, uint128 dstAmount)
+        internal
+        returns(uint64)
+    {
+        removeById(orderId);
+        return add(srcAmount, dstAmount);
+    }
+
+    // The updated order id is returned following the update.
+    function updateWithPositionHint(
+        uint64 orderId,
+        uint128 srcAmount,
+        uint128 dstAmount,
+        uint64 prevId
+    )
+        internal
+        returns(uint64)
+    {
+        removeById(orderId);
+        return addAfterId(srcAmount, dstAmount, prevId);
+    }
 
     function verifyCanRemoveOrderById(uint64 orderId) private view {
         require(orderId != HEAD_ID);

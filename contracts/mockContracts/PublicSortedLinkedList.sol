@@ -35,4 +35,28 @@ contract PublicSortedLinkedList is SortedLinkedList {
     function removeById_p(uint64 orderId) public {
         return super.removeById(orderId);
     }
+
+    function update_p(uint64 orderId, uint128 srcAmount, uint128 dstAmount)
+        public
+        returns(uint64)
+    {
+        return super.update(orderId, srcAmount, dstAmount);
+    }
+
+    function updateWithPositionHint_p(
+        uint64 orderId,
+        uint128 srcAmount,
+        uint128 dstAmount,
+        uint64 prevId
+    )
+        public
+        returns(uint64)
+    {
+        return super.updateWithPositionHint(
+            orderId,
+            srcAmount,
+            dstAmount,
+            prevId
+        );
+    }
 }
