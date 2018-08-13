@@ -347,7 +347,7 @@ contract('SortedLinkedList', async (accounts) => {
         }
     });
 
-    it("should reject adding after invalid order id: bad ordering", async () => {
+    it("should reject adding after invalid order id: after worse order", async () => {
         let worseId = await addOrderGetId(
             10 /* srcAmount */,
             100 /* dstAmount */
@@ -356,8 +356,31 @@ contract('SortedLinkedList', async (accounts) => {
         try {
             let order = await addOrderAfterId(
                 10 /* srcAmount */,
-                100 /* dstAmount */,
+                200 /* dstAmount */,
                 worseId);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(
+                Helper.isRevertErrorMessage(e),
+                "expected revert but got: " + e);
+        }
+    });
+
+    it("should reject adding after invalid order id: before better order", async () => {
+        let bestId = await addOrderGetId(
+            10 /* srcAmount */,
+            300 /* dstAmount */
+        );
+        let betterId = await addOrderGetId(
+            10 /* srcAmount */,
+            200 /* dstAmount */
+        );
+
+        try {
+            let order = await addOrderAfterId(
+                10 /* srcAmount */,
+                100 /* dstAmount */,
+                bestId);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(
@@ -897,7 +920,6 @@ contract('SortedLinkedList', async (accounts) => {
         first.prevId.should.be.bignumber.equal(head.id);
     });
 
-    // TODO: make sure that add with prevId compares both prev and next orders
     // TODO: allow admin to remove / update all orders
     // TODO: add without position to a long list fails
     // TODO: update without new position to a long list fails

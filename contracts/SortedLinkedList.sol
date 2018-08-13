@@ -195,9 +195,15 @@ contract SortedLinkedList is Utils2 {
         // Make sure such order exists in mapping.
         require(prev.prevId != 0 || prev.nextId != 0);
 
-        // Make sure that the new order should be after the provided prev id.
+        // Make sure that the new order should be after the provided prevId.
         uint prevKey = calculateOrderSortKey(prev.srcAmount, prev.dstAmount);
         uint key = calculateOrderSortKey(srcAmount, dstAmount);
         require(prevKey > key);
+
+        // Make sure that the new order should be before provided prevId's next
+        // order.
+        Order storage next = orders[prev.nextId];
+        uint nextKey = calculateOrderSortKey(next.srcAmount, next.dstAmount);
+        require(key > nextKey);
     }
 }
