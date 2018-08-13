@@ -532,23 +532,6 @@ contract('SortedLinkedList', async (accounts) => {
         }
     });
 
-    it("should reject removing order by other maker", async () => {
-        let orderId = await addOrderGetId(
-            10 /* srcAmount */,
-            100 /* dstAmount */,
-            {from: user1}
-        );
-
-        try {
-            await list.removeById_p(orderId, {from: user2});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(
-                Helper.isRevertErrorMessage(e),
-                "expected revert but got: " + e);
-        }
-    });
-
     it("should update order contents with new amounts ", async () => {
         let orderId = await addOrderGetId(
             10 /* srcAmount */,

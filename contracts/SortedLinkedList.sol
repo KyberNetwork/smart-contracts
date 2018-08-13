@@ -145,9 +145,6 @@ contract SortedLinkedList is Utils2 {
 
         // Make sure such order exists in mapping.
         require(order.prevId != 0 || order.nextId != 0);
-
-        // Make sure order maker is current user.
-        require(order.maker == msg.sender);
     }
 
     function calculateOrderSortKey(uint128 srcAmount, uint128 dstAmount)
