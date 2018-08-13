@@ -7,14 +7,14 @@ require("chai")
 
 let Helper = require("./helper.js");
 
-const SortedLinkedList = artifacts.require("SortedLinkedList");
+const PublicSortedLinkedList = artifacts.require("PublicSortedLinkedList");
 
 contract('SortedLinkedList test', async (accounts) => {
 
     beforeEach('setup contract for each test', async () => {
         user1 = accounts[0];
         user2 = accounts[1];
-        list = await SortedLinkedList.new();
+        list = await PublicSortedLinkedList.new();
     });
 
     it("should have deployed the contract", async () => {
@@ -40,7 +40,7 @@ contract('SortedLinkedList test', async (accounts) => {
     });
 
     it("should add order with unique id", async () => {
-        let orderId = await list.add.call(
+        let orderId = await list.add_p.call(
             10 /* srcAmount */,
             100 /* dstAmount */);
 
@@ -90,7 +90,7 @@ contract('SortedLinkedList test', async (accounts) => {
             {from: user1}
         );
 
-        let params = await list.getOrderDetails(orderId, {from: user2});
+        let params = await list.getOrderDetails_p(orderId, {from: user2});
         let [maker,,,,] = params;
 
         maker.should.equal(user1);
@@ -310,7 +310,7 @@ contract('SortedLinkedList test', async (accounts) => {
     it("should reject adding after invalid order id: non-existant", async () => {
         // Calling locally so that the order will not be in fact added to the
         // list and thus the id will be invalid.
-        let nonExistantOrderId = await list.add.call(
+        let nonExistantOrderId = await list.add_p.call(
             10 /* srcAmount */,
             100 /* dstAmount */
         );
@@ -371,7 +371,7 @@ contract('SortedLinkedList test', async (accounts) => {
             10 /* srcAmount */,
             100 /* dstAmount */);
 
-        await list.removeById(orderId);
+        await list.removeById_p(orderId);
 
         // Order no longer in list
         let order = await getOrderById(orderId);
@@ -390,8 +390,8 @@ contract('SortedLinkedList test', async (accounts) => {
             10 /* srcAmount */,
             200 /* dstAmount */);
 
-        await list.removeById(worseId);
-        await list.removeById(betterId);
+        await list.removeById_p(worseId);
+        await list.removeById_p(betterId);
 
         // Removed from linked list
         let head = await getOrderById(await list.HEAD_ID());
@@ -406,8 +406,8 @@ contract('SortedLinkedList test', async (accounts) => {
             10 /* srcAmount */,
             200 /* dstAmount */);
 
-        await list.removeById(betterId);
-        await list.removeById(worseId);
+        await list.removeById_p(betterId);
+        await list.removeById_p(worseId);
 
         // Removed from linked list
         let head = await getOrderById(await list.HEAD_ID());
@@ -422,7 +422,7 @@ contract('SortedLinkedList test', async (accounts) => {
             10 /* srcAmount */,
             200 /* dstAmount */);
 
-        await list.removeById(worseId);
+        await list.removeById_p(worseId);
 
         // Removed from linked list
         let head = await getOrderById(await list.HEAD_ID());
@@ -442,7 +442,7 @@ contract('SortedLinkedList test', async (accounts) => {
             10 /* srcAmount */,
             200 /* dstAmount */);
 
-        await list.removeById(betterId);
+        await list.removeById_p(betterId);
 
         // Removed from linked list
         let head = await getOrderById(await list.HEAD_ID());
@@ -465,7 +465,7 @@ contract('SortedLinkedList test', async (accounts) => {
             10 /* srcAmount */,
             300 /* dstAmount */);
 
-        await list.removeById(middleId);
+        await list.removeById_p(middleId);
 
         // Removed from linked list
         let head = await getOrderById(await list.HEAD_ID());
@@ -482,7 +482,7 @@ contract('SortedLinkedList test', async (accounts) => {
 
     it("should reject removing HEAD", async () => {
         try {
-            await list.removeById(await list.HEAD_ID());
+            await list.removeById_p(await list.HEAD_ID());
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(
@@ -494,13 +494,13 @@ contract('SortedLinkedList test', async (accounts) => {
     it("should reject removing non-existant id", async () => {
         // Calling locally so that the order will not be in fact added to the
         // list and thus the id will be invalid.
-        let nonExistantOrderId = await list.add.call(
+        let nonExistantOrderId = await list.add_p.call(
             10 /* srcAmount */,
             100 /* dstAmount */
         );
 
         try {
-            await list.removeById(nonExistantOrderId);
+            await list.removeById_p(nonExistantOrderId);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(
@@ -510,8 +510,6 @@ contract('SortedLinkedList test', async (accounts) => {
     });
 
     it("should reject removing order by other maker", async () => {
-        // Calling locally so that the order will not be in fact added to the
-        // list and thus the id will be invalid.
         let orderId = await addOrderGetId(
             10 /* srcAmount */,
             100 /* dstAmount */,
@@ -519,7 +517,7 @@ contract('SortedLinkedList test', async (accounts) => {
         );
 
         try {
-            await list.removeById(orderId, {from: user2});
+            await list.removeById_p(orderId, {from: user2});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(
@@ -528,8 +526,25 @@ contract('SortedLinkedList test', async (accounts) => {
         }
     });
 
-    // TODO: Only allow maker or admin to remove / update order
-    // TODO: allow admin to remove / update orders
+    xit("should update order contents with new amounts ", async () => {
+        let orderId = await addOrderGetId(
+            10 /* srcAmount */,
+            100 /* dstAmount */);
+
+        let srcAmount = 20;
+        let dstAmount = 200;
+        await list.updateById(orderId, srcAmount, dstAmount);
+
+        let order = getOrderById(orderId);
+        order.srcAmount.should.be.bignumber.equal(srcAmount);
+        order.dstAmount.should.be.bignumber.equal(dstAmount);
+    });
+
+    // TODO: allow update with newPrevId
+    // TODO: make sure that add with prevId compares both prev and next orders
+    // TODO: allow admin to remove / update all orders
+    // TODO: add without position to a long list fails
+    // TODO: update without new position to a long list fails
 });
 
 class Order {
@@ -544,7 +559,7 @@ class Order {
 }
 
 async function getOrderById(id) {
-    let params = await list.getOrderDetails(id);
+    let params = await list.getOrderDetails_p(id);
     let [maker, srcAmount, dstAmount, prevId, nextId] = params;
     return new Order(id, maker, srcAmount, dstAmount, prevId, nextId);
 }
@@ -553,8 +568,8 @@ async function addOrderGetId(srcAmount, dstAmount, args = {}) {
     // "Calling" the contract's add function does not return the id value so
     // we first run add.call() to perform the action without changing the state
     // of the blockchain, then actually running add to make the changes.
-    let orderId = await list.add.call(srcAmount, dstAmount, args);
-    await list.add(srcAmount, dstAmount, args);
+    let orderId = await list.add_p.call(srcAmount, dstAmount, args);
+    await list.add_p(srcAmount, dstAmount, args);
     return orderId;
 }
 
@@ -562,9 +577,9 @@ async function addOrderAfterIdGetId(srcAmount, dstAmount, prevId, args = {}) {
     // "Calling" the contract's add function does not return the id value so
     // we first run add.call() to perform the action without changing the state
     // of the blockchain, then actually running add to make the changes.
-    let orderId = await list.addAfterId.call(
+    let orderId = await list.addAfterId_p.call(
         srcAmount, dstAmount, prevId, args);
-    await list.addAfterId(srcAmount, dstAmount, prevId, args);
+    await list.addAfterId_p(srcAmount, dstAmount, prevId, args);
     return orderId;
 }
 

@@ -17,7 +17,7 @@ contract SortedLinkedList is Utils2 {
     uint64 constant public TAIL_ID = 0;
     uint64 constant public HEAD_ID = 1;
 
-    uint64 nextId = 2;
+    uint64 internal nextId = 2;
 
     Order internal HEAD;
 
@@ -34,7 +34,7 @@ contract SortedLinkedList is Utils2 {
     }
 
     function add(uint128 srcAmount, uint128 dstAmount)
-        public
+        internal
         returns(uint64)
     {
         uint64 prevId = findPrevOrderId(srcAmount, dstAmount);
@@ -42,7 +42,7 @@ contract SortedLinkedList is Utils2 {
     }
 
     function addAfterId(uint128 srcAmount, uint128 dstAmount, uint64 prevId)
-        public
+        internal
         returns(uint64)
     {
         validatePrevId(srcAmount, dstAmount, prevId);
@@ -54,7 +54,7 @@ contract SortedLinkedList is Utils2 {
         uint128 dstAmount,
         uint64 prevId
     )
-        public
+        private
         returns(uint64)
     {
         Order storage prevOrder = orders[prevId];
@@ -83,7 +83,7 @@ contract SortedLinkedList is Utils2 {
     }
 
     function getOrderDetails(uint64 orderId)
-        public
+        internal
         view
         returns (
             address _maker,
@@ -103,7 +103,7 @@ contract SortedLinkedList is Utils2 {
         );
     }
 
-    function removeById(uint64 orderId) public {
+    function removeById(uint64 orderId) internal {
         verifyCanRemoveOrderById(orderId);
 
         // Remove link from list
@@ -115,7 +115,13 @@ contract SortedLinkedList is Utils2 {
         delete orders[orderId];
     }
 
-    function verifyCanRemoveOrderById(uint64 orderId) public view {
+    // function updateById(uint64 orderId, uint128 srcAmount, uint128 dstAmount)
+    //     internal
+    //     {
+    //
+    // }
+
+    function verifyCanRemoveOrderById(uint64 orderId) private view {
         require(orderId != HEAD_ID);
 
         Order storage order = orders[orderId];
@@ -161,7 +167,8 @@ contract SortedLinkedList is Utils2 {
         uint128 dstAmount,
         uint64 prevId
     )
-        public view
+        private
+        view
     {
         // Make sure prev is not the tail.
         require(prevId != TAIL_ID);
