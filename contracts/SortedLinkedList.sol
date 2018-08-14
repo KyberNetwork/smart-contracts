@@ -8,16 +8,16 @@ contract SortedLinkedList is Utils2 {
         address maker;
         uint128 srcAmount;
         uint128 dstAmount;
-        uint64 prevId;
-        uint64 nextId;
+        uint32 prevId;
+        uint32 nextId;
     }
 
-    mapping (uint64 => Order) public orders;
+    mapping (uint32 => Order) public orders;
 
-    uint64 constant public TAIL_ID = 0;
-    uint64 constant public HEAD_ID = 1;
+    uint32 constant public TAIL_ID = 0;
+    uint32 constant public HEAD_ID = 1;
 
-    uint64 internal nextId = 2;
+    uint32 internal nextId = 2;
 
     Order internal HEAD;
 
@@ -35,15 +35,15 @@ contract SortedLinkedList is Utils2 {
 
     function add(uint128 srcAmount, uint128 dstAmount)
         internal
-        returns(uint64)
+        returns(uint32)
     {
-        uint64 prevId = findPrevOrderId(srcAmount, dstAmount);
+        uint32 prevId = findPrevOrderId(srcAmount, dstAmount);
         return addAfterValidId(srcAmount, dstAmount, prevId);
     }
 
-    function addAfterId(uint128 srcAmount, uint128 dstAmount, uint64 prevId)
+    function addAfterId(uint128 srcAmount, uint128 dstAmount, uint32 prevId)
         internal
-        returns(uint64)
+        returns(uint32)
     {
         validatePrevId(srcAmount, dstAmount, prevId);
         return addAfterValidId(srcAmount, dstAmount, prevId);
@@ -52,15 +52,15 @@ contract SortedLinkedList is Utils2 {
     function addAfterValidId(
         uint128 srcAmount,
         uint128 dstAmount,
-        uint64 prevId
+        uint32 prevId
     )
         private
-        returns(uint64)
+        returns(uint32)
     {
         Order storage prevOrder = orders[prevId];
 
         // Add new order
-        uint64 orderId = nextId++;
+        uint32 orderId = nextId++;
         orders[orderId] = Order({
             maker: msg.sender,
             srcAmount: srcAmount,
@@ -70,7 +70,7 @@ contract SortedLinkedList is Utils2 {
         });
 
         // Update next order to point back to added order
-        uint64 nextOrderId = prevOrder.nextId;
+        uint32 nextOrderId = prevOrder.nextId;
         if (nextOrderId != TAIL_ID) {
             Order storage nextOrder = orders[nextOrderId];
             nextOrder.prevId = orderId;
@@ -82,15 +82,15 @@ contract SortedLinkedList is Utils2 {
         return orderId;
     }
 
-    function getOrderDetails(uint64 orderId)
+    function getOrderDetails(uint32 orderId)
         internal
         view
         returns (
             address _maker,
             uint128 _srcAmount,
             uint128 _dstAmount,
-            uint64 _prevId,
-            uint64 _nextId
+            uint32 _prevId,
+            uint32 _nextId
         )
     {
         Order storage order = orders[orderId];
@@ -103,7 +103,7 @@ contract SortedLinkedList is Utils2 {
         );
     }
 
-    function removeById(uint64 orderId) internal {
+    function removeById(uint32 orderId) internal {
         verifyCanRemoveOrderById(orderId);
 
         // Remove link from list
@@ -116,9 +116,9 @@ contract SortedLinkedList is Utils2 {
     }
 
     // The updated order id is returned following the update.
-    function update(uint64 orderId, uint128 srcAmount, uint128 dstAmount)
+    function update(uint32 orderId, uint128 srcAmount, uint128 dstAmount)
         internal
-        returns(uint64)
+        returns(uint32)
     {
         removeById(orderId);
         return add(srcAmount, dstAmount);
@@ -126,19 +126,19 @@ contract SortedLinkedList is Utils2 {
 
     // The updated order id is returned following the update.
     function updateWithPositionHint(
-        uint64 orderId,
+        uint32 orderId,
         uint128 srcAmount,
         uint128 dstAmount,
-        uint64 prevId
+        uint32 prevId
     )
         internal
-        returns(uint64)
+        returns(uint32)
     {
         removeById(orderId);
         return addAfterId(srcAmount, dstAmount, prevId);
     }
 
-    function verifyCanRemoveOrderById(uint64 orderId) private view {
+    function verifyCanRemoveOrderById(uint32 orderId) private view {
         require(orderId != HEAD_ID);
 
         Order storage order = orders[orderId];
@@ -158,12 +158,12 @@ contract SortedLinkedList is Utils2 {
     function findPrevOrderId(uint128 srcAmount, uint128 dstAmount)
         public
         view
-        returns(uint64)
+        returns(uint32)
     {
         uint newOrderKey = calculateOrderSortKey(srcAmount, dstAmount);
 
         // TODO: eliminate while loop.
-        uint64 currId = HEAD_ID;
+        uint32 currId = HEAD_ID;
         Order storage curr = orders[currId];
         while (curr.nextId != TAIL_ID) {
             currId = curr.nextId;
@@ -179,7 +179,7 @@ contract SortedLinkedList is Utils2 {
     function validatePrevId(
         uint128 srcAmount,
         uint128 dstAmount,
-        uint64 prevId
+        uint32 prevId
     )
         private
         view
