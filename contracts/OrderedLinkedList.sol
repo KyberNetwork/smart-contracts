@@ -4,7 +4,7 @@ pragma solidity 0.4.18;
 import "./Utils2.sol";
 
 
-contract SortedLinkedList is Utils2 {
+contract OrderedLinkedList is Utils2 {
 
     ///@dev using uint32 for order ID should be enough. 4,294,967,296 orders
     struct Order {
@@ -16,8 +16,9 @@ contract SortedLinkedList is Utils2 {
         uint128 exchangeAmount;
     }
 
-    uint8 constant FREE = 0;
-    uint8 constant ACTIVE = 1;
+    // order states
+    uint8 constant PLEASE_USE = 0;
+    uint8 constant IN_USE = 1;
     uint8 constant HEAD = 2;
 
     mapping(uint32=>Order) public orders;      //store all orders here
@@ -43,6 +44,7 @@ contract SortedLinkedList is Utils2 {
 
         // handle new order
         Order memory thisOrder = orders[newOrder];
+        //todo: which option takes less gas. measure !
 //        orders[newOrder].nextOrderID = orders[prevOrder].nextOrderID;
 //        orders[newOrder].prevOrderID = prevOrder;
         thisOrder.nextOrderID = orders[prevOrder].nextOrderID;
@@ -84,5 +86,4 @@ contract SortedLinkedList is Utils2 {
     function isLastOrder(uint32 orderID) public view returns(bool) {
         return (orders[orderID].nextOrderID == 0);
     }
-
 }
