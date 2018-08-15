@@ -64,4 +64,8 @@ contract PublicOrders is Orders {
             prevId
         );
     }
+
+    function allocateIds_p(uint32 howMany) public returns(uint32) {
+        return allocateIds(howMany);
+    }
 }

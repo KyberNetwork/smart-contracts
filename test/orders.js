@@ -994,6 +994,55 @@ contract('Orders', async (accounts) => {
         first.prevId.should.be.bignumber.equal(head.id);
     });
 
+    it("should allocate ids for orders", async () => {
+        let firstId = await allocateIds(3);
+
+        firstId.should.be.bignumber.not.equal(await orders.HEAD_ID());
+        firstId.should.be.bignumber.not.equal(await orders.TAIL_ID());
+    });
+
+    it("should allocate different ids for orders", async () => {
+        let firstAllocationfirstId = (await allocateIds(3)).toNumber();
+        let secondAllocationfirstId = (await allocateIds(3)).toNumber();
+
+        let firstAllocationIds = new Set([
+            firstAllocationfirstId,
+            firstAllocationfirstId + 1,
+            firstAllocationfirstId + 2
+        ]);
+
+        let secondAllocationIds = new Set([
+            secondAllocationfirstId,
+            secondAllocationfirstId + 1,
+            secondAllocationfirstId + 2
+        ]);
+
+        firstAllocationIds.should.not.have.any.keys(Array.from(secondAllocationIds));
+        secondAllocationIds.should.not.have.any.keys(Array.from(firstAllocationIds));
+    });
+
+    it("should allocate different ids for orders of different sizes", async () => {
+        let firstAllocationfirstId = (await allocateIds(5)).toNumber();
+        let secondAllocationfirstId = (await allocateIds(3)).toNumber();
+
+        let firstAllocationIds = new Set([
+            firstAllocationfirstId,
+            firstAllocationfirstId + 1,
+            firstAllocationfirstId + 2,
+            firstAllocationfirstId + 3,
+            firstAllocationfirstId + 4
+        ]);
+
+        let secondAllocationIds = new Set([
+            secondAllocationfirstId,
+            secondAllocationfirstId + 1,
+            secondAllocationfirstId + 2
+        ]);
+
+        firstAllocationIds.should.not.have.any.keys(Array.from(secondAllocationIds));
+        secondAllocationIds.should.not.have.any.keys(Array.from(firstAllocationIds));
+    });
+
     // TODO: add without position to a long list fails
     // TODO: update without new position to a long list fails
 });
@@ -1081,4 +1130,10 @@ async function updateWithPositionHint(
         orderId, srcAmount, dstAmount, prevId);
     await orders.updateWithPositionHint_p(orderId, srcAmount, dstAmount, prevId);
     return newId;
+}
+
+async function allocateIds(howMany) {
+    let firstId = await orders.allocateIds_p.call(howMany);
+    await orders.allocateIds_p(howMany);
+    return firstId;
 }

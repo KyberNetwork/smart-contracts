@@ -143,6 +143,12 @@ contract Orders is Utils2 {
         return addAfterId(maker, srcAmount, dstAmount, prevId);
     }
 
+    function allocateIds(uint32 howMany) internal returns(uint32) {
+        uint32 firstId = nextId;
+        nextId += howMany;
+        return firstId;
+    }
+
     function verifyCanRemoveOrderById(uint32 orderId) private view {
         require(orderId != HEAD_ID);
 
