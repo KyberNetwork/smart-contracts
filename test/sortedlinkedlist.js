@@ -41,6 +41,7 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("should add order with unique id", async () => {
         let orderId = await list.add_p.call(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
 
@@ -49,7 +50,11 @@ contract('SortedLinkedList', async (accounts) => {
     });
 
     it("should add order and get its data back with user as maker", async () => {
-        let order = await addOrder(10 /* srcAmount */, 100 /* dstAmount */);
+        let order = await addOrder(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            100 /* dstAmount */
+        );
 
         order.maker.should.equal(user1);
         order.srcAmount.should.be.bignumber.equal(10);
@@ -57,7 +62,11 @@ contract('SortedLinkedList', async (accounts) => {
     });
 
     it("should add single order so that head is its prev and tail is its next", async () => {
-        let order = await addOrder(10 /* srcAmount */, 100 /* dstAmount */);
+        let order = await addOrder(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            100 /* dstAmount */
+        );
 
         order.prevId.should.be.bignumber.equal(await list.HEAD_ID());
         order.nextId.should.be.bignumber.equal(await list.TAIL_ID());
@@ -65,14 +74,14 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("should add two orders and get the data back with users as makers", async () => {
         let order1 = await addOrder(
+            user1 /* maker */,
             10 /* srcAmount */,
-            100 /* dstAmount */,
-            {from: user1}
+            100 /* dstAmount */
         );
         let order2 = await addOrder(
+            user2 /* maker */,
             10 /* srcAmount */,
-            200 /* dstAmount */,
-            {from: user2}
+            200 /* dstAmount */
         );
 
         order1.maker.should.equal(user1);
@@ -85,6 +94,7 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("should return order maker from a different user", async () => {
         let orderId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */,
             {from: user1}
@@ -97,8 +107,14 @@ contract('SortedLinkedList', async (accounts) => {
     });
 
     it("should add two orders so that -> HEAD <-> first <-> second <-> TAIL", async () => {
-        let id1 = await addOrderGetId(10 /* srcAmount */, 200 /* dstAmount */);
-        let id2 = await addOrderGetId(10 /* srcAmount */, 100 /* dstAmount */);
+        let id1 = await addOrderGetId(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            200 /* dstAmount */);
+        let id2 = await addOrderGetId(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            100 /* dstAmount */);
 
         let head = await getOrderById(await list.HEAD_ID());
         let order1 = await getOrderById(id1)
@@ -114,10 +130,12 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("should add orders according to sorting algorithm", async () => {
         let worseId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */
         );
         let betterId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */
         );
@@ -157,6 +175,7 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("find order prev in list with one better order", async () => {
         let betterId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */
         );
@@ -170,6 +189,7 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("find order prev in list with one worse order", async () => {
         let worseId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */
         );
@@ -183,10 +203,12 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("find order prev in list with a worse order and a better one", async () => {
         let betterId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */
         );
         let worseId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */
         );
@@ -199,9 +221,11 @@ contract('SortedLinkedList', async (accounts) => {
     });
 
     it("add order to an empty list", async () => {
-        let srcAmount = 10;
-        let dstAmount = 100;
-        let order = await addOrder(srcAmount, dstAmount);
+        let order = await addOrder(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            100 /* dstAmount */
+        );
 
         let head = await getOrderById(await list.HEAD_ID());
         head.nextId.should.be.bignumber.equal(order.id);
@@ -211,13 +235,16 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("add order to list after better order", async () => {
         let betterId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */
         );
 
-        let srcAmount = 10;
-        let dstAmount = 100;
-        let order = await addOrder(srcAmount, dstAmount);
+        let order = await addOrder(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            100 /* dstAmount */
+        );
 
         let head = await getOrderById(await list.HEAD_ID());
         let better = await getOrderById(betterId);
@@ -232,13 +259,16 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("add order to list before worse order", async () => {
         let worseId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */
         );
 
-        let srcAmount = 10;
-        let dstAmount = 200;
-        let order = await addOrder(srcAmount, dstAmount);
+        let order = await addOrder(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            200 /* dstAmount */
+        );
 
         let head = await getOrderById(await list.HEAD_ID());
         let worse = await getOrderById(worseId);
@@ -253,17 +283,21 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("add order to list between better and worse ones", async () => {
         let worseId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */
         );
         let betterId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */
         );
 
-        let srcAmount = 10;
-        let dstAmount = 200;
-        let order = await addOrder(srcAmount, dstAmount);
+        let order = await addOrder(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            200 /* dstAmount */
+        );
 
         let head = await getOrderById(await list.HEAD_ID());
         let better = await getOrderById(betterId);
@@ -281,17 +315,22 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("add order after a specified order id", async () => {
         let worseId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */
         );
         let betterId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */
         );
 
-        let srcAmount = 10;
-        let dstAmount = 200;
-        let order = await addOrderAfterId(srcAmount, dstAmount, betterId);
+        let order = await addOrderAfterId(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            200 /* dstAmount */,
+            betterId
+        );
 
         let head = await getOrderById(await list.HEAD_ID());
         let better = await getOrderById(betterId);
@@ -311,12 +350,14 @@ contract('SortedLinkedList', async (accounts) => {
         // Calling locally so that the order will not be in fact added to the
         // list and thus the id will be invalid.
         let nonExistantOrderId = await list.add_p.call(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */
         );
 
         try {
             let order = await addOrderAfterId(
+                user1 /* maker */,
                 10 /* srcAmount */,
                 200 /* dstAmount */,
                 nonExistantOrderId
@@ -332,6 +373,7 @@ contract('SortedLinkedList', async (accounts) => {
     it("should reject adding after invalid order id: is TAIL", async () => {
         try {
             let order = await addOrderAfterId(
+                user1 /* maker */,
                 10 /* srcAmount */,
                 200 /* dstAmount */,
                 // TAIL is technically a non-existant order, as the ID used for
@@ -349,12 +391,14 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("should reject adding after invalid order id: after worse order", async () => {
         let worseId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */
         );
 
         try {
             let order = await addOrderAfterId(
+                user1 /* maker */,
                 10 /* srcAmount */,
                 200 /* dstAmount */,
                 worseId);
@@ -368,16 +412,19 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("should reject adding after invalid order id: before better order", async () => {
         let bestId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */
         );
         let betterId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */
         );
 
         try {
             let order = await addOrderAfterId(
+                user1 /* maker */,
                 10 /* srcAmount */,
                 100 /* dstAmount */,
                 bestId);
@@ -391,6 +438,7 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("remove order deletes it from list", async () => {
         let orderId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
 
@@ -407,9 +455,11 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("removing all orders from list: starting with highest", async () => {
         let worseId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
         let betterId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
 
@@ -423,9 +473,11 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("remove all orders from list: starting with lowest", async () => {
         let worseId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
         let betterId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
 
@@ -439,9 +491,11 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("remove order from list maintains order: last order", async () => {
         let worseId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
         let betterId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
 
@@ -459,9 +513,11 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("remove order from list maintains order: first order", async () => {
         let worseId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
         let betterId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
 
@@ -479,12 +535,15 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("remove order from list maintains order: middle order", async () => {
         let worseId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
         let middleId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
         let betterId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */);
 
@@ -518,6 +577,7 @@ contract('SortedLinkedList', async (accounts) => {
         // Calling locally so that the order will not be in fact added to the
         // list and thus the id will be invalid.
         let nonExistantOrderId = await list.add_p.call(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */
         );
@@ -534,6 +594,7 @@ contract('SortedLinkedList', async (accounts) => {
 
     it("should update order contents with new amounts ", async () => {
         let orderId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
 
@@ -550,12 +611,15 @@ contract('SortedLinkedList', async (accounts) => {
     it("should keep correct order position following update: first -> first", async () => {
         // before: HEAD -> first -> second -> third -> TAIL
         let firstId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */);
         let secondId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
         let thirdId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
 
@@ -582,12 +646,15 @@ contract('SortedLinkedList', async (accounts) => {
     it("should keep correct order position following update: first -> second", async () => {
         // before: HEAD -> first -> second -> third -> TAIL
         let firstId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */);
         let secondId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
         let thirdId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
 
@@ -614,12 +681,15 @@ contract('SortedLinkedList', async (accounts) => {
     it("should keep correct order position following update: first -> third", async () => {
         // before: HEAD -> first -> second -> third -> TAIL
         let firstId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */);
         let secondId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
         let thirdId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
 
@@ -646,12 +716,15 @@ contract('SortedLinkedList', async (accounts) => {
     it("should keep correct order position following update: second -> first", async () => {
         // before: HEAD -> first -> second -> third -> TAIL
         let firstId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */);
         let secondId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
         let thirdId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
 
@@ -678,12 +751,15 @@ contract('SortedLinkedList', async (accounts) => {
     it("should keep correct order position following update: second -> second", async () => {
         // before: HEAD -> first -> second -> third -> TAIL
         let firstId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */);
         let secondId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
         let thirdId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
 
@@ -710,12 +786,15 @@ contract('SortedLinkedList', async (accounts) => {
     it("should keep correct order position following update: second -> third", async () => {
         // before: HEAD -> first -> second -> third -> TAIL
         let firstId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */);
         let secondId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
         let thirdId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
 
@@ -742,12 +821,15 @@ contract('SortedLinkedList', async (accounts) => {
     it("should keep correct order position following update: third -> first", async () => {
         // before: HEAD -> first -> second -> third -> TAIL
         let firstId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */);
         let secondId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
         let thirdId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
 
@@ -774,12 +856,15 @@ contract('SortedLinkedList', async (accounts) => {
     it("should keep correct order position following update: third -> second", async () => {
         // before: HEAD -> first -> second -> third -> TAIL
         let firstId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */);
         let secondId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
         let thirdId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
 
@@ -806,12 +891,15 @@ contract('SortedLinkedList', async (accounts) => {
     it("should keep correct order position following update: third -> third", async () => {
         // before: HEAD -> first -> second -> third -> TAIL
         let firstId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */);
         let secondId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
         let thirdId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
 
@@ -838,12 +926,15 @@ contract('SortedLinkedList', async (accounts) => {
     it("should update order contents with new amounts to given position: values", async () => {
         // before: HEAD -> first -> second -> third -> TAIL
         let firstId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */);
         let secondId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
         let thirdId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
 
@@ -869,12 +960,15 @@ contract('SortedLinkedList', async (accounts) => {
     it("should update order contents with new amounts to given position: order", async () => {
         // before: HEAD -> first -> second -> third -> TAIL
         let firstId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             300 /* dstAmount */);
         let secondId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             200 /* dstAmount */);
         let thirdId = await addOrderGetId(
+            user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
 
@@ -903,7 +997,6 @@ contract('SortedLinkedList', async (accounts) => {
         first.prevId.should.be.bignumber.equal(head.id);
     });
 
-    // TODO: allow admin to remove / update all orders
     // TODO: add without position to a long list fails
     // TODO: update without new position to a long list fails
 });
@@ -925,33 +1018,51 @@ async function getOrderById(id) {
     return new Order(id, maker, srcAmount, dstAmount, prevId, nextId);
 }
 
-async function addOrderGetId(srcAmount, dstAmount, args = {}) {
+async function addOrderGetId(maker, srcAmount, dstAmount, args = {}) {
     // "Calling" the contract's add function does not return the id value so
     // we first run add.call() to perform the action without changing the state
     // of the blockchain, then actually running add to make the changes.
-    let orderId = await list.add_p.call(srcAmount, dstAmount, args);
-    await list.add_p(srcAmount, dstAmount, args);
+    let orderId = await list.add_p.call(maker, srcAmount, dstAmount, args);
+    await list.add_p(maker, srcAmount, dstAmount, args);
     return orderId;
 }
 
-async function addOrderAfterIdGetId(srcAmount, dstAmount, prevId, args = {}) {
+async function addOrderAfterIdGetId(
+    maker,
+    srcAmount,
+    dstAmount,
+    prevId,
+    args = {}
+)
+{
     // "Calling" the contract's add function does not return the id value so
     // we first run add.call() to perform the action without changing the state
     // of the blockchain, then actually running add to make the changes.
     let orderId = await list.addAfterId_p.call(
-        srcAmount, dstAmount, prevId, args);
-    await list.addAfterId_p(srcAmount, dstAmount, prevId, args);
+        user1 /* maker */,
+        srcAmount,
+        dstAmount,
+        prevId,
+        args
+    );
+    await list.addAfterId_p(
+        user1 /* maker */,
+        srcAmount,
+        dstAmount,
+        prevId,
+        args
+    );
     return orderId;
 }
 
-async function addOrder(srcAmount, dstAmount, args = {}) {
-    let orderId = await addOrderGetId(srcAmount, dstAmount, args);
+async function addOrder(maker, srcAmount, dstAmount, args = {}) {
+    let orderId = await addOrderGetId(maker, srcAmount, dstAmount, args);
     return await getOrderById(orderId);
 }
 
-async function addOrderAfterId(srcAmount, dstAmount, prevId, args = {}) {
+async function addOrderAfterId(maker, srcAmount, dstAmount, prevId, args = {}) {
     let orderId = await addOrderAfterIdGetId(
-            srcAmount, dstAmount, prevId, args);
+            maker, srcAmount, dstAmount, prevId, args);
     return await getOrderById(orderId);
 }
 

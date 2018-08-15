@@ -33,23 +33,29 @@ contract SortedLinkedList is Utils2 {
         orders[HEAD_ID] = HEAD;
     }
 
-    function add(uint128 srcAmount, uint128 dstAmount)
+    function add(address maker, uint128 srcAmount, uint128 dstAmount)
         internal
         returns(uint32)
     {
         uint32 prevId = findPrevOrderId(srcAmount, dstAmount);
-        return addAfterValidId(srcAmount, dstAmount, prevId);
+        return addAfterValidId(maker, srcAmount, dstAmount, prevId);
     }
 
-    function addAfterId(uint128 srcAmount, uint128 dstAmount, uint32 prevId)
+    function addAfterId(
+        address maker,
+        uint128 srcAmount,
+        uint128 dstAmount,
+        uint32 prevId
+    )
         internal
         returns(uint32)
     {
         validatePrevId(srcAmount, dstAmount, prevId);
-        return addAfterValidId(srcAmount, dstAmount, prevId);
+        return addAfterValidId(maker, srcAmount, dstAmount, prevId);
     }
 
     function addAfterValidId(
+        address maker,
         uint128 srcAmount,
         uint128 dstAmount,
         uint32 prevId
@@ -62,7 +68,7 @@ contract SortedLinkedList is Utils2 {
         // Add new order
         uint32 orderId = nextId++;
         orders[orderId] = Order({
-            maker: msg.sender,
+            maker: maker,
             srcAmount: srcAmount,
             dstAmount: dstAmount,
             prevId: prevId,
@@ -103,6 +109,7 @@ contract SortedLinkedList is Utils2 {
         );
     }
 
+    // TODO: add remove function that accepts an Order.
     function removeById(uint32 orderId) internal {
         verifyCanRemoveOrderById(orderId);
 
@@ -120,8 +127,9 @@ contract SortedLinkedList is Utils2 {
         internal
         returns(uint32)
     {
+        address maker = orders[orderId].maker;
         removeById(orderId);
-        return add(srcAmount, dstAmount);
+        return add(maker, srcAmount, dstAmount);
     }
 
     // The updated order id is returned following the update.
@@ -134,8 +142,9 @@ contract SortedLinkedList is Utils2 {
         internal
         returns(uint32)
     {
+        address maker = orders[orderId].maker;
         removeById(orderId);
-        return addAfterId(srcAmount, dstAmount, prevId);
+        return addAfterId(maker, srcAmount, dstAmount, prevId);
     }
 
     function verifyCanRemoveOrderById(uint32 orderId) private view {
