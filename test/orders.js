@@ -21,31 +21,70 @@ contract('Orders', async (accounts) => {
         orders.should.exist
     });
 
-    it("should have head in id 1", async () => {
-        const headId = await orders.HEAD_ID();
-
-        headId.should.be.bignumber.equal(1);
-    });
-
-    it("should have tail in id 0", async () => {
+    it("should have tail in id 1", async () => {
         const tailId = await orders.TAIL_ID();
 
-        tailId.should.be.bignumber.equal(0);
+        tailId.should.be.bignumber.equal(1);
     });
 
-    it("head should initially point to tail as its nextId", async () => {
-        let head = await getOrderById(await orders.HEAD_ID());
+    it("should have BUY head in id 2", async () => {
+        const headId = await orders.BUY_HEAD_ID();
+
+        headId.should.be.bignumber.equal(2);
+    });
+
+    it("should have SELL head in id 3", async () => {
+        const headId = await orders.SELL_HEAD_ID();
+
+        headId.should.be.bignumber.equal(3);
+    });
+
+    it("BUY head should initially point to tail as its nextId", async () => {
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
 
         head.nextId.should.be.bignumber.equal(await orders.TAIL_ID());
     });
 
-    it("should add order with unique id", async () => {
+    it("BUY head should initially point to itself as its prevId", async () => {
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
+
+        head.prevId.should.be.bignumber.equal(await orders.BUY_HEAD_ID());
+    });
+
+    it("SELL head should initially point to tail as its nextId", async () => {
+        let head = await getOrderById(await orders.SELL_HEAD_ID());
+
+        head.nextId.should.be.bignumber.equal(await orders.TAIL_ID());
+    });
+
+    it("SELL head should initially point to itself as its prevId", async () => {
+        let head = await getOrderById(await orders.SELL_HEAD_ID());
+
+        head.prevId.should.be.bignumber.equal(await orders.SELL_HEAD_ID());
+    });
+
+    it("should add order with unique id to BUY", async () => {
+        let orderId = await orders.add_p.call(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            100 /* dstAmount */
+            // 100 /* dstAmount */,
+            // await orders.BUY_HEAD_ID() /* head */
+        );
+
+        orderId.should.be.bignumber.not.equal(await orders.BUY_HEAD_ID());
+        orderId.should.be.bignumber.not.equal(await orders.SELL_HEAD_ID());
+        orderId.should.be.bignumber.not.equal(await orders.TAIL_ID());
+    });
+
+    xit("should add order with unique id to SELL", async () => {
         let orderId = await orders.add_p.call(
             user1 /* maker */,
             10 /* srcAmount */,
             100 /* dstAmount */);
 
-        orderId.should.be.bignumber.not.equal(await orders.HEAD_ID());
+        orderId.should.be.bignumber.not.equal(await orders.BUY_HEAD_ID());
+        orderId.should.be.bignumber.not.equal(await orders.SELL_HEAD_ID());
         orderId.should.be.bignumber.not.equal(await orders.TAIL_ID());
     });
 
@@ -61,6 +100,7 @@ contract('Orders', async (accounts) => {
         order.dstAmount.should.be.bignumber.equal(100);
     });
 
+    // TODO: tests for SELL
     it("should add single order so that head is its prev and tail is its next", async () => {
         let order = await addOrder(
             user1 /* maker */,
@@ -68,7 +108,7 @@ contract('Orders', async (accounts) => {
             100 /* dstAmount */
         );
 
-        order.prevId.should.be.bignumber.equal(await orders.HEAD_ID());
+        order.prevId.should.be.bignumber.equal(await orders.BUY_HEAD_ID());
         order.nextId.should.be.bignumber.equal(await orders.TAIL_ID());
     });
 
@@ -116,7 +156,7 @@ contract('Orders', async (accounts) => {
             10 /* srcAmount */,
             100 /* dstAmount */);
 
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let order1 = await getOrderById(id1)
         let order2 = await getOrderById(id2)
         // HEAD -> 1 -> 2 -> TAIL
@@ -140,7 +180,7 @@ contract('Orders', async (accounts) => {
             200 /* dstAmount */
         );
 
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let worse = await getOrderById(worseId);
         let better = await getOrderById(betterId);
         // HEAD -> better -> worse -> TAIL
@@ -165,12 +205,33 @@ contract('Orders', async (accounts) => {
         better.should.be.bignumber.greaterThan(worse);
     });
 
+    // TODO: tests for SELL
     it("find order prev in empty list", async () => {
-        let srcAmount = 10;
-        let dstAmount = 100;
-        let prevId = await orders.findPrevOrderId(srcAmount, dstAmount);
+        let prevId = await orders.findPrevOrderId(
+            10 /* srcAmount */,
+            100 /* dstAmount */,
+            await orders.BUY_HEAD_ID()
+        );
 
-        prevId.should.be.bignumber.equal(await orders.HEAD_ID());
+        prevId.should.be.bignumber.equal(await orders.BUY_HEAD_ID());
+    });
+
+    // TODO: improve test name
+    it("find order prev in empty list, starting with tail -> Error!", async () => {
+        try {
+            let prevId = await orders.findPrevOrderId(
+                10 /* srcAmount */,
+                100 /* dstAmount */,
+                await orders.TAIL_ID()
+            );
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(
+                Helper.isRevertErrorMessage(e),
+                "expected revert but got: " + e);
+        }
+
+        prevId.should.be.bignumber.equal(await orders.BUY_HEAD_ID());
     });
 
     it("find order prev in list with one better order", async () => {
@@ -180,9 +241,28 @@ contract('Orders', async (accounts) => {
             200 /* dstAmount */
         );
 
-        let srcAmount = 10;
-        let dstAmount = 100;
-        let prevId = await orders.findPrevOrderId(srcAmount, dstAmount);
+        let prevId = await orders.findPrevOrderId(
+            10 /* srcAmount */,
+            100 /* dstAmount */,
+            await orders.BUY_HEAD_ID()
+        );
+
+        prevId.should.be.bignumber.equal(betterId);
+    });
+
+    // TODO: improve test name
+    it("find order prev in list with one better order, starting from betterId", async () => {
+        let betterId = await addOrderGetId(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            200 /* dstAmount */
+        );
+
+        let prevId = await orders.findPrevOrderId(
+            10 /* srcAmount */,
+            100 /* dstAmount */,
+            betterId /* startId */
+        );
 
         prevId.should.be.bignumber.equal(betterId);
     });
@@ -194,11 +274,37 @@ contract('Orders', async (accounts) => {
             100 /* dstAmount */
         );
 
-        let srcAmount = 10;
-        let dstAmount = 200;
-        let prevId = await orders.findPrevOrderId(srcAmount, dstAmount);
+        let prevId = await orders.findPrevOrderId(
+            10 /* srcAmount */,
+            200 /* dstAmount */,
+            await orders.BUY_HEAD_ID()
+        );
 
-        prevId.should.be.bignumber.equal(await orders.HEAD_ID());
+        prevId.should.be.bignumber.equal(await orders.BUY_HEAD_ID());
+    });
+
+    // TODO: improve test name
+    it("find order prev in list with one worse order, starting with worse -> Error!", async () => {
+        let worseId = await addOrderGetId(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            100 /* dstAmount */
+        );
+
+        try {
+            let prevId = await orders.findPrevOrderId(
+                10 /* srcAmount */,
+                200 /* dstAmount */,
+                worseId
+            );
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(
+                Helper.isRevertErrorMessage(e),
+                "expected revert but got: " + e);
+        }
+
+        prevId.should.be.bignumber.equal(await orders.BUY_HEAD_ID());
     });
 
     it("find order prev in list with a worse order and a better one", async () => {
@@ -213,9 +319,33 @@ contract('Orders', async (accounts) => {
             100 /* dstAmount */
         );
 
-        let srcAmount = 10;
-        let dstAmount = 200;
-        let prevId = await orders.findPrevOrderId(srcAmount, dstAmount);
+        let prevId = await orders.findPrevOrderId(
+            10 /* srcAmount */,
+            200 /* dstAmount */,
+            await orders.BUY_HEAD_ID()
+        );
+
+        prevId.should.be.bignumber.equal(betterId);
+    });
+
+    // TODO: improve test name
+    it("find order prev in list with a worse order and a better one, starting with better", async () => {
+        let betterId = await addOrderGetId(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            300 /* dstAmount */
+        );
+        let worseId = await addOrderGetId(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            100 /* dstAmount */
+        );
+
+        let prevId = await orders.findPrevOrderId(
+            10 /* srcAmount */,
+            200 /* dstAmount */,
+            betterId
+        );
 
         prevId.should.be.bignumber.equal(betterId);
     });
@@ -227,10 +357,10 @@ contract('Orders', async (accounts) => {
             100 /* dstAmount */
         );
 
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         head.nextId.should.be.bignumber.equal(order.id);
         order.nextId.should.be.bignumber.equal(await orders.TAIL_ID());
-        order.prevId.should.be.bignumber.equal(await orders.HEAD_ID());
+        order.prevId.should.be.bignumber.equal(await orders.BUY_HEAD_ID());
     });
 
     it("add order to list after better order", async () => {
@@ -246,7 +376,7 @@ contract('Orders', async (accounts) => {
             100 /* dstAmount */
         );
 
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let better = await getOrderById(betterId);
         // HEAD -> better -> order -> TAIL
         head.nextId.should.be.bignumber.equal(better.id);
@@ -254,7 +384,7 @@ contract('Orders', async (accounts) => {
         order.nextId.should.be.bignumber.equal(await orders.TAIL_ID());
         // HEAD <- better <- order
         order.prevId.should.be.bignumber.equal(better.id);
-        better.prevId.should.be.bignumber.equal(await orders.HEAD_ID());
+        better.prevId.should.be.bignumber.equal(await orders.BUY_HEAD_ID());
     });
 
     it("add order to list before worse order", async () => {
@@ -270,7 +400,7 @@ contract('Orders', async (accounts) => {
             200 /* dstAmount */
         );
 
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let worse = await getOrderById(worseId);
         // HEAD -> order -> worse -> TAIL
         head.nextId.should.be.bignumber.equal(order.id);
@@ -278,7 +408,7 @@ contract('Orders', async (accounts) => {
         worse.nextId.should.be.bignumber.equal(await orders.TAIL_ID());
         // HEAD <- order <- worse
         worse.prevId.should.be.bignumber.equal(order.id);
-        order.prevId.should.be.bignumber.equal(await orders.HEAD_ID());
+        order.prevId.should.be.bignumber.equal(await orders.BUY_HEAD_ID());
     });
 
     it("add order to list between better and worse ones", async () => {
@@ -299,7 +429,7 @@ contract('Orders', async (accounts) => {
             200 /* dstAmount */
         );
 
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let better = await getOrderById(betterId);
         let worse = await getOrderById(worseId);
         // HEAD -> better -> order -> worse -> TAIL
@@ -310,7 +440,7 @@ contract('Orders', async (accounts) => {
         // HEAD <- better <- order <- worse
         worse.prevId.should.be.bignumber.equal(order.id);
         order.prevId.should.be.bignumber.equal(better.id);
-        better.prevId.should.be.bignumber.equal(await orders.HEAD_ID());
+        better.prevId.should.be.bignumber.equal(await orders.BUY_HEAD_ID());
     });
 
     it("add order after a specified order id", async () => {
@@ -332,7 +462,7 @@ contract('Orders', async (accounts) => {
             betterId
         );
 
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let better = await getOrderById(betterId);
         let worse = await getOrderById(worseId);
         // HEAD -> better -> order -> worse -> TAIL
@@ -343,7 +473,7 @@ contract('Orders', async (accounts) => {
         // HEAD <- better <- order <- worse
         worse.prevId.should.be.bignumber.equal(order.id);
         order.prevId.should.be.bignumber.equal(better.id);
-        better.prevId.should.be.bignumber.equal(await orders.HEAD_ID());
+        better.prevId.should.be.bignumber.equal(await orders.BUY_HEAD_ID());
     });
 
     it("should reject adding after invalid order id: non-existant", async () => {
@@ -436,7 +566,7 @@ contract('Orders', async (accounts) => {
         }
     });
 
-    it("remove order removes from list but does not delete order", async () => {
+    it("remove order does not delete order details", async () => {
         let orderId = await addOrderGetId(
             user1 /* maker */,
             10 /* srcAmount */,
@@ -448,6 +578,33 @@ contract('Orders', async (accounts) => {
         order.maker.should.be.bignumber.equal(user1);
         order.srcAmount.should.be.bignumber.equal(10);
         order.dstAmount.should.be.bignumber.equal(100);
+    });
+
+    it("remove order deletes order prevId and nextId", async () => {
+        let orderId = await addOrderGetId(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            100 /* dstAmount */);
+
+        await orders.removeById_p(orderId);
+
+        let order = await getOrderById(orderId);
+        order.prevId.should.be.bignumber.equal(0);
+        order.nextId.should.be.bignumber.equal(0);
+    });
+
+    it("should not reassign order id after removing order", async() => {
+        let orderId = await addOrderGetId(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            100 /* dstAmount */);
+        await orders.removeById_p(orderId);
+        let newOrderId = await addOrderGetId(
+            user1 /* maker */,
+            11 /* srcAmount */,
+            101 /* dstAmount */);
+
+        newOrderId.should.be.bignumber.not.equal(orderId);
     });
 
     it("removing all orders from list: starting with highest", async () => {
@@ -464,7 +621,7 @@ contract('Orders', async (accounts) => {
         await orders.removeById_p(betterId);
 
         // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         head.nextId.should.be.bignumber.equal(await orders.TAIL_ID());
     });
 
@@ -482,7 +639,7 @@ contract('Orders', async (accounts) => {
         await orders.removeById_p(worseId);
 
         // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         head.nextId.should.be.bignumber.equal(await orders.TAIL_ID());
     });
 
@@ -499,7 +656,7 @@ contract('Orders', async (accounts) => {
         await orders.removeById_p(worseId);
 
         // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let better = await getOrderById(betterId);
         // HEAD -> better -> TAIL
         head.nextId.should.be.bignumber.equal(better.id);
@@ -521,7 +678,7 @@ contract('Orders', async (accounts) => {
         await orders.removeById_p(betterId);
 
         // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let worse = await getOrderById(worseId);
         // HEAD -> worse -> TAIL
         head.nextId.should.be.bignumber.equal(worse.id);
@@ -547,7 +704,7 @@ contract('Orders', async (accounts) => {
         await orders.removeById_p(middleId);
 
         // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let better = await getOrderById(betterId);
         let worse = await getOrderById(worseId);
         // HEAD -> better -> worse -> TAIL
@@ -559,9 +716,10 @@ contract('Orders', async (accounts) => {
         better.prevId.should.be.bignumber.equal(head.id);
     });
 
+    // TODO: tests for SELL
     it("should reject removing HEAD", async () => {
         try {
-            await orders.removeById_p(await orders.HEAD_ID());
+            await orders.removeById_p(await orders.BUY_HEAD_ID());
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(
@@ -625,7 +783,7 @@ contract('Orders', async (accounts) => {
         let updatedId = await update(firstId, srcAmount, dstAmount);
 
         // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let updated = await getOrderById(updatedId);
         let second = await getOrderById(secondId);
         let third = await getOrderById(thirdId);
@@ -660,7 +818,7 @@ contract('Orders', async (accounts) => {
         let updatedId = await update(firstId, srcAmount, dstAmount);
 
         // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let updated = await getOrderById(updatedId);
         let second = await getOrderById(secondId);
         let third = await getOrderById(thirdId);
@@ -695,7 +853,7 @@ contract('Orders', async (accounts) => {
         let updatedId = await update(firstId, srcAmount, dstAmount);
 
         // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let updated = await getOrderById(updatedId);
         let second = await getOrderById(secondId);
         let third = await getOrderById(thirdId);
@@ -730,7 +888,7 @@ contract('Orders', async (accounts) => {
         let updatedId = await update(secondId, srcAmount, dstAmount);
 
         // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let first = await getOrderById(firstId);
         let updated = await getOrderById(updatedId);
         let third = await getOrderById(thirdId);
@@ -765,7 +923,7 @@ contract('Orders', async (accounts) => {
         let updatedId = await update(secondId, srcAmount, dstAmount);
 
         // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let first = await getOrderById(firstId);
         let updated = await getOrderById(updatedId);
         let third = await getOrderById(thirdId);
@@ -800,7 +958,7 @@ contract('Orders', async (accounts) => {
         let updatedId = await update(secondId, srcAmount, dstAmount);
 
         // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let first = await getOrderById(firstId);
         let updated = await getOrderById(updatedId);
         let third = await getOrderById(thirdId);
@@ -835,7 +993,7 @@ contract('Orders', async (accounts) => {
         let updatedId = await update(thirdId, srcAmount, dstAmount);
 
         // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let first = await getOrderById(firstId);
         let second = await getOrderById(secondId);
         let updated = await getOrderById(updatedId);
@@ -870,7 +1028,7 @@ contract('Orders', async (accounts) => {
         let updatedId = await update(thirdId, srcAmount, dstAmount);
 
         // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let first = await getOrderById(firstId);
         let second = await getOrderById(secondId);
         let updated = await getOrderById(updatedId);
@@ -905,7 +1063,7 @@ contract('Orders', async (accounts) => {
         let updatedId = await update(thirdId, srcAmount, dstAmount);
 
         // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let first = await getOrderById(firstId);
         let second = await getOrderById(secondId);
         let updated = await getOrderById(updatedId);
@@ -944,10 +1102,6 @@ contract('Orders', async (accounts) => {
             firstId /* prevId */
         );
 
-        // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
-        let first = await getOrderById(firstId);
-        let second = await getOrderById(secondId);
         let updated = await getOrderById(updatedId);
         updated.maker.should.equal(user1);
         updated.srcAmount.should.be.bignumber.equal(srcAmount);
@@ -979,7 +1133,7 @@ contract('Orders', async (accounts) => {
         );
 
         // Removed from linked list
-        let head = await getOrderById(await orders.HEAD_ID());
+        let head = await getOrderById(await orders.BUY_HEAD_ID());
         let first = await getOrderById(firstId);
         let second = await getOrderById(secondId);
         let updated = await getOrderById(updatedId);
@@ -997,7 +1151,8 @@ contract('Orders', async (accounts) => {
     it("should allocate ids for orders", async () => {
         let firstId = await allocateIds(3);
 
-        firstId.should.be.bignumber.not.equal(await orders.HEAD_ID());
+        firstId.should.be.bignumber.not.equal(await orders.BUY_HEAD_ID());
+        firstId.should.be.bignumber.not.equal(await orders.SELL_HEAD_ID());
         firstId.should.be.bignumber.not.equal(await orders.TAIL_ID());
     });
 

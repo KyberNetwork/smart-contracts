@@ -14,30 +14,39 @@ contract Orders is Utils2 {
 
     mapping (uint32 => Order) public orders;
 
-    uint32 constant public TAIL_ID = 0;
-    uint32 constant public HEAD_ID = 1;
+    uint32 constant public TAIL_ID = 1;
+    uint32 constant public BUY_HEAD_ID = 2;
+    uint32 constant public SELL_HEAD_ID = 3;
 
-    uint32 internal nextId = 2;
+    uint32 internal nextId = 4;
 
-    Order internal HEAD;
+    Order internal BUY_HEAD;
+    Order internal SELL_HEAD;
 
-    function SortedLinkedList() public {
-        HEAD = Order({
+    function Orders() public {
+        BUY_HEAD = Order({
             maker: 0,
             srcAmount: 0,
             dstAmount: 0,
-            prevId: HEAD_ID,
+            prevId: BUY_HEAD_ID,
             nextId: TAIL_ID
         });
-
-        orders[HEAD_ID] = HEAD;
+        SELL_HEAD = Order({
+            maker: 0,
+            srcAmount: 0,
+            dstAmount: 0,
+            prevId: SELL_HEAD_ID,
+            nextId: TAIL_ID
+        });
+        orders[BUY_HEAD_ID] = BUY_HEAD;
+        orders[SELL_HEAD_ID] = SELL_HEAD;
     }
 
     function add(address maker, uint128 srcAmount, uint128 dstAmount)
         internal
         returns(uint32)
     {
-        uint32 prevId = findPrevOrderId(srcAmount, dstAmount);
+        uint32 prevId = findPrevOrderId(srcAmount, dstAmount, BUY_HEAD_ID);
         return addAfterValidId(maker, srcAmount, dstAmount, prevId);
     }
 
@@ -116,6 +125,9 @@ contract Orders is Utils2 {
         Order storage order = orders[orderId];
         orders[order.prevId].nextId = order.nextId;
         orders[order.nextId].prevId = order.prevId;
+
+        order.prevId = 0;
+        order.nextId = 0;
     }
 
     // The updated order id is returned following the update.
@@ -150,7 +162,7 @@ contract Orders is Utils2 {
     }
 
     function verifyCanRemoveOrderById(uint32 orderId) private view {
-        require(orderId != HEAD_ID);
+        require(orderId != BUY_HEAD_ID);
 
         Order storage order = orders[orderId];
 
@@ -166,15 +178,21 @@ contract Orders is Utils2 {
         return dstAmount * PRECISION / srcAmount;
     }
 
-    function findPrevOrderId(uint128 srcAmount, uint128 dstAmount)
+    function findPrevOrderId(
+        uint128 srcAmount,
+        uint128 dstAmount,
+        uint32 startId
+    )
         public
         view
         returns(uint32)
     {
         uint newOrderKey = calculateOrderSortKey(srcAmount, dstAmount);
 
-        // TODO: eliminate while loop.
-        uint32 currId = HEAD_ID;
+        // This is okay for the HEAD ids, as their prevId is their id.
+        // TODO: rewrite in a simpler way - going to the prev of the provided
+        //       first id is not that elegant.
+        uint32 currId = orders[startId].prevId;
         Order storage curr = orders[currId];
         while (curr.nextId != TAIL_ID) {
             currId = curr.nextId;
