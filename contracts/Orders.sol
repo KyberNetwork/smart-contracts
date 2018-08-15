@@ -109,17 +109,13 @@ contract Orders is Utils2 {
         );
     }
 
-    // TODO: add remove function that accepts an Order.
     function removeById(uint32 orderId) internal {
         verifyCanRemoveOrderById(orderId);
 
-        // Remove link from list
+        // Disconnect order from list
         Order storage order = orders[orderId];
         orders[order.prevId].nextId = order.nextId;
         orders[order.nextId].prevId = order.prevId;
-
-        // Remove from mapping
-        delete orders[orderId];
     }
 
     // The updated order id is returned following the update.

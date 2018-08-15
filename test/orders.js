@@ -436,7 +436,7 @@ contract('Orders', async (accounts) => {
         }
     });
 
-    it("remove order deletes it from list", async () => {
+    it("remove order removes from list but does not delete order", async () => {
         let orderId = await addOrderGetId(
             user1 /* maker */,
             10 /* srcAmount */,
@@ -444,13 +444,10 @@ contract('Orders', async (accounts) => {
 
         await orders.removeById_p(orderId);
 
-        // Order no longer in list
         let order = await getOrderById(orderId);
-        order.maker.should.be.bignumber.equal(0);
-        order.srcAmount.should.be.bignumber.equal(0);
-        order.dstAmount.should.be.bignumber.equal(0);
-        order.prevId.should.be.bignumber.equal(0);
-        order.nextId.should.be.bignumber.equal(0);
+        order.maker.should.be.bignumber.equal(user1);
+        order.srcAmount.should.be.bignumber.equal(10);
+        order.dstAmount.should.be.bignumber.equal(100);
     });
 
     it("removing all orders from list: starting with highest", async () => {
