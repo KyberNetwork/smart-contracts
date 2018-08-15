@@ -2,7 +2,7 @@ pragma solidity 0.4.18;
 
 import "./Utils2.sol";
 
-contract SortedLinkedList is Utils2 {
+contract Orders is Utils2 {
 
     struct Order {
         address maker;

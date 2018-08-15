@@ -1,8 +1,8 @@
 pragma solidity 0.4.18;
 
-import "../SortedLinkedList.sol";
+import "../Orders.sol";
 
-contract PublicSortedLinkedList is SortedLinkedList {
+contract PublicOrders is Orders {
 
     function getOrderDetails_p(uint32 orderId)
         public
