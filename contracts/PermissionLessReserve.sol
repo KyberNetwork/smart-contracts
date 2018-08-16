@@ -2,12 +2,12 @@ pragma solidity 0.4.18;
 
 
 import "./Utils2.sol";
-import "./SortedLinkedList.sol";
+import "./OrderedLinkedList.sol";
 import "./KyberReserveInterface.sol";
 import "./FeeBurner.sol";
 
 
-contract PermissionLessReserve is SortedLinkedList, KyberReserveInterface {
+contract PermissionLessReserve is OrderedLinkedList, KyberReserveInterface {
 
     uint constant public MIN_ORDER_MAKE_VALUE_WEI = 2 * 10 ** 18;   // 2 Eth
     uint constant public MIN_ORDER_VALUE_WEI = 10 ** 18;            // 1 Eth
@@ -31,12 +31,12 @@ contract PermissionLessReserve is SortedLinkedList, KyberReserveInterface {
     mapping(address=>KncAmounts) public makerKncFunds; // knc funds are required for validating deposited funds
 
     //orders data
-    uint32 public lastUsedOrderID;
+    uint32 public lastUsedOrderID = 0;
     mapping(address=>uint32) public sellOrdersHead;//token to Eth order list head
     mapping(address=>uint32) public buyOrdersHead; //Eth to token order list head
     mapping(address=>uint32[]) public makerOrderIDs;
 
-    ERC20 public kncToken = ERC20(address(0xdd974D5C2e2928deA5F71b9825b8b646686BD200));
+    ERC20 public kncToken;
     uint public kncStakePerEtherBPS = 6000; //for validating orders
 
     function PermissionLessReserve(address _kyberNetwork, address _admin, ERC20 knc) public {
@@ -63,7 +63,7 @@ contract PermissionLessReserve is SortedLinkedList, KyberReserveInterface {
             orderID = buyOrdersHead[dest];
         } else {
             if (isEmptyList(sellOrdersHead[src])) return 0;
-            orderID = sellOrdersHead[dest];
+            orderID = sellOrdersHead[src];
         }
 
         uint128 remainingSrcQty = uint128(srcQty);
@@ -88,7 +88,10 @@ contract PermissionLessReserve is SortedLinkedList, KyberReserveInterface {
 
         if (remainingSrcQty != 0) return 0; //not enough tokens to exchange.
 
-        return (srcQty * PRECISION / exchangedQty);
+        //check overflow
+        if (exchangedQty * PRECISION < exchangedQty) return 0;
+
+        return (exchangedQty * PRECISION / srcQty);
     }
 
     function trade(
@@ -151,6 +154,37 @@ contract PermissionLessReserve is SortedLinkedList, KyberReserveInterface {
         } else {
             require(destToken.transfer(destAddress, exchangedQty));
         }
+
+        return true;
+    }
+
+    event NewMakeOrder(uint32 orderID, address indexed maker, bool isEthToToken, ERC20 token, uint128 payAmount, uint128 exchangeAmount);
+
+    function makeOrder(address maker, bool isEthToToken, ERC20 token, uint128 payAmount, uint128 exchangeAmount,
+        uint32 hintPrevOrder) public returns(bool)
+    {
+        require(maker == msg.sender);
+        require(validateOrder(maker, isEthToToken, token, payAmount, exchangeAmount));
+        require(initOrderList(token, isEthToToken));
+
+        uint32 orderID = takeOrderID(maker);
+
+        orders[orderID] = Order({
+            maker: maker,
+            prevOrderID: 0,
+            nextOrderID: 0,
+            orderState: IN_USE,
+            payAmount: payAmount,
+            exchangeAmount: exchangeAmount
+        });
+
+        if (isEthToToken) {
+            insertMakeOrder(orderID, hintPrevOrder, buyOrdersHead[token]);
+        } else {
+            insertMakeOrder(orderID, hintPrevOrder, sellOrdersHead[token]);
+        }
+
+        NewMakeOrder(orderID, maker, isEthToToken, token, payAmount, exchangeAmount);
 
         return true;
     }
@@ -225,43 +259,26 @@ contract PermissionLessReserve is SortedLinkedList, KyberReserveInterface {
         }
     }
 
-    function makeOrder(address maker, bool isEthToToken, ERC20 token, uint128 payAmount, uint128 exchangeAmount,
-        uint32 hintPrevOrder) public returns(bool)
-    {
-        require(maker == msg.sender);
-        require(validateOrder(maker, isEthToToken, token, payAmount, exchangeAmount));
-        require(initOrderList(token, isEthToToken));
-
-        uint32 orderID = takeOrderID(maker);
-
-        orders[orderID] = Order(maker, 0, 0, ACTIVE, payAmount, exchangeAmount);
-
-        if (isEthToToken) {
-            insertMakeOrder(orderID, hintPrevOrder, buyOrdersHead[token]);
-        } else {
-            insertMakeOrder(orderID, hintPrevOrder, sellOrdersHead[token]);
-        }
-
-        return true;
-    }
-
     function insertMakeOrder (uint32 newOrderID, uint32 hintPrevOrder, uint32 head) internal {
 
         if (hintPrevOrder != 0) {
             require(verifyOrderPosition(hintPrevOrder, newOrderID));
             insertOrder(newOrderID, hintPrevOrder);
+            return;
         }
 
-        uint32 currentOrder = head;
+        uint32 prevOrder = head;
+        uint32 currentOrder;
 
         while (!isLastOrder(currentOrder)) {
+            currentOrder = getNextOrderID(prevOrder);
 
             if (isOrderBetterRate(currentOrder, newOrderID)) break;
 
-            currentOrder = orders[currentOrder].nextOrderID;
+            prevOrder = currentOrder;
         }
 
-        insertOrder(currentOrder, newOrderID);
+        insertOrder(prevOrder, newOrderID);
     }
 
     function cancelOrder(address maker, bool isEthToToken, ERC20 token, uint32 orderID) public returns(bool)
@@ -282,6 +299,7 @@ contract PermissionLessReserve is SortedLinkedList, KyberReserveInterface {
 
         require(releaseOrderStakes(maker, calcKncStake(weiAmount), 0));
 
+        // @dev: below done in two function. but no gas issues since handles different orders.
         removeOrder(orderID);
         releaseOrderID(orderID);
 
@@ -306,8 +324,60 @@ contract PermissionLessReserve is SortedLinkedList, KyberReserveInterface {
         uint orderRate = order.exchangeAmount * PRECISION / order.payAmount;
         uint checkedRate = checkedOrder.exchangeAmount * PRECISION / checkedOrder.payAmount;
 
-        // especially for our CTO
+        // for CTO ;)
         checkedRate > orderRate ? true : false;
+    }
+
+    function getBuyTokenOrderList(ERC20 token) public view returns(uint32[] orderList) {
+
+        uint32 orderID;
+
+        uint counter = 1;
+
+        orderID = buyOrdersHead[address(token)];
+
+        while (!isLastOrder(orderID)) {
+            orderID = getNextOrderID(orderID);
+            counter++;
+        }
+
+        orderList = new uint32[](counter);
+
+        orderID = buyOrdersHead[address(token)];
+
+        counter = 0;
+        orderList[counter++] = orderID;
+
+        while (!isLastOrder(orderID)) {
+            orderID = getNextOrderID(orderID);
+            orderList[counter++] = orderID;
+        }
+    }
+
+    function getSellTokenOrderList(ERC20 token) public view returns(uint32[] orderList) {
+
+        uint32 orderID;
+
+        uint counter = 1;
+
+        orderID = sellOrdersHead[address(token)];
+
+        while (!isLastOrder(orderID)) {
+            orderID = getNextOrderID(orderID);
+            counter++;
+        }
+
+        orderList = new uint32[](counter);
+
+        orderID = sellOrdersHead[address(token)];
+
+        counter = 0;
+        orderList[counter++] = orderID;
+
+        while (!isLastOrder(orderID)) {
+            orderID = getNextOrderID(orderID);
+            orderList[counter++] = orderID;
+        }
     }
 
     function bindOrderFunds(address maker, bool isEthToToken, ERC20 token, uint128 exchangeAmount)
@@ -316,14 +386,19 @@ contract PermissionLessReserve is SortedLinkedList, KyberReserveInterface {
     {
 
         if (isEthToToken) {
-            require(remainingFundsPerToken[keccak256(maker, ETH_TOKEN_ADDRESS)] >= exchangeAmount);
-            remainingFundsPerToken[keccak256(maker, ETH_TOKEN_ADDRESS)] -= exchangeAmount;
-        } else {
             require(remainingFundsPerToken[keccak256(maker, token)] >= exchangeAmount);
             remainingFundsPerToken[keccak256(maker, token)] -= exchangeAmount;
+        } else {
+            require(remainingFundsPerToken[keccak256(maker, ETH_TOKEN_ADDRESS)] >= exchangeAmount);
+            remainingFundsPerToken[keccak256(maker, ETH_TOKEN_ADDRESS)] -= exchangeAmount;
         }
 
         return true;
+    }
+
+    function getOrderDetails(uint32 orderID) public view returns(address, uint32, uint32, uint8, uint128, uint128) {
+        Order memory order = orders[orderID];
+        return (order.maker, order.prevOrderID, order.nextOrderID, order.orderState, order.payAmount, order.exchangeAmount);
     }
 
     function calcKncStake(uint weiAmount) public view returns(uint) {
@@ -520,14 +595,15 @@ contract PermissionLessReserve is SortedLinkedList, KyberReserveInterface {
 
         for (uint i = 0; i < makerOrderIDs[maker].length; i++) {
             uint32 nextOrderID = makerOrderIDs[maker][i];
-            if (orders[nextOrderID].orderState == FREE) return nextOrderID;
+            if (orders[nextOrderID].orderState == PLEASE_USE) return nextOrderID;
         }
 
         return makerAllocateOrderIDs(maker, 1);
     }
 
+    /// @dev mark order as free to use.
     function releaseOrderID(uint32 orderID) internal returns(bool) {
-        orders[orderID].orderState = FREE;
+        orders[orderID].orderState = PLEASE_USE;
     }
 
     function makerAllocateOrderIDs(address maker, uint numOrders) internal returns(uint32 lastInsertedOrder) {
