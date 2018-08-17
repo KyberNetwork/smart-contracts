@@ -143,7 +143,8 @@ const readTokenDataInConvRate = true;
 const verifyWhitelistedAddresses = false;
 const verifyTokenDataOnblockChain = false;
 
-const doSpyrosRun = false;
+const doSpyrosRun = true;
+const numReservesForSpyros = 1;
 const spyrosDictPath = './spyrosOutputfile.json';
 let SpyrosDict = {};
 
@@ -365,6 +366,9 @@ async function readKyberNetwork(kyberNetworkAdd){
     // now reserves
     for (let i = 0; i < numReserves; i++) {
         await readReserve(reservesAdd[i], i, (reservesAdd[i] == jsonReserveAdd));
+        if (doSpyrosRun) {
+            if (i >= numReservesForSpyros) break;
+        }
     }
 };
 
@@ -490,6 +494,7 @@ async function readWhiteListData(whiteListAddress) {
     let whiteListEvents = {};
     let whiteListedArr = [];
     let whiteListedCat3 = [];
+    let existingCategories = {};
 
     let eventsReference = await WhiteList.getPastEvents("UserCategorySet", {fromBlock: 0, toBlock: 'latest'});
     for(let i = 0; i < eventsReference.length; i++) {
@@ -497,7 +502,11 @@ async function readWhiteListData(whiteListAddress) {
 
         //make sure last event sets current value
         whiteListEvents[(eventsReference[i].returnValues.user).toLowerCase()] = eventsReference[i].returnValues.category;
+        existingCategories[eventsReference[i].returnValues.category] = true;
     }
+
+    console.log("existing categories");
+    console.log(existingCategories);
 
     for (let address in whiteListEvents) {
         console.log(address);
@@ -1922,10 +1931,11 @@ function bpsToPercent (bpsValue) {
 };
 
 async function getCompiledContracts() {
-//    try{
-//        solcOutput = JSON.parse(fs.readFileSync(solcOutputPath, 'utf8'));
-//    } catch(err) {
-//        console.log(err.toString());
+    try{
+        if (doSpyrosRun == false) throw;
+        solcOutput = JSON.parse(fs.readFileSync(solcOutputPath, 'utf8'));
+    } catch(err) {
+        console.log(err.toString());
         myLog(0, 0, "starting compilation");
         solcOutput = await solc.compile({ sources: input }, 1);
         console.log(solcOutput.errors);
@@ -1939,7 +1949,7 @@ async function getCompiledContracts() {
 
             console.log("Saved solc output to: " + solcOutputPath);
         });
-//    }
+    }
 };
 
 function myLog(error, highlight, string) {
