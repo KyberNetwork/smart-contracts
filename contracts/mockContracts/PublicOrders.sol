@@ -12,7 +12,8 @@ contract PublicOrders is Orders {
             uint128 _srcAmount,
             uint128 _dstAmount,
             uint32 _prevId,
-            uint32 _nextId
+            uint32 _nextId,
+            uint8 data
         )
     {
         return super.getOrderDetails(orderId);
@@ -22,19 +23,20 @@ contract PublicOrders is Orders {
         public
         returns(uint32)
     {
-        return super.add(maker, srcAmount, dstAmount);
+//        return super.add(maker, srcAmount, dstAmount);
     }
 
     function addAfterId_p(
         address maker,
         uint128 srcAmount,
         uint128 dstAmount,
-        uint32 prevId
+        uint32 prevId,
+        uint8 data
     )
         public
         returns(uint32)
     {
-        return super.addAfterId(maker, srcAmount, dstAmount, prevId);
+        return super.addAfterId(maker, nextId++, srcAmount, dstAmount, prevId, data);
     }
 
     function removeById_p(uint32 orderId) public {
@@ -45,7 +47,7 @@ contract PublicOrders is Orders {
         public
         returns(uint32)
     {
-        return super.update(orderId, srcAmount, dstAmount);
+        return super.update(orderId, srcAmount, dstAmount, SELL_HEAD_ID);
     }
 
     function updateWithPositionHint_p(

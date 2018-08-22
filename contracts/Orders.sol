@@ -1,111 +1,68 @@
 pragma solidity 0.4.18;
 
+
 import "./Utils2.sol";
+
 
 contract Orders is Utils2 {
 
     struct Order {
         address maker;
-        uint128 srcAmount;
-        uint128 dstAmount;
         uint32 prevId;
         uint32 nextId;
+        uint8 data;
+        uint128 srcAmount;
+        uint128 dstAmount;
     }
 
     mapping (uint32 => Order) public orders;
+
+    uint8 constant public ETH_TO_TOKEN = 1;
+    uint8 constant public TOKEN_TO_ETH = 2;
 
     uint32 constant public TAIL_ID = 1;
     uint32 constant public BUY_HEAD_ID = 2;
     uint32 constant public SELL_HEAD_ID = 3;
 
-    uint32 internal nextId = 4;
+    uint32 public nextId = 4;
 
     Order internal BUY_HEAD;
     Order internal SELL_HEAD;
 
     function Orders() public {
+
         BUY_HEAD = Order({
             maker: 0,
-            srcAmount: 0,
-            dstAmount: 0,
             prevId: BUY_HEAD_ID,
-            nextId: TAIL_ID
+            nextId: TAIL_ID,
+            data: ETH_TO_TOKEN,
+            srcAmount: 0,
+            dstAmount: 0
         });
+
         SELL_HEAD = Order({
             maker: 0,
-            srcAmount: 0,
-            dstAmount: 0,
             prevId: SELL_HEAD_ID,
-            nextId: TAIL_ID
+            nextId: TAIL_ID,
+            data: TOKEN_TO_ETH,
+            srcAmount: 0,
+            dstAmount: 0
         });
+
         orders[BUY_HEAD_ID] = BUY_HEAD;
         orders[SELL_HEAD_ID] = SELL_HEAD;
     }
 
-    function add(address maker, uint128 srcAmount, uint128 dstAmount)
-        internal
-        returns(uint32)
-    {
-        uint32 prevId = findPrevOrderId(srcAmount, dstAmount, BUY_HEAD_ID);
-        return addAfterValidId(maker, srcAmount, dstAmount, prevId);
-    }
-
-    function addAfterId(
-        address maker,
-        uint128 srcAmount,
-        uint128 dstAmount,
-        uint32 prevId
-    )
-        internal
-        returns(uint32)
-    {
-        validatePrevId(srcAmount, dstAmount, prevId);
-        return addAfterValidId(maker, srcAmount, dstAmount, prevId);
-    }
-
-    function addAfterValidId(
-        address maker,
-        uint128 srcAmount,
-        uint128 dstAmount,
-        uint32 prevId
-    )
-        private
-        returns(uint32)
-    {
-        Order storage prevOrder = orders[prevId];
-
-        // Add new order
-        uint32 orderId = nextId++;
-        orders[orderId] = Order({
-            maker: maker,
-            srcAmount: srcAmount,
-            dstAmount: dstAmount,
-            prevId: prevId,
-            nextId: prevOrder.nextId
-        });
-
-        // Update next order to point back to added order
-        uint32 nextOrderId = prevOrder.nextId;
-        if (nextOrderId != TAIL_ID) {
-            Order storage nextOrder = orders[nextOrderId];
-            nextOrder.prevId = orderId;
-        }
-
-        // Update previous order to point to added order
-        prevOrder.nextId = orderId;
-
-        return orderId;
-    }
-
     function getOrderDetails(uint32 orderId)
-        internal
+        public
         view
         returns (
             address _maker,
             uint128 _srcAmount,
             uint128 _dstAmount,
             uint32 _prevId,
-            uint32 _nextId
+            uint32 _nextId,
+            uint8 _data
         )
     {
         Order storage order = orders[orderId];
@@ -114,8 +71,65 @@ contract Orders is Utils2 {
             order.srcAmount,
             order.dstAmount,
             order.prevId,
-            order.nextId
+            order.nextId,
+            order.data
         );
+    }
+
+    function add(address maker, uint32 newId, uint128 srcAmount, uint128 dstAmount, uint32 headId, uint8 data)
+        internal
+        returns(uint32)
+    {
+        uint32 prevId = findPrevOrderId(srcAmount, dstAmount, headId);
+        return addAfterValidId(maker, newId, srcAmount, dstAmount, prevId, data);
+    }
+
+    function addAfterId(
+        address maker,
+        uint32 newId,
+        uint128 srcAmount,
+        uint128 dstAmount,
+        uint32 prevId,
+        uint8 data
+    )
+        internal
+        returns(uint32)
+    {
+        validatePrevId(srcAmount, dstAmount, prevId);
+        return addAfterValidId(maker, newId, srcAmount, dstAmount, prevId, data);
+    }
+
+    function addAfterValidId(
+        address maker,
+        uint32 newId,
+        uint128 srcAmount,
+        uint128 dstAmount,
+        uint32 prevId,
+        uint8 orderData
+    )
+        private
+        returns(uint32)
+    {
+        Order storage prevOrder = orders[prevId];
+
+        // Add new order
+        orders[newId].maker = maker;
+        orders[newId].prevId = prevId;
+        orders[newId].nextId = prevOrder.nextId;
+        orders[newId].data = orderData;
+        orders[newId].srcAmount = srcAmount;
+        orders[newId].dstAmount = dstAmount;
+
+        // Update next order to point back to added order
+        uint32 nextOrderId = prevOrder.nextId;
+        if (nextOrderId != TAIL_ID) {
+            orders[nextOrderId].prevId = newId;
+        }
+
+        // Update previous order to point to added order
+        prevOrder.nextId = newId;
+
+        return newId;
     }
 
     function removeById(uint32 orderId) internal {
@@ -125,19 +139,19 @@ contract Orders is Utils2 {
         Order storage order = orders[orderId];
         orders[order.prevId].nextId = order.nextId;
         orders[order.nextId].prevId = order.prevId;
-
-        order.prevId = 0;
-        order.nextId = 0;
     }
 
     // The updated order id is returned following the update.
-    function update(uint32 orderId, uint128 srcAmount, uint128 dstAmount)
+    function update(uint32 orderId, uint128 srcAmount, uint128 dstAmount, uint32 headId)
         internal
         returns(uint32)
     {
         address maker = orders[orderId].maker;
+        uint8 data = orders[orderId].data;
+
         removeById(orderId);
-        return add(maker, srcAmount, dstAmount);
+
+        return add(maker, orderId, srcAmount, dstAmount, headId, data);
     }
 
     // The updated order id is returned following the update.
@@ -151,8 +165,11 @@ contract Orders is Utils2 {
         returns(uint32)
     {
         address maker = orders[orderId].maker;
+        uint8 data = orders[orderId].data;
+
         removeById(orderId);
-        return addAfterId(maker, srcAmount, dstAmount, prevId);
+
+        return addAfterId(maker, orderId, srcAmount, dstAmount, prevId, data);
     }
 
     function allocateIds(uint32 howMany) internal returns(uint32) {
@@ -231,5 +248,13 @@ contract Orders is Utils2 {
         Order storage next = orders[prev.nextId];
         uint nextKey = calculateOrderSortKey(next.srcAmount, next.dstAmount);
         require(key > nextKey);
+    }
+
+    function isNextOrderTail(uint32 orderId) internal view returns(bool) {
+        return ((orders[orderId]).nextId == TAIL_ID);
+    }
+
+    function getNextOrderId(uint32 orderId) internal view returns(uint32) {
+        return (orders[orderId].nextId);
     }
 }
