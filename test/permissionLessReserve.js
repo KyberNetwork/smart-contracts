@@ -52,6 +52,7 @@ contract('PermissionLessReserve', async (accounts) => {
             user2 = accounts[2];
             maker1 = accounts[3];
             maker2 = accounts[4];
+            let network = accounts[5];
             withDrawAddress = accounts[6];
 
             token = await TestToken.new("the token", "TOK", 18);
@@ -60,7 +61,7 @@ contract('PermissionLessReserve', async (accounts) => {
             KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
             kncAddress = KNCToken.address;
 
-            feeBurner = await FeeBurner.new(admin, kncAddress);
+            feeBurner = await FeeBurner.new(admin, kncAddress, network);
             currentBlock = await Helper.getCurrentBlock();
             init = false;
         }
