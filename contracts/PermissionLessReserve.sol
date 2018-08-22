@@ -41,9 +41,8 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
 
     mapping(address => FreeOrders) makerOrders; //each maker will have orders that will be reused.
 
-    function PermissionLessReserve(FeeBurner burner, ERC20 knc, ERC20 token, address _admin)
-        public
-    {
+    function PermissionLessReserve(FeeBurner burner, ERC20 knc, ERC20 token, address _admin) public {
+
         require(knc != address(0));
         require(token != address(0));
         require(_admin != address(0));

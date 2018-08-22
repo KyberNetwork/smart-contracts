@@ -61,11 +61,10 @@ contract('PermissionLessReserve', async (accounts) => {
             kncAddress = KNCToken.address;
 
             feeBurner = await FeeBurner.new(admin, kncAddress);
-
+            currentBlock = await Helper.getCurrentBlock();
             init = false;
         }
 
-        currentBlock = await Helper.getCurrentBlock();
 
         reserve = await PermissionLessReserve.new(feeBurner.address, kncAddress, tokenAdd, admin);
     });
