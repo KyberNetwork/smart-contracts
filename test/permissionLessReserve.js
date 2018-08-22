@@ -14,7 +14,6 @@ let precision = new BigNumber(10).pow(18);
 
 //permission groups
 let admin;
-let networkAddress;
 let withDrawAddress;
 
 //contracts
@@ -53,7 +52,6 @@ contract('PermissionLessReserve', async (accounts) => {
             user2 = accounts[2];
             maker1 = accounts[3];
             maker2 = accounts[4];
-            networkAddress = accounts[5];
             withDrawAddress = accounts[6];
 
             token = await TestToken.new("the token", "TOK", 18);
@@ -62,14 +60,14 @@ contract('PermissionLessReserve', async (accounts) => {
             KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
             kncAddress = KNCToken.address;
 
-            feeBurner = await FeeBurner.new(admin, kncAddress, networkAddress);
+            feeBurner = await FeeBurner.new(admin, kncAddress);
 
             init = false;
         }
 
         currentBlock = await Helper.getCurrentBlock();
 
-        reserve = await PermissionLessReserve.new(networkAddress, feeBurner.address, kncAddress, tokenAdd, admin);
+        reserve = await PermissionLessReserve.new(feeBurner.address, kncAddress, tokenAdd, admin);
     });
 
     afterEach('withdraw ETH from contracts', async () => {
@@ -714,7 +712,7 @@ contract('PermissionLessReserve', async (accounts) => {
 //  function trade(ERC20 srcToken, uint srcAmount, ERC20 destToken, address destAddress, uint conversionRate, bool validate)
 
         rc = await reserve.trade(ethAddress, orderPayAmountWei, tokenAdd, user1, 300, false,
-                        {from: networkAddress, value: orderPayAmountWei});
+                        {value: orderPayAmountWei});
         log("take single order gas: " + rc.receipt.gasUsed);
 
         rate = await reserve.getConversionRate(ethAddress, token.address, 10 ** 18, 0);
@@ -747,7 +745,7 @@ contract('PermissionLessReserve', async (accounts) => {
 
         let totalOrderValue = orderPayAmountWei.mul(3).add(3000);
         rc = await reserve.trade(ethAddress, totalOrderValue, tokenAdd, user1, 300, false,
-                        {from: networkAddress, value: totalOrderValue});
+                        {value: totalOrderValue});
         log("take 3 orders gas: " + rc.receipt.gasUsed);
 
         balance = await reserve.getMakerFreeWei(maker1);
@@ -779,7 +777,7 @@ contract('PermissionLessReserve', async (accounts) => {
 //  function trade(ERC20 srcToken, uint srcAmount, ERC20 destToken, address destAddress, uint conversionRate, bool validate)
         let takeAmount = orderPayAmountWei.div(2).sub(100);
         rc = await reserve.trade(ethAddress, takeAmount, tokenAdd, user1, 300, false,
-                    {from: networkAddress, value: takeAmount});
+                    {value: takeAmount});
 
         log("take partial order gas (rest not removed): " + rc.receipt.gasUsed);
 
@@ -812,7 +810,7 @@ contract('PermissionLessReserve', async (accounts) => {
 //  function trade(ERC20 srcToken, uint srcAmount, ERC20 destToken, address destAddress, uint conversionRate, bool validate)
         let takeAmount = orderPayAmountWei.div(2).add(300);
         rc = await reserve.trade(ethAddress, takeAmount, tokenAdd, user1, 300, false,
-                        {from: networkAddress, value: takeAmount});
+                        {value: takeAmount});
 
         log("take partial order gas (remaining removed): " + rc.receipt.gasUsed);
 

@@ -8,7 +8,7 @@ contract MockPermissionLess is PermissionLessReserve {
 
     uint public bitmap;
 
-    function MockPermissionLess(address _kyberNetwork, FeeBurner burner, ERC20 knc, ERC20 token, address _admin) public
+    function MockPermissionLess(FeeBurner burner, ERC20 knc, ERC20 token, address _admin) public
         PermissionLessReserve(_kyberNetwork, burner, knc, token, _admin)
     {
 

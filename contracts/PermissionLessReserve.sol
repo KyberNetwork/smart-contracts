@@ -14,7 +14,6 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
 
     ERC20 public reserveToken; // this reserve will serve buy / sell for this token.
     FeeBurner public feeBurnerContract;
-    address public kyberNetwork;
     address public admin;
 
     ERC20 public kncToken;  //can't be constant. to enable testing and test net usage
@@ -42,16 +41,14 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
 
     mapping(address => FreeOrders) makerOrders; //each maker will have orders that will be reused.
 
-    function PermissionLessReserve(address _kyberNetwork, FeeBurner burner, ERC20 knc, ERC20 token, address _admin)
+    function PermissionLessReserve(FeeBurner burner, ERC20 knc, ERC20 token, address _admin)
         public
     {
-        require(_kyberNetwork != address(0));
         require(knc != address(0));
         require(token != address(0));
         require(_admin != address(0));
         require(burner != address(0));
 
-        kyberNetwork = _kyberNetwork;
         feeBurnerContract = burner;
         kncToken = knc;
         reserveToken = token;
@@ -120,7 +117,6 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
         payable
         returns(bool)
     {
-        require(msg.sender == address(kyberNetwork));
         require((srcToken == ETH_TOKEN_ADDRESS) || (destToken == ETH_TOKEN_ADDRESS));
         require((srcToken == reserveToken) || (destToken == reserveToken));
 
@@ -378,15 +374,6 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
 
     function calcBurnAmount(uint weiAmount) public view returns(uint) {
         return(weiAmount * makersBurnFeeBps * feeBurnerContract.kncPerETHRate() / 1000);
-    }
-
-    event KyberNetworkSet(address kyberContract);
-    function setKyberNetwork (address kyber) public {
-
-        require(msg.sender == admin);
-
-        kyberNetwork = kyber;
-        KyberNetworkSet(kyberNetwork);
     }
 
     function releaseOrderFunds(bool isEthToToken, Order order) internal returns(bool) {
