@@ -93,7 +93,6 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
                 remainingSrcAmount = 0;
                 break;
             }
-
         }
 
         if ((remainingSrcAmount != 0) || (totalDstAmount == 0)) return 0; //not enough tokens to exchange.
@@ -101,7 +100,7 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
         //check overflow
         if (uint(totalDstAmount) * PRECISION < uint(totalDstAmount)) return 0;
 
-        return (uint(totalDstAmount) * PRECISION / totalSrcAmount);
+        return calcRateFromQty(totalSrcAmount, totalDstAmount, getDecimals(src), getDecimals(dest));
     }
 
     function trade(
@@ -529,6 +528,7 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
         makerFunds[maker][src] += srcAmount;
 
         // send dest tokens in one batch. not here
+        dest;
 
         //handle knc stakes and fee
         if (src == ETH_TOKEN_ADDRESS) {

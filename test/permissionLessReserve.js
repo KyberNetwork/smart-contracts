@@ -1,6 +1,8 @@
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 //let PermissionLessReserve = artifacts.require("./PermissionLessReserve.sol");
 let PermissionLessReserve = artifacts.require("./MockContracts/MockPermissionLess.sol");
+let KyberNetwork = artifacts.require("./KyberNetwork.sol");
+let KyberController = artifacts.require("./KyberController.sol");
 let FeeBurner = artifacts.require("./FeeBurner.sol");
 
 let Helper = require("./helper.js");
@@ -310,7 +312,6 @@ contract('PermissionLessReserve', async (accounts) => {
         await makerDeposit(maker1, amountEth, 0, amountKnc.valueOf());
 
         // first getConversionRate should return 0
-//        getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint)
         let rate = await reserve.getConversionRate(token.address, ethAddress, 10 ** 18, 0);
         assert.equal(rate.valueOf(), 0);
 
@@ -330,6 +331,7 @@ contract('PermissionLessReserve', async (accounts) => {
         assert.equal(orderDetails[4].valueOf(), tailId); // next should be tail ID - since last
 
         let orderList = await reserve.getSellOrderList();
+        assert.equal(orderList.length, 2); //sell head only
 //        log(orderList);
 
         rate = await reserve.getConversionRate(token.address, ethAddress, 10 ** 18, 0);
@@ -533,7 +535,6 @@ contract('PermissionLessReserve', async (accounts) => {
         }
     });
 
-
     it("maker add a few sell orders. see orders added in correct position.", async function () {
         let amountKnc = 600 * 10 ** 18;
         let amountEth = 14 * 10 ** 18;
@@ -722,14 +723,14 @@ contract('PermissionLessReserve', async (accounts) => {
         assert.equal(list.length, 1); //including head order.
     });
 
-    it("maker add a few buy orders. user takes full orders. see user gets trades tokens. maker gets ether.", async function () {
+    it("maker add a few buy orders. user takes full orders. see user gets traded tokens. maker gets ether.", async function () {
         let amountTwei = 5 * 10 ** 19; //500 tokens
         let amountKnc = 2000 * 10 ** 18;
 
         await makerDeposit(maker1, 0, amountTwei.valueOf(), amountKnc.valueOf());
 
         let orderPayAmountWei = new BigNumber(2 * 10 ** 18);
-        let orderExchangeTwei = 9 * 10 ** 18;
+        let orderExchangeTwei = new BigNumber(9 * 10 ** 18);
 
         // add order
         let rc = await reserve.addMakeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
@@ -744,9 +745,16 @@ contract('PermissionLessReserve', async (accounts) => {
         assert.equal(balance.valueOf(), 0);
 
         let totalOrderValue = orderPayAmountWei.mul(3).add(3000);
+        let totalDestValue = orderExchangeTwei.mul(3);
+
+        let userBalanceBefore = await token.balanceOf(user1);
+
         rc = await reserve.trade(ethAddress, totalOrderValue, tokenAdd, user1, 300, false,
                         {value: totalOrderValue});
         log("take 3 orders gas: " + rc.receipt.gasUsed);
+
+        let userBalanceAfter = await token.balanceOf(user1);
+        assert.equal(userBalanceAfter.valueOf(), totalDestValue.add(userBalanceBefore).valueOf());
 
         balance = await reserve.getMakerFreeWei(maker1);
         assert.equal(balance.valueOf(), totalOrderValue.valueOf());
@@ -828,13 +836,103 @@ contract('PermissionLessReserve', async (accounts) => {
     });
 
     it("maker add a few sell orders. user takes orders. see taken orders are removed as expected.", async function () {
+        let orderPayAmountTwei = new BigNumber(9 * 10 ** 18);
+        let orderExchangeWei = new BigNumber(2 * 10 ** 18);
+
+        let amountKnc = 600 * 10 ** 18;
+        let amountEth = (new BigNumber(6 * 10 ** 18)).add(600);
+
+        await makerDeposit(maker1, amountEth.valueOf(), 0, amountKnc.valueOf());
+
+        // first getConversionRate should return 0
+        let rate = await reserve.getConversionRate(token.address, ethAddress, 10 ** 18, 0);
+        assert.equal(rate.valueOf(), 0);
+
+        //now add order
+        //////////////
+//        addMakeOrder(address maker, bool isEthToToken, uint128 payAmount, uint128 exchangeAmount, uint32 hintPrevOrder)
+        let rc = await reserve.addMakeOrder(maker1, false, orderPayAmountTwei, orderExchangeWei, 0, {from: maker1});
+        rc = await reserve.addMakeOrder(maker1, false, orderPayAmountTwei, orderExchangeWei.add(400), 0, {from: maker1});
+            rc = await reserve.addMakeOrder(maker1, false, orderPayAmountTwei, orderExchangeWei.add(200), 0, {from: maker1});
+//        log(rc.logs[0].args)
+
+        let orderList = await reserve.getSellOrderList();
+        assert.equal(orderList.length, 4); //also sell head
+//        log(orderList);
+        let srcRateAmount = new BigNumber(10 ** 18);
+        rate = await reserve.getConversionRate(token.address, ethAddress, srcRateAmount, 0);
+//        log("rate " + rate);
+
+        let dstRateAmount = srcRateAmount.mul(orderExchangeWei).div(orderPayAmountTwei).floor();
+        let expectedRate = precisionUnits.mul(dstRateAmount).div(srcRateAmount).floor();
+        assert.equal(rate.valueOf(), expectedRate.valueOf());
+
+        //tokens to user
+        let totalPayValue = orderPayAmountWei.mul(3);
+        await token.transfer(totalPayValue, user1);
+        await token.approve(reserve.address, totalPayValue);
+
+        let userInitialBalance = await await Helper.getBalancePromise(user1);
+        //trade
+        rc = await reserve.trade(tokenAdd, totalPayValue, ethAddress, user1, 300, false);
+        log("take 3 sell orders gas: " + rc.receipt.gasUsed);
+
+        orderList = await reserve.getSellOrderList();
+        assert.equal(orderList.length, 1); //also sell head
+
+        let userBalanceAfter = await Helper.getBalancePromise(user1);
+        let expectedBalance = userInitialBalance.add(amountEth);
+
+        assert.equal(userBalanceAfter.valueOf(), expectedBalance.valueOf());
     });
 
-    it("maker add a few sell orders. user takes orders. see user gets trades tokens. maker gets ether.", async function () {
+    it("maker add a few sell orders. user takes orders. see user gets traded tokens. maker gets ether.", async function () {
     });
 
 });
 
+
+contract('PermissionLessReserve on network', async (accounts) => {
+
+    beforeEach('setup contract for each test', async () => {
+
+        if(init) {
+            //below should happen once
+            admin = accounts[0];
+            user1 = accounts[1];
+            user2 = accounts[2];
+            maker1 = accounts[3];
+            maker2 = accounts[4];
+            let network = accounts[5];
+            withDrawAddress = accounts[6];
+
+            token = await TestToken.new("the token", "TOK", 18);
+            tokenAdd = token.address;
+
+            KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
+            kncAddress = KNCToken.address;
+
+            feeBurner = await FeeBurner.new(admin, kncAddress, network);
+            currentBlock = await Helper.getCurrentBlock();
+            init = false;
+        }
+
+
+        reserve = await PermissionLessReserve.new(feeBurner.address, kncAddress, tokenAdd, admin);
+    });
+
+    afterEach('withdraw ETH from contracts', async () => {
+        let rxWei = await reserve.getMakerFreeWei(maker1);
+        if (rxWei.valueOf() > 0) {
+            await reserve.makerWithdrawEth(rxWei.valueOf(), {from: maker1})
+        }
+
+        rxWei = await reserve.getMakerFreeWei(maker2);
+        if (rxWei.valueOf() > 0) {
+            await reserve.makerWithdrawEth(rxWei.valueOf(), {from: maker2})
+        }
+    });
+});
 
 function log(str) {
     console.log(str);
