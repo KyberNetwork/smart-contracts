@@ -48,7 +48,7 @@ const input = {
 
 //below is sha3 of reserve code for previous version (V1)
 const reserveV1Sha3BlockCode = '0x8da19d456dc61d48ed44c94ffb9bb4c20c644a13724860bb0fce8951150208d7';
-const oasisReserveSha2BlockCode = '0x2349c46d1aa561fc17fceb20790d97e6c012956dea34c41f2418713f80479735';
+const oasisReserveSha3BlockCode = '0x2349c46d1aa561fc17fceb20790d97e6c012956dea34c41f2418713f80479735';
 
 let solcOutput;
 
@@ -144,10 +144,10 @@ const readTokenDataInConvRate = true;
 const verifyWhitelistedAddresses = false;
 const verifyTokenDataOnblockChain = false;
 
-const doSpyrosRun = false;
-const numReservesForSpyros = 1;
-const spyrosDictPath = './spyrosOutputfile.json';
-let SpyrosDict = {};
+const doAccountingRun = false;
+const numReservesForAccounting = 1;
+const accountingDictPath = './accountingOutputfile.json';
+let AccountingDict = {};
 
 
 // code
@@ -214,10 +214,10 @@ async function main (){
     });
 
 
-    if (doSpyrosRun == true) {
-        myLog(0, 1, "write spyros dict to: " + spyrosDictPath);
-        let spyrosJsonOut = JSON.stringify(SpyrosDict, null, 2);
-        fs.writeFileSync(spyrosDictPath, spyrosJsonOut);
+    if (doAccountingRun == true) {
+        myLog(0, 1, "write accounting dict to: " + accountingDictPath);
+        let accountingJsonOut = JSON.stringify(AccountingDict, null, 2);
+        fs.writeFileSync(accountingDictPath, accountingJsonOut);
     }
 }
 
@@ -367,8 +367,8 @@ async function readKyberNetwork(kyberNetworkAdd){
     // now reserves
     for (let i = 0; i < numReserves; i++) {
         await readReserve(reservesAdd[i], i, (reservesAdd[i] == jsonReserveAdd));
-        if (doSpyrosRun) {
-            if (i >= numReservesForSpyros) break;
+        if (doAccountingRun) {
+            if (i >= numReservesForAccounting) break;
         }
     }
 };
@@ -404,9 +404,9 @@ async function readWhiteListData(whiteListAddress) {
 
     await printAdminAlertersOperators(WhiteList, "WhiteList");
     let weiPerSgd = await WhiteList.methods.weiPerSgd().call();
-    SpyrosDict["weiPerSgd"] = weiPerSgd.valueOf();
+    AccountingDict["weiPerSgd"] = weiPerSgd.valueOf();
 
-    if (doSpyrosRun == true) return;
+    if (doAccountingRun == true) return;
 
     myLog((weiPerSgd == 0), (weiPerSgd != jsonWeiPerSGD), ("weiPerSgd: " + weiPerSgd + " = " + await getAmountTokens(weiPerSgd, ethAddress) + " tokens."));
     let kgtAddress = await WhiteList.methods.kgtToken().call();
@@ -600,7 +600,7 @@ async function readWhiteListData(whiteListAddress) {
 async function readExpectedRateData(expectedRateAddress) {
     myLog(0, 0, '');
 
-    if ((runExpectedRate == false)  || (doSpyrosRun == true)) {
+    if ((runExpectedRate == false)  || (doAccountingRun == true)) {
         myLog(0, 1, "not showing ExpectedRate. set runExpectedRate = true to show it.");
         return;
     }
@@ -701,7 +701,7 @@ async function readReserve(reserveAdd, index, isKyberReserve){
             myLog(0, 0, '');
             myLog(0, 0, "Byte code from block chain reserve V1, doesn't match locally compiled code.")
             myLog(0, 1, '');
-            if(blockCodeSha3 != oasisReserveSha2BlockCode) {
+            if(blockCodeSha3 != oasisReserveSha3BlockCode) {
                 myLog(0, 0, '');
                 myLog(1, 0, "Byte code from block chain doesn't match any known reserve. can't read data")
                 myLog(0, 1, '');
@@ -828,7 +828,7 @@ async function reportReserveBalance(reserveAddress, index, tokens, reserveInst, 
 
 async function verifyApprovedWithdrawAddress (reserveContract, isKyberReserve) {
 
-    if ((doVerifyWithdrawAddresses == false) || (doSpyrosRun == true)) return;
+    if ((doVerifyWithdrawAddresses == false) || (doAccountingRun == true)) return;
 
     //verify approved withdrawal addresses are set
 
@@ -903,7 +903,7 @@ async function verifyApprovedWithdrawAddress (reserveContract, isKyberReserve) {
 
 async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, index, isKyberReserve) {
 
-    if ((doSpyrosRun == true) && (isKyberReserve == false)) return;
+    if ((doAccountingRun == true) && (isKyberReserve == false)) return;
 
     myLog(0, 0, '');
 
@@ -957,9 +957,9 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
         raiseFlag = isKyberReserve && (KNCAddress != jsonKNCAddress);
         myLog(raiseFlag, 0, ("KNCAddress: " + KNCAddress));
         let kncPerEthRate = await FeeBurner.methods.kncPerETHRate().call();
-        SpyrosDict["kncPerEthRate"] = kncPerEthRate.valueOf();
+        AccountingDict["kncPerEthRate"] = kncPerEthRate.valueOf();
 
-        if (doSpyrosRun == true) return;
+        if (doAccountingRun == true) return;
 
         myLog((kncPerEthRate.valueOf() == 0), (kncPerEthRate != jsonKNC2EthRate), ("kncPerEthRate: " + kncPerEthRate));
 
@@ -987,7 +987,7 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
 let wrapFeeBurnerABI;
 async function readFeeBurnerWrapper(burnerWrapperAddress) {
 
-    if (doSpyrosRun == true) return;
+    if (doAccountingRun == true) return;
 
     try {
         let abi = solcOutput.contracts["WrapFeeBurner.sol:WrapFeeBurner"].interface;
@@ -1118,8 +1118,8 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index, 
 
     if (readTokenDataInConvRate == false) return;
 
-    if (isKyberReserve) SpyrosDict["kyber"] = {};
-	else SpyrosDict["other" + index] = {};
+    if (isKyberReserve) AccountingDict["kyber"] = {};
+	else AccountingDict["other" + index] = {};
 
     myLog(0, 0, "");
     myLog(0, 0, "");
@@ -1238,7 +1238,7 @@ async function readLiquidityConversionRate(liquidityRateAddress, reserveAddress,
 
 async function verifyTokenListMatchingDeployJSON (reserveIndex, tokenList, isKyberReserve) {
 
-    if (doSpyrosRun == true) return;
+    if (doAccountingRun == true) return;
 
     myLog(0, 0, '');
     myLog(0, 0, ("Verify all json token list is listed in conversion rate contract "));
@@ -1269,7 +1269,7 @@ async function verifyTokenListMatchingDeployJSON (reserveIndex, tokenList, isKyb
 
 async function readConversionRateWrapper(convRateWrapperAddress) {
 
-    if (doSpyrosRun == true) return;
+    if (doAccountingRun == true) return;
 
     try {
         let abi = solcOutput.contracts["WrapConversionRate.sol:WrapConversionRate"].interface;
@@ -1420,9 +1420,9 @@ async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, re
     }
 
     if (isKyberReserve) {
-        SpyrosDict["kyber"][tokenName] = tokenDict;
+        AccountingDict["kyber"][tokenName] = tokenDict;
     } else {
-		SpyrosDict["other" + reserveIndex][tokenName] = tokenDict;
+		AccountingDict["other" + reserveIndex][tokenName] = tokenDict;
     }
 }
 
@@ -1456,7 +1456,7 @@ let needSanityRateABI = 1;
 
 async function readSanityRate(sanityRateAddress, reserveAddress, index, tokens, isKyberReserve) {
 
-    if ((doReadSanityRateData == false) || (doSpyrosRun == true)) return;
+    if ((doReadSanityRateData == false) || (doAccountingRun == true)) return;
 
     if (sanityRateAddress == 0) {
         myLog(0, 0, "");
@@ -1512,7 +1512,7 @@ async function readSanityRate(sanityRateAddress, reserveAddress, index, tokens, 
 
 async function validateReserveTokensListedOnNetwork(tokens, index, reserveAddress) {
 
-    if (doSpyrosRun == true) return;
+    if (doAccountingRun == true) return;
 
     let tokenListedSource;
     let tokenListedDest;
@@ -1621,7 +1621,7 @@ async function twoStringsSoliditySha(str1, str2) {
 
 let adminAlerterMessage = 1;
 async function printAdminAlertersOperators(contract, jsonKey) {
-    if ((printAdminETC == false)  || (doSpyrosRun == true))  {
+    if ((printAdminETC == false)  || (doAccountingRun == true))  {
         if (adminAlerterMessage) {
             myLog(0, 1, "not showing Admin operator alerter. set printAdminETC = 1 to show it.");
             adminAlerterMessage = 0;
@@ -1872,7 +1872,7 @@ async function jsonVerifyTokenData (tokenData, symbol) {
     ERC20Adds.push(address);
 
     //verify token data on blockchain.
-    if ((verifyTokenDataOnblockChain == false) || (doSpyrosRun == true)) return;
+    if ((verifyTokenDataOnblockChain == false) || (doAccountingRun == true)) return;
 
     if (symbol == "EOS") {
         let rxDecimals = await ERC20.methods.decimals().call();
@@ -1985,7 +1985,7 @@ function bpsToPercent (bpsValue) {
 
 async function getCompiledContracts() {
     try{
-        if (doSpyrosRun == false) throw("err");
+        if (doAccountingRun == false) throw("err");
         solcOutput = JSON.parse(fs.readFileSync(solcOutputPath, 'utf8'));
     } catch(err) {
         console.log(err.toString());
