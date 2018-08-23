@@ -575,9 +575,9 @@
       "0xd0643bc0d0c879f175556509dbcee9373379d5c3"
     ],
     "testers category": 9,
-    "testers cap": 5000,
+    "testers cap": 500000,
     "KGT address": "0xfce10cbf5171dc12c215bbcca5dd75cbaea72506",
-    "KGT cap": 5000,
+    "KGT cap": 500000,
     "users": [
       "0x943252227f9cbfa10ee85912069171813e07b5df",
       "0x85f160b182fe02d82cc771753a67425dc7da4bfd",
@@ -630,17 +630,17 @@
       "0xe9dcde10206cbbd76c52944ff0eec832c886bbc6"
     ],
     "users category": 1,
-    "users cap": 5000,
+    "users cap": 500000,
     "partner category": 7,
     "partner cap": 500000,
     "email category": 3,
-    "email cap": 5000,
+    "email cap": 500000,
     "KYC category": 4,
     "KYC cap": 10000,
-    "default cap": 5000,
+    "default cap": 500000,
     "wei per SGD": 850000000000000
   },
-  "max gas price": "50000000000",
+  "max gas price": "100000000000",
   "neg diff in bps": 20,
   "min expected rate slippage": 300,
   "KNC wallet": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
