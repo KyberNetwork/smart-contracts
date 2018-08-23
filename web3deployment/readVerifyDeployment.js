@@ -48,6 +48,7 @@ const input = {
 
 //below is sha3 of reserve code for previous version (V1)
 const reserveV1Sha3BlockCode = '0x8da19d456dc61d48ed44c94ffb9bb4c20c644a13724860bb0fce8951150208d7';
+const oasisReserveSha2BlockCode = '0x2349c46d1aa561fc17fceb20790d97e6c012956dea34c41f2418713f80479735';
 
 let solcOutput;
 
@@ -143,7 +144,7 @@ const readTokenDataInConvRate = true;
 const verifyWhitelistedAddresses = false;
 const verifyTokenDataOnblockChain = false;
 
-const doSpyrosRun = true;
+const doSpyrosRun = false;
 const numReservesForSpyros = 1;
 const spyrosDictPath = './spyrosOutputfile.json';
 let SpyrosDict = {};
@@ -698,8 +699,21 @@ async function readReserve(reserveAdd, index, isKyberReserve){
 
         if(blockCodeSha3 != reserveV1Sha3BlockCode) {
             myLog(0, 0, '');
-            myLog(1, 0, "Byte code from block chain reserve V1, doesn't match locally compiled code.")
-            myLog(0, 0, '');
+            myLog(0, 0, "Byte code from block chain reserve V1, doesn't match locally compiled code.")
+            myLog(0, 1, '');
+            if(blockCodeSha3 != oasisReserveSha2BlockCode) {
+                myLog(0, 0, '');
+                myLog(1, 0, "Byte code from block chain doesn't match any known reserve. can't read data")
+                myLog(0, 1, '');
+                myLog(0, 1, 'sha3 block code');
+                myLog(0, 1, blockCodeSha3);
+                return;
+            } else {
+                myLog(0, 0, "sha3 of Code on blockchain matches sha3 for oasis reserve.");
+                myLog(0, 0, '');
+                await readOasisReserve(reserveAdd, index);
+                return;
+            }
         } else {
             Reserves[index] = await new web3.eth.Contract(reserveV1ABI, reserveAdd);
             Reserve = Reserves[index];
@@ -739,6 +753,45 @@ async function readReserve(reserveAdd, index, isKyberReserve){
     //after conversion rate run, tokens are list for this reserve is updated
     await reportReserveBalance(reserveAdd, index, tokensPerReserve[index], Reserve, isExternalWallet);
 };
+
+let reserveOasisABI;
+let needReadReserveOasisABI = 1;
+
+async function readOasisReserve(reserveAddress, index) {
+    if (needReadReserveOasisABI == 1) {
+        needReadReserveOasisABI = 0;
+        try {
+            const reserveOasisABIFile = '../contracts/abi/OasisReserve.abi';
+            let abi = fs.readFileSync(reserveOasisABIFile, 'utf8');
+//            let abi = solcOutput.contracts[""].interface;
+            reserveOasisABI = JSON.parse(abi);
+        } catch (e) {
+            myLog(0, 0, e);
+            throw e;
+        }
+    }
+
+    Reserves[index] = await new web3.eth.Contract(reserveOasisABI, reserveAddress);
+    Reserve = Reserves[index];
+
+    let kyber = (await Reserve.methods.kyberNetwork().call()).toLowerCase();
+    myLog((kyber != jsonNetworkAdd), 0, ("kyberNetwork " + kyber));
+
+    let tradeEnabled = await Reserve.methods.tradeEnabled().call();
+    myLog((tradeEnabled != true), 0, ("trade enabled: " + tradeEnabled));
+
+    //tradeToken
+    let tradeToken = (await Reserve.methods.tradeToken().call()).toLowerCase();
+    //async function a2n(address, showAddWithName, isToken)
+    myLog(0, 0, ("token: " + await a2n(tradeToken, true, true)));
+
+    let otc = (await Reserve.methods.otc().call()).toLowerCase();
+    myLog((otc == 0), 0, ("otc address " + otc));
+
+    let feeBps = (await Reserve.methods.feeBps().call());
+    myLog((feeBps == 0), 0, ("feeBps " + feeBps));
+}
+
 
 let needJson = true;
 let jsonForERC20;
@@ -1932,7 +1985,7 @@ function bpsToPercent (bpsValue) {
 
 async function getCompiledContracts() {
     try{
-        if (doSpyrosRun == false) throw;
+        if (doSpyrosRun == false) throw("err");
         solcOutput = JSON.parse(fs.readFileSync(solcOutputPath, 'utf8'));
     } catch(err) {
         console.log(err.toString());
