@@ -17,6 +17,55 @@ contract('Orders', async (accounts) => {
         orders = await Orders.new();
     });
 
+    it("should allocate ids for orders", async () => {
+        let firstId = await allocateIds(3);
+
+        firstId.should.be.bignumber.not.equal(await orders.HEAD_ID());
+        firstId.should.be.bignumber.not.equal(await orders.TAIL_ID());
+    });
+
+    it("should allocate different ids for orders", async () => {
+        let firstAllocationfirstId = (await allocateIds(3)).toNumber();
+        let secondAllocationfirstId = (await allocateIds(3)).toNumber();
+
+        let firstAllocationIds = new Set([
+            firstAllocationfirstId,
+            firstAllocationfirstId + 1,
+            firstAllocationfirstId + 2
+        ]);
+
+        let secondAllocationIds = new Set([
+            secondAllocationfirstId,
+            secondAllocationfirstId + 1,
+            secondAllocationfirstId + 2
+        ]);
+
+        firstAllocationIds.should.not.have.any.keys(Array.from(secondAllocationIds));
+        secondAllocationIds.should.not.have.any.keys(Array.from(firstAllocationIds));
+    });
+
+    it("should allocate different ids for orders of different sizes", async () => {
+        let firstAllocationfirstId = (await allocateIds(5)).toNumber();
+        let secondAllocationfirstId = (await allocateIds(3)).toNumber();
+
+        let firstAllocationIds = new Set([
+            firstAllocationfirstId,
+            firstAllocationfirstId + 1,
+            firstAllocationfirstId + 2,
+            firstAllocationfirstId + 3,
+            firstAllocationfirstId + 4
+        ]);
+
+        let secondAllocationIds = new Set([
+            secondAllocationfirstId,
+            secondAllocationfirstId + 1,
+            secondAllocationfirstId + 2
+        ]);
+
+        firstAllocationIds.should.not.have.any.keys(Array.from(secondAllocationIds));
+        secondAllocationIds.should.not.have.any.keys(Array.from(firstAllocationIds));
+    });
+
     it("should have deployed the contract", async () => {
         orders.should.exist
     });
@@ -37,16 +86,6 @@ contract('Orders', async (accounts) => {
         let head = await getOrderById(await orders.HEAD_ID());
 
         head.nextId.should.be.bignumber.equal(await orders.TAIL_ID());
-    });
-
-    it("should add order with unique id", async () => {
-        let orderId = await orders.add.call(
-            user1 /* maker */,
-            10 /* srcAmount */,
-            100 /* dstAmount */);
-
-        orderId.should.be.bignumber.not.equal(await orders.HEAD_ID());
-        orderId.should.be.bignumber.not.equal(await orders.TAIL_ID());
     });
 
     it("should add order and get its data back with user as maker", async () => {
@@ -347,17 +386,16 @@ contract('Orders', async (accounts) => {
     });
 
     it("should reject adding after invalid order id: non-existant", async () => {
+        let id = await allocateIds(1);
+
         // Calling locally so that the order will not be in fact added to the
         // list and thus the id will be invalid.
-        let nonExistantOrderId = await orders.add.call(
-            user1 /* maker */,
-            10 /* srcAmount */,
-            100 /* dstAmount */
-        );
+        let nonExistantOrderId = await orders.allocateIds.call(1);
 
         try {
-            let order = await addOrderAfterId(
+            let order = await orders.addAfterId(
                 user1 /* maker */,
+                id /* orderId */,
                 10 /* srcAmount */,
                 200 /* dstAmount */,
                 nonExistantOrderId
@@ -573,11 +611,7 @@ contract('Orders', async (accounts) => {
     it("should reject removing non-existant id", async () => {
         // Calling locally so that the order will not be in fact added to the
         // list and thus the id will be invalid.
-        let nonExistantOrderId = await orders.add.call(
-            user1 /* maker */,
-            10 /* srcAmount */,
-            100 /* dstAmount */
-        );
+        let nonExistantOrderId = await orders.allocateIds.call(1);
 
         try {
             await orders.removeById(nonExistantOrderId);
@@ -994,55 +1028,6 @@ contract('Orders', async (accounts) => {
         first.prevId.should.be.bignumber.equal(head.id);
     });
 
-    it("should allocate ids for orders", async () => {
-        let firstId = await allocateIds(3);
-
-        firstId.should.be.bignumber.not.equal(await orders.HEAD_ID());
-        firstId.should.be.bignumber.not.equal(await orders.TAIL_ID());
-    });
-
-    it("should allocate different ids for orders", async () => {
-        let firstAllocationfirstId = (await allocateIds(3)).toNumber();
-        let secondAllocationfirstId = (await allocateIds(3)).toNumber();
-
-        let firstAllocationIds = new Set([
-            firstAllocationfirstId,
-            firstAllocationfirstId + 1,
-            firstAllocationfirstId + 2
-        ]);
-
-        let secondAllocationIds = new Set([
-            secondAllocationfirstId,
-            secondAllocationfirstId + 1,
-            secondAllocationfirstId + 2
-        ]);
-
-        firstAllocationIds.should.not.have.any.keys(Array.from(secondAllocationIds));
-        secondAllocationIds.should.not.have.any.keys(Array.from(firstAllocationIds));
-    });
-
-    it("should allocate different ids for orders of different sizes", async () => {
-        let firstAllocationfirstId = (await allocateIds(5)).toNumber();
-        let secondAllocationfirstId = (await allocateIds(3)).toNumber();
-
-        let firstAllocationIds = new Set([
-            firstAllocationfirstId,
-            firstAllocationfirstId + 1,
-            firstAllocationfirstId + 2,
-            firstAllocationfirstId + 3,
-            firstAllocationfirstId + 4
-        ]);
-
-        let secondAllocationIds = new Set([
-            secondAllocationfirstId,
-            secondAllocationfirstId + 1,
-            secondAllocationfirstId + 2
-        ]);
-
-        firstAllocationIds.should.not.have.any.keys(Array.from(secondAllocationIds));
-        secondAllocationIds.should.not.have.any.keys(Array.from(firstAllocationIds));
-    });
-
     // TODO: add without position to a long list fails
     // TODO: update without new position to a long list fails
 });
@@ -1065,11 +1050,8 @@ async function getOrderById(id) {
 }
 
 async function addOrderGetId(maker, srcAmount, dstAmount, args = {}) {
-    // "Calling" the contract's add function does not return the id value so
-    // we first run add.call() to perform the action without changing the state
-    // of the blockchain, then actually running add to make the changes.
-    let orderId = await orders.add.call(maker, srcAmount, dstAmount, args);
-    await orders.add(maker, srcAmount, dstAmount, args);
+    let orderId = await allocateIds(1);
+    await orders.add(maker, orderId, srcAmount, dstAmount, args);
     return orderId;
 }
 
@@ -1081,18 +1063,10 @@ async function addOrderAfterIdGetId(
     args = {}
 )
 {
-    // "Calling" the contract's add function does not return the id value so
-    // we first run add.call() to perform the action without changing the state
-    // of the blockchain, then actually running add to make the changes.
-    let orderId = await orders.addAfterId.call(
-        user1 /* maker */,
-        srcAmount,
-        dstAmount,
-        prevId,
-        args
-    );
+    let orderId = await allocateIds(1);
     await orders.addAfterId(
         user1 /* maker */,
+        orderId,
         srcAmount,
         dstAmount,
         prevId,
@@ -1107,9 +1081,9 @@ async function addOrder(maker, srcAmount, dstAmount, args = {}) {
 }
 
 async function addOrderAfterId(maker, srcAmount, dstAmount, prevId, args = {}) {
-    let orderId = await addOrderAfterIdGetId(
+    let id = await addOrderAfterIdGetId(
             maker, srcAmount, dstAmount, prevId, args);
-    return await getOrderById(orderId);
+    return await getOrderById(id);
 }
 
 async function update(orderId, srcAmount, dstAmount, args = {}) {

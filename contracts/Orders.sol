@@ -55,17 +55,23 @@ contract Orders is Withdrawable, Utils2 {
         );
     }
 
-    function add(address maker, uint128 srcAmount, uint128 dstAmount)
+    function add(
+        address maker,
+        uint32 orderId,
+        uint128 srcAmount,
+        uint128 dstAmount
+    )
         public
         onlyAdmin
         returns(uint32)
     {
         uint32 prevId = findPrevOrderId(srcAmount, dstAmount);
-        return addAfterValidId(maker, srcAmount, dstAmount, prevId);
+        return addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
     function addAfterId(
         address maker,
+        uint32 orderId,
         uint128 srcAmount,
         uint128 dstAmount,
         uint32 prevId
@@ -75,11 +81,12 @@ contract Orders is Withdrawable, Utils2 {
         returns(uint32)
     {
         validatePrevId(srcAmount, dstAmount, prevId);
-        return addAfterValidId(maker, srcAmount, dstAmount, prevId);
+        return addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
     function addAfterValidId(
         address maker,
+        uint32 orderId,
         uint128 srcAmount,
         uint128 dstAmount,
         uint32 prevId
@@ -90,7 +97,6 @@ contract Orders is Withdrawable, Utils2 {
         Order storage prevOrder = orders[prevId];
 
         // Add new order
-        uint32 orderId = nextId++;
         orders[orderId].maker = maker;
         orders[orderId].prevId = prevId;
         orders[orderId].nextId = prevOrder.nextId;
@@ -126,7 +132,7 @@ contract Orders is Withdrawable, Utils2 {
     {
         address maker = orders[orderId].maker;
         removeById(orderId);
-        return add(maker, srcAmount, dstAmount);
+        return add(maker, orderId, srcAmount, dstAmount);
     }
 
     // The updated order id is returned following the update.
@@ -142,7 +148,7 @@ contract Orders is Withdrawable, Utils2 {
     {
         address maker = orders[orderId].maker;
         removeById(orderId);
-        return addAfterId(maker, srcAmount, dstAmount, prevId);
+        return addAfterId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
     function allocateIds(uint32 howMany) public onlyAdmin returns(uint32) {
