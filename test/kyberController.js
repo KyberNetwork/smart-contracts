@@ -78,7 +78,7 @@ contract('KyberController', async (accounts) => {
         await network.setParams(gasPrice.valueOf(), negligibleRateDiff);
         await network.setEnable(true);
 
-        controller = await KyberController.new(admin, network.address, kncAddress);
+        controller = await KyberController.new(network.address, kncAddress);
 
         let kyberAdd = await controller.kyberContract();
         assert.equal(kyberAdd.valueOf(), network.address);
@@ -86,14 +86,14 @@ contract('KyberController', async (accounts) => {
         let rxKnc = await controller.kncToken();
         assert.equal(rxKnc.valueOf(), kncAddress);
 
-        await network.setKyberController(controller.address);
+        await network.addOperator(controller.address);
 
         let rxController = await network.kyberController();
         assert.equal(rxController.valueOf(), controller.address);
     });
 
 
-    it("create new permissionless reserve and verify it was created.", async function () {
+    it("create new permission less reserve and verify it was created.", async function () {
 
         let rxReserve = await controller.getPermissionLessReserveForToken(tokenAdd);
         assert(rxReserve.valueOf() == 0);
