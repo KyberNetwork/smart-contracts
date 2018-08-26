@@ -20,18 +20,12 @@ contract Orders is Withdrawable, Utils2 {
 
     uint32 public nextId = 2;
 
-    Order internal HEAD;
-
-    function SortedLinkedList() public {
-        HEAD = Order({
-            maker: 0,
-            prevId: HEAD_ID,
-            nextId: TAIL_ID,
-            srcAmount: 0,
-            dstAmount: 0
-        });
-
-        orders[HEAD_ID] = HEAD;
+    function Orders() public {
+        orders[HEAD_ID].maker = 0;
+        orders[HEAD_ID].prevId = HEAD_ID;
+        orders[HEAD_ID].nextId = TAIL_ID;
+        orders[HEAD_ID].srcAmount = 0;
+        orders[HEAD_ID].dstAmount = 0;
     }
 
     function getOrderDetails(uint32 orderId)
@@ -221,5 +215,98 @@ contract Orders is Withdrawable, Utils2 {
         Order storage next = orders[prev.nextId];
         uint nextKey = calculateOrderSortKey(next.srcAmount, next.dstAmount);
         require(key > nextKey);
+    }
+
+    // XXX Convenience functions for Ilan
+    // ----------------------------------
+    function getOrderData(uint32 orderId)
+        public
+        view
+        returns (
+            uint32 nextOrderId,
+            uint128 srcAmount,
+            uint128 dstAmount,
+            bool isLastOrder
+        )
+    {
+        Order storage order = orders[orderId];
+        return (
+            order.nextId,
+            order.srcAmount,
+            order.dstAmount,
+            order.nextId == TAIL_ID
+        );
+    }
+
+    function getFirstOrder() public view returns(uint32 orderId, bool isEmpty) {
+        return (
+            orders[HEAD_ID].nextId,
+            orders[HEAD_ID].nextId == TAIL_ID
+        );
+    }
+
+    // XXX Ilan's code added for initial testing
+    // -----------------------------------------
+    //maker orders
+    struct FreeOrders {
+        uint32 firstOrderId;
+        uint32 numOrders; //max is 256
+        uint8 maxOrdersReached;
+        uint256 takenBitmap;
+    }
+
+    //each maker will have orders that will be reused.
+    mapping(address => FreeOrders) makerOrders;
+
+    function takeOrderId(address maker) internal returns(uint32) {
+
+        uint numOrders = makerOrders[maker].numOrders;
+        uint orderBitmap = makerOrders[maker].takenBitmap;
+        uint bitPointer = 1;
+
+        for(uint i = 0; i < numOrders; ++i) {
+
+            if ((orderBitmap & bitPointer) == 0) {
+                makerOrders[maker].takenBitmap = orderBitmap | bitPointer;
+                return(uint32(uint(makerOrders[maker].firstOrderId) + i));
+            }
+
+            bitPointer *= 2;
+        }
+
+        makerOrders[maker].maxOrdersReached = 1;
+
+        require(false);
+    }
+
+    /// @dev mark order as free to use.
+    function releaseOrderId(address maker, uint32 orderId) internal returns(bool) {
+
+        require(orderId >= makerOrders[maker].firstOrderId);
+        require(orderId < (makerOrders[maker].firstOrderId + makerOrders[maker].numOrders));
+
+        uint orderBitNum = uint(orderId) - uint(makerOrders[maker].firstOrderId);
+        uint256 bitPointer = 1 * (2 ** orderBitNum);
+        //        require(bitPointer & makerOrders[orderId].takenBitmap == 1);
+        uint256 bitNegation = bitPointer ^ 0xffffffffffffffff;
+
+        makerOrders[maker].takenBitmap &= bitNegation;
+    }
+
+    function allocateOrders(address maker, uint32 howMany) internal {
+
+        require(howMany <= 256);
+
+        // make sure no orders in use at the moment
+        require(makerOrders[maker].takenBitmap == 0);
+
+        uint32 firstOrder = allocateIds(howMany);
+
+        makerOrders[maker] = FreeOrders({
+            firstOrderId: firstOrder,
+            numOrders: uint32(howMany),
+            maxOrdersReached: 0,
+            takenBitmap: 0
+        });
     }
 }

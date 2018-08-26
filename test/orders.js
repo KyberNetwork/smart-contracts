@@ -1028,6 +1028,43 @@ contract('Orders', async (accounts) => {
         first.prevId.should.be.bignumber.equal(head.id);
     });
 
+    it("should support getOrderData", async () => {
+        let order = await addOrder(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            200 /* dstAmount */
+        );
+
+        let params = await orders.getOrderData(order.id);
+        let [nextOrderId, srcAmount, dstAmount, isLastOrder] = params;
+
+        nextOrderId.should.be.bignumber.equal(await orders.TAIL_ID());
+        srcAmount.should.be.bignumber.equal(10);
+        dstAmount.should.be.bignumber.equal(200);
+        isLastOrder.should.equal(true);
+    });
+
+    it("should return first order id with getFirstOrder ", async () => {
+        let order = await addOrder(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            200 /* dstAmount */
+        );
+
+        let params = await orders.getFirstOrder();
+        let [firstOrderId, isEmpty] = params;
+
+        firstOrderId.should.be.bignumber.equal(order.id);
+        isEmpty.should.equal(false);
+    });
+
+    it("should return empty if called with getFirstOrder when no order", async () => {
+        let params = await orders.getFirstOrder();
+        let [firstOrderId, isEmpty] = params;
+
+        isEmpty.should.equal(true);
+    });
+
     // TODO: add without position to a long list fails
     // TODO: update without new position to a long list fails
 });
