@@ -15,16 +15,25 @@ import "./FeeBurnerInterface.sol";
 /// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
+    uint constant public RESERVE_TYPE_NONE = 0;
+    uint constant public RESERVE_TYPE_PERMISSIONED = 1;
+    uint constant public RESERVE_TYPE_PERMISSION_LESS_ORDER_BOOK = 2;
+
+//    enum ReserveType {NONE, PERMISSIONED, PERMISSION_LESS_ORDER_BOOK}
+
     uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
     KyberReserveInterface[] public reserves;
-    mapping(address=>bool) public isReserve;
+    mapping(address=>uint) public reserveType;
     WhiteListInterface public whiteListContract;
     ExpectedRateInterface public expectedRateContract;
     FeeBurnerInterface    public feeBurnerContract;
     address               public kyberNetworkProxyContract;
+    address               public kyberController;
+
     uint                  public maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool                  public isEnabled = false; // network is enabled
     mapping(bytes32=>uint) public infoFields; // this is only a UI field for external app.
+
     mapping(address=>address[]) public reservesPerTokenSrc; //reserves supporting token to eth
     mapping(address=>address[]) public reservesPerTokenDest;//reserves support eth to token
 
@@ -39,7 +48,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     // To avoid users trying to swap tokens using default payable function. We added this short code
     //  to verify Ethers will be received only from reserves if transferred without a specific function call.
     function() public payable {
-        require(isReserve[msg.sender]);
+        require(reserveType[msg.sender] != RESERVE_TYPE_NONE);
         EtherReceival(msg.sender, msg.value);
     }
     /* solhint-enable no-complex-fallback */
@@ -91,19 +100,21 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
     event AddReserveToNetwork(KyberReserveInterface reserve, bool add);
 
-    /// @notice can be called only by admin
+    /// @notice can be called only by Kyber controller contract
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
+    /// @param resType reserve type.
     /// @param add If true, the add reserve. Otherwise delete reserve.
-    function addReserve(KyberReserveInterface reserve, bool add) public onlyAdmin {
+    function addReserve(KyberReserveInterface reserve, uint resType, bool add) public {
+        require(msg.sender == kyberController);
 
         if (add) {
-            require(!isReserve[reserve]);
+            require(reserveType[reserve] == RESERVE_TYPE_NONE);
             reserves.push(reserve);
-            isReserve[reserve] = true;
+            reserveType[reserve] = resType;
             AddReserveToNetwork(reserve, true);
         } else {
-            isReserve[reserve] = false;
+            reserveType[reserve] = RESERVE_TYPE_NONE;
             // will have trouble if more than 50k reserves...
             for (uint i = 0; i < reserves.length; i++) {
                 if (reserves[i] == reserve) {
@@ -118,17 +129,16 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
     event ListReservePairs(address reserve, ERC20 src, ERC20 dest, bool add);
 
-    /// @notice can be called only by admin
+    /// @notice can be called only by kyber controller contract
     /// @dev allow or prevent a specific reserve to trade a pair of tokens
     /// @param reserve The reserve address.
     /// @param token token address
     /// @param ethToToken will it support ether to token trade
     /// @param tokenToEth will it support token to ether trade
     /// @param add If true then list this pair, otherwise unlist it.
-    function listPairForReserve(address reserve, ERC20 token, bool ethToToken, bool tokenToEth, bool add)
-        public onlyAdmin
-    {
-        require(isReserve[reserve]);
+    function listPairForReserve(address reserve, ERC20 token, bool ethToToken, bool tokenToEth, bool add) public {
+        require(msg.sender == kyberController);
+        require(reserveType[reserve] != RESERVE_TYPE_NONE);
 
         if (ethToToken) {
             listPairs(reserve, token, false, add);
@@ -163,6 +173,11 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     function setFeeBurner(FeeBurnerInterface feeBurner) public onlyAdmin {
         require(feeBurner != address(0));
         feeBurnerContract = feeBurner;
+    }
+
+    function setKyberController(address controller) public onlyAdmin {
+        require(controller != address(0));
+        kyberController = controller;
     }
 
     function setParams(
@@ -211,6 +226,18 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     /// @return An array of all reserves
     function getReserves() public view returns(KyberReserveInterface[]) {
         return reserves;
+    }
+
+    function getReservesEthToToken(ERC20 token, uint index) public view returns(address) {
+        if (index >= reservesPerTokenDest[token].length) return address(0);
+
+        return (reservesPerTokenDest[token][index]);
+    }
+
+    function getReservesTokenToEth(ERC20 token, uint index) public view returns(address) {
+        if (index >= reservesPerTokenSrc[token].length) return address(0);
+
+        return (reservesPerTokenSrc[token][index]);
     }
 
     function maxGasPrice() public view returns(uint) {
