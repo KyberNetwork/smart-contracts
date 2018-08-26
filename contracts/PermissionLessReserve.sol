@@ -6,7 +6,7 @@ import "./KyberReserveInterface.sol";
 import "./FeeBurner.sol";
 
 
-contract PermissionLessReserve is Orders, KyberReserveInterface {
+contract PermissionLessReserve is Utils2, KyberReserveInterface {
 
     uint public minOrderValueWei = 10 ** 18;                 // below this value order will be removed.
     uint public minOrderMakeWeiValue = 2 * minOrderValueWei; // Below this value can't create new order.
@@ -20,6 +20,9 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
     uint public kncStakePerEtherBPS = 20000; //for validating orders
     uint32 public numOrdersToAllocate = 60;
 
+    Orders sellList;
+    Orders buyList;
+
     // KNC stakes
     struct KncStakes {
         uint128 freeKnc;    // knc that can be used to validate funds
@@ -30,16 +33,6 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
     mapping(address => mapping(address => uint)) public makerFunds; // deposited maker funds,
             // where order added funds are subtracted here and added to order
     mapping(address => KncStakes) public makerKncStakes; // knc funds are required for validating deposited funds
-
-    //maker orders
-    struct FreeOrders {
-        uint32 firstOrderId;
-        uint32 numOrders; //max is 256
-        uint8 maxOrdersReached;
-        uint256 takenBitmap;
-    }
-
-    mapping(address => FreeOrders) makerOrders; //each maker will have orders that will be reused.
 
     function PermissionLessReserve(FeeBurner burner, ERC20 knc, ERC20 token, address _admin) public {
 
@@ -55,6 +48,9 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
 
         kncToken.approve(feeBurnerContract, (2**255));
 
+        sellList = new Orders(this);
+        buyList = new Orders(this);
+
         //notice. if decimal API not supported this should revert
         setDecimals(reserveToken);
         require(getDecimals(reserveToken) <= MAX_DECIMALS);
@@ -66,24 +62,27 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
         require((src == reserveToken) || (dest == reserveToken));
         blockNumber; // in this reserve no order expiry == no use for blockNumber. here to avoid compiler warning.
 
+        Orders list;
         uint32 orderId;
 
         if (src == ETH_TOKEN_ADDRESS) {
-            if (isNextOrderTail(BUY_HEAD_ID)) return 0;
-            orderId = BUY_HEAD_ID;
+            list = buyList;
+            orderId = list.getFirstOrderId();
+            if (list.isNextOrderTail(orderId)) return 0;
         } else {
-            if (isNextOrderTail(SELL_HEAD_ID)) return 0;
-            orderId = SELL_HEAD_ID;
+            list = sellList;
+            orderId = list.getFirstOrderId();
+            if (list.isNextOrderTail(orderId)) return 0;
         }
 
         uint128 remainingSrcAmount = uint128(totalSrcAmount);
         uint128 totalDstAmount = 0;
 
-        while (!isNextOrderTail(orderId)) {
+        while (!list.isNextOrderTail(orderId)) {
 
-            orderId = getNextOrderId(orderId);
+            orderId = list.getNextOrderId(orderId);
 
-            Order memory order = orders[orderId];
+            Orders.Order memory order = Orders.orders[orderId];
 
             if (order.srcAmount < remainingSrcAmount) {
                 totalDstAmount += order.dstAmount;
@@ -122,26 +121,27 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
             require(conversionRate > 0);
         }
 
-        uint32 orderId;
+        Orders list;
 
         if (srcToken == ETH_TOKEN_ADDRESS) {
             require(msg.value == srcAmount);
-            orderId = BUY_HEAD_ID;
+            list = buyList;
         } else {
             require(srcToken.transferFrom(msg.sender, this, srcAmount));
             require(msg.value == 0);
-            orderId = SELL_HEAD_ID;
+            list = sellList;
         }
 
         uint128 remainingSrcAmount = uint128(srcAmount);
         uint128 totalDstAmount = 0;
+        uint32 orderId = list.getFirstOrder();
 
-        while (!isNextOrderTail(orderId)) {
+        while (!list.isNextOrderTail(orderId)) {
 
             // start with next since head order is dummy order
-            orderId = getNextOrderId(orderId);
+            orderId = list.getNextOrderId(orderId);
 
-            Order memory order = orders[orderId];
+            Orders.Order memory order = Orders.orders[orderId];
 
             if (order.srcAmount <= remainingSrcAmount) {
                 totalDstAmount += order.dstAmount;
@@ -175,17 +175,24 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
         require(maker == msg.sender);
         require(validateOrder(maker, isEthToToken, srcAmount, dstAmount));
 
-        uint32 newID = takeOrderId(maker);
+        Orders list;
+        if (isEthToToken) {
+            list = buyList;
+        } else {
+            list = sellList;
+        }
+
+        uint32 newID = list.takeOrderId(maker);
 
         if (hintPrevOrder != 0) {
 
-            addAfterId(maker, newID, srcAmount, dstAmount, hintPrevOrder, isEthToToken? ETH_TO_TOKEN : TOKEN_TO_ETH);
+            list.addAfterId(maker, newID, srcAmount, dstAmount, hintPrevOrder);
         } else {
 
             if (isEthToToken) {
-                add(maker, newID, srcAmount, dstAmount, BUY_HEAD_ID, ETH_TO_TOKEN);
+                list.add(maker, newID, srcAmount, dstAmount);
             } else {
-                add(maker, newID, srcAmount, dstAmount, SELL_HEAD_ID, TOKEN_TO_ETH);
+                list.add(maker, newID, srcAmount, dstAmount);
             }
         }
 
@@ -229,9 +236,8 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
 
         MakerDepositedKnc(maker, amountTwei);
 
-        if (makerOrders[maker].numOrders == 0) {
-            allocateOrders(maker, numOrdersToAllocate);
-        }
+        sellList.allocateOrders(maker, numOrdersToAllocate);
+        buyList.allocateOrders(maker, numOrdersToAllocate);
     }
 
     function makerWithdrawEth(uint weiAmount) public {
@@ -263,16 +269,24 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
     }
 
     event OrderCanceled(address indexed maker, uint32 orderId, uint srcAmount, uint dstAmount);
-    function cancelOrder(uint32 orderId) public returns(bool) {
+    function cancelOrder(uint32 orderId, bool isEthToToken) public returns(bool) {
 
         address maker = msg.sender;
-        Order memory myOrder = orders[orderId];
+        Orders list;
+
+        if (isEthToToken) {
+            list = buyList;
+        } else {
+            list = sellList;
+        }
+
+        Orders.Order memory myOrder = list.getOrderDetails(orderId);
 
         require(maker == myOrder.maker);
 
         uint weiAmount;
 
-        if (myOrder.data == ETH_TO_TOKEN) {
+        if (isEthToToken) {
             weiAmount = myOrder.srcAmount;
         } else {
             weiAmount = myOrder.dstAmount;
@@ -281,8 +295,8 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
         require(handleOrderStakes(maker, calcKncStake(weiAmount), 0));
 
         // @dev: below can be done in two functions. no gas waste since handles different storage values.
-        removeById(orderId);
-        releaseOrderId(myOrder.maker, orderId);
+        list.removeById(orderId);
+        list.releaseOrderId(myOrder.maker, orderId);
 
         OrderCanceled(maker, orderId, myOrder.srcAmount, myOrder.dstAmount);
 
@@ -301,51 +315,48 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
 
     function getBuyOrderList() public view returns(uint32[] orderList) {
 
-        uint32 orderId;
-
+        Orders list = buyList;
+        uint32 orderId = list.getFirstOrder();
         uint counter = 1;
 
-        orderId = BUY_HEAD_ID;
-
-        while (!isNextOrderTail(orderId)) {
-            orderId = getNextOrderId(orderId);
+        while (!list.isNextOrderTail(orderId)) {
+            orderId = list.getNextOrderId(orderId);
             counter++;
         }
 
         orderList = new uint32[](counter);
 
-        orderId = BUY_HEAD_ID;
+        orderId = list.getFirstOrder();
 
         counter = 0;
         orderList[counter++] = orderId;
 
-        while (!isNextOrderTail(orderId)) {
-            orderId = getNextOrderId(orderId);
+        while (!list.isNextOrderTail(orderId)) {
+            orderId = list.getNextOrderId(orderId);
             orderList[counter++] = orderId;
         }
     }
 
     function getSellOrderList() public view returns(uint32[] orderList) {
 
-        uint32 orderId;
+        Orders list = sellList;
+        uint32 orderId = list.getFirstOrder();
         uint counter = 1;
 
-        orderId = SELL_HEAD_ID;
-
-        while (!isNextOrderTail(orderId)) {
-            orderId = getNextOrderId(orderId);
+        while (!list.isNextOrderTail(orderId)) {
+            orderId = list.getNextOrderId(orderId);
             counter++;
         }
 
         orderList = new uint32[](counter);
 
-        orderId = SELL_HEAD_ID;
+        orderId = list.getFirstOrder();
 
         counter = 0;
         orderList[counter++] = orderId;
 
-        while (!isNextOrderTail(orderId)) {
-            orderId = getNextOrderId(orderId);
+        while (!list.isNextOrderTail(orderId)) {
+            orderId = list.getNextOrderId(orderId);
             orderList[counter++] = orderId;
         }
     }
@@ -374,7 +385,7 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
         return(weiAmount * makersBurnFeeBps * feeBurnerContract.kncPerETHRate() / 1000);
     }
 
-    function releaseOrderFunds(bool isEthToToken, Order order) internal returns(bool) {
+    function releaseOrderFunds(bool isEthToToken, Orders.Order order) internal returns(bool) {
 
         if (isEthToToken) {
             makerFunds[order.maker][ETH_TOKEN_ADDRESS] += order.dstAmount;
@@ -408,21 +419,6 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
         amounts.freeKnc += uint128(releaseAmountTwei - burnAmountTwei);
 
         return true;
-    }
-
-    function makerAllocateOrders(address maker) public {
-
-        //if initial allocation was already made. and all orders are free. maker can re allocate
-        require(makerOrders[maker].numOrders > 0);
-        require(makerOrders[maker].takenBitmap == 0);
-        require(makerOrders[maker].maxOrdersReached == 1);
-
-        makerOrders[maker].maxOrdersReached = 0;
-
-        uint32 howMany = makerOrders[maker].numOrders * 2;
-        if (howMany > 256) howMany = 256;
-
-        allocateOrders(maker, howMany);
     }
 
     function getMakerFreeTokenTwei(address maker) public view returns (uint) {
@@ -464,12 +460,16 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
         uint32 orderId,
         ERC20 src,
         ERC20 dest,
-        Order order
+        Orders.Order order
     )
         internal
         returns (bool)
     {
-        removeById(orderId);
+        if (src == ETH_TOKEN_ADDRESS) {
+            buyList.removeById(orderId);
+        } else {
+            sellList.removeById(orderId);
+        }
         return takeOrder(order.maker, src, dest, order.srcAmount, order.dstAmount);
     }
 
@@ -484,7 +484,11 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
         returns(bool)
     {
 
-        Order memory order = orders[orderId];
+        Orders.Order memory order;
+
+        if (src == ETH_TOKEN_ADDRESS) {
+            order =
+        }= orders[orderId];
         require(srcAmount < order.srcAmount);
         require(dstAmount < order.dstAmount);
 
@@ -540,57 +544,5 @@ contract PermissionLessReserve is Orders, KyberReserveInterface {
         handleOrderStakes(maker, calcKncStake(weiAmount), calcBurnAmount(weiAmount));
 
         return true;
-    }
-
-    function takeOrderId(address maker) internal returns(uint32) {
-
-        uint numOrders = makerOrders[maker].numOrders;
-        uint orderBitmap = makerOrders[maker].takenBitmap;
-        uint bitPointer = 1;
-
-        for(uint i = 0; i < numOrders; ++i) {
-
-            if ((orderBitmap & bitPointer) == 0) {
-                makerOrders[maker].takenBitmap = orderBitmap | bitPointer;
-                return(uint32(uint(makerOrders[maker].firstOrderId) + i));
-            }
-
-            bitPointer *= 2;
-        }
-
-        makerOrders[maker].maxOrdersReached = 1;
-
-        require(false);
-    }
-
-    /// @dev mark order as free to use.
-    function releaseOrderId(address maker, uint32 orderId) internal returns(bool) {
-        
-        require(orderId >= makerOrders[maker].firstOrderId);
-        require(orderId < (makerOrders[maker].firstOrderId + makerOrders[maker].numOrders));
-
-        uint orderBitNum = uint(orderId) - uint(makerOrders[maker].firstOrderId);
-        uint256 bitPointer = 1 * (2 ** orderBitNum);
-//        require(bitPointer & makerOrders[orderId].takenBitmap == 1);
-        uint256 bitNegation = bitPointer ^ 0xffffffffffffffff;
-
-        makerOrders[maker].takenBitmap &= bitNegation;
-    }
-
-    function allocateOrders(address maker, uint32 howMany) internal {
-
-        require(howMany <= 256);
-
-        // make sure no orders in use at the moment
-        require(makerOrders[maker].takenBitmap == 0);
-
-        uint32 firstOrder = allocateIds(howMany);
-
-        makerOrders[maker] = FreeOrders({
-                firstOrderId: firstOrder,
-                numOrders: uint32(howMany),
-                maxOrdersReached: 0,
-                takenBitmap: 0
-            });
     }
 }

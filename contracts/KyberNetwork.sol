@@ -17,7 +17,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
     uint constant public RESERVE_TYPE_NONE = 0;
     uint constant public RESERVE_TYPE_PERMISSIONED = 1;
-    uint constant public RESERVE_TYPE_PERMISSION_LESS_ORDER_BOOK = 2;
+    uint constant public RESERVE_TYPE_PERMISSION_LESS = 2;
 
     byte constant public PERMISSION_LESS_USAGE_ALLOWED = byte(0);
     byte constant public PERMISSION_LESS_USAGE_NOT_ALLOWED = byte(1);
@@ -324,7 +324,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
         for (uint i = 0; i < reserveArr.length; i++) {
             //list all reserves that have this token.
-            if (!usePermissionLess && reserveType[reserveArr[i]] == RESERVE_TYPE_PERMISSION_LESS_ORDER_BOOK) {
+            if (!usePermissionLess && reserveType[reserveArr[i]] == RESERVE_TYPE_PERMISSION_LESS) {
                 continue;
             }
 
