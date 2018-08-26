@@ -1,56 +1,31 @@
 pragma solidity 0.4.18;
 
-
 import "./Utils2.sol";
+import "./Withdrawable.sol";
 
-
-contract Orders is Utils2 {
+contract Orders is Withdrawable, Utils2 {
 
     struct Order {
         address maker;
         uint32 prevId;
         uint32 nextId;
-        uint8 data;
         uint128 srcAmount;
         uint128 dstAmount;
     }
 
     mapping (uint32 => Order) public orders;
 
-    uint8 constant public ETH_TO_TOKEN = 1;
-    uint8 constant public TOKEN_TO_ETH = 2;
+    uint32 constant public TAIL_ID = 0;
+    uint32 constant public HEAD_ID = 1;
 
-    uint32 constant public TAIL_ID = 1;
-    uint32 constant public BUY_HEAD_ID = 2;
-    uint32 constant public SELL_HEAD_ID = 3;
-
-    uint32 public nextId = 4;
-
-    Order internal BUY_HEAD;
-    Order internal SELL_HEAD;
+    uint32 public nextId = 2;
 
     function Orders() public {
-
-        BUY_HEAD = Order({
-            maker: 0,
-            prevId: BUY_HEAD_ID,
-            nextId: TAIL_ID,
-            data: ETH_TO_TOKEN,
-            srcAmount: 0,
-            dstAmount: 0
-        });
-
-        SELL_HEAD = Order({
-            maker: 0,
-            prevId: SELL_HEAD_ID,
-            nextId: TAIL_ID,
-            data: TOKEN_TO_ETH,
-            srcAmount: 0,
-            dstAmount: 0
-        });
-
-        orders[BUY_HEAD_ID] = BUY_HEAD;
-        orders[SELL_HEAD_ID] = SELL_HEAD;
+        orders[HEAD_ID].maker = 0;
+        orders[HEAD_ID].prevId = HEAD_ID;
+        orders[HEAD_ID].nextId = TAIL_ID;
+        orders[HEAD_ID].srcAmount = 0;
+        orders[HEAD_ID].dstAmount = 0;
     }
 
     function getOrderDetails(uint32 orderId)
@@ -61,8 +36,7 @@ contract Orders is Utils2 {
             uint128 _srcAmount,
             uint128 _dstAmount,
             uint32 _prevId,
-            uint32 _nextId,
-            uint8 _data
+            uint32 _nextId
         )
     {
         Order storage order = orders[orderId];
@@ -71,41 +45,45 @@ contract Orders is Utils2 {
             order.srcAmount,
             order.dstAmount,
             order.prevId,
-            order.nextId,
-            order.data
+            order.nextId
         );
     }
 
-    function add(address maker, uint32 newId, uint128 srcAmount, uint128 dstAmount, uint32 headId, uint8 data)
-        internal
+    function add(
+        address maker,
+        uint32 orderId,
+        uint128 srcAmount,
+        uint128 dstAmount
+    )
+        public
+        onlyAdmin
         returns(uint32)
     {
-        uint32 prevId = findPrevOrderId(srcAmount, dstAmount, headId);
-        return addAfterValidId(maker, newId, srcAmount, dstAmount, prevId, data);
+        uint32 prevId = findPrevOrderId(srcAmount, dstAmount);
+        return addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
     function addAfterId(
         address maker,
-        uint32 newId,
+        uint32 orderId,
         uint128 srcAmount,
         uint128 dstAmount,
-        uint32 prevId,
-        uint8 data
+        uint32 prevId
     )
-        internal
+        public
+        onlyAdmin
         returns(uint32)
     {
         validatePrevId(srcAmount, dstAmount, prevId);
-        return addAfterValidId(maker, newId, srcAmount, dstAmount, prevId, data);
+        return addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
     function addAfterValidId(
         address maker,
-        uint32 newId,
+        uint32 orderId,
         uint128 srcAmount,
         uint128 dstAmount,
-        uint32 prevId,
-        uint8 orderData
+        uint32 prevId
     )
         private
         returns(uint32)
@@ -113,26 +91,25 @@ contract Orders is Utils2 {
         Order storage prevOrder = orders[prevId];
 
         // Add new order
-        orders[newId].maker = maker;
-        orders[newId].prevId = prevId;
-        orders[newId].nextId = prevOrder.nextId;
-        orders[newId].data = orderData;
-        orders[newId].srcAmount = srcAmount;
-        orders[newId].dstAmount = dstAmount;
+        orders[orderId].maker = maker;
+        orders[orderId].prevId = prevId;
+        orders[orderId].nextId = prevOrder.nextId;
+        orders[orderId].srcAmount = srcAmount;
+        orders[orderId].dstAmount = dstAmount;
 
         // Update next order to point back to added order
         uint32 nextOrderId = prevOrder.nextId;
         if (nextOrderId != TAIL_ID) {
-            orders[nextOrderId].prevId = newId;
+            orders[nextOrderId].prevId = orderId;
         }
 
         // Update previous order to point to added order
-        prevOrder.nextId = newId;
+        prevOrder.nextId = orderId;
 
-        return newId;
+        return orderId;
     }
 
-    function removeById(uint32 orderId) internal {
+    function removeById(uint32 orderId) public onlyAdmin {
         verifyCanRemoveOrderById(orderId);
 
         // Disconnect order from list
@@ -142,16 +119,14 @@ contract Orders is Utils2 {
     }
 
     // The updated order id is returned following the update.
-    function update(uint32 orderId, uint128 srcAmount, uint128 dstAmount, uint32 headId)
-        internal
+    function update(uint32 orderId, uint128 srcAmount, uint128 dstAmount)
+        public
+        onlyAdmin
         returns(uint32)
     {
         address maker = orders[orderId].maker;
-        uint8 data = orders[orderId].data;
-
         removeById(orderId);
-
-        return add(maker, orderId, srcAmount, dstAmount, headId, data);
+        return add(maker, orderId, srcAmount, dstAmount);
     }
 
     // The updated order id is returned following the update.
@@ -161,25 +136,23 @@ contract Orders is Utils2 {
         uint128 dstAmount,
         uint32 prevId
     )
-        internal
+        public
+        onlyAdmin
         returns(uint32)
     {
         address maker = orders[orderId].maker;
-        uint8 data = orders[orderId].data;
-
         removeById(orderId);
-
-        return addAfterId(maker, orderId, srcAmount, dstAmount, prevId, data);
+        return addAfterId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
-    function allocateIds(uint32 howMany) internal returns(uint32) {
+    function allocateIds(uint32 howMany) public onlyAdmin returns(uint32) {
         uint32 firstId = nextId;
         nextId += howMany;
         return firstId;
     }
 
     function verifyCanRemoveOrderById(uint32 orderId) private view {
-        require(orderId != BUY_HEAD_ID);
+        require(orderId != HEAD_ID);
 
         Order storage order = orders[orderId];
 
@@ -195,21 +168,15 @@ contract Orders is Utils2 {
         return dstAmount * PRECISION / srcAmount;
     }
 
-    function findPrevOrderId(
-        uint128 srcAmount,
-        uint128 dstAmount,
-        uint32 startId
-    )
+    function findPrevOrderId(uint128 srcAmount, uint128 dstAmount)
         public
         view
         returns(uint32)
     {
         uint newOrderKey = calculateOrderSortKey(srcAmount, dstAmount);
 
-        // This is okay for the HEAD ids, as their prevId is their id.
-        // TODO: rewrite in a simpler way - going to the prev of the provided
-        //       first id is not that elegant.
-        uint32 currId = orders[startId].prevId;
+        // TODO: eliminate while loop.
+        uint32 currId = HEAD_ID;
         Order storage curr = orders[currId];
         while (curr.nextId != TAIL_ID) {
             currId = curr.nextId;
@@ -250,11 +217,96 @@ contract Orders is Utils2 {
         require(key > nextKey);
     }
 
-    function isNextOrderTail(uint32 orderId) internal view returns(bool) {
-        return ((orders[orderId]).nextId == TAIL_ID);
+    // XXX Convenience functions for Ilan
+    // ----------------------------------
+    function getOrderData(uint32 orderId)
+        public
+        view
+        returns (
+            uint32 nextOrderId,
+            uint128 srcAmount,
+            uint128 dstAmount,
+            bool isLastOrder
+        )
+    {
+        Order storage order = orders[orderId];
+        return (
+            order.nextId,
+            order.srcAmount,
+            order.dstAmount,
+            order.nextId == TAIL_ID
+        );
     }
 
-    function getNextOrderId(uint32 orderId) internal view returns(uint32) {
-        return (orders[orderId].nextId);
+    function getFirstOrder() public view returns(uint32 orderId, bool isEmpty) {
+        return (
+            orders[HEAD_ID].nextId,
+            orders[HEAD_ID].nextId == TAIL_ID
+        );
+    }
+
+    // XXX Ilan's code added for initial testing
+    // -----------------------------------------
+    //maker orders
+    struct FreeOrders {
+        uint32 firstOrderId;
+        uint32 numOrders; //max is 256
+        uint8 maxOrdersReached;
+        uint256 takenBitmap;
+    }
+
+    //each maker will have orders that will be reused.
+    mapping(address => FreeOrders) makerOrders;
+
+    function takeOrderId(address maker) internal returns(uint32) {
+
+        uint numOrders = makerOrders[maker].numOrders;
+        uint orderBitmap = makerOrders[maker].takenBitmap;
+        uint bitPointer = 1;
+
+        for(uint i = 0; i < numOrders; ++i) {
+
+            if ((orderBitmap & bitPointer) == 0) {
+                makerOrders[maker].takenBitmap = orderBitmap | bitPointer;
+                return(uint32(uint(makerOrders[maker].firstOrderId) + i));
+            }
+
+            bitPointer *= 2;
+        }
+
+        makerOrders[maker].maxOrdersReached = 1;
+
+        require(false);
+    }
+
+    /// @dev mark order as free to use.
+    function releaseOrderId(address maker, uint32 orderId) internal returns(bool) {
+
+        require(orderId >= makerOrders[maker].firstOrderId);
+        require(orderId < (makerOrders[maker].firstOrderId + makerOrders[maker].numOrders));
+
+        uint orderBitNum = uint(orderId) - uint(makerOrders[maker].firstOrderId);
+        uint256 bitPointer = 1 * (2 ** orderBitNum);
+        //        require(bitPointer & makerOrders[orderId].takenBitmap == 1);
+        uint256 bitNegation = bitPointer ^ 0xffffffffffffffff;
+
+        makerOrders[maker].takenBitmap &= bitNegation;
+    }
+
+    function allocateOrders(address maker, uint32 howMany) internal {
+
+        require(howMany <= 256);
+
+        // make sure no orders in use at the moment
+        require(makerOrders[maker].takenBitmap == 0);
+
+        uint32 firstOrder = allocateIds(howMany);
+
+        makerOrders[maker] = FreeOrders({
+            firstOrderId: firstOrder,
+            numOrders: uint32(howMany),
+            maxOrdersReached: 0,
+            takenBitmap: 0
+        });
     }
 }
