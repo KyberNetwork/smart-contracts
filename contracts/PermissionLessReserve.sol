@@ -63,35 +63,41 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         blockNumber; // in this reserve no order expiry == no use for blockNumber. here to avoid compiler warning.
 
         Orders list;
-        uint32 orderId;
 
         if (src == ETH_TOKEN_ADDRESS) {
             list = buyList;
-            orderId = list.getFirstOrderId();
-            if (list.isNextOrderTail(orderId)) return 0;
         } else {
             list = sellList;
-            orderId = list.getFirstOrderId();
-            if (list.isNextOrderTail(orderId)) return 0;
         }
+
+        uint32 orderId;
+        uint32 nextOrderId;
+        uint128 orderSrcAmount;
+        uint128 orderDstAmount;
+        bool isLastOrder = false;
+        bool isEmpty;
+
+        (orderId, isEmpty) = list.getFirstOrderData();
+
+        if (isEmpty) return 0;
 
         uint128 remainingSrcAmount = uint128(totalSrcAmount);
         uint128 totalDstAmount = 0;
 
-        while (!list.isNextOrderTail(orderId)) {
+        while (!isLastOrder) {
 
-            orderId = list.getNextOrderId(orderId);
+            (nextOrderId, orderSrcAmount, orderDstAmount, isLastOrder) = list.getOrderData(orderId);
 
-            Orders.Order memory order = Orders.orders[orderId];
-
-            if (order.srcAmount < remainingSrcAmount) {
-                totalDstAmount += order.dstAmount;
-                remainingSrcAmount -= order.srcAmount;
+            if (orderSrcAmount < remainingSrcAmount) {
+                totalDstAmount += orderDstAmount;
+                remainingSrcAmount -= orderSrcAmount;
             } else {
-                totalDstAmount += order.dstAmount * remainingSrcAmount / order.srcAmount;
+                totalDstAmount += orderDstAmount * remainingSrcAmount / orderScAmount;
                 remainingSrcAmount = 0;
                 break;
             }
+
+            orderId = nextOrderId;
         }
 
         if ((remainingSrcAmount != 0) || (totalDstAmount == 0)) return 0; //not enough tokens to exchange.
@@ -117,10 +123,6 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         require((srcToken == ETH_TOKEN_ADDRESS) || (destToken == ETH_TOKEN_ADDRESS));
         require((srcToken == reserveToken) || (destToken == reserveToken));
 
-        if (validate) {
-            require(conversionRate > 0);
-        }
-
         Orders list;
 
         if (srcToken == ETH_TOKEN_ADDRESS) {
@@ -132,20 +134,27 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
             list = sellList;
         }
 
-        uint128 remainingSrcAmount = uint128(srcAmount);
+        uint32 orderId;
+        uint32 nextOrderId;
+        uint128 orderSrcAmount;
+        uint128 orderDstAmount;
+        bool isLastOrder = false;
+        bool isEmpty;
+
+        (orderId, isEmpty) = list.getFirstOrderData();
+
+        if (isEmpty) return 0;
+
+        uint128 remainingSrcAmount = uint128(totalSrcAmount);
         uint128 totalDstAmount = 0;
-        uint32 orderId = list.getFirstOrder();
 
-        while (!list.isNextOrderTail(orderId)) {
+        while (!isLastOrder) {
 
-            // start with next since head order is dummy order
-            orderId = list.getNextOrderId(orderId);
-
-            Orders.Order memory order = Orders.orders[orderId];
+            (nextOrderId, orderSrcAmount, orderDstAmount, isLastOrder) = list.getOrderData(orderId);
 
             if (order.srcAmount <= remainingSrcAmount) {
-                totalDstAmount += order.dstAmount;
-                remainingSrcAmount -= order.srcAmount;
+                totalDstAmount += orderDstAmount;
+                remainingSrcAmount -= orderSrcAmount;
                 require(takeFullOrder(orderId, srcToken, destToken, order));
                 if (remainingSrcAmount == 0) break;
             } else {
@@ -155,6 +164,8 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
                 remainingSrcAmount = 0;
                 break;
             }
+
+            orderId = nextOrderId;
         }
 
         //all orders were successfully taken. send to destAddress
@@ -483,12 +494,16 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         internal
         returns(bool)
     {
+        Orders list;
 
-        Orders.Order memory order;
+        if (src = ETH_TOKEN_ADDRESS) {
+            list = buyList;
+        } else {
+            list = sellList;
+        }
 
-        if (src == ETH_TOKEN_ADDRESS) {
-            order =
-        }= orders[orderId];
+        Orders.Order memory order = list.orders(orderId);
+
         require(srcAmount < order.srcAmount);
         require(dstAmount < order.dstAmount);
 
@@ -506,11 +521,11 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
             // remaining order amount too small. remove order and add remaining funds to free funds
             makerFunds[order.maker][dest] += order.dstAmount;
             handleOrderStakes(order.maker, remainingWeiValue, 0);
-            removeById(orderId);
+            list.removeById(orderId);
         } else {
             // update order values in storage
-            orders[orderId].srcAmount = order.srcAmount;
-            orders[orderId].dstAmount = order.dstAmount;
+//            orders[orderId].srcAmount = order.srcAmount;
+//            orders[orderId].dstAmount = order.dstAmount;
         }
 
         return(takeOrder(order.maker, src, dest, srcAmount, dstAmount));
