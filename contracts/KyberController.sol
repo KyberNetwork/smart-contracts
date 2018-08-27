@@ -58,7 +58,7 @@ contract KyberController is Withdrawable {
         return (address(0));
     }
 
-    function getCodeSha3(address codeAt) public returns(bytes32) {
+    function getCodeSha3(address codeAt) public view returns(bytes32) {
         uint codeSize;
         assembly {
             codeSize := extcodesize(codeAt)
