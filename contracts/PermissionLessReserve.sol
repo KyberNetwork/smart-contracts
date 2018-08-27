@@ -34,6 +34,14 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
             // where order added funds are subtracted here and added to order
     mapping(address => KncStakes) public makerKncStakes; // knc funds are required for validating deposited funds
 
+    struct OrderData {
+        address maker;
+        uint32 nextId;
+        bool isLastOrder;
+        uint128 srcAmount;
+        uint128 dstAmount;
+    }
+
     function PermissionLessReserve(FeeBurner burner, ERC20 knc, ERC20 token, address _admin) public {
 
         require(knc != address(0));
@@ -71,12 +79,11 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         }
 
         uint32 orderId;
-        Orders.OrderData memory orderData;
-        bool isEmpty;
+        OrderData memory orderData;
 
-        (orderId, isEmpty) = list.getFirstOrder();
+        (orderId, orderData.isLastOrder) = list.getFirstOrder();
 
-        if (isEmpty) return 0;
+        if (orderData.isLastOrder) return 0;
 
         uint128 remainingSrcAmount = uint128(totalSrcAmount);
         uint128 totalDstAmount = 0;
@@ -85,7 +92,8 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
 
         while (!orderData.isLastOrder) {
 
-            orderData = list.getOrderData(orderId);
+            (orderData.maker, orderData.nextId, orderData.isLastOrder, orderData.srcAmount, orderData.dstAmount) =
+                list.getOrderData(orderId);
 
             if (orderData.srcAmount <= remainingSrcAmount) {
                 totalDstAmount += orderData.dstAmount;
@@ -105,6 +113,7 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         if (uint(totalDstAmount) * PRECISION < uint(totalDstAmount)) return 0;
 
         return calcRateFromQty(totalSrcAmount, totalDstAmount, getDecimals(src), getDecimals(dest));
+//        return 100;
     }
 
     function trade(
@@ -122,6 +131,9 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         require((srcToken == ETH_TOKEN_ADDRESS) || (destToken == ETH_TOKEN_ADDRESS));
         require((srcToken == reserveToken) || (destToken == reserveToken));
 
+        conversionRate;
+        validate;
+
         Orders list;
 
         if (srcToken == ETH_TOKEN_ADDRESS) {
@@ -134,13 +146,11 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         }
 
         uint32 orderId;
-        Orders.OrderData memory orderData;
+        OrderData memory orderData;
 
-        bool isEmpty;
+        (orderId, orderData.isLastOrder) = list.getFirstOrder();
 
-        (orderId, isEmpty) = list.getFirstOrder();
-
-        if (isEmpty) require(false);
+        if (orderData.isLastOrder) require(false);
 
         uint128 remainingSrcAmount = uint128(srcAmount);
         uint128 totalDstAmount = 0;
@@ -149,7 +159,8 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
 
         while (!orderData.isLastOrder) {
 
-            orderData = list.getOrderData(orderId);
+            (orderData.maker, orderData.nextId, orderData.isLastOrder, orderData.srcAmount, orderData.dstAmount) =
+                list.getOrderData(orderId);
 
             if (orderData.srcAmount <= remainingSrcAmount) {
                 totalDstAmount += orderData.dstAmount;
@@ -291,9 +302,10 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
             list = sellList;
         }
 
-        Orders.OrderData memory orderData;
+        OrderData memory orderData;
 
-        orderData = list.getOrderData(orderId);
+        (orderData.maker, orderData.nextId, orderData.isLastOrder, orderData.srcAmount, orderData.dstAmount) =
+            list.getOrderData(orderId);
 
         require(orderData.maker == maker);
 

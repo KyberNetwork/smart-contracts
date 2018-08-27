@@ -15,14 +15,6 @@ contract Orders is Withdrawable, Utils2 {
         uint128 dstAmount;
     }
 
-    struct OrderData {
-        address maker;
-        uint32 nextId;
-        bool isLastOrder;
-        uint128 srcAmount;
-        uint128 dstAmount;
-    }
-
     mapping (uint32 => Order) public orders;
 
     uint32 constant public TAIL_ID = 0;
@@ -241,14 +233,24 @@ contract Orders is Withdrawable, Utils2 {
         return(subDst);
     }
 
-    function getOrderData(uint32 orderId) public view returns (OrderData data) {
+    function getOrderData(uint32 orderId) public view
+        returns (
+            address maker,
+            uint32 nextOrderId,
+            bool isLastOrder,
+            uint128 srcAmount,
+            uint128 dstAmount
+        )
+    {
         Order storage order = orders[orderId];
 
-        data.maker = order.maker;
-        data.nextId = order.nextId;
-        data.isLastOrder = order.nextId == TAIL_ID;
-        data.srcAmount = order.srcAmount;
-        data.dstAmount = order.dstAmount;
+        return (
+            order.maker,
+            order.nextId,
+            order.nextId == TAIL_ID,
+            order.srcAmount,
+            order.dstAmount
+        );
     }
 
     function getFirstOrder() public view returns(uint32 orderId, bool isEmpty) {
