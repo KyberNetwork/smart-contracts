@@ -83,37 +83,6 @@ contract Orders is Withdrawable, Utils2 {
         return addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
-    function addAfterValidId(
-        address maker,
-        uint32 orderId,
-        uint128 srcAmount,
-        uint128 dstAmount,
-        uint32 prevId
-    )
-        private
-        returns(uint32)
-    {
-        Order storage prevOrder = orders[prevId];
-
-        // Add new order
-        orders[orderId].maker = maker;
-        orders[orderId].prevId = prevId;
-        orders[orderId].nextId = prevOrder.nextId;
-        orders[orderId].srcAmount = srcAmount;
-        orders[orderId].dstAmount = dstAmount;
-
-        // Update next order to point back to added order
-        uint32 nextOrderId = prevOrder.nextId;
-        if (nextOrderId != TAIL_ID) {
-            orders[nextOrderId].prevId = orderId;
-        }
-
-        // Update previous order to point to added order
-        prevOrder.nextId = orderId;
-
-        return orderId;
-    }
-
     function removeById(uint32 orderId) public onlyAdmin {
         verifyCanRemoveOrderById(orderId);
 
@@ -156,15 +125,6 @@ contract Orders is Withdrawable, Utils2 {
         return firstId;
     }
 
-    function verifyCanRemoveOrderById(uint32 orderId) private view {
-        require(orderId != HEAD_ID);
-
-        Order storage order = orders[orderId];
-
-        // Make sure such order exists in mapping.
-        require(order.prevId != 0 || order.nextId != 0);
-    }
-
     function calculateOrderSortKey(uint128 srcAmount, uint128 dstAmount)
         public
         pure
@@ -192,6 +152,46 @@ contract Orders is Withdrawable, Utils2 {
             }
         }
         return currId;
+    }
+
+    function addAfterValidId(
+        address maker,
+        uint32 orderId,
+        uint128 srcAmount,
+        uint128 dstAmount,
+        uint32 prevId
+    )
+        private
+        returns(uint32)
+    {
+        Order storage prevOrder = orders[prevId];
+
+        // Add new order
+        orders[orderId].maker = maker;
+        orders[orderId].prevId = prevId;
+        orders[orderId].nextId = prevOrder.nextId;
+        orders[orderId].srcAmount = srcAmount;
+        orders[orderId].dstAmount = dstAmount;
+
+        // Update next order to point back to added order
+        uint32 nextOrderId = prevOrder.nextId;
+        if (nextOrderId != TAIL_ID) {
+            orders[nextOrderId].prevId = orderId;
+        }
+
+        // Update previous order to point to added order
+        prevOrder.nextId = orderId;
+
+        return orderId;
+    }
+
+    function verifyCanRemoveOrderById(uint32 orderId) private view {
+        require(orderId != HEAD_ID);
+
+        Order storage order = orders[orderId];
+
+        // Make sure such order exists in mapping.
+        require(order.prevId != 0 || order.nextId != 0);
     }
 
     function validatePrevId(
