@@ -186,7 +186,7 @@ contract Orders is Withdrawable, Utils2 {
     }
 
     function verifyCanRemoveOrderById(uint32 orderId) private view {
-        require(orderId != HEAD_ID, "banana!");
+        require(orderId != HEAD_ID);
 
         Order storage order = orders[orderId];
 
