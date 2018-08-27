@@ -14,7 +14,7 @@ contract('Orders', async (accounts) => {
     beforeEach('setup contract for each test', async () => {
         user1 = accounts[0];
         user2 = accounts[1];
-        orders = await Orders.new();
+        orders = await Orders.new(user1);
     });
 
     it("should allocate ids for orders", async () => {
@@ -1036,12 +1036,13 @@ contract('Orders', async (accounts) => {
         );
 
         let params = await orders.getOrderData(order.id);
-        let [nextOrderId, srcAmount, dstAmount, isLastOrder] = params;
+        let [maker, nextOrderId, isLastOrder, srcAmount, dstAmount] = params;
 
+        maker.should.equal(user1);
         nextOrderId.should.be.bignumber.equal(await orders.TAIL_ID());
+        isLastOrder.should.equal(true);
         srcAmount.should.be.bignumber.equal(10);
         dstAmount.should.be.bignumber.equal(200);
-        isLastOrder.should.equal(true);
     });
 
     it("should return first order id with getFirstOrder ", async () => {
