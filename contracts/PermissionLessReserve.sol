@@ -71,33 +71,32 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         }
 
         uint32 orderId;
-        uint32 nextOrderId;
-        uint128 orderSrcAmount;
-        uint128 orderDstAmount;
-        bool isLastOrder = false;
+        Orders.OrderData memory orderData;
         bool isEmpty;
 
-        (orderId, isEmpty) = list.getFirstOrderData();
+        (orderId, isEmpty) = list.getFirstOrder();
 
         if (isEmpty) return 0;
 
         uint128 remainingSrcAmount = uint128(totalSrcAmount);
         uint128 totalDstAmount = 0;
 
-        while (!isLastOrder) {
+        orderData.isLastOrder = false;
 
-            (nextOrderId, orderSrcAmount, orderDstAmount, isLastOrder) = list.getOrderData(orderId);
+        while (!orderData.isLastOrder) {
 
-            if (orderSrcAmount < remainingSrcAmount) {
-                totalDstAmount += orderDstAmount;
-                remainingSrcAmount -= orderSrcAmount;
+            orderData = list.getOrderData(orderId);
+
+            if (orderData.srcAmount <= remainingSrcAmount) {
+                totalDstAmount += orderData.dstAmount;
+                remainingSrcAmount -= orderData.srcAmount;
             } else {
-                totalDstAmount += orderDstAmount * remainingSrcAmount / orderScAmount;
+                totalDstAmount += orderData.dstAmount * remainingSrcAmount / orderData.srcAmount;
                 remainingSrcAmount = 0;
                 break;
             }
 
-            orderId = nextOrderId;
+            orderId = orderData.nextId;
         }
 
         if ((remainingSrcAmount != 0) || (totalDstAmount == 0)) return 0; //not enough tokens to exchange.
@@ -135,37 +134,38 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         }
 
         uint32 orderId;
-        uint32 nextOrderId;
-        uint128 orderSrcAmount;
-        uint128 orderDstAmount;
-        bool isLastOrder = false;
+        Orders.OrderData memory orderData;
+
         bool isEmpty;
 
-        (orderId, isEmpty) = list.getFirstOrderData();
+        (orderId, isEmpty) = list.getFirstOrder();
 
-        if (isEmpty) return 0;
+        if (isEmpty) require(false);
 
-        uint128 remainingSrcAmount = uint128(totalSrcAmount);
+        uint128 remainingSrcAmount = uint128(srcAmount);
         uint128 totalDstAmount = 0;
 
-        while (!isLastOrder) {
+        orderData.isLastOrder = false;
 
-            (nextOrderId, orderSrcAmount, orderDstAmount, isLastOrder) = list.getOrderData(orderId);
+        while (!orderData.isLastOrder) {
 
-            if (order.srcAmount <= remainingSrcAmount) {
-                totalDstAmount += orderDstAmount;
-                remainingSrcAmount -= orderSrcAmount;
-                require(takeFullOrder(orderId, srcToken, destToken, order));
+            orderData = list.getOrderData(orderId);
+
+            if (orderData.srcAmount <= remainingSrcAmount) {
+                totalDstAmount += orderData.dstAmount;
+                remainingSrcAmount -= orderData.srcAmount;
+                require(takeFullOrder(orderId, srcToken, destToken, orderData.maker, orderData.srcAmount, orderData.dstAmount));
                 if (remainingSrcAmount == 0) break;
             } else {
-                uint128 partialDstQty = order.dstAmount * remainingSrcAmount / order.srcAmount;
+                uint128 partialDstQty = orderData.dstAmount * remainingSrcAmount / orderData.srcAmount;
                 totalDstAmount += partialDstQty;
-                require(takePartialOrder(orderId, srcToken, destToken, remainingSrcAmount, partialDstQty));
+                require(takePartialOrder(orderId, orderData.maker, srcToken, destToken, remainingSrcAmount, partialDstQty,
+                    orderData.srcAmount, orderData.dstAmount));
                 remainingSrcAmount = 0;
                 break;
             }
 
-            orderId = nextOrderId;
+            orderId = orderData.nextId;
         }
 
         //all orders were successfully taken. send to destAddress
@@ -291,25 +291,27 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
             list = sellList;
         }
 
-        Orders.Order memory myOrder = list.getOrderDetails(orderId);
+        Orders.OrderData memory orderData;
 
-        require(maker == myOrder.maker);
+        orderData = list.getOrderData(orderId);
+
+        require(orderData.maker == maker);
 
         uint weiAmount;
 
         if (isEthToToken) {
-            weiAmount = myOrder.srcAmount;
+            weiAmount = orderData.srcAmount;
         } else {
-            weiAmount = myOrder.dstAmount;
+            weiAmount = orderData.dstAmount;
         }
 
-        require(handleOrderStakes(maker, calcKncStake(weiAmount), 0));
+        require(handleOrderStakes(orderData.maker, calcKncStake(weiAmount), 0));
 
         // @dev: below can be done in two functions. no gas waste since handles different storage values.
         list.removeById(orderId);
-        list.releaseOrderId(myOrder.maker, orderId);
+        list.releaseOrderId(orderData.maker, orderId);
 
-        OrderCanceled(maker, orderId, myOrder.srcAmount, myOrder.dstAmount);
+        OrderCanceled(maker, orderId, orderData.srcAmount, orderData.dstAmount);
 
         return true;
     }
@@ -327,47 +329,39 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
     function getBuyOrderList() public view returns(uint32[] orderList) {
 
         Orders list = buyList;
-        uint32 orderId = list.getFirstOrder();
-        uint counter = 1;
-
-        while (!list.isNextOrderTail(orderId)) {
-            orderId = list.getNextOrderId(orderId);
-            counter++;
-        }
-
-        orderList = new uint32[](counter);
-
-        orderId = list.getFirstOrder();
-
-        counter = 0;
-        orderList[counter++] = orderId;
-
-        while (!list.isNextOrderTail(orderId)) {
-            orderId = list.getNextOrderId(orderId);
-            orderList[counter++] = orderId;
-        }
+        return getList(list);
     }
 
     function getSellOrderList() public view returns(uint32[] orderList) {
 
         Orders list = sellList;
-        uint32 orderId = list.getFirstOrder();
+        return getList(list);
+    }
+
+    function getList(Orders list) internal view returns(uint32[] orderList) {
+        uint32 orderId;
+        bool isEmpty;
+        bool isLast = false;
+
+        (orderId, isEmpty) = list.getFirstOrder();
+        if (isEmpty) return(new uint32[](1));
+
         uint counter = 1;
 
-        while (!list.isNextOrderTail(orderId)) {
-            orderId = list.getNextOrderId(orderId);
+        while (!isLast) {
+            (orderId, isLast) = list.getNextOrder(orderId);
             counter++;
         }
 
         orderList = new uint32[](counter);
 
-        orderId = list.getFirstOrder();
+        (orderId, isEmpty) = list.getFirstOrder();
 
         counter = 0;
         orderList[counter++] = orderId;
 
-        while (!list.isNextOrderTail(orderId)) {
-            orderId = list.getNextOrderId(orderId);
+        while (!isLast) {
+            (orderId, isLast) = list.getNextOrder(orderId);
             orderList[counter++] = orderId;
         }
     }
@@ -471,7 +465,9 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         uint32 orderId,
         ERC20 src,
         ERC20 dest,
-        Orders.Order order
+        address maker,
+        uint128 orderSrcAmount,
+        uint128 orderDstAmount
     )
         internal
         returns (bool)
@@ -481,54 +477,51 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         } else {
             sellList.removeById(orderId);
         }
-        return takeOrder(order.maker, src, dest, order.srcAmount, order.dstAmount);
+        return takeOrder(maker, src, dest, orderSrcAmount, orderDstAmount);
     }
 
     function takePartialOrder(
         uint32 orderId,
+        address maker,
         ERC20 src,
         ERC20 dest,
         uint128 srcAmount,
-        uint128 dstAmount
+        uint128 dstAmount,
+        uint128 orderSrcAmount,
+        uint128 orderDstAmount
     )
         internal
         returns(bool)
     {
+        require(srcAmount < orderSrcAmount);
+        require(dstAmount < orderDstAmount);
+
+        orderSrcAmount -= srcAmount;
+        orderDstAmount -= dstAmount;
+
         Orders list;
-
-        if (src = ETH_TOKEN_ADDRESS) {
-            list = buyList;
-        } else {
-            list = sellList;
-        }
-
-        Orders.Order memory order = list.orders(orderId);
-
-        require(srcAmount < order.srcAmount);
-        require(dstAmount < order.dstAmount);
-
-        order.srcAmount -= srcAmount;
-        order.dstAmount -= dstAmount;
 
         uint remainingWeiValue;
         if (src == ETH_TOKEN_ADDRESS) {
-            remainingWeiValue = order.srcAmount;
+            remainingWeiValue = orderSrcAmount;
+            list = buyList;
         } else {
-            remainingWeiValue = order.dstAmount;
+            remainingWeiValue = orderDstAmount;
+            list = sellList;
         }
 
         if (remainingWeiValue < minOrderValueWei) {
             // remaining order amount too small. remove order and add remaining funds to free funds
-            makerFunds[order.maker][dest] += order.dstAmount;
-            handleOrderStakes(order.maker, remainingWeiValue, 0);
+            makerFunds[maker][dest] += orderDstAmount;
+            handleOrderStakes(maker, remainingWeiValue, 0);
             list.removeById(orderId);
         } else {
             // update order values in storage
-//            orders[orderId].srcAmount = order.srcAmount;
-//            orders[orderId].dstAmount = order.dstAmount;
+            uint128 subDst = list.subSrcAndDstAmounts(orderId, srcAmount);
+            require(subDst == orderDstAmount);
         }
 
-        return(takeOrder(order.maker, src, dest, srcAmount, dstAmount));
+        return(takeOrder(maker, src, dest, srcAmount, dstAmount));
     }
 
     function takeOrder(
