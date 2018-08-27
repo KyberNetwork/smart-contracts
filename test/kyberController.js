@@ -79,14 +79,14 @@ contract('KyberController', async (accounts) => {
         await network.setEnable(true);
 
         controller = await KyberController.new(network.address, kncAddress);
-
-        let kyberAdd = await controller.kyberContract();
-        assert.equal(kyberAdd.valueOf(), network.address);
-
-        let rxKnc = await controller.kncToken();
-        assert.equal(rxKnc.valueOf(), kncAddress);
-
-        await network.addOperator(controller.address);
+//
+//        let kyberAdd = await controller.kyberContract();
+//        assert.equal(kyberAdd.valueOf(), network.address);
+//
+//        let rxKnc = await controller.kncToken();
+//        assert.equal(rxKnc.valueOf(), kncAddress);
+//
+//        await network.addOperator(controller.address);
     });
 
     it("create new permission less reserve and verify it was created.", async function () {

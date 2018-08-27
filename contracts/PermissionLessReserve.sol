@@ -20,8 +20,8 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
     uint public kncStakePerEtherBPS = 20000; //for validating orders
     uint32 public numOrdersToAllocate = 60;
 
-    Orders sellList;
-    Orders buyList;
+    Orders public sellList;
+    Orders public buyList;
 
     // KNC stakes
     struct KncStakes {
@@ -56,12 +56,17 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
 
         kncToken.approve(feeBurnerContract, (2**255));
 
-        sellList = new Orders(this);
-        buyList = new Orders(this);
+//        sellList = new Orders(this);
+//        buyList = new Orders(this);
 
         //notice. if decimal API not supported this should revert
         setDecimals(reserveToken);
         require(getDecimals(reserveToken) <= MAX_DECIMALS);
+    }
+
+    function init() public {
+        sellList = new Orders(this);
+        buyList = new Orders(this);
     }
 
     function getConversionRate(ERC20 src, ERC20 dest, uint totalSrcAmount, uint blockNumber) public view returns(uint) {
@@ -113,7 +118,6 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         if (uint(totalDstAmount) * PRECISION < uint(totalDstAmount)) return 0;
 
         return calcRateFromQty(totalSrcAmount, totalDstAmount, getDecimals(src), getDecimals(dest));
-//        return 100;
     }
 
     function trade(
@@ -353,12 +357,12 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
     function getList(Orders list) internal view returns(uint32[] orderList) {
         uint32 orderId;
         bool isEmpty;
-        bool isLast = false;
 
         (orderId, isEmpty) = list.getFirstOrder();
         if (isEmpty) return(new uint32[](1));
 
         uint counter = 1;
+        bool isLast = false;
 
         while (!isLast) {
             (orderId, isLast) = list.getNextOrder(orderId);
@@ -370,6 +374,8 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         (orderId, isEmpty) = list.getFirstOrder();
 
         counter = 0;
+        isLast = false;
+
         orderList[counter++] = orderId;
 
         while (!isLast) {

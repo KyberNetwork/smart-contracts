@@ -23,7 +23,7 @@ contract KyberController is Withdrawable {
 
         FeeBurner burner = FeeBurner(kyberContract.feeBurnerContract());
         KyberReserveInterface reserve = new PermissionLessReserve(burner, kncToken, kncToken, admin);
-        permissionLessReserveCodeSha3 = getCodeSha3(reserve);
+//        permissionLessReserveCodeSha3 = getCodeSha3(reserve);
     }
 
     /// @dev permission less reserve currently supports one token each.
