@@ -21,6 +21,7 @@ contract KyberController is Withdrawable {
         kncToken = knc;
         kyberContract = _kyber;
 
+        FeeBurner burner = FeeBurner(kyberContract.feeBurnerContract());
         KyberReserveInterface reserve = new PermissionLessReserve(burner, kncToken, kncToken, admin);
         permissionLessReserveCodeSha3 = getCodeSha3(reserve);
     }
@@ -35,7 +36,7 @@ contract KyberController is Withdrawable {
         FeeBurner burner = FeeBurner(kyberContract.feeBurnerContract());
         KyberReserveInterface reserve = new PermissionLessReserve(burner, kncToken, token, admin);
 
-        kyberContract.addReserve(reserve, kyberContract.RESERVE_TYPE_PERMISSION_LESS_ORDER_BOOK(), true);
+        kyberContract.addReserve(reserve, kyberContract.RESERVE_TYPE_PERMISSION_LESS(), true);
 
         kyberContract.listPairForReserve(reserve, token, true, true, true);
     }
@@ -63,7 +64,7 @@ contract KyberController is Withdrawable {
             codeSize := extcodesize(codeAt)
         }
 
-        bytes code = new bytes(size);
+        bytes memory code = new bytes(codeSize);
 
         assembly {
             extcodecopy(codeAt, code, 0, codeSize)

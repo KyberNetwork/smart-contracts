@@ -15,6 +15,14 @@ contract Orders is Withdrawable, Utils2 {
         uint128 dstAmount;
     }
 
+    struct OrderData {
+        address maker;
+        uint32 nextId;
+        bool isLastOrder;
+        uint128 srcAmount;
+        uint128 dstAmount;
+    }
+
     mapping (uint32 => Order) public orders;
 
     uint32 constant public TAIL_ID = 0;
@@ -22,7 +30,10 @@ contract Orders is Withdrawable, Utils2 {
 
     uint32 public nextId = 2;
 
-    function Orders() public {
+    function Orders(address _admin) public {
+        require(_admin != address(0));
+
+        admin = _admin;
         orders[HEAD_ID].maker = 0;
         orders[HEAD_ID].prevId = HEAD_ID;
         orders[HEAD_ID].nextId = TAIL_ID;
@@ -221,23 +232,23 @@ contract Orders is Withdrawable, Utils2 {
 
     // XXX Convenience functions for Ilan
     // ----------------------------------
-    function getOrderData(uint32 orderId)
-        public
-        view
-        returns (
-            uint32 nextOrderId,
-            uint128 srcAmount,
-            uint128 dstAmount,
-            bool isLastOrder
-        )
-    {
+    function subSrcAndDstAmounts (uint32 orderId, uint128 subFromSrc) public onlyAdmin returns (uint128){
+        //if buy with x src. how much dest would it be
+        uint128 subDst = subFromSrc * orders[orderId].dstAmount / orders[orderId].srcAmount;
+
+        orders[orderId].srcAmount -= subFromSrc;
+        orders[orderId].dstAmount -= subDst;
+        return(subDst);
+    }
+
+    function getOrderData(uint32 orderId) public view returns (OrderData data) {
         Order storage order = orders[orderId];
-        return (
-            order.nextId,
-            order.srcAmount,
-            order.dstAmount,
-            order.nextId == TAIL_ID
-        );
+
+        data.maker = order.maker;
+        data.nextId = order.nextId;
+        data.isLastOrder = order.nextId == TAIL_ID;
+        data.srcAmount = order.srcAmount;
+        data.dstAmount = order.dstAmount;
     }
 
     function getFirstOrder() public view returns(uint32 orderId, bool isEmpty) {
@@ -245,6 +256,11 @@ contract Orders is Withdrawable, Utils2 {
             orders[HEAD_ID].nextId,
             orders[HEAD_ID].nextId == TAIL_ID
         );
+    }
+
+    function getNextOrder(uint32 orderId) public view returns(uint32, bool isLast) {
+        isLast = orders[orderId].nextId == TAIL_ID;
+        return(orders[orderId].nextId, isLast);
     }
 
     // XXX Ilan's code added for initial testing
@@ -260,7 +276,7 @@ contract Orders is Withdrawable, Utils2 {
     //each maker will have orders that will be reused.
     mapping(address => FreeOrders) makerOrders;
 
-    function takeOrderId(address maker) internal returns(uint32) {
+    function takeOrderId(address maker) public onlyAdmin returns(uint32) {
 
         uint numOrders = makerOrders[maker].numOrders;
         uint orderBitmap = makerOrders[maker].takenBitmap;
@@ -282,7 +298,7 @@ contract Orders is Withdrawable, Utils2 {
     }
 
     /// @dev mark order as free to use.
-    function releaseOrderId(address maker, uint32 orderId) internal returns(bool) {
+    function releaseOrderId(address maker, uint32 orderId) public onlyAdmin returns(bool) {
 
         require(orderId >= makerOrders[maker].firstOrderId);
         require(orderId < (makerOrders[maker].firstOrderId + makerOrders[maker].numOrders));
@@ -295,7 +311,7 @@ contract Orders is Withdrawable, Utils2 {
         makerOrders[maker].takenBitmap &= bitNegation;
     }
 
-    function allocateOrders(address maker, uint32 howMany) internal {
+    function allocateOrders(address maker, uint32 howMany) public onlyAdmin {
 
         require(howMany <= 256);
 
