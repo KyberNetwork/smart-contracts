@@ -260,49 +260,12 @@ contract Orders is Withdrawable, Utils2 {
         );
     }
 
-    function getNextOrder(uint32 orderId) public view returns(uint32, bool isLast) {
+    function getNextOrder(uint32 orderId)
+        public
+        view
+        returns(uint32, bool isLast)
+    {
         isLast = orders[orderId].nextId == TAIL_ID;
         return(orders[orderId].nextId, isLast);
-    }
-
-    // XXX Ilan's code added for initial testing
-    // -----------------------------------------
-
-    //each maker will have orders that will be reused.
-    mapping(address => FreeOrders) makerOrders;
-
-    function takeOrderId(address maker) public onlyAdmin returns(uint32) {
-
-        uint numOrders = makerOrders[maker].numOrders;
-        uint orderBitmap = makerOrders[maker].takenBitmap;
-        uint bitPointer = 1;
-
-        for(uint i = 0; i < numOrders; ++i) {
-
-            if ((orderBitmap & bitPointer) == 0) {
-                makerOrders[maker].takenBitmap = orderBitmap | bitPointer;
-                return(uint32(uint(makerOrders[maker].firstOrderId) + i));
-            }
-
-            bitPointer *= 2;
-        }
-
-        makerOrders[maker].maxOrdersReached = 1;
-
-        require(false);
-    }
-
-    /// @dev mark order as free to use.
-    function releaseOrderId(address maker, uint32 orderId) public onlyAdmin returns(bool) {
-
-        require(orderId >= makerOrders[maker].firstOrderId);
-        require(orderId < (makerOrders[maker].firstOrderId + makerOrders[maker].numOrders));
-
-        uint orderBitNum = uint(orderId) - uint(makerOrders[maker].firstOrderId);
-        uint256 bitPointer = 1 * (2 ** orderBitNum);
-        //        require(bitPointer & makerOrders[orderId].takenBitmap == 1);
-        uint256 bitNegation = bitPointer ^ 0xffffffffffffffff;
-
-        makerOrders[maker].takenBitmap &= bitNegation;
     }
 }

@@ -2,11 +2,12 @@ pragma solidity 0.4.18;
 
 
 import "./Orders.sol";
+import "./MakerOrders.sol";
 import "./KyberReserveInterface.sol";
 import "./FeeBurner.sol";
 
 
-contract PermissionLessReserve is Utils2, KyberReserveInterface {
+contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
 
     uint public minOrderValueWei = 10 ** 18;                 // below this value order will be removed.
     uint public minOrderMakeWeiValue = 2 * minOrderValueWei; // Below this value can't create new order.
@@ -28,7 +29,7 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         uint128 freeKnc;    // knc that can be used to validate funds
         uint128 kncOnStake; // per order some knc will move to be kncOnStake. part of it will be used for burning.
     }
-    
+
     //funds data
     mapping(address => mapping(address => uint)) public makerFunds; // deposited maker funds,
             // where order added funds are subtracted here and added to order
@@ -59,9 +60,6 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         admin = _admin;
 
         kncToken.approve(feeBurnerContract, (2**255));
-
-//        sellList = new Orders(this);
-//        buyList = new Orders(this);
 
         //notice. if decimal API not supported this should revert
         setDecimals(reserveToken);
@@ -206,13 +204,14 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         require(validateOrder(maker, isEthToToken, srcAmount, dstAmount));
 
         Orders list;
+        uint32 newID;
         if (isEthToToken) {
             list = buyList;
+            newID = takeOrderId(makerOrdersBuy[maker]);
         } else {
             list = sellList;
+            newID = takeOrderId(makerOrdersSell[maker]);
         }
-
-        uint32 newID = list.takeOrderId(maker);
 
         if (hintPrevOrder != 0) {
 
@@ -266,15 +265,17 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
 
         MakerDepositedKnc(maker, amountTwei);
 
-        allocateOrdersIds(maker);
-    }
+        allocateOrders(
+            makerOrdersSell[maker], /* freeOrders */
+            sellList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
+            numOrdersToAllocate /* howMany */
+        );
 
-    function allocateOrderIds(maker) {
-        //sell list IDs
-
-        uint32 firstId = sellList.allocateIds(numOrdersToAllocate);
-
-        a
+        allocateOrders(
+            makerOrdersBuy[maker], /* freeOrders */
+            buyList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
+            numOrdersToAllocate /* howMany */
+        );
     }
 
     function makerWithdrawEth(uint weiAmount) public {
@@ -336,7 +337,12 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
 
         // @dev: below can be done in two functions. no gas waste since handles different storage values.
         list.removeById(orderId);
-        list.releaseOrderId(orderData.maker, orderId);
+
+        if (isEthToToken) {
+            releaseOrderId(makerOrdersBuy[orderData.maker], orderId);
+        } else {
+            releaseOrderId(makerOrdersSell[orderData.maker], orderId);
+        }
 
         OrderCanceled(maker, orderId, orderData.srcAmount, orderData.dstAmount);
 
@@ -581,28 +587,5 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         handleOrderStakes(maker, calcKncStake(weiAmount), calcBurnAmount(weiAmount));
 
         return true;
-    }
-
-        //maker orders
-    struct FreeOrders {
-    uint32 firstOrderId;
-    uint32 numOrders; //max is 256
-    uint8 maxOrdersReached;
-    uint256 takenBitmap;
-    }
-
-    function allocateOrders(FreeOrders orders, uint32 firstId, uint32 howMany) internal returns(bool) {
-
-        if (orders.numOrders > 0) return true;
-
-        require(howMany <= 256);
-
-        // make sure no orders in use at the moment
-        require(orders.takenBitmap == 0);
-
-        orders.firstOrder = firstId;
-        orders.numOrders = uint32(howMany);
-        orders.maxOrdersReached = 0;
-        orders.takenBitmap = 0;
     }
 }
