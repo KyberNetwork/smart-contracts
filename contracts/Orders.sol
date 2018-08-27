@@ -267,13 +267,6 @@ contract Orders is Withdrawable, Utils2 {
 
     // XXX Ilan's code added for initial testing
     // -----------------------------------------
-    //maker orders
-    struct FreeOrders {
-        uint32 firstOrderId;
-        uint32 numOrders; //max is 256
-        uint8 maxOrdersReached;
-        uint256 takenBitmap;
-    }
 
     //each maker will have orders that will be reused.
     mapping(address => FreeOrders) makerOrders;
@@ -311,22 +304,5 @@ contract Orders is Withdrawable, Utils2 {
         uint256 bitNegation = bitPointer ^ 0xffffffffffffffff;
 
         makerOrders[maker].takenBitmap &= bitNegation;
-    }
-
-    function allocateOrders(address maker, uint32 howMany) public onlyAdmin {
-
-        require(howMany <= 256);
-
-        // make sure no orders in use at the moment
-        require(makerOrders[maker].takenBitmap == 0);
-
-        uint32 firstOrder = allocateIds(howMany);
-
-        makerOrders[maker] = FreeOrders({
-            firstOrderId: firstOrder,
-            numOrders: uint32(howMany),
-            maxOrdersReached: 0,
-            takenBitmap: 0
-        });
     }
 }

@@ -42,6 +42,10 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         uint128 dstAmount;
     }
 
+    //free orders data
+    mapping(address=>FreeOrders) sellFreeOrders;
+    mapping(address=>FreeOrders) buyFreeOrders;
+
     function PermissionLessReserve(FeeBurner burner, ERC20 knc, ERC20 token, address _admin) public {
 
         require(knc != address(0));
@@ -262,8 +266,15 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
 
         MakerDepositedKnc(maker, amountTwei);
 
-        sellList.allocateOrders(maker, numOrdersToAllocate);
-        buyList.allocateOrders(maker, numOrdersToAllocate);
+        allocateOrdersIds(maker);
+    }
+
+    function allocateOrderIds(maker) {
+        //sell list IDs
+
+        uint32 firstId = sellList.allocateIds(numOrdersToAllocate);
+
+        a
     }
 
     function makerWithdrawEth(uint weiAmount) public {
@@ -570,5 +581,28 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         handleOrderStakes(maker, calcKncStake(weiAmount), calcBurnAmount(weiAmount));
 
         return true;
+    }
+
+        //maker orders
+    struct FreeOrders {
+    uint32 firstOrderId;
+    uint32 numOrders; //max is 256
+    uint8 maxOrdersReached;
+    uint256 takenBitmap;
+    }
+
+    function allocateOrders(FreeOrders orders, uint32 firstId, uint32 howMany) internal returns(bool) {
+
+        if (orders.numOrders > 0) return true;
+
+        require(howMany <= 256);
+
+        // make sure no orders in use at the moment
+        require(orders.takenBitmap == 0);
+
+        orders.firstOrder = firstId;
+        orders.numOrders = uint32(howMany);
+        orders.maxOrdersReached = 0;
+        orders.takenBitmap = 0;
     }
 }
