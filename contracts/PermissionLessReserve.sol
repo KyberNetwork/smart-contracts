@@ -2,11 +2,12 @@ pragma solidity 0.4.18;
 
 
 import "./Orders.sol";
+import "./MakerOrders.sol";
 import "./KyberReserveInterface.sol";
 import "./FeeBurner.sol";
 
 
-contract PermissionLessReserve is Utils2, KyberReserveInterface {
+contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
 
     uint public minOrderValueWei = 10 ** 18;                 // below this value order will be removed.
     uint public minOrderMakeWeiValue = 2 * minOrderValueWei; // Below this value can't create new order.
@@ -28,7 +29,7 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         uint128 freeKnc;    // knc that can be used to validate funds
         uint128 kncOnStake; // per order some knc will move to be kncOnStake. part of it will be used for burning.
     }
-    
+
     //funds data
     mapping(address => mapping(address => uint)) public makerFunds; // deposited maker funds,
             // where order added funds are subtracted here and added to order
@@ -198,13 +199,14 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
         require(validateOrder(maker, isEthToToken, srcAmount, dstAmount));
 
         Orders list;
+        uint32 newID;
         if (isEthToToken) {
             list = buyList;
+            newID = takeOrderId(makerOrdersBuy[maker]);
         } else {
             list = sellList;
+            newID = takeOrderId(makerOrdersSell[maker]);
         }
-
-        uint32 newID = list.takeOrderId(maker);
 
         if (hintPrevOrder != 0) {
 
@@ -258,8 +260,17 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
 
         MakerDepositedKnc(maker, amountTwei);
 
-        sellList.allocateOrders(maker, numOrdersToAllocate);
-        buyList.allocateOrders(maker, numOrdersToAllocate);
+        allocateOrders(
+            makerOrdersSell[maker], /* freeOrders */
+            sellList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
+            numOrdersToAllocate /* howMany */
+        );
+
+        allocateOrders(
+            makerOrdersBuy[maker], /* freeOrders */
+            buyList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
+            numOrdersToAllocate /* howMany */
+        );
     }
 
     function makerWithdrawEth(uint weiAmount) public {
@@ -321,7 +332,12 @@ contract PermissionLessReserve is Utils2, KyberReserveInterface {
 
         // @dev: below can be done in two functions. no gas waste since handles different storage values.
         list.removeById(orderId);
-        list.releaseOrderId(orderData.maker, orderId);
+
+        if (isEthToToken) {
+            releaseOrderId(makerOrdersBuy[orderData.maker], orderId);
+        } else {
+            releaseOrderId(makerOrdersSell[orderData.maker], orderId);
+        }
 
         OrderCanceled(maker, orderId, orderData.srcAmount, orderData.dstAmount);
 
