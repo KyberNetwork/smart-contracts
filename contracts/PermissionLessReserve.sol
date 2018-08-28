@@ -7,10 +7,10 @@ import "./KyberReserveInterface.sol";
 import "./FeeBurner.sol";
 
 
-contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
+contract PermissionLessReserve is MakerOrders, Utils2, KyberReserveInterface {
 
     uint public minOrderValueWei = 10 ** 18;                 // below this value order will be removed.
-    uint public minOrderMakeWeiValue = 2 * minOrderValueWei; // Below this value can't create new order.
+    uint public minOrderMakeValueWei = 2 * minOrderValueWei; // Below this value can't create new order.
     uint public makersBurnFeeBps = 25;              // knc burn fee per order that is taken. = 25 / 1000 = 0.25 %
 
     ERC20 public reserveToken; // this reserve will serve buy / sell for this token.
@@ -43,10 +43,6 @@ contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
         uint128 dstAmount;
     }
 
-    //free orders data
-    mapping(address=>FreeOrders) sellFreeOrders;
-    mapping(address=>FreeOrders) buyFreeOrders;
-
     function PermissionLessReserve(FeeBurner burner, ERC20 knc, ERC20 token, address _admin) public {
 
         require(knc != address(0));
@@ -59,11 +55,11 @@ contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
         reserveToken = token;
         admin = _admin;
 
-        kncToken.approve(feeBurnerContract, (2**255));
-
+        require(kncToken.approve(feeBurnerContract, (2**255)))  ;
+//
         //notice. if decimal API not supported this should revert
         setDecimals(reserveToken);
-        require(getDecimals(reserveToken) <= MAX_DECIMALS);
+        require(getDecimals(reserveToken) > 0);
     }
 
     function init() public {
@@ -265,17 +261,17 @@ contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
 
         MakerDepositedKnc(maker, amountTwei);
 
-        allocateOrders(
-            makerOrdersSell[maker], /* freeOrders */
-            sellList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
-            numOrdersToAllocate /* howMany */
-        );
-
-        allocateOrders(
-            makerOrdersBuy[maker], /* freeOrders */
-            buyList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
-            numOrdersToAllocate /* howMany */
-        );
+//        allocateOrders(
+//            makerOrdersSell[maker], /* freeOrders */
+//            sellList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
+//            numOrdersToAllocate /* howMany */
+//        );
+//
+//        allocateOrders(
+//            makerOrdersBuy[maker], /* freeOrders */
+//            buyList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
+//            numOrdersToAllocate /* howMany */
+//        );
     }
 
     function makerWithdrawEth(uint weiAmount) public {
@@ -339,9 +335,9 @@ contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
         list.removeById(orderId);
 
         if (isEthToToken) {
-            releaseOrderId(makerOrdersBuy[orderData.maker], orderId);
+//            releaseOrderId(makerOrdersBuy[orderData.maker], orderId);
         } else {
-            releaseOrderId(makerOrdersSell[orderData.maker], orderId);
+//            releaseOrderId(makerOrdersSell[orderData.maker], orderId);
         }
 
         OrderCanceled(maker, orderId, orderData.srcAmount, orderData.dstAmount);
@@ -490,7 +486,7 @@ contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
             weiAmount = dstAmount;
         }
 
-        require(weiAmount >= minOrderMakeWeiValue);
+        require(weiAmount >= minOrderMakeValueWei);
         require(bindOrderStakes(maker, calcKncStake(weiAmount)));
 
         return true;

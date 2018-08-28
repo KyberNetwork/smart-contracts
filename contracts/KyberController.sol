@@ -11,7 +11,7 @@ contract KyberController is Withdrawable {
 
     bytes32 public permissionLessReserveCodeSha3;
 
-    KyberNetwork public kyberContract;
+    KyberNetwork public kyberNetwork;
     ERC20 public kncToken;
 
     function KyberController(KyberNetwork _kyber, ERC20 knc) public {
@@ -19,9 +19,9 @@ contract KyberController is Withdrawable {
         require(knc != address(0));
 
         kncToken = knc;
-        kyberContract = _kyber;
+        kyberNetwork = _kyber;
 
-        FeeBurner burner = FeeBurner(kyberContract.feeBurnerContract());
+        FeeBurner burner = FeeBurner(kyberNetwork.feeBurnerContract());
         KyberReserveInterface reserve = new PermissionLessReserve(burner, kncToken, kncToken, admin);
 //        permissionLessReserveCodeSha3 = getCodeSha3(reserve);
     }
@@ -33,26 +33,26 @@ contract KyberController is Withdrawable {
 
         if (reserve != address(0)) return;
 
-        FeeBurner burner = FeeBurner(kyberContract.feeBurnerContract());
+        FeeBurner burner = FeeBurner(kyberNetwork.feeBurnerContract());
         KyberReserveInterface reserve = new PermissionLessReserve(burner, kncToken, token, admin);
 
-        kyberContract.addReserve(reserve, kyberContract.RESERVE_TYPE_PERMISSION_LESS(), true);
+        kyberNetwork.addReserve(reserve, kyberNetwork.RESERVE_TYPE_PERMISSION_LESS(), true);
 
-        kyberContract.listPairForReserve(reserve, token, true, true, true);
+        kyberNetwork.listPairForReserve(reserve, token, true, true, true);
     }
 
     function getPermissionLessReserveForToken(ERC20 token) public view returns(address) {
-//        address[] memory reserves = kyberContract.getReservesTokenToEth(token);
+//        address[] memory reserves = kyberNetwork.getReservesTokenToEth(token);
 
         uint counter = 0;
-        address reserve = kyberContract.getReservesTokenToEth(token, counter);
+        address reserve = kyberNetwork.getReservesTokenToEth(token, counter);
 
         while (reserve != address(0)) {
             if (getCodeSha3(reserve) == permissionLessReserveCodeSha3) {
                 return reserve;
             }
 
-            reserve = kyberContract.getReservesTokenToEth(token, ++counter);
+            reserve = kyberNetwork.getReservesTokenToEth(token, ++counter);
         }
 
         return (address(0));

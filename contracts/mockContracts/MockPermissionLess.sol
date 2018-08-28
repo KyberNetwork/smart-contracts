@@ -14,23 +14,6 @@ contract MockPermissionLess is PermissionLessReserve {
 
     }
 
-    function testAllocateOrders(address maker, uint32 howMany) public {
-        sellList.allocateOrders(maker, howMany);
-    }
-//
-//    function testTakeOrderId(address maker) public returns(uint32) {
-//        return takeOrderId(maker);
-//    }
-//
-//    /// @dev mark order as free to use.
-//    function testReleaseOrderId(address maker, uint32 orderId) public returns(bool) {
-//        return releaseOrderId(maker, orderId);
-//    }
-//
-//    function getBitMap(address maker) public view returns(uint) {
-//        return (uint(makerOrders[maker].takenBitmap));
-//    }
-
     function testBindStakes(address maker, uint amountTwei) public {
         bindOrderStakes(maker, amountTwei);
     }
@@ -100,7 +83,8 @@ contract MockPermissionLess is PermissionLessReserve {
         require(srcAmount < data.srcAmount);
 
         uint128 dstAmount = data.dstAmount * srcAmount / data.srcAmount;
-        result = takePartialOrder(orderId, srcToken, destToken, srcAmount, dstAmount, data.srcAmount, data.dstAmount);
+        result = takePartialOrder(orderId, data.maker, srcToken, destToken, srcAmount, dstAmount, data.srcAmount,
+            data.dstAmount);
 
         if (srcToken == ETH_TOKEN_ADDRESS) {
             makerFunds[data.maker][ETH_TOKEN_ADDRESS] = 0;

@@ -68,9 +68,8 @@ contract('PermissionLessReserve', async (accounts) => {
             init = false;
         }
 
-
         reserve = await PermissionLessReserve.new(feeBurner.address, kncAddress, tokenAdd, admin);
-        await reserve.init();
+//        await reserve.init();
     });
 
     afterEach('withdraw ETH from contracts', async () => {
