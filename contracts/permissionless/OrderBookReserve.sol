@@ -13,7 +13,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     uint public minOrderMakeValueWei = 2 * minOrderValueWei; // Below this value can't create new order.
     uint public makersBurnFeeBps = 25;              // knc burn fee per order that is taken. = 25 / 1000 = 0.25 %
 
-    ERC20 public reserveToken; // this reserve will serve buy / sell for this token.
+    ERC20 public token; // this reserve will serve buy / sell for this token.
     FeeBurner public feeBurnerContract;
 
     ERC20 public kncToken;  //can't be constant. to enable testing and test net usage
@@ -31,7 +31,6 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
     //funds data
     mapping(address => mapping(address => uint)) public makerFunds; // deposited maker funds,
-            // where order added funds are subtracted here and added to order
     mapping(address => KncStakes) public makerKncStakes; // knc funds are required for validating deposited funds
 
     struct OrderData {
@@ -42,21 +41,21 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         uint128 dstAmount;
     }
 
-    function OrderBookReserve(FeeBurner burner, ERC20 knc, ERC20 token) public {
+    function OrderBookReserve(FeeBurner burner, ERC20 knc, ERC20 _token) public {
 
         require(knc != address(0));
-        require(token != address(0));
+        require(_token != address(0));
         require(burner != address(0));
 
         feeBurnerContract = burner;
         kncToken = knc;
-        reserveToken = token;
+        token = _token;
 
         require(kncToken.approve(feeBurnerContract, (2**255)))  ;
 //
         //notice. if decimal API not supported this should revert
-        setDecimals(reserveToken);
-        require(getDecimals(reserveToken) > 0);
+        setDecimals(token);
+        require(getDecimals(token) > 0);
     }
 
     function init() public {
@@ -67,7 +66,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     function getConversionRate(ERC20 src, ERC20 dest, uint totalSrcAmount, uint blockNumber) public view returns(uint) {
 
         require((src == ETH_TOKEN_ADDRESS) || (dest == ETH_TOKEN_ADDRESS));
-        require((src == reserveToken) || (dest == reserveToken));
+        require((src == token) || (dest == token));
         blockNumber; // in this reserve no order expiry == no use for blockNumber. here to avoid compiler warning.
 
         Orders list;
@@ -128,7 +127,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         returns(bool)
     {
         require((srcToken == ETH_TOKEN_ADDRESS) || (destToken == ETH_TOKEN_ADDRESS));
-        require((srcToken == reserveToken) || (destToken == reserveToken));
+        require((srcToken == token) || (destToken == token));
 
         conversionRate;
         validate;
@@ -228,9 +227,9 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     function makerDepositTokens(address maker, uint amountTwei) public {
         require(maker != address(0));
 
-        require(reserveToken.transferFrom(msg.sender, this, amountTwei));
+        require(token.transferFrom(msg.sender, this, amountTwei));
 
-        makerFunds[maker][reserveToken] += amountTwei;
+        makerFunds[maker][token] += amountTwei;
         MakerDepositedTokens(maker, amountTwei);
     }
 
@@ -288,14 +287,14 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     function makerWithdrawTokens(uint tweiAmount) public {
 
         address maker = msg.sender;
-        uint makerFreeTweiAmount = makerFunds[maker][reserveToken];
+        uint makerFreeTweiAmount = makerFunds[maker][token];
 
         if (makerFreeTweiAmount > tweiAmount) {
-            reserveToken.transfer(maker, tweiAmount);
-            makerFunds[maker][reserveToken] -= tweiAmount;
+            token.transfer(maker, tweiAmount);
+            makerFunds[maker][token] -= tweiAmount;
         } else {
-            reserveToken.transfer(maker, makerFreeTweiAmount);
-            makerFunds[maker][reserveToken] = 0;
+            token.transfer(maker, makerFreeTweiAmount);
+            makerFunds[maker][token] = 0;
         }
     }
 
@@ -400,8 +399,8 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     {
 
         if (isEthToToken) {
-            require(makerFunds[maker][reserveToken] >= dstAmount);
-            makerFunds[maker][reserveToken] -= dstAmount;
+            require(makerFunds[maker][token] >= dstAmount);
+            makerFunds[maker][token] -= dstAmount;
         } else {
             require(makerFunds[maker][ETH_TOKEN_ADDRESS] >= dstAmount);
             makerFunds[maker][ETH_TOKEN_ADDRESS] -= dstAmount;
@@ -423,7 +422,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         if (isEthToToken) {
             makerFunds[order.maker][ETH_TOKEN_ADDRESS] += order.dstAmount;
         } else {
-            makerFunds[order.maker][reserveToken] += order.dstAmount;
+            makerFunds[order.maker][token] += order.dstAmount;
         }
 
         return true;
@@ -455,10 +454,10 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     }
 
     function getMakerFreeTokenTwei(address maker) public view returns (uint) {
-        return (makerFunds[maker][reserveToken]);
+        return (makerFunds[maker][token]);
     }
 
-    function getMakerFreeWei(address maker) public view returns (uint) {
+    function getMakerUnusedWei(address maker) public view returns (uint) {
         return (makerFunds[maker][ETH_TOKEN_ADDRESS]);
     }
 

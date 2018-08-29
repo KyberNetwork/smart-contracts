@@ -37,9 +37,9 @@ contract MockOrderBookReserve is OrderBookReserve {
 
         if (isEthToToken) {
             srcToken = ETH_TOKEN_ADDRESS;
-            destToken = reserveToken;
+            destToken = token;
         } else {
-            srcToken = reserveToken;
+            srcToken = token;
             destToken = ETH_TOKEN_ADDRESS;
         }
 
@@ -69,9 +69,9 @@ contract MockOrderBookReserve is OrderBookReserve {
 
         if (isEthToToken) {
             srcToken = ETH_TOKEN_ADDRESS;
-            destToken = reserveToken;
+            destToken = token;
         } else {
-            srcToken = reserveToken;
+            srcToken = token;
             destToken = ETH_TOKEN_ADDRESS;
         }
 
