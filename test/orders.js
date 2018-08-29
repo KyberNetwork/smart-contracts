@@ -10,15 +10,34 @@ let Helper = require("./helper.js");
 const Orders = artifacts.require("Orders");
 
 contract('Orders', async (accounts) => {
-
-    beforeEach('setup contract for each test', async () => {
+    before('setup accounts', async () => {
         user1 = accounts[0];
         user2 = accounts[1];
+    });
+
+    beforeEach('setup contract for each test', async () => {
         orders = await Orders.new(user1);
     });
 
-    it("should allocate ids for orders", async () => {
-        let firstId = await allocateIds(3);
+    it("should have deployed the contract", async () => {
+        orders.should.exist;
+    });
+
+    it("should have different ids for head and tail", async () => {
+        const headId = await orders.HEAD_ID();
+        const tailId = await orders.TAIL_ID();
+
+        headId.should.be.bignumber.not.equal(tailId);
+    });
+
+    it("head should initially point to tail as its nextId", async () => {
+        let head = await getOrderById(await orders.HEAD_ID());
+
+        head.nextId.should.be.bignumber.equal(await orders.TAIL_ID());
+    });
+
+    it("should allocate ids for orders that are not head or tail", async () => {
+        let firstId = await allocateIds(1);
 
         firstId.should.be.bignumber.not.equal(await orders.HEAD_ID());
         firstId.should.be.bignumber.not.equal(await orders.TAIL_ID());
@@ -64,28 +83,6 @@ contract('Orders', async (accounts) => {
 
         firstAllocationIds.should.not.have.any.keys(Array.from(secondAllocationIds));
         secondAllocationIds.should.not.have.any.keys(Array.from(firstAllocationIds));
-    });
-
-    it("should have deployed the contract", async () => {
-        orders.should.exist
-    });
-
-    it("should have head in id 1", async () => {
-        const headId = await orders.HEAD_ID();
-
-        headId.should.be.bignumber.equal(1);
-    });
-
-    it("should have tail in id 0", async () => {
-        const tailId = await orders.TAIL_ID();
-
-        tailId.should.be.bignumber.equal(0);
-    });
-
-    it("head should initially point to tail as its nextId", async () => {
-        let head = await getOrderById(await orders.HEAD_ID());
-
-        head.nextId.should.be.bignumber.equal(await orders.TAIL_ID());
     });
 
     it("should add order and get its data back with user as maker", async () => {

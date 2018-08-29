@@ -17,10 +17,10 @@ contract Orders is Withdrawable, Utils2 {
 
     mapping (uint32 => Order) public orders;
 
-    uint32 constant public TAIL_ID = 0;
-    uint32 constant public HEAD_ID = 1;
+    uint32 constant public TAIL_ID = 1;
+    uint32 constant public HEAD_ID = 2;
 
-    uint32 public nextId = 2;
+    uint32 public nextId = 3;
 
     function Orders(address _admin) public {
         require(_admin != address(0));
@@ -62,6 +62,7 @@ contract Orders is Withdrawable, Utils2 {
     )
         public
         onlyAdmin
+        // TODO: do not return value
         returns(uint32)
     {
         uint32 prevId = findPrevOrderId(srcAmount, dstAmount);
