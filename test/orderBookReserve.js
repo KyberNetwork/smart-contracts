@@ -37,46 +37,43 @@ let user2;
 let maker1;
 let maker2;
 
-let init = true;
-
 let currentBlock;
 
 contract('OrderBookReserve', async (accounts) => {
 
+    before('do one time init. tokens, accounts', => {
+        //below should happen once
+        admin = accounts[0];
+        user1 = accounts[1];
+        user2 = accounts[2];
+        maker1 = accounts[3];
+        maker2 = accounts[4];
+        let network = accounts[5];
+        withDrawAddress = accounts[6];
+
+        token = await TestToken.new("the token", "TOK", 18);
+        tokenAdd = token.address;
+
+        KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
+        kncAddress = KNCToken.address;
+
+        feeBurner = await FeeBurner.new(admin, kncAddress, network);
+        currentBlock = await Helper.getCurrentBlock();
+    });
+
     beforeEach('setup contract for each test', async () => {
 
-        if(init) {
-            //below should happen once
-            admin = accounts[0];
-            user1 = accounts[1];
-            user2 = accounts[2];
-            maker1 = accounts[3];
-            maker2 = accounts[4];
-            let network = accounts[5];
-            withDrawAddress = accounts[6];
-
-            token = await TestToken.new("the token", "TOK", 18);
-            tokenAdd = token.address;
-
-            KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
-            kncAddress = KNCToken.address;
-
-            feeBurner = await FeeBurner.new(admin, kncAddress, network);
-            currentBlock = await Helper.getCurrentBlock();
-            init = false;
-        }
-
-        reserve = await OrderBookReserve.new(feeBurner.address, kncAddress, tokenAdd, admin);
+        reserve = await OrderBookReserve.new(feeBurner.address, kncAddress, tokenAdd);
 //        await reserve.init();
     });
 
     afterEach('withdraw ETH from contracts', async () => {
-        let rxWei = await reserve.getMakerFreeWei(maker1);
+        let rxWei = await reserve.getMakerUnusedWei(maker1);
         if (rxWei.valueOf() > 0) {
             await reserve.makerWithdrawEth(rxWei.valueOf(), {from: maker1})
         }
 
-        rxWei = await reserve.getMakerFreeWei(maker2);
+        rxWei = await reserve.getMakerUnusedWei(maker2);
         if (rxWei.valueOf() > 0) {
             await reserve.makerWithdrawEth(rxWei.valueOf(), {from: maker2})
         }
@@ -163,11 +160,11 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(rxKncTwei.valueOf(), 0);
 
         //makerDepositEther
-        let rxWei = await reserve.getMakerFreeWei(maker1);
+        let rxWei = await reserve.getMakerUnusedWei(maker1);
         assert.equal(rxWei.valueOf(), amountEth);
 
         await reserve.makerWithdrawEth(rxWei, {from: maker1})
-        rxWei = await reserve.getMakerFreeWei(maker1);
+        rxWei = await reserve.getMakerUnusedWei(maker1);
         assert.equal(rxWei.valueOf(), 0);
     });
 
@@ -350,7 +347,7 @@ contract('OrderBookReserve', async (accounts) => {
         await makerDeposit(maker1, amountEth, 0, amountKnc.valueOf());
 
         //check maker free token funds
-        let rxFreeWei = await reserve.getMakerFreeWei(maker1);
+        let rxFreeWei = await reserve.getMakerUnusedWei(maker1);
         assert.equal(rxFreeWei.valueOf(), amountEth.valueOf() );
 
         //now add order
@@ -358,7 +355,7 @@ contract('OrderBookReserve', async (accounts) => {
 
         let expectedFreeWei = amountEth.sub(orderExchangeWei);
 
-        rxFreeWei = await reserve.getMakerFreeWei(maker1);
+        rxFreeWei = await reserve.getMakerUnusedWei(maker1);
         assert.equal(rxFreeWei.valueOf(), expectedFreeWei.valueOf() );
     });
 
@@ -740,7 +737,7 @@ contract('OrderBookReserve', async (accounts) => {
 //  function trade(ERC20 srcToken, uint srcAmount, ERC20 destToken, address destAddress, uint conversionRate, bool validate)
 
         //maker eth balance before. (should be 0)
-        let balance = await reserve.getMakerFreeWei(maker1);
+        let balance = await reserve.getMakerUnusedWei(maker1);
         assert.equal(balance.valueOf(), 0);
 
         let totalOrderValue = orderPayAmountWei.mul(3).add(3000);
@@ -755,7 +752,7 @@ contract('OrderBookReserve', async (accounts) => {
         let userBalanceAfter = await token.balanceOf(user1);
         assert.equal(userBalanceAfter.valueOf(), totalDestValue.add(userBalanceBefore).valueOf());
 
-        balance = await reserve.getMakerFreeWei(maker1);
+        balance = await reserve.getMakerUnusedWei(maker1);
         assert.equal(balance.valueOf(), totalOrderValue.valueOf());
 
         rate = await reserve.getConversionRate(ethAddress, token.address, 10 ** 18, 0);
@@ -791,7 +788,7 @@ contract('OrderBookReserve', async (accounts) => {
         list = await reserve.getBuyOrderList();
         assert.equal(list.length, 2); //including head order.
 
-        let balance = await reserve.getMakerFreeWei(maker1);
+        let balance = await reserve.getMakerUnusedWei(maker1);
         assert.equal(balance.valueOf(), takeAmount.valueOf());
 
         balance = await reserve.getMakerFreeTokenTwei(maker1);
@@ -824,7 +821,7 @@ contract('OrderBookReserve', async (accounts) => {
         list = await reserve.getBuyOrderList();
         assert.equal(list.length, 1); //including head order.
 
-        let balance = await reserve.getMakerFreeWei(maker1);
+        let balance = await reserve.getMakerUnusedWei(maker1);
         assert.equal(balance.valueOf(), takeAmount.valueOf());
 
         let expectedDestAmount = orderExchangeTwei.mul(takeAmount).div(orderPayAmountWei).floor();
@@ -921,12 +918,12 @@ contract('OrderBookReserve on network', async (accounts) => {
     });
 
     afterEach('withdraw ETH from contracts', async () => {
-        let rxWei = await reserve.getMakerFreeWei(maker1);
+        let rxWei = await reserve.getMakerUnusedWei(maker1);
         if (rxWei.valueOf() > 0) {
             await reserve.makerWithdrawEth(rxWei.valueOf(), {from: maker1})
         }
 
-        rxWei = await reserve.getMakerFreeWei(maker2);
+        rxWei = await reserve.getMakerUnusedWei(maker2);
         if (rxWei.valueOf() > 0) {
             await reserve.makerWithdrawEth(rxWei.valueOf(), {from: maker2})
         }
