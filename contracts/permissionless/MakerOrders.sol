@@ -5,13 +5,8 @@ contract MakerOrders {
     struct FreeOrders {
         uint32 firstOrderId;
         uint32 numOrders; //max is 256
-        uint8 maxOrdersReached;
         uint256 takenBitmap;
     }
-
-    //each maker will have orders that will be reused.
-    mapping(address => FreeOrders) public makerOrdersSell;
-    mapping(address => FreeOrders) public makerOrdersBuy;
 
     function takeOrderId(FreeOrders storage freeOrders)
         internal
@@ -29,8 +24,6 @@ contract MakerOrders {
 
             bitPointer *= 2;
         }
-
-        freeOrders.maxOrdersReached = 1;
 
         require(false);
     }
@@ -67,7 +60,6 @@ contract MakerOrders {
 
         freeOrders.firstOrderId = firstAllocatedId;
         freeOrders.numOrders = uint32(howMany);
-        freeOrders.maxOrdersReached = 0;
         freeOrders.takenBitmap = 0;
     }
 }
