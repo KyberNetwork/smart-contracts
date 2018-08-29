@@ -62,11 +62,9 @@ contract Orders is Withdrawable, Utils2 {
     )
         public
         onlyAdmin
-        // TODO: do not return value
-        returns(uint32)
     {
         uint32 prevId = findPrevOrderId(srcAmount, dstAmount);
-        return addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
+        addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
     function addAfterId(
@@ -78,10 +76,9 @@ contract Orders is Withdrawable, Utils2 {
     )
         public
         onlyAdmin
-        returns(uint32)
     {
         validatePositionOrder(srcAmount, dstAmount, prevId);
-        return addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
+        addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
     function removeById(uint32 orderId) public onlyAdmin {
@@ -97,11 +94,10 @@ contract Orders is Withdrawable, Utils2 {
     function update(uint32 orderId, uint128 srcAmount, uint128 dstAmount)
         public
         onlyAdmin
-        returns(uint32)
     {
         address maker = orders[orderId].maker;
         removeById(orderId);
-        return add(maker, orderId, srcAmount, dstAmount);
+        add(maker, orderId, srcAmount, dstAmount);
     }
 
     // The updated order id is returned following the update.
@@ -113,11 +109,10 @@ contract Orders is Withdrawable, Utils2 {
     )
         public
         onlyAdmin
-        returns(uint32)
     {
         address maker = orders[orderId].maker;
         removeById(orderId);
-        return addAfterId(maker, orderId, srcAmount, dstAmount, prevId);
+        addAfterId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
     function allocateIds(uint32 howMany) public onlyAdmin returns(uint32) {
@@ -272,5 +267,4 @@ contract Orders is Withdrawable, Utils2 {
             order.dstAmount
         );
     }
-
 }
