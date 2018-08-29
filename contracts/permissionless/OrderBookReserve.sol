@@ -3,11 +3,11 @@ pragma solidity 0.4.18;
 
 import "./Orders.sol";
 import "./MakerOrders.sol";
-import "./KyberReserveInterface.sol";
-import "./FeeBurner.sol";
+import "../KyberReserveInterface.sol";
+import "../FeeBurner.sol";
 
 
-contract PermissionLessReserve is MakerOrders, Utils2, KyberReserveInterface {
+contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
     uint public minOrderValueWei = 10 ** 18;                 // below this value order will be removed.
     uint public minOrderMakeValueWei = 2 * minOrderValueWei; // Below this value can't create new order.
@@ -15,7 +15,6 @@ contract PermissionLessReserve is MakerOrders, Utils2, KyberReserveInterface {
 
     ERC20 public reserveToken; // this reserve will serve buy / sell for this token.
     FeeBurner public feeBurnerContract;
-    address public admin;
 
     ERC20 public kncToken;  //can't be constant. to enable testing and test net usage
     uint public kncStakePerEtherBPS = 20000; //for validating orders
@@ -43,17 +42,15 @@ contract PermissionLessReserve is MakerOrders, Utils2, KyberReserveInterface {
         uint128 dstAmount;
     }
 
-    function PermissionLessReserve(FeeBurner burner, ERC20 knc, ERC20 token, address _admin) public {
+    function OrderBookReserve(FeeBurner burner, ERC20 knc, ERC20 token) public {
 
         require(knc != address(0));
         require(token != address(0));
-        require(_admin != address(0));
         require(burner != address(0));
 
         feeBurnerContract = burner;
         kncToken = knc;
         reserveToken = token;
-        admin = _admin;
 
         require(kncToken.approve(feeBurnerContract, (2**255)))  ;
 //

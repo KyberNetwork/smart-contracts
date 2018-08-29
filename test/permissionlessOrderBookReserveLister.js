@@ -1,8 +1,8 @@
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-//let PermissionLessReserve = artifacts.require("./PermissionLessReserve.sol");
-let PermissionLessReserve = artifacts.require("./MockContracts/MockPermissionLess.sol");
+//let OrderBookReserve = artifacts.require("./OrderBookReserve.sol");
+let OrderBookReserve = artifacts.require("./permissionless/mock/MockOrderBookReserve.sol");
 let KyberNetwork = artifacts.require("./KyberNetwork.sol");
-let KyberController = artifacts.require("./KyberController.sol");
+let PermissionlessOrderBookReserveReserveLister = artifacts.require("./PermissionlessOrderBookReserveReserveLister.sol");
 let FeeBurner = artifacts.require("./FeeBurner.sol");
 
 let Helper = require("./helper.js");
@@ -22,7 +22,7 @@ let feeBurner;
 let whiteList;
 let expectedRate;
 let kyberProxy;
-let controller;
+let reserveLister;
 
 //tokens data
 ////////////
@@ -42,7 +42,7 @@ let init = true;
 
 let currentBlock;
 
-contract('KyberController', async (accounts) => {
+contract('PermissionlessOrderBookReserveReserveLister', async (accounts) => {
 
     beforeEach('setup contract for each test', async () => {
 
@@ -65,7 +65,7 @@ contract('KyberController', async (accounts) => {
     });
 
 
-    it("init internal network and controller. see init success.", async function () {
+    it("init internal network and reserveLister. see init success.", async function () {
         network = await KyberNetwork.new(admin)
 
         feeBurner = await FeeBurner.new(admin, kncAddress, network.address);
@@ -78,26 +78,26 @@ contract('KyberController', async (accounts) => {
         await network.setParams(gasPrice.valueOf(), negligibleRateDiff);
         await network.setEnable(true);
 
-        controller = await KyberController.new(network.address, kncAddress);
+        reserveLister = await PermissionlessOrderBookReserveReserveLister.new(network.address, kncAddress);
 //
-//        let kyberAdd = await controller.kyberContract();
+//        let kyberAdd = await reserveLister.kyberContract();
 //        assert.equal(kyberAdd.valueOf(), network.address);
 //
-//        let rxKnc = await controller.kncToken();
+//        let rxKnc = await reserveLister.kncToken();
 //        assert.equal(rxKnc.valueOf(), kncAddress);
 //
-//        await network.addOperator(controller.address);
+//        await network.addOperator(reserveLister.address);
     });
 
     it("create new permission less reserve and verify it was created.", async function () {
 
-        let rxReserve = await controller.getPermissionLessReserveForToken(tokenAdd);
+        let rxReserve = await reserveLister.getOrderBookReserveForToken(tokenAdd);
         assert(rxReserve.valueOf() == 0);
 
-        await controller.addPermissionLessReserve(tokenAdd);
+        await reserveLister.addOrderBookReserve(tokenAdd);
 
         //get new reserve
-        rxReserve = await controller.getPermissionLessReserveForToken(tokenAdd);
+        rxReserve = await reserveLister.getOrderBookReserveForToken(tokenAdd);
         log ("reserve "+ rxReserve.valueOf());
 
         assert(rxReserve.valueOf() != 0);
@@ -105,16 +105,16 @@ contract('KyberController', async (accounts) => {
         //verify can't create another reserve for same token
 
         try {
-            await controller.addPermissionLessReserve(tokenAdd);
+            await reserveLister.addOrderBookReserve(tokenAdd);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        rxReserve = await controller.getPermissionLessReserveForToken(tokenAdd);
+        rxReserve = await reserveLister.getOrderBookReserveForToken(tokenAdd);
         assert(rxReserve.valueOf() != 0);
 
-        reserve = await PermissionLessReserve.at(rxReserve.valueOf());
+        reserve = await OrderBookReserve.at(rxReserve.valueOf());
 
         let rxToken = await reserve.reserveToken();
         assert.equal(rxToken.valueOf(), tokenAdd);

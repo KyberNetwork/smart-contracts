@@ -1,10 +1,8 @@
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-//let PermissionLessReserve = artifacts.require("./PermissionLessReserve.sol");
-let PermissionLessReserve = artifacts.require("./MockContracts/MockPermissionLess.sol");
 let KyberNetwork = artifacts.require("./KyberNetwork.sol");
-//let KyberController = artifacts.require("./KyberController.sol");
 let FeeBurner = artifacts.require("./FeeBurner.sol");
-let Orders = artifacts.require("./Orders.sol");
+let Orders = artifacts.require("./permissionless/Orders.sol");
+let OrderBookReserve = artifacts.require("./permissionless/mock/MockOrderBookReserve.sol");
 
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
@@ -43,7 +41,7 @@ let init = true;
 
 let currentBlock;
 
-contract('PermissionLessReserve', async (accounts) => {
+contract('OrderBookReserve', async (accounts) => {
 
     beforeEach('setup contract for each test', async () => {
 
@@ -68,7 +66,7 @@ contract('PermissionLessReserve', async (accounts) => {
             init = false;
         }
 
-        reserve = await PermissionLessReserve.new(feeBurner.address, kncAddress, tokenAdd, admin);
+        reserve = await OrderBookReserve.new(feeBurner.address, kncAddress, tokenAdd, admin);
 //        await reserve.init();
     });
 
@@ -893,7 +891,7 @@ contract('PermissionLessReserve', async (accounts) => {
 });
 
 
-contract('PermissionLessReserve on network', async (accounts) => {
+contract('OrderBookReserve on network', async (accounts) => {
 
     beforeEach('setup contract for each test', async () => {
 
@@ -919,7 +917,7 @@ contract('PermissionLessReserve on network', async (accounts) => {
         }
 
 
-        reserve = await PermissionLessReserve.new(feeBurner.address, kncAddress, tokenAdd, admin);
+        reserve = await OrderBookReserve.new(feeBurner.address, kncAddress, tokenAdd, admin);
     });
 
     afterEach('withdraw ETH from contracts', async () => {

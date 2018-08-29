@@ -1,15 +1,15 @@
 pragma solidity 0.4.18;
 
 
-import "./PermissionLessReserve.sol";
-import "./Withdrawable.sol";
-import "./KyberNetwork.sol";
-import "./KyberReserveInterface.sol";
+import "./OrderBookReserve.sol";
+import "../KyberNetwork.sol";
+import "../FeeBurner.sol";
+import "../KyberReserveInterface.sol";
 
 
-contract KyberController is Withdrawable {
+contract PermissionlessOrderBookReserveReserveLister {
 
-    bytes32 public permissionLessReserveCodeSha3;
+    bytes32 public orderBookCodeSha3;
 
     KyberNetwork public kyberNetwork;
     ERC20 public kncToken;
@@ -22,33 +22,33 @@ contract KyberController is Withdrawable {
         kyberNetwork = _kyber;
 
         FeeBurner burner = FeeBurner(kyberNetwork.feeBurnerContract());
-        KyberReserveInterface reserve = new PermissionLessReserve(burner, kncToken, kncToken, admin);
-//        permissionLessReserveCodeSha3 = getCodeSha3(reserve);
+        KyberReserveInterface reserve = new OrderBookReserve(burner, kncToken, kncToken);
+        orderBookCodeSha3 = getCodeSha3(reserve);
     }
 
     /// @dev permission less reserve currently supports one token each.
     /// @dev anyone can call
-    function addPermissionLessReserve(ERC20 token) public {
-        require(getPermissionLessReserveForToken(token) == address(0));
+    function listToken(ERC20 token) public {
+        require(getOrderBookContract(token) == address(0));
 
         if (reserve != address(0)) return;
 
         FeeBurner burner = FeeBurner(kyberNetwork.feeBurnerContract());
-        KyberReserveInterface reserve = new PermissionLessReserve(burner, kncToken, token, admin);
+        KyberReserveInterface reserve = new OrderBookReserve(burner, kncToken, token);
 
         kyberNetwork.addReserve(reserve, kyberNetwork.RESERVE_TYPE_PERMISSION_LESS(), true);
 
         kyberNetwork.listPairForReserve(reserve, token, true, true, true);
     }
 
-    function getPermissionLessReserveForToken(ERC20 token) public view returns(address) {
+    function getOrderBookContract(ERC20 token) public view returns(address) {
 //        address[] memory reserves = kyberNetwork.getReservesTokenToEth(token);
 
         uint counter = 0;
         address reserve = kyberNetwork.getReservesTokenToEth(token, counter);
 
         while (reserve != address(0)) {
-            if (getCodeSha3(reserve) == permissionLessReserveCodeSha3) {
+            if (getCodeSha3(reserve) == orderBookCodeSha3) {
                 return reserve;
             }
 

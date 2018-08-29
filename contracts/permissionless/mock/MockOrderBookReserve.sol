@@ -1,15 +1,15 @@
 pragma solidity 0.4.18;
 
 
-import "../PermissionLessReserve.sol";
+import "../OrderBookReserve.sol";
 
 
-contract MockPermissionLess is PermissionLessReserve {
+contract MockOrderBookReserve is OrderBookReserve {
 
     uint public bitmap;
 
-    function MockPermissionLess(FeeBurner burner, ERC20 knc, ERC20 token, address _admin) public
-        PermissionLessReserve(burner, knc, token, _admin)
+    function MockOrderBookReserve(FeeBurner burner, ERC20 knc, ERC20 token) public
+        OrderBookReserve(burner, knc, token)
     {
 
     }
