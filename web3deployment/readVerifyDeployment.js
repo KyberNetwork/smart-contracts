@@ -7,12 +7,16 @@ const assert = require('assert');
 const compareVersions = require('compare-versions');
 const solc = require('solc');
 
+process.on('unhandledRejection', console.error.bind(console))
+
 //contract sources
 const contractPath = "../contracts/";
 
-var input = {
+const input = {
   "ConversionRatesInterface.sol" : fs.readFileSync(contractPath + 'ConversionRatesInterface.sol', 'utf8'),
   "ConversionRates.sol" : fs.readFileSync(contractPath + 'ConversionRates.sol', 'utf8'),
+//  "LiquidityConversionRates.sol" : fs.readFileSync(contractPath + 'LiquidityConversionRates.sol', 'utf8'),
+//  "LiquidityFormula.sol" : fs.readFileSync(contractPath + 'LiquidityFormula.sol', 'utf8'),
   "PermissionGroups.sol" : fs.readFileSync(contractPath + 'PermissionGroups.sol', 'utf8'),
   "ERC20Interface.sol" : fs.readFileSync(contractPath + 'ERC20Interface.sol', 'utf8'),
   "MockERC20.sol" : fs.readFileSync(contractPath + 'mockContracts/MockERC20.sol', 'utf8'),
@@ -21,18 +25,30 @@ var input = {
   "SanityRates.sol" : fs.readFileSync(contractPath + 'SanityRates.sol', 'utf8'),
   "ExpectedRate.sol" : fs.readFileSync(contractPath + 'ExpectedRate.sol', 'utf8'),
   "Utils.sol" : fs.readFileSync(contractPath + 'Utils.sol', 'utf8'),
+  "Utils2.sol" : fs.readFileSync(contractPath + 'Utils2.sol', 'utf8'),
   "FeeBurnerInterface.sol" : fs.readFileSync(contractPath + 'FeeBurnerInterface.sol', 'utf8'),
   "VolumeImbalanceRecorder.sol" : fs.readFileSync(contractPath + 'VolumeImbalanceRecorder.sol', 'utf8'),
   "FeeBurner.sol" : fs.readFileSync(contractPath + 'FeeBurner.sol', 'utf8'),
   "WhiteListInterface.sol" : fs.readFileSync(contractPath + 'WhiteListInterface.sol', 'utf8'),
   "KyberNetwork.sol" : fs.readFileSync(contractPath + 'KyberNetwork.sol', 'utf8'),
+  "KyberNetworkInterface.sol" : fs.readFileSync(contractPath + 'KyberNetworkInterface.sol', 'utf8'),
+  "SimpleNetworkInterface.sol" : fs.readFileSync(contractPath + 'SimpleNetworkInterface.sol', 'utf8'),
+  "KyberNetworkProxyInterface.sol" : fs.readFileSync(contractPath + 'KyberNetworkProxyInterface.sol', 'utf8'),
+  "KyberNetworkProxy.sol" : fs.readFileSync(contractPath + 'KyberNetworkProxy.sol', 'utf8'),
   "WhiteList.sol" : fs.readFileSync(contractPath + 'WhiteList.sol', 'utf8'),
   "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
   "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
   "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
+  "KyberReserveV1.sol" : fs.readFileSync(contractPath + 'previousContracts/KyberReserveV1.sol', 'utf8'),
   "WrapConversionRate.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapConversionRate.sol', 'utf8'),
-  "WrapperBase.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapperBase.sol', 'utf8')
+  "WrapFeeBurner.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapFeeBurner.sol', 'utf8'),
+  "WrapperBase.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapperBase.sol', 'utf8'),
+  "WrapReadTokenData.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapReadTokenData.sol', 'utf8')
 };
+
+//below is sha3 of reserve code for previous version (V1)
+const reserveV1Sha3BlockCode = '0x8da19d456dc61d48ed44c94ffb9bb4c20c644a13724860bb0fce8951150208d7';
+const oasisReserveSha3BlockCode = '0x2349c46d1aa561fc17fceb20790d97e6c012956dea34c41f2418713f80479735';
 
 let solcOutput;
 
@@ -49,17 +65,19 @@ let numReserves;
 let reservesAdd = [];
 let ratesAdd = [];      // one per reserve
 let sanityRateAdd = []; // one per reserve
-let ERC20Inst = [];
+let ERC20Inst = {};
 let ERC20Adds = [];
 let kncInst;
 
 //contract instances
+let NetworkProxy;
 let Network;
 let WhiteList;
 let FeeBurner;
 let ExpectedRate;
 let Reserves = [];
 let ConversionRates = [];         // one per reserve
+let LiquidityConversionRates = [];         // one per reserve
 let SanityRates = [];   // one per reserve
 
 //parameters
@@ -71,8 +89,6 @@ let jsonTokenList = [];
 let jsonKyberTokenList = [];
 let jsonWithdrawAddresses = [];
 let minRecordResolutionPerToken = {};
-let maxPerBlockImbalancePerToken = {};
-let maxTotalImbalancePerToken = {};
 let decimalsPerToken = {};
 let whiteListedAddresses = [];
 let jsonTestersCat;
@@ -82,6 +98,8 @@ let jsonUsersCat;
 let jsonUsersCap;
 let jsonEmailCat;
 let jsonEmailCap;
+let jsonPartnerCat;
+let jsonPartnerCap;
 let jsonTestersCap;
 let jsonDefaultCap;
 let jsonKGTCap;
@@ -99,9 +117,12 @@ let jsonTaxWalletAddress;
 let jsonFeeBurnerAdd;
 let jsonRatesAdd;
 let jsonWrapConversionRate;
+let jsonWrapFeeBurner;
 let jsonReserveAdd;
 
 let kyberNetworkAdd = '0x0';
+let jsonNetworkAdd = '0x0';
+let jsonNetworkProxyAdd = '0x0';
 let jsonKNCAddress;
 let ouputLogString = "";
 let ouputErrString = "";
@@ -111,16 +132,23 @@ let nodeId = 0;
 // show / not show
 // set to 0 to avoid showing in report
 //////////////////
-const runExpectedRate = 1;
-const runWhiteList = 1;
-const runFeeBurner = 1;
-const printAdminETC = 1;
-const showStepFunctions = 1;
+const runExpectedRate = true;
+const runWhiteList = true;
+const runFeeBurner = true;
+const printAdminETC = true;
+const showStepFunctions = true;
+const doReadSanityRateData = true;
+const doVerifyWithdrawAddresses = true;
 const readTokenDataInConvRate = true;
+
 const verifyWhitelistedAddresses = false;
-const saveSpyrosDict = false;
 const verifyTokenDataOnblockChain = false;
-const spyrosDictPath = './spyrosOutputfile.json';
+
+const doAccountingRun = false;
+const numReservesForAccounting = 1;
+const accountingDictPath = './accountingOutputfile.json';
+let AccountingDict = {};
+
 
 // code
 ////////
@@ -137,9 +165,6 @@ const ropstenPublicNode = 'https://ropsten.infura.io';
 let infuraUrl = '';
 const localURL = 'http://localhost';
 const solcOutputPath = "./solcOuput.json";
-const SpyrosDict = {};
-
-
 let deployInputJsonPath = '';
 
 //run the code
@@ -155,35 +180,44 @@ async function main (){
 
     await init(infuraUrl);
 
+    myLog(0, 0, "reading input json");
     if (await readDeploymentJSON(deployInputJsonPath) == false) {
         printHelp();
         return;
     };
+    myLog(0, 0, "done reading input json");
 
-    await readKyberNetwork(kyberNetworkAdd);
+    await readNetworkProxy(jsonNetworkProxyAdd);
 
     //write output logs
     let fileName = deployInputJsonPath + ".log";
+    myLog(0, 1, "write output log to: " + fileName);
+
     fs.writeFileSync(fileName, ouputLogString, function(err) {
         if(err) {
-            return console.log(err);
+            console.log(err);
+        } else {
+            myLog(0, 1, "saved log to: " + fileName);
         }
-
-        myLog(0, 1, "saved log to: " + fileName);
     });
+
 
     fileName = deployInputJsonPath + ".err";
+    myLog(0, 1, "write error log to: " + fileName);
+
     fs.writeFileSync(fileName, ouputErrString, function(err) {
         if(err) {
-            return console.log(err);
+            console.log(err);
+        } else {
+            myLog(0, 1, "saved error file to: " + fileName);
         }
-
-        myLog(0, 1, "saved error file to: " + fileName);
     });
 
-    if (saveSpyrosDict == true) {
-        const spyrosJsonOut = JSON.stringify(SpyrosDict, null, 2);
-        fs.writeFileSync(spyrosDictPath, spyrosJsonOut);
+
+    if (doAccountingRun == true) {
+        myLog(0, 1, "write accounting dict to: " + accountingDictPath);
+        let accountingJsonOut = JSON.stringify(AccountingDict, null, 2);
+        fs.writeFileSync(accountingDictPath, accountingJsonOut);
     }
 }
 
@@ -241,6 +275,44 @@ function printHelp () {
     console.log("Another example: \'node readVerifyDeployment.js k kovanOut.json\'");
 }
 
+async function readNetworkProxy(networkProxyAdd){
+    let abi = solcOutput.contracts["KyberNetworkProxy.sol:KyberNetworkProxy"].interface;
+    NetworkProxy = await new web3.eth.Contract(JSON.parse(abi), networkProxyAdd);
+
+    //verify binary as expected.
+    let blockCode = await web3.eth.getCode(networkProxyAdd);
+    let solcCode = '0x' + (solcOutput.contracts["KyberNetworkProxy.sol:KyberNetworkProxy"].runtimeBytecode);
+
+    myLog(0, 0, (""));
+    myLog(0, 0, ("kyber network (proxy) Address: " + networkProxyAdd));
+    myLog(0, 0, ("------------------------------------------------------------"));
+
+    if (blockCode != solcCode){
+//        myLog(1, 0, "blockchain Code:");
+//        myLog(0, 0, blockCode);
+        myLog(0, 0, '');
+        myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
+        myLog(0, 0, '')
+    } else {
+        myLog(0, 0, "Code on blockchain matches locally compiled code");
+        myLog(0, 0, '');
+    }
+
+
+    //read addresses and create contract instances.
+    let networkAddress = (await NetworkProxy.methods.kyberNetworkContract().call()).toLowerCase();
+    myLog((networkAddress != jsonNetworkAdd), 0, "network contract address: " + networkAddress);
+
+    myLog(0, 1, ("enable: " + await NetworkProxy.methods.enabled().call() + "!!!"));
+    await printAdminAlertersOperators(NetworkProxy, "KyberNetwork");
+
+    let maxGas = await NetworkProxy.methods.maxGasPrice().call();
+    myLog((maxGas != jsonMaxGasPrice), maxGas < 10000, ("maxGas: " + maxGas + " = " + (maxGas  / 1000 / 1000 / 1000) + " gwei"));
+
+    await readKyberNetwork(networkAddress);
+};
+
+
 
 async function readKyberNetwork(kyberNetworkAdd){
     let abi = solcOutput.contracts["KyberNetwork.sol:KyberNetwork"].interface;
@@ -251,7 +323,7 @@ async function readKyberNetwork(kyberNetworkAdd){
     let solcCode = '0x' + (solcOutput.contracts["KyberNetwork.sol:KyberNetwork"].runtimeBytecode);
 
     myLog(0, 0, (""));
-    myLog(0, 0, ("kyberNetworkAdd: " + kyberNetworkAdd));
+    myLog(0, 0, ("internal network: " + kyberNetworkAdd));
     myLog(0, 0, ("------------------------------------------------------------"));
 
     if (blockCode != solcCode){
@@ -271,7 +343,7 @@ async function readKyberNetwork(kyberNetworkAdd){
     expectedRateAdd = (await Network.methods.expectedRateContract().call()).toLowerCase();
 
     myLog(0, 1, ("enable: " + await Network.methods.enabled().call() + "!!!"));
-    await printAdminAlertersOperators(Network, "KyberNetwork");
+    await printAdminAlertersOperators(Network, "internal network");
     myLog((feeBurnerAdd!=jsonFeeBurnerAdd), 0, ("feeBurnerAdd: " + feeBurnerAdd));
     myLog((whiteListAdd == 0), 0, ("whiteListAdd: " + whiteListAdd));
     myLog((expectedRateAdd == 0), 0, ("expectedRateAdd: " + expectedRateAdd));
@@ -281,7 +353,6 @@ async function readKyberNetwork(kyberNetworkAdd){
 
     let negligibleRateDiff = await Network.methods.negligibleRateDiff().call();
     myLog((negligibleRateDiff != jsonNegDiffBps), 0, ("negligibleRateDiff: " + negligibleRateDiff + " = " + bpsToPercent(negligibleRateDiff) + "%"));
-
 
     numReserves = await Network.methods.getNumReserves().call();
     let reservesAddresses = await Network.methods.getReserves().call();
@@ -296,14 +367,17 @@ async function readKyberNetwork(kyberNetworkAdd){
     // now reserves
     for (let i = 0; i < numReserves; i++) {
         await readReserve(reservesAdd[i], i, (reservesAdd[i] == jsonReserveAdd));
+        if (doAccountingRun) {
+            if (i >= numReservesForAccounting) break;
+        }
     }
 };
 
 async function readWhiteListData(whiteListAddress) {
     myLog(0, 0, '');
 
-    if (runWhiteList == 0) {
-        myLog(0, 1, "not showing WhiteList. set runWhiteList = 1 to show it.");
+    if ((runWhiteList == false) ) {
+        myLog(0, 1, "not showing WhiteList. set runWhiteList = true to show it.");
         return;
     }
 
@@ -330,8 +404,11 @@ async function readWhiteListData(whiteListAddress) {
 
     await printAdminAlertersOperators(WhiteList, "WhiteList");
     let weiPerSgd = await WhiteList.methods.weiPerSgd().call();
-    SpyrosDict["weiPerSgd"] = weiPerSgd.valueOf();
-    myLog((weiPerSgd == 0), (weiPerSgd != jsonWeiPerSGD), ("weiPerSgd: " + weiPerSgd + " = " + getAmountTokens(weiPerSgd, ethAddress) + " tokens."));
+    AccountingDict["weiPerSgd"] = weiPerSgd.valueOf();
+
+    if (doAccountingRun == true) return;
+
+    myLog((weiPerSgd == 0), (weiPerSgd != jsonWeiPerSGD), ("weiPerSgd: " + weiPerSgd + " = " + await getAmountTokens(weiPerSgd, ethAddress) + " tokens."));
     let kgtAddress = await WhiteList.methods.kgtToken().call();
     myLog((kgtAddress.toLowerCase() != jsonKGTAddress || kgtAddress == 0), 0, ("KGT Address: " + kgtAddress));
     kgtHolderCategory = parseInt(await WhiteList.methods.kgtHolderCategory().call(), 10);
@@ -380,6 +457,10 @@ async function readWhiteListData(whiteListAddress) {
                 if (sgdCap != jsonEmailCap) {isError = true};
                 categoryStr = "Email listed.";
                 break;
+            case jsonPartnerCat:
+                if (sgdCap != jsonPartnerCap) {isError = true};
+                categoryStr = "partner listed.";
+                break;
             case jsonKYCCat:
                 if (sgdCap != jsonKYCCap) {isError = true};
                 categoryStr = "KYC.";
@@ -414,6 +495,7 @@ async function readWhiteListData(whiteListAddress) {
     let whiteListEvents = {};
     let whiteListedArr = [];
     let whiteListedCat3 = [];
+    let existingCategories = {};
 
     let eventsReference = await WhiteList.getPastEvents("UserCategorySet", {fromBlock: 0, toBlock: 'latest'});
     for(let i = 0; i < eventsReference.length; i++) {
@@ -421,7 +503,11 @@ async function readWhiteListData(whiteListAddress) {
 
         //make sure last event sets current value
         whiteListEvents[(eventsReference[i].returnValues.user).toLowerCase()] = eventsReference[i].returnValues.category;
+        existingCategories[eventsReference[i].returnValues.category] = true;
     }
+
+    console.log("existing categories");
+    console.log(existingCategories);
 
     for (let address in whiteListEvents) {
         console.log(address);
@@ -514,8 +600,8 @@ async function readWhiteListData(whiteListAddress) {
 async function readExpectedRateData(expectedRateAddress) {
     myLog(0, 0, '');
 
-    if (runExpectedRate == 0) {
-        myLog(0, 1, "not showing ExpectedRate. set runExpectedRate = 1 to show it.");
+    if ((runExpectedRate == false)  || (doAccountingRun == true)) {
+        myLog(0, 1, "not showing ExpectedRate. set runExpectedRate = true to show it.");
         return;
     }
 
@@ -536,6 +622,7 @@ async function readExpectedRateData(expectedRateAddress) {
         myLog(0, 0, '');
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
         myLog(0, 0, '')
+        return;
     } else {
         myLog(0, 0, "Code on blockchain matches locally compiled code");
         myLog(0, 0, '');
@@ -545,11 +632,11 @@ async function readExpectedRateData(expectedRateAddress) {
     await printAdminAlertersOperators(ExpectedRate, "ExpectedRate");
 
     let kyberAddress = (await ExpectedRate.methods.kyberNetwork().call()).toLowerCase();
-    myLog((kyberAddress != kyberNetworkAdd), 0, ("kyber address: " + kyberAddress));
+    myLog((kyberAddress != jsonNetworkAdd), 0, ("kyber address: " + kyberAddress));
     let quantityFactor = await ExpectedRate.methods.quantityFactor().call();
     assert(quantityFactor > 0, "quantity factor must be greater then 0.");
     myLog(0, 0, ("quantityFactor: " + quantityFactor));
-    let minSlippageFactorInBps = await ExpectedRate.methods.minSlippageFactorInBps().call();
+    let minSlippageFactorInBps = await ExpectedRate.methods.worstCaseRateFactorInBps().call();
     //todo what is the minimum for minSlippageFactorInBps
     assert(minSlippageFactorInBps > 0, "minSlippageFactorInBps must be greater then 0.");
     myLog((minSlippageFactorInBps != jsonMinExpectedRateSlippage), 0, ("minSlippageFactorInBps: " + minSlippageFactorInBps + " == " + bpsToPercent(minSlippageFactorInBps) + "%"));
@@ -557,6 +644,9 @@ async function readExpectedRateData(expectedRateAddress) {
 
 let reserveABI;
 let needReadReserveABI = 1;
+
+let reserveV1ABI;
+let needReadReserveV1ABI = 1;
 
 async function readReserve(reserveAdd, index, isKyberReserve){
     if (needReadReserveABI == 1) {
@@ -569,33 +659,75 @@ async function readReserve(reserveAdd, index, isKyberReserve){
             throw e;
         }
     }
+    if (needReadReserveV1ABI == 1) {
+        needReadReserveV1ABI = 0;
+        try {
+            let abi = solcOutput.contracts["KyberReserveV1.sol:KyberReserveV1"].interface;
+            reserveV1ABI = JSON.parse(abi);
+        } catch (e) {
+            myLog(0, 0, e);
+            throw e;
+        }
+    }
 
-    Reserves[index] = await new web3.eth.Contract(reserveABI, reserveAdd);
-    let Reserve = Reserves[index];
 
     let abi = solcOutput.contracts["KyberReserve.sol:KyberReserve"].interface;
-    ExpectedRate = await new web3.eth.Contract(JSON.parse(abi), reserveAdd);
 
     myLog(0, 0, '');
     myLog(0, 0, '');
 
-    myLog(0, 0, ("Reserve " + index + " address: " + a2n(reserveAdd, 1)));
+    myLog(0, 0, ("Reserve " + index + " address: " + await a2n(reserveAdd, 1)));
     myLog(0, 0, ("---------------------------------------------------------"));
 
     //verify binary as expected.
     let blockCode = await web3.eth.getCode(reserveAdd);
     let solcCode = '0x' + (solcOutput.contracts["KyberReserve.sol:KyberReserve"].runtimeBytecode);
 
+    let Reserve;
+    let isExternalWallet = true;
+
     if (blockCode != solcCode){
 //        myLog(1, 0, "blockchain Code:");
 //        myLog(0, 0, blockCode);
-        myLog(0, 0, '');
-        myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
-        myLog(0, 0, '')
+        isExternalWallet = false;
+
+        let blockCodeSha3 = await web3.utils.sha3(blockCode);
+
+//        myLog(1, 0, "blockCodeSha3 " + blockCodeSha3);
+        Reserves[index] = await new web3.eth.Contract(reserveV1ABI, reserveAdd);
+        Reserve = Reserves[index];
+
+        if(blockCodeSha3 != reserveV1Sha3BlockCode) {
+            myLog(0, 0, '');
+            myLog(0, 0, "Byte code from block chain reserve V1, doesn't match locally compiled code.")
+            myLog(0, 1, '');
+            if(blockCodeSha3 != oasisReserveSha3BlockCode) {
+                myLog(0, 0, '');
+                myLog(1, 0, "Byte code from block chain doesn't match any known reserve. can't read data")
+                myLog(0, 1, '');
+                myLog(0, 1, 'sha3 block code');
+                myLog(0, 1, blockCodeSha3);
+                return;
+            } else {
+                myLog(0, 0, "sha3 of Code on blockchain matches sha3 for oasis reserve.");
+                myLog(0, 0, '');
+                await readOasisReserve(reserveAdd, index);
+                return;
+            }
+        } else {
+            Reserves[index] = await new web3.eth.Contract(reserveV1ABI, reserveAdd);
+            Reserve = Reserves[index];
+            myLog(0, 0, "sha3 of Code on blockchain matches sha3 for reserve V1 code.");
+            myLog(0, 0, '');
+        }
+
     } else {
+        Reserves[index] = await new web3.eth.Contract(reserveABI, reserveAdd);
+        Reserve = Reserves[index];
         myLog(0, 0, "Code on blockchain matches locally compiled code");
         myLog(0, 0, '');
     }
+
     if (isKyberReserve) await printAdminAlertersOperators(Reserve, "KyberReserve");
 
     //read addresses
@@ -603,44 +735,109 @@ async function readReserve(reserveAdd, index, isKyberReserve){
     myLog((enabled == false), 0, ("trade enabled = " + enabled));
 
     let kyber = (await Reserve.methods.kyberNetwork().call()).toLowerCase();
-    myLog((kyber != kyberNetworkAdd), 0, ("kyberNetwork " + kyber));
+    myLog((kyber != jsonNetworkAdd), 0, ("kyberNetwork " + kyber));
     ratesAdd[index] = (await Reserve.methods.conversionRatesContract().call()).toLowerCase();
     myLog((index == 0 && jsonRatesAdd != ratesAdd[0]), 0, ("ratesAdd " + index + ": " + ratesAdd[index]));
     sanityRateAdd[index] = await Reserve.methods.sanityRatesContract().call();
     myLog(0, 0, ("sanityRateAdd " + index + ": " + sanityRateAdd[index]));
 
-    await reportReserveBalance(reserveAdd);
+//    await reportReserveBalance(reserveAdd);
 
-    await verifyApprovedWithdrawAddress(Reserve, isKyberReserve);
+    if (isKyberReserve) await verifyApprovedWithdrawAddress(Reserve, isKyberReserve);
 
     //call contracts
     await readFeeBurnerDataForReserve(feeBurnerAdd, reserveAdd, index, isKyberReserve);
     await readConversionRate(ratesAdd[index], reserveAdd, index, isKyberReserve);
     await readSanityRate(sanityRateAdd[index], reserveAdd, index, tokensPerReserve[index], isKyberReserve);
+
+    //after conversion rate run, tokens are list for this reserve is updated
+    await reportReserveBalance(reserveAdd, index, tokensPerReserve[index], Reserve, isExternalWallet);
 };
 
-async function reportReserveBalance(reserveAddress) {
+let reserveOasisABI;
+let needReadReserveOasisABI = 1;
+
+async function readOasisReserve(reserveAddress, index) {
+    if (needReadReserveOasisABI == 1) {
+        needReadReserveOasisABI = 0;
+        try {
+            const reserveOasisABIFile = '../contracts/abi/OasisReserve.abi';
+            let abi = fs.readFileSync(reserveOasisABIFile, 'utf8');
+//            let abi = solcOutput.contracts[""].interface;
+            reserveOasisABI = JSON.parse(abi);
+        } catch (e) {
+            myLog(0, 0, e);
+            throw e;
+        }
+    }
+
+    Reserves[index] = await new web3.eth.Contract(reserveOasisABI, reserveAddress);
+    Reserve = Reserves[index];
+
+    let kyber = (await Reserve.methods.kyberNetwork().call()).toLowerCase();
+    myLog((kyber != jsonNetworkAdd), 0, ("kyberNetwork " + kyber));
+
+    let tradeEnabled = await Reserve.methods.tradeEnabled().call();
+    myLog((tradeEnabled != true), 0, ("trade enabled: " + tradeEnabled));
+
+    //tradeToken
+    let tradeToken = (await Reserve.methods.tradeToken().call()).toLowerCase();
+    //async function a2n(address, showAddWithName, isToken)
+    myLog(0, 0, ("token: " + await a2n(tradeToken, true, true)));
+
+    let otc = (await Reserve.methods.otc().call()).toLowerCase();
+    myLog((otc == 0), 0, ("otc address " + otc));
+
+    let feeBps = (await Reserve.methods.feeBps().call());
+    myLog((feeBps == 0), 0, ("feeBps " + feeBps));
+}
+
+
+let needJson = true;
+let jsonForERC20;
+
+async function reportReserveBalance(reserveAddress, index, tokens, reserveInst, isExternalWallet) {
     myLog(0, 0, '');
-    myLog(0, 0, "Current Reserve Balances for reserve: " + reserveAddress);
-    myLog(0, 0, "-----------S--------------------------------------------P--");
+    myLog(0, 0, "Current Reserve Balances for reserve " + index + " Add: " + reserveAddress);
+    myLog(0, 0, "------------------------------------------------------------------");
     //ether first
     let ethBal = await web3.eth.getBalance(reserveAddress);
-    myLog(0, 0, "Eth: " + ethBal + " wei = " + getAmountTokens(ethBal, ethAddress) + " tokens.");
+    myLog(0, 0, "Eth: " + ethBal + " wei = " + await getAmountTokens(ethBal, ethAddress) + " tokens.");
+
+    if (needJson) {
+        needJson = false;
+        const abi = solcOutput.contracts["MockERC20.sol:MockERC20"].interface;
+        jsonForERC20 = JSON.parse(abi);
+    }
+
 
     //ERC20
-    for (let i = 0; i < ERC20Inst.length; i++) {
-        let balance = await ERC20Inst[i].methods.balanceOf(reserveAddress).call();
-        myLog(0, 0, (a2n(ERC20Adds[i], 0) + ": " + balance + " twei = " + getAmountTokens(balance, ERC20Adds[i]) + " tokens."));
+    for (let i = 0; i < tokens.length; i++) {
+        let fundsAddress = reserveAddress;
+
+        if (isExternalWallet) {
+            fundsAddress = await reserveInst.methods.tokenWallet(tokens[i]).call();
+//            myLog(1, 0, fundsAddress);
+        }
+        let inst = await new web3.eth.Contract(jsonForERC20, tokens[i]);
+
+        let balance = await inst.methods.balanceOf(fundsAddress).call();
+        myLog((balance == 0), 0, (await a2n(tokens[i], 0) + ": " + balance + " twei = " + await getAmountTokens(balance, (tokens[i].toLowerCase())) + " tokens."));0
     }
 }
 
 async function verifyApprovedWithdrawAddress (reserveContract, isKyberReserve) {
+
+    if ((doVerifyWithdrawAddresses == false) || (doAccountingRun == true)) return;
+
     //verify approved withdrawal addresses are set
+
+
     let jsonWithDrawAdds = {};
     if (isKyberReserve) {
         myLog(0, 0, '');
-        myLog(0, 0, "Test approved withdrawal addresses per Exchange for reserve");
-        myLog(0, 0, "-----------S--------------------------------------------P--");
+        myLog(0, 0, "Test approved withdrawal from json are listed in Reserve");
+        myLog(0, 0, "--------------------------------------------------------");
         let exchanges = deploymentJson["exchanges"];
         for (let exchange in exchanges){
             myLog(0, 0, '');
@@ -659,8 +856,8 @@ async function verifyApprovedWithdrawAddress (reserveContract, isKyberReserve) {
     }
 
     myLog(0, 0, '');
-    myLog(0, 0, "Iterating all token approve events. verify approved tokens listed in json.")
-    myLog(0, 0, "---------------------------------------------Y-------R-------------------- ")
+    myLog(0, 0, "Iterating approve withdraw address events. See events match json.")
+    myLog(0, 0, "---------------------------------------------------------------- ")
     // see all events for approve withdraw address
     let eventsReference = await reserveContract.getPastEvents("WithdrawAddressApproved", {fromBlock: 0, toBlock: 'latest'});
 
@@ -697,7 +894,7 @@ async function verifyApprovedWithdrawAddress (reserveContract, isKyberReserve) {
                     isListedInJson = true;
                 }
             }
-            myLog((isListedInJson == false), 0, "Token: " + a2n(sha3ToTokens[sha3Adds], 0) + " withdrawal address: " +
+            myLog((isListedInJson == false), 0, "Token: " + await a2n(sha3ToTokens[sha3Adds], 0) + " withdrawal address: " +
                 sha3ToAddresses[sha3Adds] + " listed in json: " + isListedInJson );
         }
     };
@@ -705,10 +902,13 @@ async function verifyApprovedWithdrawAddress (reserveContract, isKyberReserve) {
 
 
 async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, index, isKyberReserve) {
+
+    if ((doAccountingRun == true) && (isKyberReserve == false)) return;
+
     myLog(0, 0, '');
 
-    if (runFeeBurner == 0) {
-        myLog(0, 1, "not showing feeBurner. set runFeeBurner = 1 to show it.");
+    if (runFeeBurner == false) {
+        myLog(0, 1, "not showing feeBurner. set runFeeBurner = true to show it.");
         return;
     }
 
@@ -720,8 +920,8 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
         throw e;
     }
 
-    myLog(0, 0, ("fee burner data for reserve " + index + ":" + a2n(reserveAddress)));
-    myLog(0, 0, ("------O----S----------------------------T--------------------H----"));
+    myLog(0, 0, ("fee burner data for reserve " + index + ":" + await a2n(reserveAddress)));
+    myLog(0, 0, ("------------------------------------------------------------------"));
 
     //verify binary as expected.
     let blockCode = await web3.eth.getCode(feeBurnerAddress);
@@ -733,10 +933,11 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
         myLog(0, 0, '');
         myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
         myLog(0, 0, '')
-   } else {
+    } else {
        myLog(0, 0, "Code on blockchain matches locally compiled code");
        myLog(0, 0, '');
-   }
+    }
+
 
     if (isKyberReserve) await printAdminAlertersOperators(FeeBurner, "FeeBurner");
     let reserveFees = await FeeBurner.methods.reserveFeesInBps(reserveAddress).call();
@@ -746,35 +947,91 @@ async function readFeeBurnerDataForReserve(feeBurnerAddress, reserveAddress, ind
     if(isKyberReserve) raiseFlag = raiseFlag || (jsonKNCWallet != KNCWallet);
     myLog(raiseFlag, 0, ("reserveKNCWallet: " + KNCWallet));
     let kncWalletBalance = await kncInst.methods.balanceOf(KNCWallet).call();
-    let walletTokenBalance = getAmountTokens(kncWalletBalance.valueOf(), jsonKNCAddress);
+    let walletTokenBalance = await getAmountTokens(kncWalletBalance.valueOf(), jsonKNCAddress);
     myLog((walletTokenBalance.valueOf() < 30), (walletTokenBalance.valueOf() < 70), ("reserveKNCWallet balance: " + walletTokenBalance + " KNC tokens"));
 
     let feeToBurn = await FeeBurner.methods.reserveFeeToBurn(reserveAddress).call();
-    myLog(0, 0, ("reserveFeeToBurn: " + feeToBurn + " twei == " + getAmountTokens(feeToBurn, jsonKNCAddress) + " KNC tokens."));
-    let KNCAddress = (await FeeBurner.methods.knc().call()).toLowerCase();
-    raiseFlag = isKyberReserve && (KNCAddress != jsonKNCAddress);
-    myLog(raiseFlag, 0, ("KNCAddress: " + KNCAddress));
-    let kncPerEthRate = await FeeBurner.methods.kncPerETHRate().call();
-    SpyrosDict["kncPerEthRate"] = kncPerEthRate.valueOf();
-    myLog((kncPerEthRate.valueOf() == 0), (kncPerEthRate != jsonKNC2EthRate), ("kncPerEthRate: " + kncPerEthRate));
+    myLog(0, 0, ("reserveFeeToBurn: " + feeToBurn + " twei == " + await getAmountTokens(feeToBurn, jsonKNCAddress) + " KNC tokens."));
     if (isKyberReserve) {
+        let KNCAddress = (await FeeBurner.methods.knc().call()).toLowerCase();
+        raiseFlag = isKyberReserve && (KNCAddress != jsonKNCAddress);
+        myLog(raiseFlag, 0, ("KNCAddress: " + KNCAddress));
+        let kncPerEthRate = await FeeBurner.methods.kncPerETHRate().call();
+        AccountingDict["kncPerEthRate"] = kncPerEthRate.valueOf();
+
+        if (doAccountingRun == true) return;
+
+        myLog((kncPerEthRate.valueOf() == 0), (kncPerEthRate != jsonKNC2EthRate), ("kncPerEthRate: " + kncPerEthRate));
+
         let kyberNetwork = (await FeeBurner.methods.kyberNetwork().call()).toLowerCase();
-        myLog((kyberNetwork != kyberNetworkAdd), 0, ("kyberNetworkAdd: " + kyberNetwork));
+        myLog((kyberNetwork != jsonNetworkAdd), 0, ("kyberNetworkAdd: " + kyberNetwork));
         let taxFeeBps = await FeeBurner.methods.taxFeeBps().call()
         myLog((taxFeeBps != jsonTaxFeeBps), 0, ("tax fee in bps: " + taxFeeBps + " = " + bpsToPercent(taxFeeBps) + "%"));
         let taxWalletAdd = await FeeBurner.methods.taxWallet().call()
         myLog((taxWalletAdd.toLowerCase() != jsonTaxWalletAddress.toLowerCase()), 0, ("tax wallet address: " + taxWalletAdd));
     }
     let payedSoFar = await FeeBurner.methods.feePayedPerReserve(reserveAddress).call();
-    myLog(0, 0, "Fees payed so far by reserve (burn + tax): " + getAmountTokens(payedSoFar, jsonKNCAddress) + " knc tokens.");
+    myLog(0, 0, "Fees payed so far by reserve (burn + tax): " + await getAmountTokens(payedSoFar, jsonKNCAddress) + " knc tokens.");
 
+    if (isKyberReserve && jsonWrapFeeBurner != 0) {
+        //verify wrapper binary
+        let admin = (await FeeBurner.methods.admin().call()).toLowerCase();
+        myLog((admin != jsonWrapFeeBurner), 0, "Admin is wrapper contract: " + (admin == jsonWrapFeeBurner));
+        await readFeeBurnerWrapper(jsonWrapFeeBurner);
+    }
 
     //todo: get addresses for wallets that receive fees and print addresses + fees.
 //    myLog(0, 0, ("reserveFeeToWallet: " + await FeeBurner.methods.reserveFeeToWal let(reserveAddress).call());
 }
 
+let wrapFeeBurnerABI;
+async function readFeeBurnerWrapper(burnerWrapperAddress) {
+
+    if (doAccountingRun == true) return;
+
+    try {
+        let abi = solcOutput.contracts["WrapFeeBurner.sol:WrapFeeBurner"].interface;
+        wrapFeeBurnerABI = JSON.parse(abi);
+    } catch (e) {
+        myLog(0, 0, e);
+        throw e;
+    }
+
+    let burnerWrapperInst = await new web3.eth.Contract(wrapFeeBurnerABI, burnerWrapperAddress);
+
+    myLog(0, 0, '');
+
+    myLog(0, 0, ("Fee Burner wrapper address: " +  burnerWrapperAddress));
+    myLog(0, 0, ("--------------------------------------------------------------------"));
+
+
+    //verify binary as expected.
+    let blockCode = await web3.eth.getCode(burnerWrapperAddress);
+    let solcCode = '0x' + (solcOutput.contracts["WrapFeeBurner.sol:WrapFeeBurner"].runtimeBytecode);
+
+    if (blockCode != solcCode){
+//        myLog(1, 0, "blockchain Code:");
+//        myLog(0, 0, blockCode);
+//        myLog(1, 0, "\n\n\n\n\nsolc Code:");
+//        myLog(0, 0, solcCode);
+        myLog(0, 0, '');
+        myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
+        myLog(0, 0, '')
+    } else {
+        myLog(0, 0, "Code on blockchain matches locally compiled code");
+         myLog(0, 0, '');
+    }
+
+    await printAdminAlertersOperators(burnerWrapperInst, "FeeBurner Wrapper");
+}
+
+
 let conversionRatesABI;
 let needReadRatesABI = 1;
+let wrapReadTokenDataABI;
+let tokenReaderAddress = '0x7FA7599413E53dED64b587cc5a607c384f600C66';
+let tokenReader;
+let haveTokenReader;
 
 async function readConversionRate(conversionRateAddress, reserveAddress, index, isKyberReserve) {
     if (needReadRatesABI == 1) {
@@ -786,15 +1043,34 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index, 
             myLog(0, 0, e);
             throw e;
         }
+
+        try {
+            let abi = solcOutput.contracts["WrapReadTokenData.sol:WrapReadTokenData"].interface;
+            wrapReadTokenDataABI = JSON.parse(abi);
+        } catch (e) {
+            myLog(0, 0, e);
+            throw e;
+        }
+
+        tokenReader = await new web3.eth.Contract(wrapReadTokenDataABI, tokenReaderAddress);
+
+        try {
+            let values = await tokenReader.methods.readQtyStepFunctions(conversionRateAddress, jsonKNCAddress).call();
+            haveTokenReader = true;
+        } catch(e) {
+            console.log("cant get values from reader")
+            console.log("cant get values from reader")
+            haveTokenReader = false;
+        }
+
+        myLog((haveTokenReader == false), 0, "have token reader: " + haveTokenReader);
     }
     ConversionRates[index] = await new web3.eth.Contract(conversionRatesABI, conversionRateAddress);
     Rate = ConversionRates[index];
 
     myLog(0, 0, '');
-
     myLog(0, 0, ("Conversion Rate " + index + " address: " +  conversionRateAddress));
-    myLog(0, 0, ("--------E-----------------G------------------------R---------------"));
-
+    myLog(0, 0, ("--------------------------------------------------------------------"));
 
     //verify binary as expected.
     let blockCode = await web3.eth.getCode(conversionRateAddress);
@@ -803,9 +1079,9 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index, 
     if (blockCode != solcCode){
 //        myLog(1, 0, "blockchain Code:");
 //        myLog(0, 0, blockCode);
-        myLog(0, 0, '');
-        myLog(1, 0, "Byte code from block chain doesn't match locally compiled code.")
-        myLog(0, 0, '')
+        myLog(0, 0, "Byte code from block chain doesn't match conversion rate. checking liquidity conversion rate.")
+        await readLiquidityConversionRate(conversionRateAddress, reserveAddress, index, isKyberReserve);
+        return;
     } else {
         myLog(0, 0, "Code on blockchain matches locally compiled code");
          myLog(0, 0, '');
@@ -821,50 +1097,158 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index, 
     if(isKyberReserve) await printAdminAlertersOperators(Rate, "ConversionRates");
 
     let validRateDurationInBlocks = await Rate.methods.validRateDurationInBlocks().call();
-    myLog((validRateDurationInBlocks != jsonValidDurationBlock), 0, ("validRateDurationInBlocks: " + validRateDurationInBlocks));
+    myLog((isKyberReserve && (validRateDurationInBlocks != jsonValidDurationBlock)), 0, ("validRateDurationInBlocks: " + validRateDurationInBlocks));
     let reserveContractAdd = (await Rate.methods.reserveContract().call()).toLowerCase();
     myLog((reserveAddress != reserveContractAdd), 0, ("reserveContract: " + reserveContractAdd));
     tokensPerReserve[index] = await Rate.methods.getListedTokens().call();
 
     let toks = tokensPerReserve[index];
     let tokNames = '';
-    toks.forEach(function(name){
-        tokNames += a2n(name) + " ";
+    toks.forEach(async function(name){
+        tokNames += await a2n(name) + " ";
     });
 
     myLog(0, 0, "token list: " + tokNames);
 
-    verifyTokenListMatchingDeployJSON(index, tokensPerReserve[index], isKyberReserve);
+    if(isKyberReserve) verifyTokenListMatchingDeployJSON(index, tokensPerReserve[index], isKyberReserve);
 
-    await validateReserveTokensListedOnNetwork(tokensPerReserve[index], reserveAddress);
+    await validateReserveTokensListedOnNetwork(tokensPerReserve[index], index, reserveAddress);
 
     let numTokens = tokensPerReserve[index].length;
 
     if (readTokenDataInConvRate == false) return;
 
-    if (isKyberReserve) SpyrosDict["kyber"] = {};
-	else SpyrosDict["other" + index] = {};
+    if (isKyberReserve) AccountingDict["kyber"] = {};
+	else AccountingDict["other" + index] = {};
 
-
-    myLog(0, 0, ("Verify all json token list is listed in conversion rate contract "));
-    myLog(0, 0, "-------E---------------A-----------------------------------------");
+    myLog(0, 0, "");
+    myLog(0, 0, "");
+    myLog(0, 0, ("Fetch data per token "));
+    myLog(0, 0, "---------------------");
 
     for (let i = 0; i < numTokens; i++) {
         await readTokenDataInConversionRate(conversionRateAddress, tokensPerReserve[index][i], index, isKyberReserve);
     }
 };
 
+let liquidityConversionRatesABI;
+let needLiquidityRatesABI = 1;
+const liquidityConversionRateSha3OfCode = '0x4e253a50156434eadd8a8f554eab2c71e5633367294a54cfba82ce1bc54cca3a';
+
+async function readLiquidityConversionRate(liquidityRateAddress, reserveAddress, index, isKyberReserve) {
+    if (needLiquidityRatesABI == 1) {
+        needLiquidityRatesABI = 0;
+        try {
+            const liquidityAbiFile = '../contracts/abi/LiquidityConversionRates.abi';
+            let abi = fs.readFileSync(liquidityAbiFile, 'utf8');
+//            let abi = solcOutput.contracts["LiquidityConversionRates.sol:LiquidityConversionRates"].interface;
+            liquidityConversionRatesABI = JSON.parse(abi);
+        } catch (e) {
+            myLog(0, 0, e);
+            throw e;
+        }
+    }
+    LiquidityConversionRates[index] = await new web3.eth.Contract(liquidityConversionRatesABI, liquidityRateAddress);
+    Rate = LiquidityConversionRates[index];
+
+    myLog(0, 0, '');
+
+    myLog(0, 0, ("liquidity Conversion Rate " + index + " address: " +  liquidityRateAddress));
+    myLog(0, 0, ("-------------------------------------------------------------------"));
+
+
+    //verify binary as expected.
+    let blockCode = await web3.eth.getCode(liquidityRateAddress);
+//    let solcCode = '0x' + (solcOutput.contracts["LiquidityConversionRates.sol:LiquidityConversionRates"].runtimeBytecode);
+    let blockCodeSha3 = await web3.utils.sha3(blockCode);
+
+    if (blockCodeSha3 != liquidityConversionRateSha3OfCode){
+//        myLog(1, 0, "blockchain Code:");
+//        myLog(0, 0, blockCode);
+        myLog(0, 0, '');
+        myLog(1, 0, "Sha3 of Byte code from block chain doesn't match locally saved sha3.")
+        myLog(1, 0, "Sha3 of Byte code from block chain " + blockCodeSha3)
+        myLog(1, 0, "Locally saved Sha3: " + liquidityConversionRateSha3OfCode)
+        myLog(0, 0, '')
+    } else {
+        myLog(0, 0, "Sha3 of code on blockchain matches locally saved Sha3");
+         myLog(0, 0, '');
+    }
+
+    if(isKyberReserve) await printAdminAlertersOperators(Rate, "LiquidityConversionRates");
+
+    let tokenAdd = await Rate.methods.token().call();
+    tokensPerReserve[index] = [tokenAdd];
+
+    myLog(0, 0, "token: " + await a2n(tokenAdd, true));
+    let reserveContract = (await Rate.methods.reserveContract().call()).toLowerCase();
+    myLog((reserveAddress != reserveContract), 0, "reserveContract: " + reserveContract);
+    let numFpBits = await Rate.methods.numFpBits().call();
+    myLog(0, 0, "numFpBits: " + numFpBits);
+    let formulaPrecision = await Rate.methods.formulaPrecision().call();
+    myLog(0, 0, "formulaPrecision: " + formulaPrecision);
+    let rInFp = await Rate.methods.rInFp().call();
+    myLog(0, 0, "rInFp: " + rInFp);
+    let pMinInFp = await Rate.methods.pMinInFp().call();
+    myLog(0, 0, "pMinInFp: " + pMinInFp);
+    let maxEthCapBuyInFp = await Rate.methods.maxEthCapBuyInFp().call();
+    myLog(0, 0, "maxEthCapBuyInFp: " + maxEthCapBuyInFp);
+    let maxEthCapSellInFp = await Rate.methods.maxEthCapSellInFp().call();
+    myLog(0, 0, "maxEthCapSellInFp: " + maxEthCapSellInFp);
+    let maxQtyInFp = await Rate.methods.maxQtyInFp().call();
+    myLog(0, 0, "maxQtyInFp: " + maxQtyInFp);
+    let feeInBps = await Rate.methods.feeInBps().call();
+    myLog(0, 0, "feeInBps: " + feeInBps);
+    let collectedFeesInTwei = await Rate.methods.collectedFeesInTwei().call();
+    myLog(0, 0, "collectedFeesInTwei: " + collectedFeesInTwei);
+    let maxBuyRateInPrecision = await Rate.methods.maxBuyRateInPrecision().call();
+    myLog(0, 0, "maxBuyRateInPrecision: " + maxBuyRateInPrecision);
+    let minBuyRateInPrecision = await Rate.methods.minBuyRateInPrecision().call();
+    myLog(0, 0, "minBuyRateInPrecision: " + minBuyRateInPrecision);
+    let maxSellRateInPrecision = await Rate.methods.maxSellRateInPrecision().call();
+    myLog(0, 0, "maxSellRateInPrecision: " + maxSellRateInPrecision);
+    let minSellRateInPrecision = await Rate.methods.minSellRateInPrecision().call();
+    myLog(0, 0, "minSellRateInPrecision: " + minSellRateInPrecision);
+
+    // rate
+    let oneEtherInWei = web3.utils.toBN(10).pow(web3.utils.toBN(18));
+    let precisionPartial = web3.utils.toBN(10).pow(web3.utils.toBN(12));
+    let blockNum = await web3.eth.getBlockNumber();
+
+    //buy price
+    let buyRate1Eth = await Rate.methods.getRate(tokenAdd, blockNum, true, oneEtherInWei).call();
+    let etherToToken = (web3.utils.toBN(buyRate1Eth.valueOf()).div(precisionPartial)) / 1000000;
+    let raiseFlag = isKyberReserve && (buyRate1Eth == 0);
+    myLog(raiseFlag, 0, ("for 1 eth. eth to " + await a2n(tokenAdd, 0) + " rate is: " + buyRate1Eth +
+        " (1 eth = " + etherToToken + " " + await a2n(tokenAdd, 0) + ")"));
+
+    //sell price
+    let hundredTokensInTwei = web3.utils.toBN(10).pow(web3.utils.toBN(await getTokenDecimals(tokenAdd) + 2));
+    let sellRateXTwei = await Rate.methods.getRate(tokenAdd, blockNum, false, hundredTokensInTwei).call();
+    tokensTweixToEth = (web3.utils.toBN(sellRateXTwei).div(precisionPartial)) / 10000;
+    raiseFlag = isKyberReserve && (sellRateXTwei == 0);
+    myLog(raiseFlag, 0, ("for 100 " + await a2n(tokenAdd, 0) + " tokens. Token to eth rate is " +
+        sellRateXTwei + " (100 " + await a2n(tokenAdd, 0) + " tokens = " + tokensTweixToEth + " ether)"));
+
+    //verify token listed in network.
+    let tokens = [tokenAdd];
+
+    await validateReserveTokensListedOnNetwork(tokens, index, reserveContract);
+};
+
 async function verifyTokenListMatchingDeployJSON (reserveIndex, tokenList, isKyberReserve) {
+
+    if (doAccountingRun == true) return;
 
     myLog(0, 0, '');
     myLog(0, 0, ("Verify all json token list is listed in conversion rate contract "));
-    myLog(0, 0, "-------E---------------A-----------------------------------------");
+    myLog(0, 0, "-----------------------------------------------------------------");
 
     let jsonToksList;
 
     if (isKyberReserve) jsonToksList = jsonKyberTokenList;
     else jsonToksList = jsonTokenList;
-    jsonToksList.forEach(function(address) {
+    jsonToksList.forEach(async function(address) {
         if (addressesToNames[address] != "ETH"){
             //Ether will not be listed in the rates contract.
             let listedStr = ' not listed';
@@ -878,12 +1262,15 @@ async function verifyTokenListMatchingDeployJSON (reserveIndex, tokenList, isKyb
                 }
             }
 
-            myLog(!isListed, 0, ("token from Json: " + a2n(address, 1) + listedStr));
+            myLog(!isListed, 0, ("token from Json: " + await a2n(address, 1) + listedStr));
         };
     });
 };
 
 async function readConversionRateWrapper(convRateWrapperAddress) {
+
+    if (doAccountingRun == true) return;
+
     try {
         let abi = solcOutput.contracts["WrapConversionRate.sol:WrapConversionRate"].interface;
         wrapConversionRatesABI = JSON.parse(abi);
@@ -916,7 +1303,7 @@ async function readConversionRateWrapper(convRateWrapperAddress) {
     }
 }
 
-const showStepFuncMsg = 1;
+let showStepFuncMsg = 1;
 
 async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, reserveIndex, isKyberReserve) {
     let Rate = ConversionRates[reserveIndex];
@@ -924,11 +1311,12 @@ async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, re
 
     myLog(0, 0, '');
 
-    myLog(0, 0, ("token " + a2n(tokenAdd, 1)));
-    myLog(0, 0, ("-T---------------------------------------------"));
+    myLog(0, 0, ("token " + await a2n(tokenAdd, 1, true)));
+    myLog(0, 0, ("-----------------------------------------------"));
     let basic = await Rate.methods.getTokenBasicData(tokenAdd).call();
     myLog((basic[0] == false), (basic[1] == false), ("listed = " + basic[0] + ". Enabled = " + basic[1]));
 
+    //buy price
     let ether = web3.utils.toBN(10).pow(web3.utils.toBN(18));
     let precisionPartial = web3.utils.toBN(10).pow(web3.utils.toBN(12));
     let blockNum = await web3.eth.getBlockNumber();
@@ -936,75 +1324,107 @@ async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, re
     let etherToToken = (web3.utils.toBN(buyRate1Eth.valueOf()).div(precisionPartial)) / 1000000;
 
     let raiseFlag = isKyberReserve && (buyRate1Eth == 0);
-    myLog(raiseFlag, 0, ("for 1 eth. eth to " + a2n(tokenAdd, 0) + " rate is: " + buyRate1Eth +
-        " (1 eth = " + etherToToken + " " + a2n(tokenAdd, 0) + ")"));
-    let sellRate100Tokens = await Rate.methods.getRate(tokenAdd, blockNum, false, 100).call();
-    tokens100ToEth = (web3.utils.toBN(sellRate100Tokens).div(precisionPartial)) / 10000;
-    raiseFlag = isKyberReserve && (sellRate100Tokens == 0);
-    myLog(raiseFlag, 0, ("for 100 " + a2n(tokenAdd, 0) + " tokens. Token to eth rate is " +
-        sellRate100Tokens + " (100 " + a2n(tokenAdd, 0) + " = " + tokens100ToEth + " ether)"));
+    myLog(raiseFlag, 0, ("for 1 eth. eth to " + await a2n(tokenAdd, 0) + " rate is: " + buyRate1Eth +
+        " (1 eth = " + etherToToken + " " + await a2n(tokenAdd, 0) + ")"));
+
+    //sell price
+    let hundredTokensInTwei = web3.utils.toBN(10).pow(web3.utils.toBN(await getTokenDecimals(tokenAdd) + 2));
+    let sellRateXTwei = await Rate.methods.getRate(tokenAdd, blockNum, false, hundredTokensInTwei).call();
+    tokensTweixToEth = (web3.utils.toBN(sellRateXTwei).div(precisionPartial)) / 10000;
+    raiseFlag = isKyberReserve && (sellRateXTwei == 0);
+    myLog(raiseFlag, 0, ("for 100 " + await a2n(tokenAdd, 0) + " tokens. Token to eth rate is " +
+        sellRateXTwei + " (100 " + await a2n(tokenAdd, 0) + " tokens = " + tokensTweixToEth + " ether)"));
 
     //read imbalance info
-    let tokenName = a2n(tokenAdd, 0);
+    let tokenName = await a2n(tokenAdd, 0);
     let tokenDict = {};
 
     let controlInfo = await Rate.methods.getTokenControlInfo(tokenAdd).call();
     //print resolution data
     raiseFlag = isKyberReserve && (controlInfo[0] != minRecordResolutionPerToken[tokenAdd]);
     myLog(0, raiseFlag, ("minRecordResolution: " + controlInfo[0] + " = " +
-        getAmountTokens(controlInfo[0], tokenAdd) + " tokens."));
+        await getAmountTokens(controlInfo[0], tokenAdd) + " tokens."));
 
     //print max per block data
-    raiseFlag = isKyberReserve && (controlInfo[1] != maxPerBlockImbalancePerToken[tokenAdd]);
-    myLog(0, raiseFlag, ("maxPerBlockImbalance: " + controlInfo[1] + " = " +
-        getAmountTokens(controlInfo[1], tokenAdd) + " tokens."));
+    myLog(0, 0, ("maxPerBlockImbalance: " + controlInfo[1] + " = " +
+        await getAmountTokens(controlInfo[1], tokenAdd) + " tokens."));
     tokenDict['maxPerBlockImbalance'] = controlInfo[1].valueOf();
 
     //print max total imbalance data
-    raiseFlag = isKyberReserve && (controlInfo[2] != maxTotalImbalancePerToken[tokenAdd]);
-    myLog(0, raiseFlag, ("maxTotalImbalance: " + controlInfo[2] + " = " +
-        getAmountTokens(controlInfo[2], tokenAdd) + " tokens."));
+    myLog(0, 0, ("maxTotalImbalance: " + controlInfo[2] + " = " +
+        await getAmountTokens(controlInfo[2], tokenAdd) + " tokens."));
     tokenDict['maxTotalImbalance'] = controlInfo[2].valueOf();
 
-    if (showStepFunctions == 0) {
+    if (showStepFunctions == false) {
         if (showStepFuncMsg) {
-            myLog(0, 1, "not showing step functions. set showStepFunctions = 1 to show it.");
+            myLog(0, 1, "not showing step functions. set showStepFunctions = 1 (in this script file) to show it.");
             showStepFuncMsg = 0;
         }
         return;
     }
 
-    buyRateQtyStepFunction = await getStepFunctionXYArr(tokenAdd, 0, Rate);
-    assert.equal(buyRateQtyStepFunction[0].length, buyRateQtyStepFunction[1].length, "buyRateQtyStepFunction X Y different length");
-    myLog(buyRateQtyStepFunction[0].length < 1, 0, ("buyRateQtyStepFunction X: " + buyRateQtyStepFunction[0]));
-    myLog(buyRateQtyStepFunction[1].length < 1, 0, ("buyRateQtyStepFunction Y: " + buyRateQtyStepFunction[1]));
+    if (haveTokenReader) {
+        let values = await tokenReader.methods.readQtyStepFunctions(conversionRateAddress, tokenAdd).call();
+        for (let i = 0; i < values[1].length; i++) {
+            values[1][i] = await getAmountTokens(values[1][i], tokenAdd);
+        }
+        for (let i = 0; i < values[4].length; i++) {
+            values[4][i] = await getAmountTokens(values[4][i], tokenAdd);
+        }
+        myLog(values[1].length < 1, 0, ("buyRateQtyStepFunction X: " + values[1]));
+        myLog(values[2].length < 1, 0, ("buyRateQtyStepFunction Y: " + values[2]));
+        myLog(values[4].length < 1, 0, ("sellRateQtyStepFunction X: " + values[4]));
+        myLog(values[5].length < 1, 0, ("sellRateQtyStepFunction Y: " + values[5]));
 
-    sellRateQtyStepFunction = await getStepFunctionXYArr(tokenAdd, 4, Rate);
-    assert.equal(sellRateQtyStepFunction[0].length, sellRateQtyStepFunction[1].length, "sellRateQtyStepFunction X Y different length");
-    myLog(sellRateQtyStepFunction[0].length < 1, 0, ("sellRateQtyStepFunction X: " + sellRateQtyStepFunction[0]));
-    myLog(sellRateQtyStepFunction[1].length < 1, 0, ("sellRateQtyStepFunction Y: " + sellRateQtyStepFunction[1]));
+        values = await tokenReader.methods.readImbalanceStepFunctions(conversionRateAddress, tokenAdd).call();
+        for (let i = 0; i < values[1].length; i++) {
+            values[1][i] = await getAmountTokens(values[1][i], tokenAdd);
+        }
+        for (let i = 0; i < values[4].length; i++) {
+            values[4][i] = await getAmountTokens(values[4][i], tokenAdd);
+        }
+        myLog(values[1].length < 1, 0, ("buyRateImbalanceStepFunction X: " + values[1]));
+        myLog(values[2].length < 1, 0, ("buyRateImbalanceStepFunction Y: " + values[2]));
+        myLog(values[4].length < 1, 0, ("sellRateImbalanceStepFunction X: " + values[4]));
+        myLog(values[5].length < 1, 0, ("sellRateImbalanceStepFunction Y: " + values[5]));
+        tokenDict["buyRateImbalanceStepFunction X: "] = values[1];
+        tokenDict["buyRateImbalanceStepFunction Y: "] = values[2];
+        tokenDict["sellRateImbalanceStepFunction X: "] = values[4];
+        tokenDict["sellRateImbalanceStepFunction Y: "] = values[5];
+    } else {
+        //if no token reader contract
+        buyRateQtyStepFunction = await getStepFunctionXYArr(tokenAdd, 0, Rate);
+        assert.equal(buyRateQtyStepFunction[0].length, buyRateQtyStepFunction[1].length, "buyRateQtyStepFunction X Y different length");
+        myLog(buyRateQtyStepFunction[0].length < 1, 0, ("buyRateQtyStepFunction X: " + buyRateQtyStepFunction[0]));
+        myLog(buyRateQtyStepFunction[1].length < 1, 0, ("buyRateQtyStepFunction Y: " + buyRateQtyStepFunction[1]));
+
+        sellRateQtyStepFunction = await getStepFunctionXYArr(tokenAdd, 4, Rate);
+        assert.equal(sellRateQtyStepFunction[0].length, sellRateQtyStepFunction[1].length, "sellRateQtyStepFunction X Y different length");
+        myLog(sellRateQtyStepFunction[0].length < 1, 0, ("sellRateQtyStepFunction X: " + sellRateQtyStepFunction[0]));
+        myLog(sellRateQtyStepFunction[1].length < 1, 0, ("sellRateQtyStepFunction Y: " + sellRateQtyStepFunction[1]));
 
 
-    buyRateImbalanceStepFunction = await getStepFunctionXYArr(tokenAdd, 8, Rate);
-    assert.equal(buyRateImbalanceStepFunction[0].length, buyRateImbalanceStepFunction[1].length, "buyRateImbalanceStepFunction X Y different length");
-    myLog(buyRateImbalanceStepFunction[0].length < 1, 0, ("buyRateImbalanceStepFunction X: " + buyRateImbalanceStepFunction[0]));
-    myLog(buyRateImbalanceStepFunction[1].length < 1, 0, ("buyRateImbalanceStepFunction Y: " + buyRateImbalanceStepFunction[1]));
-    tokenDict["buyRateImbalanceStepFunction X: "] = buyRateImbalanceStepFunction[0];
-    tokenDict["buyRateImbalanceStepFunction Y: "] = buyRateImbalanceStepFunction[1];
+        buyRateImbalanceStepFunction = await getStepFunctionXYArr(tokenAdd, 8, Rate);
+        assert.equal(buyRateImbalanceStepFunction[0].length, buyRateImbalanceStepFunction[1].length, "buyRateImbalanceStepFunction X Y different length");
+        myLog(buyRateImbalanceStepFunction[0].length < 1, 0, ("buyRateImbalanceStepFunction X: " + buyRateImbalanceStepFunction[0]));
+        myLog(buyRateImbalanceStepFunction[1].length < 1, 0, ("buyRateImbalanceStepFunction Y: " + buyRateImbalanceStepFunction[1]));
+        tokenDict["buyRateImbalanceStepFunction X: "] = buyRateImbalanceStepFunction[0];
+        tokenDict["buyRateImbalanceStepFunction Y: "] = buyRateImbalanceStepFunction[1];
 
-    sellRateImbalanceStepFunction = await getStepFunctionXYArr(tokenAdd, 12, Rate);
-    assert.equal(sellRateImbalanceStepFunction[0].length, sellRateImbalanceStepFunction[1].length, "sellRateImbalanceStepFunction X Y different length");
-    myLog(sellRateImbalanceStepFunction[0].length < 1, 0, ("sellRateImbalanceStepFunction X: " + sellRateImbalanceStepFunction[0]));
-    myLog(sellRateImbalanceStepFunction[1].length < 1, 0, ("sellRateImbalanceStepFunction Y: " + sellRateImbalanceStepFunction[1]));
-    tokenDict["sellRateImbalanceStepFunction X: "] = sellRateImbalanceStepFunction[0];
-    tokenDict["sellRateImbalanceStepFunction Y: "] = sellRateImbalanceStepFunction[1];
+        sellRateImbalanceStepFunction = await getStepFunctionXYArr(tokenAdd, 12, Rate);
+        assert.equal(sellRateImbalanceStepFunction[0].length, sellRateImbalanceStepFunction[1].length, "sellRateImbalanceStepFunction X Y different length");
+        myLog(sellRateImbalanceStepFunction[0].length < 1, 0, ("sellRateImbalanceStepFunction X: " + sellRateImbalanceStepFunction[0]));
+        myLog(sellRateImbalanceStepFunction[1].length < 1, 0, ("sellRateImbalanceStepFunction Y: " + sellRateImbalanceStepFunction[1]));
+        tokenDict["sellRateImbalanceStepFunction X: "] = sellRateImbalanceStepFunction[0];
+        tokenDict["sellRateImbalanceStepFunction Y: "] = sellRateImbalanceStepFunction[1];
+    }
 
     if (isKyberReserve) {
-        SpyrosDict["kyber"][tokenName] = tokenDict;
+        AccountingDict["kyber"][tokenName] = tokenDict;
     } else {
-		SpyrosDict["other" + reserveIndex][tokenName] = tokenDict;
+		AccountingDict["other" + reserveIndex][tokenName] = tokenDict;
     }
-};
+}
 
 async function getStepFunctionXYArr(tokenAdd, commandID, rateContract) {
     let ValsXY = [];
@@ -1015,7 +1435,7 @@ async function getStepFunctionXYArr(tokenAdd, commandID, rateContract) {
 
     commandID ++;
     for (let i = 0; i < lengthX; i++) {
-        ValsX[i] = getAmountTokens(await rateContract.methods.getStepFunctionData(tokenAdd, commandID, i).call(), tokenAdd);
+        ValsX[i] = await getAmountTokens(await rateContract.methods.getStepFunctionData(tokenAdd, commandID, i).call(), tokenAdd);
     }
 
     commandID++;
@@ -1035,6 +1455,9 @@ let sanityRatesABI;
 let needSanityRateABI = 1;
 
 async function readSanityRate(sanityRateAddress, reserveAddress, index, tokens, isKyberReserve) {
+
+    if ((doReadSanityRateData == false) || (doAccountingRun == true)) return;
+
     if (sanityRateAddress == 0) {
         myLog(0, 0, "");
         myLog(0, 1, ("sanity rate not configured for reserve: " + reserveAddress));
@@ -1083,38 +1506,105 @@ async function readSanityRate(sanityRateAddress, reserveAddress, index, tokens, 
         let rate = await Sanity.methods.tokenRate(tokens[i]).call();
         let diff = await Sanity.methods.reasonableDiffInBps(tokens[i]).call();
 
-        myLog(0, 0, "Token: " + a2n (tokens[i], 0) + " rate: " + rate + " reasonableDiffInBps: " + diff);
+        myLog(0, 0, "Token: " + await a2n (tokens[i], 0) + " rate: " + rate + " reasonableDiffInBps: " + diff);
     }
 };
 
-async function validateReserveTokensListedOnNetwork(tokens, reserveAddress) {
-    let isListed;
+async function validateReserveTokensListedOnNetwork(tokens, index, reserveAddress) {
+
+    if (doAccountingRun == true) return;
+
+    let tokenListedSource;
+    let tokenListedDest;
     let keccak;
+    let reserveListedTokenSrc;
+    let reserveListedTokenDest;
+    reserveAddress = reserveAddress.toLowerCase();
 
     myLog(0, 0, '');
-    myLog(0, 0, "Validate reserve tokens listed on network contract reserve: " + reserveAddress);
-    myLog(0, 0, "-------------------------------------------------------------------------------------------")
+    myLog(0, 0, "Validate reserve tokens listed on network contract. reserve " + index + " Add: " + reserveAddress);
+    myLog(0, 0, "-------------------------------------------------------------------------------------------------")
+
     //check tokens listed eth->token and token to eth
-    //todo - how to use keccak correctly.
     for (let i = 0; i < tokens.length; i++){
-        keccak = await twoStringsSoliditySha(ethAddress, tokens[i]);
-        isListedTo = await Network.methods.perReserveListedPairs(reserveAddress, keccak).call();
-        if (isListedTo == false) {
-            myLog(1, 0, ("eth   to   " + a2n(tokens[i]) + " not listed in kyberNetwork;"))
-        }
+        tokenListedDest = (await isReserveListedTokenDest(tokens[i].toLowerCase(), reserveAddress));
+        tokenListedSource = (await isReserveListedTokenSrc(tokens[i].toLowerCase(), reserveAddress));
 
-        keccak = await twoStringsSoliditySha(tokens[i], ethAddress);
-        isListedFrom = await Network.methods.perReserveListedPairs(reserveAddress, keccak.toString(16)).call();;
-        if (isListedFrom == false) {
-            myLog(1, 0, (a2n(tokens[i]) + "   to   eth. not listed in kyberNetwork;"))
-        }
+        if (tokenListedSource == true && tokenListedDest == true) {
+            myLog(0, 0, ("eth to " + await a2n(tokens[i]) + " listed both directions."));
+        } else {
+            if(tokenListedDest == true) {
+                myLog(0, 0, ("eth to " + await a2n(tokens[i]) + " listed in network."));
+            } else {
+                myLog(1, 0, ("eth to " + await a2n(tokens[i]) + " not listed in network."));
+            }
 
-        if (isListedFrom == true && isListedTo == true) {
-            myLog(0, 0, ("eth to " + a2n(tokens[i]) + " listed both directions."));
+            if(tokenListedSource == true) {
+                myLog(0, 0, (await a2n(tokens[i]) +" to eth listed in network."));
+            } else {
+                myLog(1, 0, (await a2n(tokens[i]) +" to eth not listed in network."));
+            }
         }
     }
 };
 
+let reservesListedTokensSrc = {};
+let reservesListedTokensDest = {};
+
+async function isReserveListedTokenSrc(tokenAddress, reserveAddress) {
+    let reservesListedTokenSrc = reservesListedTokensSrc[tokenAddress];
+
+    if (reservesListedTokenSrc == undefined) {
+        reservesListedTokenSrc = [];
+//        myLog(1, 0, "not found for token source. token: " + tokenAddress);
+        for (let j = 0; j < 10; j++) {
+            try {
+                let reserveAdd = (await Network.methods.reservesPerTokenSrc(tokenAddress, j).call()).toLowerCase();
+                reservesListedTokenSrc.push(reserveAdd);
+            } catch(e){
+                break;
+            }
+//          myLog(0, 1, reserveListedTokenDest);
+        }
+        reservesListedTokensSrc[tokenAddress] = reservesListedTokenSrc;
+    }
+//    console.log(reservesListedTokenSrc);
+
+    for (let i = 0; i < reservesListedTokenSrc.length; i++) {
+        if (reserveAddress == reservesListedTokenSrc[i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+async function isReserveListedTokenDest(tokenAddress, reserveAddress) {
+    let reservesListedTokenDest = reservesListedTokensDest[tokenAddress];
+
+    if (reservesListedTokenDest == undefined) {
+        reservesListedTokenDest = [];
+
+//        myLog(1, 0, "not found for token dest. token: " + tokenAddress);
+        for (let j = 0; j < 10; j++) {
+            try {
+//                console.log("try token " + tokenAddress + " j " + j  )
+                let reserveAdd = (await Network.methods.reservesPerTokenDest(tokenAddress, j).call()).toLowerCase();
+                reservesListedTokenDest.push(reserveAdd);
+            } catch(e){
+                break;
+            }
+//          myLog(0, 1, reserveListedTokenDest);
+        }
+        reservesListedTokensDest[tokenAddress] = reservesListedTokenDest;
+    }
+//    console.log(reservesListedTokenDest)
+
+    for (let i = 0; i < reservesListedTokenDest.length; i++) {
+        if (reserveAddress == reservesListedTokenDest[i])
+            return true;
+    }
+    return false;
+}
 
 async function twoStringsSoliditySha(str1, str2) {
     let str1Cut = str1.slice(2);
@@ -1131,7 +1621,7 @@ async function twoStringsSoliditySha(str1, str2) {
 
 let adminAlerterMessage = 1;
 async function printAdminAlertersOperators(contract, jsonKey) {
-    if (printAdminETC == 0) {
+    if ((printAdminETC == false)  || (doAccountingRun == true))  {
         if (adminAlerterMessage) {
             myLog(0, 1, "not showing Admin operator alerter. set printAdminETC = 1 to show it.");
             adminAlerterMessage = 0;
@@ -1141,24 +1631,28 @@ async function printAdminAlertersOperators(contract, jsonKey) {
 
     let permissionList = deploymentJson["permission"][jsonKey];
     let jsonAdmin;
+    let jsonPendingAdmin;
     let jsonOperators;
     let jsonAlerters;
     try {
         jsonAlerters = permissionList["alerter"];
         jsonOperators = permissionList["operator"];
         jsonAdmin = (permissionList["admin"]).toLowerCase();
+        jsonPendingAdmin = (permissionList["pending admin"]).toLowerCase();
     } catch (e) {
-        jsonAlerters = '';
-        jsonOperators = '';
-        jsonAdmin = '';
+        jsonPendingAdmin = '';
     }
+
+    if (jsonAlerters == undefined) jsonAlerters = [];
+    if (jsonOperators == undefined) jsonOperators = [];
 
     //admin
     let admin = await contract.methods.admin().call();
     let isApproved = (admin.toLowerCase() == jsonAdmin);
     myLog((isApproved == false), 0, ("Admin: " + admin + " approved: " + isApproved));
     let pendingAdmin = await contract.methods.pendingAdmin().call();
-    myLog((pendingAdmin != 0), 0, ("Pending Admin: " + pendingAdmin));
+    isApproved = ((pendingAdmin == '0x0000000000000000000000000000000000000000') ||  (pendingAdmin.toLowerCase() == jsonPendingAdmin));
+    myLog((isApproved == false), 0, ("Pending Admin: " + pendingAdmin + " approved: " + isApproved));
 
     //operators
     let operators = await contract.methods.getOperators().call();
@@ -1261,10 +1755,26 @@ async function readDeploymentJSON(filePath) {
         jsonWrapConversionRate = 0;
     }
 
+    try {
+        address = (json["feeburner wrapper"]).toLowerCase();
+        addressesToNames[address] = "feeBurnerWrapper";
+        jsonWrapFeeBurner = address;
+    } catch(e) {
+        jsonWrapFeeBurner = 0;
+    }
 
+    //this is the proxy
     address = (json["network"]).toLowerCase();
     addressesToNames[address] = "kyber-network";
-    kyberNetworkAdd = address;
+    jsonNetworkProxyAdd = address;
+
+    try {
+        address = (json["internal network"]).toLowerCase();
+        addressesToNames[address] = "internal network";
+        jsonNetworkAdd = address;
+    } catch (e) {
+        myLog(1, 0, "can't find internal network address in this json.");
+    }
 
     address = (json["reserve"]).toLowerCase();
     addressesToNames[address] = "reserve";
@@ -1319,6 +1829,8 @@ async function readDeploymentJSON(filePath) {
     jsonUsersCap = deploymentJson["whitelist params"]["users cap"];
     jsonEmailCat = deploymentJson["whitelist params"]["email category"];
     jsonEmailCap = deploymentJson["whitelist params"]["email cap"];
+    jsonPartnerCat = deploymentJson["whitelist params"]["partner category"];
+    jsonPartnerCap = deploymentJson["whitelist params"]["partner cap"];
     jsonDefaultCap = deploymentJson["whitelist params"]["default cap"];
     jsonKGTAddress = (deploymentJson["whitelist params"]["KGT address"]).toLowerCase();
     jsonKGTCap = deploymentJson["whitelist params"]["KGT cap"];
@@ -1348,21 +1860,19 @@ async function jsonVerifyTokenData (tokenData, symbol) {
     }
 
     minRecordResolutionPerToken[address] = tokenData["minimalRecordResolution"];
-    maxPerBlockImbalancePerToken[address] = tokenData["maxPerBlockImbalance"];
-    maxTotalImbalancePerToken[address] = tokenData["maxTotalImbalance"];
 
     // read from web: symbol, name, decimal and see matching what we have
     let abi = solcOutput.contracts["MockERC20.sol:MockERC20"].interface;
     let ERC20 = await new web3.eth.Contract(JSON.parse(abi), address);
+
     if (symbol == 'KNC') {
         kncInst = ERC20;
         jsonKNCAddress = address;
     }
-    ERC20Inst.push(ERC20);
     ERC20Adds.push(address);
 
     //verify token data on blockchain.
-    if (verifyTokenDataOnblockChain == false) return;
+    if ((verifyTokenDataOnblockChain == false) || (doAccountingRun == true)) return;
 
     if (symbol == "EOS") {
         let rxDecimals = await ERC20.methods.decimals().call();
@@ -1408,11 +1918,12 @@ async function readAccountsJSON(filePath) {
     addressesToNames["0x0000000000000000000000000000000000000000"] = "none";
 };
 
-function getAmountTokens(amountTwei, tokenAdd) {
-    let digits = decimalsPerToken[tokenAdd];
-//    myLog(0, 0, "decimals " + decimals + "amountTwei " + amountTwei)
+async function getAmountTokens(amountTwei, tokenAdd) {
+    let digits = await getTokenDecimals(tokenAdd);
+//    myLog(0, 0, "decimals " + digits + "amountTwei " + amountTwei)
     let stringAmount = amountTwei.toString(10);
     let integer = stringAmount.substring(0,stringAmount.length - digits);
+//    myLog(0, 0, "integer " + integer)
     let fraction = stringAmount.substring(stringAmount.length - digits);
     if( fraction.length < digits) {
         fraction = web3.utils.toBN(10).pow(web3.utils.toBN(fraction.length - digits)).toString(10).substring(1) + fraction;
@@ -1426,14 +1937,37 @@ function getAmountTokens(amountTwei, tokenAdd) {
     return integer + "." + fraction;
 };
 
+async function getTokenDecimals (token) {
+    if (decimalsPerToken[token] == undefined) {
+        let abi = solcOutput.contracts["MockERC20.sol:MockERC20"].interface;
+        let ERC20 = await new web3.eth.Contract(JSON.parse(abi), token);
+
+        decimalsPerToken[token] = await ERC20.methods.decimals().call();
+    }
+
+    return decimalsPerToken[token];
+}
 
 //address to name
-function a2n(address, showAddWithName) {
+async function a2n(address, showAddWithName, isToken) {
     let name;
     try {
         name = addressesToNames[address.toLowerCase()];
-        if (name === 'undefined') {
-            name = address;
+        if (name == undefined) {
+            if (isToken == true) {
+                let abi = solcOutput.contracts["MockERC20.sol:MockERC20"].interface;
+                let ERC20 = await new web3.eth.Contract(JSON.parse(abi), address);
+                try {
+                    name = await ERC20.methods.symbol().call();
+                    if (name != undefined) {
+                        addressesToNames[address.toLowerCase()] = name;
+                        if (showAddWithName) name += " " + address.toLowerCase();
+                    }
+                } catch(e) {}
+            }
+            if (name == undefined) {
+                name = address;
+            }
         } else if (showAddWithName) {
             name += " " + address.toLowerCase();
         }
@@ -1451,12 +1985,14 @@ function bpsToPercent (bpsValue) {
 
 async function getCompiledContracts() {
     try{
+        if (doAccountingRun == false) throw("err");
         solcOutput = JSON.parse(fs.readFileSync(solcOutputPath, 'utf8'));
     } catch(err) {
         console.log(err.toString());
         myLog(0, 0, "starting compilation");
         solcOutput = await solc.compile({ sources: input }, 1);
-        //    console.log(solcOutput);
+        console.log(solcOutput.errors);
+//        console.log(solcOutput);
         myLog(0, 0, "finished compilation");
         let solcOutJson = JSON.stringify(solcOutput, null, 2);
         fs.writeFileSync(solcOutputPath, solcOutJson, function(err) {
@@ -1467,7 +2003,7 @@ async function getCompiledContracts() {
             console.log("Saved solc output to: " + solcOutputPath);
         });
     }
-}
+};
 
 function myLog(error, highlight, string) {
     if (error) {

@@ -1,5 +1,4 @@
-const Math = require('mathjs');
-const BigNumber = require('bignumber.js');
+
 
 module.exports.isRevertErrorMessage = function( error ) {
     if( error.message.search('invalid opcode') >= 0 ) return true;
@@ -52,6 +51,28 @@ function toHexString(byteArray) {
   return Array.from(byteArray, function(byte) {
     return ('0' + (byte & 0xFF).toString(16)).slice(-2);
   }).join('')
+};
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+module.exports.sendPromise = function(method, params) {
+    return new Promise(function(fulfill, reject){
+        web3.currentProvider.sendAsync({
+          jsonrpc: '2.0',
+          method,
+          params: params || [],
+          id: new Date().getTime()
+        }, function(err,result) {
+          if (err) {
+            reject(err);
+          }
+          else {
+            fulfill(result);
+          }
+        });
+    });
 };
 
 module.exports.absDiff = function(num1, num2) {
