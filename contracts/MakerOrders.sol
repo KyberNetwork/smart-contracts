@@ -1,10 +1,7 @@
 pragma solidity 0.4.18;
 
 
-import "./Withdrawable.sol";
-
-
-contract MakerOrders is Withdrawable {
+contract MakerOrders {
     struct FreeOrders {
         uint32 firstOrderId;
         uint32 numOrders; //max is 256
@@ -18,7 +15,6 @@ contract MakerOrders is Withdrawable {
 
     function takeOrderId(FreeOrders storage freeOrders)
         internal
-        onlyAdmin
         returns(uint32)
     {
         uint numOrders = freeOrders.numOrders;
@@ -42,7 +38,6 @@ contract MakerOrders is Withdrawable {
     /// @dev mark order as free to use.
     function releaseOrderId(FreeOrders storage freeOrders, uint32 orderId)
         internal
-        onlyAdmin
         returns(bool)
     {
         require(orderId >= freeOrders.firstOrderId);
@@ -64,7 +59,6 @@ contract MakerOrders is Withdrawable {
         uint32 howMany
     )
         internal
-        onlyAdmin
     {
         require(howMany <= 256);
 
