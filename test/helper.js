@@ -1,4 +1,5 @@
-
+const Math = require('mathjs');
+const BigNumber = require('bignumber.js');
 
 module.exports.isRevertErrorMessage = function( error ) {
     if( error.message.search('invalid opcode') >= 0 ) return true;

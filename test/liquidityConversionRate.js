@@ -44,9 +44,9 @@ const formulaPrecision = BigNumber(2).pow(formulaPrecisionBits)
 const tokenDecimals = 18
 const tokenPrecision = BigNumber(10).pow(tokenDecimals)
 const r = 0.01
-const p0 = 0.00002246
+const p0 = 0.00002146
 const e0 = 69.315
-const t0 = 2226179
+const t0 = 2329916.12
 const feePercent = 0.25
 const maxCapBuyInEth = 3
 const maxCapSellInEth = 3
@@ -54,6 +54,14 @@ const maxCapSellInEth = 3
 // set pMIn, pMax according to r, p0, e0, t0
 const pMin = BigNumber(p0).div((Helper.exp(e, BigNumber(r).mul(e0))))
 const pMax = BigNumber((p0 / (1 - r * p0 * t0)).toString())
+
+pMinRatio = pMin.div(p0)
+pMaxRatio = pMax.div(p0)
+// console.log("pMin: " + pMin.toString())
+// console.log("pMax: " + pMax.toString())
+// console.log("pMinRatio: " + pMinRatio.toString())
+// console.log("pMaxRatio: " + pMaxRatio.toString())
+
 
 // default values in contract common units
 const feeInBps = feePercent * 100
@@ -311,16 +319,6 @@ contract('LiquidityConversionRates', function(accounts) {
         assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
-    it("should test resetting of imbalance.", async function () {
-        let beforeReset = await liqConvRatesInst.collectedFeesInTwei();
-        assert.notEqual(beforeReset, 0, "bad result");
-
-        await liqConvRatesInst.resetCollectedFees()
-        let result = await liqConvRatesInst.collectedFeesInTwei()
-        let expectedResult = 0
-        assert.equal(result, expectedResult, "bad result");
-    });
-
     it("should test resetting of imbalance not by admin.", async function () {
         try {
             await liqConvRatesInst.resetCollectedFees({from:operator})
@@ -329,6 +327,19 @@ contract('LiquidityConversionRates', function(accounts) {
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
+        let afterReset = await liqConvRatesInst.collectedFeesInTwei();
+        assert.notEqual(afterReset, 0, "bad result");
+
+    });
+
+    it("should test resetting of imbalance.", async function () {
+        let beforeReset = await liqConvRatesInst.collectedFeesInTwei();
+        assert.notEqual(beforeReset, 0, "bad result");
+
+        await liqConvRatesInst.resetCollectedFees()
+        let result = await liqConvRatesInst.collectedFeesInTwei()
+        let expectedResult = 0
+        assert.equal(result, expectedResult, "bad result");
     });
 
     it("should test getrate for buy=true and qtyInSrcWei = non_0.", async function () {
@@ -475,7 +486,7 @@ contract('LiquidityConversionRates', function(accounts) {
 });
 
 
-contract('KyberReserve', function(accounts) {
+contract('kyberReserve for Liquidity', function(accounts) {
     it("should init globals. init ConversionRates Inst, token, set liquidity params .", async function () {
         // set account addresses
         admin = accounts[0];
@@ -515,6 +526,8 @@ contract('KyberReserve', function(accounts) {
         expectedReserveBalanceWei = balance.valueOf();
 
         assert.equal(balance.valueOf(), reserveEtherInit, "wrong ether balance");
+
+        await reserveInst.approveWithdrawAddress(token.address,accounts[0],true);
 
         //transfer tokens to reserve.
         let amount = (BigNumber(10).pow(tokenDecimals)).mul(t0);
