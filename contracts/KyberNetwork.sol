@@ -297,7 +297,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
     //  It has been tested, reviewed and found to be clear enough.
     //@dev this function always src or dest are ether. can't do token to token
-    function searchBestRateWithHint(ERC20 src, ERC20 dest, uint srcAmount, bool usePermissionLess)
+    function searchBestRateWithHint(ERC20 src, ERC20 dest, uint srcAmount, bool usePermissionless)
         internal
         view
         returns(address, uint)
@@ -324,7 +324,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
         for (uint i = 0; i < reserveArr.length; i++) {
             //list all reserves that have this token.
-            if (!usePermissionLess && reserveType[reserveArr[i]] == RESERVE_TYPE_PERMISSION_LESS) {
+            if (!usePermissionless && reserveType[reserveArr[i]] == RESERVE_TYPE_PERMISSION_LESS) {
                 continue;
             }
 
@@ -362,15 +362,15 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcAmount, byte hint) internal view
         returns(BestRateResult result)
     {
-        bool usePermissionLess = (hint == PERMISSION_LESS_USAGE_ALLOWED? true : false);
+        bool usePermissionless = (hint == PERMISSION_LESS_USAGE_ALLOWED? true : false);
 
         (result.reserve1, result.rateSrcToEth) =
-            searchBestRateWithHint(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionLess);
+            searchBestRateWithHint(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
 
         result.weiAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcAmount, result.rateSrcToEth);
 
         (result.reserve2, result.rateEthToDest) =
-            searchBestRateWithHint(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionLess);
+            searchBestRateWithHint(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
 
         result.destAmount = calcDestAmount(ETH_TOKEN_ADDRESS, dest, result.weiAmount, result.rateEthToDest);
 

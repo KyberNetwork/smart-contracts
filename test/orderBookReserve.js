@@ -1,9 +1,8 @@
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-//let PermissionLessReserve = artifacts.require("./PermissionLessReserve.sol");
-let PermissionLessReserve = artifacts.require("./MockContracts/MockPermissionLess.sol");
 let KyberNetwork = artifacts.require("./KyberNetwork.sol");
-let KyberController = artifacts.require("./KyberController.sol");
 let FeeBurner = artifacts.require("./FeeBurner.sol");
+let Orders = artifacts.require("./permissionless/Orders.sol");
+let OrderBookReserve = artifacts.require("./permissionless/mock/MockOrderBookReserve.sol");
 
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
@@ -29,8 +28,7 @@ let tokenAdd;
 let KNCToken;
 let kncAddress;
 
-let buyHeadId;
-let sellHeadId;
+let headId;
 let tailId;
 
 //addresses
@@ -43,7 +41,7 @@ let init = true;
 
 let currentBlock;
 
-contract('PermissionLessReserve', async (accounts) => {
+contract('OrderBookReserve', async (accounts) => {
 
     beforeEach('setup contract for each test', async () => {
 
@@ -68,8 +66,8 @@ contract('PermissionLessReserve', async (accounts) => {
             init = false;
         }
 
-
-        reserve = await PermissionLessReserve.new(feeBurner.address, kncAddress, tokenAdd, admin);
+        reserve = await OrderBookReserve.new(feeBurner.address, kncAddress, tokenAdd, admin);
+//        await reserve.init();
     });
 
     afterEach('withdraw ETH from contracts', async () => {
@@ -85,9 +83,11 @@ contract('PermissionLessReserve', async (accounts) => {
     });
 
     it("test globals.", async function () {
-        buyHeadId = (await reserve.BUY_HEAD_ID()).valueOf();
-        sellHeadId = (await reserve.SELL_HEAD_ID()).valueOf();
-        tailId = (await reserve.TAIL_ID()).valueOf();
+        let ordersAdd = await reserve.sellList();
+        let orders = Orders.at(ordersAdd.valueOf());
+
+        headId = (await orders.HEAD_ID()).valueOf();
+        tailId = (await orders.TAIL_ID()).valueOf();
 
         let rxToken = await reserve.reserveToken();
         assert.equal(rxToken.valueOf(), tokenAdd);
@@ -96,54 +96,54 @@ contract('PermissionLessReserve', async (accounts) => {
         assert.equal(rxKnc.valueOf(), kncAddress);
     });
 
-    it("test order allocation, take and release orders, see as expected", async function () {
-        let nextID = await reserve.nextId();
-
-        await reserve.testAllocateOrders(admin, 10);
-
-        let bitMap = await reserve.getBitMap(admin);
-//        log("bit map " + bitMap);
-
-        let orderId = await reserve.testTakeOrderId.call(admin);
-        assert.equal(orderId.valueOf(), nextID.valueOf());
-        await reserve.testTakeOrderId(admin)
-
-        bitMap = await reserve.getBitMap(admin);
-//        log("bit map " + bitMap);
-
-        orderId = await reserve.testTakeOrderId.call(admin);
-        let nextValue = nextID.add(1).valueOf();
-        assert.equal(orderId.valueOf(), nextValue);
-        await reserve.testTakeOrderId(admin);
-
-        //take two more
-        await reserve.testTakeOrderId(admin);
-        await reserve.testTakeOrderId(admin);
-
-        orderId = await reserve.testTakeOrderId.call(admin);
-        nextValue = nextID.add(4).valueOf();
-        assert.equal(orderId.valueOf(), nextValue);
-
-//        log("bit map before release: " + await reserve.getBitMap(admin))
-        //release 2nd ID
-        let releaseVal = nextID.add(1).valueOf();
-//        log("release " + releaseVal)
-        await reserve.testReleaseOrderId(admin, releaseVal);
-//        log("bit map after release: " + await reserve.getBitMap(admin))
-
-        // take add see get 2nd ID
-        orderId = await reserve.testTakeOrderId.call(admin);
-        assert.equal(orderId.valueOf(), releaseVal);
-        await reserve.testTakeOrderId(admin);
-
-        releaseVal = nextID.add(3).valueOf();
-        await reserve.testReleaseOrderId(admin, releaseVal);
-
-        // take add see get 2nd ID
-        orderId = await reserve.testTakeOrderId.call(admin);
-        assert.equal(orderId.valueOf(), releaseVal);
-        await reserve.testTakeOrderId(admin);
-    });
+//    it("test order allocation, take and release orders, see as expected", async function () {
+//        let nextID = await reserve.nextId();
+//
+//        await reserve.testAllocateOrders(admin, 10);
+//
+//        let bitMap = await reserve.getBitMap(admin);
+////        log("bit map " + bitMap);
+//
+//        let orderId = await reserve.testTakeOrderId.call(admin);
+//        assert.equal(orderId.valueOf(), nextID.valueOf());
+//        await reserve.testTakeOrderId(admin)
+//
+//        bitMap = await reserve.getBitMap(admin);
+////        log("bit map " + bitMap);
+//
+//        orderId = await reserve.testTakeOrderId.call(admin);
+//        let nextValue = nextID.add(1).valueOf();
+//        assert.equal(orderId.valueOf(), nextValue);
+//        await reserve.testTakeOrderId(admin);
+//
+//        //take two more
+//        await reserve.testTakeOrderId(admin);
+//        await reserve.testTakeOrderId(admin);
+//
+//        orderId = await reserve.testTakeOrderId.call(admin);
+//        nextValue = nextID.add(4).valueOf();
+//        assert.equal(orderId.valueOf(), nextValue);
+//
+////        log("bit map before release: " + await reserve.getBitMap(admin))
+//        //release 2nd ID
+//        let releaseVal = nextID.add(1).valueOf();
+////        log("release " + releaseVal)
+//        await reserve.testReleaseOrderId(admin, releaseVal);
+////        log("bit map after release: " + await reserve.getBitMap(admin))
+//
+//        // take add see get 2nd ID
+//        orderId = await reserve.testTakeOrderId.call(admin);
+//        assert.equal(orderId.valueOf(), releaseVal);
+//        await reserve.testTakeOrderId(admin);
+//
+//        releaseVal = nextID.add(3).valueOf();
+//        await reserve.testReleaseOrderId(admin, releaseVal);
+//
+//        // take add see get 2nd ID
+//        orderId = await reserve.testTakeOrderId.call(admin);
+//        assert.equal(orderId.valueOf(), releaseVal);
+//        await reserve.testTakeOrderId(admin);
+//    });
 
     it("maker deposit tokens, ethers, knc, validate updated in contract", async function () {
 //        makerDepositTokens(address maker, ERC20 token, uint amountTwei) public {
@@ -250,7 +250,7 @@ contract('PermissionLessReserve', async (accounts) => {
         assert.equal(orderDetails[0].valueOf(), maker1);
         assert.equal(orderDetails[1].valueOf(), orderPayAmountWei);
         assert.equal(orderDetails[2].valueOf(), orderExchangeTwei);
-        assert.equal(orderDetails[3].valueOf(), buyHeadId); // prev should be buy head id - since first
+        assert.equal(orderDetails[3].valueOf(), headId); // prev should be buy head id - since first
         assert.equal(orderDetails[4].valueOf(), tailId); // next should be tail ID - since last
 
         rate = await reserve.getConversionRate(ethAddress, token.address, 10 ** 18, 0);
@@ -327,7 +327,7 @@ contract('PermissionLessReserve', async (accounts) => {
         assert.equal(orderDetails[0].valueOf(), maker1);
         assert.equal(orderDetails[1].valueOf(), orderPayAmountTwei);
         assert.equal(orderDetails[2].valueOf(), orderExchangeWei);
-        assert.equal(orderDetails[3].valueOf(), sellHeadId); // prev should be sell head id - since first
+        assert.equal(orderDetails[3].valueOf(), headId); // prev should be sell head id - since first
         assert.equal(orderDetails[4].valueOf(), tailId); // next should be tail ID - since last
 
         let orderList = await reserve.getSellOrderList();
@@ -403,7 +403,7 @@ contract('PermissionLessReserve', async (accounts) => {
         assert.equal(orderDetails[0].valueOf(), maker1);
         assert.equal(orderDetails[1].valueOf(), orderPayAmountWei);
         assert.equal(orderDetails[2].valueOf(), orderExchangeTwei);
-        assert.equal(orderDetails[3].valueOf(), buyHeadId); // prev should be buy head id - since first
+        assert.equal(orderDetails[3].valueOf(), headId); // prev should be buy head id - since first
         assert.equal(orderDetails[4].valueOf(), tailId); // next should be tail ID - since last
 
         // insert order as last in list
@@ -445,7 +445,7 @@ contract('PermissionLessReserve', async (accounts) => {
 
         orderDetails = await reserve.getOrderDetails(rc.logs[0].args.orderId.valueOf());
 
-        assert.equal(orderDetails[3].valueOf(), buyHeadId); // prev should be buy head id - since first
+        assert.equal(orderDetails[3].valueOf(), headId); // prev should be buy head id - since first
         assert.equal(orderDetails[4].valueOf(), order1ID); // next should be tail ID - since last
 
         //now insert order as 2nd best.
@@ -494,9 +494,11 @@ contract('PermissionLessReserve', async (accounts) => {
         log("make buy order gas(order 2 in list): ID: " + rc.logs[0].args.orderId.valueOf() + " gas: "+ rc.receipt.gasUsed);
 
         let orderList = await reserve.getBuyOrderList();
-        for (let i = 1; i < orderList.length; i++) {
+        log("orderList")
+        log(orderList)
+        for (let i = 0; i < (orderList.length - 1); i++) {
             //start from 1 since first order is head
-            await reserve.cancelOrder(orderList[i], {from: maker1});
+            await reserve.cancelOrder(orderList[i].valueOf(), true, {from: maker1});
         }
 
         log()
@@ -528,10 +530,9 @@ contract('PermissionLessReserve', async (accounts) => {
         rc = await reserve.addMakeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
         log("make buy order gas(order 2 in list): ID: " + rc.logs[0].args.orderId.valueOf() + " gas: "+ rc.receipt.gasUsed);
 
-        orderList = await reserve.getSellOrderList();
-        for (let i = 1; i < orderList.length; i++) {
-            //start from 1 since first order is head
-            await reserve.cancelOrder(orderList[i], {from: maker1});
+        orderList = await reserve.getBuyOrderList();
+        for (let i = 0; i < (orderList.length - 1); i++) {
+            await reserve.cancelOrder(orderList[i].valueOf(), true, {from: maker1});
         }
     });
 
@@ -554,7 +555,7 @@ contract('PermissionLessReserve', async (accounts) => {
         assert.equal(orderDetails[0].valueOf(), maker1);
         assert.equal(orderDetails[1].valueOf(), orderPayAmountTwei);
         assert.equal(orderDetails[2].valueOf(), orderExchangeWei);
-        assert.equal(orderDetails[3].valueOf(), sellHeadId); // prev should be buy head id - since first
+        assert.equal(orderDetails[3].valueOf(), headId); // prev should be buy head id - since first
         assert.equal(orderDetails[4].valueOf(), tailId); // next should be tail ID - since last
 
         // insert order as last in list
@@ -598,7 +599,7 @@ contract('PermissionLessReserve', async (accounts) => {
 
         orderDetails = await reserve.getOrderDetails(rc.logs[0].args.orderId.valueOf());
 
-        assert.equal(orderDetails[3].valueOf(), sellHeadId); // prev should be buy head id - since first
+        assert.equal(orderDetails[3].valueOf(), headId); // prev should be buy head id - since first
         assert.equal(orderDetails[4].valueOf(), order1ID); // next should be tail ID - since last
 
         //now insert order as 2nd best.
@@ -612,11 +613,9 @@ contract('PermissionLessReserve', async (accounts) => {
         assert.equal(orderDetails[3].valueOf(), order4ID); // prev should be buy head id - since first
         assert.equal(orderDetails[4].valueOf(), order1ID); // next should be tail ID - since last
 
-
         orderList = await reserve.getSellOrderList();
-        for (let i = 1; i < orderList.length; i++) {
-            //start from 1 since first order is head
-            await reserve.cancelOrder(orderList[i], {from: maker1});
+        for (let i = 0; i < (orderList.length - 1); i++) {
+            await reserve.cancelOrder(orderList[i], false, {from: maker1});
         }
     });
 
@@ -892,7 +891,7 @@ contract('PermissionLessReserve', async (accounts) => {
 });
 
 
-contract('PermissionLessReserve on network', async (accounts) => {
+contract('OrderBookReserve on network', async (accounts) => {
 
     beforeEach('setup contract for each test', async () => {
 
@@ -918,7 +917,7 @@ contract('PermissionLessReserve on network', async (accounts) => {
         }
 
 
-        reserve = await PermissionLessReserve.new(feeBurner.address, kncAddress, tokenAdd, admin);
+        reserve = await OrderBookReserve.new(feeBurner.address, kncAddress, tokenAdd, admin);
     });
 
     afterEach('withdraw ETH from contracts', async () => {

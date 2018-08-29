@@ -1,8 +1,8 @@
 pragma solidity 0.4.18;
 
 
-import "./Utils2.sol";
-import "./Withdrawable.sol";
+import "../Utils2.sol";
+import "../Withdrawable.sol";
 
 
 contract Orders is Withdrawable, Utils2 {

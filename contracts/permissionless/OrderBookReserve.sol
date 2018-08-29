@@ -3,26 +3,25 @@ pragma solidity 0.4.18;
 
 import "./Orders.sol";
 import "./MakerOrders.sol";
-import "./KyberReserveInterface.sol";
-import "./FeeBurner.sol";
+import "../KyberReserveInterface.sol";
+import "../FeeBurner.sol";
 
 
-contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
+contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
     uint public minOrderValueWei = 10 ** 18;                 // below this value order will be removed.
-    uint public minOrderMakeWeiValue = 2 * minOrderValueWei; // Below this value can't create new order.
+    uint public minOrderMakeValueWei = 2 * minOrderValueWei; // Below this value can't create new order.
     uint public makersBurnFeeBps = 25;              // knc burn fee per order that is taken. = 25 / 1000 = 0.25 %
 
     ERC20 public reserveToken; // this reserve will serve buy / sell for this token.
     FeeBurner public feeBurnerContract;
-    address public admin;
 
     ERC20 public kncToken;  //can't be constant. to enable testing and test net usage
     uint public kncStakePerEtherBPS = 20000; //for validating orders
     uint32 public numOrdersToAllocate = 60;
 
-    Orders sellList;
-    Orders buyList;
+    Orders public sellList;
+    Orders public buyList;
 
     // KNC stakes
     struct KncStakes {
@@ -47,26 +46,26 @@ contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
         uint128 dstAmount;
     }
 
-    function PermissionLessReserve(FeeBurner burner, ERC20 knc, ERC20 token, address _admin) public {
+    function OrderBookReserve(FeeBurner burner, ERC20 knc, ERC20 token) public {
 
         require(knc != address(0));
         require(token != address(0));
-        require(_admin != address(0));
         require(burner != address(0));
 
         feeBurnerContract = burner;
         kncToken = knc;
         reserveToken = token;
-        admin = _admin;
 
-        kncToken.approve(feeBurnerContract, (2**255));
-
-        sellList = new Orders(this);
-        buyList = new Orders(this);
-
+        require(kncToken.approve(feeBurnerContract, (2**255)))  ;
+//
         //notice. if decimal API not supported this should revert
         setDecimals(reserveToken);
-        require(getDecimals(reserveToken) <= MAX_DECIMALS);
+        require(getDecimals(reserveToken) > 0);
+    }
+
+    function init() public {
+        sellList = new Orders(this);
+        buyList = new Orders(this);
     }
 
     function getConversionRate(ERC20 src, ERC20 dest, uint totalSrcAmount, uint blockNumber) public view returns(uint) {
@@ -118,7 +117,6 @@ contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
         if (uint(totalDstAmount) * PRECISION < uint(totalDstAmount)) return 0;
 
         return calcRateFromQty(totalSrcAmount, totalDstAmount, getDecimals(src), getDecimals(dest));
-//        return 100;
     }
 
     function trade(
@@ -264,17 +262,17 @@ contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
 
         MakerDepositedKnc(maker, amountTwei);
 
-        allocateOrders(
-            makerOrdersSell[maker], /* freeOrders */
-            sellList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
-            numOrdersToAllocate /* howMany */
-        );
-
-        allocateOrders(
-            makerOrdersBuy[maker], /* freeOrders */
-            buyList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
-            numOrdersToAllocate /* howMany */
-        );
+//        allocateOrders(
+//            makerOrdersSell[maker], /* freeOrders */
+//            sellList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
+//            numOrdersToAllocate /* howMany */
+//        );
+//
+//        allocateOrders(
+//            makerOrdersBuy[maker], /* freeOrders */
+//            buyList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
+//            numOrdersToAllocate /* howMany */
+//        );
     }
 
     function makerWithdrawEth(uint weiAmount) public {
@@ -338,9 +336,9 @@ contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
         list.removeById(orderId);
 
         if (isEthToToken) {
-            releaseOrderId(makerOrdersBuy[orderData.maker], orderId);
+//            releaseOrderId(makerOrdersBuy[orderData.maker], orderId);
         } else {
-            releaseOrderId(makerOrdersSell[orderData.maker], orderId);
+//            releaseOrderId(makerOrdersSell[orderData.maker], orderId);
         }
 
         OrderCanceled(maker, orderId, orderData.srcAmount, orderData.dstAmount);
@@ -373,12 +371,12 @@ contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
     function getList(Orders list) internal view returns(uint32[] orderList) {
         uint32 orderId;
         bool isEmpty;
-        bool isLast = false;
 
         (orderId, isEmpty) = list.getFirstOrder();
         if (isEmpty) return(new uint32[](1));
 
         uint counter = 1;
+        bool isLast = false;
 
         while (!isLast) {
             (orderId, isLast) = list.getNextOrder(orderId);
@@ -390,6 +388,8 @@ contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
         (orderId, isEmpty) = list.getFirstOrder();
 
         counter = 0;
+        isLast = false;
+
         orderList[counter++] = orderId;
 
         while (!isLast) {
@@ -487,7 +487,7 @@ contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
             weiAmount = dstAmount;
         }
 
-        require(weiAmount >= minOrderMakeWeiValue);
+        require(weiAmount >= minOrderMakeValueWei);
         require(bindOrderStakes(maker, calcKncStake(weiAmount)));
 
         return true;
