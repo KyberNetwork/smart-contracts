@@ -35,6 +35,10 @@ contract PermissionLessReserve is Utils2, MakerOrders, KyberReserveInterface {
             // where order added funds are subtracted here and added to order
     mapping(address => KncStakes) public makerKncStakes; // knc funds are required for validating deposited funds
 
+    //each maker will have orders that will be reused.
+    mapping(address => FreeOrders) public makerOrdersSell;
+    mapping(address => FreeOrders) public makerOrdersBuy;
+
     struct OrderData {
         address maker;
         uint32 nextId;

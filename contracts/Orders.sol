@@ -80,7 +80,7 @@ contract Orders is Withdrawable, Utils2 {
         onlyAdmin
         returns(uint32)
     {
-        validatePrevId(srcAmount, dstAmount, prevId);
+        validatePositionOrder(srcAmount, dstAmount, prevId);
         return addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
@@ -195,7 +195,7 @@ contract Orders is Withdrawable, Utils2 {
         require(order.prevId != 0 || order.nextId != 0);
     }
 
-    function validatePrevId(
+    function validatePositionOrder(
         uint128 srcAmount,
         uint128 dstAmount,
         uint32 prevId
@@ -234,6 +234,25 @@ contract Orders is Withdrawable, Utils2 {
         return(subDst);
     }
 
+    // TODO: move to PermissionLessReserve
+    function getFirstOrder() public view returns(uint32 orderId, bool isEmpty) {
+        return (
+            orders[HEAD_ID].nextId,
+            orders[HEAD_ID].nextId == TAIL_ID
+        );
+    }
+
+    // TODO: move to PermissionLessReserve
+    function getNextOrder(uint32 orderId)
+        public
+        view
+        returns(uint32, bool isLast)
+    {
+        isLast = orders[orderId].nextId == TAIL_ID;
+        return(orders[orderId].nextId, isLast);
+    }
+
+    // TODO: move to PermissionLessReserve
     function getOrderData(uint32 orderId) public view
         returns (
             address maker,
@@ -254,19 +273,4 @@ contract Orders is Withdrawable, Utils2 {
         );
     }
 
-    function getFirstOrder() public view returns(uint32 orderId, bool isEmpty) {
-        return (
-            orders[HEAD_ID].nextId,
-            orders[HEAD_ID].nextId == TAIL_ID
-        );
-    }
-
-    function getNextOrder(uint32 orderId)
-        public
-        view
-        returns(uint32, bool isLast)
-    {
-        isLast = orders[orderId].nextId == TAIL_ID;
-        return(orders[orderId].nextId, isLast);
-    }
 }
