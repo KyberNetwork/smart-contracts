@@ -23,9 +23,9 @@ let tokens = [];
 let operator;
 let reserveAddress;
 let validRateDurationInBlocks = 1000;
-let buys = [];
-let sells = [];
-let indices = [];
+let buys = [0];
+let sells = [0];
+let indices = [0];
 let baseBuy = [];
 let baseSell = [];
 let qtyBuyStepX = [];
@@ -123,8 +123,6 @@ contract('ConversionRates', function(accounts) {
 
         assert.deepEqual(baseBuy.length, tokens.length);
         assert.deepEqual(baseSell.length, tokens.length);
-
-        buys.length = sells.length = indices.length = 0;
 
         await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
 
