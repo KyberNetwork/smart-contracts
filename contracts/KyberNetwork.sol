@@ -250,8 +250,12 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         return expectedRateContract.getExpectedRate(src, dest, srcQty);
     }
 
-    function getUserCapInWei(address user) public view returns(uint) {
-        return whiteListContract.getUserCapInWei(user);
+    function verifyUserCap(address trader, uint weiValue) public view returns(bool) {
+        if (whiteListContract == address(0)) return true;
+
+        if (weiValue > whiteListContract.getUserCapInWei(trader)) return false;
+
+        return true;
     }
 
     function getUserCapInTokenWei(address user, ERC20 token) public view returns(uint) {
@@ -405,7 +409,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
     event KyberTrade(address srcAddress, ERC20 srcToken, uint srcAmount, address destAddress, ERC20 destToken,
         uint destAmount);
-    /* solhint-disable function-max-lines */
     // Most of the lins here are functions calls spread over multiple lines. We find this function readable enough
     //  and keep its size as is.
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
@@ -433,17 +436,11 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
             tradeInput.maxDestAmount,
             rateResult);
 
-        if (actualSrcAmount < tradeInput.srcAmount) {
-            //if there is "change" send back to trader
-            if (tradeInput.src == ETH_TOKEN_ADDRESS) {
-                tradeInput.trader.transfer(tradeInput.srcAmount - actualSrcAmount);
-            } else {
-                tradeInput.src.transfer(tradeInput.trader, (tradeInput.srcAmount - actualSrcAmount));
-            }
-        }
-
         // verify trade size is smaller than user cap
-        require(weiAmount <= getUserCapInWei(tradeInput.trader));
+        require(verifyUserCap(tradeInput.trader, weiAmount));
+
+        //if any "change" in src token, send back to trader
+        handleChange(tradeInput.src, tradeInput.srcAmount, actualSrcAmount, tradeInput.trader);
 
         //do the trade
         //src to ETH
@@ -480,7 +477,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
         return actualDestAmount;
     }
-    /* solhint-enable function-max-lines */
 
     function calcActualAmounts (ERC20 src, ERC20 dest, uint srcAmount, uint maxDestAmount, BestRateResult rateResult)
         internal view returns(uint actualSrcAmount, uint weiAmount, uint actualDestAmount)
@@ -545,6 +541,19 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         }
 
         return true;
+    }
+
+    /// when user sets max dest amount we could have too many source tokens == change. so we send it back to user.
+    function handleChange (ERC20 src, uint srcAmount, uint requiredSrcAmount, address trader) internal {
+
+        if (requiredSrcAmount < srcAmount) {
+            //if there is "change" send back to trader
+            if (src == ETH_TOKEN_ADDRESS) {
+                trader.transfer(srcAmount - requiredSrcAmount);
+            } else {
+                src.transfer(trader, (srcAmount - requiredSrcAmount));
+            }
+        }
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether

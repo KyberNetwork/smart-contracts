@@ -55,8 +55,8 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         kncToken = knc;
         token = _token;
 
-        require(kncToken.approve(feeBurnerContract, (2**255)))  ;
-//
+        require(kncToken.approve(feeBurnerContract, (2**255)));
+
         //notice. if decimal API not supported this should revert
         setDecimals(token);
         require(getDecimals(token) > 0);
@@ -261,17 +261,17 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
         MakerDepositedKnc(maker, amountTwei);
 
-//        allocateOrders(
-//            makerOrdersSell[maker], /* freeOrders */
-//            sellList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
-//            numOrdersToAllocate /* howMany */
-//        );
-//
-//        allocateOrders(
-//            makerOrdersBuy[maker], /* freeOrders */
-//            buyList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
-//            numOrdersToAllocate /* howMany */
-//        );
+        allocateOrders(
+            makerOrdersSell[maker], /* freeOrders */
+            sellList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
+            numOrdersToAllocate /* howMany */
+        );
+
+        allocateOrders(
+            makerOrdersBuy[maker], /* freeOrders */
+            buyList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
+            numOrdersToAllocate /* howMany */
+        );
     }
 
     function makerWithdrawEth(uint weiAmount) public {
@@ -303,7 +303,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     }
 
     event OrderCanceled(address indexed maker, uint32 orderId, uint srcAmount, uint dstAmount);
-    function cancelOrder(uint32 orderId, bool isEthToToken) public returns(bool) {
+    function cancelOrder(bool isEthToToken, uint32 orderId) public returns(bool) {
 
         address maker = msg.sender;
         Orders list;
@@ -335,9 +335,9 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         list.removeById(orderId);
 
         if (isEthToToken) {
-//            releaseOrderId(makerOrdersBuy[orderData.maker], orderId);
+            releaseOrderId(makerOrdersBuy[orderData.maker], orderId);
         } else {
-//            releaseOrderId(makerOrdersSell[orderData.maker], orderId);
+            releaseOrderId(makerOrdersSell[orderData.maker], orderId);
         }
 
         OrderCanceled(maker, orderId, orderData.srcAmount, orderData.dstAmount);
@@ -355,6 +355,26 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         kncToken.approve(feeBurnerContract, (2**255));
     }
 
+    function getOrderDetails(bool isEthToToken, uint32 orderId) public view
+        returns (
+            address _maker,
+            uint128 _srcAmount,
+            uint128 _dstAmount,
+            uint32 _prevId,
+            uint32 _nextId
+        )
+    {
+        Orders list;
+
+        if (isEthToToken) {
+            list = buyList;
+        } else {
+            list = sellList;
+        }
+
+        return list.getOrderDetails(orderId);
+    }
+
     function getBuyOrderList() public view returns(uint32[] orderList) {
 
         Orders list = buyList;
@@ -367,33 +387,28 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         return getList(list);
     }
 
-    function getList(Orders list) internal view returns(uint32[] orderList) {
+    function getList(Orders list) internal view returns(uint32[] memory orderList) {
         uint32 orderId;
         bool isEmpty;
 
         (orderId, isEmpty) = list.getFirstOrder();
-        if (isEmpty) return(new uint32[](1));
+        if (isEmpty) return(new uint32[](0));
 
-        uint counter = 1;
+        uint numOrders = 0;
         bool isLast = false;
 
         while (!isLast) {
             (orderId, isLast) = list.getNextOrder(orderId);
-            counter++;
+            numOrders++;
         }
 
-        orderList = new uint32[](counter);
+        orderList = new uint32[](numOrders);
 
         (orderId, isEmpty) = list.getFirstOrder();
 
-        counter = 0;
-        isLast = false;
-
-        orderList[counter++] = orderId;
-
-        while (!isLast) {
+        for (uint i = 0; i < numOrders; i++) {
+            orderList[i] = orderId;
             (orderId, isLast) = list.getNextOrder(orderId);
-            orderList[counter++] = orderId;
         }
     }
 

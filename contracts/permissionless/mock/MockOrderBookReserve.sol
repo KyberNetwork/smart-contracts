@@ -22,7 +22,7 @@ contract MockOrderBookReserve is OrderBookReserve {
         handleOrderStakes(maker, stakeAmountTwei, burnAmountTwei);
     }
 
-    function testTakeFullOrder(uint32 orderId, bool isEthToToken) public returns(bool result) {
+    function testTakeFullOrder(bool isEthToToken, uint32 orderId) public returns(bool result) {
 
         Orders list;
 
@@ -54,7 +54,7 @@ contract MockOrderBookReserve is OrderBookReserve {
         }
     }
 
-    function testTakePartialOrder(uint32 orderId, uint128 srcAmount, bool isEthToToken) public returns(bool result) {
+    function testTakePartialOrder(bool isEthToToken, uint32 orderId, uint128 srcAmount) public returns(bool result) {
 
         Orders list;
 
