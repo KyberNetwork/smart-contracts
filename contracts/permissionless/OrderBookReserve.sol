@@ -33,6 +33,10 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     mapping(address => mapping(address => uint)) public makerFunds; // deposited maker funds,
     mapping(address => KncStakes) public makerKncStakes; // knc funds are required for validating deposited funds
 
+    //each maker will have orders that will be reused.
+    mapping(address => FreeOrders) public makerOrdersSell;
+    mapping(address => FreeOrders) public makerOrdersBuy;
+
     struct OrderData {
         address maker;
         uint32 nextId;
