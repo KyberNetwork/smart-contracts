@@ -539,6 +539,14 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         return(uint(weiAmount) * makersBurnFeeBps * feeBurnerContract.kncPerETHRate() / 1000);
     }
 
+    function makerUnusedKNC(address maker) public view returns (uint) {
+        return (uint(makerKncStakes[maker].freeKnc));
+    }
+
+    function makerStakedKNC(address maker) public view returns (uint) {
+        return (uint(makerKncStakes[maker].kncOnStake));
+    }
+
     function releaseOrderFunds(bool isEthToToken, Orders.Order order) internal returns(bool) {
 
         if (isEthToToken) {
@@ -580,14 +588,6 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         amounts.freeKnc += uint128(releaseAmountTwei - burnAmountTwei);
 
         return true;
-    }
-
-    function makerUnusedKNC(address maker) public view returns (uint) {
-        return (uint(makerKncStakes[maker].freeKnc));
-    }
-
-    function makerStakedKNC(address maker) public view returns (uint) {
-        return (uint(makerKncStakes[maker].kncOnStake));
     }
 
     ///@dev funds are valid only when required knc amount can be staked for this order.
