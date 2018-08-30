@@ -70,12 +70,12 @@ contract('OrderBookReserve', async (accounts) => {
     });
 
     afterEach('withdraw ETH from contracts', async () => {
-        let rxWei = await reserve.makerUnusedWei(maker1);
+        let rxWei = await reserve.makerFunds(maker1, ethAddress);
         if (rxWei.valueOf() > 0) {
             await reserve.makerWithdrawFunds(ethAddress,rxWei.valueOf(), {from: maker1})
         }
 
-        rxWei = await reserve.makerUnusedWei(maker2);
+        rxWei = await reserve.makerFunds(maker2, ethAddress);
         if (rxWei.valueOf() > 0) {
             await reserve.makerWithdrawFunds(ethAddress,rxWei.valueOf(), {from: maker2})
         }
@@ -102,7 +102,7 @@ contract('OrderBookReserve', async (accounts) => {
 
         await makerDeposit(maker1, amountEth, amountTwei.valueOf(), amountKnc.valueOf());
 
-        let rxNumTwei = await reserve.makerUnusedTokenTwei(maker1);
+        let rxNumTwei = await reserve.makerFunds(maker1, tokenAdd);
         assert.equal(rxNumTwei.valueOf(), amountTwei);
 
         let rxKncTwei = await reserve.makerUnusedKNC(maker1);
@@ -112,11 +112,11 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(rxKncTwei.valueOf(), 0);
 
         //makerDepositEther
-        let rxWei = await reserve.makerUnusedWei(maker1);
+        let rxWei = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(rxWei.valueOf(), amountEth);
 
         await reserve.makerWithdrawFunds(ethAddress, rxWei, {from: maker1})
-        rxWei = await reserve.makerUnusedWei(maker1);
+        rxWei = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(rxWei.valueOf(), 0);
     });
 
@@ -218,7 +218,7 @@ contract('OrderBookReserve', async (accounts) => {
         let orderExchangeTwei = 9 * 10 ** 18;
 
         //check maker free token funds
-        let rxFreeTwei = await reserve.makerUnusedTokenTwei(maker1);
+        let rxFreeTwei = await reserve.makerFunds(maker1, tokenAdd);
         assert.equal(rxFreeTwei.valueOf(), amountTwei.valueOf() );
 
         //now add order
@@ -226,7 +226,7 @@ contract('OrderBookReserve', async (accounts) => {
 
         let expectedFreeTwei = amountTwei.sub(orderExchangeTwei);
 
-        rxFreeTwei = await reserve.makerUnusedTokenTwei(maker1);
+        rxFreeTwei = await reserve.makerFunds(maker1, tokenAdd);
         assert.equal(rxFreeTwei.valueOf(), expectedFreeTwei.valueOf() );
     });
 
@@ -299,7 +299,7 @@ contract('OrderBookReserve', async (accounts) => {
         await makerDeposit(maker1, amountEth, 0, amountKnc.valueOf());
 
         //check maker free token funds
-        let rxFreeWei = await reserve.makerUnusedWei(maker1);
+        let rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(rxFreeWei.valueOf(), amountEth.valueOf() );
 
         //now add order
@@ -307,7 +307,7 @@ contract('OrderBookReserve', async (accounts) => {
 
         let expectedFreeWei = amountEth.sub(orderDstWei);
 
-        rxFreeWei = await reserve.makerUnusedWei(maker1);
+        rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(rxFreeWei.valueOf(), expectedFreeWei.valueOf() );
     });
 
@@ -351,7 +351,7 @@ contract('OrderBookReserve', async (accounts) => {
         let updatedDest = 2 * 10 ** 18;
         rc = await reserve.updateMakeOrder(maker1, false, orderId, orderSrcAmountTwei, updatedDest, 0, {from: maker1});
 
-        let freeWei = await reserve.makerUnusedWei(maker1);
+        let freeWei = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(freeWei.valueOf(), 10 ** 18);
 
         let expectedStake = await reserve.calcKncStake(updatedDest);
@@ -386,7 +386,7 @@ contract('OrderBookReserve', async (accounts) => {
         let updatedDest = 3 * 10 ** 18;
         rc = await reserve.updateMakeOrder(maker1, false, orderId, orderSrcAmountTwei, updatedDest, 0, {from: maker1});
 
-        let freeWei = await reserve.makerUnusedWei(maker1);
+        let freeWei = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(freeWei.valueOf(), 0);
 
         let expectedStake = await reserve.calcKncStake(updatedDest);
@@ -428,7 +428,7 @@ contract('OrderBookReserve', async (accounts) => {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        let freeWei = await reserve.makerUnusedWei(maker1);
+        let freeWei = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(freeWei.valueOf(), 0);
 
         let expectedStake = await reserve.calcKncStake(orderDstWei);
@@ -905,7 +905,7 @@ contract('OrderBookReserve', async (accounts) => {
 //  function trade(ERC20 srcToken, uint srcAmount, ERC20 destToken, address destAddress, uint conversionRate, bool validate)
 
         //maker eth balance before. (should be 0)
-        let balance = await reserve.makerUnusedWei(maker1);
+        let balance = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(balance.valueOf(), 0);
 
         let totalOrderValue = orderPayAmountWei.mul(3).add(3000);
@@ -920,7 +920,7 @@ contract('OrderBookReserve', async (accounts) => {
         let userBalanceAfter = await token.balanceOf(user1);
         assert.equal(userBalanceAfter.valueOf(), totalDestValue.add(userBalanceBefore).valueOf());
 
-        balance = await reserve.makerUnusedWei(maker1);
+        balance = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(balance.valueOf(), totalOrderValue.valueOf());
 
         rate = await reserve.getConversionRate(ethAddress, token.address, 10 ** 18, 0);
@@ -956,10 +956,10 @@ contract('OrderBookReserve', async (accounts) => {
         list = await reserve.getBuyOrderList();
         assert.equal(list.length, 1);
 
-        let balance = await reserve.makerUnusedWei(maker1);
+        let balance = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(balance.valueOf(), takeAmount.valueOf());
 
-        balance = await reserve.makerUnusedTokenTwei(maker1);
+        balance = await reserve.makerFunds(maker1, tokenAdd);
         assert.equal(balance.valueOf(), 0);
     });
 
@@ -989,13 +989,13 @@ contract('OrderBookReserve', async (accounts) => {
         list = await reserve.getBuyOrderList();
         assert.equal(list.length, 0);
 
-        let balance = await reserve.makerUnusedWei(maker1);
+        let balance = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(balance.valueOf(), takeAmount.valueOf());
 
         let expectedDestAmount = orderExchangeTwei.mul(takeAmount).div(orderPayAmountWei).floor();
         let expectedRemainingBalance = amountTwei.sub(expectedDestAmount);
 
-        balance = await reserve.makerUnusedTokenTwei(maker1);
+        balance = await reserve.makerFunds(maker1, tokenAdd);
         assert.equal(balance.valueOf(), expectedRemainingBalance.valueOf());
     });
 
@@ -1082,18 +1082,6 @@ contract('OrderBookReserve on network', async (accounts) => {
         }
 
         reserve = await OrderBookReserve.new(feeBurner.address, kncAddress, tokenAdd, admin);
-    });
-
-    afterEach('withdraw ETH from contracts', async () => {
-        let rxWei = await reserve.makerUnusedWei(maker1);
-        if (rxWei.valueOf() > 0) {
-            await reserve.makerWithdrawFunds(ethAddress, rxWei.valueOf(), {from: maker1})
-        }
-
-        rxWei = await reserve.makerUnusedWei(maker2);
-        if (rxWei.valueOf() > 0) {
-            await reserve.makerWithdrawFunds(ethAddress, rxWei.valueOf(), {from: maker2})
-        }
     });
 });
 

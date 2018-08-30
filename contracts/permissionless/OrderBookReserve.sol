@@ -290,30 +290,29 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
         require(updateOrder(maker, list, isEthToToken, orderId, newSrcAmount, newDstAmount, hintPrevOrder));
     }
-//
-//    function updateOrderBatch(address maker, bool isEthToToken, uint32[] ordersId, uint128[] newSrcAmount,
-//        uint128[] newDstAmount, uint32[] hintPrevOrder)
-//        public
-//        returns(bool)
-//    {
-//        require(maker == msg.sender);
-//        require(ordersId.length == newSrcAmount.length);
-//        require(newSrcAmount.length == newDstAmount.length);
-//        require(newDstAmount.length == hintPrevOrder.length);
-//        Orders list;
-//
-//        if (isEthToToken) {
-//            list = buyList;
-//        } else {
-//            list = sellList;
-//        }
-//
-//        for (uint i = 0; i < ordersId.length; ++i) {
-//            require(updateOrder(maker, list, isEthToToken, ordersId[i], newSrcAmount[i], newDstAmount[i], hintPrevOrder[i]));
-//        }
-//    }
-//
-//
+
+    function updateOrderBatch(address maker, bool isEthToToken, uint32[] ordersId, uint128[] newSrcAmount,
+        uint128[] newDstAmount, uint32[] hintPrevOrder)
+        public
+        returns(bool)
+    {
+        require(maker == msg.sender);
+        require(ordersId.length == newSrcAmount.length);
+        require(newSrcAmount.length == newDstAmount.length);
+        require(newDstAmount.length == hintPrevOrder.length);
+        Orders list;
+
+        if (isEthToToken) {
+            list = buyList;
+        } else {
+            list = sellList;
+        }
+
+        for (uint i = 0; i < ordersId.length; ++i) {
+            require(updateOrder(maker, list, isEthToToken, ordersId[i], newSrcAmount[i], newDstAmount[i], hintPrevOrder[i]));
+        }
+    }
+
     function updateOrder(address maker, Orders list, bool isEthToToken, uint32 orderId, uint128 srcAmount,
         uint128 dstAmount, uint32 hintPrevOrder)
         internal
@@ -581,14 +580,6 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         amounts.freeKnc += uint128(releaseAmountTwei - burnAmountTwei);
 
         return true;
-    }
-
-    function makerUnusedTokenTwei(address maker) public view returns (uint) {
-        return (makerFunds[maker][token]);
-    }
-
-    function makerUnusedWei(address maker) public view returns (uint) {
-        return (makerFunds[maker][ETH_TOKEN_ADDRESS]);
     }
 
     function makerUnusedKNC(address maker) public view returns (uint) {
