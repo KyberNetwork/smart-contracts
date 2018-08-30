@@ -20,7 +20,7 @@ contract Orders is Withdrawable, Utils2 {
     uint32 constant public TAIL_ID = 1;
     uint32 constant public HEAD_ID = 2;
 
-    uint32 public nextId = 3;
+    uint32 public nextFreeId = 3;
 
     function Orders(address _admin) public {
         require(_admin != address(0));
@@ -121,8 +121,8 @@ contract Orders is Withdrawable, Utils2 {
     }
 
     function allocateIds(uint32 howMany) public onlyAdmin returns(uint32) {
-        uint32 firstId = nextId;
-        nextId += howMany;
+        uint32 firstId = nextFreeId;
+        nextFreeId += howMany;
         return firstId;
     }
 
@@ -218,13 +218,15 @@ contract Orders is Withdrawable, Utils2 {
 
         // Make sure that the new order should be before provided prevId's next
         // order.
+        if (prev.nextId == TAIL_ID) return;
+
         Order storage next = orders[prev.nextId];
         uint nextKey = calculateOrderSortKey(next.srcAmount, next.dstAmount);
         require(key > nextKey);
     }
 
-    // XXX Convenience functions for Ilan
-    // ----------------------------------
+// XXX Convenience functions for Ilan
+// ----------------------------------
     function subSrcAndDstAmounts (uint32 orderId, uint128 subFromSrc) public onlyAdmin returns (uint128){
         //if buy with x src. how much dest would it be
         uint128 subDst = subFromSrc * orders[orderId].dstAmount / orders[orderId].srcAmount;
