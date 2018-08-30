@@ -42,39 +42,53 @@ const precision = BigNumber(10).pow(18);
 const formulaPrecisionBits = 40;
 const formulaPrecision = BigNumber(2).pow(formulaPrecisionBits)
 const tokenDecimals = 18
-
-/* for BBO:
-const r = 0.01
-const p0 = 0.00002146
-const e0 = 69.315
-const t0 = 2329916.12
-const feePercent = 0.25
-const maxCapBuyInEth = 3
-const maxCapSellInEth = 3
-*/
-
-/* for Midas: */
-const r = 0.0069315
-const p0 = 0.0001 // 1m tokens = 100 eth
-const e0 = 100.0 //69.315
-const t0 = 1000000.0 //1m TOKENS
-const feePercent = 0.25
-const maxCapBuyInEth = 3
-const maxCapSellInEth = 3
-
 const tokenPrecision = BigNumber(10).pow(tokenDecimals)
-// determine minimal pMIn, maximal pMax according to r, p0, e0, t0
+
+const testing = "bbo";
+
+/****** for BBO init: *******/
+// for BBO we decided on a fixed pmin, pmax (0.5,2) and r (0.01).
+// than we deposited the exact e0 and t0 to support it.
+// so minPmin and maxPmax are exactly same as pMin and pMax 
+/***************************/
+
+/****** for Midas init: *******/
+// for midas we first decided on a fixed pmin (0.5) and fixed e0, t0 (100, 1M).
+// than calculated r to support it (0.01 * (69.315/100))).
+// so min pmin is exactly as pmin.
+// pmax is now bigger, but we set pmax as 2.
+/***************************/
+
+let r, p0, e0, t0, feePercent, maxCapBuyInEth, maxCapSellInEth, pMinRatio, pMaxRatio;
+
+if (testing == "bbo") {
+    r = 0.01
+    p0 = 0.00002146
+    e0 = 69.315
+    t0 = 2329916.12
+    feePercent = 0.25
+    maxCapBuyInEth = 3
+    maxCapSellInEth = 3
+    pMinRatio = 0.5
+    pMaxRatio = 2.0
+} else if (testing == "midas") {
+    r = 0.0069315
+    p0 = 0.0001 // 1m tokens = 100 eth
+    e0 = 100.0 //69.315
+    t0 = 1000000.0 //1m TOKENS
+    feePercent = 0.25
+    maxCapBuyInEth = 10
+    maxCapSellInEth = 10
+    pMinRatio = 0.5
+    pMaxRatio = 2.0
+}
+
+// determine theoretical minimal pMIn, maximal pMax according to r, p0, e0, t0.
+// this is done just to make sure pMmin and pMax are in the range.
 const minPmin = BigNumber(p0).div((Helper.exp(e, BigNumber(r).mul(e0))))
 const maxPmax = BigNumber((p0 / (1 - r * p0 * t0)).toString())
-
-// for Midas pMin and Pmax are fixed and set by the ratio
-const pMinRatio = 0.5
-const pMaxRatio = 2.0
 const pMin = p0 * pMinRatio
 const pMax = p0 * pMaxRatio
-
-//const pMin = BigNumber(p0).mul(e0))
-//const pMax = BigNumber((p0 / (1 - r * p0 * t0)).toString())
 
 console.log("pMin: " + pMin.toString())
 console.log("pMax: " + pMax.toString())
@@ -230,7 +244,7 @@ contract('LiquidityConversionRates', function(accounts) {
     });
 
     it("should set liquidity params", async function () {
-
+        /*
         console.log("rInFp: " + rInFp.toString())
         console.log("pMinInFp: " + pMinInFp.toString())
         console.log("formulaPrecisionBits: " + formulaPrecisionBits.toString())
@@ -239,7 +253,7 @@ contract('LiquidityConversionRates', function(accounts) {
         console.log("feeInBps: " + feeInBps.toString())
         console.log("maxSellRateInPrecision: " + maxSellRateInPrecision.toString())
         console.log("minSellRateInPrecision: " + minSellRateInPrecision.toString())
-
+         */
         await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision) 
     });
 
@@ -584,7 +598,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
         assertAbsDiff(expectedResult, result, expectedDiffInPct);
     });
 
-    xit("should perform a series of buys and check: correct balances change, rates and fees as expected.", async function () {
+    it("should perform a series of buys and check: correct balances change, rates and fees as expected.", async function () {
         let prevBuyRate = 0;
         let amountEth, amountWei;
         let buyRate, expectedRate;
@@ -604,10 +618,6 @@ contract('kyberReserve for Liquidity', function(accounts) {
             // get expected and actual rate
             expectedRate = priceForDeltaE(feePercent, r, pMin, amountEth, balancesBefore["EInEth"]).mul(precision)
             buyRate = await reserveInst.getConversionRate(ethAddress, token.address, amountWei, currentBlock);
-
-            console.log("iterations: " + iterations)
-            console.log("balancesBefore: " + balancesBefore["EInEth"].toString())
-            console.log("buyRate: " + buyRate.toString())
 
             // make sure buys are only ended when we are around 1/Pmax 
             if (buyRate == 0) {
@@ -691,7 +701,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
         while (true) {
             iterations++;
             balancesBefore = await getBalances();
-            amountTokens = (!prevSellRate) ? 10000 : 10000
+            amountTokens = (!prevSellRate) ? 50000 : 50000
             amountTwei = BigNumber(amountTokens).mul(tokenPrecision)
             amountTokensAfterFees = amountTokens * (100 - feePercent) / 100;
 
