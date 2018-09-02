@@ -350,6 +350,7 @@ contract('OrderBookReserve', async (accounts) => {
         //update to 2 ether.
         let updatedDest = 2 * 10 ** 18;
         rc = await reserve.updateMakeOrder(maker1, false, orderId, orderSrcAmountTwei, updatedDest, 0, {from: maker1});
+        log("update single order gas: " + rc.receipt.gasUsed);
 
         let freeWei = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(freeWei.valueOf(), 10 ** 18);
@@ -385,6 +386,7 @@ contract('OrderBookReserve', async (accounts) => {
         //update to 2 ether.
         let updatedDest = 3 * 10 ** 18;
         rc = await reserve.updateMakeOrder(maker1, false, orderId, orderSrcAmountTwei, updatedDest, 0, {from: maker1});
+        log("update single order gas: " + rc.receipt.gasUsed);
 
         let freeWei = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(freeWei.valueOf(), 0);
@@ -700,7 +702,6 @@ contract('OrderBookReserve', async (accounts) => {
         }
     });
 
-
     it("maker add a few sell orders. see orders added in correct position.", async function () {
         let amountKnc = 600 * 10 ** 18;
         let amountEth = 14 * 10 ** 18;
@@ -807,56 +808,6 @@ contract('OrderBookReserve', async (accounts) => {
 
         assert(calcBurn < calcStake);
     });
-
-//    it("add buy order. test take full order - without trade function.", async function () {
-//        let amountTwei = 5 * 10 ** 19; //500 tokens
-//        let amountKnc = 600 * 10 ** 18;
-//
-//        await makerDeposit(maker1, 0, amountTwei.valueOf(), amountKnc.valueOf());
-//
-//        let orderPayAmountWei = 2 * 10 ** 18;
-//        let orderExchangeTwei = 9 * 10 ** 18;
-//
-//        // add order
-//        let rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
-//
-//        let list = await reserve.getBuyOrderList();
-//        assert.equal(list.length, 1);
-//
-//        //take order
-//        await reserve.testTakeFullOrder(true, list[0]);
-//
-//        rate = await reserve.getConversionRate(ethAddress, token.address, 10 ** 18, 0);
-//        assert.equal(rate.valueOf(), 0);
-//
-//        list = await reserve.getBuyOrderList();
-//        assert.equal(list.length, 0);
-//    });
-//
-//    it("add buy order. test take partial order - without trade function.", async function () {
-//        let amountTwei = 5 * 10 ** 19; //500 tokens
-//        let amountKnc = 600 * 10 ** 18;
-//
-//        await makerDeposit(maker1, 0, amountTwei.valueOf(), amountKnc.valueOf());
-//
-//        let orderPayAmountWei = new BigNumber(2 * 10 ** 18);
-//        let orderExchangeTwei = 9 * 10 ** 18;
-//
-//        // add order
-//        let rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
-//
-//        let list = await reserve.getBuyOrderList();
-//        assert.equal(list.length, 1);
-//
-//        //take order
-//        await reserve.testTakePartialOrder(true, list[0], orderPayAmountWei.sub(5000));
-//
-//        rate = await reserve.getConversionRate(ethAddress, token.address, 10 ** 18, 0);
-//        assert.equal(rate.valueOf(), 0);
-//
-//        list = await reserve.getBuyOrderList();
-//        assert.equal(list.length, 0);
-//    });
 
     it("maker add buy order. user takes order. see taken order removed as expected.", async function () {
         let amountTwei = 5 * 10 ** 19; //500 tokens
