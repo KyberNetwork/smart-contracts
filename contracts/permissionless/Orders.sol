@@ -220,9 +220,13 @@ contract Orders is Withdrawable, Utils2 {
         require(key > nextKey);
     }
 
-// XXX Convenience functions for Ilan
-// ----------------------------------
-    function subSrcAndDstAmounts (uint32 orderId, uint128 subFromSrc) public onlyAdmin returns (uint128){
+    // XXX Convenience functions for Ilan
+    // ----------------------------------
+    function subSrcAndDstAmounts(uint32 orderId, uint128 subFromSrc)
+        public
+        onlyAdmin
+        returns (uint128 subDst)
+    {
         //if buy with x src. how much dest would it be
         uint128 subDst = subFromSrc * orders[orderId].dstAmount / orders[orderId].srcAmount;
 
@@ -247,26 +251,5 @@ contract Orders is Withdrawable, Utils2 {
     {
         isLast = orders[orderId].nextId == TAIL_ID;
         return(orders[orderId].nextId, isLast);
-    }
-
-    // TODO: move to PermissionLessReserve
-    function getOrderData(uint32 orderId) public view
-        returns (
-            address maker,
-            uint32 nextOrderId,
-            bool isLastOrder,
-            uint128 srcAmount,
-            uint128 dstAmount
-        )
-    {
-        Order storage order = orders[orderId];
-
-        return (
-            order.maker,
-            order.nextId,
-            order.nextId == TAIL_ID,
-            order.srcAmount,
-            order.dstAmount
-        );
     }
 }

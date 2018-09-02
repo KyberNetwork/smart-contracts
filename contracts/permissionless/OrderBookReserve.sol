@@ -96,7 +96,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         while (!orderData.isLastOrder) {
 
             (orderData.maker, orderData.nextId, orderData.isLastOrder, orderData.srcAmount, orderData.dstAmount) =
-                list.getOrderData(orderId);
+                getOrderData(list, orderId);
 
             if (orderData.srcAmount <= remainingSrcAmount) {
                 totalDstAmount += orderData.dstAmount;
@@ -162,7 +162,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         while (!orderData.isLastOrder) {
 
             (orderData.maker, orderData.nextId, orderData.isLastOrder, orderData.srcAmount, orderData.dstAmount) =
-                list.getOrderData(orderId);
+                getOrderData(list, orderId);
 
             if (orderData.srcAmount <= remainingSrcAmount) {
                 totalDstAmount += orderData.dstAmount;
@@ -416,7 +416,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         OrderData memory orderData;
 
         (orderData.maker, orderData.nextId, orderData.isLastOrder, orderData.srcAmount, orderData.dstAmount) =
-            list.getOrderData(orderId);
+            getOrderData(list, orderId);
 
         require(orderData.maker == maker);
 
@@ -737,5 +737,31 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
         require(weiAmount > 0);
         return weiAmount;
+    }
+
+    function getOrderData(uint32 orderId) public view
+        returns (
+            Orders list,
+            address maker,
+            uint32 nextOrderId,
+            bool isLastOrder,
+            uint128 srcAmount,
+            uint128 dstAmount
+        )
+    {
+        address maker;
+        uint128 srcAmount;
+        uint128 dstAmount;
+        uint32 prevId;
+        uint32 nextId;
+
+        (maker, srcAmount, dstAmount, prevId, nextId) = list.getOrderDetails(orderId);
+        return (
+            order.maker,
+            order.nextId,
+            nextId == list.TAIL(), /* isLastOrder */
+            order.srcAmount,
+            order.dstAmount
+        );
     }
 }
