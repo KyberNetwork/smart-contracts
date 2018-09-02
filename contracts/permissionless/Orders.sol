@@ -62,11 +62,9 @@ contract Orders is Withdrawable, Utils2 {
     )
         public
         onlyAdmin
-        // TODO: do not return value
-        returns(uint32)
     {
         uint32 prevId = findPrevOrderId(srcAmount, dstAmount);
-        return addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
+        addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
     function addAfterId(
@@ -78,10 +76,9 @@ contract Orders is Withdrawable, Utils2 {
     )
         public
         onlyAdmin
-        returns(uint32)
     {
         validatePositionOrder(srcAmount, dstAmount, prevId);
-        return addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
+        addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
     function removeById(uint32 orderId) public onlyAdmin {
@@ -97,11 +94,10 @@ contract Orders is Withdrawable, Utils2 {
     function update(uint32 orderId, uint128 srcAmount, uint128 dstAmount)
         public
         onlyAdmin
-        returns(uint32)
     {
         address maker = orders[orderId].maker;
         removeById(orderId);
-        return add(maker, orderId, srcAmount, dstAmount);
+        add(maker, orderId, srcAmount, dstAmount);
     }
 
     // The updated order id is returned following the update.
@@ -113,11 +109,10 @@ contract Orders is Withdrawable, Utils2 {
     )
         public
         onlyAdmin
-        returns(uint32)
     {
         address maker = orders[orderId].maker;
         removeById(orderId);
-        return addAfterId(maker, orderId, srcAmount, dstAmount, prevId);
+        addAfterId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
     function allocateIds(uint32 howMany) public onlyAdmin returns(uint32) {
@@ -212,22 +207,31 @@ contract Orders is Withdrawable, Utils2 {
         require(prev.prevId != 0 || prev.nextId != 0);
 
         // Make sure that the new order should be after the provided prevId.
-        uint prevKey = calculateOrderSortKey(prev.srcAmount, prev.dstAmount);
-        uint key = calculateOrderSortKey(srcAmount, dstAmount);
-        require(prevKey > key);
+        if (prevId != HEAD_ID) {
+            uint prevKey = calculateOrderSortKey(
+                prev.srcAmount,
+                prev.dstAmount
+            );
+            uint key = calculateOrderSortKey(srcAmount, dstAmount);
+            require(prevKey > key);
+        }
 
         // Make sure that the new order should be before provided prevId's next
         // order.
-        if (prev.nextId == TAIL_ID) return;
-
-        Order storage next = orders[prev.nextId];
-        uint nextKey = calculateOrderSortKey(next.srcAmount, next.dstAmount);
-        require(key > nextKey);
+        if (prev.nextId != TAIL_ID) {
+            Order storage next = orders[prev.nextId];
+            uint nextKey = calculateOrderSortKey(next.srcAmount, next.dstAmount);
+            require(key > nextKey);
+        }
     }
 
-// XXX Convenience functions for Ilan
-// ----------------------------------
-    function subSrcAndDstAmounts (uint32 orderId, uint128 subFromSrc) public onlyAdmin returns (uint128){
+    // XXX Convenience functions for Ilan
+    // ----------------------------------
+    function subSrcAndDstAmounts(uint32 orderId, uint128 subFromSrc)
+        public
+        onlyAdmin
+        returns (uint128 _subDst)
+    {
         //if buy with x src. how much dest would it be
         uint128 subDst = subFromSrc * orders[orderId].dstAmount / orders[orderId].srcAmount;
 
@@ -253,26 +257,4 @@ contract Orders is Withdrawable, Utils2 {
         isLast = orders[orderId].nextId == TAIL_ID;
         return(orders[orderId].nextId, isLast);
     }
-
-    // TODO: move to PermissionLessReserve
-    function getOrderData(uint32 orderId) public view
-        returns (
-            address maker,
-            uint32 nextOrderId,
-            bool isLastOrder,
-            uint128 srcAmount,
-            uint128 dstAmount
-        )
-    {
-        Order storage order = orders[orderId];
-
-        return (
-            order.maker,
-            order.nextId,
-            order.nextId == TAIL_ID,
-            order.srcAmount,
-            order.dstAmount
-        );
-    }
-
 }
