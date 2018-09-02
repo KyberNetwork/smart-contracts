@@ -1025,23 +1025,6 @@ contract('Orders', async (accounts) => {
         first.prevId.should.be.bignumber.equal(head.id);
     });
 
-    it("should support getOrderData", async () => {
-        let order = await addOrder(
-            user1 /* maker */,
-            10 /* srcAmount */,
-            200 /* dstAmount */
-        );
-
-        let params = await orders.getOrderData(order.id);
-        let [maker, nextOrderId, isLastOrder, srcAmount, dstAmount] = params;
-
-        maker.should.equal(user1);
-        nextOrderId.should.be.bignumber.equal(await orders.TAIL_ID());
-        isLastOrder.should.equal(true);
-        srcAmount.should.be.bignumber.equal(10);
-        dstAmount.should.be.bignumber.equal(200);
-    });
-
     it("should return first order id with getFirstOrder ", async () => {
         let order = await addOrder(
             user1 /* maker */,
@@ -1061,6 +1044,51 @@ contract('Orders', async (accounts) => {
         let [firstOrderId, isEmpty] = params;
 
         isEmpty.should.equal(true);
+    });
+
+    it("should allow adding order specifically after head", async () => {
+        let orderId = await allocateIds(1);
+        await orders.addAfterId(
+            user1 /* maker */,
+            orderId /* orderId */,
+            10 /* srcAmount */,
+            100 /* dstAmount */,
+            await orders.HEAD_ID() /* prevId */
+        );
+
+        let head = await getOrderById(await orders.HEAD_ID());
+        let order = await getOrderById(orderId);
+        // after: HEAD -> Order -> TAIL
+        head.nextId.should.be.bignumber.equal(order.id);
+        order.nextId.should.be.bignumber.equal(await orders.TAIL_ID());
+        // after: HEAD <- Order
+        order.prevId.should.be.bignumber.equal(head.id);
+    });
+
+    it("should allow adding order specifically before tail", async () => {
+        let order = await addOrder(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            200 /* dstAmount */
+        );
+        await orders.removeById(order.id);
+        let newOrderId = await allocateIds(1);
+
+        await orders.addAfterId(
+            user1 /* maker */,
+            newOrderId /* orderId */,
+            10 /* srcAmount */,
+            100 /* dstAmount */,
+            await orders.HEAD_ID() /* prevId */
+        );
+
+        let head = await getOrderById(await orders.HEAD_ID());
+        let newOrder = await getOrderById(newOrderId);
+        // after: HEAD -> NewOrder -> TAIL
+        head.nextId.should.be.bignumber.equal(newOrder.id);
+        newOrder.nextId.should.be.bignumber.equal(await orders.TAIL_ID());
+        // after: HEAD <- NewOrder
+        newOrder.prevId.should.be.bignumber.equal(head.id);
     });
 
     // TODO: add without position to a long list fails

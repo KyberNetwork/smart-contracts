@@ -207,17 +207,22 @@ contract Orders is Withdrawable, Utils2 {
         require(prev.prevId != 0 || prev.nextId != 0);
 
         // Make sure that the new order should be after the provided prevId.
-        uint prevKey = calculateOrderSortKey(prev.srcAmount, prev.dstAmount);
-        uint key = calculateOrderSortKey(srcAmount, dstAmount);
-        require(prevKey > key);
+        if (prevId != HEAD_ID) {
+            uint prevKey = calculateOrderSortKey(
+                prev.srcAmount,
+                prev.dstAmount
+            );
+            uint key = calculateOrderSortKey(srcAmount, dstAmount);
+            require(prevKey > key);
+        }
 
         // Make sure that the new order should be before provided prevId's next
         // order.
-        if (prev.nextId == TAIL_ID) return;
-
-        Order storage next = orders[prev.nextId];
-        uint nextKey = calculateOrderSortKey(next.srcAmount, next.dstAmount);
-        require(key > nextKey);
+        if (prev.nextId != TAIL_ID) {
+            Order storage next = orders[prev.nextId];
+            uint nextKey = calculateOrderSortKey(next.srcAmount, next.dstAmount);
+            require(key > nextKey);
+        }
     }
 
     // XXX Convenience functions for Ilan
@@ -225,7 +230,7 @@ contract Orders is Withdrawable, Utils2 {
     function subSrcAndDstAmounts(uint32 orderId, uint128 subFromSrc)
         public
         onlyAdmin
-        returns (uint128 subDst)
+        returns (uint128 _subDst)
     {
         //if buy with x src. how much dest would it be
         uint128 subDst = subFromSrc * orders[orderId].dstAmount / orders[orderId].srcAmount;
