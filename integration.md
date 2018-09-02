@@ -107,7 +107,7 @@ The status can be fetched by reading the public variable `enable`. Please note t
 To prevent user front running, the contract limits the gas price user can have.
 If the user send a transaction with higher gas price the transaction is reverted.
 This limited can be queried from the public variable `maxGasPrice`.
-A typical value would be 50000000000, which stands for 50 gwei.
+A typical value would be 100000000000, which stands for 100 gwei.
 
 # Current deployment
 The contract is currently deployed on Ethereum mainnet and Ropsten testnet.

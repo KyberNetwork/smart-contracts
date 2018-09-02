@@ -1208,7 +1208,7 @@ contract('KyberNetwork', function(accounts) {
         assert(rates[0].valueOf() == 0);
 
         // trade
-        listedToken.transferFrom(user1, network.address, amount, {from:networkProxy});
+        await listedToken.transferFrom(user1, network.address, amount, {from:networkProxy});
         await network.tradeWithHint(user1, listedToken.address, amount, uniqueToken.address, user2, maxDestAmount,
                 0 ,walletId, 0, {from:networkProxy});
         try {
@@ -1239,10 +1239,10 @@ contract('KyberNetwork', function(accounts) {
         assert(rates[0].valueOf() > 0);
 
         // trade both sides should succeed
-        listedToken.transferFrom(user1, network.address, amount, {from:networkProxy});
+        await listedToken.transferFrom(user1, network.address, amount, {from:networkProxy});
         await network.tradeWithHint(user1, listedToken.address, amount, uniqueToken.address, user2, maxDestAmount,
                 0 ,walletId, 0, {from:networkProxy});
-        uniqueToken.transferFrom(user1, network.address, amount, {from:networkProxy});
+        await uniqueToken.transferFrom(user1, network.address, amount, {from:networkProxy});
         await network.tradeWithHint(user1, uniqueToken.address, amount, listedToken.address, user2, maxDestAmount,
                 0 ,walletId, 0, {from:networkProxy});
 
@@ -1268,7 +1268,7 @@ contract('KyberNetwork', function(accounts) {
         assert(rates[0].valueOf() > 0);
 
         // trade both sides
-        uniqueToken.transferFrom(user1, network.address, amount, {from:networkProxy});
+        await uniqueToken.transferFrom(user1, network.address, amount, {from:networkProxy});
         await network.tradeWithHint(user1, uniqueToken.address, amount, listedToken.address, user2, maxDestAmount,
             0 ,walletId, 0, {from:networkProxy});
         try {

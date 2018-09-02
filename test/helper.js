@@ -1,5 +1,5 @@
-let BigNumber = require('bignumber.js');
-
+const Math = require('mathjs');
+const BigNumber = require('bignumber.js');
 
 module.exports.isRevertErrorMessage = function( error ) {
     if( error.message.search('invalid opcode') >= 0 ) return true;
@@ -55,9 +55,6 @@ function toHexString(byteArray) {
 };
 
 
-
-////////////////////////////////////////////////////////////////////////////////
-
 module.exports.sendPromise = function(method, params) {
     return new Promise(function(fulfill, reject){
         web3.currentProvider.sendAsync({
@@ -74,6 +71,25 @@ module.exports.sendPromise = function(method, params) {
           }
         });
     });
+};
+
+////////////////////////////////////////////////////////////////////////////////
+
+module.exports.exp = function(num1,num2) {
+    const num1Math = Math.bignumber(new BigNumber(num1).toString(10));
+    const num2Math = Math.bignumber(new BigNumber(num2).toString(10));
+
+    const result = Math.pow(num1Math,num2Math);
+
+    return new BigNumber(result.toString());
+};
+
+module.exports.ln = function(num) {
+    const numMath = Math.bignumber(new BigNumber(num).toString(10));
+
+    const result = Math.log(numMath);
+
+    return new BigNumber(result.toString());
 };
 
 

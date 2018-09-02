@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const KNC_MINIMAL_TX_AMOUNT = 10
+const KNC_MINIMAL_TX_AMOUNT = 50
 const RETRIALS = 60
 
 const solc = require("solc")
@@ -10,6 +10,7 @@ const path = require('path');
 const BigNumber = require('bignumber.js')
 
 const contractPath = path.join(__dirname, "../contracts/");
+const wrapperContractPath = path.join(__dirname, "../contracts/wrapperContracts/");
 const input = {
     "ConversionRatesInterface.sol" : fs.readFileSync(contractPath + 'ConversionRatesInterface.sol', 'utf8'),
     "ConversionRates.sol" : fs.readFileSync(contractPath + 'ConversionRates.sol', 'utf8'),
@@ -29,7 +30,11 @@ const input = {
     "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
     "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
     "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
-    "Wrapper.sol" : fs.readFileSync(contractPath + 'mockContracts/Wrapper.sol', 'utf8')
+    "Wrapper.sol" : fs.readFileSync(contractPath + 'mockContracts/Wrapper.sol', 'utf8'),
+    "KyberNetworkInterface.sol" : fs.readFileSync(contractPath + 'KyberNetworkInterface.sol', 'utf8'),
+    "Utils2.sol" : fs.readFileSync(contractPath + 'Utils2.sol', 'utf8'),
+    "WrapperBase.sol" : fs.readFileSync(wrapperContractPath + 'WrapperBase.sol', 'utf8'),
+    "WrapFeeBurner.sol" : fs.readFileSync(wrapperContractPath + 'WrapFeeBurner.sol', 'utf8')
 };
 
 const url = "https://mainnet.infura.io";
@@ -45,13 +50,17 @@ let txs = 0;
 let networkAddress;
 let kncTokenAddress;
 let feeBurnerAddress;
+let feeBurnerWrapperAddress;
 let networkContract;
 let feeBurnerContract;
 let kncTokenContract;
-let wallets
-let erc20Abi
-let networkAbi
-let feeBurnerAbi
+let feeBurnerWrapperContract;
+let wallets;
+let feeSharingWallets;
+let erc20Abi;
+let networkAbi;
+let feeBurnerAbi;
+let feeBurnerWrapperAbi;
 
 function weiToEthString(wei) {
     return BigNumber(wei).div(10 ** 18).toString()
@@ -167,10 +176,22 @@ async function burnReservesFees(reserveAddress) {
     }
 }
 
+function getAllWalletAddresses() {
+    let walletAddresses = [];
+    for (let wallet in wallets) {
+        walletAddresses.push(wallets[wallet]);
+    }
+    for (let walletIndex in feeSharingWallets) {
+        walletAddresses.push(feeSharingWallets[walletIndex]);
+    }
+    return walletAddresses;
+}
+
 async function sendFeesToWallets(reserveAddress) {
     console.log("sendFeesToWallets")
-    for (let wallet in wallets) {
-        let walletAddress = wallets[wallet];
+    walletAddresses = getAllWalletAddresses()
+    for (let walletAddressIndex in walletAddresses) {
+        walletAddress = walletAddresses[walletAddressIndex]
         console.log("walletAddress", walletAddress)
         let enough = await enoughWalletFeesToSend(reserveAddress, walletAddress);
         console.log("enough", enough)
@@ -200,8 +221,9 @@ async function validateReserveKNCWallet(reserveAddress) {
     console.log("reserveFeeToBurn", kncWeiToKNCString(reserveFeeToBurn))
     totalFeesToBurnAndSend = reserveFeeToBurn
 
-    for (let wallet in wallets) {
-        let walletAddress = wallets[wallet];
+    walletAddresses = getAllWalletAddresses()
+    for (let walletAddressIndex in walletAddresses) {
+        walletAddress = walletAddresses[walletAddressIndex];
         console.log("walletAddress", walletAddress)
         let walletFeeToSend = await feeBurnerContract.methods.reserveFeeToWallet(reserveAddress, walletAddress).call();
         console.log("walletFeeToSend", kncWeiToKNCString(walletFeeToSend))
@@ -226,7 +248,7 @@ function getConfig() {
     try{
         content = fs.readFileSync(configPath, 'utf8');
         jsonOutput = JSON.parse(content);
-        networkAddress = jsonOutput["network"]
+        networkAddress = jsonOutput["internal network"]
         console.log("networkAddress", networkAddress)
         kncTokenAddress = jsonOutput["tokens"]["KNC"]["address"]
         console.log("kncTokenAddress", kncTokenAddress)
@@ -244,6 +266,7 @@ async function getAbis() {
     erc20Abi = output.contracts["ERC20Interface.sol:ERC20"].interface;
     networkAbi = output.contracts["KyberNetwork.sol:KyberNetwork"].interface;
     feeBurnerAbi = output.contracts["FeeBurner.sol:FeeBurner"].interface;
+    feeBurnerWrapperAbi = output.contracts["WrapFeeBurner.sol:WrapFeeBurner"].interface;
 }
 
 async function getGasPrice() {
@@ -251,7 +274,7 @@ async function getGasPrice() {
         gasPrice = BigNumber(gasPriceGwei).mul(10 ** 9);
     }
     else {
-        gasPrice = await web3.eth.getGasPrice()
+        gasPrice = parseInt((await web3.eth.getGasPrice()) * 1.3);
     }
 }
 
@@ -276,6 +299,15 @@ async function doMain() {
 
     // get additional contracts from abis and additional addresses
     feeBurnerContract = new web3.eth.Contract(JSON.parse(feeBurnerAbi), feeBurnerAddress);
+
+    // get fee burner wrapper (admin of from fee burner wrapper)
+    feeBurnerWrapperAddress = await feeBurnerContract.methods.admin().call();
+    console.log("feeBurnerWrapperAddress", feeBurnerWrapperAddress);
+    feeBurnerWrapperContract = new web3.eth.Contract(JSON.parse(feeBurnerWrapperAbi), feeBurnerWrapperAddress);
+
+    feeSharingWallets = await feeBurnerWrapperContract.methods.getFeeSharingWallets().call();
+    console.log("feeSharingWallets", feeSharingWallets);
+
     // get run specific attributes
     getSender()
     console.log("sender", sender);
