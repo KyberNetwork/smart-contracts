@@ -67,6 +67,7 @@ contract Orders is Withdrawable, Utils2 {
         addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
+    // Returns false if provided with bad hint.
     function addAfterId(
         address maker,
         uint32 orderId,
@@ -76,9 +77,11 @@ contract Orders is Withdrawable, Utils2 {
     )
         public
         onlyAdmin
+        returns (bool)
     {
-        validatePositionOrder(srcAmount, dstAmount, prevId);
+        if (!isRightPosition(srcAmount, dstAmount, prevId)) return false;
         addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
+        return true;
     }
 
     function removeById(uint32 orderId) public onlyAdmin {
@@ -158,7 +161,6 @@ contract Orders is Withdrawable, Utils2 {
         uint32 prevId
     )
         private
-        returns(uint32)
     {
         Order storage prevOrder = orders[prevId];
 
@@ -177,8 +179,6 @@ contract Orders is Withdrawable, Utils2 {
 
         // Update previous order to point to added order
         prevOrder.nextId = orderId;
-
-        return orderId;
     }
 
     function verifyCanRemoveOrderById(uint32 orderId) private view {
@@ -190,21 +190,22 @@ contract Orders is Withdrawable, Utils2 {
         require(order.prevId != 0 || order.nextId != 0);
     }
 
-    function validatePositionOrder(
+    function isRightPosition(
         uint128 srcAmount,
         uint128 dstAmount,
         uint32 prevId
     )
         private
         view
+        returns (bool)
     {
         // Make sure prev is not the tail.
-        require(prevId != TAIL_ID);
+        if (prevId == TAIL_ID) return false;
 
         Order storage prev = orders[prevId];
 
-        // Make sure such order exists in mapping.
-        require(prev.prevId != 0 || prev.nextId != 0);
+        // Make sure prev order is initialised.
+        if (prev.prevId == 0 || prev.nextId == 0) return false;
 
         // Make sure that the new order should be after the provided prevId.
         if (prevId != HEAD_ID) {
@@ -213,16 +214,20 @@ contract Orders is Withdrawable, Utils2 {
                 prev.dstAmount
             );
             uint key = calculateOrderSortKey(srcAmount, dstAmount);
-            require(prevKey > key);
+            if (prevKey < key) return false;
         }
 
         // Make sure that the new order should be before provided prevId's next
         // order.
         if (prev.nextId != TAIL_ID) {
             Order storage next = orders[prev.nextId];
-            uint nextKey = calculateOrderSortKey(next.srcAmount, next.dstAmount);
-            require(key > nextKey);
+            uint nextKey = calculateOrderSortKey(
+                next.srcAmount,
+                next.dstAmount);
+            if (key < nextKey) return false;
         }
+
+        return true;
     }
 
     // XXX Convenience functions for Ilan

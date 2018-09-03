@@ -336,39 +336,31 @@ contract('Orders', async (accounts) => {
         // list and thus the id will be invalid.
         let nonExistantOrderId = await orders.allocateIds.call(1);
 
-        try {
-            await orders.addAfterId(
-                user1 /* maker */,
-                id /* orderId */,
-                10 /* srcAmount */,
-                200 /* dstAmount */,
-                nonExistantOrderId
-            );
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(
-                Helper.isRevertErrorMessage(e),
-                "expected revert but got: " + e);
-        }
+        let added = await orders.addAfterId.call(
+            user1 /* maker */,
+            id /* orderId */,
+            10 /* srcAmount */,
+            200 /* dstAmount */,
+            nonExistantOrderId
+        );
+
+        added.should.be.false;
     });
 
     it("should reject adding after invalid order id: is TAIL", async () => {
-        try {
-            let order = await addOrderAfterId(
-                user1 /* maker */,
-                10 /* srcAmount */,
-                200 /* dstAmount */,
-                // TAIL is technically a non-existant order, as the ID used for
-                // it should not have an order in it, but the verification was
-                // added to make this requirement explicit.
-                TAIL_ID
-            );
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(
-                Helper.isRevertErrorMessage(e),
-                "expected revert but got: " + e);
-        }
+        let orderId = await allocateIds(1);
+        let added = await orders.addAfterId.call(
+            user1 /* maker */,
+            orderId /* orderId */,
+            10 /* srcAmount */,
+            200 /* dstAmount */,
+            // TAIL is technically a non-existant order, as the ID used for
+            // it should not have an order in it, but the verification was
+            // added to make this requirement explicit.
+            TAIL_ID
+        );
+
+        added.should.be.false;
     });
 
     it("should reject adding after invalid order id: after worse order", async () => {
@@ -378,18 +370,15 @@ contract('Orders', async (accounts) => {
             100 /* dstAmount */
         );
 
-        try {
-            let order = await addOrderAfterId(
-                user1 /* maker */,
-                10 /* srcAmount */,
-                200 /* dstAmount */,
-                worseId);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(
-                Helper.isRevertErrorMessage(e),
-                "expected revert but got: " + e);
-        }
+        let orderId = await allocateIds(1);
+        let added = await orders.addAfterId.call(
+            user1 /* maker */,
+            orderId /* orderId */,
+            10 /* srcAmount */,
+            200 /* dstAmount */,
+            worseId);
+
+        added.should.be.false;
     });
 
     it("should reject adding after invalid order id: before better order", async () => {
@@ -404,18 +393,15 @@ contract('Orders', async (accounts) => {
             200 /* dstAmount */
         );
 
-        try {
-            let order = await addOrderAfterId(
-                user1 /* maker */,
-                10 /* srcAmount */,
-                100 /* dstAmount */,
-                bestId);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(
-                Helper.isRevertErrorMessage(e),
-                "expected revert but got: " + e);
-        }
+        let orderId = await allocateIds(1);
+        let added = await orders.addAfterId.call(
+            user1 /* maker */,
+            orderId /* orderId */,
+            10 /* srcAmount */,
+            100 /* dstAmount */,
+            bestId);
+
+        added.should.be.false;
     });
 
     it("remove order removes from list but does not delete order", async () => {
@@ -850,7 +836,7 @@ contract('Orders', async (accounts) => {
 
     it("should allow adding order specifically after head", async () => {
         let orderId = await allocateIds(1);
-        await orders.addAfterId(
+        await orders.addAfterId.call(
             user1 /* maker */,
             orderId /* orderId */,
             10 /* srcAmount */,
@@ -870,7 +856,7 @@ contract('Orders', async (accounts) => {
         await orders.removeById(order.id);
         let newOrderId = await allocateIds(1);
 
-        await orders.addAfterId(
+        await orders.addAfterId.call(
             user1 /* maker */,
             newOrderId /* orderId */,
             10 /* srcAmount */,
@@ -917,6 +903,16 @@ async function addOrderAfterIdGetId(
 )
 {
     let orderId = await allocateIds(1);
+    let canAdd = await orders.addAfterId.call(
+        user1 /* maker */,
+        orderId,
+        srcAmount,
+        dstAmount,
+        prevId,
+        args
+    );
+    if (!canAdd) throw new Error('add after id failed');
+
     await orders.addAfterId(
         user1 /* maker */,
         orderId,
