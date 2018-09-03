@@ -95,7 +95,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
     event AddReserveToNetwork(KyberReserveInterface reserve, bool add);
 
-    /// @notice can be called only by Kyber controller contract
+    /// @notice can be called only by operator
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
     /// @param isPermissionless is added reserve permissionless one.
@@ -129,7 +129,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
     event ListReservePairs(address reserve, ERC20 src, ERC20 dest, bool add);
 
-    /// @notice can be called only by kyber controller contract
+    /// @notice can be called only by operator
     /// @dev allow or prevent a specific reserve to trade a pair of tokens
     /// @param reserve The reserve address.
     /// @param token token address
