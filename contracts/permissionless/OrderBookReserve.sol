@@ -578,6 +578,32 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         return (uint(makerKncStakes[maker].kncOnStake));
     }
 
+    // TODO: is this call required?
+    function getOrderData(Orders list, uint32 orderId) public view
+        returns (
+            address _maker,
+            uint32 _nextOrderId,
+            bool _isLastOrder,
+            uint128 _srcAmount,
+            uint128 _dstAmount
+        )
+    {
+        address maker;
+        uint128 srcAmount;
+        uint128 dstAmount;
+        uint32 prevId;
+        uint32 nextId;
+
+        (maker, srcAmount, dstAmount, prevId, nextId) = list.getOrderDetails(orderId);
+        return (
+            maker,
+            nextId,
+            nextId == list.TAIL_ID(), /* isLastOrder */
+            srcAmount,
+            dstAmount
+        );
+    }
+    
     function releaseOrderFunds(bool isEthToToken, Orders.Order order) internal returns(bool) {
 
         if (isEthToToken) {
@@ -768,31 +794,5 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
         require(weiAmount > 0);
         return weiAmount;
-    }
-
-    function getOrderData(uint32 orderId) public view
-        returns (
-            Orders list,
-            address maker,
-            uint32 nextOrderId,
-            bool isLastOrder,
-            uint128 srcAmount,
-            uint128 dstAmount
-        )
-    {
-        address maker;
-        uint128 srcAmount;
-        uint128 dstAmount;
-        uint32 prevId;
-        uint32 nextId;
-
-        (maker, srcAmount, dstAmount, prevId, nextId) = list.getOrderDetails(orderId);
-        return (
-            order.maker,
-            order.nextId,
-            nextId == list.TAIL(), /* isLastOrder */
-            order.srcAmount,
-            order.dstAmount
-        );
     }
 }
