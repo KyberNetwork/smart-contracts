@@ -29,7 +29,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     Orders public sellList;
     Orders public buyList;
 
-    uint32 tailId;
+    uint32 orderListTailId;
 
     // KNC stakes
     struct KncStakes {
@@ -78,7 +78,9 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     function init() public {
         sellList = new Orders(this);
         buyList = new Orders(this);
-        tailId = buyList.TAIL_ID();
+        // Orders list uses a const TAIL_ID which is shared between all lists so
+        // it is sufficient to take from from one of them.
+        orderListTailId = buyList.TAIL_ID();
     }
 
     function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
@@ -602,6 +604,27 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         return (uint(makerKncStakes[maker].kncOnStake));
     }
 
+    // TODO: is this call required? Maybe extract isLastOrder funtion from it...
+    function getOrderData(Orders list, uint32 orderId) internal view
+        returns (
+            address maker,
+            uint32 nextId,
+            bool isLastOrder,
+            uint128 srcAmount,
+            uint128 dstAmount
+        )
+    {
+        (maker, srcAmount, dstAmount, , nextId) = list.getOrderDetails(orderId);
+
+        return (
+            maker,
+            nextId,
+            nextId == orderListTailId, /* isLastOrder */
+            srcAmount,
+            dstAmount
+        );
+    }
+
     function releaseOrderFunds(bool isEthToToken, Orders.Order order) internal returns(bool) {
 
         if (isEthToToken) {
@@ -792,25 +815,5 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
         require(weiAmount > 0);
         return weiAmount;
-    }
-
-    function getOrderData(Orders list, uint32 orderId) internal view
-        returns (
-            address maker,
-            uint32 nextId,
-            bool isLastOrder,
-            uint128 srcAmount,
-            uint128 dstAmount
-        )
-    {
-        (maker, srcAmount, dstAmount, , nextId) = list.getOrderDetails(orderId);
-
-        return (
-            maker,
-            nextId,
-            nextId == tailId, /* isLastOrder */
-            srcAmount,
-            dstAmount
-        );
     }
 }
