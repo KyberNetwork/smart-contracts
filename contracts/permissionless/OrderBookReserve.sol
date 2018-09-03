@@ -29,6 +29,8 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     Orders public sellList;
     Orders public buyList;
 
+    uint32 orderListTailId;
+
     // KNC stakes
     struct KncStakes {
         uint128 freeKnc;    // knc that can be used to validate funds
@@ -76,6 +78,9 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     function init() public {
         sellList = new Orders(this);
         buyList = new Orders(this);
+        // Orders list uses a const TAIL_ID which is shared between all lists so
+        // it is sufficient to take from from one of them.
+        orderListTailId = buyList.TAIL_ID();
     }
 
     function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
@@ -200,7 +205,14 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         return true;
     }
 
-    event NewMakeOrder(address indexed maker, uint32 orderId, bool isEthToToken, uint128 srcAmount, uint128 dstAmount);
+    event NewMakeOrder(
+        address indexed maker,
+        uint32 orderId,
+        bool isEthToToken,
+        uint128 srcAmount,
+        uint128 dstAmount,
+        bool addedWithHint
+    );
 
     function makeOrder(address maker, bool isEthToToken, uint128 srcAmount, uint128 dstAmount, uint32 hintPrevOrder)
         public
@@ -263,23 +275,33 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         internal
         returns(bool)
     {
-
         require(validateOrder(maker, isEthToToken, srcAmount, dstAmount));
+
+        bool addedWithHint = false;
 
         if (hintPrevOrder != 0) {
 
-            list.addAfterId(maker, newId, srcAmount, dstAmount, hintPrevOrder);
-        } else {
+            addedWithHint = list.addAfterId(maker, newId, srcAmount, dstAmount, hintPrevOrder);
+        }
+
+        if (addedWithHint == false) {
 
             list.add(maker, newId, srcAmount, dstAmount);
         }
 
-        NewMakeOrder(maker, newId, isEthToToken, srcAmount, dstAmount);
+        NewMakeOrder(maker, newId, isEthToToken, srcAmount, dstAmount, addedWithHint);
 
         return true;
     }
 
-    event makeOrderUpdated(address maker, bool isEthToToken, uint orderId, uint128 srcAmount, uint128 dstAmount);
+    event makeOrderUpdated(
+        address indexed maker,
+        bool isEthToToken,
+        uint orderId,
+        uint128 srcAmount,
+        uint128 dstAmount,
+        bool updatedWithHint
+    );
 
     function updateMakeOrder(address maker, bool isEthToToken, uint32 orderId, uint128 newSrcAmount,
         uint128 newDstAmount, uint32 hintPrevOrder)
@@ -335,15 +357,19 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
         validateUpdateOrder(maker, isEthToToken, currSrcAmount, currDestAmount, srcAmount, dstAmount);
 
+        bool updatedWithHint = false;
+
         if (hintPrevOrder != 0) {
 
-            list.updateWithPositionHint(orderId, srcAmount, dstAmount, hintPrevOrder);
-        } else {
+            updatedWithHint = list.updateWithPositionHint(orderId, srcAmount, dstAmount, hintPrevOrder);
+        }
+
+        if (!updatedWithHint) {
 
             list.update(orderId, srcAmount, dstAmount);
         }
 
-        makeOrderUpdated(maker, isEthToToken, orderId, srcAmount, dstAmount);
+        makeOrderUpdated(maker, isEthToToken, orderId, srcAmount, dstAmount, updatedWithHint);
 
         return true;
     }
@@ -578,32 +604,27 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         return (uint(makerKncStakes[maker].kncOnStake));
     }
 
-    // TODO: is this call required?
-    function getOrderData(Orders list, uint32 orderId) public view
+    // TODO: is this call required? Maybe extract isLastOrder funtion from it...
+    function getOrderData(Orders list, uint32 orderId) internal view
         returns (
-            address _maker,
-            uint32 _nextOrderId,
-            bool _isLastOrder,
-            uint128 _srcAmount,
-            uint128 _dstAmount
+            address maker,
+            uint32 nextId,
+            bool isLastOrder,
+            uint128 srcAmount,
+            uint128 dstAmount
         )
     {
-        address maker;
-        uint128 srcAmount;
-        uint128 dstAmount;
-        uint32 prevId;
-        uint32 nextId;
+        (maker, srcAmount, dstAmount, , nextId) = list.getOrderDetails(orderId);
 
-        (maker, srcAmount, dstAmount, prevId, nextId) = list.getOrderDetails(orderId);
         return (
             maker,
             nextId,
-            nextId == list.TAIL_ID(), /* isLastOrder */
+            nextId == orderListTailId, /* isLastOrder */
             srcAmount,
             dstAmount
         );
     }
-    
+
     function releaseOrderFunds(bool isEthToToken, Orders.Order order) internal returns(bool) {
 
         if (isEthToToken) {

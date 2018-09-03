@@ -11,9 +11,37 @@ import "./ExpectedRateInterface.sol";
 import "./FeeBurnerInterface.sol";
 
 
+/**
+ * @title Helps contracts guard against reentrancy attacks.
+ * @dev If you mark a function `nonReentrant`, you should also
+ * mark it `external`.
+ */
+contract ReentrancyGuard {
+
+    /// @dev counter to allow mutex lock with only one SSTORE operation
+    uint256 private guardCounter = 1;
+
+    /**
+     * @dev Prevents a contract from calling itself, directly or indirectly.
+     * If you mark a function `nonReentrant`, you should also
+     * mark it `external`. Calling one `nonReentrant` function from
+     * another is not supported. Instead, you can implement a
+     * `private` function doing the actual work, and an `external`
+     * wrapper marked as `nonReentrant`.
+     */
+    modifier nonReentrant() {
+        guardCounter += 1;
+        uint256 localCounter = guardCounter;
+        _;
+        require(localCounter == guardCounter);
+    }
+
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
-contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
+contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, ReentrancyGuard {
 
     enum ReserveType {NONE, PERMISSIONED, PERMISSIONLESS}
     bytes empty;
@@ -72,7 +100,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         address walletId,
         bytes hint
     )
-        public
+        nonReentrant
+        external
         payable
         returns(uint)
     {
@@ -293,14 +322,14 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     }
 
     function searchBestRate(ERC20 src, ERC20 dest, uint srcAmount) public view returns(address, uint) {
-        return searchBestRateWithHint(src, dest, srcAmount, true);
+        return searchBestRatePermissioned(src, dest, srcAmount, true);
     }
 
     /* solhint-disable code-complexity */
     // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
     //  It has been tested, reviewed and found to be clear enough.
     //@dev this function always src or dest are ether. can't do token to token
-    function searchBestRateWithHint(ERC20 src, ERC20 dest, uint srcAmount, bool usePermissionless)
+    function searchBestRatePermissioned(ERC20 src, ERC20 dest, uint srcAmount, bool usePermissionless)
         internal
         view
         returns(address, uint)
@@ -367,18 +396,18 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     {
         bool usePermissionless = false;
 
-        // PERM ascii == 0x80, 0x69, 0x82, 0x77
-        if (keccak256(hint[0], hint[1], hint[2], hint[3]) == keccak256(byte(0x80), byte(0x69), byte(0x82), byte(0x77))) {
+        // PERM ascii == P = 80, E = 69, R = 82, M = 77
+        if (keccak256(hint[0], hint[1], hint[2], hint[3]) == keccak256(byte(80), byte(69), byte(82), byte(77))) {
             usePermissionless = true;
         }
 
         (result.reserve1, result.rateSrcToEth) =
-            searchBestRateWithHint(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
+            searchBestRatePermissioned(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
 
         result.weiAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcAmount, result.rateSrcToEth);
 
         (result.reserve2, result.rateEthToDest) =
-            searchBestRateWithHint(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
+            searchBestRatePermissioned(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
 
         result.destAmount = calcDestAmount(ETH_TOKEN_ADDRESS, dest, result.weiAmount, result.rateEthToDest);
 

@@ -581,7 +581,6 @@ contract('OrderBookReserve', async (accounts) => {
             await reserve.cancelOrder(true, orderList[i].valueOf(), {from: maker1});
         }
 
-        log()
         log("cancel all orders and add again.")
         orderPayAmountWei = ((new BigNumber(2)).mul((new BigNumber(10)).pow(18))).add(2000); // 2 ether
         orderExchangeTwei = (new BigNumber(9)).mul((new BigNumber(10)).pow(18));
@@ -703,7 +702,7 @@ contract('OrderBookReserve', async (accounts) => {
         log("5th order with hint: " + rc.receipt.gasUsed);
         let gasWithHint = rc.receipt.gasUsed;
 
-        log("gas diff 5th order. with / without hint: " + gasWithoutHint - gasWithHint);
+        log("gas diff 5th order. with / without hint: " + (gasWithoutHint - gasWithHint));
 
         orderList = await reserve.getBuyOrderList();
         for (let i = 0; i < orderList.length ; i++) {
