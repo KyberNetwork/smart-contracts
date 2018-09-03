@@ -76,9 +76,11 @@ contract Orders is Withdrawable, Utils2 {
     )
         public
         onlyAdmin
+        returns (bool)
     {
         validatePositionOrder(srcAmount, dstAmount, prevId);
         addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
+        return true;
     }
 
     function removeById(uint32 orderId) public onlyAdmin {
@@ -109,10 +111,12 @@ contract Orders is Withdrawable, Utils2 {
     )
         public
         onlyAdmin
+        returns(bool)
     {
         address maker = orders[orderId].maker;
         removeById(orderId);
         addAfterId(maker, orderId, srcAmount, dstAmount, prevId);
+        return true;
     }
 
     function allocateIds(uint32 howMany) public onlyAdmin returns(uint32) {

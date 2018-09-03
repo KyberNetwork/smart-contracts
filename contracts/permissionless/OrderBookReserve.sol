@@ -29,6 +29,8 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     Orders public sellList;
     Orders public buyList;
 
+    uint32 tailId;
+
     // KNC stakes
     struct KncStakes {
         uint128 freeKnc;    // knc that can be used to validate funds
@@ -76,6 +78,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     function init() public {
         sellList = new Orders(this);
         buyList = new Orders(this);
+        tailId = buyList.TAIL_ID();
     }
 
     function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
@@ -200,7 +203,14 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         return true;
     }
 
-    event NewMakeOrder(address indexed maker, uint32 orderId, bool isEthToToken, uint128 srcAmount, uint128 dstAmount);
+    event NewMakeOrder(
+        address indexed maker,
+        uint32 orderId,
+        bool isEthToToken,
+        uint128 srcAmount,
+        uint128 dstAmount,
+        bool addedWithHint
+    );
 
     function makeOrder(address maker, bool isEthToToken, uint128 srcAmount, uint128 dstAmount, uint32 hintPrevOrder)
         public
@@ -263,23 +273,33 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         internal
         returns(bool)
     {
-
         require(validateOrder(maker, isEthToToken, srcAmount, dstAmount));
+
+        bool addedWithHint = false;
 
         if (hintPrevOrder != 0) {
 
-            list.addAfterId(maker, newId, srcAmount, dstAmount, hintPrevOrder);
-        } else {
+            addedWithHint = list.addAfterId(maker, newId, srcAmount, dstAmount, hintPrevOrder);
+        }
+
+        if (addedWithHint == false) {
 
             list.add(maker, newId, srcAmount, dstAmount);
         }
 
-        NewMakeOrder(maker, newId, isEthToToken, srcAmount, dstAmount);
+        NewMakeOrder(maker, newId, isEthToToken, srcAmount, dstAmount, addedWithHint);
 
         return true;
     }
 
-    event makeOrderUpdated(address maker, bool isEthToToken, uint orderId, uint128 srcAmount, uint128 dstAmount);
+    event makeOrderUpdated(
+        address indexed maker,
+        bool isEthToToken,
+        uint orderId,
+        uint128 srcAmount,
+        uint128 dstAmount,
+        bool updatedWithHint
+    );
 
     function updateMakeOrder(address maker, bool isEthToToken, uint32 orderId, uint128 newSrcAmount,
         uint128 newDstAmount, uint32 hintPrevOrder)
@@ -335,15 +355,19 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
         validateUpdateOrder(maker, isEthToToken, currSrcAmount, currDestAmount, srcAmount, dstAmount);
 
+        bool updatedWithHint = false;
+
         if (hintPrevOrder != 0) {
 
-            list.updateWithPositionHint(orderId, srcAmount, dstAmount, hintPrevOrder);
-        } else {
+            updatedWithHint = list.updateWithPositionHint(orderId, srcAmount, dstAmount, hintPrevOrder);
+        }
+
+        if (!updatedWithHint) {
 
             list.update(orderId, srcAmount, dstAmount);
         }
 
-        makeOrderUpdated(maker, isEthToToken, orderId, srcAmount, dstAmount);
+        makeOrderUpdated(maker, isEthToToken, orderId, srcAmount, dstAmount, updatedWithHint);
 
         return true;
     }
@@ -770,29 +794,23 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         return weiAmount;
     }
 
-    function getOrderData(uint32 orderId) public view
+    function getOrderData(Orders list, uint32 orderId) internal view
         returns (
-            Orders list,
             address maker,
-            uint32 nextOrderId,
+            uint32 nextId,
             bool isLastOrder,
             uint128 srcAmount,
             uint128 dstAmount
         )
     {
-        address maker;
-        uint128 srcAmount;
-        uint128 dstAmount;
-        uint32 prevId;
-        uint32 nextId;
+        (maker, srcAmount, dstAmount, , nextId) = list.getOrderDetails(orderId);
 
-        (maker, srcAmount, dstAmount, prevId, nextId) = list.getOrderDetails(orderId);
         return (
-            order.maker,
-            order.nextId,
-            nextId == list.TAIL(), /* isLastOrder */
-            order.srcAmount,
-            order.dstAmount
+            maker,
+            nextId,
+            nextId == tailId, /* isLastOrder */
+            srcAmount,
+            dstAmount
         );
     }
 }
