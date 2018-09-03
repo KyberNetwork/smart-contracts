@@ -11,9 +11,37 @@ import "./ExpectedRateInterface.sol";
 import "./FeeBurnerInterface.sol";
 
 
+/**
+ * @title Helps contracts guard against reentrancy attacks.
+ * @dev If you mark a function `nonReentrant`, you should also
+ * mark it `external`.
+ */
+contract ReentrancyGuard {
+
+    /// @dev counter to allow mutex lock with only one SSTORE operation
+    uint256 private guardCounter = 1;
+
+    /**
+     * @dev Prevents a contract from calling itself, directly or indirectly.
+     * If you mark a function `nonReentrant`, you should also
+     * mark it `external`. Calling one `nonReentrant` function from
+     * another is not supported. Instead, you can implement a
+     * `private` function doing the actual work, and an `external`
+     * wrapper marked as `nonReentrant`.
+     */
+    modifier nonReentrant() {
+        guardCounter += 1;
+        uint256 localCounter = guardCounter;
+        _;
+        require(localCounter == guardCounter);
+    }
+
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
-contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
+contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, ReentrancyGuard {
 
     enum ReserveType {NONE, PERMISSIONED, PERMISSIONLESS}
     bytes empty;
@@ -72,7 +100,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         address walletId,
         bytes hint
     )
-        public
+        nonReentrant
+        external
         payable
         returns(uint)
     {
