@@ -41,8 +41,7 @@ contract('FeeBurner', function(accounts) {
         const expectedResult = Helper.exp(e,new BigNumber(p).div(q)).mul(precision);
         const result = await liquidityContract.exp(p,q,precision);
 
-        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
-               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
+        Helper.assertAbsDiff(expectedResult,result,expectedDiffInPct);
     });
 
     it("check ln with fixed input", async function () {
@@ -54,8 +53,7 @@ contract('FeeBurner', function(accounts) {
         const expectedResult = Helper.ln(new BigNumber(p).div(q)).mul(precision);
         const result = await liquidityContract.ln(p,q,precisionBits);
 
-        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
-               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
+        Helper.assertAbsDiff(expectedResult,result,expectedDiffInPct);
     });
 
     it("check P(E) with fixed input", async function () {
@@ -72,8 +70,7 @@ contract('FeeBurner', function(accounts) {
                                                   E.mul(precision),
                                                   precision);
 
-        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
-               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
+        Helper.assertAbsDiff(expectedResult,result,expectedDiffInPct);
     });
 
     it("check deltaT with fixed input", async function () {
@@ -99,12 +96,9 @@ contract('FeeBurner', function(accounts) {
         console.log(result.div(precision).toString(10));
         console.log(expectedResult.div(precision).toString(10));
 
-        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
-               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
+        Helper.assertAbsDiff(expectedResult,result,expectedDiffInPct);
 
-                                                      /*
-        assert(Helper.checkAbsDiff(expectedResult2,result2,expectedDiffInPct),
-               "exp result diff is " + Helper.absDiff(expectedResult2,result2).toString(10));*/
+        /* Helper.assertAbsDiff(expectedResult2,result2,expectedDiffInPct) */
     });
 
     it("check deltaE with fixed input", async function () {
@@ -129,12 +123,9 @@ contract('FeeBurner', function(accounts) {
         console.log(result.div(precision).toString(10));
         console.log(expectedResult.div(precision).toString(10));
 
-        assert(Helper.checkAbsDiff(expectedResult,result,expectedDiffInPct),
-               "exp result diff is " + Helper.absDiff(expectedResult,result).toString(10));
+        Helper.assertAbsDiff(expectedResult,result,expectedDiffInPct);
 
-                                                      /*
-        assert(Helper.checkAbsDiff(expectedResult2,result2,expectedDiffInPct),
-               "exp result diff is " + Helper.absDiff(expectedResult2,result2).toString(10));*/
+        /* Helper.assertAbsDiff(expectedResult2,result2,expectedDiffInPct; */
     });
 
 

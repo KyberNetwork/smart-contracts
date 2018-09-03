@@ -55,9 +55,6 @@ function toHexString(byteArray) {
 };
 
 
-
-////////////////////////////////////////////////////////////////////////////////
-
 module.exports.sendPromise = function(method, params) {
     return new Promise(function(fulfill, reject){
         web3.currentProvider.sendAsync({
@@ -76,19 +73,7 @@ module.exports.sendPromise = function(method, params) {
     });
 };
 
-module.exports.absDiff = function(num1, num2) {
-    return _absDiff(num1,num2);
-}
-
-module.exports.absDiffInPercent = function(num1, num2) {
-    return (_absDiff(num1,num2).div(num1)).mul(100)
-}
-
-module.exports.checkAbsDiff = function(num1, num2, maxDiffInPercentage) {
-    const maxDiffBig = new BigNumber(maxDiffInPercentage);
-    const diff = _absDiff(num1,num2);
-    return (diff.div(num1)).lte(maxDiffInPercentage.div(100));
-};
+////////////////////////////////////////////////////////////////////////////////
 
 module.exports.exp = function(num1,num2) {
     const num1Math = Math.bignumber(new BigNumber(num1).toString(10));
@@ -107,7 +92,20 @@ module.exports.ln = function(num) {
     return new BigNumber(result.toString());
 };
 
-function _absDiff(num1,num2) {
+
+////////////////////////////////////////////////////////////////////////////////
+
+function absDiffInPercent(num1, num2) {
+    return (absDiff(num1,num2).div(num1)).mul(100)
+}
+
+function checkAbsDiff(num1, num2, maxDiffInPercentage) {
+    const maxDiffBig = new BigNumber(maxDiffInPercentage);
+    const diff = absDiff(num1,num2);
+    return (diff.div(num1)).lte(maxDiffInPercentage.div(100));
+};
+
+function absDiff(num1,num2) {
     const bigNum1 = new BigNumber(num1);
     const bigNum2 = new BigNumber(num2);
 
@@ -118,3 +116,14 @@ function _absDiff(num1,num2) {
         return bigNum2.minus(bigNum1);
     }
 };
+
+module.exports.assertAbsDiff = function(val1, val2, expectedDiffInPct, errorStr) {
+    val1 = val1.toString()
+    val2 = val2.toString()
+    assert(checkAbsDiff(val1,val2,expectedDiffInPct),
+            errorStr + 
+           " first val is " + val1 +
+           " second val is " + val2 +
+           " result diff is " + absDiff(val1, val2).toString(10) +
+           " actual result diff in percents is " + absDiffInPercent(val1,val2).toString(10));
+}
