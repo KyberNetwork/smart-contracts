@@ -15,18 +15,12 @@ import "./FeeBurnerInterface.sol";
 /// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
-    uint constant public RESERVE_TYPE_NONE = 0;
-    uint constant public RESERVE_TYPE_PERMISSIONED = 1;
-    uint constant public RESERVE_TYPE_PERMISSION_LESS = 2;
-
-    byte constant public PERMISSION_LESS_USAGE_ALLOWED = byte(0);
-    byte constant public PERMISSION_LESS_USAGE_NOT_ALLOWED = byte(1);
-
-//    enum ReserveType {NONE, PERMISSIONED, PERMISSION_LESS_ORDER_BOOK}
+    enum ReserveType {NONE, PERMISSIONED, PERMISSIONLESS}
+    bytes empty;
 
     uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
-    KyberReserveInterface[] public reserves;
-    mapping(address=>uint) public reserveType;
+    KyberReserveInterface[] reserves;
+    mapping(address=>ReserveType) public reserveType;
     WhiteListInterface public whiteListContract;
     ExpectedRateInterface public expectedRateContract;
     FeeBurnerInterface    public feeBurnerContract;
@@ -50,7 +44,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     // To avoid users trying to swap tokens using default payable function. We added this short code
     //  to verify Ethers will be received only from reserves if transferred without a specific function call.
     function() public payable {
-        require(reserveType[msg.sender] != RESERVE_TYPE_NONE);
+        require(reserveType[msg.sender] != ReserveType.NONE);
         EtherReceival(msg.sender, msg.value);
     }
     /* solhint-enable no-complex-fallback */
@@ -82,7 +76,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         payable
         returns(uint)
     {
-        require(hint.length == 0);
         require(msg.sender == kyberNetworkProxyContract);
 
         TradeInput memory tradeInput;
@@ -102,20 +95,26 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
     event AddReserveToNetwork(KyberReserveInterface reserve, bool add);
 
-    /// @notice can be called only by Kyber controller contract
+    /// @notice can be called only by operator
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
-    /// @param resType reserve type.
+    /// @param isPermissionless is added reserve permissionless one.
     /// @param add If true, the add reserve. Otherwise delete reserve.
-    function addReserve(KyberReserveInterface reserve, uint resType, bool add) public onlyOperator {
+    function addReserve(KyberReserveInterface reserve, bool isPermissionless, bool add) public onlyOperator {
 
         if (add) {
-            require(reserveType[reserve] == RESERVE_TYPE_NONE);
+            require(reserveType[reserve] == ReserveType.NONE);
             reserves.push(reserve);
-            reserveType[reserve] = resType;
+            if (isPermissionless) {
+                reserveType[reserve] = ReserveType.PERMISSIONLESS;
+            } else {
+                reserveType[reserve] = ReserveType.PERMISSIONED;
+            }
+
             AddReserveToNetwork(reserve, true);
         } else {
-            reserveType[reserve] = RESERVE_TYPE_NONE;
+            reserveType[reserve] = ReserveType.NONE;
+
             // will have trouble if more than 50k reserves...
             for (uint i = 0; i < reserves.length; i++) {
                 if (reserves[i] == reserve) {
@@ -130,7 +129,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
     event ListReservePairs(address reserve, ERC20 src, ERC20 dest, bool add);
 
-    /// @notice can be called only by kyber controller contract
+    /// @notice can be called only by operator
     /// @dev allow or prevent a specific reserve to trade a pair of tokens
     /// @param reserve The reserve address.
     /// @param token token address
@@ -141,7 +140,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         public
         onlyOperator
     {
-        require(reserveType[reserve] != RESERVE_TYPE_NONE);
+        require(reserveType[reserve] != ReserveType.NONE);
 
         if (ethToToken) {
             listPairs(reserve, token, false, add);
@@ -225,18 +224,18 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     function getReserves() public view returns(KyberReserveInterface[]) {
         return reserves;
     }
-
-    function getReservesEthToToken(ERC20 token, uint index) public view returns(address) {
-        if (index >= reservesPerTokenDest[token].length) return address(0);
-
-        return (reservesPerTokenDest[token][index]);
-    }
-
-    function getReservesTokenToEth(ERC20 token, uint index) public view returns(address) {
-        if (index >= reservesPerTokenSrc[token].length) return address(0);
-
-        return (reservesPerTokenSrc[token][index]);
-    }
+//
+//    function getReservesEthToToken(ERC20 token, uint index) public view returns(address) {
+//        if (index >= reservesPerTokenDest[token].length) return address(0);
+//
+//        return (reservesPerTokenDest[token][index]);
+//    }
+//
+//    function getReservesTokenToEth(ERC20 token, uint index) public view returns(address) {
+//        if (index >= reservesPerTokenSrc[token].length) return address(0);
+//
+//        return (reservesPerTokenSrc[token][index]);
+//    }
 
     function maxGasPrice() public view returns(uint) {
         return maxGasPriceValue;
@@ -281,7 +280,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     /// @param dest Destination token
     /// @return obsolete - used to return best reserve index. not relevant anymore for this API.
     function findBestRate(ERC20 src, ERC20 dest, uint srcAmount) public view returns(uint obsolete, uint rate) {
-        BestRateResult memory result = findBestRateTokenToToken(src, dest, srcAmount, PERMISSION_LESS_USAGE_ALLOWED);
+        BestRateResult memory result = findBestRateTokenToToken(src, dest, srcAmount, empty);
         return(0, result.rate);
     }
 
@@ -328,7 +327,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
 
         for (uint i = 0; i < reserveArr.length; i++) {
             //list all reserves that have this token.
-            if (!usePermissionless && reserveType[reserveArr[i]] == RESERVE_TYPE_PERMISSION_LESS) {
+            if (!usePermissionless && reserveType[reserveArr[i]] == ReserveType.PERMISSIONLESS) {
                 continue;
             }
 
@@ -363,10 +362,15 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     }
     /* solhint-enable code-complexity */
 
-    function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcAmount, byte hint) internal view
+    function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcAmount, bytes hint) internal view
         returns(BestRateResult result)
     {
-        bool usePermissionless = (hint == PERMISSION_LESS_USAGE_ALLOWED? true : false);
+        bool usePermissionless = false;
+
+        // PERM ascii == 0x80, 0x69, 0x82, 0x77
+        if (keccak256(hint[0], hint[1], hint[2], hint[3]) == keccak256(byte(0x80), byte(0x69), byte(0x82), byte(0x77))) {
+            usePermissionless = true;
+        }
 
         (result.reserve1, result.rateSrcToEth) =
             searchBestRateWithHint(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
@@ -420,7 +424,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
         require(validateTradeInput(tradeInput.src, tradeInput.srcAmount, tradeInput.dest, tradeInput.destAddress));
 
         BestRateResult memory rateResult =
-            findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount, tradeInput.hint[0]);
+            findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount, tradeInput.hint);
 
         require(rateResult.rate > 0);
         require(rateResult.rate < MAX_RATE);

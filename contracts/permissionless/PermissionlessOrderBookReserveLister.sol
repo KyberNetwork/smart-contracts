@@ -3,26 +3,29 @@ pragma solidity 0.4.18;
 
 import "./OrderBookReserve.sol";
 import "../KyberNetwork.sol";
-import "../FeeBurner.sol";
-import "../KyberReserveInterface.sol";
 
 
 contract PermissionlessOrderBookReserveReserveLister {
 
     bytes32 public orderBookCodeSha3;
 
-    KyberNetwork public kyberNetwork;
+    KyberNetwork public kyberNetworkContract;
+    FeeBurnerResolverInterface feeBurnerVerifierContract;
+
     ERC20 public kncToken;
 
-    function KyberController(KyberNetwork _kyber, ERC20 knc) public {
-        require(_kyber != address(0));
+    function KyberController(KyberNetwork kyber, FeeBurnerResolverInterface verifier, ERC20 knc) public {
+        require(kyber != address(0));
+        require(verifier != address(0));
         require(knc != address(0));
 
         kncToken = knc;
-        kyberNetwork = _kyber;
+        kyberNetworkContract = kyber;
+        feeBurnerVerifierContract = verifier;
 
-        FeeBurner burner = FeeBurner(kyberNetwork.feeBurnerContract());
-        KyberReserveInterface reserve = new OrderBookReserve(burner, kncToken, kncToken);
+        FeeBurnerInterface burner = FeeBurnerInterface(kyberNetworkContract.feeBurnerContract());
+        KyberReserveInterface reserve =
+            new OrderBookReserve(FeeBurnerSimpleIf(burner), kncToken, kncToken, feeBurnerVerifierContract);
         orderBookCodeSha3 = getCodeSha3(reserve);
     }
 
@@ -33,26 +36,25 @@ contract PermissionlessOrderBookReserveReserveLister {
 
         if (reserve != address(0)) return;
 
-        FeeBurner burner = FeeBurner(kyberNetwork.feeBurnerContract());
-        KyberReserveInterface reserve = new OrderBookReserve(burner, kncToken, token);
+        FeeBurnerInterface burner = FeeBurnerInterface(kyberNetworkContract.feeBurnerContract());
+        KyberReserveInterface reserve =
+            new OrderBookReserve(FeeBurnerSimpleIf(burner), kncToken, token, feeBurnerVerifierContract);
 
-        kyberNetwork.addReserve(reserve, kyberNetwork.RESERVE_TYPE_PERMISSION_LESS(), true);
+        kyberNetworkContract.addReserve(reserve, true, true);
 
-        kyberNetwork.listPairForReserve(reserve, token, true, true, true);
+        kyberNetworkContract.listPairForReserve(reserve, token, true, true, true);
     }
 
     function getOrderBookContract(ERC20 token) public view returns(address) {
-//        address[] memory reserves = kyberNetwork.getReservesTokenToEth(token);
-
         uint counter = 0;
-        address reserve = kyberNetwork.getReservesTokenToEth(token, counter);
+        address reserve = kyberNetworkContract.reservesPerTokenSrc(token, counter);
 
         while (reserve != address(0)) {
             if (getCodeSha3(reserve) == orderBookCodeSha3) {
                 return reserve;
             }
 
-            reserve = kyberNetwork.getReservesTokenToEth(token, ++counter);
+            reserve = kyberNetworkContract.reservesPerTokenDest(token, ++counter);
         }
 
         return (address(0));

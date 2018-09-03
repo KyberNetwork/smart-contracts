@@ -25,8 +25,7 @@ contract GenerousKyberNetwork is KyberNetwork {
         require(tx.gasprice <= maxGasPriceValue);
 
         BestRateResult memory rateResult =
-        findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount, PERMISSION_LESS_USAGE_ALLOWED);
-
+        findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount, empty);
 
         require(rateResult.rate > 0);
         require(rateResult.rate < MAX_RATE);
