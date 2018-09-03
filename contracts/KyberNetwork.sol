@@ -44,10 +44,11 @@ contract ReentrancyGuard {
 contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, ReentrancyGuard {
 
     enum ReserveType {NONE, PERMISSIONED, PERMISSIONLESS}
+//    bytes empty = "0x12345678"; //4 bytes
     bytes empty;
 
     uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
-    KyberReserveInterface[] reserves;
+    KyberReserveInterface[] public reserves;
     mapping(address=>ReserveType) public reserveType;
     WhiteListInterface public whiteListContract;
     ExpectedRateInterface public expectedRateContract;
@@ -129,7 +130,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     /// @param reserve The reserve address.
     /// @param isPermissionless is added reserve permissionless one.
     /// @param add If true, the add reserve. Otherwise delete reserve.
-    function addReserve(KyberReserveInterface reserve, bool isPermissionless, bool add) public onlyOperator {
+    function addReserve(KyberReserveInterface reserve, bool add, bool isPermissionless) public onlyOperator {
 
         if (add) {
             require(reserveType[reserve] == ReserveType.NONE);
@@ -191,8 +192,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         setDecimals(token);
     }
 
+    ///@param whiteList can be empty
     function setWhiteList(WhiteListInterface whiteList) public onlyAdmin {
-        require(whiteList != address(0));
         whiteListContract = whiteList;
     }
 
@@ -253,18 +254,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     function getReserves() public view returns(KyberReserveInterface[]) {
         return reserves;
     }
-//
-//    function getReservesEthToToken(ERC20 token, uint index) public view returns(address) {
-//        if (index >= reservesPerTokenDest[token].length) return address(0);
-//
-//        return (reservesPerTokenDest[token][index]);
-//    }
-//
-//    function getReservesTokenToEth(ERC20 token, uint index) public view returns(address) {
-//        if (index >= reservesPerTokenSrc[token].length) return address(0);
-//
-//        return (reservesPerTokenSrc[token][index]);
-//    }
 
     function maxGasPrice() public view returns(uint) {
         return maxGasPriceValue;
@@ -278,7 +267,12 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         return expectedRateContract.getExpectedRate(src, dest, srcQty);
     }
 
-    function verifyUserCap(address trader, uint weiValue) public view returns(bool) {
+    function getUserCapInWei(address user) public view returns(uint) {
+        if (whiteListContract == address(0)) return (2 ** 255);
+        return whiteListContract.getUserCapInWei(user);
+    }
+
+    function verifyUserCap(address trader, uint weiValue) internal view returns(bool) {
         if (whiteListContract == address(0)) return true;
 
         if (weiValue > whiteListContract.getUserCapInWei(trader)) return false;
@@ -397,7 +391,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         bool usePermissionless = false;
 
         // PERM ascii == P = 80, E = 69, R = 82, M = 77
-        if (keccak256(hint[0], hint[1], hint[2], hint[3]) == keccak256(byte(80), byte(69), byte(82), byte(77))) {
+        if ((hint.length >= 4) &&
+            (keccak256(hint[0], hint[1], hint[2], hint[3]) == keccak256(byte(80), byte(69), byte(82), byte(77)))){
             usePermissionless = true;
         }
 
