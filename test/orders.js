@@ -390,7 +390,7 @@ contract('Orders', async (accounts) => {
         let nonExistantOrderId = await orders.allocateIds.call(1);
 
         try {
-            let order = await orders.addAfterId(
+            await orders.addAfterId(
                 user1 /* maker */,
                 id /* orderId */,
                 10 /* srcAmount */,
@@ -628,9 +628,9 @@ contract('Orders', async (accounts) => {
 
         let srcAmount = 20;
         let dstAmount = 200;
-        let newOrderId = await update(orderId, srcAmount, dstAmount);
+        await orders.update(orderId, srcAmount, dstAmount);
 
-        let order = await getOrderById(newOrderId);
+        let order = await getOrderById(orderId);
         order.maker.should.equal(user1);
         order.srcAmount.should.be.bignumber.equal(srcAmount);
         order.dstAmount.should.be.bignumber.equal(dstAmount);
@@ -653,11 +653,11 @@ contract('Orders', async (accounts) => {
 
         let srcAmount = 10;
         let dstAmount = 330;
-        let updatedId = await update(firstId, srcAmount, dstAmount);
+        await orders.update(firstId, srcAmount, dstAmount);
 
         // Removed from linked list
         let head = await getOrderById(await orders.HEAD_ID());
-        let updated = await getOrderById(updatedId);
+        let updated = await getOrderById(firstId);
         let second = await getOrderById(secondId);
         let third = await getOrderById(thirdId);
         // after: HEAD -> Updated -> second -> third -> TAIL
@@ -688,11 +688,11 @@ contract('Orders', async (accounts) => {
 
         let srcAmount = 10;
         let dstAmount = 130;
-        let updatedId = await update(firstId, srcAmount, dstAmount);
+        await orders.update(firstId, srcAmount, dstAmount);
 
         // Removed from linked list
         let head = await getOrderById(await orders.HEAD_ID());
-        let updated = await getOrderById(updatedId);
+        let updated = await getOrderById(firstId);
         let second = await getOrderById(secondId);
         let third = await getOrderById(thirdId);
         // after: HEAD -> second -> Updated -> third -> TAIL
@@ -723,11 +723,11 @@ contract('Orders', async (accounts) => {
 
         let srcAmount = 10;
         let dstAmount = 30;
-        let updatedId = await update(firstId, srcAmount, dstAmount);
+        await orders.update(firstId, srcAmount, dstAmount);
 
         // Removed from linked list
         let head = await getOrderById(await orders.HEAD_ID());
-        let updated = await getOrderById(updatedId);
+        let updated = await getOrderById(firstId);
         let second = await getOrderById(secondId);
         let third = await getOrderById(thirdId);
         // after: HEAD -> second -> third -> Updated -> TAIL
@@ -758,12 +758,12 @@ contract('Orders', async (accounts) => {
 
         let srcAmount = 10;
         let dstAmount = 320;
-        let updatedId = await update(secondId, srcAmount, dstAmount);
+        await orders.update(secondId, srcAmount, dstAmount);
 
         // Removed from linked list
         let head = await getOrderById(await orders.HEAD_ID());
         let first = await getOrderById(firstId);
-        let updated = await getOrderById(updatedId);
+        let updated = await getOrderById(secondId);
         let third = await getOrderById(thirdId);
         // after: HEAD -> Updated -> first -> third -> TAIL
         head.nextId.should.be.bignumber.equal(updated.id);
@@ -793,12 +793,12 @@ contract('Orders', async (accounts) => {
 
         let srcAmount = 10;
         let dstAmount = 220;
-        let updatedId = await update(secondId, srcAmount, dstAmount);
+        await orders.update(secondId, srcAmount, dstAmount);
 
         // Removed from linked list
         let head = await getOrderById(await orders.HEAD_ID());
         let first = await getOrderById(firstId);
-        let updated = await getOrderById(updatedId);
+        let updated = await getOrderById(secondId);
         let third = await getOrderById(thirdId);
         // after: HEAD -> first -> Updated -> third -> TAIL
         head.nextId.should.be.bignumber.equal(first.id);
@@ -828,12 +828,12 @@ contract('Orders', async (accounts) => {
 
         let srcAmount = 10;
         let dstAmount = 20;
-        let updatedId = await update(secondId, srcAmount, dstAmount);
+        await orders.update(secondId, srcAmount, dstAmount);
 
         // Removed from linked list
         let head = await getOrderById(await orders.HEAD_ID());
         let first = await getOrderById(firstId);
-        let updated = await getOrderById(updatedId);
+        let updated = await getOrderById(secondId);
         let third = await getOrderById(thirdId);
         // after: HEAD -> first -> third -> Updated -> TAIL
         head.nextId.should.be.bignumber.equal(first.id);
@@ -863,13 +863,13 @@ contract('Orders', async (accounts) => {
 
         let srcAmount = 10;
         let dstAmount = 310;
-        let updatedId = await update(thirdId, srcAmount, dstAmount);
+        await orders.update(thirdId, srcAmount, dstAmount);
 
         // Removed from linked list
         let head = await getOrderById(await orders.HEAD_ID());
         let first = await getOrderById(firstId);
         let second = await getOrderById(secondId);
-        let updated = await getOrderById(updatedId);
+        let updated = await getOrderById(thirdId);
         // after: HEAD -> Updated -> first -> second -> TAIL
         head.nextId.should.be.bignumber.equal(updated.id);
         updated.nextId.should.be.bignumber.equal(first.id);
@@ -898,13 +898,13 @@ contract('Orders', async (accounts) => {
 
         let srcAmount = 10;
         let dstAmount = 210;
-        let updatedId = await update(thirdId, srcAmount, dstAmount);
+        await orders.update(thirdId, srcAmount, dstAmount);
 
         // Removed from linked list
         let head = await getOrderById(await orders.HEAD_ID());
         let first = await getOrderById(firstId);
         let second = await getOrderById(secondId);
-        let updated = await getOrderById(updatedId);
+        let updated = await getOrderById(thirdId);
         // after: HEAD -> first -> Updated -> second -> TAIL
         head.nextId.should.be.bignumber.equal(first.id);
         first.nextId.should.be.bignumber.equal(updated.id);
@@ -933,13 +933,13 @@ contract('Orders', async (accounts) => {
 
         let srcAmount = 10;
         let dstAmount = 10;
-        let updatedId = await update(thirdId, srcAmount, dstAmount);
+        await orders.update(thirdId, srcAmount, dstAmount);
 
         // Removed from linked list
         let head = await getOrderById(await orders.HEAD_ID());
         let first = await getOrderById(firstId);
         let second = await getOrderById(secondId);
-        let updated = await getOrderById(updatedId);
+        let updated = await getOrderById(thirdId);
         // after: HEAD -> first -> second -> Updated -> TAIL
         head.nextId.should.be.bignumber.equal(first.id);
         first.nextId.should.be.bignumber.equal(second.id);
@@ -968,7 +968,7 @@ contract('Orders', async (accounts) => {
 
         let srcAmount = 10;
         let dstAmount = 210;
-        let updatedId = await updateWithPositionHint(
+        await orders.updateWithPositionHint(
             thirdId /* orderId */,
             srcAmount /* srcAmount */,
             dstAmount /* dstAmount */,
@@ -979,7 +979,7 @@ contract('Orders', async (accounts) => {
         let head = await getOrderById(await orders.HEAD_ID());
         let first = await getOrderById(firstId);
         let second = await getOrderById(secondId);
-        let updated = await getOrderById(updatedId);
+        let updated = await getOrderById(thirdId);
         updated.maker.should.equal(user1);
         updated.srcAmount.should.be.bignumber.equal(srcAmount);
         updated.dstAmount.should.be.bignumber.equal(dstAmount);
@@ -1002,7 +1002,7 @@ contract('Orders', async (accounts) => {
 
         let srcAmount = 10;
         let dstAmount = 210;
-        let updatedId = await updateWithPositionHint(
+        await orders.updateWithPositionHint(
             thirdId /* orderId */,
             srcAmount /* srcAmount */,
             dstAmount /* dstAmount */,
@@ -1013,7 +1013,7 @@ contract('Orders', async (accounts) => {
         let head = await getOrderById(await orders.HEAD_ID());
         let first = await getOrderById(firstId);
         let second = await getOrderById(secondId);
-        let updated = await getOrderById(updatedId);
+        let updated = await getOrderById(thirdId);
         // after: HEAD -> first -> Updated -> second -> TAIL
         head.nextId.should.be.bignumber.equal(first.id);
         first.nextId.should.be.bignumber.equal(updated.id);
@@ -1023,23 +1023,6 @@ contract('Orders', async (accounts) => {
         second.prevId.should.be.bignumber.equal(updated.id);
         updated.prevId.should.be.bignumber.equal(first.id);
         first.prevId.should.be.bignumber.equal(head.id);
-    });
-
-    it("should support getOrderData", async () => {
-        let order = await addOrder(
-            user1 /* maker */,
-            10 /* srcAmount */,
-            200 /* dstAmount */
-        );
-
-        let params = await orders.getOrderData(order.id);
-        let [maker, nextOrderId, isLastOrder, srcAmount, dstAmount] = params;
-
-        maker.should.equal(user1);
-        nextOrderId.should.be.bignumber.equal(await orders.TAIL_ID());
-        isLastOrder.should.equal(true);
-        srcAmount.should.be.bignumber.equal(10);
-        dstAmount.should.be.bignumber.equal(200);
     });
 
     it("should return first order id with getFirstOrder ", async () => {
@@ -1061,6 +1044,51 @@ contract('Orders', async (accounts) => {
         let [firstOrderId, isEmpty] = params;
 
         isEmpty.should.equal(true);
+    });
+
+    it("should allow adding order specifically after head", async () => {
+        let orderId = await allocateIds(1);
+        await orders.addAfterId(
+            user1 /* maker */,
+            orderId /* orderId */,
+            10 /* srcAmount */,
+            100 /* dstAmount */,
+            await orders.HEAD_ID() /* prevId */
+        );
+
+        let head = await getOrderById(await orders.HEAD_ID());
+        let order = await getOrderById(orderId);
+        // after: HEAD -> Order -> TAIL
+        head.nextId.should.be.bignumber.equal(order.id);
+        order.nextId.should.be.bignumber.equal(await orders.TAIL_ID());
+        // after: HEAD <- Order
+        order.prevId.should.be.bignumber.equal(head.id);
+    });
+
+    it("should allow adding order specifically before tail", async () => {
+        let order = await addOrder(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            200 /* dstAmount */
+        );
+        await orders.removeById(order.id);
+        let newOrderId = await allocateIds(1);
+
+        await orders.addAfterId(
+            user1 /* maker */,
+            newOrderId /* orderId */,
+            10 /* srcAmount */,
+            100 /* dstAmount */,
+            await orders.HEAD_ID() /* prevId */
+        );
+
+        let head = await getOrderById(await orders.HEAD_ID());
+        let newOrder = await getOrderById(newOrderId);
+        // after: HEAD -> NewOrder -> TAIL
+        head.nextId.should.be.bignumber.equal(newOrder.id);
+        newOrder.nextId.should.be.bignumber.equal(await orders.TAIL_ID());
+        // after: HEAD <- NewOrder
+        newOrder.prevId.should.be.bignumber.equal(head.id);
     });
 
     // TODO: add without position to a long list fails
@@ -1119,26 +1147,6 @@ async function addOrderAfterId(maker, srcAmount, dstAmount, prevId, args = {}) {
     let id = await addOrderAfterIdGetId(
             maker, srcAmount, dstAmount, prevId, args);
     return await getOrderById(id);
-}
-
-async function update(orderId, srcAmount, dstAmount, args = {}) {
-    let newId = await orders.update.call(orderId, srcAmount, dstAmount);
-    await orders.update(orderId, srcAmount, dstAmount);
-    return newId;
-}
-
-async function updateWithPositionHint(
-    orderId,
-    srcAmount,
-    dstAmount,
-    prevId,
-    args = {}
-)
-{
-    let newId = await orders.updateWithPositionHint.call(
-        orderId, srcAmount, dstAmount, prevId);
-    await orders.updateWithPositionHint(orderId, srcAmount, dstAmount, prevId);
-    return newId;
 }
 
 async function allocateIds(howMany) {
