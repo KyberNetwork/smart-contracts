@@ -3,6 +3,7 @@ let KyberNetwork = artifacts.require("./KyberNetwork.sol");
 let FeeBurner = artifacts.require("./FeeBurner.sol");
 let Orders = artifacts.require("./permissionless/Orders.sol");
 let OrderBookReserve = artifacts.require("./permissionless/mock/MockOrderBookReserve.sol");
+let FeeBurnerResolver = artifacts.require("./permissionless/mock/MockFeeBurnerResolver.sol");
 
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
@@ -20,6 +21,8 @@ let withDrawAddress;
 //contracts
 let reserve;
 let feeBurner;
+let feeBurnerResolver;
+let network;
 
 //tokens data
 ////////////
@@ -48,23 +51,26 @@ contract('OrderBookReserve', async (accounts) => {
         user2 = accounts[2];
         maker1 = accounts[3];
         maker2 = accounts[4];
-        let network = accounts[5];
-        withDrawAddress = accounts[6];
-
+        network = accounts[5];
+        
         token = await TestToken.new("the token", "TOK", 18);
         tokenAdd = token.address;
 
         KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
         kncAddress = KNCToken.address;
-
+//        network = await KyberNetwork.new(admin);
+        
         feeBurner = await FeeBurner.new(admin, kncAddress, network);
+
+        feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
+
         currentBlock = await Helper.getCurrentBlock();
     });
 
     beforeEach('setup contract for each test', async () => {
 
 //        log(feeBurner.address + " " + kncAddress + " " + tokenAdd)
-        reserve = await OrderBookReserve.new(feeBurner.address, kncAddress, tokenAdd);
+        reserve = await OrderBookReserve.new(feeBurner.address, kncAddress, tokenAdd, feeBurnerResolver.address);
 //        log(reserve);
         await reserve.init();
     });
@@ -351,7 +357,6 @@ contract('OrderBookReserve', async (accounts) => {
         let updatedDest = 2 * 10 ** 18;
         rc = await reserve.updateMakeOrder(maker1, false, orderId, orderSrcAmountTwei, updatedDest, 0, {from: maker1});
         log("update single order gas: " + rc.receipt.gasUsed);
-
         let freeWei = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(freeWei.valueOf(), 10 ** 18);
 
@@ -447,12 +452,16 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(orderList.length, 0);
     });
 
-    it("maker add few buy orders. update order without change position. see position correct", async() => {
-        assert(false);
+    xit("maker add few buy orders. update order without change position. see position correct", async() => {
+
     });
 
-    it("maker add few buy orders. update order with change position. see position correct", async() => {
-        assert(false)
+    xit("maker add few buy orders. update order with change position. see position correct", async() => {
+
+    });
+
+    xit("maker add few buy orders. update order with another maker. see fails.", async() => {
+
     });
 
     it("maker add a few buy orders. see orders added in correct position. print gas price per order", async function () {
@@ -799,7 +808,7 @@ contract('OrderBookReserve', async (accounts) => {
 
         assert.equal(expectedBurn.valueOf(), calcBurn.valueOf());
 
-        let kncStakePerWeiBps = await reserve.kncStakePerEtherBPS();
+        let kncStakePerWeiBps = await reserve.kncStakePerEtherBps();
 
         let calcExpectedStake = weiValue.mul(kncStakePerWeiBps).div(1000);
         let calcStake = await reserve.calcKncStake(weiValue);
@@ -1043,10 +1052,10 @@ function log(str) {
 async function makerDeposit(maker, ethWei, tokenTwei, kncTwei) {
 
     await token.approve(reserve.address, tokenTwei);
-    await reserve.makerDepositTokens(maker, tokenTwei);
+    await reserve.makerDepositToken(maker, tokenTwei);
     await KNCToken.approve(reserve.address, kncTwei);
     await reserve.makerDepositKnc(maker, kncTwei);
-    await reserve.makerDepositEthers(maker, {from: maker, value: ethWei});
+    await reserve.makerDepositWei(maker, {from: maker, value: ethWei});
 }
 
 async function twoStringsSoliditySha(str1, str2) {

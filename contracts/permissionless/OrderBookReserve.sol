@@ -3,8 +3,13 @@ pragma solidity 0.4.18;
 
 import "./Orders.sol";
 import "./MakerOrders.sol";
+import "./FeeBurnerResolverInterface.sol";
 import "../KyberReserveInterface.sol";
-import "../FeeBurner.sol";
+
+
+contract FeeBurnerSimpleIf {
+    uint public kncPerETHRate;
+}
 
 
 contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
@@ -14,10 +19,11 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     uint public makersBurnFeeBps = 25;              // knc burn fee per order that is taken. = 25 / 1000 = 0.25 %
 
     ERC20 public token; // this reserve will serve buy / sell for this token.
-    FeeBurner public feeBurnerContract;
+    FeeBurnerSimpleIf public feeBurnerContract;
+    FeeBurnerResolverInterface public feeBurnerResolverContract;
 
     ERC20 public kncToken;  //not constant. to enable testing and test net usage
-    int public kncStakePerEtherBPS = 20000; //for validating orders
+    int public kncStakePerEtherBps = 20000; //for validating orders
     uint32 public numOrdersToAllocate = 60;
 
     Orders public sellList;
@@ -45,16 +51,21 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         uint128 dstAmount;
     }
 
-    function OrderBookReserve(FeeBurner burner, ERC20 knc, ERC20 _token) public {
+    function OrderBookReserve(FeeBurnerSimpleIf burner, ERC20 knc, ERC20 _token, FeeBurnerResolverInterface resolver)
+        public
+    {
 
         require(knc != address(0));
         require(_token != address(0));
         require(burner != address(0));
+        require(resolver != address(0));
 
+        feeBurnerResolverContract = resolver;
         feeBurnerContract = burner;
         kncToken = knc;
         token = _token;
 
+        require(feeBurnerResolverContract.getFeeBurnerAddress() == address(burner));
         require(kncToken.approve(feeBurnerContract, (2**255)));
 
 //        notice. if decimal API not supported this should revert
@@ -112,9 +123,6 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
         if ((remainingSrcAmount != 0) || (totalDstAmount == 0)) return 0; //not enough tokens to exchange.
 
-        //check overflow
-        if (uint(totalDstAmount) * PRECISION < uint(totalDstAmount)) return 0;
-
         return calcRateFromQty(srcQty, totalDstAmount, getDecimals(src), getDecimals(dest));
     }
 
@@ -142,8 +150,8 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
             require(msg.value == srcAmount);
             list = buyList;
         } else {
-            require(srcToken.transferFrom(msg.sender, this, srcAmount));
             require(msg.value == 0);
+            require(srcToken.transferFrom(msg.sender, this, srcAmount));
             list = sellList;
         }
 
@@ -320,7 +328,10 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     {
         uint128 currDestAmount;
         uint128 currSrcAmount;
-        ( ,currSrcAmount, currDestAmount, , ) = list.getOrderDetails(orderId);
+        address orderMaker;
+
+        (orderMaker, currSrcAmount, currDestAmount, , ) = list.getOrderDetails(orderId);
+        require(orderMaker == maker);
 
         validateUpdateOrder(maker, isEthToToken, currSrcAmount, currDestAmount, srcAmount, dstAmount);
 
@@ -337,20 +348,21 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
         return true;
     }
 
-    event MakerDepositedTokens(address indexed maker, uint amountTwei);
+    event MakerDepositedToken(address indexed maker, uint amountTwei);
 
-    function makerDepositTokens(address maker, uint amountTwei) public {
+    function makerDepositToken(address maker, uint amountTwei) public {
         require(maker != address(0));
+        require(amountTwei < MAX_QTY);
 
         require(token.transferFrom(msg.sender, this, amountTwei));
 
         makerFunds[maker][token] += amountTwei;
-        MakerDepositedTokens(maker, amountTwei);
+        MakerDepositedToken(maker, amountTwei);
     }
 
     event MakerDepositedEth(address indexed maker, uint amountWei);
 
-    function makerDepositEthers(address maker) public payable {
+    function makerDepositWei(address maker) public payable {
         require(maker != address(0));
 
         makerFunds[maker][ETH_TOKEN_ADDRESS] += msg.value;
@@ -359,8 +371,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
     event MakerDepositedKnc(address indexed maker, uint amountTwei);
 
-    function makerDepositKnc(address maker, uint128 amountTwei) public payable {
-
+    function makerDepositKnc(address maker, uint amountTwei) public payable {
         require(maker != address(0));
 
         require(kncToken.transferFrom(msg.sender, this, amountTwei));
@@ -372,17 +383,17 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
         MakerDepositedKnc(maker, amountTwei);
 
-        allocateOrders(
+        require(allocateOrders(
             makerOrdersSell[maker], /* freeOrders */
             sellList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
             numOrdersToAllocate /* howMany */
-        );
+        ));
 
-        allocateOrders(
+        require(allocateOrders(
             makerOrdersBuy[maker], /* freeOrders */
             buyList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
             numOrdersToAllocate /* howMany */
-        );
+        ));
     }
 
     function makerWithdrawFunds(ERC20 tokenOrEth, uint amount) public {
@@ -392,13 +403,13 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
         require(makerFreeAmount >= amount);
 
+        makerFunds[maker][tokenOrEth] -= amount;
+
         if (tokenOrEth == ETH_TOKEN_ADDRESS) {
             maker.transfer(amount);
         } else {
-            token.transfer(maker, amount);
+            require(token.transfer(maker, amount));
         }
-
-        makerFunds[maker][tokenOrEth] -= amount;
     }
 
     event OrderCanceled(address indexed maker, uint32 orderId, uint srcAmount, uint dstAmount);
@@ -437,16 +448,36 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
         return true;
     }
-//
-//    function setFeeBurner(FeeBurner burner) public {
-//        require(burner != address(0));
-//
-//        kncToken.approve(feeBurnerContract, 0);
-//
-//        feeBurnerContract = burner;
-//
-//        kncToken.approve(feeBurnerContract, (2**255));
-//    }
+
+    function setFeeBurner(FeeBurnerSimpleIf burner) public {
+        require(burner != address(0));
+        require(feeBurnerResolverContract.getFeeBurnerAddress() == address(burner));
+
+        require(kncToken.approve(feeBurnerContract, 0));
+
+        feeBurnerContract = burner;
+
+        require(kncToken.approve(feeBurnerContract, (2**255)));
+    }
+
+    function setStakePerEth(int newStakeBps) public {
+
+        //todo: 2? 3? what factor is good for us?
+        uint factor = 3;
+        uint burnPerWeiBps = makersBurnFeeBps * feeBurnerContract.kncPerETHRate();
+
+        // old factor should be too small
+        require(uint(kncStakePerEtherBps) < factor * burnPerWeiBps);
+
+        // new value should be high enough
+        require(uint(newStakeBps) > factor * burnPerWeiBps);
+
+        // but not too high...
+        require(uint(newStakeBps) > (factor + 1) * burnPerWeiBps);
+
+        // Ta daaa
+        kncStakePerEtherBps = newStakeBps;
+    }
 
     function getOrderDetails(bool isEthToToken, uint32 orderId) public view
         returns (
@@ -532,7 +563,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
     }
 
     function calcKncStake(int weiAmount) public view returns(int) {
-        return(weiAmount * kncStakePerEtherBPS / 1000);
+        return(weiAmount * kncStakePerEtherBps / 1000);
     }
 
     function calcBurnAmount(int weiAmount) public view returns(uint) {
@@ -562,7 +593,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface {
 
         KncStakes storage amounts = makerKncStakes[maker];
 
-        require(amounts.freeKnc > stakeAmountTwei);
+        require(amounts.freeKnc >= stakeAmountTwei);
 
         if (stakeAmountTwei >= 0) {
             amounts.freeKnc -= uint128(stakeAmountTwei);

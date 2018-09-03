@@ -52,6 +52,7 @@ contract MakerOrders {
         uint32 howMany
     )
         internal
+        returns(bool)
     {
         require(howMany <= 256);
 
@@ -61,5 +62,7 @@ contract MakerOrders {
         freeOrders.firstOrderId = firstAllocatedId;
         freeOrders.numOrders = uint32(howMany);
         freeOrders.takenBitmap = 0;
+
+        return true;
     }
 }

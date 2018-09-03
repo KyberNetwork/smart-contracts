@@ -44,24 +44,21 @@ let currentBlock;
 
 contract('PermissionlessOrderBookReserveReserveLister', async (accounts) => {
 
-    beforeEach('setup contract for each test', async () => {
+    before('setup contract for each test', async () => {
 
-        if(init) {
-            //below should happen once
-            admin = accounts[0];
-            whiteList = accounts[1];
-            expectedRate = accounts[2];
-            kyberProxy = accounts[3];
+        //below should happen once
+        admin = accounts[0];
+        whiteList = accounts[1];
+        expectedRate = accounts[2];
+        kyberProxy = accounts[3];
 
-            token = await TestToken.new("the token", "TOK", 18);
-            tokenAdd = token.address;
+        token = await TestToken.new("the token", "TOK", 18);
+        tokenAdd = token.address;
 
-            KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
-            kncAddress = KNCToken.address;
+        KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
+        kncAddress = KNCToken.address;
 
-            currentBlock = await Helper.getCurrentBlock();
-            init = false;
-        }
+        currentBlock = await Helper.getCurrentBlock();
     });
 
 
@@ -132,10 +129,10 @@ function log(str) {
 async function makerDeposit(maker, ethWei, tokenTwei, kncTwei) {
 
     await token.approve(reserve.address, tokenTwei);
-    await reserve.makerDepositTokens(maker, tokenTwei);
+    await reserve.makerDepositToken(maker, tokenTwei);
     await KNCToken.approve(reserve.address, kncTwei);
     await reserve.makerDepositKnc(maker, kncTwei);
-    await reserve.makerDepositEthers(maker, {from: maker, value: ethWei});
+    await reserve.makerDepositWei(maker, {from: maker, value: ethWei});
 }
 
 async function twoStringsSoliditySha(str1, str2) {
