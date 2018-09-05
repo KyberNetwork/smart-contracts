@@ -772,17 +772,18 @@ contract('Orders', async (accounts) => {
 
         let srcAmount = 10;
         let dstAmount = 210;
-        await orders.updateWithPositionHint(
+        let updated = await updateWithPositionHint(
             thirdId /* orderId */,
             srcAmount /* srcAmount */,
             dstAmount /* dstAmount */,
             firstId /* prevId */
         );
 
-        let updated = await getOrderById(thirdId);
-        updated.maker.should.equal(user1);
-        updated.srcAmount.should.be.bignumber.equal(srcAmount);
-        updated.dstAmount.should.be.bignumber.equal(dstAmount);
+        updated.should.be.true;
+        const order = await getOrderById(thirdId);
+        order.maker.should.equal(user1);
+        order.srcAmount.should.be.bignumber.equal(srcAmount);
+        order.dstAmount.should.be.bignumber.equal(dstAmount);
     });
 
     it("should update order contents with new amounts to given position: order", async () => {
@@ -802,15 +803,111 @@ contract('Orders', async (accounts) => {
 
         let srcAmount = 10;
         let dstAmount = 210;
-        await orders.updateWithPositionHint(
+        const updated = await updateWithPositionHint(
             thirdId /* orderId */,
             srcAmount /* srcAmount */,
             dstAmount /* dstAmount */,
             firstId /* prevId */
         );
 
+        updated.should.be.true;
         // after: HEAD -> first -> Updated -> second -> TAIL
         assertOrdersOrder3(firstId, thirdId, secondId);
+    });
+
+    it("should reject update with bad hint: non-existant", async () => {
+        let order = await addOrder(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            200 /* dstAmount */,
+        );
+
+        // Calling locally so that the order will not be in fact added to the
+        // list and thus the id will be invalid.
+        let nonExistantOrderId = await orders.allocateIds.call(1);
+
+        let updated = await updateWithPositionHint(
+            order.id /* orderId */,
+            20 /* srcAmount */,
+            200 /* dstAmount */,
+            nonExistantOrderId /* prevId */
+        );
+
+        updated.should.be.false;
+    });
+
+    it("should reject update with bad hint: is TAIL", async () => {
+        let order = await addOrder(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            200 /* dstAmount */,
+        );
+
+        let updated = await updateWithPositionHint(
+            order.id /* orderId */,
+            20 /* srcAmount */,
+            200 /* dstAmount */,
+            // TAIL is technically a non-existant order, as the ID used for
+            // it should not have an order in it, but the verification was
+            // added to make this requirement explicit.
+            TAIL_ID /* prevId */
+        );
+
+        updated.should.be.false;
+    });
+
+    it("should reject update with bad hint: after worse order", async () => {
+        let order = await addOrder(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            200 /* dstAmount */,
+        );
+
+        let worseId = await addOrderGetId(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            100 /* dstAmount */
+        );
+
+        let updated = await updateWithPositionHint(
+            order.id /* orderId */,
+            20 /* srcAmount */,
+            300 /* dstAmount */,
+            // TAIL is technically a non-existant order, as the ID used for
+            // it should not have an order in it, but the verification was
+            // added to make this requirement explicit.
+            worseId /* prevId */
+        );
+
+        updated.should.be.false;
+    });
+
+    it("should reject update with bad hint: before better order", async () => {
+        let order = await addOrder(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            200 /* dstAmount */,
+        );
+
+        let bestId = await addOrderGetId(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            300 /* dstAmount */
+        );
+        let betterId = await addOrderGetId(
+            user1 /* maker */,
+            10 /* srcAmount */,
+            200 /* dstAmount */
+        );
+
+        let updated = await updateWithPositionHint(
+            order.id /* orderId */,
+            10 /* srcAmount */,
+            100 /* dstAmount */,
+            bestId /* prevId */
+        );
+
+        updated.should.be.false;
     });
 
     it("should return first order id with getFirstOrder ", async () => {
@@ -939,6 +1036,22 @@ async function allocateIds(howMany) {
     let firstId = await orders.allocateIds.call(howMany);
     await orders.allocateIds(howMany);
     return firstId;
+}
+
+async function updateWithPositionHint(orderId, srcAmount, dstAmount, prevId) {
+    const updated = await orders.updateWithPositionHint.call(
+        orderId,
+        srcAmount,
+        dstAmount,
+        prevId
+    );
+    await orders.updateWithPositionHint(
+        orderId,
+        srcAmount,
+        dstAmount,
+        prevId
+    );
+    return updated;
 }
 
 async function assertOrdersOrder1(orderId1) {
