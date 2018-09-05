@@ -3,9 +3,10 @@ pragma solidity 0.4.18;
 
 import "../Utils2.sol";
 import "../Withdrawable.sol";
+import "./OrdersInterface.sol";
 
 
-contract Orders is Withdrawable, Utils2 {
+contract Orders is Withdrawable, Utils2, OrdersInterface {
 
     struct Order {
         address maker;

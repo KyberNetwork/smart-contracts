@@ -1,18 +1,18 @@
-let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let KyberNetwork = artifacts.require("./KyberNetwork.sol");
-let FeeBurner = artifacts.require("./FeeBurner.sol");
-let Orders = artifacts.require("./permissionless/Orders.sol");
-let OrderBookReserve = artifacts.require("./permissionless/mock/MockOrderBookReserve.sol");
-let FeeBurnerResolver = artifacts.require("./permissionless/mock/MockFeeBurnerResolver.sol");
+const TestToken = artifacts.require("./mockContracts/TestToken.sol");
+const KyberNetwork = artifacts.require("./KyberNetwork.sol");
+const FeeBurner = artifacts.require("./FeeBurner.sol");
+const Orders = artifacts.require("./permissionless/Orders.sol");
+const OrdersFactory = artifacts.require("./permissionless/OrdersFactory.sol");
+const OrderBookReserve = artifacts.require("./permissionless/mock/MockOrderBookReserve.sol");
+const FeeBurnerResolver = artifacts.require("./permissionless/mock/MockFeeBurnerResolver.sol");
 
-let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+const Helper = require("./helper.js");
+const BigNumber = require('bignumber.js');
 
 //global variables
 //////////////////
-let precisionUnits = (new BigNumber(10).pow(18));
-let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-let precision = new BigNumber(10).pow(18);
+const precisionUnits = (new BigNumber(10).pow(18));
+const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 
 //permission groups
 let admin;
@@ -23,6 +23,7 @@ let reserve;
 let feeBurner;
 let feeBurnerResolver;
 let network;
+let ordersFactory;
 
 //tokens data
 ////////////
@@ -64,13 +65,15 @@ contract('OrderBookReserve', async (accounts) => {
 
         feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
 
+        ordersFactory = await OrdersFactory.new();
+
         currentBlock = await Helper.getCurrentBlock();
     });
 
     beforeEach('setup contract for each test', async () => {
 
 //        log(feeBurner.address + " " + kncAddress + " " + tokenAdd)
-        reserve = await OrderBookReserve.new(feeBurner.address, kncAddress, tokenAdd, feeBurnerResolver.address);
+        reserve = await OrderBookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address, ordersFactory.address);
 //        log(reserve);
         await reserve.init();
     });
