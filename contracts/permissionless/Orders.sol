@@ -93,7 +93,6 @@ contract Orders is Withdrawable, Utils2 {
         orders[order.nextId].prevId = order.prevId;
     }
 
-    // The updated order id is returned following the update.
     function update(uint32 orderId, uint128 srcAmount, uint128 dstAmount)
         public
         onlyAdmin
@@ -103,7 +102,9 @@ contract Orders is Withdrawable, Utils2 {
         add(maker, orderId, srcAmount, dstAmount);
     }
 
-    // The updated order id is returned following the update.
+    event AmountUpdateOnly();
+
+    // Returns false if provided with bad hint.
     function updateWithPositionHint(
         uint32 orderId,
         uint128 srcAmount,
@@ -112,12 +113,28 @@ contract Orders is Withdrawable, Utils2 {
     )
         public
         onlyAdmin
-        returns(bool)
+        returns (bool)
     {
-        address maker = orders[orderId].maker;
-        removeById(orderId);
-        addAfterId(maker, orderId, srcAmount, dstAmount, prevId);
-        return true;
+        bool hintIsCurrentPosition = false;
+        bool hintIsRightPositionAfterUpdate = false;
+        if (hintIsCurrentPosition && hintIsRightPositionAfterUpdate) {
+            // Order is in the right position, update amounts
+            orders[orderId].srcAmount = srcAmount;
+            orders[orderId].dstAmount = dstAmount;
+            AmountUpdateOnly();
+            return true;
+        }
+
+        if (isRightPosition(srcAmount, dstAmount, prevId)) {
+            // Let's move the order to the hinted position.
+            address maker = orders[orderId].maker;
+            removeById(orderId);
+            addAfterId(maker, orderId, srcAmount, dstAmount, prevId);
+            return true;
+        }
+
+        // bad hint.
+        return false;
     }
 
     function allocateIds(uint32 howMany) public onlyAdmin returns(uint32) {
