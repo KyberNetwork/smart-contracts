@@ -1,28 +1,34 @@
-let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-//let OrderBookReserve = artifacts.require("./OrderBookReserve.sol");
-let OrderBookReserve = artifacts.require("./permissionless/mock/MockOrderBookReserve.sol");
-let KyberNetwork = artifacts.require("./KyberNetwork.sol");
-let PermissionlessOrderBookReserveReserveLister = artifacts.require("./PermissionlessOrderBookReserveReserveLister.sol");
-let FeeBurner = artifacts.require("./FeeBurner.sol");
+const TestToken = artifacts.require("./mockContracts/TestToken.sol");
+const KyberNetwork = artifacts.require("./KyberNetwork.sol");
+const FeeBurner = artifacts.require("./FeeBurner.sol");
 
-let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+//const OrderBookReserve = artifacts.require("./OrderBookReserve.sol");
+const OrderBookReserve = artifacts.require("./permissionless/mock/MockOrderBookReserve.sol");
+const PermissionlessOrderBookReserveLister = artifacts.require("./permissionless/PermissionlessOrderBookReserveLister.sol");
+const OrdersFactory = artifacts.require("./permissionless/OrdersFactory.sol");
+const FeeBurnerResolver = artifacts.require("./permissionless/mock/MockFeeBurnerResolver.sol");
+
+const Helper = require("./helper.js");
+const BigNumber = require('bignumber.js');
 
 //global variables
 //////////////////
-let precisionUnits = (new BigNumber(10).pow(18));
-let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-let precision = new BigNumber(10).pow(18);
+const precisionUnits = (new BigNumber(10).pow(18));
+const gasPrice = (new BigNumber(10).pow(9).mul(50));
+const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 
 let withDrawAddress;
 
 //contracts
 let reserve;
+let network;
 let feeBurner;
 let whiteList;
 let expectedRate;
 let kyberProxy;
 let reserveLister;
+let feeBurnerResolver;
+let ordersFactory;
 
 //tokens data
 ////////////
@@ -32,17 +38,17 @@ let KNCToken;
 let kncAddress;
 let kgtToken;
 
-let gasPrice = (new BigNumber(10).pow(9).mul(50));
 let negligibleRateDiff = 11;
 
 //addresses
 let admin;
+let operator;
 
 let init = true;
 
 let currentBlock;
 
-contract('PermissionlessOrderBookReserveReserveLister', async (accounts) => {
+contract('PermissionlessOrderBookReserveLister', async (accounts) => {
 
     before('setup contract for each test', async () => {
 
@@ -51,6 +57,7 @@ contract('PermissionlessOrderBookReserveReserveLister', async (accounts) => {
         whiteList = accounts[1];
         expectedRate = accounts[2];
         kyberProxy = accounts[3];
+        operator = accounts[4];
 
         token = await TestToken.new("the token", "TOK", 18);
         tokenAdd = token.address;
@@ -58,14 +65,16 @@ contract('PermissionlessOrderBookReserveReserveLister', async (accounts) => {
         KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
         kncAddress = KNCToken.address;
 
+        network = await KyberNetwork.new(admin)
+        feeBurner = await FeeBurner.new(admin, kncAddress, network.address);
+
+        feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
+        ordersFactory = await OrdersFactory.new();
+
         currentBlock = await Helper.getCurrentBlock();
     });
 
-
-    it("init internal network and reserveLister. see init success.", async function () {
-        network = await KyberNetwork.new(admin)
-
-        feeBurner = await FeeBurner.new(admin, kncAddress, network.address);
+    it("init network and reserveLister. see init success.", async function () {
 
         //set contracts
         await network.setKyberProxy(kyberProxy);
@@ -73,52 +82,47 @@ contract('PermissionlessOrderBookReserveReserveLister', async (accounts) => {
         await network.setExpectedRate(expectedRate);
         await network.setFeeBurner(feeBurner.address);
         await network.setParams(gasPrice.valueOf(), negligibleRateDiff);
+        await network.addOperator(operator);
         await network.setEnable(true);
 
-        reserveLister = await PermissionlessOrderBookReserveReserveLister.new(network.address, kncAddress);
-//
-//        let kyberAdd = await reserveLister.kyberContract();
-//        assert.equal(kyberAdd.valueOf(), network.address);
-//
-//        let rxKnc = await reserveLister.kncToken();
-//        assert.equal(rxKnc.valueOf(), kncAddress);
-//
-//        await network.addOperator(reserveLister.address);
-    });
+//log(network.address + " " + feeBurnerResolver.address + " " + kncAddress)
+        reserveLister = await PermissionlessOrderBookReserveLister.new(network.address, feeBurnerResolver.address,
+            ordersFactory.address, kncAddress);
 
-    it("create new permission less reserve and verify it was created.", async function () {
+        let kyberAdd = await reserveLister.kyberNetworkContract();
+        assert.equal(kyberAdd.valueOf(), network.address);
 
-        let rxReserve = await reserveLister.getOrderBookReserveForToken(tokenAdd);
-        assert(rxReserve.valueOf() == 0);
+        let add = await reserveLister.feeBurnerResolverContract();
+        assert.equal(add.valueOf(), feeBurnerResolver.address);
 
-        await reserveLister.addOrderBookReserve(tokenAdd);
+        add = await reserveLister.ordersFactory();
+        assert.equal(add.valueOf(), ordersFactory.address);
 
-        //get new reserve
-        rxReserve = await reserveLister.getOrderBookReserveForToken(tokenAdd);
-        log ("reserve "+ rxReserve.valueOf());
-
-        assert(rxReserve.valueOf() != 0);
-
-        //verify can't create another reserve for same token
-
-        try {
-            await reserveLister.addOrderBookReserve(tokenAdd);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        rxReserve = await reserveLister.getOrderBookReserveForToken(tokenAdd);
-        assert(rxReserve.valueOf() != 0);
-
-        reserve = await OrderBookReserve.at(rxReserve.valueOf());
-
-        let rxToken = await reserve.reserveToken();
-        assert.equal(rxToken.valueOf(), tokenAdd);
-
-        let rxKnc = await reserve.kncToken();
+        let rxKnc = await reserveLister.kncToken();
         assert.equal(rxKnc.valueOf(), kncAddress);
+
+        await network.addOperator(reserveLister.address);
     });
+
+    it("test adding and listing order book reserve, get through network contract and through lister", async() => {
+        let rc = await reserveLister.addOrderBookContract(tokenAdd);
+        log("add reserve gas: " + rc.receipt.gasUsed);
+
+        rc = await reserveLister.initOrderBookContract(tokenAdd);
+        log("init reserve gas: " + rc.receipt.gasUsed);
+
+        rc = await reserveLister.listOrderBookContract(tokenAdd);
+        log("list reserve gas: " + rc.receipt.gasUsed);
+
+        let reserveAddress = await network.reservesPerTokenDest(tokenAdd, 0);
+        let listReserveAddress = await reserveLister.reserves(tokenAdd);
+        assert.equal(reserveAddress.valueOf(), listReserveAddress.valueOf());
+
+        reserve = await OrderBookReserve.at(reserveAddress.valueOf());
+
+        let rxToken = await reserve.token();
+        assert.equal(rxToken.valueOf(), tokenAdd);
+    })
 });
 
 

@@ -59,8 +59,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     bool                  public isEnabled = false; // network is enabled
     mapping(bytes32=>uint) public infoFields; // this is only a UI field for external app.
 
-    mapping(address=>address[]) public reservesPerTokenSrc; //reserves supporting token to eth
-    mapping(address=>address[]) public reservesPerTokenDest;//reserves support eth to token
+    mapping(address=>address[]) public reservesTokenSrc; //reserves supporting token to eth
+    mapping(address=>address[]) public reservesTokenDest;//reserves support eth to token
 
     function KyberNetwork(address _admin) public {
         require(_admin != address(0));
@@ -135,6 +135,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         if (add) {
             require(reserveType[reserve] == ReserveType.NONE);
             reserves.push(reserve);
+
             if (isPermissionless) {
                 reserveType[reserve] = ReserveType.PERMISSIONLESS;
             } else {
@@ -145,8 +146,9 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         } else {
             reserveType[reserve] = ReserveType.NONE;
 
-            // will have trouble if more than 50k reserves...
+            // will have trouble if more than xxx reserves...
             for (uint i = 0; i < reserves.length; i++) {
+
                 if (reserves[i] == reserve) {
                     reserves[i] = reserves[reserves.length - 1];
                     reserves.length--;
@@ -180,6 +182,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
         if (tokenToEth) {
             listPairs(reserve, token, true, add);
+
             if (add) {
                 token.approve(reserve, 2**255); // approve infinity
             } else {
@@ -319,6 +322,19 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         return searchBestRatePermissioned(src, dest, srcAmount, true);
     }
 
+    function reservesPerTokenSrc(address token, uint index) public view returns(address) {
+        if (index >= reservesTokenSrc[token].length) return (address(0));
+
+        return reservesTokenSrc[token][index];
+    }
+
+    function reservesPerTokenDest(address token, uint index) public view returns(address) {
+
+        if (index >= reservesTokenDest[token].length) return (address(0));
+
+        return reservesTokenDest[token][index];
+    }
+
     /* solhint-disable code-complexity */
     // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
     //  It has been tested, reviewed and found to be clear enough.
@@ -338,9 +354,9 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         address[] memory reserveArr;
 
         if (src == ETH_TOKEN_ADDRESS) {
-            reserveArr = reservesPerTokenDest[dest];
+            reserveArr = reservesTokenDest[dest];
         } else {
-            reserveArr = reservesPerTokenSrc[src];
+            reserveArr = reservesTokenSrc[src];
         }
 
         if (reserveArr.length == 0) return (reserves[bestReserve], bestRate);
@@ -411,10 +427,10 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
     function listPairs(address reserve, ERC20 token, bool isTokenToEth, bool add) internal {
         uint i;
-        address[] storage reserveArr = reservesPerTokenDest[token];
+        address[] storage reserveArr = reservesTokenDest[token];
 
         if (isTokenToEth) {
-            reserveArr = reservesPerTokenSrc[token];
+            reserveArr = reservesTokenSrc[token];
         }
 
         for (i = 0; i < reserveArr.length; i++) {
