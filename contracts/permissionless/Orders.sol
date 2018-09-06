@@ -102,8 +102,6 @@ contract Orders is Withdrawable, Utils2 {
         add(maker, orderId, srcAmount, dstAmount);
     }
 
-    event AmountUpdateOnly();
-
     // Returns false if provided with bad hint.
     function updateWithPositionHint(
         uint32 orderId,
@@ -115,16 +113,6 @@ contract Orders is Withdrawable, Utils2 {
         onlyAdmin
         returns (bool)
     {
-        bool hintIsCurrentPosition = false;
-        bool hintIsRightPositionAfterUpdate = false;
-        if (hintIsCurrentPosition && hintIsRightPositionAfterUpdate) {
-            // Order is in the right position, update amounts
-            orders[orderId].srcAmount = srcAmount;
-            orders[orderId].dstAmount = dstAmount;
-            AmountUpdateOnly();
-            return true;
-        }
-
         if (isRightPosition(srcAmount, dstAmount, prevId)) {
             // Let's move the order to the hinted position.
             address maker = orders[orderId].maker;
