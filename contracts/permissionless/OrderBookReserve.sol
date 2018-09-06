@@ -179,8 +179,6 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         uint128 remainingSrcAmount = uint128(srcAmount);
         uint128 totalDstAmount = 0;
 
-        orderData.isLastOrder = false;
-
         while (!orderData.isLastOrder) {
 
             (orderData.maker, orderData.nextId, orderData.isLastOrder, orderData.srcAmount, orderData.dstAmount) =
