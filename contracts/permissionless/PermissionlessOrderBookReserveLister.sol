@@ -3,7 +3,6 @@ pragma solidity 0.4.18;
 
 import "./OrderBookReserve.sol";
 import "../FeeBurnerInterface.sol";
-//import "../KyberNetworkInterface.sol";
 
 
 contract KyberNetworkInterface {
@@ -47,13 +46,6 @@ contract PermissionlessOrderBookReserveLister {
         feeBurnerResolverContract = resolver;
         ordersFactory = factory;
     }
-
-//    function init() public {
-//        OrderBookReserveInterface reserve =
-//            new OrderBookReserve(kncToken, kncToken, feeBurnerResolverContract, ordersFactory);
-//        reserve.init();
-//        orderBookCodeSha3 = getCodeSha3(address(reserve));
-//    }
 
     function addOrderBookContract(ERC20 token) public returns(bool) {
 
