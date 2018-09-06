@@ -17,6 +17,7 @@ contract MakerOrders {
         uint bitPointer = 1;
 
         for(uint i = 0; i < numOrders; ++i) {
+
             if ((orderBitmap & bitPointer) == 0) {
                 freeOrders.takenBitmap = orderBitmap | bitPointer;
                 return(uint32(uint(freeOrders.firstOrderId) + i));
@@ -56,11 +57,14 @@ contract MakerOrders {
     {
         require(howMany <= 256);
 
+        if (freeOrders.takenBitmap != 0) return true;
+        if (howMany == freeOrders.numOrders) return true;
+
         // make sure no orders in use at the moment
         require(freeOrders.takenBitmap == 0);
 
         freeOrders.firstOrderId = firstAllocatedId;
-        freeOrders.numOrders = uint32(howMany);
+        freeOrders.numOrders = howMany;
         freeOrders.takenBitmap = 0;
 
         return true;

@@ -2,76 +2,88 @@ pragma solidity 0.4.18;
 
 
 import "./OrderBookReserve.sol";
-import "../KyberNetwork.sol";
+import "../FeeBurnerInterface.sol";
 
 
-contract PermissionlessOrderBookReserveReserveLister {
+contract KyberNetworkInterface {
+    function feeBurnerContract() public view returns(FeeBurnerInterface);
+    function addReserve(KyberReserveInterface reserve, bool add, bool isPermissionless) public;
+    function listPairForReserve(address reserve, ERC20 token, bool ethToToken, bool tokenToEth, bool add) public;
+    function reservesPerTokenSrc(address, uint) public view returns(address);
+    function reservesPerTokenDest(address, uint) public view returns(address);
+}
+
+
+contract PermissionlessOrderBookReserveLister {
 
     bytes32 public orderBookCodeSha3;
 
-    KyberNetwork public kyberNetworkContract;
-    FeeBurnerResolverInterface feeBurnerVerifierContract;
-
+    KyberNetworkInterface public kyberNetworkContract;
+    FeeBurnerResolverInterface public feeBurnerResolverContract;
+    OrdersFactoryInterface public ordersFactory;
     ERC20 public kncToken;
 
-    function KyberController(KyberNetwork kyber, FeeBurnerResolverInterface verifier, ERC20 knc) public {
+    enum ListingStage {NO_RESERVE, RESERVE_ADDED, RESERVE_INIT, RESERVE_LISTED}
+
+    mapping(address => ListingStage) public reserveListingStage;
+    mapping(address => OrderBookReserveInterface) public reserves;
+
+    function PermissionlessOrderBookReserveLister(
+        KyberNetworkInterface kyber,
+        FeeBurnerResolverInterface resolver,
+        OrdersFactoryInterface factory,
+        ERC20 knc
+    )
+        public
+    {
         require(kyber != address(0));
-        require(verifier != address(0));
+        require(resolver != address(0));
+        require(factory != address(0));
         require(knc != address(0));
 
         kncToken = knc;
         kyberNetworkContract = kyber;
-        feeBurnerVerifierContract = verifier;
+        feeBurnerResolverContract = resolver;
+        ordersFactory = factory;
+    }
 
-        FeeBurnerInterface burner = FeeBurnerInterface(kyberNetworkContract.feeBurnerContract());
-        KyberReserveInterface reserve =
-            new OrderBookReserve(FeeBurnerSimpleIf(burner), kncToken, kncToken, feeBurnerVerifierContract);
-        orderBookCodeSha3 = getCodeSha3(reserve);
+    function addOrderBookContract(ERC20 token) public returns(bool) {
+
+        require(reserveListingStage[token] == ListingStage.NO_RESERVE);
+
+        reserves[token] = new OrderBookReserve(kncToken, token, feeBurnerResolverContract, ordersFactory);
+        reserveListingStage[token] = ListingStage.RESERVE_ADDED;
+
+        return true;
+    }
+
+    function initOrderBookContract(ERC20 token) public returns(bool) {
+
+        require(reserveListingStage[token] == ListingStage.RESERVE_ADDED);
+
+        reserves[token].init();
+        reserveListingStage[token] = ListingStage.RESERVE_INIT;
+
+        return true;
+    }
+
+    function listOrderBookContract(ERC20 token) public returns(bool) {
+
+        require(reserveListingStage[token] == ListingStage.RESERVE_INIT);
+
+        kyberNetworkContract.addReserve(KyberReserveInterface(reserves[token]), true, true);
+
+        kyberNetworkContract.listPairForReserve(KyberReserveInterface(reserves[token]), token, true, true, true);
+        reserveListingStage[token] = ListingStage.RESERVE_LISTED;
+
+        return true;
     }
 
     /// @dev permission less reserve currently supports one token each.
     /// @dev anyone can call
-    function listToken(ERC20 token) public {
-        require(getOrderBookContract(token) == address(0));
-
-        if (reserve != address(0)) return;
-
-        FeeBurnerInterface burner = FeeBurnerInterface(kyberNetworkContract.feeBurnerContract());
-        KyberReserveInterface reserve =
-            new OrderBookReserve(FeeBurnerSimpleIf(burner), kncToken, token, feeBurnerVerifierContract);
-
-        kyberNetworkContract.addReserve(reserve, true, true);
-
-        kyberNetworkContract.listPairForReserve(reserve, token, true, true, true);
-    }
-
-    function getOrderBookContract(ERC20 token) public view returns(address) {
-        uint counter = 0;
-        address reserve = kyberNetworkContract.reservesPerTokenSrc(token, counter);
-
-        while (reserve != address(0)) {
-            if (getCodeSha3(reserve) == orderBookCodeSha3) {
-                return reserve;
-            }
-
-            reserve = kyberNetworkContract.reservesPerTokenDest(token, ++counter);
-        }
-
-        return (address(0));
-    }
-
-    function getCodeSha3(address codeAt) public view returns(bytes32) {
-        uint codeSize;
-        assembly {
-            codeSize := extcodesize(codeAt)
-        }
-
-        bytes memory code = new bytes(codeSize);
-
-        assembly {
-            extcodecopy(codeAt, code, 0, codeSize)
-        }
-
-        return (keccak256(code));
+    function getOrderBookContract(ERC20 token) public view returns(address, bool isReady) {
+        address reserve = reserves[token];
+        isReady = reserveListingStage[token] == ListingStage.RESERVE_LISTED;
+        return(reserve, isReady);
     }
 }
