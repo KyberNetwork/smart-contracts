@@ -959,7 +959,7 @@ contract('Orders', async (accounts) => {
         });
     });
 
-    describe("#updateAmount", async () => {
+    describe("#updateAmounts", async () => {
         it("update when order is first and stays in position", async () => {
             // before: HEAD -> first -> second -> third -> TAIL
             let firstId = await addOrderGetId(
@@ -975,7 +975,7 @@ contract('Orders', async (accounts) => {
                 10 /* srcAmount */,
                 100 /* dstAmount */);
 
-            const updated = await updateAmount(
+            const updated = await updateAmounts(
                 firstId /* orderId */,
                 10 /* srcAmount */,
                 310 /* dstAmount */,
@@ -1005,7 +1005,7 @@ contract('Orders', async (accounts) => {
                 10 /* srcAmount */,
                 100 /* dstAmount */);
 
-            const updated = await updateAmount(
+            const updated = await updateAmounts(
                 secondId /* orderId */,
                 10 /* srcAmount */,
                 220 /* dstAmount */,
@@ -1035,7 +1035,7 @@ contract('Orders', async (accounts) => {
                 10 /* srcAmount */,
                 100 /* dstAmount */);
 
-            const updated = await updateAmount(
+            const updated = await updateAmounts(
                 thirdId /* orderId */,
                 10 /* srcAmount */,
                 110 /* dstAmount */,
@@ -1065,7 +1065,7 @@ contract('Orders', async (accounts) => {
                 10 /* srcAmount */,
                 100 /* dstAmount */);
 
-            const updated = await updateAmount(
+            const updated = await updateAmounts(
                 firstId /* orderId */,
                 10 /* srcAmount */,
                 110 /* dstAmount */,
@@ -1083,7 +1083,7 @@ contract('Orders', async (accounts) => {
 
         it("should revert updates to HEAD", async () => {
             try {
-                const updated = await updateAmount(
+                const updated = await updateAmounts(
                     HEAD_ID /* orderId */,
                     10 /* srcAmount */,
                     310 /* dstAmount */,
@@ -1098,7 +1098,7 @@ contract('Orders', async (accounts) => {
 
         it("should revert updates to TAIL", async () => {
             try {
-                const updated = await updateAmount(
+                const updated = await updateAmounts(
                     TAIL_ID /* orderId */,
                     10 /* srcAmount */,
                     310 /* dstAmount */,
@@ -1225,14 +1225,14 @@ async function updateWithPositionHint(orderId, srcAmount, dstAmount, prevId) {
     return updated;
 }
 
-async function updateAmount(orderId, srcAmount, dstAmount, prevId) {
-    const updated = await orders.updateAmount.call(
+async function updateAmounts(orderId, srcAmount, dstAmount, prevId) {
+    const updated = await orders.updateAmounts.call(
         orderId,
         srcAmount,
         dstAmount,
         prevId
     );
-    await orders.updateAmount(
+    await orders.updateAmounts(
         orderId,
         srcAmount,
         dstAmount,

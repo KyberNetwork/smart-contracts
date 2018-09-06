@@ -126,7 +126,7 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         return false;
     }
 
-    function updateAmount(
+    function updateAmounts(
         uint32 orderId,
         uint128 srcAmount,
         uint128 dstAmount
@@ -136,7 +136,7 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         returns (bool)
     {
         require(orderId != HEAD_ID && orderId != TAIL_ID);
-        
+
         uint newOrderKey = calculateOrderSortKey(srcAmount, dstAmount);
 
         uint32 prevId = orders[orderId].prevId;
