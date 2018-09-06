@@ -123,6 +123,63 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
         let rxToken = await reserve.token();
         assert.equal(rxToken.valueOf(), tokenAdd);
     })
+
+    it("maker sure can't add same token twice.", async() => {
+        // make sure its already added
+        ready =  await reserveLister.getOrderBookContract(tokenAdd);
+        assert.equal(ready[1].valueOf(), true);     
+
+        try {
+            let rc = await reserveLister.addOrderBookContract(tokenAdd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            rc = await reserveLister.initOrderBookContract(tokenAdd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            rc = await reserveLister.listOrderBookContract(tokenAdd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    })
+
+    it("add and list order book reserve, see getter has correct ready flag.", async() => {
+        newToken = await TestToken.new("new token", "NEW", 18);
+        newTokenAdd = newToken.address;
+
+        let ready =  await reserveLister.getOrderBookContract(newTokenAdd);
+        assert.equal(ready[0].valueOf(), 0);
+        assert.equal(ready[1].valueOf(), false);
+
+        let rc = await reserveLister.addOrderBookContract(newTokenAdd);
+        let reserveAddress = await reserveLister.reserves(newTokenAdd);
+
+        ready = await reserveLister.getOrderBookContract(newTokenAdd);
+        assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
+        assert.equal(ready[1].valueOf(), false);
+
+        rc = await reserveLister.initOrderBookContract(newTokenAdd);
+
+        ready =  await reserveLister.getOrderBookContract(newTokenAdd);
+        assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
+        assert.equal(ready[1].valueOf(), false);
+
+        rc = await reserveLister.listOrderBookContract(newTokenAdd);
+
+        ready =  await reserveLister.getOrderBookContract(newTokenAdd);
+        assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
+        assert.equal(ready[1].valueOf(), true);
+    })
+
+
 });
 
 
