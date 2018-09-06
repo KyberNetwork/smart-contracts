@@ -125,6 +125,46 @@ contract Orders is Withdrawable, Utils2 {
         return false;
     }
 
+    function updateAmount(
+        uint32 orderId,
+        uint128 srcAmount,
+        uint128 dstAmount
+    )
+        public
+        onlyAdmin
+        returns (bool)
+    {
+        require(orderId != HEAD_ID && orderId != TAIL_ID);
+        
+        uint newOrderKey = calculateOrderSortKey(srcAmount, dstAmount);
+
+        uint32 prevId = orders[orderId].prevId;
+        if (prevId != HEAD_ID) {
+            uint prevOrderKey = calculateOrderSortKey(
+                orders[prevId].srcAmount,
+                orders[prevId].dstAmount
+            );
+            if (prevOrderKey < newOrderKey) {
+                return false;
+            }
+        }
+
+        uint32 nextId = orders[orderId].nextId;
+        if (nextId != TAIL_ID) {
+            uint nextOrderKey = calculateOrderSortKey(
+                orders[nextId].srcAmount,
+                orders[nextId].dstAmount
+            );
+            if (newOrderKey < nextOrderKey) {
+                return false;
+            }
+        }
+
+        orders[orderId].srcAmount = srcAmount;
+        orders[orderId].dstAmount = dstAmount;
+        return true;
+    }
+
     function allocateIds(uint32 howMany) public onlyAdmin returns(uint32) {
         uint32 firstId = nextFreeId;
         nextFreeId += howMany;
