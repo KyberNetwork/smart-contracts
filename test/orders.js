@@ -38,7 +38,7 @@ contract('Orders', async (accounts) => {
     });
 
     describe("#allocateIds", async () => {
-        it("should allocate ids for orders that are not head or tail", async () => {
+        it("should return ids different from head and tail", async () => {
             let firstId = await allocateIds(1);
 
             firstId.should.be.bignumber.not.equal(HEAD_ID);
@@ -101,8 +101,10 @@ contract('Orders', async (accounts) => {
 
             better.should.be.bignumber.greaterThan(worse);
         });
+    });
 
-        it("find order prev in empty list", async () => {
+    describe("#findPrevOrderId", async () => {
+        it("should handle empty list", async () => {
             let srcAmount = 10;
             let dstAmount = 100;
             let prevId = await orders.findPrevOrderId(srcAmount, dstAmount);
@@ -110,7 +112,7 @@ contract('Orders', async (accounts) => {
             prevId.should.be.bignumber.equal(HEAD_ID);
         });
 
-        it("find order prev in list with one better order", async () => {
+        it("should handle list with better orders", async () => {
             let betterId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -124,7 +126,7 @@ contract('Orders', async (accounts) => {
             prevId.should.be.bignumber.equal(betterId);
         });
 
-        it("find order prev in list with one worse order", async () => {
+        it("find handle list with worse orders", async () => {
             let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -138,7 +140,7 @@ contract('Orders', async (accounts) => {
             prevId.should.be.bignumber.equal(HEAD_ID);
         });
 
-        it("find order prev in list with a worse order and a better one", async () => {
+        it("find handle list with worse and better orders", async () => {
             let betterId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
