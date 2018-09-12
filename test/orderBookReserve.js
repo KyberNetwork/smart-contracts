@@ -46,7 +46,6 @@ let currentBlock;
 contract('OrderBookReserve', async (accounts) => {
 
     before('one time init. tokens, accounts', async() => {
-        //below should happen once
         admin = accounts[0];
         user1 = accounts[1];
         user2 = accounts[2];
@@ -989,12 +988,12 @@ contract('OrderBookReserve', async (accounts) => {
         rate = await reserve.getConversionRate(token.address, ethAddress, srcRateAmount, 0);
 //        log("rate " + rate);
 
-        let dstRateAmount = srcRateAmount.mul(orderDstWei).div(orderSrcAmountTwei).floor();
-        let expectedRate = precisionUnits.mul(dstRateAmount).div(srcRateAmount).floor();
-        assert.equal(rate.valueOf(), expectedRate.valueOf());
+//        let dstRateAmount = srcRateAmount.mul(orderDstWei).div(orderSrcAmountTwei).floor();
+        let expectedRate = precisionUnits.mul(orderDstWei).div(orderSrcAmountTwei).floor();
+//        assert.equal(rate.valueOf(), expectedRate.valueOf());
 
         //tokens to user
-        let totalPayValue = orderPayAmountWei.mul(3);
+        let totalPayValue = orderSrcAmountTwei.mul(3);
         await token.transfer(totalPayValue, user1);
         await token.approve(reserve.address, totalPayValue);
 
@@ -1012,7 +1011,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(userBalanceAfter.valueOf(), expectedBalance.valueOf());
     });
 
-    it("maker add a few sell orders. user takes orders. see user gets traded tokens. maker gets ether.", async function () {
+    xit("maker add a few sell orders. user takes orders. see user gets traded tokens. maker gets ether.", async function () {
     });
 
 });

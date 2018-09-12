@@ -2,7 +2,6 @@ const TestToken = artifacts.require("./mockContracts/TestToken.sol");
 const KyberNetwork = artifacts.require("./KyberNetwork.sol");
 const FeeBurner = artifacts.require("./FeeBurner.sol");
 
-//const OrderBookReserve = artifacts.require("./OrderBookReserve.sol");
 const OrderBookReserve = artifacts.require("./permissionless/mock/MockOrderBookReserve.sol");
 const PermissionlessOrderBookReserveLister = artifacts.require("./permissionless/PermissionlessOrderBookReserveLister.sol");
 const OrdersFactory = artifacts.require("./permissionless/OrdersFactory.sol");
@@ -43,21 +42,30 @@ let negligibleRateDiff = 11;
 //addresses
 let admin;
 let operator;
+let maker1;
+let user1;
 
 let init = true;
 
 let currentBlock;
 
+const LISTING_NONE = 0;
+const LISTING_STATE_ADDED = 1;
+const LISTING_STATE_INIT = 2;
+const LISTING_STATE_LISTED = 3;
+
+
 contract('PermissionlessOrderBookReserveLister', async (accounts) => {
 
     before('setup contract for each test', async () => {
 
-        //below should happen once
         admin = accounts[0];
         whiteList = accounts[1];
         expectedRate = accounts[2];
         kyberProxy = accounts[3];
         operator = accounts[4];
+        maker1 = accounts[5];
+        user1 = accounts[6];
 
         token = await TestToken.new("the token", "TOK", 18);
         tokenAdd = token.address;
@@ -65,7 +73,7 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
         KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
         kncAddress = KNCToken.address;
 
-        network = await KyberNetwork.new(admin)
+        network = await KyberNetwork.new(admin);
         feeBurner = await FeeBurner.new(admin, kncAddress, network.address);
 
         feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
@@ -113,7 +121,7 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
 
         rc = await reserveLister.listOrderBookContract(tokenAdd);
         log("list reserve gas: " + rc.receipt.gasUsed);
-
+//
         let reserveAddress = await network.reservesPerTokenDest(tokenAdd, 0);
         let listReserveAddress = await reserveLister.reserves(tokenAdd);
         assert.equal(reserveAddress.valueOf(), listReserveAddress.valueOf());
@@ -126,8 +134,8 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
 
     it("maker sure can't add same token twice.", async() => {
         // make sure its already added
-        ready =  await reserveLister.getOrderBookContract(tokenAdd);
-        assert.equal(ready[1].valueOf(), true);     
+        ready =  await reserveLister.getOrderBookContractState(tokenAdd);
+        assert.equal(ready[1].valueOf(), LISTING_STATE_LISTED);
 
         try {
             let rc = await reserveLister.addOrderBookContract(tokenAdd);
@@ -151,33 +159,107 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
         }
     })
 
+    it("test reserve - maker deposit tokens, ethers, knc, validate updated in contract", async function () {
+
+        let amountTwei = new BigNumber(5 * 10 ** 19); //500 tokens
+        let amountKnc = new BigNumber(600 * 10 ** 18);
+        let amountEth = 2 * 10 ** 18;
+
+        let res = await OrderBookReserve.at(await reserveLister.reserves(tokenAdd));
+
+        await makerDeposit(res, maker1, amountEth, amountTwei.valueOf(), amountKnc.valueOf());
+
+        let rxNumTwei = await res.makerFunds(maker1, tokenAdd);
+        assert.equal(rxNumTwei.valueOf(), amountTwei);
+
+        let rxKncTwei = await res.makerUnusedKNC(maker1);
+        assert.equal(rxKncTwei.valueOf(), amountKnc);
+
+        rxKncTwei = await res.makerStakedKNC(maker1);
+        assert.equal(rxKncTwei.valueOf(), 0);
+
+        //makerDepositEther
+        let rxWei = await res.makerFunds(maker1, ethAddress);
+        assert.equal(rxWei.valueOf(), amountEth);
+
+        await res.makerWithdrawFunds(ethAddress, rxWei, {from: maker1})
+        rxWei = await res.makerFunds(maker1, ethAddress);
+        assert.equal(rxWei.valueOf(), 0);
+    });
+
+
     it("add and list order book reserve, see getter has correct ready flag.", async() => {
         newToken = await TestToken.new("new token", "NEW", 18);
         newTokenAdd = newToken.address;
 
-        let ready =  await reserveLister.getOrderBookContract(newTokenAdd);
+        let ready =  await reserveLister.getOrderBookContractState(newTokenAdd);
         assert.equal(ready[0].valueOf(), 0);
-        assert.equal(ready[1].valueOf(), false);
+        assert.equal(ready[1].valueOf(), LISTING_NONE);
 
         let rc = await reserveLister.addOrderBookContract(newTokenAdd);
         let reserveAddress = await reserveLister.reserves(newTokenAdd);
 
-        ready = await reserveLister.getOrderBookContract(newTokenAdd);
+        ready = await reserveLister.getOrderBookContractState(newTokenAdd);
         assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
-        assert.equal(ready[1].valueOf(), false);
+        assert.equal(ready[1].valueOf(), LISTING_STATE_ADDED);
 
         rc = await reserveLister.initOrderBookContract(newTokenAdd);
 
-        ready =  await reserveLister.getOrderBookContract(newTokenAdd);
+        ready =  await reserveLister.getOrderBookContractState(newTokenAdd);
         assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
-        assert.equal(ready[1].valueOf(), false);
+        assert.equal(ready[1].valueOf(), LISTING_STATE_INIT);
 
         rc = await reserveLister.listOrderBookContract(newTokenAdd);
 
-        ready =  await reserveLister.getOrderBookContract(newTokenAdd);
+        ready =  await reserveLister.getOrderBookContractState(newTokenAdd);
         assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
-        assert.equal(ready[1].valueOf(), true);
+        assert.equal(ready[1].valueOf(), LISTING_STATE_LISTED);
     })
+
+    it("test reserve maker add a few sell orders. user takes orders. see taken orders are removed as expected.", async function () {
+        let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
+        let orderDstWei = new BigNumber(2 * 10 ** 18);
+
+        let amountKnc = 600 * 10 ** 18;
+        let amountEth = (new BigNumber(6 * 10 ** 18)).add(600);
+
+        let res = await OrderBookReserve.at(await reserveLister.reserves(tokenAdd));
+
+        await makerDeposit(res, maker1, amountEth, 0, amountKnc.valueOf());
+
+        // first getConversionRate should return 0
+        let rate = await res.getConversionRate(token.address, ethAddress, 10 ** 18, 0);
+        assert.equal(rate.valueOf(), 0);
+
+        //now add order
+        //////////////
+//        makeOrder(address maker, bool isEthToToken, uint128 payAmount, uint128 exchangeAmount, uint32 hintPrevOrder)
+        let rc = await res.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        rc = await res.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei.add(400), 0, {from: maker1});
+            rc = await res.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
+//        log(rc.logs[0].args)
+
+        let orderList = await res.getSellOrderList();
+        assert.equal(orderList.length, 3);
+
+        //tokens to user
+        let totalPayValue = orderSrcAmountTwei.mul(3);
+        await token.transfer(totalPayValue, user1);
+        await token.approve(res.address, totalPayValue);
+
+        let userInitialBalance = await await Helper.getBalancePromise(user1);
+        //trade
+        rc = await res.trade(tokenAdd, totalPayValue, ethAddress, user1, 300, false);
+        log("take 3 sell orders gas: " + rc.receipt.gasUsed);
+
+        orderList = await res.getSellOrderList();
+        assert.equal(orderList.length, 0);
+
+        let userBalanceAfter = await Helper.getBalancePromise(user1);
+        let expectedBalance = userInitialBalance.add(amountEth);
+
+        assert.equal(userBalanceAfter.valueOf(), expectedBalance.valueOf());
+    });
 
 
 });
@@ -187,13 +269,13 @@ function log(str) {
     console.log(str);
 }
 
-async function makerDeposit(maker, ethWei, tokenTwei, kncTwei) {
+async function makerDeposit(res, maker, ethWei, tokenTwei, kncTwei) {
 
-    await token.approve(reserve.address, tokenTwei);
-    await reserve.makerDepositToken(maker, tokenTwei);
-    await KNCToken.approve(reserve.address, kncTwei);
-    await reserve.makerDepositKnc(maker, kncTwei);
-    await reserve.makerDepositWei(maker, {from: maker, value: ethWei});
+    await token.approve(res.address, tokenTwei);
+    await res.makerDepositToken(maker, tokenTwei);
+    await KNCToken.approve(res.address, kncTwei);
+    await res.makerDepositKnc(maker, kncTwei);
+    await res.makerDepositWei(maker, {from: maker, value: ethWei});
 }
 
 async function twoStringsSoliditySha(str1, str2) {

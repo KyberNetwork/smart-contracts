@@ -84,12 +84,14 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         require(getDecimals(token) > 0);
     }
 
-    function init() public {
+    function init() public returns(bool) {
         require(sellList == address(0));
         require(buyList == address(0));
 
         sellList = ordersFactoryContract.newOrdersContract(this);
         buyList = ordersFactoryContract.newOrdersContract(this);
+
+        return true;
     }
 
     function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
@@ -115,6 +117,8 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
 
         uint128 remainingSrcAmount = uint128(srcQty);
         uint128 totalDstAmount = 0;
+
+        orderData.isLastOrder = false;
 
         while (!orderData.isLastOrder) {
 
@@ -176,6 +180,8 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
 
         uint128 remainingSrcAmount = uint128(srcAmount);
         uint128 totalDstAmount = 0;
+
+        orderData.isLastOrder = false;
 
         while (!orderData.isLastOrder) {
 
@@ -732,7 +738,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         address maker,
         ERC20 src,
         ERC20 dest,
-        uint128 partialSrcAmount,
+        uint128 srcAmount,
         uint128 partialDstAmount,
         uint128 orderSrcAmount,
         uint128 orderDstAmount
@@ -740,10 +746,10 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         internal
         returns(bool)
     {
-        require(partialSrcAmount < orderSrcAmount);
+        require(srcAmount < orderSrcAmount);
         require(partialDstAmount < orderDstAmount);
 
-        orderSrcAmount -= partialSrcAmount;
+        orderSrcAmount -= srcAmount;
         orderDstAmount -= partialDstAmount;
 
         OrdersInterface list;
@@ -767,11 +773,11 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
             list.removeById(orderId);
         } else {
             // update order values in storage
-            uint128 subDst = list.subSrcAndDstAmounts(orderId, partialSrcAmount);
+            uint128 subDst = list.subSrcAndDstAmounts(orderId, srcAmount);
             require(subDst == partialDstAmount);
         }
 
-        return(takeOrder(maker, isEthToToken, partialSrcAmount, partialDstAmount));
+        return(takeOrder(maker, isEthToToken, srcAmount, partialDstAmount));
     }
 
     function takeOrder(
