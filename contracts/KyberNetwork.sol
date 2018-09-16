@@ -44,7 +44,6 @@ contract ReentrancyGuard {
 contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, ReentrancyGuard {
 
     enum ReserveType {NONE, PERMISSIONED, PERMISSIONLESS}
-//    bytes empty = "0x12345678"; //4 bytes
     bytes empty;
 
     uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
@@ -59,8 +58,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     bool                  public isEnabled = false; // network is enabled
     mapping(bytes32=>uint) public infoFields; // this is only a UI field for external app.
 
-    mapping(address=>address[]) public reservesTokenSrc; //reserves supporting token to eth
-    mapping(address=>address[]) public reservesTokenDest;//reserves support eth to token
+    mapping(address=>address[]) public reservesPerTokenSrc; //reserves supporting token to eth
+    mapping(address=>address[]) public reservesPerTokenDest;//reserves support eth to token
 
     function KyberNetwork(address _admin) public {
         require(_admin != address(0));
@@ -130,17 +129,15 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     /// @param reserve The reserve address.
     /// @param isPermissionless is added reserve permissionless one.
     /// @param add If true, the add reserve. Otherwise delete reserve.
-    function addReserve(KyberReserveInterface reserve, bool add, bool isPermissionless) public onlyOperator {
+    function addReserve(KyberReserveInterface reserve, bool add, bool isPermissionless) public onlyOperator
+        returns(bool)
+    {
 
         if (add) {
             require(reserveType[reserve] == ReserveType.NONE);
             reserves.push(reserve);
 
-            if (isPermissionless) {
-                reserveType[reserve] = ReserveType.PERMISSIONLESS;
-            } else {
-                reserveType[reserve] = ReserveType.PERMISSIONED;
-            }
+            reserveType[reserve] = isPermissionless? ReserveType.PERMISSIONLESS : ReserveType.PERMISSIONED;
 
             AddReserveToNetwork(reserve, true);
         } else {
@@ -157,6 +154,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
                 }
             }
         }
+
+        return true;
     }
 
     event ListReservePairs(address reserve, ERC20 src, ERC20 dest, bool add);
@@ -171,6 +170,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     function listPairForReserve(address reserve, ERC20 token, bool ethToToken, bool tokenToEth, bool add)
         public
         onlyOperator
+        returns(bool)
     {
         require(reserveType[reserve] != ReserveType.NONE);
 
@@ -193,6 +193,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         }
 
         setDecimals(token);
+
+        return true;
     }
 
     ///@param whiteList can be empty
@@ -275,14 +277,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         return whiteListContract.getUserCapInWei(user);
     }
 
-    function verifyUserCap(address trader, uint weiValue) internal view returns(bool) {
-        if (whiteListContract == address(0)) return true;
-
-        if (weiValue > whiteListContract.getUserCapInWei(trader)) return false;
-
-        return true;
-    }
-
     function getUserCapInTokenWei(address user, ERC20 token) public view returns(uint) {
         //future feature
         user;
@@ -322,19 +316,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         return searchBestRatePermissioned(src, dest, srcAmount, true);
     }
 
-    function reservesPerTokenSrc(address token, uint index) public view returns(address) {
-        if (index >= reservesTokenSrc[token].length) return (address(0));
-
-        return reservesTokenSrc[token][index];
-    }
-
-    function reservesPerTokenDest(address token, uint index) public view returns(address) {
-
-        if (index >= reservesTokenDest[token].length) return (address(0));
-
-        return reservesTokenDest[token][index];
-    }
-
     /* solhint-disable code-complexity */
     // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
     //  It has been tested, reviewed and found to be clear enough.
@@ -353,11 +334,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
         address[] memory reserveArr;
 
-        if (src == ETH_TOKEN_ADDRESS) {
-            reserveArr = reservesTokenDest[dest];
-        } else {
-            reserveArr = reservesTokenSrc[src];
-        }
+        reserveArr = src == ETH_TOKEN_ADDRESS? reservesPerTokenDest[dest] : reservesPerTokenSrc[src];
 
         if (reserveArr.length == 0) return (reserves[bestReserve], bestRate);
 
@@ -427,10 +404,10 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
     function listPairs(address reserve, ERC20 token, bool isTokenToEth, bool add) internal {
         uint i;
-        address[] storage reserveArr = reservesTokenDest[token];
+        address[] storage reserveArr = reservesPerTokenDest[token];
 
         if (isTokenToEth) {
-            reserveArr = reservesTokenSrc[token];
+            reserveArr = reservesPerTokenSrc[token];
         }
 
         for (i = 0; i < reserveArr.length; i++) {
@@ -481,10 +458,10 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
             rateResult);
 
         // verify trade size is smaller than user cap
-        require(verifyUserCap(tradeInput.trader, weiAmount));
+        require(getUserCapInWei(tradeInput.trader) >= weiAmount);
 
         //if any "change" in src token, send back to trader
-        handleChange(tradeInput.src, tradeInput.srcAmount, actualSrcAmount, tradeInput.trader);
+        require(handleChange(tradeInput.src, tradeInput.srcAmount, actualSrcAmount, tradeInput.trader));
 
         //do the trade
         //src to ETH
@@ -588,16 +565,18 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     }
 
     /// when user sets max dest amount we could have too many source tokens == change. so we send it back to user.
-    function handleChange (ERC20 src, uint srcAmount, uint requiredSrcAmount, address trader) internal {
+    function handleChange (ERC20 src, uint srcAmount, uint requiredSrcAmount, address trader) internal returns (bool){
 
         if (requiredSrcAmount < srcAmount) {
             //if there is "change" send back to trader
             if (src == ETH_TOKEN_ADDRESS) {
                 trader.transfer(srcAmount - requiredSrcAmount);
             } else {
-                src.transfer(trader, (srcAmount - requiredSrcAmount));
+                require(src.transfer(trader, (srcAmount - requiredSrcAmount)));
             }
         }
+
+        return true;
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether

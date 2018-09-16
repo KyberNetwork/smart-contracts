@@ -2,5 +2,5 @@ pragma solidity 0.4.18;
 
 
 interface OrderBookReserveInterface {
-    function init() public;
+    function init() public returns(bool);
 }

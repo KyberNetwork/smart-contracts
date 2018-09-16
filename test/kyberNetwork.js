@@ -6,6 +6,11 @@ let WhiteList = artifacts.require("./WhiteList.sol");
 let ExpectedRate = artifacts.require("./ExpectedRate.sol");
 let FeeBurner = artifacts.require("./FeeBurner.sol");
 
+const OrderBookReserve = artifacts.require("./permissionless/mock/MockOrderBookReserve.sol");
+const PermissionlessOrderBookReserveLister = artifacts.require("./permissionless/PermissionlessOrderBookReserveLister.sol");
+const OrdersFactory = artifacts.require("./permissionless/OrdersFactory.sol");
+const FeeBurnerResolver = artifacts.require("./permissionless/mock/MockFeeBurnerResolver.sol");
+
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
 
@@ -35,6 +40,7 @@ let user1;
 let user2;
 let walletForToken;
 let walletId;
+let maker1;
 
 //contracts
 let pricing1;
@@ -43,6 +49,7 @@ let pricing3
 let reserve1;
 let reserve2;
 let reserve3;
+let orderBookReserve;
 let whiteList;
 let expectedRate;
 let network;
@@ -61,6 +68,9 @@ let tokens = [];
 let tokenAdd = [];
 let tokenDecimals = [];
 let uniqueToken;
+let permissionlessTok;
+let KNC;
+let kncAddress;
 
 // imbalance data
 let minimalRecordResolution = 2; //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
@@ -122,6 +132,7 @@ contract('KyberNetwork', function(accounts) {
         user2 = accounts[5];
         walletId = accounts[6];
         walletForToken = accounts[7];
+        maker1 = accounts[8];
 
         currentBlock = priceUpdateBlock = await Helper.getCurrentBlock();
 
@@ -150,6 +161,11 @@ contract('KyberNetwork', function(accounts) {
             await pricing2.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
             await pricing2.enableTokenTrade(token.address);
         }
+
+        KNC = await TestToken.new("kyber krystal", "KNC", 18);
+        kncAddress = KNC.address;
+
+        permissionlessTok = await TestToken.new("permissionLess", "PRM", 18);
 
         assert.equal(tokens.length, numTokens, "bad number tokens");
 
@@ -1666,7 +1682,7 @@ contract('KyberNetwork', function(accounts) {
         await networkTemp.setEnable(true);
     });
 
-    it("should verify network reverts when negligible rate diff > 10000.", async function () {
+    it("should verify network reverts when setting negligible rate diff > 10000.", async function () {
         let legalNegRateDiff = 100 * 100;
         let illegalNegRateDiff = (100 * 100) + 1;
         let currentNegRateDiff = await network.negligibleRateDiff();
@@ -2355,6 +2371,75 @@ contract('KyberNetwork', function(accounts) {
         let avgGas = cumulativeGas.div(numTrades);
         log("average gas usage " + numTrades + " buys. token to token: " + avgGas.floor().valueOf());
     });
+
+    it("add permission less order book reserve for new token using reserve lister. see success... ", async() => {
+        feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
+        ordersFactory = await OrdersFactory.new();
+
+        reserveLister = await PermissionlessOrderBookReserveLister.new(network.address, feeBurnerResolver.address,
+            ordersFactory.address, kncAddress);
+
+        await network.addOperator(reserveLister.address);
+
+        let tokenAdd = permissionlessTok.address;
+        let rc = await reserveLister.addOrderBookContract(tokenAdd);
+        rc = await reserveLister.initOrderBookContract(tokenAdd);
+        rc = await reserveLister.listOrderBookContract(tokenAdd);
+
+        //verify reserve exists in network
+        let reserveAddress = await network.reservesPerTokenDest(tokenAdd, 0);
+        let listReserveAddress = await reserveLister.reserves(tokenAdd);
+        assert.equal(reserveAddress.valueOf(), listReserveAddress.valueOf());
+
+        reserve = await OrderBookReserve.at(reserveAddress.valueOf());
+
+        //maker deposits tokens
+        let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
+        let orderDstWei = new BigNumber(2 * 10 ** 18);
+        let amountKnc = 600 * 10 ** 18;
+        let amountEthDeposit = (new BigNumber(6 * 10 ** 18)).add(600);
+
+        await makerDeposit(reserve, maker1, amountEthDeposit, 0, amountKnc.valueOf());
+
+        // first getExpectedRate should return 0
+        let rate = await network.getExpectedRate(tokenAdd, ethAddress, 10 ** 18, 0);
+        assert.equal(rate.valueOf(), 0);
+
+        //now add order
+        //////////////
+//        makeOrder(address maker, bool isEthToToken, uint128 payAmount, uint128 exchangeAmount, uint32 hintPrevOrder)
+        let rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei.add(400), 0, {from: maker1});
+        rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
+//        log(rc.logs[0].args)
+
+        // first getConversionRate should return 0
+        let rate = await network.getExpectedRate(tokenAdd, ethAddress, 10 ** 18, 0);
+        assert.equal(rate.valueOf(), 0);
+
+        let orderList = await res.getSellOrderList();
+        assert.equal(orderList.length, 3);
+
+        //tokens to user
+        let totalPayValue = orderSrcAmountTwei.mul(3);
+        await token.transfer(totalPayValue, user1);
+        await token.approve(res.address, totalPayValue);
+
+        let userInitialBalance = await await Helper.getBalancePromise(user1);
+        //trade
+        rc = await res.trade(tokenAdd, totalPayValue, ethAddress, user1, 300, false);
+        log("take 3 sell orders gas: " + rc.receipt.gasUsed);
+
+        orderList = await res.getSellOrderList();
+        assert.equal(orderList.length, 0);
+
+        let userBalanceAfter = await Helper.getBalancePromise(user1);
+        let expectedBalance = userInitialBalance.add(amountEthDeposit);
+
+        assert.equal(userBalanceAfter.valueOf(), expectedBalance.valueOf());
+
+
+    });
 });
 
 function convertRateToConversionRatesRate (baseRate) {
@@ -2497,3 +2582,12 @@ function calcCombinedRate(srcQty, sellRate, buyRate, srcDecimals, dstDecimals, d
 function log (string) {
     console.log(string);
 };
+
+async function makerDeposit(res, maker, ethWei, tokenTwei, kncTwei) {
+
+    await token.approve(res.address, tokenTwei);
+    await res.makerDepositToken(maker, tokenTwei);
+    await KNCToken.approve(res.address, kncTwei);
+    await res.makerDepositKnc(maker, kncTwei);
+    await res.makerDepositWei(maker, {from: maker, value: ethWei});
+}
