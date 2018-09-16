@@ -21,6 +21,11 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
     uint32 constant public TAIL_ID = 1;
     uint32 constant public HEAD_ID = 2;
 
+    // Results of calling updateWithPositionHint.
+    uint8 constant public UPDATE_ONLY_AMOUNTS = 0;
+    uint8 constant public UPDATE_MOVE_ORDER = 1;
+    uint8 constant public UPDATE_FAILED = 2;
+
     uint32 public nextFreeId = 3;
 
     function Orders(address _admin) public {
@@ -64,6 +69,8 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         public
         onlyAdmin
     {
+        require(orderId != 0 && orderId != HEAD_ID && orderId != TAIL_ID);
+
         uint32 prevId = findPrevOrderId(srcAmount, dstAmount);
         addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
     }
@@ -80,7 +87,10 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         onlyAdmin
         returns (bool)
     {
-        if (!isRightPosition(srcAmount, dstAmount, prevId)) return false;
+        uint32 nextId = orders[prevId].nextId;
+        if (!isRightPosition(srcAmount, dstAmount, prevId, nextId)) {
+            return false;
+        }
         addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
         return true;
     }
@@ -103,7 +113,7 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         add(maker, orderId, srcAmount, dstAmount);
     }
 
-    // Returns false if provided with bad hint.
+    // Returns false if provided with a bad hint.
     function updateWithPositionHint(
         uint32 orderId,
         uint128 srcAmount,
@@ -112,58 +122,33 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
     )
         public
         onlyAdmin
-        returns (bool)
-    {
-        if (isRightPosition(srcAmount, dstAmount, prevId)) {
-            // Let's move the order to the hinted position.
-            address maker = orders[orderId].maker;
-            removeById(orderId);
-            addAfterId(maker, orderId, srcAmount, dstAmount, prevId);
-            return true;
-        }
-
-        // bad hint.
-        return false;
-    }
-
-    function updateAmounts(
-        uint32 orderId,
-        uint128 srcAmount,
-        uint128 dstAmount
-    )
-        public
-        onlyAdmin
-        returns (bool)
+        returns (bool, uint)
     {
         require(orderId != HEAD_ID && orderId != TAIL_ID);
 
-        uint newOrderKey = calculateOrderSortKey(srcAmount, dstAmount);
+        uint32 nextId;
 
-        uint32 prevId = orders[orderId].prevId;
-        if (prevId != HEAD_ID) {
-            uint prevOrderKey = calculateOrderSortKey(
-                orders[prevId].srcAmount,
-                orders[prevId].dstAmount
-            );
-            if (prevOrderKey < newOrderKey) {
-                return false;
+        // If not changing place, only update amounts.
+        if (orders[orderId].prevId == prevId) {
+            nextId = orders[orderId].nextId;
+            if (isRightPosition(srcAmount, dstAmount, prevId, nextId)) {
+                orders[orderId].srcAmount = srcAmount;
+                orders[orderId].dstAmount = dstAmount;
+                return (true, UPDATE_ONLY_AMOUNTS);
+            }
+        } else {
+            nextId = orders[prevId].nextId;
+            if (isRightPosition(srcAmount, dstAmount, prevId, nextId)) {
+                // Let's move the order to the hinted position.
+                address maker = orders[orderId].maker;
+                removeById(orderId);
+                addAfterId(maker, orderId, srcAmount, dstAmount, prevId);
+                return (true, UPDATE_MOVE_ORDER);
             }
         }
 
-        uint32 nextId = orders[orderId].nextId;
-        if (nextId != TAIL_ID) {
-            uint nextOrderKey = calculateOrderSortKey(
-                orders[nextId].srcAmount,
-                orders[nextId].dstAmount
-            );
-            if (newOrderKey < nextOrderKey) {
-                return false;
-            }
-        }
-
-        orders[orderId].srcAmount = srcAmount;
-        orders[orderId].dstAmount = dstAmount;
-        return true;
+        // bad hint.
+        return (false, UPDATE_FAILED);
     }
 
     function allocateIds(uint32 howMany) public onlyAdmin returns(uint32) {
@@ -241,19 +226,22 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
     function isRightPosition(
         uint128 srcAmount,
         uint128 dstAmount,
-        uint32 prevId
+        uint32 prevId,
+        uint32 nextId
     )
         private
         view
         returns (bool)
     {
-        // Make sure prev is not the tail.
-        if (prevId == TAIL_ID) return false;
+        if (prevId == TAIL_ID || nextId == HEAD_ID) return false;
 
+        // TODO: check gas cost with this or memory or orders[prevId].
         Order storage prev = orders[prevId];
 
         // Make sure prev order is initialised.
         if (prev.prevId == 0 || prev.nextId == 0) return false;
+
+        uint newKey = calculateOrderSortKey(srcAmount, dstAmount);
 
         // Make sure that the new order should be after the provided prevId.
         if (prevId != HEAD_ID) {
@@ -261,18 +249,18 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
                 prev.srcAmount,
                 prev.dstAmount
             );
-            uint key = calculateOrderSortKey(srcAmount, dstAmount);
-            if (prevKey < key) return false;
+            if (prevKey < newKey) return false;
         }
 
         // Make sure that the new order should be before provided prevId's next
         // order.
-        if (prev.nextId != TAIL_ID) {
-            Order storage next = orders[prev.nextId];
+        if (nextId != TAIL_ID) {
+            // TODO: check gas cost with this or memory or orders[prevId].
+            Order storage next = orders[nextId];
             uint nextKey = calculateOrderSortKey(
                 next.srcAmount,
                 next.dstAmount);
-            if (key < nextKey) return false;
+            if (newKey < nextKey) return false;
         }
 
         return true;

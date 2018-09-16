@@ -805,6 +805,10 @@ contract('Orders', async (accounts) => {
     });
 
     describe("#updateWithPositionHint", async () => {
+        const UPDATE_ONLY_AMOUNTS = 0;
+        const UPDATE_MOVEORDER = 1;
+        const UPDATE_FAILED = 2;
+
         it("should update with prev hint: contents -> new amounts", async () => {
             // before: HEAD -> first -> second -> third -> TAIL
             let firstId = await addOrderGetId(
@@ -822,7 +826,7 @@ contract('Orders', async (accounts) => {
 
             let srcAmount = 10;
             let dstAmount = 210;
-            let updated = await updateWithPositionHint(
+            let [updated, updateMethod] = await updateWithPositionHint(
                 thirdId /* orderId */,
                 srcAmount /* srcAmount */,
                 dstAmount /* dstAmount */,
@@ -830,6 +834,7 @@ contract('Orders', async (accounts) => {
             );
 
             updated.should.be.true;
+            updateMethod.should.be.bignumber.equal(UPDATE_MOVEORDER);
             const order = await getOrderById(thirdId);
             order.maker.should.equal(user1);
             order.srcAmount.should.be.bignumber.equal(srcAmount);
@@ -853,7 +858,7 @@ contract('Orders', async (accounts) => {
 
             let srcAmount = 10;
             let dstAmount = 210;
-            const updated = await updateWithPositionHint(
+            const [updated, updateMethod] = await updateWithPositionHint(
                 thirdId /* orderId */,
                 srcAmount /* srcAmount */,
                 dstAmount /* dstAmount */,
@@ -861,6 +866,7 @@ contract('Orders', async (accounts) => {
             );
 
             updated.should.be.true;
+            updateMethod.should.be.bignumber.equal(UPDATE_MOVEORDER);
             // after: HEAD -> first -> third -> second -> TAIL
             assertOrdersOrder3(firstId, thirdId, secondId);
         });
@@ -876,14 +882,23 @@ contract('Orders', async (accounts) => {
             // list and thus the id will be invalid.
             let nonExistantOrderId = await orders.allocateIds.call(1);
 
-            let updated = await updateWithPositionHint(
+            const [updated, updateMethod] = await updateWithPositionHint(
                 order.id /* orderId */,
                 20 /* srcAmount */,
                 200 /* dstAmount */,
                 nonExistantOrderId /* prevId */
             );
 
+            // Nothing should have changed.
             updated.should.be.false;
+            updateMethod.should.be.bignumber.equal(UPDATE_FAILED);
+
+            order = await getOrderById(order.id);
+            order.srcAmount.should.be.bignumber.equal(10);
+            order.dstAmount.should.be.bignumber.equal(200);
+
+            // after: HEAD -> order -> TAIL
+            assertOrdersOrder1(order.id);
         });
 
         it("should reject update with bad hint: is TAIL", async () => {
@@ -893,7 +908,7 @@ contract('Orders', async (accounts) => {
                 200 /* dstAmount */,
             );
 
-            let updated = await updateWithPositionHint(
+            const [updated, updateMethod] = await updateWithPositionHint(
                 order.id /* orderId */,
                 20 /* srcAmount */,
                 200 /* dstAmount */,
@@ -903,7 +918,16 @@ contract('Orders', async (accounts) => {
                 TAIL_ID /* prevId */
             );
 
+            // Nothing should have changed.
             updated.should.be.false;
+            updateMethod.should.be.bignumber.equal(UPDATE_FAILED);
+
+            order = await getOrderById(order.id);
+            order.srcAmount.should.be.bignumber.equal(10);
+            order.dstAmount.should.be.bignumber.equal(200);
+
+            // after: HEAD -> order -> TAIL
+            assertOrdersOrder1(order.id);
         });
 
         it("should reject update with bad hint: after worse order", async () => {
@@ -919,7 +943,7 @@ contract('Orders', async (accounts) => {
                 100 /* dstAmount */
             );
 
-            let updated = await updateWithPositionHint(
+            const [updated, updateMethod] = await updateWithPositionHint(
                 order.id /* orderId */,
                 20 /* srcAmount */,
                 300 /* dstAmount */,
@@ -929,7 +953,16 @@ contract('Orders', async (accounts) => {
                 worseId /* prevId */
             );
 
+            // Nothing should have changed.
             updated.should.be.false;
+            updateMethod.should.be.bignumber.equal(UPDATE_FAILED);
+
+            order = await getOrderById(order.id);
+            order.srcAmount.should.be.bignumber.equal(10);
+            order.dstAmount.should.be.bignumber.equal(200);
+
+            // after: HEAD -> order -> worse -> TAIL
+            assertOrdersOrder2(order.id, worseId);
         });
 
         it("should reject update with bad hint: before better order", async () => {
@@ -950,18 +983,61 @@ contract('Orders', async (accounts) => {
                 200 /* dstAmount */
             );
 
-            let updated = await updateWithPositionHint(
+            const [updated, updateMethod] = await updateWithPositionHint(
                 order.id /* orderId */,
                 10 /* srcAmount */,
                 100 /* dstAmount */,
                 bestId /* prevId */
             );
 
+            // Nothing should have changed.
             updated.should.be.false;
-        });
-    });
+            updateMethod.should.be.bignumber.equal(UPDATE_FAILED);
 
-    describe("#updateAmounts", async () => {
+            order = await getOrderById(order.id);
+            order.srcAmount.should.be.bignumber.equal(10);
+            order.dstAmount.should.be.bignumber.equal(200);
+
+            // after: HEAD -> best -> better -> order -> TAIL
+            assertOrdersOrder3(bestId, betterId, order.id);
+        });
+
+        it("should update amounts when current prevId == provided prevId", async () => {
+            // before: HEAD -> first -> second -> third -> TAIL
+            let firstId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                300 /* dstAmount */);
+            let secondId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                200 /* dstAmount */);
+            let thirdId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                100 /* dstAmount */);
+
+            const [updated, updateMethod] = await updateWithPositionHint(
+                secondId /* orderId */,
+                10 /* srcAmount */,
+                150 /* dstAmount */,
+                firstId /* prevId */
+            );
+
+            updated.should.be.true;
+            updateMethod.should.be.bignumber.equal(UPDATE_ONLY_AMOUNTS);
+
+            // values changed.
+            const order = await getOrderById(secondId);
+            order.maker.should.equal(user1);
+            order.srcAmount.should.be.bignumber.equal(10);
+            order.dstAmount.should.be.bignumber.equal(150);
+
+            // order did not change
+            // after: HEAD -> first -> second -> third -> TAIL
+            assertOrdersOrder3(firstId, secondId, thirdId);
+        });
+
         it("update when order is first and stays in position", async () => {
             // before: HEAD -> first -> second -> third -> TAIL
             let firstId = await addOrderGetId(
@@ -977,13 +1053,15 @@ contract('Orders', async (accounts) => {
                 10 /* srcAmount */,
                 100 /* dstAmount */);
 
-            const updated = await updateAmounts(
+            const [updated, updateMethod] = await updateWithPositionHint(
                 firstId /* orderId */,
                 10 /* srcAmount */,
                 310 /* dstAmount */,
+                HEAD_ID /* prevId */
             );
 
             updated.should.be.true;
+            updateMethod.should.be.bignumber.equal(UPDATE_ONLY_AMOUNTS);
             let order = await getOrderById(firstId);
             order.srcAmount.should.be.bignumber.equal(10);
             order.dstAmount.should.be.bignumber.equal(310);
@@ -1007,13 +1085,15 @@ contract('Orders', async (accounts) => {
                 10 /* srcAmount */,
                 100 /* dstAmount */);
 
-            const updated = await updateAmounts(
+            const [updated, updateMethod] = await updateWithPositionHint(
                 secondId /* orderId */,
                 10 /* srcAmount */,
                 220 /* dstAmount */,
+                firstId /* prevId */
             );
 
             updated.should.be.true;
+            updateMethod.should.be.bignumber.equal(UPDATE_ONLY_AMOUNTS);
             let order = await getOrderById(secondId);
             order.srcAmount.should.be.bignumber.equal(10);
             order.dstAmount.should.be.bignumber.equal(220);
@@ -1037,10 +1117,11 @@ contract('Orders', async (accounts) => {
                 10 /* srcAmount */,
                 100 /* dstAmount */);
 
-            const updated = await updateAmounts(
+            const [updated, updateMethod] = await updateWithPositionHint(
                 thirdId /* orderId */,
                 10 /* srcAmount */,
                 110 /* dstAmount */,
+                secondId /* prevId */
             );
 
             updated.should.be.true;
@@ -1052,43 +1133,13 @@ contract('Orders', async (accounts) => {
             assertOrdersOrder3(firstId, secondId, thirdId);
         });
 
-        it("should not update and return false if order should change position", async () => {
-            // before: HEAD -> first -> second -> third -> TAIL
-            let firstId = await addOrderGetId(
-                user1 /* maker */,
-                10 /* srcAmount */,
-                300 /* dstAmount */);
-            let secondId = await addOrderGetId(
-                user1 /* maker */,
-                10 /* srcAmount */,
-                200 /* dstAmount */);
-            let thirdId = await addOrderGetId(
-                user1 /* maker */,
-                10 /* srcAmount */,
-                100 /* dstAmount */);
-
-            const updated = await updateAmounts(
-                firstId /* orderId */,
-                10 /* srcAmount */,
-                110 /* dstAmount */,
-            );
-
-            updated.should.be.false;
-
-            let first = await getOrderById(firstId);
-            first.srcAmount.should.be.bignumber.equal(10);
-            first.dstAmount.should.be.bignumber.equal(300);
-
-            // after: HEAD -> first -> second -> third -> TAIL
-            assertOrdersOrder3(firstId, secondId, thirdId);
-        });
-
         it("should revert updates to HEAD", async () => {
             try {
-                const updated = await updateAmounts(
+                await updateWithPositionHint(
                     HEAD_ID /* orderId */,
                     10 /* srcAmount */,
                     310 /* dstAmount */,
+                    HEAD_ID /* prevId */
                 );
                 assert(false, "throw was expected in line above.")
             } catch(e){
@@ -1099,11 +1150,17 @@ contract('Orders', async (accounts) => {
         });
 
         it("should revert updates to TAIL", async () => {
+            let firstId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                300 /* dstAmount */);
+
             try {
-                const updated = await updateAmounts(
+                await updateWithPositionHint(
                     TAIL_ID /* orderId */,
                     10 /* srcAmount */,
                     310 /* dstAmount */,
+                    firstId /* prevId */
                 );
                 assert(false, "throw was expected in line above.")
             } catch(e){
@@ -1137,6 +1194,7 @@ contract('Orders', async (accounts) => {
         });
     });
 
+    it("all: should revert if orderId passed is not HEAD_ID or TAIL_ID")
     // TODO: add without position to a long list fails
     // TODO: update without new position to a long list fails
 });
@@ -1212,7 +1270,7 @@ async function allocateIds(howMany) {
 }
 
 async function updateWithPositionHint(orderId, srcAmount, dstAmount, prevId) {
-    const updated = await orders.updateWithPositionHint.call(
+    const [updated, updateMethod] = await orders.updateWithPositionHint.call(
         orderId,
         srcAmount,
         dstAmount,
@@ -1224,23 +1282,7 @@ async function updateWithPositionHint(orderId, srcAmount, dstAmount, prevId) {
         dstAmount,
         prevId
     );
-    return updated;
-}
-
-async function updateAmounts(orderId, srcAmount, dstAmount, prevId) {
-    const updated = await orders.updateAmounts.call(
-        orderId,
-        srcAmount,
-        dstAmount,
-        prevId
-    );
-    await orders.updateAmounts(
-        orderId,
-        srcAmount,
-        dstAmount,
-        prevId
-    );
-    return updated;
+    return [updated, updateMethod];
 }
 
 async function assertOrdersOrder1(orderId1) {
