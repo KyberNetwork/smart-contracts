@@ -372,7 +372,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
 
         if (hintPrevOrder != 0) {
 
-            updatedWithHint = list.updateWithPositionHint(orderId, srcAmount, dstAmount, hintPrevOrder);
+            (updatedWithHint, ) = list.updateWithPositionHint(orderId, srcAmount, dstAmount, hintPrevOrder);
         }
 
         if (!updatedWithHint) {
