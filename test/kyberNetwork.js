@@ -2408,9 +2408,9 @@ contract('KyberNetwork', function(accounts) {
         //now add order
         //////////////
 //        makeOrder(address maker, bool isEthToToken, uint128 payAmount, uint128 exchangeAmount, uint32 hintPrevOrder)
-        let rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
-        rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei.add(400), 0, {from: maker1});
-        rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
+        let rc = await reserve.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        rc = await reserve.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei.add(400), 0, {from: maker1});
+        rc = await reserve.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
 //        log(rc.logs[0].args)
 
         // first getConversionRate should return 0
@@ -2586,8 +2586,8 @@ function log (string) {
 async function makerDeposit(res, maker, ethWei, tokenTwei, kncTwei) {
 
     await token.approve(res.address, tokenTwei);
-    await res.makerDepositToken(maker, tokenTwei);
+    await res.depositToken(maker, tokenTwei);
     await KNCToken.approve(res.address, kncTwei);
-    await res.makerDepositKnc(maker, kncTwei);
-    await res.makerDepositWei(maker, {from: maker, value: ethWei});
+    await res.depositKncFee(maker, kncTwei);
+    await res.depositEther(maker, {from: maker, value: ethWei});
 }
