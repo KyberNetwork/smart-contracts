@@ -106,6 +106,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         returns(uint)
     {
         require(msg.sender == kyberNetworkProxyContract);
+        require((hint.length == 0) || (hint.length == 4));
 
         TradeInput memory tradeInput;
 
@@ -313,14 +314,14 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     }
 
     function searchBestRate(ERC20 src, ERC20 dest, uint srcAmount) public view returns(address, uint) {
-        return searchBestRatePermissioned(src, dest, srcAmount, true);
+        return searchBestRateInternal(src, dest, srcAmount, true);
     }
 
     /* solhint-disable code-complexity */
     // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
     //  It has been tested, reviewed and found to be clear enough.
     //@dev this function always src or dest are ether. can't do token to token
-    function searchBestRatePermissioned(ERC20 src, ERC20 dest, uint srcAmount, bool usePermissionless)
+    function searchBestRateInternal(ERC20 src, ERC20 dest, uint srcAmount, bool usePermissionless)
         internal
         view
         returns(address, uint)
@@ -381,21 +382,24 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcAmount, bytes hint) internal view
         returns(BestRateResult result)
     {
-        bool usePermissionless = false;
+        //by default we use use permission less reserves
+        bool usePermissionless = true;
 
         // PERM ascii == P = 80, E = 69, R = 82, M = 77
         if ((hint.length >= 4) &&
             (keccak256(hint[0], hint[1], hint[2], hint[3]) == keccak256(byte(80), byte(69), byte(82), byte(77)))){
-            usePermissionless = true;
+
+            //use permissioned only
+            usePermissionless = false;
         }
 
         (result.reserve1, result.rateSrcToEth) =
-            searchBestRatePermissioned(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
+            searchBestRateInternal(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
 
         result.weiAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcAmount, result.rateSrcToEth);
 
         (result.reserve2, result.rateEthToDest) =
-            searchBestRatePermissioned(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
+            searchBestRateInternal(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
 
         result.destAmount = calcDestAmount(ETH_TOKEN_ADDRESS, dest, result.weiAmount, result.rateEthToDest);
 
