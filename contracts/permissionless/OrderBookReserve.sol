@@ -91,6 +91,8 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         sellList = ordersFactoryContract.newOrdersContract(this);
         buyList = ordersFactoryContract.newOrdersContract(this);
 
+        orderListTailId = buyList.TAIL_ID();
+
         return true;
     }
 

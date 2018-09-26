@@ -14,14 +14,15 @@ interface Resolver {
 }
 
 
-contract KyberNetworkIFENSResolver {
+contract KyberNetworkENSResolver {
     ENS constant ENS_CONTRACT = ENS(0x314159265dD8dbb310642f98f50C066173C1259b);
 
     function calcNode() internal pure returns(bytes32) {
         string[2] memory parts;
-        parts[0] = "KyberNetworkIF";
+        parts[0] = "KyberNetworkIf";
         parts[1] = "eth";
         bytes32 namehash = 0x0000000000000000000000000000000000000000000000000000000000000000;
+
         for(uint i = 0; i < parts.length; i++) {
             namehash = keccak256(namehash, keccak256(parts[parts.length - i - 1]));
         }
@@ -29,25 +30,27 @@ contract KyberNetworkIFENSResolver {
         return namehash;
     }
 
-    function getKyberNetworkIFAddress() internal view returns(address) {
+    function getKyberNetworkAddress() internal view returns(address) {
         return ENS_CONTRACT.resolver(calcNode()).addr(calcNode());
     }
 
 }
 
 
-interface KyberNetworkIF {
+///@dev kyber network local interface contract.
+interface KyberNetworkIf {
     function feeBurnerContract() public view returns(address);
 }
 
 
-interface KyberNetworkIFProxy {
-    function KyberNetworkIFContract() public view returns(KyberNetworkIF);
+///@dev kyber network proxy local interface contract.
+interface KyberNetworkProxyIf {
+    function KyberNetworkContract() public view returns(KyberNetworkIf);
 }
 
 
-contract FeeBurnerResolver is KyberNetworkIFENSResolver, FeeBurnerResolverInterface {
+contract FeeBurnerResolver is KyberNetworkENSResolver, FeeBurnerResolverInterface {
     function getFeeBurnerAddress() public view returns(address) {
-        return KyberNetworkIFProxy(getKyberNetworkIFAddress()).KyberNetworkIFContract().feeBurnerContract();
+        return KyberNetworkProxyIf(getKyberNetworkAddress()).KyberNetworkContract().feeBurnerContract();
     }
 }
