@@ -91,7 +91,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         sellList = ordersFactoryContract.newOrdersContract(this);
         buyList = ordersFactoryContract.newOrdersContract(this);
 
-        orderListTailId = buyList.TAIL_ID();
+        orderListTailId = buyList.getTailId();
 
         return true;
     }
@@ -221,7 +221,14 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         bool addedWithHint
     );
 
-    function submitSellTokenOrder(uint128 srcAmount, uint128 dstAmount, uint32 hintPrevOrder)
+    function submitSellTokenOrder(uint128 srcAmount, uint128 dstAmount)
+        public
+        returns(bool)
+    {
+        submitSellTokenOrderWHint(srcAmount, dstAmount, 0);
+    }
+
+    function submitSellTokenOrderWHint(uint128 srcAmount, uint128 dstAmount, uint32 hintPrevOrder)
         public
         returns(bool)
     {
@@ -231,7 +238,14 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         addOrder(maker, false, newId, srcAmount, dstAmount, hintPrevOrder);
     }
 
-    function submitBuyTokenOrder(uint128 srcAmount, uint128 dstAmount, uint32 hintPrevOrder)
+    function submitBuyTokenOrder(uint128 srcAmount, uint128 dstAmount)
+        public
+        returns(bool)
+    {
+        submitBuyTokenOrderWHint(srcAmount, dstAmount, 0);
+    }
+
+    function submitBuyTokenOrderWHint(uint128 srcAmount, uint128 dstAmount, uint32 hintPrevOrder)
         public
         returns(bool)
     {
@@ -273,7 +287,16 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         bool updatedWithHint
     );
 
-    function updateSellTokenOrder(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount, uint32 hintPrevOrder)
+
+    function updateSellTokenOrder(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount)
+        public
+        returns(bool)
+    {
+        updateSellTokenOrderWHint(orderId, newSrcAmount, newDstAmount, 0);
+    }
+
+
+    function updateSellTokenOrderWHint(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount, uint32 hintPrevOrder)
         public
         returns(bool)
     {
@@ -282,7 +305,15 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         require(updateOrder(maker, false, orderId, newSrcAmount, newDstAmount, hintPrevOrder));
     }
 
-    function updateBuyTokenOrder(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount, uint32 hintPrevOrder)
+
+    function updateBuyTokenOrder(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount)
+        public
+        returns(bool)
+    {
+        updateBuyTokenOrderWHint(orderId, newSrcAmount, newDstAmount, 0);
+    }
+
+    function updateBuyTokenOrderWHint(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount, uint32 hintPrevOrder)
         public
         returns(bool)
     {
@@ -308,19 +339,19 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         }
     }
 
-    event TokenDeposited(address indexed maker, uint amountTwei);
+    event TokenDeposited(address indexed maker, uint amount);
 
-    function depositToken(address maker, uint amountTwei) public {
+    function depositToken(address maker, uint amount) public {
         require(maker != address(0));
-        require(amountTwei < MAX_QTY);
+        require(amount < MAX_QTY);
 
-        require(token.transferFrom(msg.sender, this, amountTwei));
+        require(token.transferFrom(msg.sender, this, amount));
 
-        makerFunds[maker][token] += amountTwei;
-        TokenDeposited(maker, amountTwei);
+        makerFunds[maker][token] += amount;
+        TokenDeposited(maker, amount);
     }
 
-    event EtherDeposited(address indexed maker, uint amountWei);
+    event EtherDeposited(address indexed maker, uint amount);
 
     function depositEther(address maker) public payable {
         require(maker != address(0));
@@ -329,19 +360,19 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         EtherDeposited(maker, msg.value);
     }
 
-    event KncFeeDeposited(address indexed maker, uint amountTwei);
+    event KncFeeDeposited(address indexed maker, uint amount);
 
-    function depositKncFee(address maker, uint amountTwei) public payable {
+    function depositKncFee(address maker, uint amount) public payable {
         require(maker != address(0));
 
-        require(kncToken.transferFrom(msg.sender, this, amountTwei));
+        require(kncToken.transferFrom(msg.sender, this, amount));
 
         KncStakes memory amounts = makerKncStakes[maker];
 
-        amounts.freeKnc += uint128(amountTwei);
+        amounts.freeKnc += uint128(amount);
         makerKncStakes[maker] = amounts;
 
-        KncFeeDeposited(maker, amountTwei);
+        KncFeeDeposited(maker, amount);
 
         require(allocateOrders(
             makerOrdersSell[maker], /* freeOrders */
@@ -514,7 +545,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         kncStakePerEtherBps = newStakeBps;
     }
 
-    function getSellOrder(uint32 orderId) public view
+    function getSellTokenOrder(uint32 orderId) public view
         returns (
             address _maker,
             uint128 _srcAmount,
@@ -526,7 +557,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         return sellList.getOrderDetails(orderId);
     }
 
-    function getBuyOrder(uint32 orderId) public view
+    function getBuyTokenOrder(uint32 orderId) public view
         returns (
             address _maker,
             uint128 _srcAmount,
@@ -628,34 +659,34 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         );
     }
 
-    function bindOrderStakes(address maker, int stakeAmountTwei) internal returns(bool) {
+    function bindOrderStakes(address maker, int stakeAmount) internal returns(bool) {
 
         KncStakes storage amounts = makerKncStakes[maker];
 
-        require(amounts.freeKnc >= stakeAmountTwei);
+        require(amounts.freeKnc >= stakeAmount);
 
-        if (stakeAmountTwei >= 0) {
-            amounts.freeKnc -= uint128(stakeAmountTwei);
-            amounts.kncOnStake += uint128(stakeAmountTwei);
+        if (stakeAmount >= 0) {
+            amounts.freeKnc -= uint128(stakeAmount);
+            amounts.kncOnStake += uint128(stakeAmount);
         } else {
-            amounts.freeKnc += uint128(-stakeAmountTwei);
-            require(amounts.kncOnStake - uint128(-stakeAmountTwei) < amounts.kncOnStake);
-            amounts.kncOnStake -= uint128(-stakeAmountTwei);
+            amounts.freeKnc += uint128(-stakeAmount);
+            require(amounts.kncOnStake - uint128(-stakeAmount) < amounts.kncOnStake);
+            amounts.kncOnStake -= uint128(-stakeAmount);
         }
 
         return true;
     }
 
     //@dev if burnAmount is 0 we only release stakes.
-    function handleOrderStakes(address maker, uint releaseAmountTwei, uint burnAmountTwei) internal returns(bool) {
-        require(releaseAmountTwei > burnAmountTwei);
+    function handleOrderStakes(address maker, uint releaseAmount, uint burnAmount) internal returns(bool) {
+        require(releaseAmount > burnAmount);
 
         KncStakes storage amounts = makerKncStakes[maker];
 
-        require(amounts.kncOnStake >= uint128(releaseAmountTwei));
+        require(amounts.kncOnStake >= uint128(releaseAmount));
 
-        amounts.kncOnStake -= uint128(releaseAmountTwei);
-        amounts.freeKnc += uint128(releaseAmountTwei - burnAmountTwei);
+        amounts.kncOnStake -= uint128(releaseAmount);
+        amounts.freeKnc += uint128(releaseAmount - burnAmount);
 
         return true;
     }

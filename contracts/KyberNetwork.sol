@@ -382,7 +382,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcAmount, bytes hint) internal view
         returns(BestRateResult result)
     {
-        //by default we use use permission less reserves
+        //by default we use permission less reserves
         bool usePermissionless = true;
 
         // PERM ascii == P = 80, E = 69, R = 82, M = 77
