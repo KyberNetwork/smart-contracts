@@ -13,8 +13,6 @@ import "./FeeBurnerInterface.sol";
 
 /**
  * @title Helps contracts guard against reentrancy attacks.
- * @dev If you mark a function `nonReentrant`, you should also
- * mark it `external`.
  */
 contract ReentrancyGuard {
 
@@ -22,9 +20,8 @@ contract ReentrancyGuard {
     uint256 private guardCounter = 1;
 
     /**
-     * @dev Prevents a contract from calling itself, directly or indirectly.
-     * If you mark a function `nonReentrant`, you should also
-     * mark it `external`. Calling one `nonReentrant` function from
+     * @dev Prevents a function from calling itself, directly or indirectly.
+     * Calling one `nonReentrant` function from
      * another is not supported. Instead, you can implement a
      * `private` function doing the actual work, and an `external`
      * wrapper marked as `nonReentrant`.
@@ -101,7 +98,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         bytes hint
     )
         nonReentrant
-        external
+        public
         payable
         returns(uint)
     {
@@ -228,7 +225,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
     function setEnable(bool _enable) public onlyAdmin {
         if (_enable) {
-            require(whiteListContract != address(0));
             require(feeBurnerContract != address(0));
             require(expectedRateContract != address(0));
             require(kyberNetworkProxyContract != address(0));
