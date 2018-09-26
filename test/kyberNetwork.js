@@ -2408,9 +2408,9 @@ contract('KyberNetwork', function(accounts) {
         //now add order
         //////////////
 //        makeOrder(address maker, bool isEthToToken, uint128 payAmount, uint128 exchangeAmount, uint32 hintPrevOrder)
-        let rc = await reserve.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
-        rc = await reserve.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei.add(400), 0, {from: maker1});
-        rc = await reserve.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
+        let rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei.add(400), 0, {from: maker1});
+        rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
 //        log(rc.logs[0].args)
 
         // first getConversionRate should return 0
