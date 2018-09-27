@@ -37,7 +37,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
     }
 
     event ReserveDataSet(address reserve, uint feeInBps, address kncWallet);
-    function setReserveData(address reserve, uint feesInBps, address kncWallet) public onlyAdmin {
+    function setReserveData(address reserve, uint feesInBps, address kncWallet) public onlyOperator {
         require(feesInBps < 100); // make sure it is always < 1%
         require(kncWallet != address(0));
         reserveFeesInBps[reserve] = feesInBps;

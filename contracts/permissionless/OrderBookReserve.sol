@@ -242,7 +242,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
             newId = takeOrderId(makerOrdersSell[maker]);
         }
 
-        addOrder(maker, isEthToToken, list, newId, srcAmount, dstAmount, hintPrevOrder);
+        return addOrder(maker, isEthToToken, list, newId, srcAmount, dstAmount, hintPrevOrder);
     }
 
     function makeOrderBatch(address maker, bool isEthToToken, uint128[] srcAmount, uint128[] dstAmount,

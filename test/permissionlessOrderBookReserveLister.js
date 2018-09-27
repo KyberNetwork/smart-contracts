@@ -1,6 +1,8 @@
 const TestToken = artifacts.require("./mockContracts/TestToken.sol");
 const KyberNetwork = artifacts.require("./KyberNetwork.sol");
+const KyberNetworkProxy = artifacts.require("./KyberNetworkProxy.sol");
 const FeeBurner = artifacts.require("./FeeBurner.sol");
+const WhiteList = artifacts.require("./WhiteList.sol");
 
 const OrderBookReserve = artifacts.require("./permissionless/mock/MockOrderBookReserve.sol");
 const PermissionlessOrderBookReserveLister = artifacts.require("./permissionless/PermissionlessOrderBookReserveLister.sol");
@@ -9,6 +11,11 @@ const FeeBurnerResolver = artifacts.require("./permissionless/mock/MockFeeBurner
 
 const Helper = require("./helper.js");
 const BigNumber = require('bignumber.js');
+
+require("chai")
+    .use(require("chai-as-promised"))
+    .use(require('chai-bignumber')(BigNumber))
+    .should()
 
 //global variables
 //////////////////
@@ -37,7 +44,7 @@ let KNCToken;
 let kncAddress;
 let kgtToken;
 
-let negligibleRateDiff = 11;
+const negligibleRateDiff = 11;
 
 //addresses
 let admin;
@@ -57,7 +64,8 @@ const LISTING_STATE_LISTED = 3;
 
 contract('PermissionlessOrderBookReserveLister', async (accounts) => {
 
-    before('setup contract for each test', async () => {
+    // TODO: consider changing to beforeEach with a separate deploy per test
+    before('setup contract before all tests', async () => {
 
         admin = accounts[0];
         whiteList = accounts[1];
@@ -94,8 +102,17 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
         await network.setEnable(true);
 
 //log(network.address + " " + feeBurnerResolver.address + " " + kncAddress)
-        reserveLister = await PermissionlessOrderBookReserveLister.new(network.address, feeBurnerResolver.address,
-            ordersFactory.address, kncAddress);
+        reserveLister = await PermissionlessOrderBookReserveLister.new(
+            network.address,
+            feeBurnerResolver.address,
+            ordersFactory.address,
+            kncAddress
+        );
+
+        // lister should be added as a feeburner operator.
+        await feeBurner.addOperator(reserveLister.address, {from: admin});
+        const feeBurnerOperators = await feeBurner.getOperators();
+        feeBurnerOperators.should.include(reserveLister.address);
 
         let kyberAdd = await reserveLister.kyberNetworkContract();
         assert.equal(kyberAdd.valueOf(), network.address);
@@ -167,7 +184,7 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
 
         let res = await OrderBookReserve.at(await reserveLister.reserves(tokenAdd));
 
-        await makerDeposit(res, maker1, amountEth, amountTwei.valueOf(), amountKnc.valueOf());
+        await makerDeposit(res, maker1, amountEth, amountTwei.valueOf(), amountKnc.valueOf(), KNCToken);
 
         let rxNumTwei = await res.makerFunds(maker1, tokenAdd);
         assert.equal(rxNumTwei.valueOf(), amountTwei);
@@ -225,7 +242,7 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
 
         let res = await OrderBookReserve.at(await reserveLister.reserves(tokenAdd));
 
-        await makerDeposit(res, maker1, amountEth, 0, amountKnc.valueOf());
+        await makerDeposit(res, maker1, amountEth, 0, amountKnc.valueOf(), KNCToken);
 
         // first getConversionRate should return 0
         let rate = await res.getConversionRate(token.address, ethAddress, 10 ** 18, 0);
@@ -234,9 +251,10 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
         //now add order
         //////////////
 //        makeOrder(address maker, bool isEthToToken, uint128 payAmount, uint128 exchangeAmount, uint32 hintPrevOrder)
-        let rc = await res.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        let rc;
+        rc = await res.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
         rc = await res.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei.add(400), 0, {from: maker1});
-            rc = await res.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
+        rc = await res.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
 //        log(rc.logs[0].args)
 
         let orderList = await res.getSellOrderList();
@@ -260,20 +278,134 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
 
         assert.equal(userBalanceAfter.valueOf(), expectedBalance.valueOf());
     });
-
-
 });
 
+
+contract('PermissionlessOrderBookReserveLister_feeBurner_tests', async (accounts) => {
+
+    beforeEach('setup contract before all tests', async () => {
+        admin = accounts[0];
+        operator = accounts[1];
+        expectedRate = accounts[2];
+        maker = accounts[4];
+        taker = accounts[5];
+    });
+
+    it("listing orderbook reserve so that it could burn fees", async () => {
+        const someToken = await TestToken.new("the token", "tok", 18);
+        const kncToken = await TestToken.new("kyber crystals", "knc", 18);
+
+        // prepare kyber network
+        const kyberNetwork = await KyberNetwork.new(admin);
+
+        const kyberProxy = await KyberNetworkProxy.new(admin);
+        await kyberProxy.setKyberNetworkContract(
+            kyberNetwork.address,
+            {from: admin}
+        );
+
+        const feeBurner = await FeeBurner.new(
+            admin,
+            kncToken.address,
+            kyberNetwork.address
+        );
+        const feeBurnerResolver = await FeeBurnerResolver.new(
+            feeBurner.address
+        );
+        const ordersFactory = await OrdersFactory.new();
+
+        const lister = await PermissionlessOrderBookReserveLister.new(
+            kyberNetwork.address,
+            feeBurnerResolver.address,
+            ordersFactory.address,
+            kncToken.address
+        );
+
+        // configure feeburner
+        await feeBurner.addOperator(lister.address, {from: admin});
+        // await feeBurner.setKNCRate(
+        //     200 /* kncPerEtherRate */,
+        //     {from: admin}
+        // );
+
+        // setup WhiteList
+        const whiteList = await WhiteList.new(admin, kncToken.address);
+        await whiteList.addOperator(operator, {from: admin});
+        await whiteList.setCategoryCap(0, 1000, {from: operator});
+        await whiteList.setSgdToEthRate(30000 * 10 ** 18, {from: operator});
+
+        // configure kyber network
+        await kyberNetwork.setKyberProxy(kyberProxy.address);
+        await kyberNetwork.setWhiteList(whiteList.address);
+        await kyberNetwork.setExpectedRate(expectedRate);
+        await kyberNetwork.setFeeBurner(feeBurner.address);
+        await kyberNetwork.setParams(gasPrice.valueOf(), negligibleRateDiff);
+        await kyberNetwork.addOperator(operator);
+        await kyberNetwork.setEnable(true);
+        await kyberNetwork.addOperator(lister.address);
+
+        // list an order book reserve
+        await lister.addOrderBookContract(someToken.address);
+        await lister.initOrderBookContract(someToken.address);
+        await lister.listOrderBookContract(someToken.address);
+
+        // add orders
+        const reserve = await OrderBookReserve.at(
+            await lister.reserves(someToken.address)
+        );
+        let amountTokenInWei = new BigNumber(500 * 10 ** 18); //500 tokens
+        let amountKncInWei = new BigNumber(600 * 10 ** 18);
+        let amountEthInWei = new BigNumber(2 * 10 ** 18);
+        await makerDeposit(
+            reserve,
+            maker,
+            amountEthInWei /* ethWei */,
+            amountTokenInWei /* tokenTwei */,
+            amountKncInWei /* kncTwei */,
+            kncToken
+        );
+
+        await reserve.makeOrder(
+            maker,
+            true /* isEthToToken */,
+            2 * 10 ** 18 /* srcAmount */,
+            100 * 10 ** 18 /* dstAmount */,
+            0 /* hint */,
+            {from: maker}
+        );
+
+        // swap ETH to someToken
+        const ethWeiToSwap = 0.5 * 10 ** 18;
+        await kyberProxy.swapEtherToToken(
+            someToken.address /* token */,
+            1 /* minConversionRate */,
+            {from: taker, value: ethWeiToSwap}
+        );
+
+        // burn fees
+        const result = await feeBurner.burnReserveFees(reserve.address);
+
+        // Assert
+        const burnAssignedFeesEvent = result.logs[0];
+        burnAssignedFeesEvent.event.should.equal('BurnAssignedFees');
+        burnAssignedFeesEvent.args.reserve.should.equal(reserve.address);
+
+        // (ethWeiToSwap * (300: kncPerETHRate) * (25: BURN_FEE_BPS) / 10000) - 1
+        const expectedFeesInKncWei = BigNumber("374999999999999999");
+        burnAssignedFeesEvent.args.quantity.should.be.bignumber.equal(
+            expectedFeesInKncWei
+        );
+    });
+});
 
 function log(str) {
     console.log(str);
 }
 
-async function makerDeposit(res, maker, ethWei, tokenTwei, kncTwei) {
-
+async function makerDeposit(res, maker, ethWei, tokenTwei, kncTwei, kncToken) {
     await token.approve(res.address, tokenTwei);
     await res.makerDepositToken(maker, tokenTwei);
-    await KNCToken.approve(res.address, kncTwei);
+    await kncToken.approve(res.address, kncTwei);
     await res.makerDepositKnc(maker, kncTwei);
     await res.makerDepositWei(maker, {from: maker, value: ethWei});
 }
@@ -313,4 +445,3 @@ function calcDstQty(srcQty, srcDecimals, dstDecimals, rate) {
         return (rate.mul(srcQty).div(decimalDiff.mul(precisionUnits))).floor();
     }
 }
-
