@@ -364,6 +364,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
 
     function depositKncFee(address maker, uint amount) public payable {
         require(maker != address(0));
+        require(amount < MAX_QTY);
 
         require(kncToken.transferFrom(msg.sender, this, amount));
 
