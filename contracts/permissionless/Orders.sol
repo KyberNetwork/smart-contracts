@@ -157,6 +157,10 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         return firstId;
     }
 
+    function getTailId() public view returns(uint32) {
+        return TAIL_ID;
+    }
+
     function calculateOrderSortKey(uint128 srcAmount, uint128 dstAmount)
         public
         pure

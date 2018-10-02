@@ -80,12 +80,12 @@ contract('OrderBookReserve', async (accounts) => {
     afterEach('withdraw ETH from contracts', async () => {
         let rxWei = await reserve.makerFunds(maker1, ethAddress);
         if (rxWei.valueOf() > 0) {
-            await reserve.makerWithdrawFunds(ethAddress,rxWei.valueOf(), {from: maker1})
+            await reserve.withdrawEther(rxWei.valueOf(), {from: maker1})
         }
 
         rxWei = await reserve.makerFunds(maker2, ethAddress);
         if (rxWei.valueOf() > 0) {
-            await reserve.makerWithdrawFunds(ethAddress,rxWei.valueOf(), {from: maker2})
+            await reserve.withdrawEther(rxWei.valueOf(), {from: maker2})
         }
     });
 
@@ -123,7 +123,7 @@ contract('OrderBookReserve', async (accounts) => {
         let rxWei = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(rxWei.valueOf(), amountEth);
 
-        await reserve.makerWithdrawFunds(ethAddress, rxWei, {from: maker1})
+        await reserve.withdrawEther( rxWei, {from: maker1})
         rxWei = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(rxWei.valueOf(), 0);
     });
@@ -199,9 +199,9 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(rate.valueOf(), 0);
 
         //now add order
-        let rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        let rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
 
-        let orderDetails = await reserve.getOrderDetails(true, rc.logs[0].args.orderId.valueOf());
+        let orderDetails = await reserve.getBuyTokenOrder(rc.logs[0].args.orderId.valueOf());
 //        log(orderDetails);
 
         assert.equal(orderDetails[0].valueOf(), maker1);
@@ -230,7 +230,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(rxFreeTwei.valueOf(), amountTwei.valueOf() );
 
         //now add order
-        let rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        let rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
 
         let expectedFreeTwei = amountTwei.sub(orderExchangeTwei);
 
@@ -247,12 +247,12 @@ contract('OrderBookReserve', async (accounts) => {
         let orderExchangeTwei = 9 * 10 ** 18;
 
         //now add order
-        let rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        let rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
 
         let orderList = await reserve.getBuyOrderList();
         assert.equal(orderList.length, 1);
 
-        rc = await reserve.cancelOrder(true, orderList[0], {from: maker1});
+        rc = await reserve.cancelBuyOrder(orderList[0], {from: maker1});
 //        log(rc.logs[0].args)
 
         orderList = await reserve.getBuyOrderList();
@@ -275,10 +275,10 @@ contract('OrderBookReserve', async (accounts) => {
         //now add order
         //////////////
 //        makeOrder(address maker, bool isEthToToken, uint128 payAmount, uint128 exchangeAmount, uint32 hintPrevOrder)
-        let rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        let rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
 //        log(rc.logs[0].args)
 
-        let orderDetails = await reserve.getOrderDetails(false, rc.logs[0].args.orderId.valueOf());
+        let orderDetails = await reserve.getSellTokenOrder(rc.logs[0].args.orderId.valueOf());
 //        log(orderDetails);
 
         assert.equal(orderDetails[0].valueOf(), maker1);
@@ -311,7 +311,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(rxFreeWei.valueOf(), amountEth.valueOf() );
 
         //now add order
-        let rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        let rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
 
         let expectedFreeWei = amountEth.sub(orderDstWei);
 
@@ -329,12 +329,12 @@ contract('OrderBookReserve', async (accounts) => {
         await makerDeposit(maker1, amountEth, 0, amountKnc.valueOf());
 
         //now add order
-        let rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        let rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
 
         let orderList = await reserve.getSellOrderList();
         assert.equal(orderList.length, 1); 
 
-        rc = await reserve.cancelOrder(false, orderList[0], {from: maker1});
+        rc = await reserve.cancelSellOrder(orderList[0], {from: maker1});
 //        log(rc.logs[0].args)
 
         orderList = await reserve.getSellOrderList();
@@ -351,13 +351,13 @@ contract('OrderBookReserve', async (accounts) => {
         await makerDeposit(maker1, amountEth, 0, amountKnc.valueOf());
 
         //now add order
-        let rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        let rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
 
         let orderId = rc.logs[0].args.orderId.valueOf();
 
         //update to 2 ether.
         let updatedDest = 2 * 10 ** 18;
-        rc = await reserve.updateMakeOrder(maker1, false, orderId, orderSrcAmountTwei, updatedDest, 0, {from: maker1});
+        rc = await reserve.updateSellTokenOrderWHint(orderId, orderSrcAmountTwei, updatedDest, 0, {from: maker1});
         log("update single order gas: " + rc.receipt.gasUsed);
         let freeWei = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(freeWei.valueOf(), 10 ** 18);
@@ -369,7 +369,7 @@ contract('OrderBookReserve', async (accounts) => {
         let orderList = await reserve.getSellOrderList();
         assert.equal(orderList.length, 1);
 
-        rc = await reserve.cancelOrder(false, orderList[0], {from: maker1});
+        rc = await reserve.cancelSellOrder(orderList[0], {from: maker1});
 //        log(rc.logs[0].args)
 
         orderList = await reserve.getSellOrderList();
@@ -386,13 +386,13 @@ contract('OrderBookReserve', async (accounts) => {
         await makerDeposit(maker1, amountEth, 0, amountKnc.valueOf());
 
         //now add order
-        let rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        let rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
 
         let orderId = rc.logs[0].args.orderId.valueOf();
 
         //update to 2 ether.
         let updatedDest = 3 * 10 ** 18;
-        rc = await reserve.updateMakeOrder(maker1, false, orderId, orderSrcAmountTwei, updatedDest, 0, {from: maker1});
+        rc = await reserve.updateSellTokenOrderWHint(orderId, orderSrcAmountTwei, updatedDest, 0, {from: maker1});
         log("update single order gas: " + rc.receipt.gasUsed);
 
         let freeWei = await reserve.makerFunds(maker1, ethAddress);
@@ -405,7 +405,7 @@ contract('OrderBookReserve', async (accounts) => {
         let orderList = await reserve.getSellOrderList();
         assert.equal(orderList.length, 1);
 
-        rc = await reserve.cancelOrder(false, orderList[0], {from: maker1});
+        rc = await reserve.cancelSellOrder(orderList[0], {from: maker1});
 //        log(rc.logs[0].args)
 
         orderList = await reserve.getSellOrderList();
@@ -423,7 +423,7 @@ contract('OrderBookReserve', async (accounts) => {
         await makerDeposit(maker1, amountEth, 0, amountKnc.valueOf());
 
         //now add order
-        let rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        let rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
 
         let orderId = rc.logs[0].args.orderId.valueOf();
 
@@ -431,7 +431,7 @@ contract('OrderBookReserve', async (accounts) => {
         let updatedDest = 1 * 10 ** 18;
 
         try {
-            rc = await reserve.updateMakeOrder(maker1, false, orderId, orderSrcAmountTwei, updatedDest, 0, {from: maker1});
+            rc = await reserve.updateSellTokenOrderWHint(orderId, orderSrcAmountTwei, updatedDest, 0, {from: maker1});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -447,7 +447,7 @@ contract('OrderBookReserve', async (accounts) => {
         let orderList = await reserve.getSellOrderList();
         assert.equal(orderList.length, 1);
 
-        rc = await reserve.cancelOrder(false, orderList[0], {from: maker1});
+        rc = await reserve.cancelSellOrder(orderList[0], {from: maker1});
 //        log(rc.logs[0].args)
 
         orderList = await reserve.getSellOrderList();
@@ -462,7 +462,19 @@ contract('OrderBookReserve', async (accounts) => {
 
     });
 
+    xit("maker add few buy orders. update order with correct hint. see success and print gas", async() => {
+
+    });
+
+    xit("maker add few buy orders. update order with wrong hint. see success and print gas", async() => {
+
+    });
+
     xit("maker add few buy orders. update order with another maker. see fails.", async() => {
+
+    });
+
+    xit("maker add few buy and sell orders and perform batch update. verify updated..", async() => {
 
     });
 
@@ -475,11 +487,11 @@ contract('OrderBookReserve', async (accounts) => {
         let orderPayAmountWei = ((new BigNumber(2)).mul((new BigNumber(10)).pow(18))).add(2000); // 2 ether
         let orderExchangeTwei = (new BigNumber(9)).mul((new BigNumber(10)).pow(18));
 
-        let rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        let rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
 
         let order1ID = rc.logs[0].args.orderId.valueOf();
 
-        let orderDetails = await reserve.getOrderDetails(true, rc.logs[0].args.orderId.valueOf());
+        let orderDetails = await reserve.getBuyTokenOrder(rc.logs[0].args.orderId.valueOf());
     //        log(orderDetails);
 
         assert.equal(orderDetails[0].valueOf(), maker1);
@@ -491,10 +503,10 @@ contract('OrderBookReserve', async (accounts) => {
         // insert order as last in list
         orderPayAmountWei = orderPayAmountWei.add(2000);
 
-        rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
         let order2ID = rc.logs[0].args.orderId.valueOf();
 
-        orderDetails = await reserve.getOrderDetails(true, rc.logs[0].args.orderId.valueOf());
+        orderDetails = await reserve.getBuyTokenOrder(rc.logs[0].args.orderId.valueOf());
 
         assert.equal(orderDetails[3].valueOf(), order1ID);
         assert.equal(orderDetails[4].valueOf(), tailId); // next should be tail ID - since last
@@ -502,10 +514,10 @@ contract('OrderBookReserve', async (accounts) => {
         // insert order as last in list
         orderPayAmountWei = orderPayAmountWei.add(2000);
 
-        rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
 
         let order3ID = rc.logs[0].args.orderId.valueOf();
-        orderDetails = await reserve.getOrderDetails(true, rc.logs[0].args.orderId.valueOf());
+        orderDetails = await reserve.getBuyTokenOrder(rc.logs[0].args.orderId.valueOf());
 
         assert.equal(orderDetails[3].valueOf(), order2ID);
         assert.equal(orderDetails[4].valueOf(), tailId); // next should be tail ID - since last
@@ -514,28 +526,28 @@ contract('OrderBookReserve', async (accounts) => {
         let orderList = await reserve.getBuyOrderList();
 //        log ("list \n" + orderList);
         //get first order details
-        orderDetails = await reserve.getOrderDetails(true, orderList[0].valueOf());
+        orderDetails = await reserve.getBuyTokenOrder(orderList[0].valueOf());
 
         // insert order as first in list
         let bestOrderPayAmount = orderDetails[1];
         let bestOrderDstAmount = orderDetails[2].add(200).valueOf();
 
-        rc = await reserve.makeOrder(maker1, true, bestOrderPayAmount, bestOrderDstAmount, 0, {from: maker1});
+        rc = await reserve.submitBuyTokenOrderWHint(bestOrderPayAmount, bestOrderDstAmount, 0, {from: maker1});
         let order4ID = rc.logs[0].args.orderId.valueOf();
 
 //        log("order4 " + order4ID)
 
-        orderDetails = await reserve.getOrderDetails(true, rc.logs[0].args.orderId.valueOf());
+        orderDetails = await reserve.getBuyTokenOrder(rc.logs[0].args.orderId.valueOf());
 
         assert.equal(orderDetails[3].valueOf(), headId); // prev should be buy head id - since first
         assert.equal(orderDetails[4].valueOf(), order1ID); // next should be tail ID - since last
 
         //now insert order as 2nd best.
         let secondBestPayAmount = bestOrderPayAmount.add(30).valueOf();
-        rc = await reserve.makeOrder(maker1, true, secondBestPayAmount, bestOrderDstAmount, 0, {from: maker1});
+        rc = await reserve.submitBuyTokenOrderWHint(secondBestPayAmount, bestOrderDstAmount, 0, {from: maker1});
         let order5ID = rc.logs[0].args.orderId.valueOf();
 
-        orderDetails = await reserve.getOrderDetails(true, rc.logs[0].args.orderId.valueOf());
+        orderDetails = await reserve.getBuyTokenOrder(rc.logs[0].args.orderId.valueOf());
 
         assert.equal(orderDetails[3].valueOf(), order4ID); // prev should be buy head id - since first
         assert.equal(orderDetails[4].valueOf(), order1ID); // next should be tail ID - since last
@@ -550,29 +562,29 @@ contract('OrderBookReserve', async (accounts) => {
         let orderPayAmountWei = ((new BigNumber(2)).mul((10 ** 18))).add(2000); // 2 ether
         let orderExchangeTwei = (new BigNumber(9)).mul(10 ** 18);
 
-        let rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        let rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
         log("make buy order gas(order 1 in list): ID: " + rc.logs[0].args.orderId.valueOf() + " gas: "+ rc.receipt.gasUsed);
 
         // insert order as last in list
         orderPayAmountWei = orderPayAmountWei.add(2000);
 
-        rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
         log("make buy order gas(order 2 in list): ID: " + rc.logs[0].args.orderId.valueOf() + " gas: "+ rc.receipt.gasUsed);
 
         // insert order as last in list
         orderPayAmountWei = orderPayAmountWei.add(2000);
 
-        rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
         log("make buy order gas(order 3 in list): ID: " + rc.logs[0].args.orderId.valueOf() + " gas: "+ rc.receipt.gasUsed);
 
         orderPayAmountWei = orderPayAmountWei.sub(6000);
 
-        rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
         log("make buy order gas(order 1 in list): ID: " + rc.logs[0].args.orderId.valueOf() + " gas: "+ rc.receipt.gasUsed);
 
         //now insert order as 2nd best.
         orderPayAmountWei = orderPayAmountWei.add(30).valueOf();
-        rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
         log("make buy order gas(order 2 in list): ID: " + rc.logs[0].args.orderId.valueOf() + " gas: "+ rc.receipt.gasUsed);
 
         let orderList = await reserve.getBuyOrderList();
@@ -580,40 +592,40 @@ contract('OrderBookReserve', async (accounts) => {
 //        log(orderList)
         for (let i = 0; i < orderList.length; i++) {
             //start from 1 since first order is head
-            await reserve.cancelOrder(true, orderList[i].valueOf(), {from: maker1});
+            await reserve.cancelBuyOrder(orderList[i].valueOf(), {from: maker1});
         }
 
         log("cancel all orders and add again.")
         orderPayAmountWei = ((new BigNumber(2)).mul((new BigNumber(10)).pow(18))).add(2000); // 2 ether
         orderExchangeTwei = (new BigNumber(9)).mul((new BigNumber(10)).pow(18));
-        rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
         log("make buy order gas(order 1 in list). ID: " + rc.logs[0].args.orderId.valueOf() + " gas: "+ rc.receipt.gasUsed);
 
         // insert order as last in list
         orderPayAmountWei = orderPayAmountWei.add(2000);
 
-        rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
         log("make buy order gas(order 2 in list). ID: " + rc.logs[0].args.orderId.valueOf() + " gas: "+ rc.receipt.gasUsed);
 
         // insert order as last in list
         orderPayAmountWei = orderPayAmountWei.add(2000);
 
-        rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
         log("make buy order gas(order 3 in list): ID: " + rc.logs[0].args.orderId.valueOf() + " gas: "+ rc.receipt.gasUsed);
 
         orderPayAmountWei = orderPayAmountWei.sub(6000);
 
-        rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
         log("make buy order gas(order 1 in list): ID: " + rc.logs[0].args.orderId.valueOf() + " gas: "+ rc.receipt.gasUsed);
 
         //now insert order as 2nd best.
         orderPayAmountWei = orderPayAmountWei.add(30).valueOf();
-        rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
         log("make buy order gas(order 2 in list): ID: " + rc.logs[0].args.orderId.valueOf() + " gas: "+ rc.receipt.gasUsed);
 
         orderList = await reserve.getBuyOrderList();
         for (let i = 0; i < orderList.length ; i++) {
-            await reserve.cancelOrder(true, orderList[i].valueOf(), {from: maker1});
+            await reserve.cancelBuyOrder(orderList[i].valueOf(), {from: maker1});
         }
     });
 
@@ -631,7 +643,7 @@ contract('OrderBookReserve', async (accounts) => {
 
         let totalGasMaker1 = new BigNumber(0);
         for (let i = 0; i < makeOrdersSrcAmounts.length; i++) {
-            let rc = await reserve.makeOrder(maker1, true, makeOrdersSrcAmounts[i], makeOrdersDstAmount[i], 0, {from: maker1});
+            let rc = await reserve.submitBuyTokenOrderWHint(makeOrdersSrcAmounts[i], makeOrdersDstAmount[i], 0, {from: maker1});
             totalGasMaker1 = totalGasMaker1.add(rc.receipt.gasUsed);
         }
 
@@ -645,18 +657,20 @@ contract('OrderBookReserve', async (accounts) => {
         //now run batch with maker2
         let hintArray = [0, 0, 0, 0, 0];
         let isAfterMyPrevOrder = [false, false, false, false, false];
-
+        let isBuyOrder = [true, true, true, true, true];
 
         await makerDeposit(maker2, 0, fundDepositTwei.valueOf(), amountKnc.valueOf());
-        rc = await reserve.makeOrderBatch(maker2, true, makeOrdersSrcAmounts, makeOrdersDstAmount, hintArray, isAfterMyPrevOrder, {from: maker2});
+        rc = await reserve.makeOrderBatch(isBuyOrder, makeOrdersSrcAmounts, makeOrdersDstAmount, hintArray, isAfterMyPrevOrder, {from: maker2});
 
+        let gasCostBatchAdd = rc.receipt.gasUsed;
         log("add 5 orders batch. gas price: " + rc.receipt.gasUsed);
-
 
         orderList = await reserve.getBuyOrderList();
         for (let i = 0; i < orderList.length ; i++) {
-            await reserve.cancelOrder(true, orderList[i].valueOf(), {from: maker2});
+            await reserve.cancelBuyOrder(orderList[i].valueOf(), {from: maker2});
         }
+
+        log ("adding 5 orders. batch add less gas: "  + (totalGasMaker1 - gasCostBatchAdd))
     });
 
     it("make order - compare gas price. add 5th order with / without hint.", async function () {
@@ -672,17 +686,17 @@ contract('OrderBookReserve', async (accounts) => {
         makeOrdersDstAmount = [orderDst, orderDst.sub(200), orderDst.sub(500), orderDst.sub(900), orderDst.sub(1300)];
 
         for (let i = 0; i < makeOrdersSrcAmounts.length - 1; i++) {
-            let rc = await reserve.makeOrder(maker1, true, makeOrdersSrcAmounts[i], makeOrdersDstAmount[i], 0, {from: maker1});
+            let rc = await reserve.submitBuyTokenOrderWHint(makeOrdersSrcAmounts[i], makeOrdersDstAmount[i], 0, {from: maker1});
         }
 
         let lastOrder = makeOrdersSrcAmounts.length - 1;
-        let rc = await reserve.makeOrder(maker1, true, makeOrdersSrcAmounts[lastOrder], makeOrdersDstAmount[lastOrder], 0, {from: maker1});
+        let rc = await reserve.submitBuyTokenOrderWHint(makeOrdersSrcAmounts[lastOrder], makeOrdersDstAmount[lastOrder], 0, {from: maker1});
         let gasWithoutHint = rc.receipt.gasUsed;
         log("5th order without hint: " + rc.receipt.gasUsed);
 
         orderList = await reserve.getBuyOrderList();
         for (let i = 0; i < orderList.length ; i++) {
-            await reserve.cancelOrder(true, orderList[i].valueOf(), {from: maker1});
+            await reserve.cancelBuyOrder(orderList[i].valueOf(), {from: maker1});
         }
 
         //now run same data with maker 2. add last with hint
@@ -692,13 +706,13 @@ contract('OrderBookReserve', async (accounts) => {
         makeOrdersDstAmount = [orderDst, orderDst.sub(200), orderDst.sub(500), orderDst.sub(900), orderDst.sub(1300)];
 
         for (let i = 0; i < makeOrdersSrcAmounts.length - 1; i++) {
-            rc = await reserve.makeOrder(maker2, true, makeOrdersSrcAmounts[i], makeOrdersDstAmount[i], 0, {from: maker2});
+            rc = await reserve.submitBuyTokenOrderWHint(makeOrdersSrcAmounts[i], makeOrdersDstAmount[i], 0, {from: maker2});
         }
 
         lastOrder = makeOrdersSrcAmounts.length - 1;
         let prevId = rc.logs[0].args.orderId.valueOf();
 
-        rc = await reserve.makeOrder(maker2, true, makeOrdersSrcAmounts[lastOrder], makeOrdersDstAmount[lastOrder],
+        rc = await reserve.submitBuyTokenOrderWHint(makeOrdersSrcAmounts[lastOrder], makeOrdersDstAmount[lastOrder],
             prevId, {from: maker2});
 
         log("5th order with hint: " + rc.receipt.gasUsed);
@@ -708,7 +722,7 @@ contract('OrderBookReserve', async (accounts) => {
 
         orderList = await reserve.getBuyOrderList();
         for (let i = 0; i < orderList.length ; i++) {
-            await reserve.cancelOrder(true, orderList[i].valueOf(), {from: maker2});
+            await reserve.cancelBuyOrder(orderList[i].valueOf(), {from: maker2});
         }
     });
 
@@ -721,11 +735,11 @@ contract('OrderBookReserve', async (accounts) => {
         let orderSrcAmountTwei = new BigNumber(9).mul(10 ** 18);
         let orderDstWei = new BigNumber(2).mul(10 ** 18);
 
-        let rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        let rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
 
         let order1ID = rc.logs[0].args.orderId.valueOf();
 
-        let orderDetails = await reserve.getOrderDetails(false, rc.logs[0].args.orderId.valueOf());
+        let orderDetails = await reserve.getSellTokenOrder(rc.logs[0].args.orderId.valueOf());
     //        log(orderDetails);
 
         assert.equal(orderDetails[0].valueOf(), maker1);
@@ -737,11 +751,11 @@ contract('OrderBookReserve', async (accounts) => {
         // insert order as last in list
         orderSrcAmountTwei = orderSrcAmountTwei.add(2000);
 
-        rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
 
         let order2ID = rc.logs[0].args.orderId.valueOf();
 
-        orderDetails = await reserve.getOrderDetails(false, rc.logs[0].args.orderId.valueOf());
+        orderDetails = await reserve.getSellTokenOrder(rc.logs[0].args.orderId.valueOf());
         //        log(orderDetails);
 
         assert.equal(orderDetails[3].valueOf(), order1ID); // prev should be buy head id - since first
@@ -750,10 +764,10 @@ contract('OrderBookReserve', async (accounts) => {
         // insert another order as last in list
         orderSrcAmountTwei = orderSrcAmountTwei.add(2000);
 
-        rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
         let order3ID = rc.logs[0].args.orderId.valueOf();
 
-        orderDetails = await reserve.getOrderDetails(false, rc.logs[0].args.orderId.valueOf());
+        orderDetails = await reserve.getSellTokenOrder(rc.logs[0].args.orderId.valueOf());
         //        log(orderDetails);
 
         assert.equal(orderDetails[3].valueOf(), order2ID); // prev should be buy head id - since first
@@ -763,35 +777,35 @@ contract('OrderBookReserve', async (accounts) => {
         let orderList = await reserve.getSellOrderList();
 //        log ("list \n" + orderList);
         //get first order details
-        orderDetails = await reserve.getOrderDetails(false, orderList[0].valueOf());
+        orderDetails = await reserve.getSellTokenOrder(orderList[0].valueOf());
 
         // insert order as first in list
         let bestOrderPayAmount = orderDetails[1];
         let bestOrderDstAmount = orderDetails[2].add(200).valueOf();
 
-        rc = await reserve.makeOrder(maker1, false, bestOrderPayAmount, bestOrderDstAmount, 0, {from: maker1});
+        rc = await reserve.submitSellTokenOrderWHint(bestOrderPayAmount, bestOrderDstAmount, 0, {from: maker1});
         let order4ID = rc.logs[0].args.orderId.valueOf();
 //        log("order4 " + order4ID)
 
-        orderDetails = await reserve.getOrderDetails(false, rc.logs[0].args.orderId.valueOf());
+        orderDetails = await reserve.getSellTokenOrder(rc.logs[0].args.orderId.valueOf());
 
         assert.equal(orderDetails[3].valueOf(), headId); // prev should be buy head id - since first
         assert.equal(orderDetails[4].valueOf(), order1ID); // next should be tail ID - since last
 
         //now insert order as 2nd best.
         let secondBestPayAmount = bestOrderPayAmount.add(30).valueOf();
-        rc = await reserve.makeOrder(maker1, false, secondBestPayAmount, bestOrderDstAmount, 0, {from: maker1});
+        rc = await reserve.submitSellTokenOrderWHint(secondBestPayAmount, bestOrderDstAmount, 0, {from: maker1});
         let order5ID = rc.logs[0].args.orderId.valueOf();
         //        log("order4 " + order4ID)
 
-        orderDetails = await reserve.getOrderDetails(false, rc.logs[0].args.orderId.valueOf());
+        orderDetails = await reserve.getSellTokenOrder(rc.logs[0].args.orderId.valueOf());
 
         assert.equal(orderDetails[3].valueOf(), order4ID); // prev should be buy head id - since first
         assert.equal(orderDetails[4].valueOf(), order1ID); // next should be tail ID - since last
 
         orderList = await reserve.getSellOrderList();
         for (let i = 0; i < orderList.length - 1; i++) {
-            await reserve.cancelOrder(false, orderList[i], {from: maker1});
+            await reserve.cancelSellOrder(orderList[i], {from: maker1});
         }
     });
 
@@ -829,7 +843,7 @@ contract('OrderBookReserve', async (accounts) => {
         let orderExchangeTwei = 9 * 10 ** 18;
 
         // add order
-        let rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        let rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
 
         let list = await reserve.getBuyOrderList();
         assert.equal(list.length, 1);
@@ -858,9 +872,9 @@ contract('OrderBookReserve', async (accounts) => {
         let orderExchangeTwei = new BigNumber(9 * 10 ** 18);
 
         // add order
-        let rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
-        rc = await reserve.makeOrder(maker1, true, orderPayAmountWei.add(1000), orderExchangeTwei, 0, {from: maker1});
-        rc = await reserve.makeOrder(maker1, true, orderPayAmountWei.add(2000), orderExchangeTwei, 0, {from: maker1});
+        let rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei.add(1000), orderExchangeTwei, 0, {from: maker1});
+        rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei.add(2000), orderExchangeTwei, 0, {from: maker1});
 
         //take all orders
 //  function trade(ERC20 srcToken, uint srcAmount, ERC20 destToken, address destAddress, uint conversionRate, bool validate)
@@ -901,7 +915,7 @@ contract('OrderBookReserve', async (accounts) => {
         let orderExchangeTwei = amountTwei;
 
         // add order
-        let rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        let rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
 
         let list = await reserve.getBuyOrderList();
         assert.equal(list.length, 1);
@@ -934,7 +948,7 @@ contract('OrderBookReserve', async (accounts) => {
         let orderExchangeTwei = amountTwei;
 
         // add order
-        let rc = await reserve.makeOrder(maker1, true, orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
+        let rc = await reserve.submitBuyTokenOrderWHint(orderPayAmountWei, orderExchangeTwei, 0, {from: maker1});
 
         let list = await reserve.getBuyOrderList();
         assert.equal(list.length, 1);
@@ -976,9 +990,9 @@ contract('OrderBookReserve', async (accounts) => {
         //now add order
         //////////////
 //        makeOrder(address maker, bool isEthToToken, uint128 payAmount, uint128 exchangeAmount, uint32 hintPrevOrder)
-        let rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
-        rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei.add(400), 0, {from: maker1});
-            rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
+        let rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei.add(400), 0, {from: maker1});
+            rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
 //        log(rc.logs[0].args)
 
         let orderList = await reserve.getSellOrderList();
@@ -1053,10 +1067,10 @@ function log(str) {
 async function makerDeposit(maker, ethWei, tokenTwei, kncTwei) {
 
     await token.approve(reserve.address, tokenTwei);
-    await reserve.makerDepositToken(maker, tokenTwei);
+    await reserve.depositToken(maker, tokenTwei);
     await KNCToken.approve(reserve.address, kncTwei);
-    await reserve.makerDepositKnc(maker, kncTwei);
-    await reserve.makerDepositWei(maker, {from: maker, value: ethWei});
+    await reserve.depositKncFee(maker, kncTwei);
+    await reserve.depositEther(maker, {from: maker, value: ethWei});
 }
 
 async function twoStringsSoliditySha(str1, str2) {
