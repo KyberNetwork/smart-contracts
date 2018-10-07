@@ -405,39 +405,3 @@ async function makerDeposit(res, maker, ethWei, tokenTwei, kncTwei, kncToken) {
     await res.depositKncFee(maker, kncTwei);
     await res.depositEther(maker, {from: maker, value: ethWei});
 }
-
-async function twoStringsSoliditySha(str1, str2) {
-    let str1Cut = str1.slice(2);
-    let str2Cut = str2.slice(2);
-    let combinedSTR = str1Cut + str2Cut;
-
-    // Convert a string to a byte array
-    for (var bytes = [], c = 0; c < combinedSTR.length; c += 2)
-        bytes.push(parseInt(combinedSTR.substr(c, 2), 16));
-
-    let sha3Res = await web3.sha3(bytes, {encoding: "hex"});
-
-    return sha3Res;
-};
-
-function addBps (price, bps) {
-    return (price.mul(10000 + bps).div(10000));
-};
-
-function compareRates (receivedRate, expectedRate) {
-    expectedRate = expectedRate - (expectedRate % 10);
-    receivedRate = receivedRate - (receivedRate % 10);
-    assert.equal(expectedRate, receivedRate, "different prices");
-};
-
-
-function calcDstQty(srcQty, srcDecimals, dstDecimals, rate) {
-    rate = new BigNumber(rate);
-    if (dstDecimals >= srcDecimals) {
-        let decimalDiff = (new BigNumber(10)).pow(dstDecimals - srcDecimals);
-        return (rate.mul(srcQty).mul(decimalDiff).div(precisionUnits)).floor();
-    } else {
-        let decimalDiff = (new BigNumber(10)).pow(srcDecimals - dstDecimals);
-        return (rate.mul(srcQty).div(decimalDiff.mul(precisionUnits))).floor();
-    }
-}
