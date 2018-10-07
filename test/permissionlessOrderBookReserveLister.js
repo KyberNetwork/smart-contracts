@@ -199,7 +199,7 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
         let rxWei = await res.makerFunds(maker1, ethAddress);
         assert.equal(rxWei.valueOf(), amountEth);
 
-        await res.makerWithdrawFunds(ethAddress, rxWei, {from: maker1})
+        await res.withdrawEther(rxWei, {from: maker1})
         rxWei = await res.makerFunds(maker1, ethAddress);
         assert.equal(rxWei.valueOf(), 0);
     });
@@ -250,11 +250,10 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
 
         //now add order
         //////////////
-//        makeOrder(address maker, bool isEthToToken, uint128 payAmount, uint128 exchangeAmount, uint32 hintPrevOrder)
         let rc;
-        rc = await res.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
-        rc = await res.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei.add(400), 0, {from: maker1});
-        rc = await res.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
+        rc = await res.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
+        rc = await res.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei.add(400), {from: maker1});
+        rc = await res.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei.add(200), {from: maker1});
 //        log(rc.logs[0].args)
 
         let orderList = await res.getSellOrderList();
@@ -365,12 +364,9 @@ contract('PermissionlessOrderBookReserveLister_feeBurner_tests', async (accounts
             kncToken
         );
 
-        await reserve.makeOrder(
-            maker,
-            true /* isEthToToken */,
+        await reserve.submitBuyTokenOrder(
             2 * 10 ** 18 /* srcAmount */,
             100 * 10 ** 18 /* dstAmount */,
-            0 /* hint */,
             {from: maker}
         );
 
@@ -404,10 +400,10 @@ function log(str) {
 
 async function makerDeposit(res, maker, ethWei, tokenTwei, kncTwei, kncToken) {
     await token.approve(res.address, tokenTwei);
-    await res.makerDepositToken(maker, tokenTwei);
+    await res.depositToken(maker, tokenTwei);
     await kncToken.approve(res.address, kncTwei);
-    await res.makerDepositKnc(maker, kncTwei);
-    await res.makerDepositWei(maker, {from: maker, value: ethWei});
+    await res.depositKncFee(maker, kncTwei);
+    await res.depositEther(maker, {from: maker, value: ethWei});
 }
 
 async function twoStringsSoliditySha(str1, str2) {
