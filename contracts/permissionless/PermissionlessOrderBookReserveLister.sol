@@ -38,7 +38,6 @@ contract PermissionlessOrderBookReserveLister {
     mapping(address => OrderBookReserveInterface) public reserves;
 
     // KNC burn fee per order that is taken. = 25 / 1000 = 0.25 %
-    // TODO: pass this to OrderBookReserve's ctor
     uint constant public ORDER_BOOK_BURN_FEE_BPS = 25;
 
     function PermissionlessOrderBookReserveLister(
@@ -70,7 +69,8 @@ contract PermissionlessOrderBookReserveLister {
             kncToken,
             token,
             feeBurnerResolverContract,
-            ordersFactory
+            ordersFactory,
+            ORDER_BOOK_BURN_FEE_BPS
         );
         reserveListingStage[token] = ListingStage.RESERVE_ADDED;
 
