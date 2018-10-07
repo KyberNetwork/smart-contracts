@@ -57,10 +57,10 @@ contract MakerOrders {
     {
         require(howMany <= 256);
 
-        if (freeOrders.takenBitmap != 0) return true;
+        if (freeOrders.takenBitmap != 0) return true; //already allocated and in use.
         if (howMany == freeOrders.numOrders) return true;
 
-        // make sure no orders in use at the moment
+        // make sure no orders in use at the moment if its re allocate case
         require(freeOrders.takenBitmap == 0);
 
         freeOrders.firstOrderId = firstAllocatedId;

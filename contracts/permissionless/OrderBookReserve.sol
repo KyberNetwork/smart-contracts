@@ -293,6 +293,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         returns(bool)
     {
         updateSellTokenOrderWHint(orderId, newSrcAmount, newDstAmount, 0);
+        return true;
     }
 
 
@@ -303,6 +304,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         address maker = msg.sender;
 
         require(updateOrder(maker, false, orderId, newSrcAmount, newDstAmount, hintPrevOrder));
+        return true;
     }
 
 
@@ -310,7 +312,8 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         public
         returns(bool)
     {
-        updateBuyTokenOrderWHint(orderId, newSrcAmount, newDstAmount, 0);
+        require(updateBuyTokenOrderWHint(orderId, newSrcAmount, newDstAmount, 0));
+        return true;
     }
 
     function updateBuyTokenOrderWHint(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount, uint32 hintPrevOrder)
@@ -320,6 +323,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         address maker = msg.sender;
 
         require(updateOrder(maker, true, orderId, newSrcAmount, newDstAmount, hintPrevOrder));
+        return true;
     }
 
     function updateOrderBatch(bool[] isBuyOrder, uint32[] orderId, uint128[] newSrcAmount,
@@ -337,6 +341,8 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         for (uint i = 0; i < isBuyOrder.length; ++i) {
             require(updateOrder(maker, isBuyOrder[i], orderId[i], newSrcAmount[i], newDstAmount[i], hintPrevOrder[i]));
         }
+
+        return true;
     }
 
     event TokenDeposited(address indexed maker, uint amount);
@@ -364,6 +370,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
 
     function depositKncFee(address maker, uint amount) public payable {
         require(maker != address(0));
+        require(amount < MAX_QTY);
 
         require(kncToken.transferFrom(msg.sender, this, amount));
 
@@ -426,11 +433,13 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
     }
 
     function cancelSellOrder(uint32 orderId) public returns(bool) {
-        cancelOrder(false, orderId);
+        require(cancelOrder(false, orderId));
+        return true;
     }
 
     function cancelBuyOrder(uint32 orderId) public returns(bool) {
-        cancelOrder(true, orderId);
+        require(cancelOrder(true, orderId));
+        return true;
     }
 
     function addOrder(address maker, bool isBuyOrder, uint32 newId, uint128 srcAmount, uint128 dstAmount, uint32 hintPrevOrder)
