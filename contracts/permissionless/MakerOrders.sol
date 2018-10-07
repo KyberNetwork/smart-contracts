@@ -8,7 +8,7 @@ contract MakerOrders {
         uint256 takenBitmap;
     }
 
-    function takeOrderId(FreeOrders storage freeOrders)
+    function getNewOrderId(FreeOrders storage freeOrders)
         internal
         returns(uint32)
     {
@@ -45,6 +45,7 @@ contract MakerOrders {
         uint256 bitNegation = bitPointer ^ 0xffffffffffffffff;
 
         freeOrders.takenBitmap &= bitNegation;
+        return true;
     }
 
     function allocateOrders(

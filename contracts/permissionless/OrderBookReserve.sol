@@ -235,7 +235,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         returns(bool)
     {
         address maker = msg.sender;
-        uint32 newId = takeOrderId(makerOrdersBuy[maker]);
+        uint32 newId = getNewOrderId(makerOrdersBuy[maker]);
 
         addOrder(maker, false, newId, srcAmount, dstAmount, hintPrevOrder);
     }
@@ -252,12 +252,12 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         returns(bool)
     {
         address maker = msg.sender;
-        uint32 newId = takeOrderId(makerOrdersBuy[maker]);
+        uint32 newId = getNewOrderId(makerOrdersBuy[maker]);
 
         addOrder(maker, true, newId, srcAmount, dstAmount, hintPrevOrder);
     }
 
-    function makeOrderBatch(bool[] isBuyOrder, uint128[] srcAmount, uint128[] dstAmount,
+    function addOrderBatch(bool[] isBuyOrder, uint128[] srcAmount, uint128[] dstAmount,
         uint32[] hintPrevOrder, bool[] isAfterMyPrevOrder) public
     {
         require(isBuyOrder.length == hintPrevOrder.length);
@@ -274,7 +274,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
 
             prevId = isAfterMyPrevOrder[i] ? newId : hintPrevOrder[i];
 
-            newId = isBuyOrder[i] ? takeOrderId(makerOrdersBuy[maker]) : takeOrderId(makerOrdersSell[maker]);
+            newId = isBuyOrder[i] ? getNewOrderId(makerOrdersBuy[maker]) : getNewOrderId(makerOrdersSell[maker]);
 
             require(addOrder(maker, isBuyOrder[i], newId, srcAmount[i], dstAmount[i], prevId));
         }
@@ -580,13 +580,13 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         return buyList.getOrderDetails(orderId);
     }
 
-    function getBuyOrderList() public view returns(uint32[] orderList) {
+    function getBuyTokenOrderList() public view returns(uint32[] orderList) {
 
         OrdersInterface list = buyList;
         return getList(list);
     }
 
-    function getSellOrderList() public view returns(uint32[] orderList) {
+    function getSellTokenOrderList() public view returns(uint32[] orderList) {
 
         OrdersInterface list = sellList;
         return getList(list);
