@@ -72,6 +72,10 @@ let permissionlessTok;
 let KNC;
 let kncAddress;
 
+//cap data for white list
+let capWei = 1000;
+let sgdToEthRate = 30000;
+
 // imbalance data
 let minimalRecordResolution = 2; //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
 let maxPerBlockImbalance = 4000;
@@ -332,8 +336,8 @@ contract('KyberNetwork', function(accounts) {
         let kgtToken = await TestToken.new("kyber genesis token", "KGT", 0);
         whiteList = await WhiteList.new(admin, kgtToken.address);
         await whiteList.addOperator(operator);
-        await whiteList.setCategoryCap(0, 1000, {from:operator});
-        await whiteList.setSgdToEthRate(30000, {from:operator});
+        await whiteList.setCategoryCap(0, capWei, {from:operator});
+        await whiteList.setSgdToEthRate(sgdToEthRate, {from:operator});
 
         expectedRate = await ExpectedRate.new(network.address, admin);
         await network.setWhiteList(whiteList.address);
@@ -804,25 +808,6 @@ contract('KyberNetwork', function(accounts) {
                 minConversionRate, walletId, 0, {from:networkProxy, value:amountWei});
     });
 
-    it("should verify trade reverted when trade not sent from proxy.", async function () {
-        let tokenInd = 0;
-        let token = tokens[tokenInd]; //choose some token
-        let amountWei = 98000;
-        let minConversionRate = 0;
-
-        //perform trade
-        try {
-             await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 2000,
-                minConversionRate, walletId, 0, {from:user1, value:amountWei});
-             assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 2000,
-                minConversionRate, walletId, 0, {from:networkProxy, value:amountWei});
-    });
-
     it("should verify buy reverted when bad ether amount is sent.", async function () {
         let tokenInd = 0;
         let token = tokens[tokenInd]; //choose some token
@@ -960,6 +945,19 @@ contract('KyberNetwork', function(accounts) {
 
         rates = await network.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], 0);
 //        assert.equal(0, rates[0].valueOf());
+    });
+
+    it("verify when whitelist contract isn't set. user gets 'infinte' cap", async() => {
+        let userCap = await network.getUserCapInWei(user1);
+        assert.equal(userCap.valueOf(), (capWei * sgdToEthRate));
+
+        await network.setWhiteList(0);
+
+        let infiniteCap = (new BigNumber(2)).pow(255);
+        userCap = await network.getUserCapInWei(user1);
+        assert.equal(userCap.valueOf(), infiniteCap.valueOf());
+
+        await network.setWhiteList(whiteList.address);
     });
 
     it("should test listing and unlisting pairs. compare to listed pairs API.", async function () {
@@ -1617,7 +1615,7 @@ contract('KyberNetwork', function(accounts) {
 
         networkTemp = await Network.new(admin);
 
-        //white list should succeed...
+        //white list can be set to 0...
         await networkTemp.setWhiteList(0);
 
 
@@ -2408,13 +2406,13 @@ contract('KyberNetwork', function(accounts) {
         //now add order
         //////////////
 //        makeOrder(address maker, bool isEthToToken, uint128 payAmount, uint128 exchangeAmount, uint32 hintPrevOrder)
-        let rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
-        rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei.add(400), 0, {from: maker1});
-        rc = await reserve.makeOrder(maker1, false, orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
+        rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+        rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei.add(400), 0, {from: maker1});
+        rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
 //        log(rc.logs[0].args)
 
         // first getConversionRate should return 0
-        let rate = await network.getExpectedRate(tokenAdd, ethAddress, 10 ** 18, 0);
+        rate = await network.getExpectedRate(tokenAdd, ethAddress, 10 ** 18, 0);
         assert.equal(rate.valueOf(), 0);
 
         let orderList = await res.getSellOrderList();
@@ -2586,8 +2584,8 @@ function log (string) {
 async function makerDeposit(res, maker, ethWei, tokenTwei, kncTwei) {
 
     await token.approve(res.address, tokenTwei);
-    await res.makerDepositToken(maker, tokenTwei);
+    await res.depositToken(maker, tokenTwei);
     await KNCToken.approve(res.address, kncTwei);
-    await res.makerDepositKnc(maker, kncTwei);
-    await res.makerDepositWei(maker, {from: maker, value: ethWei});
+    await res.depositKncFee(maker, kncTwei);
+    await res.depositEther(maker, {from: maker, value: ethWei});
 }

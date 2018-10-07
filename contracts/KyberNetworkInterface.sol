@@ -16,5 +16,5 @@ interface KyberNetworkInterface {
         returns (uint expectedRate, uint slippageRate);
 
     function tradeWithHint(address trader, ERC20 src, uint srcAmount, ERC20 dest, address destAddress,
-        uint maxDestAmount, uint minConversionRate, address walletId, bytes hint) external payable returns(uint);
+        uint maxDestAmount, uint minConversionRate, address walletId, bytes hint) public payable returns(uint);
 }
