@@ -19,7 +19,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
 
     uint public minOrderValueWei = 10 ** 18;                 // below this value order will be removed.
     uint public minOrderMakeValueWei = 2 * minOrderValueWei; // Below this value can't create new order.
-    uint public makersBurnFeeBps = 25;              // knc burn fee per order that is taken. = 25 / 1000 = 0.25 %
+    uint public makersBurnFeeBps;                            // knc burn fee per order that is taken.
 
     ERC20 public token; // this reserve will serve buy / sell for this token.
     FeeBurnerSimpleIf public feeBurnerContract;
@@ -61,7 +61,8 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         ERC20 knc,
         ERC20 _token,
         FeeBurnerResolverInterface resolver,
-        OrdersFactoryInterface factory
+        OrdersFactoryInterface factory,
+        uint _makersBurnFeeBps
     )
         public
     {
@@ -76,6 +77,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         kncToken = knc;
         token = _token;
         ordersFactoryContract = factory;
+        makersBurnFeeBps = _makersBurnFeeBps;
 
         require(kncToken.approve(feeBurnerContract, (2**255)));
 

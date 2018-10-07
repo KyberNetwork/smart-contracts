@@ -11,7 +11,7 @@ contract MockOrderBookReserve is OrderBookReserve {
     function MockOrderBookReserve(ERC20 knc, ERC20 _token, FeeBurnerResolverInterface resolver,
         OrdersFactoryInterface factory)
         public
-        OrderBookReserve(knc, _token, resolver, factory)
+        OrderBookReserve(knc, _token, resolver, factory, 25)
     {
 
     }
