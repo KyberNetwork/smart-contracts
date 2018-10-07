@@ -72,7 +72,7 @@ contract('OrderBookReserve', async (accounts) => {
     beforeEach('setup contract for each test', async () => {
 
 //        log(feeBurner.address + " " + kncAddress + " " + tokenAdd)
-        reserve = await OrderBookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address, ordersFactory.address);
+        reserve = await OrderBookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address, ordersFactory.address, 25);
 //        log(reserve);
         await reserve.init();
     });
@@ -1056,7 +1056,7 @@ contract('OrderBookReserve on network', async (accounts) => {
             init = false;
         }
 
-        reserve = await OrderBookReserve.new(feeBurner.address, kncAddress, tokenAdd, admin);
+        reserve = await OrderBookReserve.new(feeBurner.address, kncAddress, tokenAdd, admin, 25);
     });
 });
 
@@ -1108,4 +1108,3 @@ function calcDstQty(srcQty, srcDecimals, dstDecimals, rate) {
         return (rate.mul(srcQty).div(decimalDiff.mul(precisionUnits))).floor();
     }
 }
-
