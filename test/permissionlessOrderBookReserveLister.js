@@ -256,7 +256,7 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
         rc = await res.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei.add(200), {from: maker1});
 //        log(rc.logs[0].args)
 
-        let orderList = await res.getSellOrderList();
+        let orderList = await res.getSellTokenOrderList();
         assert.equal(orderList.length, 3);
 
         //tokens to user
@@ -269,7 +269,7 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
         rc = await res.trade(tokenAdd, totalPayValue, ethAddress, user1, 300, false);
         log("take 3 sell orders gas: " + rc.receipt.gasUsed);
 
-        orderList = await res.getSellOrderList();
+        orderList = await res.getSellTokenOrderList();
         assert.equal(orderList.length, 0);
 
         let userBalanceAfter = await Helper.getBalancePromise(user1);
