@@ -9,9 +9,9 @@ contract MockOrderBookReserve is OrderBookReserve {
     uint public bitmap;
 
     function MockOrderBookReserve(ERC20 knc, ERC20 _token, FeeBurnerResolverInterface resolver,
-        OrdersFactoryInterface factory)
+        OrdersFactoryInterface factory, uint _burnFeeBps)
         public
-        OrderBookReserve(knc, _token, resolver, factory, 25)
+        OrderBookReserve(knc, _token, resolver, factory, _burnFeeBps)
     {
 
     }
