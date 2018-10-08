@@ -33,7 +33,7 @@ contract('FeeBurner', function(accounts) {
         mockKNCWallet = accounts[7];
         someExternalWallet = accounts[6];
         taxWallet = accounts[5];
-
+        mockKyberNetwork = accounts[4];
         operator = accounts[1];
         admin = accounts[0];
 
@@ -43,22 +43,13 @@ contract('FeeBurner', function(accounts) {
         let balance = await kncToken.balanceOf(mockKNCWallet);
         assert.equal(balance.valueOf(), initialKNCWalletBalance, "unexpected wallet balance.");
 
-        //init mock kyber network and set knc rate
-//        log("create mock")
-        mockKyberNetwork = await MockKyberNetwork.new();
-        let kncRatePrecision = precision.mul(kncPerEtherRate);
-//        log("set pair rate")
-        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, kncRatePrecision);
-
-        let rate = await mockKyberNetwork.getExpectedRate(ethAddress, kncToken.address, (10 ** 18));
-
         //init fee burner
-        feeBurnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork.address);
+        feeBurnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork);
+        kncPerEtherRate = await feeBurnerInst.kncPerETHRate();
 
         await feeBurnerInst.addOperator(operator, {from: admin});
 
         //set parameters in fee burner.
-        await feeBurnerInst.setKNCRate(kncPerEtherRate);
         let result = await feeBurnerInst.setReserveData(mockReserve, burnFeeInBPS, mockKNCWallet, {from: operator});
 
 //        console.log("result")
@@ -449,15 +440,47 @@ contract('FeeBurner', function(accounts) {
         }
     });
 
+
+    it("should verify payed so far on this reserve.", async function () {
+        let rxPayedSoFar = await feeBurnerInst.feePayedPerReserve(mockReserve);
+
+        assert.equal(rxPayedSoFar.valueOf(), payedSoFar);
+    });
+
+    it("should test set knc rate limited by knc rate in kyber network", async function () {
+ //init mock kyber network and set knc rate
+//        log("create mock")
+        kncPerEtherRate = 431;
+        mockKyberNetwork = await MockKyberNetwork.new();
+        let kncRatePrecision = precision.mul(kncPerEtherRate);
+//        log("set pair rate")
+        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, kncRatePrecision);
+
+        let rate = await mockKyberNetwork.getExpectedRate(ethAddress, kncToken.address, (10 ** 18));
+        assert.equal(kncRatePrecision.valueOf(), rate[0].valueOf());
+        //init fee burner
+        feeBurnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork.address);
+        await feeBurnerInst.addOperator(operator, {from: admin});
+
+        await feeBurnerInst.setKNCRate(kncPerEtherRate);
+        let rxKncRate = await feeBurnerInst.kncPerETHRate()
+
+        assert.equal(rxKncRate.valueOf(), kncPerEtherRate);
+    });
+
     it("should test set KNC rate reverted when value above maxRate.", async function () {
         let legalKncRate = new BigNumber(10).pow(24);
         let illegalKncRate = legalKncRate.add(1);
 
-        //must set equivalnt knc rate in kyber
-        let kncRatePrecision = precision.mul(legalKncRate);
-        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, kncRatePrecision);
-        
+
+        //must set equivalent knc rate in kyber
+        let newRate = precision.mul(legalKncRate);
+        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, newRate);
+
         await feeBurnerInst.setKNCRate(legalKncRate);
+
+        newRate = precision.mul(illegalKncRate);
+        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, newRate);
 
         try {
             await feeBurnerInst.setKNCRate(illegalKncRate);
@@ -465,12 +488,6 @@ contract('FeeBurner', function(accounts) {
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
-    });
-
-    it("should verify payed so far on this reserve.", async function () {
-        let rxPayedSoFar = await feeBurnerInst.feePayedPerReserve(mockReserve);
-
-        assert.equal(rxPayedSoFar.valueOf(), payedSoFar);
     });
 
 });

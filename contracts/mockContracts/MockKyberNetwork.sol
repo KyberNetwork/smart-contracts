@@ -3,6 +3,7 @@ pragma solidity 0.4.18;
 
 import "../ERC20Interface.sol";
 
+
 /// this mock is used when only simple actions are required. no reserves are involved.
 contract MockKyberNetwork {
     mapping(bytes32=>uint) public pairRate; //rate in precision units. i.e. if rate is 10**18 its same as 1:1
