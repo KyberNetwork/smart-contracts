@@ -28,7 +28,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
     KyberNetworkInterface public kyberNetwork;
     uint public kncPerETHRate = 300;
 
-    uint constant public RATE_DIFF_PRECISION = 3 * 10 ** 17; //3 percent
+    uint constant public MAX_RATE_DIFF_PERCENT = 3; //3 percent
 
     function FeeBurner(address _admin, BurnableToken kncToken, KyberNetworkInterface _kyberNetwork) public {
         require(_admin != address(0));
@@ -75,8 +75,8 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         //query kyber for rate of 1 ether
         uint kyberKncRate;
         (kyberKncRate, ) = kyberNetwork.getExpectedRate(ETH_TOKEN_ADDRESS, ERC20(knc), (10 ** 18));
-        require(rate > (kyberKncRate * ((PRECISION - RATE_DIFF_PRECISION) / PRECISION * PRECISION)));
-        require(rate < (kyberKncRate * ((PRECISION + RATE_DIFF_PRECISION) / PRECISION * PRECISION)));
+        require(rate >= ((kyberKncRate * (100 - MAX_RATE_DIFF_PERCENT) / 100) / PRECISION));
+        require(rate <= ((kyberKncRate * (100 + MAX_RATE_DIFF_PERCENT) / 100) / PRECISION));
 
         kncPerETHRate = rate;
     }

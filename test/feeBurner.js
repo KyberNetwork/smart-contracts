@@ -120,14 +120,6 @@ contract('FeeBurner', function(accounts) {
 
     it("should test all set set functions rejected for non admin.", async function () {
         try {
-            await feeBurnerInst.setKNCRate(kncPerEtherRate, {from: mockReserve});
-            assert(false, "expected throw in line above..")
-        }
-            catch(e){
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
-        }
-
-        try {
             await feeBurnerInst.setReserveData(mockReserve, 70, mockKNCWallet, {from: mockReserve});
             assert(false, "expected throw in line above..")
         }
@@ -421,7 +413,7 @@ contract('FeeBurner', function(accounts) {
             await feeBurnerInst.handleFees(illegalTrade, mockReserve, 0, {from: mockKyberNetwork});
             assert(false, "expected throw in line above..")
         }
-            catch(e){
+        catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
         }
     });
@@ -466,9 +458,38 @@ contract('FeeBurner', function(accounts) {
         let rxKncRate = await feeBurnerInst.kncPerETHRate()
 
         assert.equal(rxKncRate.valueOf(), kncPerEtherRate);
+
+        //update knc rate in kyber network
+        kncPerEtherRate = 1000;
+        kncRatePrecision = precision.mul(kncPerEtherRate);
+        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, kncRatePrecision);
+
+        //now set rate should be limited around 1000 * precision
+        let rateDiff = await feeBurnerInst.MAX_RATE_DIFF_PERCENT();
+        let minRate = kncPerEtherRate * (100 - rateDiff) / 100;
+        let maxRate = kncPerEtherRate * (100 + 1 * rateDiff) / 100;
+
+        await feeBurnerInst.setKNCRate(minRate);
+        await feeBurnerInst.setKNCRate(maxRate);
+
+        try {
+            await feeBurnerInst.setKNCRate(maxRate + 1 * 1);
+            assert(false, "expected throw in line above..")
+        }
+        catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
+        }
+
+        try {
+            await feeBurnerInst.setKNCRate(minRate - 1);
+            assert(false, "expected throw in line above..")
+        }
+        catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
+        }
     });
 
-    it("should test set KNC rate reverted when value above maxRate.", async function () {
+    it("should test 'set KNC rate' reverted when value above maxRate.", async function () {
         let legalKncRate = new BigNumber(10).pow(24);
         let illegalKncRate = legalKncRate.add(1);
 
@@ -490,6 +511,15 @@ contract('FeeBurner', function(accounts) {
         }
     });
 
+    it("should test 'set knc rate' rejected for non admin.", async function () {
+        try {
+            await feeBurnerInst.setKNCRate(kncPerEtherRate, {from: mockReserve});
+            assert(false, "expected throw in line above..")
+        }
+            catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
+        }
+    });
 });
 
 
