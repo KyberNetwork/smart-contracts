@@ -4,6 +4,7 @@ pragma solidity 0.4.18;
 import "./FeeBurnerInterface.sol";
 import "./Withdrawable.sol";
 import "./Utils.sol";
+import "./KyberNetworkInterface.sol";
 
 
 interface BurnableToken {
@@ -24,10 +25,12 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
     uint public taxFeeBps = 0; // burned fees are taxed. % out of burned fees.
 
     BurnableToken public knc;
-    address public kyberNetwork;
+    KyberNetworkInterface public kyberNetwork;
     uint public kncPerETHRate = 300;
 
-    function FeeBurner(address _admin, BurnableToken kncToken, address _kyberNetwork) public {
+    uint constant public RATE_DIFF_PRECISION = 3 * 10 ** 17; //3 percent
+
+    function FeeBurner(address _admin, BurnableToken kncToken, KyberNetworkInterface _kyberNetwork) public {
         require(_admin != address(0));
         require(kncToken != address(0));
         require(_kyberNetwork != address(0));
@@ -68,6 +71,13 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
 
     function setKNCRate(uint rate) public onlyAdmin {
         require(rate <= MAX_RATE);
+
+        //query kyber for rate of 1 ether
+        uint kyberKncRate;
+        (kyberKncRate, ) = kyberNetwork.getExpectedRate(ETH_TOKEN_ADDRESS, ERC20(knc), (10 ** 18));
+        require(rate > (kyberKncRate * ((PRECISION - RATE_DIFF_PRECISION) / PRECISION * PRECISION)));
+        require(rate < (kyberKncRate * ((PRECISION + RATE_DIFF_PRECISION) / PRECISION * PRECISION)));
+
         kncPerETHRate = rate;
     }
 
@@ -75,7 +85,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
     event AssignBurnFees(address reserve, uint burnFee);
 
     function handleFees(uint tradeWeiAmount, address reserve, address wallet) public returns(bool) {
-        require(msg.sender == kyberNetwork);
+        require(msg.sender == address(kyberNetwork));
         require(tradeWeiAmount <= MAX_QTY);
         require(kncPerETHRate <= MAX_RATE);
 
