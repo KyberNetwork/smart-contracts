@@ -520,6 +520,17 @@ contract('FeeBurner', function(accounts) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
         }
     });
+
+    it("should check event for 'set knc rate'", async function () {
+        kncPerEtherRate = 431;
+        let kncRatePrecision = precision.mul(kncPerEtherRate);
+        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, kncRatePrecision);
+
+        let rc = await feeBurnerInst.setKNCRate(kncPerEtherRate);
+//        console.log(rc.logs[0].args)
+
+        assert.equal(rc.logs[0].args.KNCPerEth.valueOf(), kncPerEtherRate);
+    });
 });
 
 

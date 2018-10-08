@@ -69,6 +69,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         TaxWalletSet(_taxWallet);
     }
 
+    event KNCRateSet(uint KNCPerEth);
     function setKNCRate(uint rate) public onlyAdmin {
         require(rate <= MAX_RATE);
 
@@ -79,6 +80,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         require(rate <= ((kyberKncRate * (100 + MAX_RATE_DIFF_PERCENT) / 100) / PRECISION));
 
         kncPerETHRate = rate;
+        KNCRateSet(kncPerETHRate);
     }
 
     event AssignFeeToWallet(address reserve, address wallet, uint walletFee);
