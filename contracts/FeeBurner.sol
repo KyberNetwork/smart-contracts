@@ -28,8 +28,6 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
     KyberNetworkInterface public kyberNetwork;
     uint public kncPerETHRate = 300;
 
-    uint constant public MAX_RATE_DIFF_PERCENT = 3; //3 percent
-
     function FeeBurner(address _admin, BurnableToken kncToken, KyberNetworkInterface _kyberNetwork) public {
         require(_admin != address(0));
         require(kncToken != address(0));
@@ -69,18 +67,20 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         TaxWalletSet(_taxWallet);
     }
 
-    event KNCRateSet(uint KNCPerEth);
-    function setKNCRate(uint rate) public onlyAdmin {
-        require(rate <= MAX_RATE);
+    event KNCRateSet(uint KNCPerEth, address updater);
+    function setKNCRate(uint min, uint max) public onlyOperator {
+        require(max <= MAX_RATE);
+        require(min > 0);
 
         //query kyber for rate of 1 ether
         uint kyberKncRate;
         (kyberKncRate, ) = kyberNetwork.getExpectedRate(ETH_TOKEN_ADDRESS, ERC20(knc), (10 ** 18));
-        require(rate >= ((kyberKncRate * (100 - MAX_RATE_DIFF_PERCENT) / 100) / PRECISION));
-        require(rate <= ((kyberKncRate * (100 + MAX_RATE_DIFF_PERCENT) / 100) / PRECISION));
+        uint ethToKncRate = kyberKncRate / PRECISION;
+        require(ethToKncRate >= min);
+        require(ethToKncRate <= max);
 
-        kncPerETHRate = rate;
-        KNCRateSet(kncPerETHRate);
+        kncPerETHRate = ethToKncRate;
+        KNCRateSet(kncPerETHRate, msg.sender);
     }
 
     event AssignFeeToWallet(address reserve, address wallet, uint walletFee);
