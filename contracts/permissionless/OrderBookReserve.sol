@@ -444,7 +444,9 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         return true;
     }
 
-    function addOrder(address maker, bool isBuyOrder, uint32 newId, uint128 srcAmount, uint128 dstAmount, uint32 hintPrevOrder)
+    function addOrder(address maker, bool isBuyOrder, uint32 newId, uint128 srcAmount, uint128 dstAmount,
+        uint32 hintPrevOrder
+    )
         internal
         returns(bool)
     {
@@ -499,7 +501,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
     }
 
 
-    event OrderCanceled(address indexed maker, bool isBuyOrder, uint32 orderId, uint srcAmount, uint dstAmount);
+    event OrderCanceled(address indexed maker, bool isBuyOrder, uint32 orderId, uint128 srcAmount, uint dstAmount);
     function cancelOrder(bool isBuyOrder, uint32 orderId) internal returns(bool) {
 
         address maker = msg.sender;
@@ -554,6 +556,34 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
 
         // Ta daaa
         kncStakePerEtherBps = newStakeBps;
+    }
+
+    function getAddOrderHintSellToken(uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
+        return sellList.findPrevOrderId(srcAmount, dstAmount);
+    }
+
+    function getAddOrderHintBuyToken(uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
+        return buyList.findPrevOrderId(srcAmount, dstAmount);
+    }
+
+    function getUpdateOrderHintSellToken(uint32 orderId, uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
+        uint32 prevId = sellList.findPrevOrderId(srcAmount, dstAmount);
+
+        if (prevId == orderId) {
+            (,,, prevId,) = sellList.getOrderDetails(orderId);
+        }
+
+        return prevId;
+    }
+
+    function getUpdateOrderHintBuyToken(uint32 orderId, uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
+        uint32 prevId = buyList.findPrevOrderId(srcAmount, dstAmount);
+
+        if (prevId == orderId) {
+            (,,, prevId,) = buyList.getOrderDetails(orderId);
+        }
+
+        return prevId;
     }
 
     function getSellTokenOrder(uint32 orderId) public view
