@@ -189,14 +189,15 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
             if (orderData.srcAmount <= remainingSrcAmount) {
                 totalDstAmount += orderData.dstAmount;
                 remainingSrcAmount -= orderData.srcAmount;
-                require(takeFullOrder(orderId, srcToken, destToken, orderData.maker, orderData.srcAmount, orderData.dstAmount));
+                require(takeFullOrder(orderData.maker, orderId, srcToken, destToken,
+                    orderData.srcAmount, orderData.dstAmount));
                 if (remainingSrcAmount == 0) break;
 
             } else {
                 uint128 partialDstQty = orderData.dstAmount * remainingSrcAmount / orderData.srcAmount;
                 totalDstAmount += partialDstQty;
-                require(takePartialOrder(orderId, orderData.maker, srcToken, destToken, remainingSrcAmount, partialDstQty,
-                    orderData.srcAmount, orderData.dstAmount));
+                require(takePartialOrder(orderData.maker, orderId, srcToken, destToken, remainingSrcAmount,
+                    partialDstQty, orderData.srcAmount, orderData.dstAmount));
                 remainingSrcAmount = 0;
                 break;
             }
@@ -483,7 +484,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         (orderMaker, currSrcAmount, currDestAmount, , ) = list.getOrderDetails(orderId);
         require(orderMaker == maker);
 
-        validateUpdateOrder(maker, isBuyOrder, currSrcAmount, currDestAmount, srcAmount, dstAmount);
+        require(validateUpdateOrder(maker, isBuyOrder, currSrcAmount, currDestAmount, srcAmount, dstAmount));
 
         bool updatedWithHint = false;
 
@@ -499,8 +500,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
 
         return true;
     }
-
-
+    
     event OrderCanceled(address indexed maker, bool isBuyOrder, uint32 orderId, uint128 srcAmount, uint dstAmount);
     function cancelOrder(bool isBuyOrder, uint32 orderId) internal returns(bool) {
 
@@ -518,7 +518,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
 
         require(handleOrderStakes(orderData.maker, uint(calcKncStake(weiAmount)), 0));
 
-        list.removeById(orderId);
+        removeOrder(list, maker, isBuyOrder, orderId);
 
         //funds go back to maker
         makerFunds[maker][isBuyOrder ? token : ETH_TOKEN_ADDRESS] += orderData.dstAmount;
@@ -559,14 +559,21 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
     }
 
     function getAddOrderHintSellToken(uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
+        require(srcAmount >= minOrderMakeValueWei);
         return sellList.findPrevOrderId(srcAmount, dstAmount);
     }
 
     function getAddOrderHintBuyToken(uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
+        require(dstAmount >= minOrderMakeValueWei);
         return buyList.findPrevOrderId(srcAmount, dstAmount);
     }
 
-    function getUpdateOrderHintSellToken(uint32 orderId, uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
+    function getUpdateOrderHintSellToken(uint32 orderId, uint128 srcAmount, uint128 dstAmount)
+        public
+        view
+        returns (uint32)
+    {
+        require(srcAmount >= minOrderMakeValueWei);
         uint32 prevId = sellList.findPrevOrderId(srcAmount, dstAmount);
 
         if (prevId == orderId) {
@@ -576,7 +583,12 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         return prevId;
     }
 
-    function getUpdateOrderHintBuyToken(uint32 orderId, uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
+    function getUpdateOrderHintBuyToken(uint32 orderId, uint128 srcAmount, uint128 dstAmount)
+        public
+        view
+        returns (uint32)
+    {
+        require(dstAmount >= minOrderMakeValueWei);
         uint32 prevId = buyList.findPrevOrderId(srcAmount, dstAmount);
 
         if (prevId == orderId) {
@@ -765,28 +777,27 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
     }
 
     function takeFullOrder(
+        address maker,
         uint32 orderId,
         ERC20 src,
         ERC20 dest,
-        address maker,
         uint128 orderSrcAmount,
         uint128 orderDstAmount
     )
         internal
         returns (bool)
     {
-        bool isBuyOrder = (src == ETH_TOKEN_ADDRESS) ? true : false;
         OrdersInterface list = (src == ETH_TOKEN_ADDRESS) ? buyList : sellList;
         dest;
 
-        list.removeById(orderId);
+        require(removeOrder(list, maker, (src == ETH_TOKEN_ADDRESS), orderId));
 
-        return takeOrder(maker, isBuyOrder, orderSrcAmount, orderDstAmount);
+        return takeOrder(maker, (src == ETH_TOKEN_ADDRESS), orderSrcAmount, orderDstAmount);
     }
 
     function takePartialOrder(
-        uint32 orderId,
         address maker,
+        uint32 orderId,
         ERC20 src,
         ERC20 dest,
         uint128 srcAmount,
@@ -803,32 +814,21 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         orderSrcAmount -= srcAmount;
         orderDstAmount -= partialDstAmount;
 
-        OrdersInterface list;
-        bool isBuyOrder;
-
-        uint remainingWeiValue;
-        if (src == ETH_TOKEN_ADDRESS) {
-            remainingWeiValue = orderSrcAmount;
-            list = buyList;
-            isBuyOrder = true;
-        } else {
-            remainingWeiValue = orderDstAmount;
-            list = sellList;
-            isBuyOrder = false;
-        }
+        OrdersInterface list = (src == ETH_TOKEN_ADDRESS) ? buyList : sellList;
+        uint remainingWeiValue = (src == ETH_TOKEN_ADDRESS) ? orderSrcAmount : orderDstAmount;
 
         if (remainingWeiValue < minOrderValueWei) {
             // remaining order amount too small. remove order and add remaining funds to free funds
             makerFunds[maker][dest] += orderDstAmount;
             handleOrderStakes(maker, remainingWeiValue, 0);
-            list.removeById(orderId);
+            removeOrder(list, maker, (src == ETH_TOKEN_ADDRESS), orderId);
         } else {
             // update order values in storage
             uint128 subDst = list.subSrcAndDstAmounts(orderId, srcAmount);
             require(subDst == partialDstAmount);
         }
 
-        return(takeOrder(maker, isBuyOrder, srcAmount, partialDstAmount));
+        return(takeOrder(maker, (src == ETH_TOKEN_ADDRESS), srcAmount, partialDstAmount));
     }
 
     function takeOrder(
@@ -843,12 +843,20 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         int weiAmount = calcWei(isBuyOrder, srcAmount, dstAmount);
 
         //tokens already collected. just update maker balance
-        makerFunds[maker][isBuyOrder? ETH_TOKEN_ADDRESS : token] += srcAmount;
+        makerFunds[maker][isBuyOrder ? ETH_TOKEN_ADDRESS : token] += srcAmount;
 
         // send dest tokens in one batch. not here
 
         //handle knc stakes and fee
         handleOrderStakes(maker, uint(calcKncStake(weiAmount)), calcBurnAmount(weiAmount));
+
+        return true;
+    }
+
+    function removeOrder(OrdersInterface list, address maker, bool isBuyOrder, uint32 orderId) internal returns(bool) {
+        list.removeById(orderId);
+        FreeOrders storage orders = isBuyOrder ? makerOrdersBuy[maker] : makerOrdersSell[maker];
+        releaseOrderId(orders, orderId);
 
         return true;
     }
