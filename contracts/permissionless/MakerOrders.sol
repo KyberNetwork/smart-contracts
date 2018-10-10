@@ -40,7 +40,7 @@ contract MakerOrders {
         uint orderBitNum = uint(orderId) - uint(freeOrders.firstOrderId);
         uint256 bitPointer = 1 * (2 ** orderBitNum);
         // TODO: enable!
-        //        require(bitPointer & freeOrders.takenBitmap == 1);
+//        require(bitPointer & freeOrders.takenBitmap == 1);
 
         uint256 bitNegation = bitPointer ^ 0xffffffffffffffff;
 

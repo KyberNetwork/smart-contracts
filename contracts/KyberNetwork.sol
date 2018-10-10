@@ -310,14 +310,18 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     }
 
     function searchBestRate(ERC20 src, ERC20 dest, uint srcAmount) public view returns(address, uint) {
-        return searchBestRateInternal(src, dest, srcAmount, true);
+        return searchBestRatePerm(src, dest, srcAmount, true);
+    }
+
+    function searchBestRateOnlyPermissioned(ERC20 src, ERC20 dest, uint srcAmount) public view returns(address, uint) {
+        return searchBestRatePerm(src, dest, srcAmount, false);
     }
 
     /* solhint-disable code-complexity */
     // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
     //  It has been tested, reviewed and found to be clear enough.
     //@dev this function always src or dest are ether. can't do token to token
-    function searchBestRateInternal(ERC20 src, ERC20 dest, uint srcAmount, bool usePermissionless)
+    function searchBestRatePerm(ERC20 src, ERC20 dest, uint srcAmount, bool usePermissionless)
         internal
         view
         returns(address, uint)
@@ -390,12 +394,12 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         }
 
         (result.reserve1, result.rateSrcToEth) =
-            searchBestRateInternal(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
+            searchBestRatePerm(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
 
         result.weiAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcAmount, result.rateSrcToEth);
 
         (result.reserve2, result.rateEthToDest) =
-            searchBestRateInternal(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
+            searchBestRatePerm(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
 
         result.destAmount = calcDestAmount(ETH_TOKEN_ADDRESS, dest, result.weiAmount, result.rateEthToDest);
 
