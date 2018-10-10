@@ -236,7 +236,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         returns(bool)
     {
         address maker = msg.sender;
-        uint32 newId = getNewOrderId(makerOrdersBuy[maker]);
+        uint32 newId = getNewOrderId(makerOrdersSell[maker]);
 
         addOrder(maker, false, newId, srcAmount, dstAmount, hintPrevOrder);
     }
@@ -470,6 +470,8 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         return true;
     }
 
+    event UpdatedWithHint(bool updateSuccess, uint updateType);
+    event UpdatedWithSearch(address maker);
     function updateOrder(address maker, bool isBuyOrder, uint32 orderId, uint128 srcAmount,
         uint128 dstAmount, uint32 hintPrevOrder)
         internal
@@ -489,18 +491,21 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
         bool updatedWithHint = false;
 
         if (hintPrevOrder != 0) {
+//            uint updateType;
             (updatedWithHint, ) = list.updateWithPositionHint(orderId, srcAmount, dstAmount, hintPrevOrder);
+            UpdatedWithHint(updatedWithHint, 1);
         }
 
         if (!updatedWithHint) {
             list.update(orderId, srcAmount, dstAmount);
+            UpdatedWithSearch(maker);
         }
 
         OrderUpdated(maker, isBuyOrder, orderId, srcAmount, dstAmount, updatedWithHint);
 
         return true;
     }
-    
+
     event OrderCanceled(address indexed maker, bool isBuyOrder, uint32 orderId, uint128 srcAmount, uint dstAmount);
     function cancelOrder(bool isBuyOrder, uint32 orderId) internal returns(bool) {
 

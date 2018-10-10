@@ -854,7 +854,7 @@ contract('OrderBookReserve', async (accounts) => {
         list = await reserve.getBuyTokenOrderList();
     });
 
-    it("maker add few buy and sell orders and perform batch update. verify updated..", async() => {
+    it("maker add few buy and sell orders and perform batch update - only amounts. compare gas no hint and good hint.", async() => {
         let fundDepositTwei = new BigNumber(500).mul(10 ** 18); // 500 tokens
         let amountKnc = 600 * 10 ** 18;
         let amountEth = (new BigNumber(4 * 10 ** 18)).add(3000);
@@ -890,11 +890,13 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(list[0].valueOf(), sellOrder1ID);
         assert.equal(list[1].valueOf(), sellOrder2ID);
 
-        //create batch update so both sell orders and buy orders swap places. no hints.
+        //create batch update only amounts. no hints.
         let orderTypeArray = [true, true, false, false];
         let ordersArray = [buyOrder1ID, buyOrder2ID, sellOrder1ID, sellOrder2ID];
-        let orderNewSrcAmountsArr = [orderPayAmountWei.valueOf(), orderPayAmountWei.sub(100).valueOf(), orderPayAmountTwei.valueOf(), orderPayAmountTwei.sub(100).valueOf()];
-        let orderNewDstAmountsArr = [orderSellTwei.valueOf(), orderSellTwei.valueOf(), orderSellWei.valueOf(), orderSellWei.valueOf()];
+        let orderNewSrcAmountsArr = [orderPayAmountWei.add(20).valueOf(), orderPayAmountWei.add(120).valueOf(),
+                                        orderPayAmountTwei.add(30).valueOf(), orderPayAmountTwei.add(105).valueOf()];
+        let orderNewDstAmountsArr = [orderSellTwei.add(1).valueOf(), orderSellTwei.add(1).valueOf(),
+                    orderSellWei.add(1).valueOf(), orderSellWei.add(1).valueOf()];
         let orderHintArray = [0, 0, 0, 0];
 
 //        log (orderTypeArray)
@@ -904,23 +906,8 @@ contract('OrderBookReserve', async (accounts) => {
 //        log (orderHintArray)
 //updateOrderBatch(bool[] isBuyOrder, uint32[] orderId, uint128[] newSrcAmount, uint128[] newDstAmount, uint32[] hintPrevOrder)
         rc = await reserve.updateOrderBatch(orderTypeArray, ordersArray, orderNewSrcAmountsArr, orderNewDstAmountsArr, orderHintArray, {from: maker1})
-        log("update 4 orders batch, no hint: " + rc.receipt.gasUsed);
-
-        //test positions.
-        list = await reserve.getBuyTokenOrderList();
-        assert.equal(list[0].valueOf(), buyOrder2ID);
-        assert.equal(list[1].valueOf(), buyOrder1ID);
-
-        list = await reserve.getSellTokenOrderList();
-        assert.equal(list[0].valueOf(), sellOrder2ID);
-        assert.equal(list[1].valueOf(), sellOrder1ID);
-
-        //now update again with good hint array. print gas.
-        orderNewSrcAmountsArr = [orderPayAmountWei.valueOf(), orderPayAmountWei.add(100).valueOf(), orderPayAmountTwei.valueOf(), orderPayAmountTwei.add(100).valueOf()];
-        orderHintArray = [headId, buyOrder1ID, headId, sellOrder1ID];
-
-        rc = await reserve.updateOrderBatch(orderTypeArray, ordersArray, orderNewSrcAmountsArr, orderNewDstAmountsArr, orderHintArray, {from: maker1})
-        log("update 4 orders batch, good hint: " + rc.receipt.gasUsed);
+        let updateBatchNoHintGas = rc.receipt.gasUsed;
+        log("update 4 orders batch - only amounts, no hint: " + updateBatchNoHintGas);
 
         //test positions.
         list = await reserve.getBuyTokenOrderList();
@@ -930,6 +917,115 @@ contract('OrderBookReserve', async (accounts) => {
         list = await reserve.getSellTokenOrderList();
         assert.equal(list[0].valueOf(), sellOrder1ID);
         assert.equal(list[1].valueOf(), sellOrder2ID);
+
+        //now update again with good hint array only amounts. print gas.
+        orderNewSrcAmountsArr = [orderPayAmountWei.add(7).valueOf(), orderPayAmountWei.add(107).valueOf(),
+                                     orderPayAmountTwei.add(11).valueOf(), orderPayAmountTwei.add(111).valueOf()];
+        orderNewDstAmountsArr = [orderSellTwei.add(3).valueOf(), orderSellTwei.add(3).valueOf(),
+                    orderSellWei.add(3).valueOf(), orderSellWei.add(3).valueOf()];
+        orderHintArray = [headId, buyOrder1ID, headId, sellOrder1ID];
+        rc = await reserve.updateOrderBatch(orderTypeArray, ordersArray, orderNewSrcAmountsArr, orderNewDstAmountsArr, orderHintArray, {from: maker1})
+        let updateBatchWithHintGas = rc.receipt.gasUsed;
+        log("update 4 orders batch - only amounts, good hint: " + updateBatchWithHintGas);
+
+        //test positions.
+        list = await reserve.getBuyTokenOrderList();
+//        log(list)
+        assert.equal(list[0].valueOf(), buyOrder1ID);
+        assert.equal(list[1].valueOf(), buyOrder2ID);
+
+        list = await reserve.getSellTokenOrderList();
+//        log(list)
+        assert.equal(list[0].valueOf(), sellOrder1ID);
+        assert.equal(list[1].valueOf(), sellOrder2ID);
+
+        assert(updateBatchWithHintGas < (updateBatchNoHintGas - 100000));
+    });
+
+    it("maker add few buy and sell orders and perform batch update + move position. compare gas no hint and good hint.", async() => {
+        let fundDepositTwei = new BigNumber(500).mul(10 ** 18); // 500 tokens
+        let amountKnc = 600 * 10 ** 18;
+        let amountEth = (new BigNumber(4 * 10 ** 18)).add(3000);
+
+        await makerDeposit(maker1, amountEth.valueOf(), fundDepositTwei.valueOf(), amountKnc.valueOf());
+
+        let orderPayAmountWei = (new BigNumber(2 * 10 ** 18)).add(2000); // 2 ether
+        let orderSellTwei = new BigNumber(9 * 10 ** 18);
+
+        // insert 2 buy orders
+        let rc = await reserve.submitBuyTokenOrder(orderPayAmountWei, orderSellTwei, {from: maker1});
+        let buyOrder1ID = rc.logs[0].args.orderId.valueOf();
+        rc = await reserve.submitBuyTokenOrder(orderPayAmountWei.add(100), orderSellTwei, {from: maker1});
+        let buyOrder2ID = rc.logs[0].args.orderId.valueOf();
+
+        // insert 2 sell orders
+        let orderPayAmountTwei = (new BigNumber(9 * 10 ** 18));
+        let orderSellWei = new BigNumber(2 * 10 ** 18);
+
+        rc = await reserve.submitSellTokenOrder(orderPayAmountTwei, orderSellWei, {from: maker1});
+        let sellOrder1ID = rc.logs[0].args.orderId.valueOf();
+        rc = await reserve.submitSellTokenOrder(orderPayAmountTwei.add(100), orderSellWei, {from: maker1});
+        let sellOrder2ID = rc.logs[0].args.orderId.valueOf();
+
+        //verify positions.
+        let list = await reserve.getBuyTokenOrderList();
+        assert.equal(list[0].valueOf(), buyOrder1ID);
+        assert.equal(list[1].valueOf(), buyOrder2ID);
+
+        list = await reserve.getSellTokenOrderList();
+        assert.equal(list[0].valueOf(), sellOrder1ID);
+        assert.equal(list[1].valueOf(), sellOrder2ID);
+
+        //create batch update so both sell orders and buy orders swap places. no hints.
+        let orderTypeArray = [true, true, false, false];
+        let ordersArray = [buyOrder1ID, buyOrder2ID, sellOrder1ID, sellOrder2ID];
+        let orderNewSrcAmountsArr = [orderPayAmountWei.add(110).valueOf(), orderPayAmountWei.add(120).valueOf(),
+                    orderPayAmountTwei.add(110).valueOf(), orderPayAmountTwei.add(120).valueOf()];
+        let orderNewDstAmountsArr = [orderSellTwei.add(1).valueOf(), orderSellTwei.add(1).valueOf(),
+                    orderSellWei.add(1).valueOf(), orderSellWei.add(1).valueOf()];
+        let orderHintArray = [0, 0, 0, 0];
+
+//        log (orderTypeArray)
+//        log (ordersArray)
+//        log (orderNewSrcAmountsArr)
+//        log (orderNewDstAmountsArr)
+//        log (orderHintArray)
+//updateOrderBatch(bool[] isBuyOrder, uint32[] orderId, uint128[] newSrcAmount, uint128[] newDstAmount, uint32[] hintPrevOrder)
+        rc = await reserve.updateOrderBatch(orderTypeArray, ordersArray, orderNewSrcAmountsArr, orderNewDstAmountsArr, orderHintArray, {from: maker1})
+        let updateBatchNoHintGas = rc.receipt.gasUsed;
+        log("update 4 orders batch, no hint: " + updateBatchNoHintGas);
+
+        //test positions.
+        list = await reserve.getBuyTokenOrderList();
+        assert.equal(list[0].valueOf(), buyOrder1ID);
+        assert.equal(list[1].valueOf(), buyOrder2ID);
+
+        list = await reserve.getSellTokenOrderList();
+        assert.equal(list[0].valueOf(), sellOrder1ID);
+        assert.equal(list[1].valueOf(), sellOrder2ID);
+
+        //now update again with good hint array. print gas.
+        orderNewSrcAmountsArr = [orderPayAmountWei.add(130).valueOf(), orderPayAmountWei.add(140).valueOf(),
+                            orderPayAmountTwei.add(130).valueOf(), orderPayAmountTwei.add(140).valueOf()];
+        orderNewDstAmountsArr = [orderSellTwei.add(3).valueOf(), orderSellTwei.add(3).valueOf(),
+                                orderSellWei.add(3).valueOf(), orderSellWei.add(3).valueOf()];
+        orderHintArray = [buyOrder2ID, buyOrder1ID, sellOrder2ID, sellOrder1ID];
+        rc = await reserve.updateOrderBatch(orderTypeArray, ordersArray, orderNewSrcAmountsArr, orderNewDstAmountsArr, orderHintArray, {from: maker1})
+        let updateBatchWithHintGas = rc.receipt.gasUsed;
+        log("update 4 orders batch, good hint: " + updateBatchWithHintGas);
+
+        //test positions.
+        list = await reserve.getBuyTokenOrderList();
+//        log(list)
+        assert.equal(list[0].valueOf(), buyOrder1ID);
+        assert.equal(list[1].valueOf(), buyOrder2ID);
+
+        list = await reserve.getSellTokenOrderList();
+//        log(list)
+        assert.equal(list[0].valueOf(), sellOrder1ID);
+        assert.equal(list[1].valueOf(), sellOrder2ID);
+
+        assert(updateBatchWithHintGas < (updateBatchNoHintGas - 3000));
     });
 
     it("maker add a few buy orders. see orders added in correct position. print gas price per order", async function () {
