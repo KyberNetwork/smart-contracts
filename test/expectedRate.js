@@ -37,7 +37,7 @@ let minimalRecordResolution = 2; //low resolution so I don't lose too much data.
 let maxPerBlockImbalance = 4000;
 let maxTotalImbalance = maxPerBlockImbalance * 12;
 
-contract('ExpectedRates', function(accounts) {
+contract('ExpectedRate', function(accounts) {
     it("should init kyber network and all its components.", async function () {
         let gasPrice = (new BigNumber(10).pow(9).mul(50));
 
@@ -140,6 +140,7 @@ contract('ExpectedRates', function(accounts) {
         }
 
         network = await Network.new(admin);
+        await network.addOperator(operator);
         reserve1 = await Reserve.new(network.address, pricing1.address, admin);
         await pricing1.setReserveAddress(reserve1.address);
         await reserve1.addAlerter(alerter);
@@ -165,7 +166,7 @@ contract('ExpectedRates', function(accounts) {
         }
 
         // add reserves
-        await network.addReserve(reserve1.address, true);
+        await network.addReserve(reserve1.address, true, false, {from: operator});
 
         //set contracts
         feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address);
@@ -176,6 +177,8 @@ contract('ExpectedRates', function(accounts) {
         await whiteList.setSgdToEthRate(30000, {from:operator});
 
         expectedRates = await ExpectedRate.new(network.address, admin);
+        await expectedRates.addOperator(operator);
+
         await network.setWhiteList(whiteList.address);
         await network.setExpectedRate(expectedRates.address);
         await network.setFeeBurner(feeBurner.address);
@@ -188,12 +191,11 @@ contract('ExpectedRates', function(accounts) {
 
         //list tokens per reserve
         for (let i = 0; i < numTokens; i++) {
-            await network.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true);
+            await network.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true, {from: operator});
         }
     });
 
-    it("should init expected rates.", async function () {
-        await expectedRates.addOperator(operator);
+    it("should init expected rate.", async function () {
         await expectedRates.setWorstCaseRateFactor(minSlippageBps, {from: operator});
     });
 

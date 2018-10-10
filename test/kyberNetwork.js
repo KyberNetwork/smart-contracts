@@ -978,58 +978,98 @@ contract('KyberNetwork', function(accounts) {
         reserveGet = await network.reservesPerTokenDest(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         reserveGet = await network.reservesPerTokenSrc(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         //unlist reserve2 only eth to token
         await network.listPairForReserve(reserve2.address, tokenAdd[tokenInd], true, false, false, {from: operator});
 
         // here non listed
-        reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         //here no change
         reserveGet = await network.reservesPerTokenSrc(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         //list back reserve 2 buy and sell. see not added twice
         await network.listPairForReserve(reserve2.address, tokenAdd[tokenInd], true, true, true, {from: operator});
         reserveGet = await network.reservesPerTokenDest(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         reserveGet = await network.reservesPerTokenSrc(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         //list back reserve 1 token to eth
         await network.listPairForReserve(reserve1.address, tokenAdd[tokenInd], false, true, true, {from: operator});
         reserveGet = await network.reservesPerTokenDest(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         reserveGet = await network.reservesPerTokenSrc(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
         reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
         assert.equal(reserve1.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenSrc(tokenAddress, 2);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenSrc(tokenAddress, 2);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         //list back reserve 1 eth to token
         await network.listPairForReserve(reserve1.address, tokenAdd[tokenInd], true, false, true, {from: operator});
@@ -1038,16 +1078,26 @@ contract('KyberNetwork', function(accounts) {
         reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
         assert.equal(reserve1.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenSrc(tokenAddress, 2);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenSrc(tokenAddress, 2);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         reserveGet = await network.reservesPerTokenSrc(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
         reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
         assert.equal(reserve1.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenSrc(tokenAddress, 2);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenSrc(tokenAddress, 2);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
     });
 
     it("should test can't list pairs if reserve not added.", async function () {
@@ -1059,11 +1109,7 @@ contract('KyberNetwork', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        reserveGet = await network.reservesPerTokenSrc(uniqueToken.address, 0);
-        assert.equal(reserveGet.valueOf(), 0);
-
         await network.addReserve(reserve3.address, true, false, {from: operator});
-
         await network.listPairForReserve(reserve3.address, uniqueToken.address, true, true, true, {from: operator});
 
         reserveGet = await network.reservesPerTokenSrc(uniqueToken.address, 0);
@@ -2370,7 +2416,7 @@ contract('KyberNetwork', function(accounts) {
         log("average gas usage " + numTrades + " buys. token to token: " + avgGas.floor().valueOf());
     });
 
-    it("add permission less order book reserve for new token using reserve lister. see success... ", async() => {
+    xit("add permission less order book reserve for new token using reserve lister. see success... ", async() => {
         feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
         ordersFactory = await OrdersFactory.new();
 

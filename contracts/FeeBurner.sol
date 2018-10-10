@@ -4,6 +4,7 @@ pragma solidity 0.4.18;
 import "./FeeBurnerInterface.sol";
 import "./Withdrawable.sol";
 import "./Utils.sol";
+import "./KyberNetworkInterface.sol";
 
 
 interface BurnableToken {
@@ -24,10 +25,10 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
     uint public taxFeeBps = 0; // burned fees are taxed. % out of burned fees.
 
     BurnableToken public knc;
-    address public kyberNetwork;
+    KyberNetworkInterface public kyberNetwork;
     uint public kncPerETHRate = 300;
 
-    function FeeBurner(address _admin, BurnableToken kncToken, address _kyberNetwork) public {
+    function FeeBurner(address _admin, BurnableToken kncToken, KyberNetworkInterface _kyberNetwork) public {
         require(_admin != address(0));
         require(kncToken != address(0));
         require(_kyberNetwork != address(0));
@@ -66,16 +67,27 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         TaxWalletSet(_taxWallet);
     }
 
-    function setKNCRate(uint rate) public onlyAdmin {
-        require(rate <= MAX_RATE);
-        kncPerETHRate = rate;
+    event KNCRateSet(uint KNCPerEth, address updater);
+    function setKNCRate(uint min, uint max) public onlyOperator {
+        require(max <= MAX_RATE);
+        require(min > 0);
+
+        //query kyber for rate of 1 ether
+        uint kyberKncRate;
+        (kyberKncRate, ) = kyberNetwork.getExpectedRate(ETH_TOKEN_ADDRESS, ERC20(knc), (10 ** 18));
+        uint ethToKncRate = kyberKncRate / PRECISION;
+        require(ethToKncRate >= min);
+        require(ethToKncRate <= max);
+
+        kncPerETHRate = ethToKncRate;
+        KNCRateSet(kncPerETHRate, msg.sender);
     }
 
     event AssignFeeToWallet(address reserve, address wallet, uint walletFee);
     event AssignBurnFees(address reserve, uint burnFee);
 
     function handleFees(uint tradeWeiAmount, address reserve, address wallet) public returns(bool) {
-        require(msg.sender == kyberNetwork);
+        require(msg.sender == address(kyberNetwork));
         require(tradeWeiAmount <= MAX_QTY);
         require(kncPerETHRate <= MAX_RATE);
 

@@ -353,9 +353,9 @@ contract('KyberNetworkProxy', function(accounts) {
 
     it("init kyber network proxy and kyber network data, list token pairs.", async function () {
         // add reserves
-        await network.addReserve(reserve1.address, true);
-        await network.addReserve(reserve2.address, true);
-        await network.addReserve(reserve4Mal.address, true);
+        await network.addReserve(reserve1.address, true, false, {from: operator});
+        await network.addReserve(reserve2.address, true, false, {from: operator});
+        await network.addReserve(reserve4Mal.address, true, false, {from: operator});
 
         networkProxy = await NetworkProxy.new(admin);
 
@@ -383,11 +383,11 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //list tokens per reserve
         for (let i = 0; i < numTokens; i++) {
-            await network.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true);
-            await network.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true);
+            await network.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true, {from: operator});
+            await network.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true, {from: operator});
         }
 
-        await network.listPairForReserve(reserve4Mal.address, tokenForMal.address, true, true, true);
+        await network.listPairForReserve(reserve4Mal.address, tokenForMal.address, true, true, true, {from: operator});
     });
 
     it("should disable 1 reserve. perform buy and check: balances changed as expected.", async function () {
@@ -2073,8 +2073,8 @@ contract('KyberNetworkProxy', function(accounts) {
         await reserve2.setContracts(maliciousNetwork.address, pricing2.address, 0);
 
         // add reserves
-        await maliciousNetwork.addReserve(reserve1.address, true);
-        await maliciousNetwork.addReserve(reserve2.address, true);
+        await maliciousNetwork.addReserve(reserve1.address, true, false, {from: operator});
+        await maliciousNetwork.addReserve(reserve2.address, true, false, {from: operator});
 
         await maliciousNetwork.setKyberProxy(networkProxy.address);
 
@@ -2091,8 +2091,8 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //list tokens per reserve
         for (let i = 0; i < numTokens; i++) {
-            await maliciousNetwork.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true);
-            await maliciousNetwork.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true);
+            await maliciousNetwork.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true, {from: operator});
+            await maliciousNetwork.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true, {from: operator});
         }
     });
 
@@ -2258,8 +2258,8 @@ contract('KyberNetworkProxy', function(accounts) {
         await reserve2.setContracts(maliciousNetwork2.address, pricing2.address, 0);
 
         // add reserves
-        await maliciousNetwork2.addReserve(reserve1.address, true);
-        await maliciousNetwork2.addReserve(reserve2.address, true);
+        await maliciousNetwork2.addReserve(reserve1.address, true, false, {from: operator});
+        await maliciousNetwork2.addReserve(reserve2.address, true, false, {from: operator});
 
         await maliciousNetwork2.setKyberProxy(networkProxy.address);
 
@@ -2277,8 +2277,8 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //list tokens per reserve
         for (let i = 0; i < numTokens; i++) {
-            await maliciousNetwork2.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true);
-            await maliciousNetwork2.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true);
+            await maliciousNetwork2.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true, {from: operator});
+            await maliciousNetwork2.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true, {from: operator});
         }
     });
 
@@ -2371,8 +2371,8 @@ contract('KyberNetworkProxy', function(accounts) {
         await reserve2.setContracts(networkNoMaxDest.address, pricing2.address, 0);
 
         // add reserves
-        await networkNoMaxDest.addReserve(reserve1.address, true);
-        await networkNoMaxDest.addReserve(reserve2.address, true);
+        await networkNoMaxDest.addReserve(reserve1.address, true, false, {from: operator});
+        await networkNoMaxDest.addReserve(reserve2.address, true, false, {from: operator});
 
         await networkNoMaxDest.setKyberProxy(networkProxy.address);
 
@@ -2385,13 +2385,14 @@ contract('KyberNetworkProxy', function(accounts) {
         await networkNoMaxDest.setFeeBurner(feeBurner.address);
         await networkNoMaxDest.setParams(gasPrice.valueOf(), negligibleRateDiff);
         await networkNoMaxDest.setEnable(true);
+
         let price = await networkNoMaxDest.maxGasPrice();
         assert.equal(price.valueOf(), gasPrice.valueOf());
 
         //list tokens per reserve
         for (let i = 0; i < numTokens; i++) {
-            await networkNoMaxDest.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true);
-            await networkNoMaxDest.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true);
+            await networkNoMaxDest.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true, {from: operator});
+            await networkNoMaxDest.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true, {from: operator});
         }
     });
 
@@ -2474,8 +2475,8 @@ contract('KyberNetworkProxy', function(accounts) {
         await reserve2.setContracts(generousNetwork.address, pricing2.address, 0);
 
         // add reserves
-        await generousNetwork.addReserve(reserve1.address, true);
-        await generousNetwork.addReserve(reserve2.address, true);
+        await generousNetwork.addReserve(reserve1.address, true, false, {from: operator});
+        await generousNetwork.addReserve(reserve2.address, true, false, {from: operator});
 
         await generousNetwork.setKyberProxy(networkProxy.address);
 
@@ -2488,13 +2489,14 @@ contract('KyberNetworkProxy', function(accounts) {
         await generousNetwork.setFeeBurner(feeBurner.address);
         await generousNetwork.setParams(gasPrice.valueOf(), negligibleRateDiff);
         await generousNetwork.setEnable(true);
+
         let price = await generousNetwork.maxGasPrice();
         assert.equal(price.valueOf(), gasPrice.valueOf());
 
         //list tokens per reserve
         for (let i = 0; i < numTokens; i++) {
-            await generousNetwork.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true);
-            await generousNetwork.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true);
+            await generousNetwork.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true, {from: operator});
+            await generousNetwork.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true, {from: operator});
         }
     });
 
