@@ -1,12 +1,12 @@
 pragma solidity 0.4.18;
 
 
-import "../MakerOrders.sol";
+import "../OrderIdManager.sol";
 
 
-contract MockMakerOrders is MakerOrders {
+contract MockOrdersIdManager is OrdersIdManager {
 
-    FreeOrders ordersData;
+    OrdersData ordersData;
 
     function allocateNewOrders(uint howMany, uint firstId) public {
         allocateOrders(ordersData, uint32(firstId), uint32(howMany));
