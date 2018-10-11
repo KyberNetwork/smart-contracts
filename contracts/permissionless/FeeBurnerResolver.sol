@@ -33,7 +33,6 @@ contract KyberNetworkENSResolver {
     function getKyberNetworkAddress() internal view returns(address) {
         return ENS_CONTRACT.resolver(calcNode()).addr(calcNode());
     }
-
 }
 
 
