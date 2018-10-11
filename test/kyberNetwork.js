@@ -1,7 +1,7 @@
 let ConversionRates = artifacts.require("./mockContracts/MockConversionRate.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let Reserve = artifacts.require("./KyberReserve.sol");
-let Network = artifacts.require("./KyberNetwork.sol");
+let Reserve = artifacts.require("./KYBERReserve.sol");
+let Network = artifacts.require("./KYBERNetwork.sol");
 let WhiteList = artifacts.require("./WhiteList.sol");
 let ExpectedRate = artifacts.require("./ExpectedRate.sol");
 let FeeBurner = artifacts.require("./FeeBurner.sol");
@@ -125,7 +125,7 @@ let compactSellArr = [];
 let oldBaseBuy;
 let oldBaseSell;
 
-contract('KyberNetwork', function(accounts) {
+contract('KYBERNetwork', function(accounts) {
     it("should init globals. init 2 ConversionRates Inst, init tokens and add to pricing inst. set basic data per token.", async function () {
         // set account addresses
         admin = accounts[0];
@@ -166,7 +166,7 @@ contract('KyberNetwork', function(accounts) {
             await pricing2.enableTokenTrade(token.address);
         }
 
-        KNC = await TestToken.new("kyber krystal", "KNC", 18);
+        KNC = await TestToken.new("KYBER krystal", "KNC", 18);
         kncAddress = KNC.address;
 
         permissionlessTok = await TestToken.new("permissionLess", "PRM", 18);
@@ -324,16 +324,16 @@ contract('KyberNetwork', function(accounts) {
         }
     });
 
-    it("should init kyber network data, list token pairs.", async function () {
+    it("should init KYBER network data, list token pairs.", async function () {
         // add reserves
         await network.addReserve(reserve1.address, true, false, {from: operator});
         await network.addReserve(reserve2.address, true, false, {from: operator});
 
-        await network.setKyberProxy(networkProxy);
+        await network.setKYBERProxy(networkProxy);
 
         //set contracts
         feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address);
-        let kgtToken = await TestToken.new("kyber genesis token", "KGT", 0);
+        let kgtToken = await TestToken.new("KYBER genesis token", "KGT", 0);
         whiteList = await WhiteList.new(admin, kgtToken.address);
         await whiteList.addOperator(operator);
         await whiteList.setCategoryCap(0, capWei, {from:operator});
@@ -1680,7 +1680,7 @@ contract('KyberNetwork', function(accounts) {
         }
 
         try {
-            await networkTemp.setKyberProxy(0);
+            await networkTemp.setKYBERProxy(0);
             assert(false, "throw was expected in line above.")
         } catch(e){
            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -1722,7 +1722,7 @@ contract('KyberNetwork', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await networkTemp.setKyberProxy(networkProxy);
+        await networkTemp.setKYBERProxy(networkProxy);
         await networkTemp.setEnable(true);
     });
 
@@ -2416,73 +2416,88 @@ contract('KyberNetwork', function(accounts) {
         log("average gas usage " + numTrades + " buys. token to token: " + avgGas.floor().valueOf());
     });
 
-    xit("add permission less order book reserve for new token using reserve lister. see success... ", async() => {
-        feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
-        ordersFactory = await OrdersFactory.new();
+    describe("permissionless order book reserve", async() => {
+        xit("add permission less order book reserve for new token using reserve lister. see success... ", async() => {
+            feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
+            ordersFactory = await OrdersFactory.new();
 
-        reserveLister = await PermissionlessOrderBookReserveLister.new(network.address, feeBurnerResolver.address,
-            ordersFactory.address, kncAddress);
+            reserveLister = await PermissionlessOrderBookReserveLister.new(network.address, feeBurnerResolver.address,
+                ordersFactory.address, kncAddress);
 
-        await network.addOperator(reserveLister.address);
+            await network.addOperator(reserveLister.address);
 
-        let tokenAdd = permissionlessTok.address;
-        let rc = await reserveLister.addOrderBookContract(tokenAdd);
-        rc = await reserveLister.initOrderBookContract(tokenAdd);
-        rc = await reserveLister.listOrderBookContract(tokenAdd);
+            let tokenAdd = permissionlessTok.address;
+            let rc = await reserveLister.addOrderBookContract(tokenAdd);
+            rc = await reserveLister.initOrderBookContract(tokenAdd);
+            rc = await reserveLister.listOrderBookContract(tokenAdd);
 
-        //verify reserve exists in network
-        let reserveAddress = await network.reservesPerTokenDest(tokenAdd, 0);
-        let listReserveAddress = await reserveLister.reserves(tokenAdd);
-        assert.equal(reserveAddress.valueOf(), listReserveAddress.valueOf());
+            //verify reserve exists in network
+            let reserveAddress = await network.reservesPerTokenDest(tokenAdd, 0);
+            let listReserveAddress = await reserveLister.reserves(tokenAdd);
+            assert.equal(reserveAddress.valueOf(), listReserveAddress.valueOf());
 
-        reserve = await OrderBookReserve.at(reserveAddress.valueOf());
+            reserve = await OrderBookReserve.at(reserveAddress.valueOf());
 
-        //maker deposits tokens
-        let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
-        let orderDstWei = new BigNumber(2 * 10 ** 18);
-        let amountKnc = 600 * 10 ** 18;
-        let amountEthDeposit = (new BigNumber(6 * 10 ** 18)).add(600);
+            //maker deposits tokens
+            let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
+            let orderDstWei = new BigNumber(2 * 10 ** 18);
+            let amountKnc = 600 * 10 ** 18;
+            let amountEthDeposit = (new BigNumber(6 * 10 ** 18)).add(600);
 
-        await makerDeposit(reserve, maker1, amountEthDeposit, 0, amountKnc.valueOf());
+            await makerDeposit(reserve, maker1, amountEthDeposit, 0, amountKnc.valueOf());
 
-        // first getExpectedRate should return 0
-        let rate = await network.getExpectedRate(tokenAdd, ethAddress, 10 ** 18, 0);
-        assert.equal(rate.valueOf(), 0);
+            // first getExpectedRate should return 0
+            let rate = await network.getExpectedRate(tokenAdd, ethAddress, 10 ** 18, 0);
+            assert.equal(rate.valueOf(), 0);
 
-        //now add order
-        //////////////
-//        makeOrder(address maker, bool isEthToToken, uint128 payAmount, uint128 exchangeAmount, uint32 hintPrevOrder)
-        rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
-        rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei.add(400), 0, {from: maker1});
-        rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
-//        log(rc.logs[0].args)
+            //now add order
+            //////////////
+    //        makeOrder(address maker, bool isEthToToken, uint128 payAmount, uint128 exchangeAmount, uint32 hintPrevOrder)
+            rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
+            rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei.add(400), 0, {from: maker1});
+            rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
+    //        log(rc.logs[0].args)
 
-        // first getConversionRate should return 0
-        rate = await network.getExpectedRate(tokenAdd, ethAddress, 10 ** 18, 0);
-        assert.equal(rate.valueOf(), 0);
+            // first getConversionRate should return 0
+            rate = await network.getExpectedRate(tokenAdd, ethAddress, 10 ** 18, 0);
+            assert.equal(rate.valueOf(), 0);
 
-        let orderList = await res.getSellOrderList();
-        assert.equal(orderList.length, 3);
+            let orderList = await res.getSellOrderList();
+            assert.equal(orderList.length, 3);
 
-        //tokens to user
-        let totalPayValue = orderSrcAmountTwei.mul(3);
-        await token.transfer(totalPayValue, user1);
-        await token.approve(res.address, totalPayValue);
+            //tokens to user
+            let totalPayValue = orderSrcAmountTwei.mul(3);
+            await token.transfer(totalPayValue, user1);
+            await token.approve(res.address, totalPayValue);
 
-        let userInitialBalance = await await Helper.getBalancePromise(user1);
-        //trade
-        rc = await res.trade(tokenAdd, totalPayValue, ethAddress, user1, 300, false);
-        log("take 3 sell orders gas: " + rc.receipt.gasUsed);
+            let userInitialBalance = await await Helper.getBalancePromise(user1);
+            //trade
+            rc = await res.trade(tokenAdd, totalPayValue, ethAddress, user1, 300, false);
+            log("take 3 sell orders gas: " + rc.receipt.gasUsed);
 
-        orderList = await res.getSellOrderList();
-        assert.equal(orderList.length, 0);
+            orderList = await res.getSellOrderList();
+            assert.equal(orderList.length, 0);
 
-        let userBalanceAfter = await Helper.getBalancePromise(user1);
-        let expectedBalance = userInitialBalance.add(amountEthDeposit);
+            let userBalanceAfter = await Helper.getBalancePromise(user1);
+            let expectedBalance = userInitialBalance.add(amountEthDeposit);
 
-        assert.equal(userBalanceAfter.valueOf(), expectedBalance.valueOf());
+            assert.equal(userBalanceAfter.valueOf(), expectedBalance.valueOf());
+        });
 
+        xit("list a unique token, get rate with / without permissionless", async() => {
+        })
 
+        xit("list an existing token with better rate then other reserves, get rate with / without permissionless, see rate diff", async() => {
+        })
+
+        xit("trade uinque token using KYBER. see token taken from order book reserve", async() => {
+        })
+
+        xit("trade existing token using KYBER with permissionless allowed. see token taken from order book reserve", async() => {
+        })
+
+        xit("trade existing token using KYBER with permissionless not allowed. see token not taken from order book reserve", async() => {
+        })
     });
 });
 
