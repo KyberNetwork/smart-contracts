@@ -1,7 +1,7 @@
 let ConversionRates = artifacts.require("./mockContracts/MockConversionRate.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let Reserve = artifacts.require("./KYBERReserve.sol");
-let Network = artifacts.require("./KYBERNetwork.sol");
+let Reserve = artifacts.require("./KyberReserve.sol");
+let Network = artifacts.require("./KyberNetwork.sol");
 let WhiteList = artifacts.require("./WhiteList.sol");
 let ExpectedRate = artifacts.require("./ExpectedRate.sol");
 let FeeBurner = artifacts.require("./FeeBurner.sol");
@@ -125,7 +125,7 @@ let compactSellArr = [];
 let oldBaseBuy;
 let oldBaseSell;
 
-contract('KYBERNetwork', function(accounts) {
+contract('KyberNetwork', function(accounts) {
     it("should init globals. init 2 ConversionRates Inst, init tokens and add to pricing inst. set basic data per token.", async function () {
         // set account addresses
         admin = accounts[0];
@@ -166,7 +166,7 @@ contract('KYBERNetwork', function(accounts) {
             await pricing2.enableTokenTrade(token.address);
         }
 
-        KNC = await TestToken.new("KYBER krystal", "KNC", 18);
+        KNC = await TestToken.new("Kyber krystal", "KNC", 18);
         kncAddress = KNC.address;
 
         permissionlessTok = await TestToken.new("permissionLess", "PRM", 18);
@@ -324,16 +324,16 @@ contract('KYBERNetwork', function(accounts) {
         }
     });
 
-    it("should init KYBER network data, list token pairs.", async function () {
+    it("should init Kyber network data, list token pairs.", async function () {
         // add reserves
         await network.addReserve(reserve1.address, true, false, {from: operator});
         await network.addReserve(reserve2.address, true, false, {from: operator});
 
-        await network.setKYBERProxy(networkProxy);
+        await network.setKyberProxy(networkProxy);
 
         //set contracts
         feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address);
-        let kgtToken = await TestToken.new("KYBER genesis token", "KGT", 0);
+        let kgtToken = await TestToken.new("Kyber genesis token", "KGT", 0);
         whiteList = await WhiteList.new(admin, kgtToken.address);
         await whiteList.addOperator(operator);
         await whiteList.setCategoryCap(0, capWei, {from:operator});
@@ -1680,7 +1680,7 @@ contract('KYBERNetwork', function(accounts) {
         }
 
         try {
-            await networkTemp.setKYBERProxy(0);
+            await networkTemp.setKyberProxy(0);
             assert(false, "throw was expected in line above.")
         } catch(e){
            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -1722,7 +1722,7 @@ contract('KYBERNetwork', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await networkTemp.setKYBERProxy(networkProxy);
+        await networkTemp.setKyberProxy(networkProxy);
         await networkTemp.setEnable(true);
     });
 
@@ -2490,13 +2490,13 @@ contract('KYBERNetwork', function(accounts) {
         xit("list an existing token with better rate then other reserves, get rate with / without permissionless, see rate diff", async() => {
         })
 
-        xit("trade uinque token using KYBER. see token taken from order book reserve", async() => {
+        xit("trade uinque token using Kyber. see token taken from order book reserve", async() => {
         })
 
-        xit("trade existing token using KYBER with permissionless allowed. see token taken from order book reserve", async() => {
+        xit("trade existing token using Kyber with permissionless allowed. see token taken from order book reserve", async() => {
         })
 
-        xit("trade existing token using KYBER with permissionless not allowed. see token not taken from order book reserve", async() => {
+        xit("trade existing token using Kyber with permissionless not allowed. see token not taken from order book reserve", async() => {
         })
     });
 });

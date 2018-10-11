@@ -2,7 +2,7 @@ pragma solidity 0.4.18;
 
 
 import "./OrdersInterface.sol";
-import "./MakerOrders.sol";
+import "./OrderIdManager.sol";
 import "./FeeBurnerResolverInterface.sol";
 import "./OrdersFactoryInterface.sol";
 import "./OrderBookReserveInterface.sol";
@@ -15,7 +15,7 @@ contract FeeBurnerSimpleIf {
 }
 
 
-contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBookReserveInterface {
+contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, OrderBookReserveInterface {
 
     uint public minOrderValueWei = 10 ** 18;                 // below this value order will be removed.
     uint public minOrderMakeValueWei = 2 * minOrderValueWei; // Below this value can't create new order.
@@ -46,8 +46,8 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
     mapping(address => KncStakes) public makerKncStakes; // knc funds are required for validating deposited funds
 
     //each maker will have orders that will be reused.
-    mapping(address => FreeOrders) public makerOrdersSell;
-    mapping(address => FreeOrders) public makerOrdersBuy;
+    mapping(address => OrdersData) public makerOrdersSell;
+    mapping(address => OrdersData) public makerOrdersBuy;
 
     struct OrderData {
         address maker;
@@ -860,7 +860,7 @@ contract OrderBookReserve is MakerOrders, Utils2, KyberReserveInterface, OrderBo
 
     function removeOrder(OrdersInterface list, address maker, bool isBuyOrder, uint32 orderId) internal returns(bool) {
         list.removeById(orderId);
-        FreeOrders storage orders = isBuyOrder ? makerOrdersBuy[maker] : makerOrdersSell[maker];
+        OrdersData storage orders = isBuyOrder ? makerOrdersBuy[maker] : makerOrdersSell[maker];
         releaseOrderId(orders, orderId);
 
         return true;

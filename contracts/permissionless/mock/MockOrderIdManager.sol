@@ -4,7 +4,7 @@ pragma solidity 0.4.18;
 import "../OrderIdManager.sol";
 
 
-contract MockOrdersIdManager is OrdersIdManager {
+contract MockOrderIdManager is OrderIdManager {
 
     OrdersData ordersData;
 

@@ -1,14 +1,14 @@
 pragma solidity 0.4.18;
 
 
-contract MakerOrders {
-    struct FreeOrders {
+contract OrderIdManager {
+    struct OrdersData {
         uint32 firstOrderId;
         uint32 numOrders; //max is 256
         uint256 takenBitmap;
     }
 
-    function getNewOrderId(FreeOrders storage freeOrders)
+    function getNewOrderId(OrdersData storage freeOrders)
         internal
         returns(uint32)
     {
@@ -30,7 +30,7 @@ contract MakerOrders {
     }
 
     /// @dev mark order as free to use.
-    function releaseOrderId(FreeOrders storage freeOrders, uint32 orderId)
+    function releaseOrderId(OrdersData storage freeOrders, uint32 orderId)
         internal
         returns(bool)
     {
@@ -39,7 +39,7 @@ contract MakerOrders {
 
         uint orderBitNum = uint(orderId) - uint(freeOrders.firstOrderId);
         uint256 bitPointer = 1 * (2 ** orderBitNum);
-        
+
         require(bitPointer & freeOrders.takenBitmap > 0);
 
         uint256 bitNegation = bitPointer ^ 0xffffffffffffffff;
@@ -49,7 +49,7 @@ contract MakerOrders {
     }
 
     function allocateOrders(
-        FreeOrders storage freeOrders,
+        OrdersData storage freeOrders,
         uint32 firstAllocatedId,
         uint32 howMany
     )
