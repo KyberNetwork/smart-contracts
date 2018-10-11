@@ -67,20 +67,27 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         TaxWalletSet(_taxWallet);
     }
 
-    event KNCRateSet(uint KNCPerEth, address updater);
+    event KNCRateSet(uint KNCPerEth, uint kyberEthKnc, uint kyberKncEth, address updater);
     function setKNCRate(uint min, uint max) public onlyOperator {
         require(max <= MAX_RATE);
         require(min > 0);
 
-        //query kyber for rate of 1 ether
-        uint kyberKncRate;
-        (kyberKncRate, ) = kyberNetwork.getExpectedRate(ETH_TOKEN_ADDRESS, ERC20(knc), (10 ** 18));
-        uint ethToKncRate = kyberKncRate / PRECISION;
+        //query kyber for knc rate sell and buy
+        uint kyberEthKncRate;
+        uint kyberKncEthRate;
+        (kyberEthKncRate, ) = kyberNetwork.getExpectedRate(ETH_TOKEN_ADDRESS, ERC20(knc), (10 ** 18));
+        (kyberKncEthRate, ) = kyberNetwork.getExpectedRate(ERC20(knc), ETH_TOKEN_ADDRESS, (10 ** 18));
+
+        //check "reasonable" spread == diff not too big. rate wasn't tampered.
+        require(kyberEthKncRate * kyberKncEthRate < PRECISION ** 2 * 2);
+        require(kyberEthKncRate * kyberKncEthRate > PRECISION ** 2 / 2);
+
+        uint ethToKncRate = kyberEthKncRate / PRECISION;
         require(ethToKncRate >= min);
         require(ethToKncRate <= max);
 
         kncPerETHRate = ethToKncRate;
-        KNCRateSet(kncPerETHRate, msg.sender);
+        KNCRateSet(kncPerETHRate, kyberEthKncRate, kyberKncEthRate, msg.sender);
     }
 
     event AssignFeeToWallet(address reserve, address wallet, uint walletFee);
