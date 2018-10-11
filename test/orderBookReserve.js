@@ -89,7 +89,7 @@ contract('OrderBookReserve', async (accounts) => {
         }
     });
 
-    it("test globals.", async function () {
+    it("test globals.", async () => {
         let ordersAdd = await reserve.sellList();
         let orders = Orders.at(ordersAdd.valueOf());
 
@@ -103,7 +103,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(rxKnc.valueOf(), kncAddress);
     });
 
-    it("maker deposit tokens, ethers, knc, validate updated in contract", async function () {
+    it("maker deposit tokens, ethers, knc, validate updated in contract", async () => {
         let amountTwei = 5 * 10 ** 19; //500 tokens
         let amountKnc = 600 * 10 ** 18;
         let amountEth = 2 * 10 ** 18;
@@ -128,7 +128,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(rxWei.valueOf(), 0);
     });
 
-    it("maker deposit knc, test bind knc.", async function () {
+    it("maker deposit knc, test bind knc.", async () => {
         let initKnc = (new BigNumber(2)).mul(10 ** 18);
 
         await makerDeposit(maker1, 0, 0, initKnc.valueOf());
@@ -159,7 +159,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(freeKnc.valueOf(), initKnc.sub(expectedStakes).valueOf());
     });
 
-    it("maker deposit knc, bind knc. test release knc stakes", async function () {
+    it("maker deposit knc, bind knc. test release knc stakes", async () => {
         let initKnc = (new BigNumber(2)).mul(10 ** 18);
 
         await makerDeposit(maker1, 0, 0, initKnc.valueOf());
@@ -184,7 +184,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(freeKnc.valueOf(), expectedFreeKnc.valueOf());
     });
 
-    it("maker add buy token order. see rate updated. verify order details.", async function () {
+    it("maker add buy token order. see rate updated. verify order details.", async () => {
         let amountTwei = 5 * 10 ** 19; //500 tokens
         let amountKnc = 600 * 10 ** 18;
 
@@ -216,7 +216,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(rate.valueOf(), expectedRate.valueOf());
     });
 
-    it("maker add buy token order. see funds updated.", async function () {
+    it("maker add buy token order. see funds updated.", async () => {
         let amountTwei = (new BigNumber(5)).mul(10 ** 19); //500 tokens
         let amountKnc = 600 * 10 ** 18;
 
@@ -238,7 +238,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(rxFreeTwei.valueOf(), expectedFreeTwei.valueOf() );
     });
 
-    it("maker add buy token order. cancel order and see canceled.", async function () {
+    it("maker add buy token order. cancel order and see canceled.", async () => {
         let amountTwei = (new BigNumber(5)).mul(10 ** 19); //500 tokens
 
         await makerDeposit(maker1, 0, amountTwei.valueOf(), (600 * 10 ** 18));
@@ -259,7 +259,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(orderList.length, 0);
     });
 
-    it("maker add sell token order. see rate updated. verify order details.", async function () {
+    it("maker add sell token order. see rate updated. verify order details.", async () => {
         let orderSrcAmountTwei = 9 * 10 ** 18;
         let orderDstWei = 2 * 10 ** 18;
 
@@ -297,7 +297,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(rate.valueOf(), expectedRate.valueOf());
     });
 
-    it("maker add sell token order. see funds updated.", async function () {
+    it("maker add sell token order. see funds updated.", async () => {
         let orderSrcAmountTwei = 9 * 10 ** 18;
         let orderDstWei = (new BigNumber(2)).mul(10 ** 18);
 
@@ -319,7 +319,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(rxFreeWei.valueOf(), expectedFreeWei.valueOf() );
     });
 
-    it("maker add sell token order. cancel order and see canceled.", async function () {
+    it("maker add sell token order. cancel order and see canceled.", async () => {
         let orderSrcAmountTwei = 9 * 10 ** 18;
         let orderDstWei = 2 * 10 ** 18;
 
@@ -1028,7 +1028,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert(updateBatchWithHintGas < (updateBatchNoHintGas - 3000));
     });
 
-    it("maker add a few buy orders. see orders added in correct position. print gas price per order", async function () {
+    it("maker add a few buy orders. see orders added in correct position. print gas price per order", async () => {
         let fundDepositTwei = new BigNumber(500).mul(10 ** 18); // 500 tokens
         let amountKnc = 600 * 10 ** 18;
 
@@ -1103,7 +1103,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(orderDetails[4].valueOf(), order1ID); // next should be tail ID - since last
     });
 
-    it("maker - check gas price for order reuse is better.", async function () {
+    it("maker - check gas price for order reuse is better.", async () => {
         let fundDepositTwei = new BigNumber(500).mul(10 ** 18); // 500 tokens
         let amountKnc = 600 * 10 ** 18;
 
@@ -1182,7 +1182,7 @@ contract('OrderBookReserve', async (accounts) => {
         }
     });
 
-    it("maker - compare gas price for 5 buy orders. one be one in order vs batch add.", async function () {
+    it("maker - compare gas price for 5 buy orders. one be one in order vs batch add.", async () => {
         let fundDepositTwei = new BigNumber(500).mul(10 ** 18); // 500 tokens
         let amountKnc = 600 * 10 ** 18;
 
@@ -1226,7 +1226,7 @@ contract('OrderBookReserve', async (accounts) => {
         log ("adding 5 orders. batch add less gas: "  + (totalGasMaker1 - gasCostBatchAdd))
     });
 
-    it("make order - compare gas price. add 5th order with / without hint.", async function () {
+    it("make order - compare gas price. add 5th order with / without hint.", async () => {
         let fundDepositTwei = new BigNumber(500).mul(10 ** 18); // 500 tokens
         let amountKnc = 600 * 10 ** 18;
 
@@ -1279,7 +1279,7 @@ contract('OrderBookReserve', async (accounts) => {
         }
     });
 
-    it("maker add a few sell orders. see orders added in correct position.", async function () {
+    it("maker add a few sell orders. see orders added in correct position.", async () => {
         let amountKnc = 600 * 10 ** 18;
         let amountEth = 14 * 10 ** 18;
 
@@ -1362,7 +1362,7 @@ contract('OrderBookReserve', async (accounts) => {
         }
     });
 
-    it("calc expected stake and calc burn amount. validate match", async function () {
+    it("calc expected stake and calc burn amount. validate match", async () => {
         let kncToEthRate = await feeBurner.kncPerETHRate();
 //        log ("kncPerETHRate " + kncToEthRate.valueOf());
 
@@ -1386,7 +1386,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert(calcBurn < calcStake);
     });
 
-    it("maker add buy order. user takes order. see taken order removed as expected.", async function () {
+    it("maker add buy order. user takes order. see taken order removed as expected.", async () => {
         let amountTwei = 5 * 10 ** 19; //500 tokens
         let amountKnc = 600 * 10 ** 18;
 
@@ -1415,7 +1415,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(list.length, 0);
     });
 
-    it("maker add a few buy orders. user takes full orders. see user gets traded tokens. maker gets ether.", async function () {
+    it("maker add a few buy orders. user takes full orders. see user gets traded tokens. maker gets ether.", async () => {
         let amountTwei = 5 * 10 ** 19; //500 tokens
         let amountKnc = 2000 * 10 ** 18;
 
@@ -1458,7 +1458,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(list.length, 0);
     });
 
-    it("maker add buy order. user takes partial. remaining order stays in book.", async function () {
+    it("maker add buy order. user takes partial. remaining order stays in book.", async () => {
         let amountTwei = new BigNumber(9 * 10 ** 18); //500 tokens
         let amountKnc = 600 * 10 ** 18;
 
@@ -1491,7 +1491,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(balance.valueOf(), 0);
     });
 
-    it("maker add buy order. user takes partial. remaining order removed.", async function () {
+    it("maker add buy order. user takes partial. remaining order removed.", async () => {
         let amountTwei = new BigNumber(9 * 10 ** 18); //500 tokens
         let amountKnc = 600 * 10 ** 18;
 
@@ -1527,7 +1527,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(balance.valueOf(), expectedRemainingBalance.valueOf());
     });
 
-    it("maker add a few sell orders. user takes orders. see taken orders are removed as expected.", async function () {
+    it("maker add a few sell orders. user takes orders. see taken orders are removed as expected.", async () => {
         let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
         let orderDstWei = new BigNumber(2 * 10 ** 18);
 
@@ -1578,8 +1578,21 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(userBalanceAfter.valueOf(), expectedBalance.valueOf());
     });
 
-    xit("maker add a few sell orders. user takes orders. see user gets traded tokens. maker gets ether.", async function () {
+    xit("maker add a few sell orders. user takes orders. see user gets traded tokens. maker gets ether.", async () => {
     });
+
+    xit("add max number of orders per maker 256 sell and 256 buy. see next order reverted.", async () => {
+    });
+
+    xit("add 200 buy orders. see gas price for add order with hint vs order without hint. end of list and start of list ", async () => {
+    });
+
+    xit("add 10 buy orders. see gas price for taking all orders as full on one trade.", async () => {
+    });
+
+    xit("add 10 buy orders. see gas price for taking all orders and last as partial on one trade.", async () => {
+    });
+
 
 });
 
