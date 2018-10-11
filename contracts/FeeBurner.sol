@@ -68,10 +68,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
     }
 
     event KNCRateSet(uint KNCPerEth, uint kyberEthKnc, uint kyberKncEth, address updater);
-    function setKNCRate(uint min, uint max) public onlyOperator {
-        require(max <= MAX_RATE);
-        require(min > 0);
-
+    function setKNCRate() public onlyOperator {
         //query kyber for knc rate sell and buy
         uint kyberEthKncRate;
         uint kyberKncEthRate;
@@ -83,8 +80,6 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
         require(kyberEthKncRate * kyberKncEthRate > PRECISION ** 2 / 2);
 
         uint ethToKncRate = kyberEthKncRate / PRECISION;
-        require(ethToKncRate >= min);
-        require(ethToKncRate <= max);
 
         kncPerETHRate = ethToKncRate;
         KNCRateSet(kncPerETHRate, kyberEthKncRate, kyberKncEthRate, msg.sender);
