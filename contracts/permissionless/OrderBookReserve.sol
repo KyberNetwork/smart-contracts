@@ -43,7 +43,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
     //funds data
     mapping(address => mapping(address => uint)) public makerFunds; // deposited maker funds,
-    mapping(address => KncStake) public makerKncStakes; // knc funds are required for validating deposited funds
+    mapping(address => KncStake) public makerKncStake; // knc funds are required for validating deposited funds
 
     //each maker will have orders that will be reused.
     mapping(address => OrdersData) public makerOrdersSell;
@@ -180,16 +180,16 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         (orderId, orderData.isLastOrder) = list.getFirstOrder();
 
-        if (orderData.isLastOrder) require(false);
-
         uint128 remainingSrcAmount = uint128(srcAmount);
         uint128 totalDstAmount = 0;
 
-        for (orderData = getOrderData(list, orderId); (remainingSrcAmount < 0) && !orderData.isLastOrder;
-            orderId = orderData.nextId)
-        {
-            orderData = getOrderData(list, orderId);
+//        orderData.isLastOrder = false;
+//        while (!orderData.isLastOrder) {
+//            (orderData.maker, orderData.nextId, orderData.isLastOrder, orderData.srcAmount, orderData.dstAmount) =
+//            getOrderData(list, orderId);
+        for (; (remainingSrcAmount > 0) && !orderData.isLastOrder; orderId = orderData.nextId) {
 
+            orderData = getOrderData(list, orderId);
             if (orderData.srcAmount <= remainingSrcAmount) {
                 totalDstAmount += orderData.dstAmount;
                 remainingSrcAmount -= orderData.srcAmount;
@@ -376,10 +376,10 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         require(kncToken.transferFrom(msg.sender, this, amount));
 
-        KncStake memory amounts = makerKncStakes[maker];
+        KncStake memory amounts = makerKncStake[maker];
 
         amounts.freeKnc += uint128(amount);
-        makerKncStakes[maker] = amounts;
+        makerKncStake[maker] = amounts;
 
         KncFeeDeposited(maker, amount);
 
@@ -394,7 +394,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         if (orderAllocationRequired(makerOrdersBuy[maker], numOrdersToAllocate)) {
             require(allocateOrders(
                 makerOrdersBuy[maker], /* freeOrders */
-                sellList.allocateIds(uint32(numOrdersToAllocate)), /* firstAllocatedId */
+                buyList.allocateIds(uint32(numOrdersToAllocate)), /* firstAllocatedId */
                 numOrdersToAllocate /* howMany */
             ));
         }
@@ -427,13 +427,13 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     function withdrawKncFee(uint amount) public {
 
         address maker = msg.sender;
-        uint256 makerFreeAmount = uint256(makerKncStakes[maker].freeKnc);
+        uint256 makerFreeAmount = uint256(makerKncStake[maker].freeKnc);
 
         require(makerFreeAmount >= amount);
 
         require(uint256(uint128(amount)) == amount);
 
-        makerKncStakes[maker].freeKnc -= uint128(amount);
+        makerKncStake[maker].freeKnc -= uint128(amount);
 
         require(kncToken.transfer(maker, amount));
     }
@@ -689,11 +689,11 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     function makerUnusedKNC(address maker) public view returns (uint) {
-        return (uint(makerKncStakes[maker].freeKnc));
+        return (uint(makerKncStake[maker].freeKnc));
     }
 
     function makerStakedKNC(address maker) public view returns (uint) {
-        return (uint(makerKncStakes[maker].kncOnStake));
+        return (uint(makerKncStake[maker].kncOnStake));
     }
 
     function getOrderData(OrdersInterface list, uint32 orderId) internal view returns (OrderData data)
@@ -704,7 +704,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
     function bindOrderStakes(address maker, int stakeAmount) internal returns(bool) {
 
-        KncStake storage amounts = makerKncStakes[maker];
+        KncStake storage amounts = makerKncStake[maker];
 
         require(amounts.freeKnc >= stakeAmount);
 
@@ -724,7 +724,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     function handleOrderStakes(address maker, uint releaseAmount, uint burnAmount) internal returns(bool) {
         require(releaseAmount > burnAmount);
 
-        KncStake storage amounts = makerKncStakes[maker];
+        KncStake storage amounts = makerKncStake[maker];
 
         require(amounts.kncOnStake >= uint128(releaseAmount));
 
