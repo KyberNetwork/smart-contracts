@@ -4,6 +4,6 @@ pragma solidity 0.4.18;
 import "./OrdersInterface.sol";
 
 
-interface OrdersFactoryInterface {
+interface OrderFactoryInterface {
     function newOrdersContract(address admin) public returns(OrdersInterface);
 }

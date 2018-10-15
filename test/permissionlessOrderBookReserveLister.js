@@ -386,7 +386,7 @@ contract('PermissionlessOrderBookReserveLister_feeBurner_tests', async (accounts
         burnAssignedFeesEvent.event.should.equal('BurnAssignedFees');
         burnAssignedFeesEvent.args.reserve.should.equal(reserve.address);
 
-        // (ethWeiToSwap * (300: kncPerETHRate) * (25: BURN_FEE_BPS) / 10000) - 1
+        // (ethWeiToSwap * (300: ethKncRatePrecision) * (25: BURN_FEE_BPS) / 10000) - 1
         const expectedFeesInKncWei = BigNumber("374999999999999999");
         burnAssignedFeesEvent.args.quantity.should.be.bignumber.equal(
             expectedFeesInKncWei

@@ -45,7 +45,7 @@ contract('FeeBurner', function(accounts) {
 
         //init fee burner
         feeBurnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork);
-        kncPerEtherRate = await feeBurnerInst.kncPerETHRate();
+        kncPerEtherRate = await feeBurnerInst.ethKncRatePrecision();
 
         await feeBurnerInst.addOperator(operator, {from: admin});
 
@@ -461,12 +461,12 @@ contract('FeeBurner', function(accounts) {
         await feeBurnerInst.addOperator(operator, {from: admin});
 
         await feeBurnerInst.setKNCRate({from: operator});
-        let rxKncRate = await feeBurnerInst.kncPerETHRate()
+        let rxKncRate = await feeBurnerInst.ethKncRatePrecision()
         assert.equal(rxKncRate.valueOf(), kncPerEtherRate);
 
         //see rate the same. not matter what min max are
         await feeBurnerInst.setKNCRate({from: operator});
-        rxKncRate = await feeBurnerInst.kncPerETHRate()
+        rxKncRate = await feeBurnerInst.ethKncRatePrecision()
         assert.equal(rxKncRate.valueOf(), kncPerEtherRate);
 
         //update knc rate in kyber network
@@ -478,11 +478,11 @@ contract('FeeBurner', function(accounts) {
         await mockKyberNetwork.setPairRate(kncToken.address, ethAddress, kncToEthRatePrecision);
 
         //verify old rate still exists
-        rxKncRate = await feeBurnerInst.kncPerETHRate()
+        rxKncRate = await feeBurnerInst.ethKncRatePrecision()
         assert.equal(rxKncRate.valueOf(), oldRate);
 
         await feeBurnerInst.setKNCRate({from: operator});
-        rxKncRate = await feeBurnerInst.kncPerETHRate()
+        rxKncRate = await feeBurnerInst.ethKncRatePrecision()
         assert.equal(rxKncRate.valueOf(), kncPerEtherRate);
     });
 

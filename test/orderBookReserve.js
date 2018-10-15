@@ -72,7 +72,10 @@ contract('OrderBookReserve', async (accounts) => {
     beforeEach('setup contract for each test', async () => {
 
 //        log(feeBurner.address + " " + kncAddress + " " + tokenAdd)
-        reserve = await OrderBookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address, ordersFactory.address, 25);
+        let minMakeOrderWei = new BigNumber(2 * 10 ** 18);
+        let minOrderWei = new BigNumber(10 ** 18);
+        reserve = await OrderBookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address, ordersFactory.address,
+            minMakeOrderWei, minOrderWei, 25);
 //        log(reserve);
         await reserve.init();
     });
@@ -1025,6 +1028,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(list[0].valueOf(), sellOrder1ID);
         assert.equal(list[1].valueOf(), sellOrder2ID);
 
+        log("updateBatchWithHintGas " + updateBatchWithHintGas + " updateBatchNoHintGas " + updateBatchNoHintGas)
         assert(updateBatchWithHintGas < (updateBatchNoHintGas - 3000));
     });
 
@@ -1363,8 +1367,8 @@ contract('OrderBookReserve', async (accounts) => {
     });
 
     it("calc expected stake and calc burn amount. validate match", async () => {
-        let kncToEthRate = await feeBurner.kncPerETHRate();
-//        log ("kncPerETHRate " + kncToEthRate.valueOf());
+        let kncToEthRate = await feeBurner.ethKncRatePrecision();
+//        log ("ethKncRatePrecision " + kncToEthRate.valueOf());
 
         let weiValue = new BigNumber(2 * 10 ** 18);
         let feeBps = await reserve.makersBurnFeeBps();
@@ -1593,6 +1597,11 @@ contract('OrderBookReserve', async (accounts) => {
     xit("add 10 buy orders. see gas price for taking all orders and last as partial on one trade.", async () => {
     });
 
+    xit("add 13 buy orders per 3 makers.  see each maker gets expected IDs", async () => {
+    });
+
+    xit("perform few knc deposits from same maker. later knc deposit from other maker. see allocated IDs make sense.", async () => {
+    });
 
 });
 
