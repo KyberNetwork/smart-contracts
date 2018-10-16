@@ -10,6 +10,9 @@ const allowedDiffInPercent = BigNumber(0.0000000001)
 const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 const precision = new BigNumber(10).pow(18);
 const daisForEth = 481;
+const mkrForEth1st = 3 //TODO - change to use fractions
+const mkrForEth2nd = 4
+const mkrForEth3rd = 5
 const feePercent = 0.25;
 const feeBps = feePercent * 100;
 const alternativeFeePercent = 0.13;
@@ -18,7 +21,8 @@ const otcOfferWeiValue =  BigNumber(3).mul(BigNumber(10).pow(18))
 
 let admin;
 let myWethToken;
-let myToken;
+let myDaiToken;
+let myMkrToken;
 let otc;
 let oasisDirectProxy;
 let oasisWeiInit;
@@ -39,48 +43,72 @@ contract('KyberOasisReserve', function (accounts) {
 
         // create test tokens. 
         myWethToken = await WethToken.new("my weth token", "weth", 18);
-        myToken = await TestToken.new("my token", "tok", 18);
+        myDaiToken = await TestToken.new("my dai token", "dai", 18);
+        myMkrToken = await TestToken.new("my mkr token", "mkr", 18);
 
         // create mock otc.
-        otc = await MockOtc.new(myWethToken.address, myToken.address, daisForEth);
+        otc = await MockOtc.new(
+                myWethToken.address,
+                myDaiToken.address,
+                myMkrToken.address,
+                daisForEth,
+                mkrForEth1st,
+                mkrForEth2nd,
+                mkrForEth3rd
+        );
 
         // move eth to the otc
         oasisWeiInit = (new BigNumber(10)).pow(19); // 10 eth
         await Helper.sendEtherWithPromise(accounts[8], otc.address, oasisWeiInit);
 
         // move tokens to the otc
-        supply = await myToken.INITIAL_SUPPLY();
-        await myToken.transfer(otc.address, supply);
+        supply = await myDaiToken.INITIAL_SUPPLY();
+        await myDaiToken.transfer(otc.address, supply);
+
+        supply = await myMkrToken.INITIAL_SUPPLY();
+        await myMkrToken.transfer(otc.address, supply);
 
         // create reserve, use admin as network
-        reserve = await KyberOasisReserve.new(admin, otc.address, myWethToken.address, myToken.address, admin, feeBps);
+        reserve = await KyberOasisReserve.new(
+                admin,
+                otc.address,
+                myWethToken.address,
+                myDaiToken.address,
+                myMkrToken.address,
+                admin,
+                feeBps
+        );
 
         // approve for reserve to claim tokens from admin
-        supply = await myToken.INITIAL_SUPPLY();
-        myToken.approve(reserve.address, supply);
+        supply = await myDaiToken.INITIAL_SUPPLY();
+        myDaiToken.approve(reserve.address, supply);
+
+        supply = await myMkrToken.INITIAL_SUPPLY();
+        myMkrToken.approve(reserve.address, supply);
+
     });
 
-    it("should do a eth->token trade", async function (){
+    it("should do a eth->dai trade", async function (){
 
         // get conversion rate
         let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
-        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0)
+        let buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, weiSrcQty, 0)
         let buyRateInTokenUnits = buyRate.div(precision)
         let expectedRate = valueAfterReducingFee(daisForEth, feePercent)
         assert.equal(buyRateInTokenUnits.valueOf(), expectedRate, "wrong rate")
 
         // buy
-        let reserveTweiBalanceBefore = await myToken.balanceOf(reserve.address);
+        let reserveTweiBalanceBefore = await myDaiToken.balanceOf(reserve.address);
         let balanceBefore = await Helper.getBalancePromise(admin);
-        let tweiBalanceBefore = await myToken.balanceOf(admin);
+        let tweiBalanceBefore = await myDaiToken.balanceOf(admin);
 
-        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty});
         let tx = await web3.eth.getTransaction(txInfo.tx);
         let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
 
-        let reserveTweiBalanceAfter = await myToken.balanceOf(reserve.address);
+        let reserveTweiBalanceAfter = await myDaiToken.balanceOf(reserve.address);
         let balanceAfter = await Helper.getBalancePromise(admin);
-        let tweiBalanceAfter = await myToken.balanceOf(admin);
+        let tweiBalanceAfter = await myDaiToken.balanceOf(admin);
 
         let weiLost = balanceBefore.minus(balanceAfter)
         let tWeiGained = tweiBalanceAfter.minus(tweiBalanceBefore)
@@ -93,10 +121,46 @@ contract('KyberOasisReserve', function (accounts) {
         assert.equal(reserveTweiGained.valueOf(), expectedReserveTweiGained.valueOf(), "wrong token wei gained by reserve")
 
     });
-    it("should do a token->eth trade", async function (){
 
-        let tweiSrcQty = await myToken.balanceOf(admin); // sell all we have
-        let sellRate = await reserve.getConversionRate(myToken.address, ethAddress, tweiSrcQty, 0);
+    it("should do a eth->mkr trade that takes 1st level", async function (){
+        // get conversion rate
+        let weiSrcQty = new BigNumber(10).pow(18); // 1 eth, should take first order
+        let buyRate = await reserve.getConversionRate(ethAddress, myMkrToken.address, weiSrcQty, 0)
+        let buyRateInTokenUnits = buyRate.div(precision)
+        let expectedRate = valueAfterReducingFee(mkrForEth1st, feePercent)
+        assert.equal(buyRateInTokenUnits.valueOf(), expectedRate, "wrong rate")
+
+        // buy
+        let reserveTweiBalanceBefore = await myMkrToken.balanceOf(reserve.address);
+        let balanceBefore = await Helper.getBalancePromise(admin);
+        let tweiBalanceBefore = await myMkrToken.balanceOf(admin);
+
+        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myMkrToken.address, admin, buyRate, true, {value: weiSrcQty});
+/*
+        let tx = await web3.eth.getTransaction(txInfo.tx);
+        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
+
+        let reserveTweiBalanceAfter = await myMkrToken.balanceOf(reserve.address);
+        let balanceAfter = await Helper.getBalancePromise(admin);
+        let tweiBalanceAfter = await myMkrToken.balanceOf(admin);
+
+        let weiLost = balanceBefore.minus(balanceAfter)
+        let tWeiGained = tweiBalanceAfter.minus(tweiBalanceBefore)
+        let expecetedTweiGained = BigNumber(expectedRate).mul(weiSrcQty)
+        let reserveTweiGained = reserveTweiBalanceAfter.minus(reserveTweiBalanceBefore)
+        let expectedReserveTweiGained = weiSrcQty.mul(feePercent/100).mul(mkrForEth1st)
+
+        assert.equal(weiLost.valueOf(), weiSrcQty.plus(gasCost).valueOf(), "wrong wei amount lost in the trade")
+        assert.equal(tWeiGained.valueOf(), expecetedTweiGained.valueOf(), "wrong expected token wei gained")
+        assert.equal(reserveTweiGained.valueOf(), expectedReserveTweiGained.valueOf(), "wrong token wei gained by reserve")
+*/
+    });
+
+
+    it("should do a dai->eth trade", async function (){
+
+        let tweiSrcQty = await myDaiToken.balanceOf(admin); // sell all we have
+        let sellRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, tweiSrcQty, 0);
 
         let sellRateInTokenUnits = sellRate.div(precision)
         let expectedRate = valueAfterReducingFee(1 / daisForEth, feePercent)
@@ -105,15 +169,15 @@ contract('KyberOasisReserve', function (accounts) {
         // sell
         let reserveBalanceBefore = await Helper.getBalancePromise(reserve.address);
         let balanceBefore = await Helper.getBalancePromise(admin);
-        let tweiBalanceBefore = await myToken.balanceOf(admin);
+        let tweiBalanceBefore = await myDaiToken.balanceOf(admin);
 
-        let txInfo = await reserve.trade(myToken.address, tweiSrcQty, ethAddress, admin, sellRate, true);
+        let txInfo = await reserve.trade(myDaiToken.address, tweiSrcQty, ethAddress, admin, sellRate, true);
         let tx = await web3.eth.getTransaction(txInfo.tx);
         let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
 
         let reserveBalanceAfter = await Helper.getBalancePromise(reserve.address);
         let balanceAfter = await Helper.getBalancePromise(admin);
-        let tweiBalanceAfter = await myToken.balanceOf(admin);
+        let tweiBalanceAfter = await myDaiToken.balanceOf(admin);
 
         let weiGained = balanceAfter.minus(balanceBefore)
         let tWeiLost = tweiBalanceBefore.minus(tweiBalanceAfter)
@@ -131,10 +195,10 @@ contract('KyberOasisReserve', function (accounts) {
         await reserve.addAlerter(alerter);
         await reserve.disableTrade();
         let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
-        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
+        let buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, weiSrcQty, 0);
 
         try {
-            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -144,16 +208,16 @@ contract('KyberOasisReserve', function (accounts) {
 
         await reserve.enableTrade();
         let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
-        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
-        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+        let buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, weiSrcQty, 0);
+        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty});
     });
     it("should change network to another address and see that trade fails since sender is not network", async function (){
 
         await reserve.setKyberNetwork(accounts[2]);
         let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
-        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
+        let buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, weiSrcQty, 0);
         try {
-            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -163,15 +227,15 @@ contract('KyberOasisReserve', function (accounts) {
 
         await reserve.setKyberNetwork(admin);
         let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
-        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
-        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+        let buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, weiSrcQty, 0);
+        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty});
     });
     it("should set otc to a malicious address (reserve) and see that getconverisonrate reverts", async function (){
 
         await reserve.setOtc(reserve.address);
         let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
         try {
-            let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
+            let buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, weiSrcQty, 0);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -181,30 +245,30 @@ contract('KyberOasisReserve', function (accounts) {
 
         await reserve.setOtc(otc.address);
         let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
-        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
+        let buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, weiSrcQty, 0);
     });
     it("should set fee to another value and make sure getconversionrate and trade pass", async function (){
 
         await reserve.setFeeBps(alternativeFeeBps);
         // get conversion rate
         let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
-        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0)
+        let buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, weiSrcQty, 0)
         let buyRateInTokenUnits = buyRate.div(precision)
         let expectedRate = valueAfterReducingFee(daisForEth, alternativeFeePercent)
         assert.equal(buyRateInTokenUnits.valueOf(), expectedRate, "wrong rate")
 
         // buy
-        let reserveTweiBalanceBefore = await myToken.balanceOf(reserve.address);
+        let reserveTweiBalanceBefore = await myDaiToken.balanceOf(reserve.address);
         let balanceBefore = await Helper.getBalancePromise(admin);
-        let tweiBalanceBefore = await myToken.balanceOf(admin);
+        let tweiBalanceBefore = await myDaiToken.balanceOf(admin);
 
-        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty});
         let tx = await web3.eth.getTransaction(txInfo.tx);
         let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
 
-        let reserveTweiBalanceAfter = await myToken.balanceOf(reserve.address);
+        let reserveTweiBalanceAfter = await myDaiToken.balanceOf(reserve.address);
         let balanceAfter = await Helper.getBalancePromise(admin);
-        let tweiBalanceAfter = await myToken.balanceOf(admin);
+        let tweiBalanceAfter = await myDaiToken.balanceOf(admin);
 
         let weiLost = balanceBefore.minus(balanceAfter)
         let tWeiGained = tweiBalanceAfter.minus(tweiBalanceBefore)
@@ -221,10 +285,10 @@ contract('KyberOasisReserve', function (accounts) {
     });
     it("should query rate for 0 amount of tokens and see we get rate as for 1 dai ", async function (){
         let zeroTweiSrcQty = BigNumber(0);
-        let zeroSellRate = await reserve.getConversionRate(myToken.address, ethAddress, zeroTweiSrcQty, 0);
+        let zeroSellRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, zeroTweiSrcQty, 0);
 
         let oneTweiSrcQty = BigNumber(10).pow(18); // 1 token.
-        let oneSellRate = await reserve.getConversionRate(myToken.address, ethAddress, oneTweiSrcQty, 0);
+        let oneSellRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, oneTweiSrcQty, 0);
 
         assert.equal(zeroSellRate.valueOf(), oneSellRate.valueOf(), "sell rates for 0 and 1 token are not equal.");
     });
@@ -234,7 +298,7 @@ contract('KyberOasisReserve', function (accounts) {
         let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
         let buyRate = await reserve.getConversionRate(ethAddress, otherToken.address, weiSrcQty, 0);
         try {
-            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -243,9 +307,9 @@ contract('KyberOasisReserve', function (accounts) {
     it("should try getconversionrate for without eth as src or dest and see it reverts", async function (){
 
         let weiSrcQty = new BigNumber(10).pow(18); // 1 token
-        let buyRate = await reserve.getConversionRate(myToken.address, myToken.address, weiSrcQty, 0);
+        let buyRate = await reserve.getConversionRate(myDaiToken.address, myDaiToken.address, weiSrcQty, 0);
         try {
-            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -254,9 +318,9 @@ contract('KyberOasisReserve', function (accounts) {
     it("should try getconversionrate without eth as src or dest and see it reverts", async function (){
 
         let weiSrcQty = new BigNumber(10).pow(18); // 1 token
-        let buyRate = await reserve.getConversionRate(myToken.address, myToken.address, weiSrcQty, 0);
+        let buyRate = await reserve.getConversionRate(myDaiToken.address, myDaiToken.address, weiSrcQty, 0);
         try {
-            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -266,17 +330,17 @@ contract('KyberOasisReserve', function (accounts) {
 
         let weiSrcQty = new BigNumber(10).pow(18); // 1 token
         let halfWeiSrcQty = BigNumber(0.5).mul(BigNumber(10).pow(18));
-        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
+        let buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, weiSrcQty, 0);
 
         try {
-            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: halfWeiSrcQty});
+            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: halfWeiSrcQty});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         // make sure it does not revert when sending full amount
-        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty});
+        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty});
     });
     it("should try to send eth to reserve and make sure default payable function throws", async function (){
 
@@ -291,17 +355,17 @@ contract('KyberOasisReserve', function (accounts) {
     it("should try to trade but send from address other than network", async function (){
 
         let weiSrcQty = new BigNumber(10).pow(18); // 1 token
-        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, weiSrcQty, 0);
+        let buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, weiSrcQty, 0);
 
         try {
-            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty, from: accounts[3]});
+            let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty, from: accounts[3]});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         // make sure it does not revert when sending from network (admin)
-        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myToken.address, admin, buyRate, true, {value: weiSrcQty, from: admin});
+        let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty, from: admin});
     });
     it("should try to change network without being admin", async function (){
 
@@ -341,21 +405,21 @@ contract('KyberOasisReserve', function (accounts) {
     });
     it("verify that cannot get buy rate when exceeding order book first level", async function (){
 
-        let buyRate = await reserve.getConversionRate(ethAddress, myToken.address, otcOfferWeiValue, 0);
+        let buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, otcOfferWeiValue, 0);
         assert.notEqual(buyRate, 0, "buy rate should not be 0");
 
         let exceedingOtcOfferWeiValue =  otcOfferWeiValue.mul(1.1);
-        buyRate = await reserve.getConversionRate(ethAddress, myToken.address, exceedingOtcOfferWeiValue, 0);
+        buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, exceedingOtcOfferWeiValue, 0);
         assert.equal(buyRate, 0, "buy rate should be 0");
     });
     it("verify that cannot get sell rate when exceeding order book first level", async function (){
 
         let otcOfferTweiValue = otcOfferWeiValue.mul(daisForEth)
-        let sellRate = await reserve.getConversionRate(myToken.address, ethAddress, otcOfferTweiValue, 0);
+        let sellRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, otcOfferTweiValue, 0);
         assert.notEqual(sellRate, 0, "sell rate should not be 0");
 
         let exceedingOtcOfferTweiValue =  otcOfferTweiValue.mul(1.1);
-        sellRate = await reserve.getConversionRate(myToken.address, ethAddress, exceedingOtcOfferTweiValue, 0);
+        sellRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, exceedingOtcOfferTweiValue, 0);
         assert.equal(sellRate, 0, "sell rate should be 0");
     });
 });
