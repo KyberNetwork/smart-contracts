@@ -116,29 +116,38 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint32 orderId;
         OrderData memory orderData;
 
+        //orderId, isEmptyList
         (orderId, orderData.isLastOrder) = list.getFirstOrder();
-
-        if (orderData.isLastOrder) return 0;
 
         uint128 remainingSrcAmount = uint128(srcQty);
         uint128 totalDstAmount = 0;
 
-        orderData.isLastOrder = false;
+//        while (!orderData.isLastOrder) {
+//
+//            orderData = getOrderData(list, orderId);
+//
+//            if (orderData.srcAmount <= remainingSrcAmount) {
+//                totalDstAmount += orderData.dstAmount;
+//                remainingSrcAmount -= orderData.srcAmount;
+//            } else {
+//                totalDstAmount += orderData.dstAmount * remainingSrcAmount / orderData.srcAmount;
+//                remainingSrcAmount = 0;
+//                break;
+//            }
+//
+//            orderId = orderData.nextId;
+//        }
 
-        while (!orderData.isLastOrder) {
+        for (; ((remainingSrcAmount > 0) && !orderData.isLastOrder); orderId = orderData.nextId) {
 
             orderData = getOrderData(list, orderId);
-
             if (orderData.srcAmount <= remainingSrcAmount) {
                 totalDstAmount += orderData.dstAmount;
                 remainingSrcAmount -= orderData.srcAmount;
             } else {
                 totalDstAmount += orderData.dstAmount * remainingSrcAmount / orderData.srcAmount;
                 remainingSrcAmount = 0;
-                break;
             }
-
-            orderId = orderData.nextId;
         }
 
         if (remainingSrcAmount != 0) return 0; //not enough tokens to exchange.
@@ -178,6 +187,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint32 orderId;
         OrderData memory orderData;
 
+        //getFirstOrder return values: (orderId, isEmptyList)
         (orderId, orderData.isLastOrder) = list.getFirstOrder();
 
         uint128 remainingSrcAmount = uint128(srcAmount);
@@ -187,6 +197,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 //        while (!orderData.isLastOrder) {
 //            (orderData.maker, orderData.nextId, orderData.isLastOrder, orderData.srcAmount, orderData.dstAmount) =
 //            getOrderData(list, orderId);
+        return true;
         for (; (remainingSrcAmount > 0) && !orderData.isLastOrder; orderId = orderData.nextId) {
 
             orderData = getOrderData(list, orderId);
@@ -203,6 +214,8 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
                 remainingSrcAmount = 0;
             }
         }
+
+        if ((remainingSrcAmount != 0) || (totalDstAmount == 0)) return false;
 
         //all orders were successfully taken. send to destAddress
         if (destToken == ETH_TOKEN_ADDRESS) {
@@ -227,7 +240,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         public
         returns(bool)
     {
-        submitSellTokenOrderWHint(srcAmount, dstAmount, 0);
+        return submitSellTokenOrderWHint(srcAmount, dstAmount, 0);
     }
 
     function submitSellTokenOrderWHint(uint128 srcAmount, uint128 dstAmount, uint32 hintPrevOrder)
@@ -237,14 +250,14 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         address maker = msg.sender;
         uint32 newId = getNewOrderId(makerOrdersSell[maker]);
 
-        addOrder(maker, false, newId, srcAmount, dstAmount, hintPrevOrder);
+        return addOrder(maker, false, newId, srcAmount, dstAmount, hintPrevOrder);
     }
 
     function submitBuyTokenOrder(uint128 srcAmount, uint128 dstAmount)
         public
         returns(bool)
     {
-        submitBuyTokenOrderWHint(srcAmount, dstAmount, 0);
+        return submitBuyTokenOrderWHint(srcAmount, dstAmount, 0);
     }
 
     function submitBuyTokenOrderWHint(uint128 srcAmount, uint128 dstAmount, uint32 hintPrevOrder)
@@ -254,16 +267,18 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         address maker = msg.sender;
         uint32 newId = getNewOrderId(makerOrdersBuy[maker]);
 
-        addOrder(maker, true, newId, srcAmount, dstAmount, hintPrevOrder);
+        return addOrder(maker, true, newId, srcAmount, dstAmount, hintPrevOrder);
     }
 
     function addOrderBatch(bool[] isBuyOrder, uint128[] srcAmount, uint128[] dstAmount,
-        uint32[] hintPrevOrder, bool[] isAfterMyPrevOrder) public
+        uint32[] hintPrevOrder, bool[] isAfterPrevOrder)
+        public
+        returns(bool)
     {
         require(isBuyOrder.length == hintPrevOrder.length);
         require(isBuyOrder.length == dstAmount.length);
         require(isBuyOrder.length == srcAmount.length);
-        require(isBuyOrder.length == isAfterMyPrevOrder.length);
+        require(isBuyOrder.length == isAfterPrevOrder.length);
 
         address maker = msg.sender;
 
@@ -271,13 +286,12 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint32 newId = 0;
 
         for (uint i = 0; i < isBuyOrder.length; ++i) {
-
-            prevId = isAfterMyPrevOrder[i] ? newId : hintPrevOrder[i];
-
+            prevId = isAfterPrevOrder[i] ? newId : hintPrevOrder[i];
             newId = isBuyOrder[i] ? getNewOrderId(makerOrdersBuy[maker]) : getNewOrderId(makerOrdersSell[maker]);
-
             require(addOrder(maker, isBuyOrder[i], newId, srcAmount[i], dstAmount[i], prevId));
         }
+
+        return true;
     }
 
     event OrderUpdated(
@@ -289,13 +303,11 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         bool updatedWithHint
     );
 
-
     function updateSellTokenOrder(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount)
         public
         returns(bool)
     {
-        updateSellTokenOrderWHint(orderId, newSrcAmount, newDstAmount, 0);
-        return true;
+        return updateSellTokenOrderWHint(orderId, newSrcAmount, newDstAmount, 0);
     }
 
 
@@ -305,8 +317,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     {
         address maker = msg.sender;
 
-        require(updateOrder(maker, false, orderId, newSrcAmount, newDstAmount, hintPrevOrder));
-        return true;
+        return updateOrder(maker, false, orderId, newSrcAmount, newDstAmount, hintPrevOrder);
     }
 
 
@@ -314,8 +325,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         public
         returns(bool)
     {
-        require(updateBuyTokenOrderWHint(orderId, newSrcAmount, newDstAmount, 0));
-        return true;
+        return updateBuyTokenOrderWHint(orderId, newSrcAmount, newDstAmount, 0);
     }
 
     function updateBuyTokenOrderWHint(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount, uint32 hintPrevOrder)
@@ -324,8 +334,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     {
         address maker = msg.sender;
 
-        require(updateOrder(maker, true, orderId, newSrcAmount, newDstAmount, hintPrevOrder));
-        return true;
+        return updateOrder(maker, true, orderId, newSrcAmount, newDstAmount, hintPrevOrder);
     }
 
     function updateOrderBatch(bool[] isBuyOrder, uint32[] orderId, uint128[] newSrcAmount,
@@ -370,7 +379,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
     event KncFeeDeposited(address indexed maker, uint amount);
 
-    function depositKncFee(address maker, uint amount) public payable {
+    function depositKncFee(address maker, uint amount) public {
         require(maker != address(0));
         require(amount < MAX_QTY);
 
@@ -473,8 +482,6 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return true;
     }
 
-    event UpdatedWithHint(bool updateSuccess, uint updateType);
-    event UpdatedWithSearch(address maker);
     function updateOrder(address maker, bool isBuyOrder, uint32 orderId, uint128 srcAmount,
         uint128 dstAmount, uint32 hintPrevOrder)
         internal
@@ -489,19 +496,16 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         (orderMaker, currSrcAmount, currDestAmount, , ) = list.getOrderDetails(orderId);
         require(orderMaker == maker);
 
-        require(validateUpdateOrder(maker, isBuyOrder, currSrcAmount, currDestAmount, srcAmount, dstAmount));
+        if (!validateUpdateOrder(maker, isBuyOrder, currSrcAmount, currDestAmount, srcAmount, dstAmount)) return false;
 
         bool updatedWithHint = false;
 
         if (hintPrevOrder != 0) {
-//            uint updateType;
             (updatedWithHint, ) = list.updateWithPositionHint(orderId, srcAmount, dstAmount, hintPrevOrder);
-            UpdatedWithHint(updatedWithHint, 1);
         }
 
         if (!updatedWithHint) {
             list.update(orderId, srcAmount, dstAmount);
-            UpdatedWithSearch(maker);
         }
 
         OrderUpdated(maker, isBuyOrder, orderId, srcAmount, dstAmount, updatedWithHint);
@@ -523,7 +527,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         require(handleOrderStakes(orderData.maker, uint(calcKncStake(int(weiAmount))), 0));
 
-        removeOrder(list, maker, isBuyOrder, orderId);
+        require(removeOrder(list, maker, isBuyOrder, orderId));
 
         //funds go back to maker
         makerFunds[maker][isBuyOrder ? token : ETH_TOKEN_ADDRESS] += orderData.dstAmount;
@@ -640,27 +644,28 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     function getList(OrdersInterface list) internal view returns(uint32[] memory orderList) {
-        uint32 orderId;
-        bool isEmpty;
+        OrderData memory orderData;
 
-        (orderId, isEmpty) = list.getFirstOrder();
-        if (isEmpty) return(new uint32[](0));
+        uint32 orderId;
+        (orderId, orderData.isLastOrder) = list.getFirstOrder();
+        if (orderData.isLastOrder) return(new uint32[](0));
 
         uint numOrders = 0;
-        bool isLast = false;
 
-        while (!isLast) {
-            (orderId, isLast) = list.getNextOrder(orderId);
+        while (!orderData.isLastOrder) {
+            orderData = getOrderData(list, orderId);
+            orderId == orderData.nextId;
             numOrders++;
         }
 
         orderList = new uint32[](numOrders);
 
-        (orderId, isEmpty) = list.getFirstOrder();
+        (orderId, orderData.isLastOrder) = list.getFirstOrder();
 
         for (uint i = 0; i < numOrders; i++) {
             orderList[i] = orderId;
-            (orderId, isLast) = list.getNextOrder(orderId);
+            orderData = getOrderData(list, orderId);
+            orderId = orderData.nextId;
         }
     }
 
@@ -668,13 +673,13 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         internal
         returns(bool)
     {
-        address myToken = isBuyOrder ? token : ETH_TOKEN_ADDRESS ;
+        address tokenAddress = isBuyOrder ? token : ETH_TOKEN_ADDRESS ;
 
         if (dstAmount < 0) {
-            makerFunds[maker][myToken] += uint256(-dstAmount);
+            makerFunds[maker][tokenAddress] += uint256(-dstAmount);
         } else {
-            require(makerFunds[maker][myToken] >= uint256(dstAmount));
-            makerFunds[maker][myToken] -= uint256(dstAmount);
+            require(makerFunds[maker][tokenAddress] >= uint256(dstAmount));
+            makerFunds[maker][tokenAddress] -= uint256(dstAmount);
         }
 
         return true;
@@ -810,8 +815,8 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         if (remainingWeiValue < minOrderValueWei) {
             // remaining order amount too small. remove order and add remaining funds to free funds
             makerFunds[maker][dest] += orderDstAmount;
-            handleOrderStakes(maker, remainingWeiValue, 0);
-            removeOrder(list, maker, (src == ETH_TOKEN_ADDRESS), orderId);
+            require(handleOrderStakes(maker, remainingWeiValue, 0));
+            require(removeOrder(list, maker, (src == ETH_TOKEN_ADDRESS), orderId));
         } else {
             // update order values in storage
             uint128 subDst = list.subSrcAndDstAmounts(orderId, srcAmount);
@@ -838,9 +843,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         // send dest tokens in one batch. not here
 
         //handle knc stakes and fee
-        handleOrderStakes(maker, uint(calcKncStake(int(weiAmount))), calcBurnAmount(weiAmount));
-
-        return true;
+        return handleOrderStakes(maker, uint(calcKncStake(int(weiAmount))), calcBurnAmount(weiAmount));
     }
 
     function removeOrder(OrdersInterface list, address maker, bool isBuyOrder, uint32 orderId) internal returns(bool) {
