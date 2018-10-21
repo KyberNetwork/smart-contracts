@@ -12,6 +12,9 @@ contract MockOtc {
     uint constant internal MAKER_PAYS_MKR_FIRST_OFFER_ID = 3;
     uint constant internal MAKER_PAYS_MKR_SECOND_OFFER_ID = 4;
     uint constant internal MAKER_PAYS_MKR_THIRD_OFFER_ID = 5;
+    uint constant internal MAKER_BUYS_MKR_FIRST_OFFER_ID = 6;
+    uint constant internal MAKER_BUYS_MKR_SECOND_OFFER_ID = 7;
+    uint constant internal MAKER_BUYS_MKR_THIRD_OFFER_ID = 8;
     ERC20 public wethToken;
     ERC20 public daiToken;
     ERC20 public mkrToken;
@@ -52,6 +55,7 @@ contract MockOtc {
 
         OfferInfo memory buyDaiInfo;
         OfferInfo memory payDaiInfo;
+        OfferInfo memory buyMkrInfo;
         OfferInfo memory payMkrInfo;
 
         // create 1 order where the maker buys weth and pays dai.
@@ -86,6 +90,21 @@ contract MockOtc {
         payMkrInfo.payAmt = 3 * OFFER_WEI_VALUE  * _mkrForPayEth3rd;
         payMkrInfo.buyAmt = 3 * OFFER_WEI_VALUE;
         offers[MAKER_PAYS_MKR_THIRD_OFFER_ID] = payMkrInfo;
+
+        // create 3 orders where the maker buys mkr and pays weth.
+        buyMkrInfo.payAmt = 1 * OFFER_WEI_VALUE;
+        buyMkrInfo.payGem = wethToken;
+        buyMkrInfo.buyAmt = 1 * OFFER_WEI_VALUE  * _mkrForPayEth1st;
+        buyMkrInfo.buyGem = mkrToken;
+        offers[MAKER_BUYS_MKR_FIRST_OFFER_ID] = buyMkrInfo;
+
+        buyMkrInfo.payAmt = 2 * OFFER_WEI_VALUE;
+        buyMkrInfo.buyAmt = 2 * OFFER_WEI_VALUE  * _mkrForPayEth2nd;
+        offers[MAKER_BUYS_MKR_SECOND_OFFER_ID] = buyMkrInfo;
+
+        buyMkrInfo.payAmt = 3 * OFFER_WEI_VALUE;
+        buyMkrInfo.buyAmt = 3 * OFFER_WEI_VALUE  * _mkrForPayEth3rd;
+        offers[MAKER_BUYS_MKR_THIRD_OFFER_ID] = buyMkrInfo;
     }
 
     function() public payable {}
@@ -103,6 +122,8 @@ contract MockOtc {
             return MAKER_PAYS_DAI_OFFER_ID;
         } else if (offerSellGem == mkrToken && offerBuyGem == wethToken) {
             return MAKER_PAYS_MKR_FIRST_OFFER_ID;
+        } else if (offerSellGem == wethToken && offerBuyGem == mkrToken ) {
+            return MAKER_BUYS_MKR_FIRST_OFFER_ID;
         } else {
             return 0;
         }
@@ -130,6 +151,12 @@ contract MockOtc {
         } else if (id == MAKER_PAYS_MKR_SECOND_OFFER_ID) {
             return MAKER_PAYS_MKR_THIRD_OFFER_ID;
         } else if (id == MAKER_PAYS_MKR_THIRD_OFFER_ID) {
+            return 0;
+        } if (id == MAKER_BUYS_MKR_FIRST_OFFER_ID) {
+            return MAKER_BUYS_MKR_SECOND_OFFER_ID;
+        } else if (id == MAKER_BUYS_MKR_SECOND_OFFER_ID) {
+            return MAKER_BUYS_MKR_THIRD_OFFER_ID;
+        } else if (id == MAKER_BUYS_MKR_THIRD_OFFER_ID) {
             return 0;
         } else {
             return 0;

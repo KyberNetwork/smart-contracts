@@ -54,6 +54,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         require(_feeBps < 10000);
         require(getDecimals(_wethToken) == COMMON_DECIMALS);
         require(getDecimals(_daiToken) == COMMON_DECIMALS);
+        require(getDecimals(_mkrToken) == COMMON_DECIMALS);
 
         kyberNetwork = _kyberNetwork;
         otc = _otc;

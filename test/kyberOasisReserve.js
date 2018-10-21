@@ -269,6 +269,124 @@ contract('KyberOasisReserve', function (accounts) {
         Helper.assertAbsDiff(weiGained, expecetedWeiGained.minus(gasCost), allowedDiffInPercent, "wrong expected wei gained");
         assert.deepEqual(tWeiLost, tweiSrcQty, "wrong expected token wei lost")
     });
+
+    it("should do a mkr->eth trade that takes 1st level", async function (){
+
+        let tweiSrcQty = ((new BigNumber(10)).pow(18)).mul(7); // 7 twei, should take 1st order (which buys 9 twei)
+        let sellRate = await reserve.getConversionRate(myMkrToken.address, ethAddress, tweiSrcQty, 0);
+
+        let sellRateInTokenUnits = sellRate.div(precision)
+        let expectedRate = valueAfterReducingFee(1 / mkrForEth1st, feePercent)
+        Helper.assertAbsDiff(sellRateInTokenUnits.valueOf(), expectedRate, allowedDiffInPercent, "wrong rate")
+
+        // sell
+        let reserveBalanceBefore = await Helper.getBalancePromise(reserve.address);
+        let balanceBefore = await Helper.getBalancePromise(admin);
+        let tweiBalanceBefore = await myMkrToken.balanceOf(admin);
+
+        let txInfo = await reserve.trade(myMkrToken.address, tweiSrcQty, ethAddress, admin, sellRate, true);
+        let tx = await web3.eth.getTransaction(txInfo.tx);
+        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
+
+        let reserveBalanceAfter = await Helper.getBalancePromise(reserve.address);
+        let balanceAfter = await Helper.getBalancePromise(admin);
+        let tweiBalanceAfter = await myMkrToken.balanceOf(admin);
+
+        let weiGained = balanceAfter.minus(balanceBefore)
+        let tWeiLost = tweiBalanceBefore.minus(tweiBalanceAfter)
+        let expecetedWeiGained = BigNumber(tweiSrcQty).mul(expectedRate.toString())
+        let reserveWeiGained = reserveBalanceAfter.minus(reserveBalanceBefore)
+        let expectedReserveWeiGained = tweiSrcQty.mul(feePercent/100).div(mkrForEth1st)
+
+        Helper.assertAbsDiff(reserveWeiGained, expectedReserveWeiGained, allowedDiffInPercent, "wrong reserve wei gained in the trade")
+        Helper.assertAbsDiff(weiGained, expecetedWeiGained.minus(gasCost), allowedDiffInPercent, "wrong expected wei gained");
+        assert.equal(tWeiLost.toString(), tweiSrcQty.toString(), "wrong expected token wei lost")
+    });
+
+    it("should do a mkr->eth trade that takes 2nd level", async function (){
+
+        let tweiSrcQty = ((new BigNumber(10)).pow(18)).mul(10); // 10 twei, should take 2nd order (which buys 24 twei)
+        let sellRate = await reserve.getConversionRate(myMkrToken.address, ethAddress, tweiSrcQty, 0);
+
+        let sellRateInTokenUnits = sellRate.div(precision)
+        let expectedRate = valueAfterReducingFee(1 / mkrForEth2nd, feePercent)
+        Helper.assertAbsDiff(sellRateInTokenUnits.valueOf(), expectedRate, allowedDiffInPercent, "wrong rate")
+
+        // sell
+        let reserveBalanceBefore = await Helper.getBalancePromise(reserve.address);
+        let balanceBefore = await Helper.getBalancePromise(admin);
+        let tweiBalanceBefore = await myMkrToken.balanceOf(admin);
+
+        let txInfo = await reserve.trade(myMkrToken.address, tweiSrcQty, ethAddress, admin, sellRate, true);
+        let tx = await web3.eth.getTransaction(txInfo.tx);
+        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
+
+        let reserveBalanceAfter = await Helper.getBalancePromise(reserve.address);
+        let balanceAfter = await Helper.getBalancePromise(admin);
+        let tweiBalanceAfter = await myMkrToken.balanceOf(admin);
+
+        let weiGained = balanceAfter.minus(balanceBefore)
+        let tWeiLost = tweiBalanceBefore.minus(tweiBalanceAfter)
+        let expecetedWeiGained = BigNumber(tweiSrcQty).mul(expectedRate.toString())
+        let reserveWeiGained = reserveBalanceAfter.minus(reserveBalanceBefore)
+        let expectedReserveWeiGained = tweiSrcQty.mul(feePercent/100).div(mkrForEth2nd)
+
+        Helper.assertAbsDiff(reserveWeiGained, expectedReserveWeiGained, allowedDiffInPercent, "wrong reserve wei gained in the trade")
+        Helper.assertAbsDiff(weiGained, expecetedWeiGained.minus(gasCost), allowedDiffInPercent, "wrong expected wei gained");
+        assert.equal(tWeiLost.toString(), tweiSrcQty.toString(), "wrong expected token wei lost")
+    });
+
+    it("should do a mkr->eth trade that takes 3rd level", async function (){
+
+        let tweiSrcQty = ((new BigNumber(10)).pow(18)).mul(35); // 35 twei, should take 3rd order (which buys 45 twei)
+        let sellRate = await reserve.getConversionRate(myMkrToken.address, ethAddress, tweiSrcQty, 0);
+
+        let sellRateInTokenUnits = sellRate.div(precision)
+        let expectedRate = valueAfterReducingFee(1 / mkrForEth3rd, feePercent)
+        Helper.assertAbsDiff(sellRateInTokenUnits.valueOf(), expectedRate, allowedDiffInPercent, "wrong rate")
+
+        // sell
+        let reserveBalanceBefore = await Helper.getBalancePromise(reserve.address);
+        let balanceBefore = await Helper.getBalancePromise(admin);
+        let tweiBalanceBefore = await myMkrToken.balanceOf(admin);
+
+        let txInfo = await reserve.trade(myMkrToken.address, tweiSrcQty, ethAddress, admin, sellRate, true);
+        let tx = await web3.eth.getTransaction(txInfo.tx);
+        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
+
+        let reserveBalanceAfter = await Helper.getBalancePromise(reserve.address);
+        let balanceAfter = await Helper.getBalancePromise(admin);
+        let tweiBalanceAfter = await myMkrToken.balanceOf(admin);
+
+        let weiGained = balanceAfter.minus(balanceBefore)
+        let tWeiLost = tweiBalanceBefore.minus(tweiBalanceAfter)
+        let expecetedWeiGained = BigNumber(tweiSrcQty).mul(expectedRate.toString())
+        let reserveWeiGained = reserveBalanceAfter.minus(reserveBalanceBefore)
+        let expectedReserveWeiGained = tweiSrcQty.mul(feePercent/100).div(mkrForEth3rd)
+
+        Helper.assertAbsDiff(reserveWeiGained, expectedReserveWeiGained, allowedDiffInPercent, "wrong reserve wei gained in the trade")
+        Helper.assertAbsDiff(weiGained, expecetedWeiGained.minus(gasCost), allowedDiffInPercent, "wrong expected wei gained");
+        assert.equal(tWeiLost.toString(), tweiSrcQty.toString(), "wrong expected token wei lost")
+    });
+
+    it("should do a mkr->eth trade that takes mored than 3rd level and make sure we get 0 rate", async function (){
+        let tweiSrcQty = ((new BigNumber(10)).pow(18)).mul(45.2);
+        let sellRate = await reserve.getConversionRate(myMkrToken.address, ethAddress, tweiSrcQty, 0);
+        assert.equal(sellRate.toString(), 0, "expected 0 rate")
+    });
+
+    it("should do a mkr->eth trade with 0 src quantity and make sure we get non 0 rate", async function (){
+        let tweiSrcQty = new BigNumber(0);
+        let sellRate = await reserve.getConversionRate(myMkrToken.address, ethAddress, tweiSrcQty, 0);
+        assert.notEqual(sellRate.toString(), 0, "expected 0 rate")
+    });
+
+    it("should do a mkr->eth trade with very small src quantity and make sure we get non 0 rate", async function (){
+        let tweiSrcQty = new BigNumber(1);
+        let sellRate = await reserve.getConversionRate(myMkrToken.address, ethAddress, tweiSrcQty, 0);
+        assert.notEqual(sellRate.toString(), 0, "expected non 0 rate")
+    });
+
     it("should disable trades in the reserve and see that getconversionrate reverts", async function (){
 
         let alerter = accounts[0]
