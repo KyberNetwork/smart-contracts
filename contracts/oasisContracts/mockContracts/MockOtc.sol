@@ -77,8 +77,6 @@ contract MockOtc {
         payMkrInfo.payGem = mkrToken;
         payMkrInfo.buyAmt = 1 * OFFER_WEI_VALUE;
         payMkrInfo.buyGem = wethToken;
-        payMkrInfo.owner = 0;
-        payMkrInfo.timestamp = 0;
         offers[MAKER_PAYS_MKR_FIRST_OFFER_ID] = payMkrInfo;
 
         payMkrInfo.payAmt = 2 * OFFER_WEI_VALUE  * _mkrForPayEth2nd;
@@ -97,34 +95,33 @@ contract MockOtc {
         return (offer.payAmt, offer.payGem, offer.buyAmt, offer.buyGem);
     }
 
-    function getBestOffer(ERC20 sellGem, ERC20 buyGem) public constant returns(uint) {
+    function getBestOffer(ERC20 offerSellGem, ERC20 offerBuyGem) public constant returns(uint) {
 
-        if (sellGem == wethToken && buyGem == daiToken) {
+        if (offerSellGem == wethToken && offerBuyGem == daiToken) {
             return MAKER_BUYS_DAI_OFFER_ID;
-        } else if (sellGem == daiToken && buyGem == wethToken) {
+        } else if (offerSellGem == daiToken && offerBuyGem == wethToken) {
             return MAKER_PAYS_DAI_OFFER_ID;
-        } else if (sellGem == mkrToken && buyGem == wethToken) {
+        } else if (offerSellGem == mkrToken && offerBuyGem == wethToken) {
             return MAKER_PAYS_MKR_FIRST_OFFER_ID;
         } else {
             return 0;
         }
     }
 
-    function sellAllAmount(ERC20 payGem, uint payAmt, ERC20 buyGem, uint minFillAmount)
+    function sellAllAmount(ERC20 takerPayGem, uint takerPayAmt, ERC20 takerBuyGem, uint minFillAmount)
         public
         returns (uint fillAmount)
     {
-        if (payGem == wethToken && buyGem == daiToken) {
-            fillAmount = payAmt * offers[MAKER_PAYS_DAI_OFFER_ID].payAmt / offers[MAKER_PAYS_DAI_OFFER_ID].buyAmt;
-        } else if (payGem == daiToken && buyGem == wethToken) {
-            fillAmount = payAmt * offers[MAKER_BUYS_DAI_OFFER_ID].payAmt / offers[MAKER_BUYS_DAI_OFFER_ID].buyAmt;
+        if (takerPayGem == wethToken && takerBuyGem == daiToken) {
+            fillAmount = takerPayAmt * offers[MAKER_PAYS_DAI_OFFER_ID].payAmt / offers[MAKER_PAYS_DAI_OFFER_ID].buyAmt;
+        } else if (takerPayGem == daiToken && takerBuyGem == wethToken) {
+            fillAmount = takerPayAmt * offers[MAKER_BUYS_DAI_OFFER_ID].payAmt / offers[MAKER_BUYS_DAI_OFFER_ID].buyAmt;
         } else {
             return 0;
         }
 
         require(minFillAmount <= fillAmount);
-
-        buy(payGem, payAmt, buyGem, fillAmount);
+        buy(takerPayGem, takerPayAmt, takerBuyGem, fillAmount);
     }
 
     function getWorseOffer(uint id) public pure returns(uint) {
@@ -139,81 +136,23 @@ contract MockOtc {
         }
     }
 
-
-
-////////////////////////////////////////////////////////////////////////////////////
-/*
-    // Accept given `quantity` of an offer. Transfers funds from caller to
-    // offer maker, and from market to caller.
-    function buy(uint id, uint quantity)
-        public
-        can_buy(id)
-        synchronized
-        returns (bool)
-    {
-        OfferInfo memory offer = offers[id];
-        uint spend = mul(quantity, offer.buy_amt) / offer.pay_amt;
-
-        require(uint128(spend) == spend);
-        require(uint128(quantity) == quantity);
-
-        // For backwards semantic compatibility.
-        if (quantity == 0 || spend == 0 ||
-            quantity > offer.pay_amt || spend > offer.buy_amt)
-        {
-            return false;
-        }
-
-        offers[id].pay_amt = sub(offer.pay_amt, quantity);
-        offers[id].buy_amt = sub(offer.buy_amt, spend);
-        require( offer.buy_gem.transferFrom(msg.sender, offer.owner, spend) );
-        require( offer.pay_gem.transfer(msg.sender, quantity) );
-
-        LogItemUpdate(id);
-        LogTake(
-            bytes32(id),
-            keccak256(offer.pay_gem, offer.buy_gem),
-            offer.owner,
-            offer.pay_gem,
-            offer.buy_gem,
-            msg.sender,
-            uint128(quantity),
-            uint128(spend),
-            uint64(now)
-        );
-        LogTrade(quantity, offer.pay_gem, spend, offer.buy_gem);
-
-        if (offers[id].pay_amt == 0) {
-          delete offers[id];
-        }
-
-        return true;
-    }
-*/
-//////////////////////////////////////////////////////////////////
- // need to replace take by the above
-
-
-
-
-
-    function take(bytes32 id, uint128 maxTakeAmount) public {
+    function take(bytes32 id, uint128 takerPayAmount) public {
         uint offerPayAmt;
         ERC20 offerPayGem;
         uint offerBuyAmt;
         ERC20 offerBuyGem;
-        uint fillAmount;
-
+    
         (offerPayAmt, offerPayGem, offerBuyAmt, offerBuyGem) = getOffer(uint256(id));
-
-        fillAmount = maxTakeAmount * offerPayAmt / offerBuyAmt;
-        ///require(minFillAmount <= fillAmount);
-
-        buy(offerPayGem, offerPayAmt, offerBuyGem, fillAmount);
+ 
+        uint takerBuyAmount = takerPayAmount * offerPayAmt / offerBuyAmt;
+    
+        require(uint128(takerBuyAmount) == takerBuyAmount);
+        require(uint128(takerPayAmount) == takerPayAmount);
+        buy(offerBuyGem, takerPayAmount, offerPayGem, takerBuyAmount);
     }
 
-    function buy(ERC20 payGem, uint payAmt, ERC20 buyGem, uint actualBuyAmt) internal {
-        require(payGem.transferFrom(msg.sender, this, payAmt));
-        require(buyGem.transfer(msg.sender, actualBuyAmt));
+    function buy(ERC20 takerPayGem, uint takerPayAmt, ERC20 takerBuyGem, uint actualBuyAmt) internal {
+        require(takerPayGem.transferFrom(msg.sender, this, takerPayAmt));
+        require(takerBuyGem.transfer(msg.sender, actualBuyAmt));
     }
 }
