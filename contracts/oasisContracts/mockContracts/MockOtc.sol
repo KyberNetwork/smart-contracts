@@ -163,7 +163,7 @@ contract MockOtc {
         }
     }
 
-    function take(bytes32 id, uint128 takerPayAmount) public {
+    function take(bytes32 id, uint128 takerBuyAmount) public {
         uint offerPayAmt;
         ERC20 offerPayGem;
         uint offerBuyAmt;
@@ -171,7 +171,7 @@ contract MockOtc {
     
         (offerPayAmt, offerPayGem, offerBuyAmt, offerBuyGem) = getOffer(uint256(id));
  
-        uint takerBuyAmount = takerPayAmount * offerPayAmt / offerBuyAmt;
+        uint takerPayAmount = takerBuyAmount * offerBuyAmt / offerPayAmt;
     
         require(uint128(takerBuyAmount) == takerBuyAmount);
         require(uint128(takerPayAmount) == takerPayAmount);

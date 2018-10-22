@@ -294,8 +294,8 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         (offerId, offerPayAmt, offerBuyAmt) = getMatchingOffer(destToken, srcToken, srcAmount);
         actualDestAmount = srcAmount * offerPayAmt / offerBuyAmt;
 
-        require(uint128(srcAmount) == srcAmount);
-        otc.take(bytes32(offerId), uint128(srcAmount));  // Take the portion of the offer that we need
+        require(uint128(actualDestAmount) == actualDestAmount);
+        otc.take(bytes32(offerId), uint128(actualDestAmount));  // Take the portion of the offer that we need
         return;
     }
 
