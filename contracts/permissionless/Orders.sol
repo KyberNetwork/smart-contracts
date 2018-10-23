@@ -173,7 +173,7 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         pure
         returns(uint)
     {
-        return dstAmount * PRECISION / srcAmount;
+        return srcAmount * PRECISION / dstAmount;
     }
 
     function findPrevOrderId(uint128 srcAmount, uint128 dstAmount)
