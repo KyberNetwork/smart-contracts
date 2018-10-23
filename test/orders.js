@@ -1207,7 +1207,6 @@ contract('Orders', async (accounts) => {
 
             // after: HEAD -> first -> second -> third -> TAIL
             await assertOrdersOrder3(firstId, secondId, thirdId);
-            debugOrders(10)
         });
 
         it("should revert updates to HEAD", async () => {
