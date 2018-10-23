@@ -126,6 +126,10 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
     {
         require(orderId != HEAD_ID && orderId != TAIL_ID);
 
+        // Normal orders usually cannot serve as their own previous order.
+        // For further discussion see Heinlein's '—All You Zombies—'.
+        require(orderId != prevId);
+
         uint32 nextId;
 
         // If not changing place, only update amounts.

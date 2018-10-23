@@ -511,7 +511,7 @@ contract('Orders', async (accounts) => {
 
         it("should allow adding order specifically after head", async () => {
             let orderId = await allocateIds(1);
-            await orders.addAfterId(
+            const res = await orders.addAfterId(
                 user1 /* maker */,
                 orderId /* orderId */,
                 10 /* srcAmount */,
@@ -1207,6 +1207,7 @@ contract('Orders', async (accounts) => {
 
             // after: HEAD -> first -> second -> third -> TAIL
             await assertOrdersOrder3(firstId, secondId, thirdId);
+            debugOrders(10)
         });
 
         it("should revert updates to HEAD", async () => {
@@ -1245,6 +1246,27 @@ contract('Orders', async (accounts) => {
                     "expected revert but got: " + e);
             }
         });
+
+        it("reject if prevId is orderId", async () => {
+            let firstId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                300 /* dstAmount */);
+
+            try {
+                await updateWithPositionHint(
+                    firstId /* orderId */,
+                    10 /* srcAmount */,
+                    190 /* dstAmount */,
+                    firstId /* prevId */
+                );
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(
+                    Helper.isRevertErrorMessage(e),
+                    "expected revert but got: " + e);
+            }
+        })
     });
 
     describe("#getFirstOrder", async () => {
@@ -1401,4 +1423,15 @@ async function assertOrdersOrder3(orderId1, orderId2, orderId3) {
     order3.prevId.should.be.bignumber.equal(order2.id);
     order2.prevId.should.be.bignumber.equal(order1.id);
     order1.prevId.should.be.bignumber.equal(head.id);
+}
+
+async function debugOrders(max) {
+    let maker, prevId, nextId, srcAmount, dstAmount;
+    for (i = 0; i < max; i++) {
+    [maker, prevId, nextId, srcAmount, dstAmount] = await orders.orders(i);
+        console.log(
+            `orders[${i}]=(maker=${maker}, prevId=${prevId}, nextId=${nextId}, `
+                + `srcAmount=${srcAmount}, dstAmount=${dstAmount})`
+            );
+    }
 }
