@@ -121,8 +121,6 @@ const kyberNetworkAddress = '0x706aBcE058DB29eB36578c463cf295F180a1Fe9C'; //stag
 const oasisDirectAddress = '0x793EbBe21607e4F04788F89c7a9b97320773Ec59';
 const otcAddress = '0x14FBCA95be7e99C15Cc2996c6C9d841e54B79425';
 const wethTokenAddress = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
-const daiTokenAddress = '0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359';
-const mkrTokenAddress = '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2';
 const adminAddress = '0xF9eF59dB62f56aF114380A7496Fd51172dafD41d';
 const feeBps = 25;
 
@@ -146,7 +144,7 @@ async function main() {
     [kyberOasisReserveAddress, kyberOasisReserveContract] = await deployContract(
         output,
         "KyberOasisReserve.sol:KyberOasisReserve",
-        [kyberNetworkAddress, otcAddress, wethTokenAddress, daiTokenAddress, mkrTokenAddress, adminAddress, feeBps]
+        [kyberNetworkAddress, otcAddress, wethTokenAddress, adminAddress, feeBps]
     );
 
     console.log("kyberOasisReserveAddress: " + kyberOasisReserveAddress)

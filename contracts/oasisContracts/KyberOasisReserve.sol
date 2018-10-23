@@ -8,7 +8,6 @@ import "../KyberReserveInterface.sol";
 
 contract OtcInterface {
     function getOffer(uint id) public constant returns (uint, ERC20, uint, ERC20);
-    function sellAllAmount(ERC20 payGem, uint payAmt, ERC20 buyGem, uint minFillAmount) public returns (uint fillAmt);
     function getBestOffer(ERC20 sellGem, ERC20 buyGem) public constant returns(uint);
     function getWorseOffer(uint id) public constant returns(uint);
     function take(bytes32 id, uint128 maxTakeAmount) public;
@@ -23,14 +22,13 @@ contract TokenInterface is ERC20 {
 
 contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
-    uint constant internal MIN_TRADE_TOKEN_SRC_AMOUNT = (10**18);
     uint constant internal COMMON_DECIMALS = 18;
     address public sanityRatesContract = 0;
     address public kyberNetwork;
     OtcInterface public otc;
     TokenInterface public wethToken;
-    ERC20 public daiToken;
-    ERC20 public mkrToken;
+    mapping(address=>bool) public isTokenListed;
+    mapping(address=>uint) public tokenMinSrcAmount;
     bool public tradeEnabled;
     uint public feeBps;
 
@@ -38,8 +36,6 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         address _kyberNetwork,
         OtcInterface _otc,
         TokenInterface _wethToken,
-        ERC20 _daiToken,
-        ERC20 _mkrToken,
         address _admin,
         uint _feeBps
     )
@@ -49,29 +45,39 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         require(_kyberNetwork != address(0));
         require(_otc != address(0));
         require(_wethToken != address(0));
-        require(_daiToken != address(0));
-        require(_mkrToken != address(0));
         require(_feeBps < 10000);
         require(getDecimals(_wethToken) == COMMON_DECIMALS);
-        require(getDecimals(_daiToken) == COMMON_DECIMALS);
-        require(getDecimals(_mkrToken) == COMMON_DECIMALS);
 
         kyberNetwork = _kyberNetwork;
         otc = _otc;
         wethToken = _wethToken;
-        daiToken = _daiToken;
-        mkrToken = _mkrToken;
         admin = _admin;
         feeBps = _feeBps;
         tradeEnabled = true;
 
         wethToken.approve(otc, 2**255);
-        daiToken.approve(otc, 2**255);
-        mkrToken.approve(otc, 2**255);
     }
 
     function() public payable {
         require(msg.sender == address(wethToken));
+    }
+
+    function listToken(ERC20 token, uint minSrcAmount) public onlyAdmin {
+        require(token != address(0));
+        require(!isTokenListed[token]);
+        require(getDecimals(token) == COMMON_DECIMALS);
+
+        token.approve(otc, 2**255);
+        isTokenListed[token] = true;
+        tokenMinSrcAmount[token] = minSrcAmount;
+    }
+
+    function delistToken(ERC20 token) public onlyAdmin {
+        require(isTokenListed[token]);
+
+        token.approve(otc, 0);
+        delete isTokenListed[token];
+        delete tokenMinSrcAmount[token];
     }
 
     event TradeExecute(
@@ -129,22 +135,6 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         KyberNetworkSet(kyberNetwork);
     }
 
-    event OtcSet(address otc);
-
-    function setOtc(OtcInterface _otc) public onlyAdmin {
-        require(_otc != address(0));
-
-        wethToken.approve(otc, 0);
-        daiToken.approve(otc, 0);
-        mkrToken.approve(otc, 0);
-        wethToken.approve(_otc, 2**255);
-        daiToken.approve(_otc, 2**255);
-        mkrToken.approve(_otc, 2**255);
-
-        otc = _otc;
-        OtcSet(otc);
-    }
-
     event FeeBpsSet(uint feeBps);
 
     function setFeeBps(uint _feeBps) public onlyAdmin {
@@ -169,17 +159,13 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         uint  actualSrcQty;
         ERC20 wrappedSrc;
         ERC20 wrappedDest;
-        uint bestOfferId;
         uint offerPayAmt;
         uint offerBuyAmt;
-        bool validTokens;
-        bool daiTrade;
 
         blockNumber;
 
         if (!tradeEnabled) return 0;
-        (validTokens, daiTrade) = validateTokens(src, dest);
-        if (!validTokens) return 0;
+        if (!validTokens(src, dest)) return 0;
 
         if (src == ETH_TOKEN_ADDRESS) {
             wrappedSrc = wethToken;
@@ -189,9 +175,9 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
             wrappedSrc = src;
             wrappedDest = wethToken;
 
-            if (srcQty < MIN_TRADE_TOKEN_SRC_AMOUNT && src == daiToken) {
-                /* Assuming token is stable, use a minimal amount to get rate also for small token quant. */
-                actualSrcQty = MIN_TRADE_TOKEN_SRC_AMOUNT;
+            if (srcQty < tokenMinSrcAmount[src]) {
+                /* remove rounding errors and present rate for 0 src amount. */
+                actualSrcQty = tokenMinSrcAmount[src];
             } else {
                 actualSrcQty = srcQty;
             }
@@ -199,13 +185,8 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
             return 0;
         }
 
-        // otc's terminology is of offer maker, so their sellGem is our (the taker's) dest token.
-        if (daiTrade) {
-            bestOfferId = otc.getBestOffer(wrappedDest, wrappedSrc);
-            (offerPayAmt, , offerBuyAmt,) = otc.getOffer(bestOfferId);
-        } else {
-            (, offerPayAmt, offerBuyAmt) = getMatchingOffer(wrappedDest, wrappedSrc, actualSrcQty); 
-        }
+        // otc's terminology is of offer maker, so their sellGem is the taker's dest token.
+        (, offerPayAmt, offerBuyAmt) = getMatchingOffer(wrappedDest, wrappedSrc, actualSrcQty); 
 
         // make sure to take only one level of order book to avoid gas inflation.
         if (actualSrcQty > offerBuyAmt) return 0;
@@ -225,12 +206,9 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         internal
         returns(bool)
     {
-        bool validTokens;
-        bool daiTrade;
         uint actualDestAmount;
 
-        (validTokens, daiTrade) = validateTokens(srcToken, destToken);
-        require(validTokens);
+        require(validTokens(srcToken, destToken));
 
         // can skip validation if done at kyber network level
         if (validate) {
@@ -249,11 +227,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         if (srcToken == ETH_TOKEN_ADDRESS) {
             wethToken.deposit.value(msg.value)();
 
-            if (daiTrade)
-                actualDestAmount = otc.sellAllAmount(wethToken, msg.value, destToken, destAmountIncludingFees);
-            else {
-                actualDestAmount = takeMatchingOffer(wethToken, destToken, srcAmount);
-            }
+            actualDestAmount = takeMatchingOffer(wethToken, destToken, srcAmount);
             require(actualDestAmount >= destAmountIncludingFees);
 
             // transfer back only requested dest amount.
@@ -261,11 +235,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         } else {
             require(srcToken.transferFrom(msg.sender, this, srcAmount));
  
-            if (daiTrade) {
-                actualDestAmount = otc.sellAllAmount(srcToken, srcAmount, wethToken, destAmountIncludingFees);
-            } else {
-                actualDestAmount = takeMatchingOffer(srcToken, wethToken, srcAmount);
-            }
+            actualDestAmount = takeMatchingOffer(srcToken, wethToken, srcAmount);
             require(actualDestAmount >= destAmountIncludingFees);
             wethToken.withdraw(actualDestAmount);
 
@@ -330,23 +300,8 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         return;
     }
 
-    function validateTokens(ERC20 src, ERC20 dest) internal view returns (bool validTokens, bool daiTrade) {
-
-        validTokens = false;
-
-        if ((daiToken == src) && (ETH_TOKEN_ADDRESS == dest) ||
-            (daiToken == dest) && (ETH_TOKEN_ADDRESS == src)) {
-            daiTrade = true;
-            validTokens = true;
-        } else if ((mkrToken == src) && (ETH_TOKEN_ADDRESS == dest) ||
-            (mkrToken == dest) && (ETH_TOKEN_ADDRESS == src)) {
-            daiTrade = false;
-            validTokens = true;
-        } else {
-            daiTrade = false;
-            validTokens = false;
-        }
- 
-        return;
+    function validTokens(ERC20 src, ERC20 dest) internal view returns (bool valid) {
+        return ((isTokenListed[src] && ETH_TOKEN_ADDRESS == dest) ||
+                (isTokenListed[dest] && ETH_TOKEN_ADDRESS == src));
     }
 }
