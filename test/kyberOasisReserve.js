@@ -18,6 +18,7 @@ const feeBps = feePercent * 100;
 const alternativeFeePercent = 0.13;
 const alternativeFeeBps = alternativeFeePercent * 100;
 const otcOfferWeiValue =  BigNumber(3).mul(BigNumber(10).pow(18))
+const minSrcAmount =  BigNumber(0.001).mul(BigNumber(10).pow(18))
 
 let admin;
 let myWethToken;
@@ -73,11 +74,12 @@ contract('KyberOasisReserve', function (accounts) {
                 admin,
                 otc.address,
                 myWethToken.address,
-                myDaiToken.address,
-                myMkrToken.address,
                 admin,
                 feeBps
         );
+
+        await reserve.listToken(myDaiToken.address, minSrcAmount);
+        await reserve.listToken(myMkrToken.address, minSrcAmount);
 
         // approve for reserve to claim tokens from admin
         supply = await myDaiToken.INITIAL_SUPPLY();
@@ -428,23 +430,6 @@ contract('KyberOasisReserve', function (accounts) {
         let buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, weiSrcQty, 0);
         let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty});
     });
-    it("should set otc to a malicious address (reserve) and see that getconverisonrate reverts", async function (){
-
-        await reserve.setOtc(reserve.address);
-        let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
-        try {
-            let buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, weiSrcQty, 0);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-    });
-    it("should return otc correct address and see that getconverisonrate does not revert", async function (){
-
-        await reserve.setOtc(otc.address);
-        let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
-        let buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, weiSrcQty, 0);
-    });
     it("should set fee to another value and make sure getconversionrate and trade pass", async function (){
 
         await reserve.setFeeBps(alternativeFeeBps);
@@ -489,6 +474,18 @@ contract('KyberOasisReserve', function (accounts) {
         let oneSellRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, oneTweiSrcQty, 0);
 
         assert.equal(zeroSellRate.valueOf(), oneSellRate.valueOf(), "sell rates for 0 and 1 token are not equal.");
+    });
+    it("should delist a token and see that we get 0 rate on it", async function (){
+        await reserve.delistToken(myDaiToken.address, {from: admin});
+
+        let weiSrcQty = new BigNumber(10).pow(18);
+        let buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, weiSrcQty, 0);
+        assert.equal(buyRate, 0, "buy rate should be 0");
+
+        // list back and see rate is not 0
+        await reserve.listToken(myDaiToken.address, minSrcAmount, {from: admin});
+        buyRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, weiSrcQty, 0);
+        assert.notEqual(buyRate, 0, "buy rate should not be 0");
     });
     it("should try getconversionrate for a token other than trade token and see it reverts", async function (){
         let otherToken = await TestToken.new("other token", "oth", 18);
@@ -577,17 +574,33 @@ contract('KyberOasisReserve', function (accounts) {
         // make sure it does not revert when doing it as admin)
         await reserve.setKyberNetwork(admin, {from: admin});
     });
-    it("should try to set otc without being admin", async function (){
+    it("should try to list a token without being admin", async function (){
+        let otherToken = await TestToken.new("other token", "oth", 18);
 
         try {
-            await reserve.setOtc(otc.address, {from: accounts[2]});
+            await reserve.listToken(otherToken.address, minSrcAmount, {from: accounts[2]});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         // make sure it does not revert when doing it as admin)
-        await reserve.setOtc(otc.address, {from: admin});
+        await reserve.listToken(otherToken.address, minSrcAmount, {from: admin});
+        await reserve.delistToken(otherToken.address, {from: admin});
+    });
+    it("should try to delist a token without being admin", async function (){
+        let otherToken = await TestToken.new("other token", "oth", 18);
+        await reserve.listToken(otherToken.address, minSrcAmount, {from: admin});
+
+        try {
+            await reserve.delistToken(otherToken.address, {from: accounts[2]});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // make sure it does not revert when doing it as admin)
+        await reserve.delistToken(otherToken.address, {from: admin});
     });
     it("should try to set fee without being admin", async function (){
 
