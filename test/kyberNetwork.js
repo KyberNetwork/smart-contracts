@@ -166,14 +166,14 @@ contract('KyberNetwork', function(accounts) {
             await pricing2.enableTokenTrade(token.address);
         }
 
-        KNC = await TestToken.new("kyber krystal", "KNC", 18);
+        KNC = await TestToken.new("Kyber krystal", "KNC", 18);
         kncAddress = KNC.address;
 
         permissionlessTok = await TestToken.new("permissionLess", "PRM", 18);
 
         assert.equal(tokens.length, numTokens, "bad number tokens");
 
-        uniqueToken = await TestToken.new("uinque", "unq", 15);
+        uniqueToken = await TestToken.new("unique", "unq", 15);
         await pricing3.addToken(uniqueToken.address);
         await pricing3.setTokenControlInfo(uniqueToken.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
         await pricing3.enableTokenTrade(uniqueToken.address);
@@ -324,7 +324,7 @@ contract('KyberNetwork', function(accounts) {
         }
     });
 
-    it("should init kyber network data, list token pairs.", async function () {
+    it("should init Kyber network data, list token pairs.", async function () {
         // add reserves
         await network.addReserve(reserve1.address, true, false, {from: operator});
         await network.addReserve(reserve2.address, true, false, {from: operator});
@@ -333,7 +333,7 @@ contract('KyberNetwork', function(accounts) {
 
         //set contracts
         feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address);
-        let kgtToken = await TestToken.new("kyber genesis token", "KGT", 0);
+        let kgtToken = await TestToken.new("Kyber genesis token", "KGT", 0);
         whiteList = await WhiteList.new(admin, kgtToken.address);
         await whiteList.addOperator(operator);
         await whiteList.setCategoryCap(0, capWei, {from:operator});
@@ -932,7 +932,7 @@ contract('KyberNetwork', function(accounts) {
                             walletId, 0, {from:networkProxy});
     });
 
-    xit("should verify for qty 0 return rate is 0", async function () {
+    it("should verify for qty 0 return rate is 0", async function () {
         let tokenSrcInd = 3;
         let tokenDestInd = 2;
         let token = tokens[tokenSrcInd]; //choose some token
@@ -978,58 +978,98 @@ contract('KyberNetwork', function(accounts) {
         reserveGet = await network.reservesPerTokenDest(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         reserveGet = await network.reservesPerTokenSrc(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         //unlist reserve2 only eth to token
         await network.listPairForReserve(reserve2.address, tokenAdd[tokenInd], true, false, false, {from: operator});
 
         // here non listed
-        reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         //here no change
         reserveGet = await network.reservesPerTokenSrc(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         //list back reserve 2 buy and sell. see not added twice
         await network.listPairForReserve(reserve2.address, tokenAdd[tokenInd], true, true, true, {from: operator});
         reserveGet = await network.reservesPerTokenDest(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         reserveGet = await network.reservesPerTokenSrc(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         //list back reserve 1 token to eth
         await network.listPairForReserve(reserve1.address, tokenAdd[tokenInd], false, true, true, {from: operator});
         reserveGet = await network.reservesPerTokenDest(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         reserveGet = await network.reservesPerTokenSrc(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
         reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
         assert.equal(reserve1.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenSrc(tokenAddress, 2);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenSrc(tokenAddress, 2);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         //list back reserve 1 eth to token
         await network.listPairForReserve(reserve1.address, tokenAdd[tokenInd], true, false, true, {from: operator});
@@ -1038,16 +1078,26 @@ contract('KyberNetwork', function(accounts) {
         reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
         assert.equal(reserve1.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenSrc(tokenAddress, 2);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenSrc(tokenAddress, 2);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
 
         reserveGet = await network.reservesPerTokenSrc(tokenAddress, 0);
         assert.equal(reserve2.address, reserveGet);
         reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
         assert.equal(reserve1.address, reserveGet);
 
-        reserveGet = await network.reservesPerTokenSrc(tokenAddress, 2);
-        assert.equal(reserveGet.valueOf(), 0);
+        try {
+            reserveGet = await network.reservesPerTokenSrc(tokenAddress, 2);
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
     });
 
     it("should test can't list pairs if reserve not added.", async function () {
@@ -1059,11 +1109,7 @@ contract('KyberNetwork', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        reserveGet = await network.reservesPerTokenSrc(uniqueToken.address, 0);
-        assert.equal(reserveGet.valueOf(), 0);
-
         await network.addReserve(reserve3.address, true, false, {from: operator});
-
         await network.listPairForReserve(reserve3.address, uniqueToken.address, true, true, true, {from: operator});
 
         reserveGet = await network.reservesPerTokenSrc(uniqueToken.address, 0);
@@ -2370,73 +2416,88 @@ contract('KyberNetwork', function(accounts) {
         log("average gas usage " + numTrades + " buys. token to token: " + avgGas.floor().valueOf());
     });
 
-    it("add permission less order book reserve for new token using reserve lister. see success... ", async() => {
-        feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
-        ordersFactory = await OrdersFactory.new();
+    describe("permissionless order book reserve", async() => {
+        it("add permission less order book reserve for new token using reserve lister. see success... ", async() => {
+            feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
+            ordersFactory = await OrdersFactory.new();
 
-        reserveLister = await PermissionlessOrderBookReserveLister.new(network.address, feeBurnerResolver.address,
-            ordersFactory.address, kncAddress);
+            reserveLister = await PermissionlessOrderBookReserveLister.new(network.address, feeBurnerResolver.address,
+                ordersFactory.address, KNC.address);
 
-        await network.addOperator(reserveLister.address);
+            await network.addOperator(reserveLister.address);
+            await feeBurner.addOperator(reserveLister.address);
 
-        let tokenAdd = permissionlessTok.address;
-        let rc = await reserveLister.addOrderBookContract(tokenAdd);
-        rc = await reserveLister.initOrderBookContract(tokenAdd);
-        rc = await reserveLister.listOrderBookContract(tokenAdd);
+            let tokenAdd = permissionlessTok.address;
+            let rc = await reserveLister.addOrderBookContract(tokenAdd);
+            rc = await reserveLister.initOrderBookContract(tokenAdd);
+            rc = await reserveLister.listOrderBookContract(tokenAdd);
 
-        //verify reserve exists in network
-        let reserveAddress = await network.reservesPerTokenDest(tokenAdd, 0);
-        let listReserveAddress = await reserveLister.reserves(tokenAdd);
-        assert.equal(reserveAddress.valueOf(), listReserveAddress.valueOf());
+            //verify reserve exists in network
+            let reserveAddress = await network.reservesPerTokenDest(tokenAdd, 0);
+            let listReserveAddress = await reserveLister.reserves(tokenAdd);
+            assert.equal(reserveAddress.valueOf(), listReserveAddress.valueOf());
 
-        reserve = await OrderBookReserve.at(reserveAddress.valueOf());
+            reserve = await OrderBookReserve.at(reserveAddress.valueOf());
 
-        //maker deposits tokens
-        let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
-        let orderDstWei = new BigNumber(2 * 10 ** 18);
-        let amountKnc = 600 * 10 ** 18;
-        let amountEthDeposit = (new BigNumber(6 * 10 ** 18)).add(600);
+            //maker deposits tokens
+            let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
+            let orderDstWei = new BigNumber(2 * 10 ** 18);
+            let amountKnc = 600 * 10 ** 18;
+            let amountEthDeposit = (new BigNumber(6 * 10 ** 18)).add(600);
 
-        await makerDeposit(reserve, maker1, amountEthDeposit, 0, amountKnc.valueOf());
+            await makerDeposit(reserve, permissionlessTok, maker1, amountEthDeposit, 0, amountKnc.valueOf());
 
-        // first getExpectedRate should return 0
-        let rate = await network.getExpectedRate(tokenAdd, ethAddress, 10 ** 18, 0);
-        assert.equal(rate.valueOf(), 0);
+            // first getExpectedRate should return 0
+            let rate = await network.getExpectedRate(permissionlessTok.address, ethAddress, 10 ** 18);
+            assert.equal(rate[0].valueOf(), 0);
 
-        //now add order
-        //////////////
-//        makeOrder(address maker, bool isEthToToken, uint128 payAmount, uint128 exchangeAmount, uint32 hintPrevOrder)
-        rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
-        rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei.add(400), 0, {from: maker1});
-        rc = await reserve.submitSellTokenOrderWHint(orderSrcAmountTwei, orderDstWei.add(200), 0, {from: maker1});
-//        log(rc.logs[0].args)
+            //now add order
+            //////////////
+    //        makeOrder(address maker, bool isEthToToken, uint128 payAmount, uint128 exchangeAmount, uint32 hintPrevOrder)
+            rc = await reserve.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
+            rc = await reserve.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei.add(400), {from: maker1});
+            rc = await reserve.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei.add(200), {from: maker1});
+    //        log(rc.logs[0].args)
 
-        // first getConversionRate should return 0
-        rate = await network.getExpectedRate(tokenAdd, ethAddress, 10 ** 18, 0);
-        assert.equal(rate.valueOf(), 0);
+            // now getConversionRate > 0
+            let totalPayValue = orderSrcAmountTwei.mul(3);
+            rate = await network.getExpectedRate(permissionlessTok.address, ethAddress, totalPayValue);
+            assert(rate[0].valueOf() > 0);
 
-        let orderList = await res.getSellOrderList();
-        assert.equal(orderList.length, 3);
+            let orderList = await reserve.getSellTokenOrderList();
+            assert.equal(orderList.length, 3);
 
-        //tokens to user
-        let totalPayValue = orderSrcAmountTwei.mul(3);
-        await token.transfer(totalPayValue, user1);
-        await token.approve(res.address, totalPayValue);
+            let user2InitialBalance = await Helper.getBalancePromise(user2);
+            //trade
+            await permissionlessTok.transfer(network.address, totalPayValue);
+            let txData = await network.tradeWithHint(user1, permissionlessTok.address, totalPayValue, ethAddress, user2, 10 ** 30,
+                            rate[1].valueOf(), 0, 0, {from:networkProxy});
+            log("take 3 sell orders gas: " + txData.receipt.gasUsed);
 
-        let userInitialBalance = await await Helper.getBalancePromise(user1);
-        //trade
-        rc = await res.trade(tokenAdd, totalPayValue, ethAddress, user1, 300, false);
-        log("take 3 sell orders gas: " + rc.receipt.gasUsed);
+            orderList = await reserve.getSellTokenOrderList();
+            assert.equal(orderList.length, 0);
 
-        orderList = await res.getSellOrderList();
-        assert.equal(orderList.length, 0);
+            let user2BalanceAfter = await Helper.getBalancePromise(user2);
+            let expectedEthTransfer = totalPayValue.mul(rate[0].valueOf()).div(precisionUnits);
+            let expectedBalance = expectedEthTransfer.add(user2InitialBalance);
 
-        let userBalanceAfter = await Helper.getBalancePromise(user1);
-        let expectedBalance = userInitialBalance.add(amountEthDeposit);
+            assert.equal(user2BalanceAfter.valueOf(), expectedBalance.valueOf());
+        });
 
-        assert.equal(userBalanceAfter.valueOf(), expectedBalance.valueOf());
+        xit("list a unique token, get rate with / without permissionless", async() => {
+        })
 
+        xit("list an existing token with better rate then other reserves, get rate with / without permissionless, see rate diff", async() => {
+        })
 
+        xit("trade unique token using Kyber. see token taken from order book reserve", async() => {
+        })
+
+        xit("trade existing token using Kyber with permissionless allowed. see token taken from order book reserve", async() => {
+        })
+
+        xit("trade existing token using Kyber with permissionless not allowed. see token not taken from order book reserve", async() => {
+        })
     });
 });
 
@@ -2581,11 +2642,11 @@ function log (string) {
     console.log(string);
 };
 
-async function makerDeposit(res, maker, ethWei, tokenTwei, kncTwei) {
+async function makerDeposit(res, permTok, maker, ethWei, tokenTwei, kncTwei) {
 
-    await token.approve(res.address, tokenTwei);
+    await permTok.approve(res.address, tokenTwei);
     await res.depositToken(maker, tokenTwei);
-    await KNCToken.approve(res.address, kncTwei);
+    await KNC.approve(res.address, kncTwei);
     await res.depositKncFee(maker, kncTwei);
     await res.depositEther(maker, {from: maker, value: ethWei});
 }

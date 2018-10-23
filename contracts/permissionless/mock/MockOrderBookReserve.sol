@@ -6,14 +6,18 @@ import "../OrderBookReserve.sol";
 
 contract MockOrderBookReserve is OrderBookReserve {
 
-    uint public bitmap;
-
-    function MockOrderBookReserve(ERC20 knc, ERC20 _token, FeeBurnerResolverInterface resolver,
-        OrdersFactoryInterface factory)
+    function MockOrderBookReserve(
+        ERC20 knc,
+        ERC20 reserveToken,
+        FeeBurnerResolverInterface resolver,
+        OrderFactoryInterface factory,
+        uint minOrderMakeWei,
+        uint minOrderWei,
+        uint burnFeeBps
+    )
         public
-        OrderBookReserve(knc, _token, resolver, factory)
+        OrderBookReserve(knc, reserveToken, resolver, factory, minOrderMakeWei, minOrderWei, burnFeeBps)
     {
-
     }
 
     function testBindStakes(address maker, int amountTwei) public {

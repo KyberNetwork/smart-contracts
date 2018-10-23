@@ -1,9 +1,12 @@
 let FeeBurner = artifacts.require("./FeeBurner.sol");
 let TestToken = artifacts.require("./TestToken.sol");
+let MockKyberNetwork = artifacts.require("./MockKyberNetwork.sol");
 
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
 
+let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+let precision = new BigNumber(10 ** 18);
 //global variables
 let kncToken;
 let feeBurnerInst;
@@ -19,15 +22,21 @@ let taxFeesInBPS = 30;
 let totalBPS = 10000;   //total price steps.
 let payedSoFar = 0; //track how much fees payed or burned so far.
 
+//accounts
+let admin;
+let operator;
+
 contract('FeeBurner', function(accounts) {
     it("should init globals and init feeburner Inst.", async function () {
         //init globals
-        mockKyberNetwork = accounts[9];
         mockReserve = accounts[8];
         mockKNCWallet = accounts[7];
         someExternalWallet = accounts[6];
         taxWallet = accounts[5];
+        mockKyberNetwork = accounts[4];
+        operator = accounts[1];
         admin = accounts[0];
+
         //move funds to knc wallet
         kncToken = await TestToken.new("kyber", "KNC", 18);
         await kncToken.transfer(mockKNCWallet, initialKNCWalletBalance);
@@ -36,10 +45,13 @@ contract('FeeBurner', function(accounts) {
 
         //init fee burner
         feeBurnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork);
+        kncPerEtherRate = await feeBurnerInst.ethKncRatePrecision();
+
+        await feeBurnerInst.addOperator(operator, {from: admin});
 
         //set parameters in fee burner.
-        await feeBurnerInst.setKNCRate(kncPerEtherRate);
-        let result = await feeBurnerInst.setReserveData(mockReserve, burnFeeInBPS, mockKNCWallet);
+        let result = await feeBurnerInst.setReserveData(mockReserve, burnFeeInBPS, mockKNCWallet, {from: operator});
+
 //        console.log("result")
 //        console.log(result.logs[0].args)
         assert.equal(result.logs[0].args.reserve, mockReserve);
@@ -107,14 +119,6 @@ contract('FeeBurner', function(accounts) {
     });
 
     it("should test all set set functions rejected for non admin.", async function () {
-        try {
-            await feeBurnerInst.setKNCRate(500, {from: mockReserve});
-            assert(false, "expected throw in line above..")
-        }
-            catch(e){
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
-        }
-
         try {
             await feeBurnerInst.setReserveData(mockReserve, 70, mockKNCWallet, {from: mockReserve});
             assert(false, "expected throw in line above..")
@@ -226,7 +230,7 @@ contract('FeeBurner', function(accounts) {
     it("should test tax fees behavior with smallest values.", async function () {
         //first create 2 wei burn fee. which will be reverted.
         const burnFeeInBPS = 50; //0.5%
-        await feeBurnerInst.setReserveData(mockReserve, burnFeeInBPS, mockKNCWallet);
+        await feeBurnerInst.setReserveData(mockReserve, burnFeeInBPS, mockKNCWallet, {from: operator});
         let tradeSize = 1; // * eth to knc rate is the ref number.
 
         await feeBurnerInst.handleFees(tradeSize, mockReserve, 0, {from: mockKyberNetwork});
@@ -337,27 +341,27 @@ contract('FeeBurner', function(accounts) {
         let highBpsfee = 101;
 
         try {
-            await feeBurnerInst.setReserveData(mockReserve, highBpsfee, mockKNCWallet);
+            await feeBurnerInst.setReserveData(mockReserve, highBpsfee, mockKNCWallet, {from: operator});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         //see success
-        await feeBurnerInst.setReserveData(mockReserve, 99, mockKNCWallet);
+        await feeBurnerInst.setReserveData(mockReserve, 99, mockKNCWallet, {from: operator});
     });
 
 
     it("should test can't set empty (address 0) knc wallet.", async function () {
         try {
-            await feeBurnerInst.setReserveData(mockReserve, 99, 0);
+            await feeBurnerInst.setReserveData(mockReserve, 99, 0, {from: operator});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         //see success
-        await feeBurnerInst.setReserveData(mockReserve, 99, mockKNCWallet);
+        await feeBurnerInst.setReserveData(mockReserve, 99, mockKNCWallet, {from: operator});
     });
 
     it("should test can't set wallet fees above 100% (10000 bps).", async function () {
@@ -409,7 +413,7 @@ contract('FeeBurner', function(accounts) {
             await feeBurnerInst.handleFees(illegalTrade, mockReserve, 0, {from: mockKyberNetwork});
             assert(false, "expected throw in line above..")
         }
-            catch(e){
+        catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
         }
     });
@@ -428,19 +432,6 @@ contract('FeeBurner', function(accounts) {
         }
     });
 
-    it("should test set KNC rate reverted when value above maxRate.", async function () {
-        let legalKncRate = new BigNumber(10).pow(24);
-        let illegalKncRate = legalKncRate.add(1);
-
-        await feeBurnerInst.setKNCRate(legalKncRate);
-
-        try {
-            await feeBurnerInst.setKNCRate(illegalKncRate);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-    });
 
     it("should verify payed so far on this reserve.", async function () {
         let rxPayedSoFar = await feeBurnerInst.feePayedPerReserve(mockReserve);
@@ -448,4 +439,141 @@ contract('FeeBurner', function(accounts) {
         assert.equal(rxPayedSoFar.valueOf(), payedSoFar);
     });
 
+    it("should test set knc rate gets rate from kyber network", async function () {
+ //init mock kyber network and set knc rate
+//        log("create mock")
+        kncPerEtherRate = 431;
+        mockKyberNetwork = await MockKyberNetwork.new();
+        let ethToKncRatePrecision = precision.mul(kncPerEtherRate);
+        let kncToEthRatePrecision = precision.div(kncPerEtherRate);
+
+//        log("set pair rate")
+        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, ethToKncRatePrecision);
+        await mockKyberNetwork.setPairRate(kncToken.address, ethAddress, kncToEthRatePrecision);
+
+        let rate = await mockKyberNetwork.getExpectedRate(ethAddress, kncToken.address, (10 ** 18));
+        assert.equal(ethToKncRatePrecision.valueOf(), rate[0].valueOf());
+        rate = await mockKyberNetwork.getExpectedRate(kncToken.address, ethAddress, (10 ** 18));
+        assert.equal(kncToEthRatePrecision.add(1).floor().valueOf(), rate[0].valueOf());
+
+        //init fee burner
+        feeBurnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork.address);
+        await feeBurnerInst.addOperator(operator, {from: admin});
+
+        await feeBurnerInst.setKNCRate({from: operator});
+        let rxKncRate = await feeBurnerInst.ethKncRatePrecision()
+        assert.equal(rxKncRate.valueOf(), kncPerEtherRate);
+
+        //see rate the same. not matter what min max are
+        await feeBurnerInst.setKNCRate({from: operator});
+        rxKncRate = await feeBurnerInst.ethKncRatePrecision()
+        assert.equal(rxKncRate.valueOf(), kncPerEtherRate);
+
+        //update knc rate in kyber network
+        let oldRate = kncPerEtherRate;
+        kncPerEtherRate = 1000;
+        ethToKncRatePrecision = precision.mul(kncPerEtherRate);
+        kncToEthRatePrecision = precision.div(kncPerEtherRate);
+        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, ethToKncRatePrecision);
+        await mockKyberNetwork.setPairRate(kncToken.address, ethAddress, kncToEthRatePrecision);
+
+        //verify old rate still exists
+        rxKncRate = await feeBurnerInst.ethKncRatePrecision()
+        assert.equal(rxKncRate.valueOf(), oldRate);
+
+        await feeBurnerInst.setKNCRate({from: operator});
+        rxKncRate = await feeBurnerInst.ethKncRatePrecision()
+        assert.equal(rxKncRate.valueOf(), kncPerEtherRate);
+    });
+
+    it("should test 'set KNC rate' reverted when min is 0.", async function () {
+        //set pair rate to 0
+        ethToKncRatePrecision = 0;
+        kncToEthRatePrecision = 0;
+        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, ethToKncRatePrecision);
+        await mockKyberNetwork.setPairRate(kncToken.address, ethAddress, kncToEthRatePrecision);
+        let rate = await mockKyberNetwork.getExpectedRate(ethAddress, kncToken.address, (10 ** 18));
+        assert.equal(0, rate[0].valueOf());
+
+        try {
+            await feeBurnerInst.setKNCRate({from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should test 'set knc rate' rejected for non operator.", async function () {
+        try {
+            await feeBurnerInst.setKNCRate({from: admin});
+            assert(false, "expected throw in line above..")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
+        }
+    });
+
+    it("should check event for 'set knc rate'", async function () {
+        kncPerEtherRate = 431;
+        let ethToKncRatePrecision = precision.mul(kncPerEtherRate);
+        let kncToEthRatePrecision = precision.div(kncPerEtherRate);
+        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, ethToKncRatePrecision);
+        await mockKyberNetwork.setPairRate(kncToken.address, ethAddress, kncToEthRatePrecision);
+
+        let rc = await feeBurnerInst.setKNCRate({from: operator});
+//        console.log(rc.logs[0].args)
+
+        assert.equal(rc.logs[0].args.KNCPerEth.valueOf(), kncPerEtherRate);
+        assert.equal(rc.logs[0].args.updater.valueOf(), operator);
+
+        //verify event isn't affected from min and max
+        rc = await feeBurnerInst.setKNCRate({from: operator});
+        assert.equal(rc.logs[0].args.KNCPerEth.valueOf(), kncPerEtherRate);
+        assert.equal(rc.logs[0].args.updater.valueOf(), operator);
+    });
+
+    it("verify if spread in kyber too big (rate tampered). can't set knc rate in fee burner", async function () {
+        kncPerEtherRate = 431;
+        kncPerEtherRateWSpread = kncPerEtherRate * 2.1;
+        let ethToKncRatePrecision = precision.mul(kncPerEtherRateWSpread);
+        let kncToEthRatePrecision = precision.div(kncPerEtherRate);
+
+        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, ethToKncRatePrecision);
+        await mockKyberNetwork.setPairRate(kncToken.address, ethAddress, kncToEthRatePrecision);
+
+        //now spread > x2
+        try {
+            let rc = await feeBurnerInst.setKNCRate({from: operator});
+            assert(false, "expected throw in line above..")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
+        }
+
+        kncPerEtherRateWSpread = (new BigNumber(kncPerEtherRate * 1.98)).floor();
+        ethToKncRatePrecision = precision.mul(kncPerEtherRateWSpread);
+
+        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, ethToKncRatePrecision);
+        let rate = await mockKyberNetwork.getExpectedRate(ethAddress, kncToken.address, (10 ** 18));
+        assert.equal(ethToKncRatePrecision.valueOf(), rate[0].valueOf());
+
+        let rc = await feeBurnerInst.setKNCRate({from: operator});
+        assert.equal(rc.logs[0].args.KNCPerEth.valueOf(), kncPerEtherRateWSpread);
+        assert.equal(rc.logs[0].args.updater.valueOf(), operator);
+
+        kncPerEtherRateWSpread = (new BigNumber(kncPerEtherRate * 0.51)).floor();
+        kncToEthRatePrecision = precision.div(kncPerEtherRateWSpread);
+        ethToKncRatePrecision = precision.mul(kncPerEtherRate);
+
+        await mockKyberNetwork.setPairRate(kncToken.address, ethAddress, kncToEthRatePrecision);
+        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, ethToKncRatePrecision);
+
+        rc = await feeBurnerInst.setKNCRate({from: operator});
+        assert.equal(rc.logs[0].args.KNCPerEth.valueOf(), kncPerEtherRate.valueOf());
+        assert.equal(rc.logs[0].args.updater.valueOf(), operator);
+    });
 });
+
+
+
+function log(str) {
+    console.log(str);
+}

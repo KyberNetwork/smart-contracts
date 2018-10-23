@@ -1,14 +1,14 @@
 pragma solidity 0.4.18;
 
 
-contract MakerOrders {
-    struct FreeOrders {
+contract OrderIdManager {
+    struct OrdersData {
         uint32 firstOrderId;
         uint32 numOrders; //max is 256
         uint256 takenBitmap;
     }
 
-    function takeOrderId(FreeOrders storage freeOrders)
+    function getNewOrderId(OrdersData storage freeOrders)
         internal
         returns(uint32)
     {
@@ -30,7 +30,7 @@ contract MakerOrders {
     }
 
     /// @dev mark order as free to use.
-    function releaseOrderId(FreeOrders storage freeOrders, uint32 orderId)
+    function releaseOrderId(OrdersData storage freeOrders, uint32 orderId)
         internal
         returns(bool)
     {
@@ -39,34 +39,38 @@ contract MakerOrders {
 
         uint orderBitNum = uint(orderId) - uint(freeOrders.firstOrderId);
         uint256 bitPointer = 1 * (2 ** orderBitNum);
-        // TODO: enable!
-        //        require(bitPointer & freeOrders.takenBitmap == 1);
+
+        require(bitPointer & freeOrders.takenBitmap > 0);
 
         uint256 bitNegation = bitPointer ^ 0xffffffffffffffff;
 
         freeOrders.takenBitmap &= bitNegation;
+        return true;
     }
 
     function allocateOrders(
-        FreeOrders storage freeOrders,
+        OrdersData storage freeOrders,
         uint32 firstAllocatedId,
-        uint32 howMany
+        uint howMany
     )
         internal
         returns(bool)
     {
-        require(howMany <= 256);
-
-        if (freeOrders.takenBitmap != 0) return true; //already allocated and in use.
-        if (howMany == freeOrders.numOrders) return true;
-
-        // make sure no orders in use at the moment if its re allocate case
-        require(freeOrders.takenBitmap == 0);
+        if ((howMany > 256) || (howMany <= uint(freeOrders.numOrders)) || (freeOrders.takenBitmap != 0)) {
+            return false;
+        }
 
         freeOrders.firstOrderId = firstAllocatedId;
-        freeOrders.numOrders = howMany;
+        freeOrders.numOrders = uint32(howMany);
         freeOrders.takenBitmap = 0;
 
         return true;
+    }
+
+    function orderAllocationRequired(OrdersData storage freeOrders, uint howMany) internal view returns (bool) {
+
+        if ((howMany > uint(freeOrders.numOrders)) && (freeOrders.takenBitmap == 0)) return true;
+
+        return false;
     }
 }

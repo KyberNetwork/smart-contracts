@@ -68,11 +68,12 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
     )
         public
         onlyAdmin
+        returns(bool)
     {
         require(orderId != 0 && orderId != HEAD_ID && orderId != TAIL_ID);
 
         uint32 prevId = findPrevOrderId(srcAmount, dstAmount);
-        addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
+        return addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
     // Returns false if provided with bad hint.
@@ -95,22 +96,24 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         return true;
     }
 
-    function removeById(uint32 orderId) public onlyAdmin {
+    function removeById(uint32 orderId) public onlyAdmin returns (bool) {
         verifyCanRemoveOrderById(orderId);
 
         // Disconnect order from list
         Order storage order = orders[orderId];
         orders[order.prevId].nextId = order.nextId;
         orders[order.nextId].prevId = order.prevId;
+        return true;
     }
 
     function update(uint32 orderId, uint128 srcAmount, uint128 dstAmount)
         public
         onlyAdmin
+        returns(bool)
     {
         address maker = orders[orderId].maker;
         removeById(orderId);
-        add(maker, orderId, srcAmount, dstAmount);
+        return add(maker, orderId, srcAmount, dstAmount);
     }
 
     // Returns false if provided with a bad hint.
@@ -146,7 +149,7 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
                 // Let's move the order to the hinted position.
                 address maker = orders[orderId].maker;
                 removeById(orderId);
-                addAfterId(maker, orderId, srcAmount, dstAmount, prevId);
+                addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
                 return (true, UPDATE_MOVE_ORDER);
             }
         }
@@ -202,6 +205,7 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         uint32 prevId
     )
         private
+        returns(bool)
     {
         Order storage prevOrder = orders[prevId];
 
@@ -220,6 +224,8 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
 
         // Update previous order to point to added order
         prevOrder.nextId = orderId;
+
+        return true;
     }
 
     function verifyCanRemoveOrderById(uint32 orderId) private view {
@@ -260,8 +266,7 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
             if (prevKey < newKey) return false;
         }
 
-        // Make sure that the new order should be before provided prevId's next
-        // order.
+        // Make sure that the new order should be before provided prevId's next order.
         if (nextId != TAIL_ID) {
             // TODO: check gas cost with this or memory or orders[prevId].
             Order storage next = orders[nextId];
