@@ -169,18 +169,23 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
     }
 
     function compareOrders(
-        int srcAmount1,
-        int dstAmount1,
-        int srcAmount2,
-        int dstAmount2
+        uint128 srcAmount1,
+        uint128 dstAmount1,
+        uint128 srcAmount2,
+        uint128 dstAmount2
     )
         public
         pure
         returns(int)
     {
-        // TODO: handle overflows
-        int res = srcAmount2 * dstAmount1 - srcAmount1 * dstAmount2;
-        return res;
+        require(srcAmount1 <= MAX_QTY);
+        require(dstAmount1 <= MAX_QTY);
+        require(srcAmount2 <= MAX_QTY);
+        require(dstAmount2 <= MAX_QTY);
+
+        if (srcAmount2 * dstAmount1 < srcAmount1 * dstAmount2) return -1;
+        if (srcAmount2 * dstAmount1 > srcAmount1 * dstAmount2) return 1;
+        return 0;
     }
 
     function findPrevOrderId(uint128 srcAmount, uint128 dstAmount)
