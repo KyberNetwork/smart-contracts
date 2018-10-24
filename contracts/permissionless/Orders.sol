@@ -307,14 +307,4 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
             orders[HEAD_ID].nextId == TAIL_ID
         );
     }
-
-    // TODO: move to PermissionLessReserve
-    function getNextOrder(uint32 orderId)
-        public
-        view
-        returns(uint32, bool isLast)
-    {
-        isLast = orders[orderId].nextId == TAIL_ID;
-        return(orders[orderId].nextId, isLast);
-    }
 }
