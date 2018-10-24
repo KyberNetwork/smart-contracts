@@ -199,7 +199,12 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         while (curr.nextId != TAIL_ID) {
             currId = curr.nextId;
             curr = orders[currId];
-            int cmp = compareOrders(srcAmount, dstAmount, curr.srcAmount, curr.dstAmount);
+            int cmp = compareOrders(
+                srcAmount,
+                dstAmount,
+                curr.srcAmount,
+                curr.dstAmount
+            );
             if (cmp < 0) {
                 return curr.prevId;
             }
@@ -268,7 +273,12 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         int cmp;
         // Make sure that the new order should be after the provided prevId.
         if (prevId != HEAD_ID) {
-            cmp = compareOrders(srcAmount, dstAmount, prev.srcAmount, prev.dstAmount);
+            cmp = compareOrders(
+                srcAmount,
+                dstAmount,
+                prev.srcAmount,
+                prev.dstAmount
+            );
             // new order is better than prev
             if (cmp < 0) return false;
         }
@@ -277,7 +287,12 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         if (nextId != TAIL_ID) {
             // TODO: check gas cost with this or memory or orders[prevId].
             Order storage next = orders[nextId];
-            cmp = compareOrders(srcAmount, dstAmount, next.srcAmount, next.dstAmount);
+            cmp = compareOrders(
+                srcAmount,
+                dstAmount,
+                next.srcAmount,
+                next.dstAmount
+            );
             // new order is worse than next
             if (cmp > 0) return false;
         }
