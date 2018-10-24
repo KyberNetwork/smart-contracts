@@ -178,13 +178,13 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         pure
         returns(int)
     {
-        require(srcAmount1 <= MAX_QTY);
-        require(dstAmount1 <= MAX_QTY);
-        require(srcAmount2 <= MAX_QTY);
-        require(dstAmount2 <= MAX_QTY);
+        uint256 s1 = srcAmount1;
+        uint256 d1 = dstAmount1;
+        uint256 s2 = srcAmount2;
+        uint256 d2 = dstAmount2;
 
-        if (srcAmount2 * dstAmount1 < srcAmount1 * dstAmount2) return -1;
-        if (srcAmount2 * dstAmount1 > srcAmount1 * dstAmount2) return 1;
+        if (s2 * d1 < s1 * d2) return -1;
+        if (s2 * d1 > s1 * d2) return 1;
         return 0;
     }
 
