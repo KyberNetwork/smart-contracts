@@ -168,12 +168,19 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         return TAIL_ID;
     }
 
-    function calculateOrderSortKey(uint128 srcAmount, uint128 dstAmount)
+    function compareOrders(
+        int srcAmount1,
+        int dstAmount1,
+        int srcAmount2,
+        int dstAmount2
+    )
         public
         pure
-        returns(uint)
+        returns(int)
     {
-        return srcAmount * PRECISION / dstAmount;
+        // TODO: handle overflows
+        int res = srcAmount2 * dstAmount1 - srcAmount1 * dstAmount2;
+        return res;
     }
 
     function findPrevOrderId(uint128 srcAmount, uint128 dstAmount)
@@ -181,16 +188,14 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         view
         returns(uint32)
     {
-        uint newOrderKey = calculateOrderSortKey(srcAmount, dstAmount);
-
         // TODO: eliminate while loop.
         uint32 currId = HEAD_ID;
         Order storage curr = orders[currId];
         while (curr.nextId != TAIL_ID) {
             currId = curr.nextId;
             curr = orders[currId];
-            uint key = calculateOrderSortKey(curr.srcAmount, curr.dstAmount);
-            if (newOrderKey > key) {
+            int cmp = compareOrders(srcAmount, dstAmount, curr.srcAmount, curr.dstAmount);
+            if (cmp < 0) {
                 return curr.prevId;
             }
         }
@@ -255,25 +260,21 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         // Make sure prev order is initialised.
         if (prev.prevId == 0 || prev.nextId == 0) return false;
 
-        uint newKey = calculateOrderSortKey(srcAmount, dstAmount);
-
+        int cmp;
         // Make sure that the new order should be after the provided prevId.
         if (prevId != HEAD_ID) {
-            uint prevKey = calculateOrderSortKey(
-                prev.srcAmount,
-                prev.dstAmount
-            );
-            if (prevKey < newKey) return false;
+            cmp = compareOrders(srcAmount, dstAmount, prev.srcAmount, prev.dstAmount);
+            // new order is better than prev
+            if (cmp < 0) return false;
         }
 
         // Make sure that the new order should be before provided prevId's next order.
         if (nextId != TAIL_ID) {
             // TODO: check gas cost with this or memory or orders[prevId].
             Order storage next = orders[nextId];
-            uint nextKey = calculateOrderSortKey(
-                next.srcAmount,
-                next.dstAmount);
-            if (newKey < nextKey) return false;
+            cmp = compareOrders(srcAmount, dstAmount, next.srcAmount, next.dstAmount);
+            // new order is worse than next
+            if (cmp > 0) return false;
         }
 
         return true;

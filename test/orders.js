@@ -88,18 +88,49 @@ contract('Orders', async (accounts) => {
         });
     });
 
-    describe("#calculateOrderSortKey", async () => {
-        it("should calculate order sort key", async () => {
-            worse = await orders.calculateOrderSortKey(
-                10 /* srcAmount */,
-                100 /* dstAmount */
-            );
-            better = await orders.calculateOrderSortKey(
-                20 /* srcAmount */,
-                100 /* dstAmount */
+    describe("#compareOrders", async () => {
+        it("compare orders: order1 better than order2 -> negative", async () => {
+            const orderComparison = await orders.compareOrders.call(
+                10 /* srcAmount1 */,
+                100 /* dstAmount1 */,
+                10 /* srcAmount2 */,
+                200 /* dstAmount2 */
             );
 
-            better.should.be.bignumber.greaterThan(worse);
+            orderComparison.should.be.bignumber.below(0);
+        });
+
+        it("compare orders: order1 worse than order2 -> positive", async () => {
+            const orderComparison = await orders.compareOrders.call(
+                10 /* srcAmount1 */,
+                200 /* dstAmount1 */,
+                10 /* srcAmount2 */,
+                100 /* dstAmount2 */
+            );
+
+            orderComparison.should.be.bignumber.above(0);
+        });
+
+        it("compare orders: order1 equals order2 -> 0", async () => {
+            const orderComparison = await orders.compareOrders.call(
+                3579 /* srcAmount1 */,
+                2468 /* dstAmount1 */,
+                3579 /* srcAmount2 */,
+                2468 /* dstAmount2 */
+            );
+
+            orderComparison.should.be.bignumber.equal(0);
+        });
+
+        it("small differences in the order amounts should influence", async () => {
+            const orderComparison = await orders.compareOrders.call(
+                new BigNumber(2).mul(10 ** 18).add(300) /* srcAmount1 */,
+                new BigNumber(9).mul(10 ** 18).add(220) /* dstAmount1 */,
+                new BigNumber(2).mul(10 ** 18).add(300) /* srcAmount2 */,
+                new BigNumber(9).mul(10 ** 18).add(200) /* dstAmount2 */
+            );
+
+            orderComparison.should.be.bignumber.above(0);
         });
     });
 
@@ -1263,7 +1294,7 @@ contract('Orders', async (accounts) => {
                     Helper.isRevertErrorMessage(e),
                     "expected revert but got: " + e);
             }
-        })
+        });
     });
 
     describe("#getFirstOrder", async () => {
