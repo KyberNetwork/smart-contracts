@@ -14,7 +14,7 @@ contract OtcInterface {
 }
 
 
-contract TokenInterface is ERC20 {
+contract WethInterface is ERC20 {
     function deposit() public payable;
     function withdraw(uint) public;
 }
@@ -26,7 +26,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
     address public sanityRatesContract = 0;
     address public kyberNetwork;
     OtcInterface public otc;
-    TokenInterface public wethToken;
+    WethInterface public wethToken;
     mapping(address=>bool) public isTokenListed;
     mapping(address=>uint) public tokenMinSrcAmount;
     bool public tradeEnabled;
@@ -35,7 +35,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
     function KyberOasisReserve(
         address _kyberNetwork,
         OtcInterface _otc,
-        TokenInterface _wethToken,
+        WethInterface _wethToken,
         address _admin,
         uint _feeBps
     )
@@ -55,7 +55,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         feeBps = _feeBps;
         tradeEnabled = true;
 
-        wethToken.approve(otc, 2**255);
+        require(wethToken.approve(otc, 2**255));
     }
 
     function() public payable {
@@ -67,7 +67,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         require(!isTokenListed[token]);
         require(getDecimals(token) == COMMON_DECIMALS);
 
-        token.approve(otc, 2**255);
+        require(token.approve(otc, 2**255));
         isTokenListed[token] = true;
         tokenMinSrcAmount[token] = minSrcAmount;
     }
@@ -75,7 +75,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
     function delistToken(ERC20 token) public onlyAdmin {
         require(isTokenListed[token]);
 
-        token.approve(otc, 0);
+        require(token.approve(otc, 0));
         delete isTokenListed[token];
         delete tokenMinSrcAmount[token];
     }
@@ -157,8 +157,8 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
     function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
         uint  rate;
         uint  actualSrcQty;
-        ERC20 wrappedSrc;
-        ERC20 wrappedDest;
+        ERC20 actualSrc;
+        ERC20 actualDest;
         uint offerPayAmt;
         uint offerBuyAmt;
 
@@ -168,12 +168,12 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         if (!validTokens(src, dest)) return 0;
 
         if (src == ETH_TOKEN_ADDRESS) {
-            wrappedSrc = wethToken;
-            wrappedDest = dest;
+            actualSrc = wethToken;
+            actualDest = dest;
             actualSrcQty = srcQty;
         } else if (dest == ETH_TOKEN_ADDRESS) {
-            wrappedSrc = src;
-            wrappedDest = wethToken;
+            actualSrc = src;
+            actualDest = wethToken;
 
             if (srcQty < tokenMinSrcAmount[src]) {
                 /* remove rounding errors and present rate for 0 src amount. */
@@ -186,7 +186,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         }
 
         // otc's terminology is of offer maker, so their sellGem is the taker's dest token.
-        (, offerPayAmt, offerBuyAmt) = getMatchingOffer(wrappedDest, wrappedSrc, actualSrcQty); 
+        (, offerPayAmt, offerBuyAmt) = getMatchingOffer(actualDest, actualSrc, actualSrcQty); 
 
         // make sure to take only one level of order book to avoid gas inflation.
         if (actualSrcQty > offerBuyAmt) return 0;
@@ -262,6 +262,9 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
         // otc's terminology is of offer maker, so their sellGem is our (the taker's) dest token.
         (offerId, offerPayAmt, offerBuyAmt) = getMatchingOffer(destToken, srcToken, srcAmount);
+
+        require(srcAmount <= MAX_QTY);
+        require(offerPayAmt <= MAX_QTY);
         actualDestAmount = srcAmount * offerPayAmt / offerBuyAmt;
 
         require(uint128(actualDestAmount) == actualDestAmount);
