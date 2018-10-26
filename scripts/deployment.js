@@ -697,6 +697,8 @@ contract('Deployment', function(accounts) {
     this.timeout(31000000);
     var balance0;
     var balance1;
+    var allowance0;
+    var allowance1;
     return Wrapper.new().then(function(instance){
       wrapper = instance;
       return wrapper.getBalances( reserve.address, [tokenInstance[0].address,
@@ -710,6 +712,16 @@ contract('Deployment', function(accounts) {
       return tokenInstance[1].balanceOf(reserve.address);
     }).then(function(result){
       assert.equal(balance1.valueOf(), result.valueOf(), "unexpected balance 1");
+      return wrapper.getTokenAllowances(tokenOwner, networkProxy.address, [tokenInstance[0].address, tokenInstance[1].address]);
+    }).then(function(result){
+      allowance0 = result[0];
+      allowance1 = result[1];
+      return tokenInstance[0].allowance(tokenOwner, networkProxy.address);
+    }).then(function(result){
+      assert.equal(allowance0.valueOf(), result.valueOf(), "unexpected allowance 0");
+      return tokenInstance[1].allowance(tokenOwner, networkProxy.address);
+    }).then(function(result){
+      assert.equal(allowance1.valueOf(), result.valueOf(), "unexpected allowance 1");
       //return wrapper.getRates( reserve.address, [tokenInstance[0].address,
       //                          tokenInstance[1].address], [ethAddress, ethAddress]);
     }).then(function(result){
