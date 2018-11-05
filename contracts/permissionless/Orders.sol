@@ -169,7 +169,7 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         pure
         returns(uint)
     {
-        return dstAmount * PRECISION / srcAmount;
+        return srcAmount * PRECISION / dstAmount;
     }
 
     function findPrevOrderId(uint128 srcAmount, uint128 dstAmount)
@@ -277,17 +277,17 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
 
     // XXX Convenience functions for Ilan
     // ----------------------------------
-    function subSrcAndDstAmounts(uint32 orderId, uint128 subFromSrc)
+    function subSrcAndDstAmounts(uint32 orderId, uint128 payDst)
         public
         onlyAdmin
-        returns (uint128 _subDst)
+        returns (uint128 _giveSrc)
     {
-        //if buy with x src. how much dest would it be
-        uint128 subDst = subFromSrc * orders[orderId].dstAmount / orders[orderId].srcAmount;
+        //if pay with x dst. how much src should be returned
+        uint128 giveSrc = payDst * orders[orderId].srcAmount / orders[orderId].dstAmount;
 
-        orders[orderId].srcAmount -= subFromSrc;
-        orders[orderId].dstAmount -= subDst;
-        return(subDst);
+        orders[orderId].srcAmount -= giveSrc;
+        orders[orderId].dstAmount -= payDst;
+        return(giveSrc);
     }
 
     // TODO: move to PermissionLessReserve
@@ -296,15 +296,5 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
             orders[HEAD_ID].nextId,
             orders[HEAD_ID].nextId == TAIL_ID
         );
-    }
-
-    // TODO: move to PermissionLessReserve
-    function getNextOrder(uint32 orderId)
-        public
-        view
-        returns(uint32, bool isLast)
-    {
-        isLast = orders[orderId].nextId == TAIL_ID;
-        return(orders[orderId].nextId, isLast);
     }
 }
