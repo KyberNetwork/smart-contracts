@@ -26,15 +26,25 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
 
     BurnableToken public knc;
     KyberNetworkInterface public kyberNetwork;
-    uint public ethKncRatePrecision = 600 * PRECISION;
+    uint public ethKncRatePrecision = 600 * 10 ** 18; //--> 1 ether = 600 knc tokens
 
-    function FeeBurner(address _admin, BurnableToken kncToken, KyberNetworkInterface _kyberNetwork) public {
+    function FeeBurner(
+        address _admin,
+        BurnableToken _kncToken,
+        KyberNetworkInterface _kyberNetwork,
+        uint _ethKncRatePrecision
+    )
+        public
+    {
         require(_admin != address(0));
-        require(kncToken != address(0));
+        require(_kncToken != address(0));
         require(_kyberNetwork != address(0));
+        require(_ethKncRatePrecision > 0);
+
         kyberNetwork = _kyberNetwork;
         admin = _admin;
-        knc = kncToken;
+        knc = _kncToken;
+        ethKncRatePrecision = _ethKncRatePrecision;
     }
 
     event ReserveDataSet(address reserve, uint feeInBps, address kncWallet);
