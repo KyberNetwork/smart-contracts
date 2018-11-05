@@ -42,7 +42,6 @@ contract PermissionlessOrderBookReserveLister {
     uint constant public MIN_ORDER_VALUE_WEI = 10 ** 18;                 // below this value order will be removed.
     uint constant public MIN_MAKE_ORDER_VALUE_WEI = 2 * MIN_ORDER_VALUE_WEI; // Below this value can't create new order.
 
-
     function PermissionlessOrderBookReserveLister(
         InternalNetworkInterface kyber,
         FeeBurnerResolverInterface resolver,
