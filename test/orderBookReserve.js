@@ -72,9 +72,23 @@ contract('OrderBookReserve', async (accounts) => {
 
         ordersFactory = await OrdersFactory.new();
 
-        firstFreeOrderIdPerReserveList = 3;
-
         currentBlock = await Helper.getCurrentBlock();
+
+        let minMakeOrderWei = new BigNumber(2 * 10 ** 18);
+        let minOrderWei = new BigNumber(10 ** 18);
+        reserve = await OrderBookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address, ordersFactory.address,
+            minMakeOrderWei, minOrderWei, 25);
+//        log(reserve);
+        await reserve.init();
+
+        numOrderIdsPerMaker = await reserve.numOrdersToAllocate();
+
+        let ordersAdd = await reserve.tokenToEthList();
+        let orders = Orders.at(ordersAdd.valueOf());
+
+        headId = (await orders.HEAD_ID()).valueOf();
+        tailId = (await orders.TAIL_ID()).valueOf();
+        firstFreeOrderIdPerReserveList = (await orders.nextFreeId()).valueOf();
     });
 
     beforeEach('setup contract for each test', async () => {
@@ -110,12 +124,6 @@ contract('OrderBookReserve', async (accounts) => {
     });
 
     it("test globals.", async () => {
-        let ordersAdd = await reserve.tokenToEthList();
-        let orders = Orders.at(ordersAdd.valueOf());
-
-        headId = (await orders.HEAD_ID()).valueOf();
-        tailId = (await orders.TAIL_ID()).valueOf();
-
         let rxToken = await reserve.token();
         assert.equal(rxToken.valueOf(), tokenAdd);
 
@@ -828,8 +836,7 @@ contract('OrderBookReserve', async (accounts) => {
 
         rc = await reserve.updateEthToTokenOrderWHint(order2ID, srcAmountWei, order2DestTwei, order3ID, {from: maker1});
         log("update position with hint to 3rd: " + rc.receipt.gasUsed);
-        log("order2 id: " + order2ID)
-        log(list)
+        list = await reserve.getEthToTokenOrderList();
         assert.equal(list[2].valueOf(), order2ID);
 
         //now update so position changes to 1st
