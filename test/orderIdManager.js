@@ -154,6 +154,12 @@ contract("OrderIdManager", async(accounts) => {
         rxOrderId = rc.logs[0].args.orderId.valueOf();
         assert.equal(rxOrderId, orderToRelease);
     })
+
+    it("verify allocated reused ID as expected (from start)", async() => {
+        for (let i = 0; i < howMany; i++) {
+            await orderIdManager.getNewOrder();
+        }
+    })
 })
 
 
