@@ -715,11 +715,12 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     ///@dev if burnAmount is 0 we only release stakes.
     ///@dev if burnAmount == stakedAmount. all staked amount will be burned. so no knc returned to maker
     function handleOrderStakes(address maker, uint stakedAmount, uint burnAmount) internal returns(bool) {
-        require(stakedAmount > burnAmount);
 
         KncStake storage amounts = makerKncStake[maker];
 
-        require(amounts.kncOnStake >= uint128(stakedAmount));
+        //if knc rate had a big change. Previous stakes might not be enough. but can still take order.
+        if (amounts.kncOnStake < uint128(stakedAmount)) stakedAmount = amounts.kncOnStake;
+        if (stakedAmount > burnAmount) burnAmount = stakedAmount;
 
         amounts.kncOnStake -= uint128(stakedAmount);
         amounts.freeKnc += uint128(stakedAmount - burnAmount);
