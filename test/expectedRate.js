@@ -1,19 +1,20 @@
-let ConversionRates = artifacts.require("./ConversionRates.sol");
-let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let Reserve = artifacts.require("./KyberReserve.sol");
-let Network = artifacts.require("./KyberNetwork.sol");
-let WhiteList = artifacts.require("./WhiteList.sol");
-let ExpectedRate = artifacts.require("./ExpectedRate.sol");
-let FeeBurner = artifacts.require("./FeeBurner.sol");
+const ConversionRates = artifacts.require("./ConversionRates.sol");
+const TestToken = artifacts.require("./mockContracts/TestToken.sol");
+const Reserve = artifacts.require("./KyberReserve.sol");
+const Network = artifacts.require("./KyberNetwork.sol");
+const WhiteList = artifacts.require("./WhiteList.sol");
+const ExpectedRate = artifacts.require("./ExpectedRate.sol");
+const FeeBurner = artifacts.require("./FeeBurner.sol");
 
-let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+const Helper = require("./helper.js");
+const BigNumber = require('bignumber.js');
 
 
-let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-let precisionUnits = (new BigNumber(10).pow(18));
+const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const precisionUnits = (new BigNumber(10).pow(18));
+const ethToKncRatePrecision = precisionUnits.mul(550);
 
-let bps = 10000;
+const bps = 10000;
 let minSlippageBps = 400;
 let quantityFactor = 2;
 let expectedRates;
@@ -169,7 +170,7 @@ contract('ExpectedRate', function(accounts) {
         await network.addReserve(reserve1.address, true, false, {from: operator});
 
         //set contracts
-        feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address);
+        feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address, ethToKncRatePrecision);
         let kgtToken = await TestToken.new("kyber genesis token", "KGT", 0);
         whiteList = await WhiteList.new(admin, kgtToken.address);
         await whiteList.addOperator(operator);

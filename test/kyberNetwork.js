@@ -69,8 +69,10 @@ let tokenAdd = [];
 let tokenDecimals = [];
 let uniqueToken;
 let permissionlessTok;
+
 let KNC;
 let kncAddress;
+const ethToKncRatePrecision = precisionUnits.mul(550);
 
 //cap data for white list
 let capWei = 1000;
@@ -332,7 +334,7 @@ contract('KyberNetwork', function(accounts) {
         await network.setKyberProxy(networkProxy);
 
         //set contracts
-        feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address);
+        feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address, ethToKncRatePrecision);
         let kgtToken = await TestToken.new("Kyber genesis token", "KGT", 0);
         whiteList = await WhiteList.new(admin, kgtToken.address);
         await whiteList.addOperator(operator);
@@ -2417,7 +2419,7 @@ contract('KyberNetwork', function(accounts) {
     });
 
     describe("permissionless order book reserve", async() => {
-        it("add permission less order book reserve for new token using reserve lister. see success... ", async() => {
+        xit("add permission less order book reserve for new token using reserve lister. see success... ", async() => {
             feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
             ordersFactory = await OrdersFactory.new();
 
