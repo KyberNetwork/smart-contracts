@@ -300,22 +300,6 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         return true;
     }
 
-    // XXX Convenience functions for Ilan
-    // ----------------------------------
-    function subSrcAndDstAmounts(uint32 orderId, uint128 subFromSrc)
-        public
-        onlyAdmin
-        returns (uint128 _subDst)
-    {
-        //if buy with x src. how much dest would it be
-        uint128 subDst = subFromSrc * orders[orderId].dstAmount / orders[orderId].srcAmount;
-
-        orders[orderId].srcAmount -= subFromSrc;
-        orders[orderId].dstAmount -= subDst;
-        return(subDst);
-    }
-
-    // TODO: move to PermissionLessReserve
     function getFirstOrder() public view returns(uint32 orderId, bool isEmpty) {
         return (
             orders[HEAD_ID].nextId,
