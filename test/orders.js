@@ -94,7 +94,7 @@ contract('Orders', async (accounts) => {
                 10 /* srcAmount1 */,
                 100 /* dstAmount1 */,
                 10 /* srcAmount2 */,
-                200 /* dstAmount2 */
+                101 /* dstAmount2 */
             );
 
             orderComparison.should.be.bignumber.below(0);
@@ -103,7 +103,7 @@ contract('Orders', async (accounts) => {
         it("compare orders: order1 worse than order2 -> positive", async () => {
             const orderComparison = await orders.compareOrders.call(
                 10 /* srcAmount1 */,
-                200 /* dstAmount1 */,
+                101 /* dstAmount1 */,
                 10 /* srcAmount2 */,
                 100 /* dstAmount2 */
             );
@@ -128,6 +128,17 @@ contract('Orders', async (accounts) => {
                 new BigNumber(9).mul(10 ** 18).add(220) /* dstAmount1 */,
                 new BigNumber(2).mul(10 ** 18).add(300) /* srcAmount2 */,
                 new BigNumber(9).mul(10 ** 18).add(200) /* dstAmount2 */
+            );
+
+            orderComparison.should.be.bignumber.above(0);
+        });
+
+        it("handles possible overflows due to multiplication", async () => {
+            const orderComparison = await orders.compareOrders.call(
+                new BigNumber(300) /* srcAmount1 */,
+                new BigNumber(2).pow(128).sub(1) /* dstAmount1 */,
+                new BigNumber(2).pow(128).sub(1) /* srcAmount2 */,
+                new BigNumber(200) /* dstAmount2 */
             );
 
             orderComparison.should.be.bignumber.above(0);

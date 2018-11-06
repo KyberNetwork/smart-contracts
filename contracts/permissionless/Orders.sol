@@ -193,9 +193,9 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         view
         returns(uint32)
     {
-        // TODO: eliminate while loop.
         uint32 currId = HEAD_ID;
         Order storage curr = orders[currId];
+
         while (curr.nextId != TAIL_ID) {
             currId = curr.nextId;
             curr = orders[currId];
@@ -205,6 +205,7 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
                 curr.srcAmount,
                 curr.dstAmount
             );
+            
             if (cmp < 0) {
                 return curr.prevId;
             }
