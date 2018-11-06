@@ -34,6 +34,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     OrdersInterface public ethToTokenList;
 
     uint32 orderListTailId;
+    uint32 orderListHeadId;
 
     // KNC stake
     struct KncStake {
@@ -101,6 +102,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         ethToTokenList = ordersFactoryContract.newOrdersContract(this);
 
         orderListTailId = ethToTokenList.getTailId();
+        orderListHeadId = ethToTokenList.getHeadId();
 
         return true;
     }
@@ -805,10 +807,8 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
             //for remove order we give makerSrc == userDst
             require(removeOrder(list, maker, userDst, orderId));
         } else {
-            // update order values in storage
-            uint128 subDst = list.subSrcAndDstAmounts(orderId, userPartialSrcAmount);
-            require(subDst == userTakeDstAmount);
-            remainingWeiValue = 0;
+            // update order values, taken order is always first order
+            list.updateWithPositionHint(orderId, orderSrcAmount, orderDstAmount, orderListHeadId);
         }
 
         //stakes are returned for unused wei value

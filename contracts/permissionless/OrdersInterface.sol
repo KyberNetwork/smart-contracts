@@ -14,5 +14,6 @@ interface OrdersInterface {
     function allocateIds(uint32 howMany) public returns(uint32);
     function subSrcAndDstAmounts(uint32 orderId, uint128 subFromSrc) public returns (uint128 _subDst);
     function getTailId() public view returns(uint32);
+    function getHeadId() public view returns(uint32);
     function findPrevOrderId(uint128 srcAmount, uint128 dstAmount) public view returns(uint32);
 }

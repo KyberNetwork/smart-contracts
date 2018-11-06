@@ -168,6 +168,10 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         return TAIL_ID;
     }
 
+    function getHeadId() public view returns(uint32) {
+        return HEAD_ID;
+    }
+
     function compareOrders(
         uint128 srcAmount1,
         uint128 dstAmount1,
@@ -285,22 +289,6 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         return true;
     }
 
-    // XXX Convenience functions for Ilan
-    // ----------------------------------
-    function subSrcAndDstAmounts(uint32 orderId, uint128 payDst)
-        public
-        onlyAdmin
-        returns (uint128 _giveSrc)
-    {
-        //if pay with x dst. how much src should be returned
-        uint128 giveSrc = payDst * orders[orderId].srcAmount / orders[orderId].dstAmount;
-
-        orders[orderId].srcAmount -= giveSrc;
-        orders[orderId].dstAmount -= payDst;
-        return(giveSrc);
-    }
-
-    // TODO: move to PermissionLessReserve
     function getFirstOrder() public view returns(uint32 orderId, bool isEmpty) {
         return (
             orders[HEAD_ID].nextId,
