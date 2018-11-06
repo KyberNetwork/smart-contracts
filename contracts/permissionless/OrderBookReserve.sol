@@ -720,7 +720,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         //if knc rate had a big change. Previous stakes might not be enough. but can still take order.
         if (amounts.kncOnStake < uint128(stakedAmount)) stakedAmount = amounts.kncOnStake;
-        if (stakedAmount > burnAmount) burnAmount = stakedAmount;
+        if (burnAmount > stakedAmount) burnAmount = stakedAmount;
 
         amounts.kncOnStake -= uint128(stakedAmount);
         amounts.freeKnc += uint128(stakedAmount - burnAmount);
