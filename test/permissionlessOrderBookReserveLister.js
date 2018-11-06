@@ -46,6 +46,7 @@ let kgtToken;
 
 const negligibleRateDiff = 11;
 
+const ethToKncRatePrecision = precisionUnits.mul(550);
 //addresses
 let admin;
 let operator;
@@ -82,7 +83,7 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
         kncAddress = KNCToken.address;
 
         network = await KyberNetwork.new(admin);
-        feeBurner = await FeeBurner.new(admin, kncAddress, network.address);
+        feeBurner = await FeeBurner.new(admin, kncAddress, network.address, ethToKncRatePrecision);
 
         feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
         ordersFactory = await OrdersFactory.new();
@@ -310,7 +311,8 @@ contract('PermissionlessOrderBookReserveLister_feeBurner_tests', async (accounts
         const feeBurner = await FeeBurner.new(
             admin,
             kncToken.address,
-            kyberNetwork.address
+            kyberNetwork.address,
+            ethToKncRatePrecision
         );
         const feeBurnerResolver = await FeeBurnerResolver.new(
             feeBurner.address

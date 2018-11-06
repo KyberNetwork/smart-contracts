@@ -1,26 +1,27 @@
-let NetworkProxy = artifacts.require("./KyberNetworkProxy.sol");
-let ConversionRates = artifacts.require("./mockContracts/MockConversionRate.sol");
-let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let TokenReverseSend = artifacts.require("./mockContracts/TokenReverseSend.sol");
-let Reserve = artifacts.require("./KyberReserve.sol");
-let MaliciousReserve = artifacts.require("../MaliciousReserve.sol");
-let Network = artifacts.require("./KyberNetwork.sol");
-let NetworkNoMaxDest = artifacts.require("./mockContracts/KyberNetworkNoMaxDest.sol");
-let MaliciousNetwork = artifacts.require("./mockContracts/MaliciousKyberNetwork.sol");
-let MaliciousNetwork2 = artifacts.require("./mockContracts/MaliciousKyberNetwork2.sol");
-let GenerousNetwork = artifacts.require("./mockContracts/GenerousKyberNetwork.sol");
-let WhiteList = artifacts.require("./WhiteList.sol");
-let ExpectedRate = artifacts.require("./ExpectedRate.sol");
-let FeeBurner = artifacts.require("./FeeBurner.sol");
+const NetworkProxy = artifacts.require("./KyberNetworkProxy.sol");
+const ConversionRates = artifacts.require("./mockContracts/MockConversionRate.sol");
+const TestToken = artifacts.require("./mockContracts/TestToken.sol");
+const TokenReverseSend = artifacts.require("./mockContracts/TokenReverseSend.sol");
+const Reserve = artifacts.require("./KyberReserve.sol");
+const MaliciousReserve = artifacts.require("../MaliciousReserve.sol");
+const Network = artifacts.require("./KyberNetwork.sol");
+const NetworkNoMaxDest = artifacts.require("./mockContracts/KyberNetworkNoMaxDest.sol");
+const MaliciousNetwork = artifacts.require("./mockContracts/MaliciousKyberNetwork.sol");
+const MaliciousNetwork2 = artifacts.require("./mockContracts/MaliciousKyberNetwork2.sol");
+const GenerousNetwork = artifacts.require("./mockContracts/GenerousKyberNetwork.sol");
+const WhiteList = artifacts.require("./WhiteList.sol");
+const ExpectedRate = artifacts.require("./ExpectedRate.sol");
+const FeeBurner = artifacts.require("./FeeBurner.sol");
 
-let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+const Helper = require("./helper.js");
+const BigNumber = require('bignumber.js');
 
 //global variables
 //////////////////
-let precisionUnits = (new BigNumber(10).pow(18));
-let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-let gasPrice = (new BigNumber(10).pow(9).mul(50));
+const precisionUnits = (new BigNumber(10).pow(18));
+const ethToKncRatePrecision = precisionUnits.mul(550);
+const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const gasPrice = (new BigNumber(10).pow(9).mul(50));
 let negligibleRateDiff = 11;
 
 //balances
@@ -365,7 +366,7 @@ contract('KyberNetworkProxy', function(accounts) {
         await reserve4Mal.setKyberProxy(networkProxy.address);
 
         //set contracts
-        feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address);
+        feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address, ethToKncRatePrecision);
         let kgtToken = await TestToken.new("kyber genesis token", "KGT", 0);
         whiteList = await WhiteList.new(admin, kgtToken.address);
         await whiteList.addOperator(operator);
@@ -2268,7 +2269,7 @@ contract('KyberNetworkProxy', function(accounts) {
         //set contracts
         await maliciousNetwork2.setWhiteList(whiteList.address);
         await maliciousNetwork2.setExpectedRate(expectedRate.address);
-        feeBurner = await FeeBurner.new(admin, tokenAdd[0], maliciousNetwork2.address);
+        feeBurner = await FeeBurner.new(admin, tokenAdd[0], maliciousNetwork2.address, ethToKncRatePrecision);
         await maliciousNetwork2.setFeeBurner(feeBurner.address);
         await maliciousNetwork2.setParams(gasPrice.valueOf(), negligibleRateDiff);
         await maliciousNetwork2.setEnable(true);
@@ -2381,7 +2382,7 @@ contract('KyberNetworkProxy', function(accounts) {
         //set contracts
         await networkNoMaxDest.setWhiteList(whiteList.address);
         await networkNoMaxDest.setExpectedRate(expectedRate.address);
-        feeBurner = await FeeBurner.new(admin, tokenAdd[0], networkNoMaxDest.address);
+        feeBurner = await FeeBurner.new(admin, tokenAdd[0], networkNoMaxDest.address, ethToKncRatePrecision);
         await networkNoMaxDest.setFeeBurner(feeBurner.address);
         await networkNoMaxDest.setParams(gasPrice.valueOf(), negligibleRateDiff);
         await networkNoMaxDest.setEnable(true);
@@ -2485,7 +2486,7 @@ contract('KyberNetworkProxy', function(accounts) {
         //set contracts
         await generousNetwork.setWhiteList(whiteList.address);
         await generousNetwork.setExpectedRate(expectedRate.address);
-        feeBurner = await FeeBurner.new(admin, tokenAdd[0], generousNetwork.address);
+        feeBurner = await FeeBurner.new(admin, tokenAdd[0], generousNetwork.address, ethToKncRatePrecision);
         await generousNetwork.setFeeBurner(feeBurner.address);
         await generousNetwork.setParams(gasPrice.valueOf(), negligibleRateDiff);
         await generousNetwork.setEnable(true);

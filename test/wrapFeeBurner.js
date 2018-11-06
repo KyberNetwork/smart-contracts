@@ -7,6 +7,7 @@ let KyberRegisterWallet = artifacts.require("./wrapperContracts/KyberRegisterWal
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
 
+const precisionUnits = new BigNumber(10 ** 18);
 //global variables
 let kncToEthMin = 250;
 let kncToEthMax = 450;
@@ -46,6 +47,8 @@ let taxDataNonce = 0;
 
 let initialKNCWalletBalance = 1000000;
 
+const ethToKncRatePrecision = precisionUnits.mul(550);
+
 contract('WrapFeeBurner', function(accounts) {
     it("should init Fee burner Inst and set general parameters.", async function () {
         admin = accounts[0];
@@ -71,7 +74,7 @@ contract('WrapFeeBurner', function(accounts) {
         await kncToken.transfer(mockKNCWallet, initialKNCWalletBalance);
         let balance = await kncToken.balanceOf(mockKNCWallet);
         assert.equal(balance.valueOf(), initialKNCWalletBalance, "unexpected wallet balance.");
-        burnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork);
+        burnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork, ethToKncRatePrecision);
     });
 
     it("should init FeeBurner wrapper and set as fee burner admin and operator.", async function () {
