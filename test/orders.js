@@ -1,4 +1,4 @@
-const BigNumber = web3.BigNumber
+const BigNumber = require('bignumber.js');
 
 require("chai")
     .use(require("chai-as-promised"))
