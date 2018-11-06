@@ -45,6 +45,7 @@ let maker3;
 let firstFreeOrderIdPerReserveList;
 
 let numOrderIdsPerMaker;
+const ethToKncRatePrecision = precisionUnits.mul(550);
 
 let currentBlock;
 
@@ -66,7 +67,7 @@ contract('OrderBookReserve', async (accounts) => {
         kncAddress = KNCToken.address;
 //        network = await KyberNetwork.new(admin);
         
-        feeBurner = await FeeBurner.new(admin, kncAddress, network);
+        feeBurner = await FeeBurner.new(admin, kncAddress, network, ethToKncRatePrecision);
 
         feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
 
@@ -243,7 +244,7 @@ contract('OrderBookReserve', async (accounts) => {
         //add order from maker2
         rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker2});
         orderId = rc.logs[0].args.orderId.valueOf();
-        assert.equal(orderId, (firstFreeOrderIdPerReserveList + 1 * numOrderIdsPerMaker));
+        assert.equal(orderId, (firstFreeOrderIdPerReserveList  * 1 + 1 * numOrderIdsPerMaker));
     });
 
     it("maker deposit knc, test bind knc.", async () => {
@@ -757,7 +758,7 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(list[0].valueOf(), order2ID);
     });
 
-    xit("verify order sorting can handle minimum value differences.", async() => {
+    it("verify order sorting can handle minimum value differences.", async() => {
         let ethWeiDepositAmount = (new BigNumber(6 * 10 ** 18)).add(6000);
         let kncTweiDepositAmount = new BigNumber(600 * 10 ** 18);
         await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
@@ -778,9 +779,10 @@ contract('OrderBookReserve', async (accounts) => {
         let order3ID = rc.logs[0].args.orderId.valueOf();
 
         list = await reserve.getEthToTokenOrderList();
+//        log(list)
         assert.equal(list[0].valueOf(), order3ID);
-        assert.equal(list[0].valueOf(), order1ID);
-        assert.equal(list[0].valueOf(), order2ID);
+        assert.equal(list[1].valueOf(), order1ID);
+        assert.equal(list[2].valueOf(), order2ID);
     })
 
     it("maker add few buy orders. update order with correct hints. with / without move position. see success and print gas", async() => {
@@ -2261,7 +2263,7 @@ contract('OrderBookReserve on network', async (accounts) => {
             KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
             kncAddress = KNCToken.address;
 
-            feeBurner = await FeeBurner.new(admin, kncAddress, network);
+            feeBurner = await FeeBurner.new(admin, kncAddress, network, ethToKncRatePrecision);
             currentBlock = await Helper.getCurrentBlock();
             init = false;
         }
