@@ -434,7 +434,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
     event KyberTrade(address srcAddress, ERC20 srcToken, uint srcAmount, address destAddress, ERC20 destToken,
         uint destAmount);
-    // Most of the lins here are functions calls spread over multiple lines. We find this function readable enough
+    // Most of the lines here are functions calls spread over multiple lines. We find this function readable enough
     //  and keep its size as is.
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev trade api for kyber network.
