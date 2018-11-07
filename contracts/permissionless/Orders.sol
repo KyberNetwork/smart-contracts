@@ -205,7 +205,7 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
                 curr.srcAmount,
                 curr.dstAmount
             );
-            
+
             if (cmp < 0) {
                 return curr.prevId;
             }
@@ -265,7 +265,6 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
     {
         if (prevId == TAIL_ID || nextId == HEAD_ID) return false;
 
-        // TODO: check gas cost with this or memory or orders[prevId].
         Order storage prev = orders[prevId];
 
         // Make sure prev order is initialised.
@@ -286,7 +285,6 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
 
         // Make sure that the new order should be before provided prevId's next order.
         if (nextId != TAIL_ID) {
-            // TODO: check gas cost with this or memory or orders[prevId].
             Order storage next = orders[nextId];
             cmp = compareOrders(
                 srcAmount,

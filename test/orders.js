@@ -553,7 +553,7 @@ contract('Orders', async (accounts) => {
 
         it("should allow adding order specifically after head", async () => {
             let orderId = await allocateIds(1);
-            const res = await orders.addAfterId(
+            await orders.addAfterId(
                 user1 /* maker */,
                 orderId /* orderId */,
                 10 /* srcAmount */,
@@ -563,6 +563,29 @@ contract('Orders', async (accounts) => {
 
             await assertOrdersOrder1(orderId);
         });
+
+        // it("check gas price of isRightPosition()", async () => {
+        //     let orderId1 = await allocateIds(1);
+        //     await orders.addAfterId(
+        //         user1 /* maker */,
+        //         orderId1 /* orderId */,
+        //         10 /* srcAmount */,
+        //         100 /* dstAmount */,
+        //         HEAD_ID /* prevId */
+        //     );
+        //
+        //     let orderId2 = await allocateIds(1);
+        //     const res = await orders.addAfterId(
+        //         user1 /* maker */,
+        //         orderId2 /* orderId */,
+        //         10 /* srcAmount */,
+        //         200 /* dstAmount */,
+        //         orderId1 /* prevId */
+        //     );
+        //
+        //     await debugOrders(5)
+        //     console.log(res)
+        // });
     });
 
     describe("#removeById", async () => {
