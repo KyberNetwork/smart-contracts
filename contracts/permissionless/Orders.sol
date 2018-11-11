@@ -217,6 +217,13 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         return currId;
     }
 
+    function getFirstOrder() public view returns(uint32 orderId, bool isEmpty) {
+        return (
+            orders[HEAD_ID].nextId,
+            orders[HEAD_ID].nextId == TAIL_ID
+        );
+    }
+
     function addAfterValidId(
         address maker,
         uint32 orderId,
@@ -301,12 +308,5 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         }
 
         return true;
-    }
-
-    function getFirstOrder() public view returns(uint32 orderId, bool isEmpty) {
-        return (
-            orders[HEAD_ID].nextId,
-            orders[HEAD_ID].nextId == TAIL_ID
-        );
     }
 }

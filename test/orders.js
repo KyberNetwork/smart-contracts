@@ -22,10 +22,6 @@ contract('Orders', async (accounts) => {
     });
 
     describe("basic", async () => {
-        it("should have deployed the contract", async () => {
-            orders.should.exist;
-        });
-
         it("should have different ids for head and tail", async () => {
             HEAD_ID.should.be.bignumber.not.equal(TAIL_ID);
         });
@@ -34,6 +30,17 @@ contract('Orders', async (accounts) => {
             let head = await getOrderById(HEAD_ID);
 
             head.nextId.should.be.bignumber.equal(TAIL_ID);
+        });
+
+        it("should not allow deploying with address 0 as admin", async () => {
+            try {
+                await Orders.new(0);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(
+                    Helper.isRevertErrorMessage(e),
+                    "expected revert but got: " + e);
+            }
         });
     });
 
