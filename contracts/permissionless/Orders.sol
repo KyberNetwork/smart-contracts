@@ -309,6 +309,4 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
 
         return true;
     }
-
-    }
 }
