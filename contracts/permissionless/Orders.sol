@@ -168,6 +168,10 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         return TAIL_ID;
     }
 
+    function getHeadId() public view returns(uint32) {
+        return HEAD_ID;
+    }
+
     function compareOrders(
         uint128 srcAmount1,
         uint128 dstAmount1,
