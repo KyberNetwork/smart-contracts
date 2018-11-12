@@ -138,7 +138,25 @@ midas_options = { "token": "midas",
                                "max_token_to_eth_ratio": 2.0}]
              }
 
-for token_options in [midas_options]:
+midas_tomo_options = { "token": "midas",
+                      "p0": 0.00197042, # 1m tokens = 100 eth
+                      "options": [{"rate": 0.004,
+                                   "min_token_to_eth_ratio": 0.5,
+                                   "max_token_to_eth_ratio": 2.0}]
+             }
+
+
+#midas tomo:
+# 200ETH and 100K TOMO
+#r = 0.008
+#_maxCapBuyInWei = _maxCapSellInWei = 20000000000000000000 (20ETH)
+#_feeInBps = 125 (1.25% commission)
+
+
+
+
+
+for token_options in [midas_tomo_options]:
     print("*********************************************")
 
     print("token: " + str(token_options["token"]))
@@ -150,15 +168,16 @@ for token_options in [midas_options]:
         liq = LiquidityParams(rate=option["rate"],
                               P_0_tokens_to_eth=token_options["p0"],
                               num_formula_precision_bits=40,
-                              max_cap_buy_eth=3.0,
-                              max_cap_sell_eth=3.0,
-                              fee_in_precents=0.25)
+                              max_cap_buy_eth=20.0,
+                              max_cap_sell_eth=20.0,
+                              fee_in_precents=1.25)
 
 
         # calculate ptoential minimal and maximal ratios according to fix amounts the rm is willing to put (100 eth, 1M tokens).
-        (minimal_pmin_ratio, maximal_pmax_ratio) = liq.calc_pmin_pmax_ratio_based_on_balances(E_0_ether=100.0, T_0_tokens=1000000)
+        (minimal_pmin_ratio, maximal_pmax_ratio) = liq.calc_pmin_pmax_ratio_based_on_balances(E_0_ether=200.0, T_0_tokens=100000.0)
         # actually use pmin and pmax as fixed 0.5 and 2.0
-        (pmin_ratio, pmax_ratio) = (0.5, 2.0)
+        (pmin_ratio, pmax_ratio) = (midas_tomo_options["options"][0]["min_token_to_eth_ratio"],
+                                    midas_tomo_options["options"][0]["max_token_to_eth_ratio"])
         liq.calc_params_based_on_ratios(pmin_ratio, pmax_ratio)
 
         #E_0_ether, T_0_tokens = liq.calc_balances_based_on_pmin_pmax(
