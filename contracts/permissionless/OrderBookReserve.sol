@@ -367,10 +367,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         require(kncToken.transferFrom(msg.sender, this, amount));
 
-        KncStake memory amounts = makerKncStake[maker];
-
-        amounts.freeKnc += uint128(amount);
-        makerKncStake[maker] = amounts;
+        makerKncStake[maker].freeKnc += uint128(amount);
 
         KncFeeDeposited(maker, amount);
 
@@ -637,7 +634,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         uint numOrders = 0;
 
-        for( ; !orderData.isLastOrder; orderId = orderData.nextId) {
+        for (; !orderData.isLastOrder; orderId = orderData.nextId) {
             orderData = getOrderData(list, orderId);
             numOrders++;
         }

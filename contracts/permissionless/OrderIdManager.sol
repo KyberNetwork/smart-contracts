@@ -16,7 +16,7 @@ contract OrderIdManager {
         uint orderBitmap = freeOrders.takenBitmap;
         uint bitPointer = 1;
 
-        for(uint i = 0; i < numOrders; ++i) {
+        for (uint i = 0; i < numOrders; ++i) {
 
             if ((orderBitmap & bitPointer) == 0) {
                 freeOrders.takenBitmap = orderBitmap | bitPointer;
