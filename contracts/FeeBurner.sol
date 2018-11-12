@@ -49,6 +49,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
     }
 
     event ReserveDataSet(address reserve, uint feeInBps, address kncWallet);
+
     function setReserveData(address reserve, uint feesInBps, address kncWallet) public onlyOperator {
         require(feesInBps < 100); // make sure it is always < 1%
         require(kncWallet != address(0));
@@ -58,6 +59,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
     }
 
     event WalletFeesSet(address wallet, uint feesInBps);
+
     function setWalletFees(address wallet, uint feesInBps) public onlyAdmin {
         require(feesInBps < 10000); // under 100%
         walletFeesInBps[wallet] = feesInBps;
@@ -65,6 +67,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
     }
 
     event TaxFeesSet(uint feesInBps);
+
     function setTaxInBps(uint _taxFeeBps) public onlyAdmin {
         require(_taxFeeBps < 10000); // under 100%
         taxFeeBps = _taxFeeBps;
@@ -72,6 +75,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
     }
 
     event TaxWalletSet(address taxWallet);
+
     function setTaxWallet(address _taxWallet) public onlyAdmin {
         require(_taxWallet != address(0));
         taxWallet = _taxWallet;
@@ -79,6 +83,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
     }
 
     event KNCRateSet(uint ethToKncRatePrecision, uint kyberEthKnc, uint kyberKncEth, address updater);
+
     function setKNCRate() public onlyOperator {
         //query kyber for knc rate sell and buy
         uint kyberEthKncRate;

@@ -58,8 +58,8 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
             (bestReserve, expectedRate) = kyberNetwork.findBestRate(src, dest, srcQty);
             (bestReserve, slippageRate) = kyberNetwork.findBestRate(src, dest, (srcQty * quantityFactor));
         } else {
-            (bestReserve, expectedRate) = kyberNetwork.findBestRateOnlyPermissioned(src, dest, srcQty);
-            (bestReserve, slippageRate) = kyberNetwork.findBestRateOnlyPermissioned(src, dest, (srcQty * quantityFactor));
+            (bestReserve, expectedRate) = kyberNetwork.findBestRateOnlyPermission(src, dest, srcQty);
+            (bestReserve, slippageRate) = kyberNetwork.findBestRateOnlyPermission(src, dest, (srcQty * quantityFactor));
         }
 
         if (expectedRate == 0) {
@@ -78,7 +78,9 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
 
     //@dev for small src quantities dest qty might be 0, then returned rate is zero.
     //@dev for backward compatibility we would like to return non zero rate (correct one) for small src qty
-    function expectedRateSmallQty(ERC20 src, ERC20 dest, uint srcQty, bool usePermissionless) internal view returns(uint) {
+    function expectedRateSmallQty(ERC20 src, ERC20 dest, uint srcQty, bool usePermissionless)
+        internal view returns(uint)
+    {
         address reserve;
         uint rateSrcToEth;
         uint rateEthToDest;

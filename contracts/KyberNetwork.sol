@@ -41,8 +41,8 @@ contract ReentrancyGuard {
 contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, ReentrancyGuard {
 
     enum ReserveType {NONE, PERMISSIONED, PERMISSIONLESS}
-    bytes empty;
-    bytes permHint = "PERM";
+    bytes internal empty;
+    bytes internal permHint = "PERM";
 
     uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
     KyberReserveInterface[] public reserves;
@@ -98,8 +98,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         address walletId,
         bytes hint
     )
-        nonReentrant
         public
+        nonReentrant
         payable
         returns(uint)
     {
@@ -136,7 +136,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
             require(reserveType[reserve] == ReserveType.NONE);
             reserves.push(reserve);
 
-            reserveType[reserve] = isPermissionless? ReserveType.PERMISSIONLESS : ReserveType.PERMISSIONED;
+            reserveType[reserve] = isPermissionless ? ReserveType.PERMISSIONLESS : ReserveType.PERMISSIONED;
 
             AddReserveToNetwork(reserve, true);
         } else {
@@ -310,7 +310,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         return(0, result.rate);
     }
 
-    function findBestRateOnlyPermissioned(ERC20 src, ERC20 dest, uint srcAmount)
+    function findBestRateOnlyPermission(ERC20 src, ERC20 dest, uint srcAmount)
         public
         view
         returns(uint obsolete, uint rate)
@@ -345,7 +345,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
         address[] memory reserveArr;
 
-        reserveArr = src == ETH_TOKEN_ADDRESS? reservesPerTokenDest[dest] : reservesPerTokenSrc[src];
+        reserveArr = src == ETH_TOKEN_ADDRESS ? reservesPerTokenDest[dest] : reservesPerTokenSrc[src];
 
         if (reserveArr.length == 0) return (reserves[bestReserve], bestRate);
 
@@ -444,6 +444,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
     event KyberTrade(address srcAddress, ERC20 srcToken, uint srcAmount, address destAddress, ERC20 destToken,
         uint destAmount);
+
     // Most of the lins here are functions calls spread over multiple lines. We find this function readable enough
     //  and keep its size as is.
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
@@ -471,15 +472,10 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
             tradeInput.maxDestAmount,
             rateResult);
 
-        // verify trade size is smaller than user cap
         require(getUserCapInWei(tradeInput.trader) >= weiAmount);
-
-        //if any "change" in src token, send back to trader
         require(handleChange(tradeInput.src, tradeInput.srcAmount, actualSrcAmount, tradeInput.trader));
 
-        //do the trade
-        //src to ETH
-        require(doReserveTrade(
+        require(doReserveTrade(     //src to ETH
                 tradeInput.src,
                 actualSrcAmount,
                 ETH_TOKEN_ADDRESS,
@@ -489,8 +485,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
                 rateResult.rateSrcToEth,
                 true));
 
-        //Eth to dest
-        require(doReserveTrade(
+        require(doReserveTrade(     //Eth to dest
                 ETH_TOKEN_ADDRESS,
                 weiAmount,
                 tradeInput.dest,
@@ -500,13 +495,10 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
                 rateResult.rateEthToDest,
                 true));
 
-        //when src is ether, reserve1 is doing a "fake" trade. (ether to ether) - don't burn.
-        //when dest is ether, reserve2 is doing a "fake" trade. (ether to ether) - don't burn.
-        if (tradeInput.src != ETH_TOKEN_ADDRESS)
+        if (tradeInput.src != ETH_TOKEN_ADDRESS) //"fake" trade. (ether to ether) - don't burn.
             require(feeBurnerContract.handleFees(weiAmount, rateResult.reserve1, tradeInput.walletId));
-        if (tradeInput.dest != ETH_TOKEN_ADDRESS)
+        if (tradeInput.dest != ETH_TOKEN_ADDRESS) //"fake" trade. (ether to ether) - don't burn.
             require(feeBurnerContract.handleFees(weiAmount, rateResult.reserve2, tradeInput.walletId));
-
         KyberTrade(tradeInput.trader, tradeInput.src, actualSrcAmount, tradeInput.destAddress, tradeInput.dest,
             actualDestAmount);
 
@@ -579,7 +571,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     }
 
     /// when user sets max dest amount we could have too many source tokens == change. so we send it back to user.
-    function handleChange (ERC20 src, uint srcAmount, uint requiredSrcAmount, address trader) internal returns (bool){
+    function handleChange (ERC20 src, uint srcAmount, uint requiredSrcAmount, address trader) internal returns (bool) {
 
         if (requiredSrcAmount < srcAmount) {
             //if there is "change" send back to trader
