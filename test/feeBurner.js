@@ -575,6 +575,9 @@ contract('FeeBurner', function(accounts) {
         assert.equal(rc.logs[0].args.kyberKncEth.valueOf(), kncToEthRatePrecision.valueOf());
         assert.equal(rc.logs[0].args.updater.valueOf(), operator);
     });
+
+    xit("test revert conditions for setKncRate", => {
+    })
 });
 
 
