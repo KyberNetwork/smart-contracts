@@ -24,6 +24,14 @@ contract Wrapper is Utils {
         return result;
     }
 
+    function getTokenAllowances(address owner, address spender, ERC20[] tokens) public view returns(uint[]) {
+        uint[] memory result = new uint[](tokens.length);
+        for (uint i = 0; i < tokens.length; i++) {
+            result[i] = tokens[i].allowance(owner, spender);
+        }
+        return result;
+    }
+
     function getByteFromBytes14(bytes14 x, uint byteInd) public pure returns(byte) {
         require(byteInd <= 13);
         return x[byteInd];
