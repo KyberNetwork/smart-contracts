@@ -24,7 +24,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     ERC20 public token; // this reserve will serve only this token vs ETH.
     FeeBurnerRateInterface public feeBurnerContract;
     FeeBurnerResolverInterface public feeBurnerResolverContract;
-    OrderFactoryInterface ordersFactoryContract;
+    OrderFactoryInterface public ordersFactoryContract;
 
     ERC20 public kncToken;  //not constant. to enable testing and test net usage
     uint public kncStakePerEtherBps = 20000; //for validating orders
@@ -33,8 +33,8 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     OrdersInterface public tokenToEthList;
     OrdersInterface public ethToTokenList;
 
-    uint32 orderListTailId;
-    uint32 orderListHeadId;
+    uint32 internal orderListTailId;
+    uint32 internal orderListHeadId;
 
     // KNC stake
     struct KncStake {
@@ -271,7 +271,8 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         for (uint i = 0; i < isEthToToken.length; ++i) {
             prevId = isAfterPrevOrder[i] ? newId : hintPrevOrder[i];
-            newId = isEthToToken[i] ? getNewOrderId(makerOrdersEthToToken[maker]) : getNewOrderId(makerOrdersTokenToEth[maker]);
+            newId = isEthToToken[i] ? getNewOrderId(makerOrdersEthToToken[maker]) :
+                getNewOrderId(makerOrdersTokenToEth[maker]);
             require(addOrder(maker, isEthToToken[i], newId, srcAmount[i], dstAmount[i], prevId));
         }
 
@@ -294,7 +295,12 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return updateTokenToEthOrderWHint(orderId, newSrcAmount, newDstAmount, 0);
     }
 
-    function updateTokenToEthOrderWHint(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount, uint32 hintPrevOrder)
+    function updateTokenToEthOrderWHint(
+        uint32 orderId,
+        uint128 newSrcAmount,
+        uint128 newDstAmount,
+        uint32 hintPrevOrder
+    )
         public
         returns(bool)
     {
@@ -310,7 +316,12 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return updateEthToTokenOrderWHint(orderId, newSrcAmount, newDstAmount, 0);
     }
 
-    function updateEthToTokenOrderWHint(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount, uint32 hintPrevOrder)
+    function updateEthToTokenOrderWHint(
+        uint32 orderId,
+        uint128 newSrcAmount,
+        uint128 newDstAmount,
+        uint32 hintPrevOrder
+    )
         public
         returns(bool)
     {
@@ -332,7 +343,8 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         address maker = msg.sender;
 
         for (uint i = 0; i < isEthToToken.length; ++i) {
-            require(updateOrder(maker, isEthToToken[i], orderId[i], newSrcAmount[i], newDstAmount[i], hintPrevOrder[i]));
+            require(updateOrder(maker, isEthToToken[i], orderId[i], newSrcAmount[i], newDstAmount[i],
+                hintPrevOrder[i]));
         }
 
         return true;
@@ -436,85 +448,8 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return true;
     }
 
-    function addOrder(address maker, bool isEthToToken, uint32 newId, uint128 srcAmount, uint128 dstAmount,
-        uint32 hintPrevOrder
-    )
-        internal
-        returns(bool)
-    {
-        require(validateAddOrder(maker, isEthToToken, srcAmount, dstAmount));
-        bool addedWithHint = false;
-
-        OrdersInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
-
-        if (hintPrevOrder != 0) {
-            addedWithHint = list.addAfterId(maker, newId, srcAmount, dstAmount, hintPrevOrder);
-        }
-
-        if (addedWithHint == false) {
-            list.add(maker, newId, srcAmount, dstAmount);
-        }
-
-        NewMakeOrder(maker, newId, isEthToToken, srcAmount, dstAmount, addedWithHint);
-
-        return true;
-    }
-
-    function updateOrder(address maker, bool isEthToToken, uint32 orderId, uint128 newSrcAmount,
-        uint128 newDstAmount, uint32 hintPrevOrder)
-        internal
-        returns(bool)
-    {
-        uint128 currDstAmount;
-        uint128 currSrcAmount;
-        address orderMaker;
-
-        OrdersInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
-
-        (orderMaker, currSrcAmount, currDstAmount, , ) = list.getOrderDetails(orderId);
-        require(orderMaker == maker);
-
-        if (!validateUpdateOrder(maker, isEthToToken, currSrcAmount, currDstAmount, newSrcAmount, newDstAmount)) return false;
-
-        bool updatedWithHint = false;
-
-        if (hintPrevOrder != 0) {
-            (updatedWithHint, ) = list.updateWithPositionHint(orderId, newSrcAmount, newDstAmount, hintPrevOrder);
-        }
-
-        if (!updatedWithHint) {
-            list.update(orderId, newSrcAmount, newDstAmount);
-        }
-
-        OrderUpdated(maker, isEthToToken, orderId, newSrcAmount, newDstAmount, updatedWithHint);
-
-        return true;
-    }
-
-    event OrderCanceled(address indexed maker, bool isEthToToken, uint32 orderId, uint128 srcAmount, uint dstAmount);
-    function cancelOrder(bool isEthToToken, uint32 orderId) internal returns(bool) {
-
-        address maker = msg.sender;
-        OrdersInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
-        OrderData memory orderData = getOrderData(list, orderId);
-
-        require(orderData.maker == maker);
-
-        uint weiAmount = isEthToToken ? orderData.srcAmount : orderData.dstAmount;
-
-        require(handleOrderStakes(orderData.maker, uint(calcKncStake(int(weiAmount))), 0));
-
-        require(removeOrder(list, maker, isEthToToken ? ETH_TOKEN_ADDRESS : token, orderId));
-
-        //funds go back to makers account
-        makerFunds[maker][isEthToToken ? ETH_TOKEN_ADDRESS : token] += orderData.srcAmount;
-
-        OrderCanceled(maker, isEthToToken, orderId, orderData.srcAmount, orderData.dstAmount);
-
-        return true;
-    }
-
     event FeeBurnerContractSet(address currentBurner, address newBurner, address sender);
+
     function setFeeBurner(FeeBurnerRateInterface burner) public {
         require(burner != address(0));
         require(feeBurnerResolverContract.getFeeBurnerAddress() == address(burner));
@@ -527,6 +462,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     event KncStakePerEthSet(uint currectStakeBps, uint newStakeBps, address feeBurnerContract, address sender);
+
     function setStakePerEth(uint newStakeBps) public {
 
         //todo: 2? 3? what factor is good for us?
@@ -566,7 +502,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint32 prevId = tokenToEthList.findPrevOrderId(srcAmount, dstAmount);
 
         if (prevId == orderId) {
-            (,,, prevId,) = tokenToEthList.getOrderDetails(orderId);
+            (, , , prevId,) = tokenToEthList.getOrderDetails(orderId);
         }
 
         return prevId;
@@ -587,7 +523,8 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return prevId;
     }
 
-    function getTokenToEthOrder(uint32 orderId) public view
+    function getTokenToEthOrder(uint32 orderId)
+        public view
         returns (
             address _maker,
             uint128 _srcAmount,
@@ -599,7 +536,8 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return tokenToEthList.getOrderDetails(orderId);
     }
 
-    function getEthToTokenOrder(uint32 orderId) public view
+    function getEthToTokenOrder(uint32 orderId)
+        public view
         returns (
             address _maker,
             uint128 _srcAmount,
@@ -609,6 +547,22 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         )
     {
         return ethToTokenList.getOrderDetails(orderId);
+    }
+
+    function calcKncStake(int weiAmount) public view returns(int) {
+        return(weiAmount * int(kncStakePerEtherBps) / 1000);
+    }
+
+    function calcBurnAmount(uint weiAmount) public view returns(uint) {
+        return(weiAmount * makerBurnFeeBps * feeBurnerContract.kncPerEthRatePrecision() / (1000 * PRECISION));
+    }
+
+    function makerUnusedKNC(address maker) public view returns (uint) {
+        return (uint(makerKncStake[maker].freeKnc));
+    }
+
+    function makerStakedKNC(address maker) public view returns (uint) {
+        return (uint(makerKncStake[maker].kncOnStake));
     }
 
     function getEthToTokenOrderList() public view returns(uint32[] orderList) {
@@ -650,6 +604,87 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         }
     }
 
+    function addOrder(address maker, bool isEthToToken, uint32 newId, uint128 srcAmount, uint128 dstAmount,
+        uint32 hintPrevOrder
+    )
+        internal
+        returns(bool)
+    {
+        require(validateAddOrder(maker, isEthToToken, srcAmount, dstAmount));
+        bool addedWithHint = false;
+
+        OrdersInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
+
+        if (hintPrevOrder != 0) {
+            addedWithHint = list.addAfterId(maker, newId, srcAmount, dstAmount, hintPrevOrder);
+        }
+
+        if (addedWithHint == false) {
+            list.add(maker, newId, srcAmount, dstAmount);
+        }
+
+        NewMakeOrder(maker, newId, isEthToToken, srcAmount, dstAmount, addedWithHint);
+
+        return true;
+    }
+
+    function updateOrder(address maker, bool isEthToToken, uint32 orderId, uint128 newSrcAmount,
+        uint128 newDstAmount, uint32 hintPrevOrder)
+        internal
+        returns(bool)
+    {
+        uint128 currDstAmount;
+        uint128 currSrcAmount;
+        address orderMaker;
+
+        OrdersInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
+
+        (orderMaker, currSrcAmount, currDstAmount,  ,  ) = list.getOrderDetails(orderId);
+        require(orderMaker == maker);
+
+        if (!validateUpdateOrder(maker, isEthToToken, currSrcAmount, currDstAmount, newSrcAmount, newDstAmount)) {
+            return false;
+        }
+
+        bool updatedWithHint = false;
+
+        if (hintPrevOrder != 0) {
+            (updatedWithHint, ) = list.updateWithPositionHint(orderId, newSrcAmount, newDstAmount, hintPrevOrder);
+        }
+
+        if (!updatedWithHint) {
+            list.update(orderId, newSrcAmount, newDstAmount);
+        }
+
+        OrderUpdated(maker, isEthToToken, orderId, newSrcAmount, newDstAmount, updatedWithHint);
+
+        return true;
+    }
+
+    event OrderCanceled(address indexed maker, bool isEthToToken, uint32 orderId, uint128 srcAmount, uint dstAmount);
+
+    function cancelOrder(bool isEthToToken, uint32 orderId) internal returns(bool) {
+
+        address maker = msg.sender;
+        OrdersInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
+        OrderData memory orderData = getOrderData(list, orderId);
+
+        require(orderData.maker == maker);
+
+        uint weiAmount = isEthToToken ? orderData.srcAmount : orderData.dstAmount;
+
+        require(handleOrderStakes(orderData.maker, uint(calcKncStake(int(weiAmount))), 0));
+
+        require(removeOrder(list, maker, isEthToToken ? ETH_TOKEN_ADDRESS : token, orderId));
+
+        //funds go back to makers account
+        makerFunds[maker][isEthToToken ? ETH_TOKEN_ADDRESS : token] += orderData.srcAmount;
+
+        OrderCanceled(maker, isEthToToken, orderId, orderData.srcAmount, orderData.dstAmount);
+
+        return true;
+    }
+
     ///@param maker is the maker of this order
     ///@param isEthToToken which order type the maker is updating / adding
     ///@param srcAmount is the orders src amount (token or ETH) could be negative if funds are released.
@@ -669,25 +704,10 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return true;
     }
 
-    function calcKncStake(int weiAmount) public view returns(int) {
-        return(weiAmount * int(kncStakePerEtherBps) / 1000);
-    }
-
-    function calcBurnAmount(uint weiAmount) public view returns(uint) {
-        return(weiAmount * makerBurnFeeBps * feeBurnerContract.kncPerEthRatePrecision() / (1000 * PRECISION));
-    }
-
-    function makerUnusedKNC(address maker) public view returns (uint) {
-        return (uint(makerKncStake[maker].freeKnc));
-    }
-
-    function makerStakedKNC(address maker) public view returns (uint) {
-        return (uint(makerKncStake[maker].kncOnStake));
-    }
-
     function getOrderData(OrdersInterface list, uint32 orderId) internal view returns (OrderData data)
     {
-        (data.maker, data.srcAmount, data.dstAmount, , data.nextId) = list.getOrderDetails(orderId);
+        uint32 prevId;
+        (data.maker, data.srcAmount, data.dstAmount, prevId, data.nextId) = list.getOrderDetails(orderId);
         data.isLastOrder = (data.nextId == orderListTailId);
     }
 
@@ -746,7 +766,8 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         returns(bool)
     {
         uint weiAmount = isEthToToken ? newSrcAmount : newDstAmount;
-        int weiDiff = isEthToToken ? (int(newSrcAmount) - int(prevSrcAmount)) : (int(newDstAmount) - int(prevDstAmount));
+        int weiDiff = isEthToToken ? (int(newSrcAmount) - int(prevSrcAmount)) :
+            (int(newDstAmount) - int(prevDstAmount));
 
         require(weiAmount >= minOrderMakeValueWei);
 
