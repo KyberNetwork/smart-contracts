@@ -274,7 +274,7 @@ async function getGasPrice() {
         gasPrice = BigNumber(gasPriceGwei).mul(10 ** 9);
     }
     else {
-        gasPrice = await web3.eth.getGasPrice()
+        gasPrice = parseInt((await web3.eth.getGasPrice()) * 1.3);
     }
 }
 
