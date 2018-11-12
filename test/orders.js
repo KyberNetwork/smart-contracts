@@ -1,4 +1,4 @@
-const BigNumber = web3.BigNumber
+const BigNumber = require('bignumber.js');
 
 require("chai")
     .use(require("chai-as-promised"))
@@ -22,10 +22,6 @@ contract('Orders', async (accounts) => {
     });
 
     describe("basic", async () => {
-        it("should have deployed the contract", async () => {
-            orders.should.exist;
-        });
-
         it("should have different ids for head and tail", async () => {
             HEAD_ID.should.be.bignumber.not.equal(TAIL_ID);
         });
@@ -34,6 +30,17 @@ contract('Orders', async (accounts) => {
             let head = await getOrderById(HEAD_ID);
 
             head.nextId.should.be.bignumber.equal(TAIL_ID);
+        });
+
+        it("should not allow deploying with address 0 as admin", async () => {
+            try {
+                await Orders.new(0);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(
+                    Helper.isRevertErrorMessage(e),
+                    "expected revert but got: " + e);
+            }
         });
     });
 
@@ -94,7 +101,7 @@ contract('Orders', async (accounts) => {
                 10 /* srcAmount1 */,
                 100 /* dstAmount1 */,
                 10 /* srcAmount2 */,
-                200 /* dstAmount2 */
+                101 /* dstAmount2 */
             );
 
             orderComparison.should.be.bignumber.below(0);
@@ -103,7 +110,7 @@ contract('Orders', async (accounts) => {
         it("compare orders: order1 worse than order2 -> positive", async () => {
             const orderComparison = await orders.compareOrders.call(
                 10 /* srcAmount1 */,
-                200 /* dstAmount1 */,
+                101 /* dstAmount1 */,
                 10 /* srcAmount2 */,
                 100 /* dstAmount2 */
             );
@@ -128,6 +135,17 @@ contract('Orders', async (accounts) => {
                 new BigNumber(9).mul(10 ** 18).add(220) /* dstAmount1 */,
                 new BigNumber(2).mul(10 ** 18).add(300) /* srcAmount2 */,
                 new BigNumber(9).mul(10 ** 18).add(200) /* dstAmount2 */
+            );
+
+            orderComparison.should.be.bignumber.above(0);
+        });
+
+        it("handles possible overflows due to multiplication", async () => {
+            const orderComparison = await orders.compareOrders.call(
+                new BigNumber(300) /* srcAmount1 */,
+                new BigNumber(2).pow(128).sub(1) /* dstAmount1 */,
+                new BigNumber(2).pow(128).sub(1) /* srcAmount2 */,
+                new BigNumber(200) /* dstAmount2 */
             );
 
             orderComparison.should.be.bignumber.above(0);
@@ -542,7 +560,7 @@ contract('Orders', async (accounts) => {
 
         it("should allow adding order specifically after head", async () => {
             let orderId = await allocateIds(1);
-            const res = await orders.addAfterId(
+            await orders.addAfterId(
                 user1 /* maker */,
                 orderId /* orderId */,
                 10 /* srcAmount */,
@@ -552,6 +570,29 @@ contract('Orders', async (accounts) => {
 
             await assertOrdersOrder1(orderId);
         });
+
+        // it("check gas price of isRightPosition()", async () => {
+        //     let orderId1 = await allocateIds(1);
+        //     await orders.addAfterId(
+        //         user1 /* maker */,
+        //         orderId1 /* orderId */,
+        //         10 /* srcAmount */,
+        //         100 /* dstAmount */,
+        //         HEAD_ID /* prevId */
+        //     );
+        //
+        //     let orderId2 = await allocateIds(1);
+        //     const res = await orders.addAfterId(
+        //         user1 /* maker */,
+        //         orderId2 /* orderId */,
+        //         10 /* srcAmount */,
+        //         200 /* dstAmount */,
+        //         orderId1 /* prevId */
+        //     );
+        //
+        //     await debugOrders(5)
+        //     console.log(res)
+        // });
     });
 
     describe("#removeById", async () => {

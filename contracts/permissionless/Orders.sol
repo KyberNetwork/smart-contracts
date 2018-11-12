@@ -197,18 +197,31 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         view
         returns(uint32)
     {
-        // TODO: eliminate while loop.
         uint32 currId = HEAD_ID;
         Order storage curr = orders[currId];
+
         while (curr.nextId != TAIL_ID) {
             currId = curr.nextId;
             curr = orders[currId];
-            int cmp = compareOrders(srcAmount, dstAmount, curr.srcAmount, curr.dstAmount);
+            int cmp = compareOrders(
+                srcAmount,
+                dstAmount,
+                curr.srcAmount,
+                curr.dstAmount
+            );
+
             if (cmp < 0) {
                 return curr.prevId;
             }
         }
         return currId;
+    }
+
+    function getFirstOrder() public view returns(uint32 orderId, bool isEmpty) {
+        return (
+            orders[HEAD_ID].nextId,
+            orders[HEAD_ID].nextId == TAIL_ID
+        );
     }
 
     function addAfterValidId(
@@ -263,7 +276,6 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
     {
         if (prevId == TAIL_ID || nextId == HEAD_ID) return false;
 
-        // TODO: check gas cost with this or memory or orders[prevId].
         Order storage prev = orders[prevId];
 
         // Make sure prev order is initialised.
@@ -272,27 +284,29 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         int cmp;
         // Make sure that the new order should be after the provided prevId.
         if (prevId != HEAD_ID) {
-            cmp = compareOrders(srcAmount, dstAmount, prev.srcAmount, prev.dstAmount);
+            cmp = compareOrders(
+                srcAmount,
+                dstAmount,
+                prev.srcAmount,
+                prev.dstAmount
+            );
             // new order is better than prev
             if (cmp < 0) return false;
         }
 
         // Make sure that the new order should be before provided prevId's next order.
         if (nextId != TAIL_ID) {
-            // TODO: check gas cost with this or memory or orders[prevId].
             Order storage next = orders[nextId];
-            cmp = compareOrders(srcAmount, dstAmount, next.srcAmount, next.dstAmount);
+            cmp = compareOrders(
+                srcAmount,
+                dstAmount,
+                next.srcAmount,
+                next.dstAmount
+            );
             // new order is worse than next
             if (cmp > 0) return false;
         }
 
         return true;
-    }
-
-    function getFirstOrder() public view returns(uint32 orderId, bool isEmpty) {
-        return (
-            orders[HEAD_ID].nextId,
-            orders[HEAD_ID].nextId == TAIL_ID
-        );
     }
 }
