@@ -1732,7 +1732,7 @@ contract('OrderBookReserve', async (accounts) => {
     });
 
     it("calc expected stake and calc burn amount. validate match", async () => {
-        let kncToEthRatePrecision = new BigNumber(await feeBurner.ethKncRatePrecision());
+        let kncToEthRatePrecision = new BigNumber(await feeBurner.kncPerEthRatePrecision());
         let kncToEthRate = kncToEthRatePrecision.div(precisionUnits);
 //        log ("ethKncRatePrecision " + kncToEthRate.valueOf());
 

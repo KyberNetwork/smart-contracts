@@ -11,7 +11,7 @@ import "../KyberReserveInterface.sol";
 
 
 contract FeeBurnerRateInterface {
-    uint public ethKncRatePrecision;
+    uint public kncPerEthRatePrecision;
 }
 
 
@@ -534,7 +534,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         //todo: 2? 3? what factor is good for us?
         uint factor = 3;
-        uint burnPerWeiBps = (makerBurnFeeBps * feeBurnerContract.ethKncRatePrecision()) / PRECISION;
+        uint burnPerWeiBps = (makerBurnFeeBps * feeBurnerContract.kncPerEthRatePrecision()) / PRECISION;
 
         // old factor should be too small
         require(kncStakePerEtherBps < factor * burnPerWeiBps);
@@ -677,7 +677,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     function calcBurnAmount(uint weiAmount) public view returns(uint) {
-        return(weiAmount * makerBurnFeeBps * feeBurnerContract.ethKncRatePrecision() / (1000 * PRECISION));
+        return(weiAmount * makerBurnFeeBps * feeBurnerContract.kncPerEthRatePrecision() / (1000 * PRECISION));
     }
 
     function makerUnusedKNC(address maker) public view returns (uint) {

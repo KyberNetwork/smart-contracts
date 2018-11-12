@@ -27,7 +27,7 @@ let admin;
 let operator;
 
 contract('FeeBurner', function(accounts) {
-    it("should init globals and init feeburner Inst.", async function () {
+    it("should init globals and init feeBurner Inst.", async function () {
         //init globals
         mockReserve = accounts[8];
         mockKNCWallet = accounts[7];
