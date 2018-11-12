@@ -26,25 +26,26 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
 
     BurnableToken public knc;
     KyberNetworkInterface public kyberNetwork;
-    uint public ethKncRatePrecision = 600 * 10 ** 18; //--> 1 ether = 600 knc tokens
+    uint public kncPerEthRatePrecision = 600 * 10 ** 18; //--> 1 ether = 600 knc tokens
 
     function FeeBurner(
         address _admin,
         BurnableToken _kncToken,
         KyberNetworkInterface _kyberNetwork,
-        uint _ethKncRatePrecision
+        uint _kncPerEthRatePrecision
     )
         public
     {
         require(_admin != address(0));
         require(_kncToken != address(0));
         require(_kyberNetwork != address(0));
-        require(_ethKncRatePrecision > 0);
+        require(_kncPerEthRatePrecision > 0);
+        require(_kncPerEthRatePrecision < MAX_RATE);
 
         kyberNetwork = _kyberNetwork;
         admin = _admin;
         knc = _kncToken;
-        ethKncRatePrecision = _ethKncRatePrecision;
+        kncPerEthRatePrecision = _kncPerEthRatePrecision;
     }
 
     event ReserveDataSet(address reserve, uint feeInBps, address kncWallet);
@@ -89,8 +90,9 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
         require(kyberEthKncRate * kyberKncEthRate < PRECISION ** 2 * 2);
         require(kyberEthKncRate * kyberKncEthRate > PRECISION ** 2 / 2);
 
-        ethKncRatePrecision = kyberEthKncRate;
-        KNCRateSet(ethKncRatePrecision, kyberEthKncRate, kyberKncEthRate, msg.sender);
+        require(kyberEthKncRate <= MAX_RATE);
+        kncPerEthRatePrecision = kyberEthKncRate;
+        KNCRateSet(kncPerEthRatePrecision, kyberEthKncRate, kyberKncEthRate, msg.sender);
     }
 
     event AssignFeeToWallet(address reserve, address wallet, uint walletFee);
@@ -99,9 +101,8 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
     function handleFees(uint tradeWeiAmount, address reserve, address wallet) public returns(bool) {
         require(msg.sender == address(kyberNetwork));
         require(tradeWeiAmount <= MAX_QTY);
-        require(ethKncRatePrecision <= MAX_RATE);
 
-        uint kncAmount = calcDestAmount(ETH_TOKEN_ADDRESS, ERC20(knc), tradeWeiAmount, ethKncRatePrecision);
+        uint kncAmount = calcDestAmount(ETH_TOKEN_ADDRESS, ERC20(knc), tradeWeiAmount, kncPerEthRatePrecision);
         uint fee = kncAmount * reserveFeesInBps[reserve] / 10000;
 
         uint walletFee = fee * walletFeesInBps[wallet] / 10000;
