@@ -1,4 +1,4 @@
-const BigNumber = web3.BigNumber
+const BigNumber = require('bignumber.js');
 
 require("chai")
     .use(require("chai-as-promised"))
@@ -22,10 +22,6 @@ contract('Orders', async (accounts) => {
     });
 
     describe("basic", async () => {
-        it("should have deployed the contract", async () => {
-            orders.should.exist;
-        });
-
         it("should have different ids for head and tail", async () => {
             HEAD_ID.should.be.bignumber.not.equal(TAIL_ID);
         });
@@ -34,6 +30,17 @@ contract('Orders', async (accounts) => {
             let head = await getOrderById(HEAD_ID);
 
             head.nextId.should.be.bignumber.equal(TAIL_ID);
+        });
+
+        it("should not allow deploying with address 0 as admin", async () => {
+            try {
+                await Orders.new(0);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(
+                    Helper.isRevertErrorMessage(e),
+                    "expected revert but got: " + e);
+            }
         });
     });
 
@@ -88,18 +95,60 @@ contract('Orders', async (accounts) => {
         });
     });
 
-    describe("#calculateOrderSortKey", async () => {
-        it("should calculate order sort key", async () => {
-            worse = await orders.calculateOrderSortKey(
-                10 /* srcAmount */,
-                100 /* dstAmount */
-            );
-            better = await orders.calculateOrderSortKey(
-                10 /* srcAmount */,
-                200 /* dstAmount */
+    describe("#compareOrders", async () => {
+        it("compare orders: order1 better than order2 -> negative", async () => {
+            const orderComparison = await orders.compareOrders.call(
+                10 /* srcAmount1 */,
+                100 /* dstAmount1 */,
+                10 /* srcAmount2 */,
+                101 /* dstAmount2 */
             );
 
-            better.should.be.bignumber.greaterThan(worse);
+            orderComparison.should.be.bignumber.below(0);
+        });
+
+        it("compare orders: order1 worse than order2 -> positive", async () => {
+            const orderComparison = await orders.compareOrders.call(
+                10 /* srcAmount1 */,
+                101 /* dstAmount1 */,
+                10 /* srcAmount2 */,
+                100 /* dstAmount2 */
+            );
+
+            orderComparison.should.be.bignumber.above(0);
+        });
+
+        it("compare orders: order1 equals order2 -> 0", async () => {
+            const orderComparison = await orders.compareOrders.call(
+                3579 /* srcAmount1 */,
+                2468 /* dstAmount1 */,
+                3579 /* srcAmount2 */,
+                2468 /* dstAmount2 */
+            );
+
+            orderComparison.should.be.bignumber.equal(0);
+        });
+
+        it("small differences in the order amounts should influence", async () => {
+            const orderComparison = await orders.compareOrders.call(
+                new BigNumber(2).mul(10 ** 18).add(300) /* srcAmount1 */,
+                new BigNumber(9).mul(10 ** 18).add(220) /* dstAmount1 */,
+                new BigNumber(2).mul(10 ** 18).add(300) /* srcAmount2 */,
+                new BigNumber(9).mul(10 ** 18).add(200) /* dstAmount2 */
+            );
+
+            orderComparison.should.be.bignumber.above(0);
+        });
+
+        it("handles possible overflows due to multiplication", async () => {
+            const orderComparison = await orders.compareOrders.call(
+                new BigNumber(300) /* srcAmount1 */,
+                new BigNumber(2).pow(128).sub(1) /* dstAmount1 */,
+                new BigNumber(2).pow(128).sub(1) /* srcAmount2 */,
+                new BigNumber(200) /* dstAmount2 */
+            );
+
+            orderComparison.should.be.bignumber.above(0);
         });
     });
 
@@ -116,11 +165,11 @@ contract('Orders', async (accounts) => {
             let betterId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */
+                100 /* dstAmount */
             );
 
             let srcAmount = 10;
-            let dstAmount = 100;
+            let dstAmount = 200;
             let prevId = await orders.findPrevOrderId(srcAmount, dstAmount);
 
             prevId.should.be.bignumber.equal(betterId);
@@ -130,7 +179,7 @@ contract('Orders', async (accounts) => {
             let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */
+                300 /* dstAmount */
             );
 
             let srcAmount = 10;
@@ -144,12 +193,12 @@ contract('Orders', async (accounts) => {
             let betterId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */
+                100 /* dstAmount */
             );
             let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */
+                300 /* dstAmount */
             );
 
             let srcAmount = 10;
@@ -222,11 +271,11 @@ contract('Orders', async (accounts) => {
             let id1 = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                100 /* dstAmount */);
             let id2 = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                200 /* dstAmount */);
 
             // HEAD -> 1 -> 2 -> TAIL
             await assertOrdersOrder2(id1, id2);
@@ -236,12 +285,12 @@ contract('Orders', async (accounts) => {
             let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */
+                200 /* dstAmount */
             );
             let betterId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */
+                100 /* dstAmount */
             );
 
             // HEAD -> better -> worse -> TAIL
@@ -263,13 +312,13 @@ contract('Orders', async (accounts) => {
             let betterId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */
+                100 /* dstAmount */
             );
 
             let order = await addOrder(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */
+                200 /* dstAmount */
             );
 
             // HEAD -> better -> order -> TAIL
@@ -280,13 +329,13 @@ contract('Orders', async (accounts) => {
             let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */
+                200 /* dstAmount */
             );
 
             let order = await addOrder(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */
+                100 /* dstAmount */
             );
 
             // HEAD -> order -> worse -> TAIL
@@ -297,12 +346,12 @@ contract('Orders', async (accounts) => {
             let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */
+                300 /* dstAmount */
             );
             let betterId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */
+                100 /* dstAmount */
             );
 
             let order = await addOrder(
@@ -415,12 +464,12 @@ contract('Orders', async (accounts) => {
             let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */
+                300 /* dstAmount */
             );
             let betterId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */
+                100 /* dstAmount */
             );
 
             let order = await addOrderAfterId(
@@ -472,7 +521,7 @@ contract('Orders', async (accounts) => {
             let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */
+                300 /* dstAmount */
             );
 
             let orderId = await allocateIds(1);
@@ -521,6 +570,29 @@ contract('Orders', async (accounts) => {
 
             await assertOrdersOrder1(orderId);
         });
+
+        // it("check gas price of isRightPosition()", async () => {
+        //     let orderId1 = await allocateIds(1);
+        //     await orders.addAfterId(
+        //         user1 /* maker */,
+        //         orderId1 /* orderId */,
+        //         10 /* srcAmount */,
+        //         100 /* dstAmount */,
+        //         HEAD_ID /* prevId */
+        //     );
+        //
+        //     let orderId2 = await allocateIds(1);
+        //     const res = await orders.addAfterId(
+        //         user1 /* maker */,
+        //         orderId2 /* orderId */,
+        //         10 /* srcAmount */,
+        //         200 /* dstAmount */,
+        //         orderId1 /* prevId */
+        //     );
+        //
+        //     await debugOrders(5)
+        //     console.log(res)
+        // });
     });
 
     describe("#removeById", async () => {
@@ -610,7 +682,7 @@ contract('Orders', async (accounts) => {
             let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
             let middleId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -618,7 +690,7 @@ contract('Orders', async (accounts) => {
             let betterId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
 
             await orders.removeById(middleId);
 
@@ -675,7 +747,7 @@ contract('Orders', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -683,10 +755,10 @@ contract('Orders', async (accounts) => {
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
 
             let srcAmount = 10;
-            let dstAmount = 330;
+            let dstAmount = 90;
             await orders.update(firstId, srcAmount, dstAmount);
 
             // after: HEAD -> first -> second -> third -> TAIL
@@ -698,7 +770,7 @@ contract('Orders', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -706,10 +778,10 @@ contract('Orders', async (accounts) => {
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
 
             let srcAmount = 10;
-            let dstAmount = 130;
+            let dstAmount = 220;
             await orders.update(firstId, srcAmount, dstAmount);
 
             // after: HEAD -> second -> first -> third -> TAIL
@@ -721,7 +793,7 @@ contract('Orders', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -729,10 +801,10 @@ contract('Orders', async (accounts) => {
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
 
             let srcAmount = 10;
-            let dstAmount = 30;
+            let dstAmount = 330;
             await orders.update(firstId, srcAmount, dstAmount);
 
             // after: HEAD -> second -> third -> first -> TAIL
@@ -744,7 +816,7 @@ contract('Orders', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -752,10 +824,10 @@ contract('Orders', async (accounts) => {
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
 
             let srcAmount = 10;
-            let dstAmount = 320;
+            let dstAmount = 90;
             await orders.update(secondId, srcAmount, dstAmount);
 
             // after: HEAD -> second -> first -> third -> TAIL
@@ -767,7 +839,7 @@ contract('Orders', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -775,7 +847,7 @@ contract('Orders', async (accounts) => {
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
 
             let srcAmount = 10;
             let dstAmount = 220;
@@ -790,7 +862,7 @@ contract('Orders', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -798,10 +870,10 @@ contract('Orders', async (accounts) => {
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
 
             let srcAmount = 10;
-            let dstAmount = 20;
+            let dstAmount = 330;
             await orders.update(secondId, srcAmount, dstAmount);
 
             // after: HEAD -> first -> third -> second -> TAIL
@@ -813,7 +885,7 @@ contract('Orders', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -821,10 +893,10 @@ contract('Orders', async (accounts) => {
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
 
             let srcAmount = 10;
-            let dstAmount = 310;
+            let dstAmount = 90;
             await orders.update(thirdId, srcAmount, dstAmount);
 
             // after: HEAD -> third -> first -> second -> TAIL
@@ -836,7 +908,7 @@ contract('Orders', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -844,10 +916,10 @@ contract('Orders', async (accounts) => {
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
 
             let srcAmount = 10;
-            let dstAmount = 210;
+            let dstAmount = 180;
             await orders.update(thirdId, srcAmount, dstAmount);
 
             // after: HEAD -> first -> third -> second -> TAIL
@@ -859,7 +931,7 @@ contract('Orders', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -867,10 +939,10 @@ contract('Orders', async (accounts) => {
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
 
             let srcAmount = 10;
-            let dstAmount = 10;
+            let dstAmount = 330;
             await orders.update(thirdId, srcAmount, dstAmount);
 
             // after: HEAD -> first -> second -> third -> TAIL
@@ -890,7 +962,7 @@ contract('Orders', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -898,10 +970,10 @@ contract('Orders', async (accounts) => {
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
 
             let srcAmount = 10;
-            let dstAmount = 210;
+            let dstAmount = 190;
             let [updated, updateMethod] = await updateWithPositionHint(
                 thirdId /* orderId */,
                 srcAmount /* srcAmount */,
@@ -922,7 +994,7 @@ contract('Orders', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -930,10 +1002,10 @@ contract('Orders', async (accounts) => {
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
 
             let srcAmount = 10;
-            let dstAmount = 210;
+            let dstAmount = 190;
             const [updated, updateMethod] = await updateWithPositionHint(
                 thirdId /* orderId */,
                 srcAmount /* srcAmount */,
@@ -1010,50 +1082,10 @@ contract('Orders', async (accounts) => {
             let order = await addOrder(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */,
-            );
-
-            let worseId = await addOrderGetId(
-                user1 /* maker */,
-                10 /* srcAmount */,
-                100 /* dstAmount */
-            );
-
-            const [updated, updateMethod] = await updateWithPositionHint(
-                order.id /* orderId */,
-                20 /* srcAmount */,
-                300 /* dstAmount */,
-                // TAIL is technically a non-existant order, as the ID used for
-                // it should not have an order in it, but the verification was
-                // added to make this requirement explicit.
-                worseId /* prevId */
-            );
-
-            // Nothing should have changed.
-            updated.should.be.false;
-            updateMethod.should.be.bignumber.equal(UPDATE_FAILED);
-
-            order = await getOrderById(order.id);
-            order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(200);
-
-            // after: HEAD -> order -> worse -> TAIL
-            await assertOrdersOrder2(order.id, worseId);
-        });
-
-        it("should reject update with bad hint: before better order", async () => {
-            let order = await addOrder(
-                user1 /* maker */,
-                10 /* srcAmount */,
                 100 /* dstAmount */,
             );
 
-            let bestId = await addOrderGetId(
-                user1 /* maker */,
-                10 /* srcAmount */,
-                300 /* dstAmount */
-            );
-            let betterId = await addOrderGetId(
+            let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
                 200 /* dstAmount */
@@ -1063,7 +1095,7 @@ contract('Orders', async (accounts) => {
                 order.id /* orderId */,
                 10 /* srcAmount */,
                 150 /* dstAmount */,
-                bestId /* prevId */
+                worseId /* prevId */
             );
 
             // Nothing should have changed.
@@ -1074,6 +1106,43 @@ contract('Orders', async (accounts) => {
             order.srcAmount.should.be.bignumber.equal(10);
             order.dstAmount.should.be.bignumber.equal(100);
 
+            // after: HEAD -> order -> worse -> TAIL
+            await assertOrdersOrder2(order.id, worseId);
+        });
+
+        it("should reject update with bad hint: before better order", async () => {
+            let order = await addOrder(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                400 /* dstAmount */,
+            );
+
+            let bestId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                100 /* dstAmount */
+            );
+            let betterId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                200 /* dstAmount */
+            );
+
+            const [updated, updateMethod] = await updateWithPositionHint(
+                order.id /* orderId */,
+                10 /* srcAmount */,
+                250 /* dstAmount */,
+                bestId /* prevId */
+            );
+
+            // Nothing should have changed.
+            updated.should.be.false;
+            updateMethod.should.be.bignumber.equal(UPDATE_FAILED);
+
+            order = await getOrderById(order.id);
+            order.srcAmount.should.be.bignumber.equal(10);
+            order.dstAmount.should.be.bignumber.equal(400);
+
             // after: HEAD -> best -> better -> order -> TAIL
             await assertOrdersOrder3(bestId, betterId, order.id);
         });
@@ -1083,7 +1152,7 @@ contract('Orders', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -1091,7 +1160,7 @@ contract('Orders', async (accounts) => {
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
 
             const [updated, updateMethod] = await updateWithPositionHint(
                 secondId /* orderId */,
@@ -1119,7 +1188,7 @@ contract('Orders', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -1127,12 +1196,12 @@ contract('Orders', async (accounts) => {
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
 
             const [updated, updateMethod] = await updateWithPositionHint(
                 firstId /* orderId */,
                 10 /* srcAmount */,
-                310 /* dstAmount */,
+                90 /* dstAmount */,
                 HEAD_ID /* prevId */
             );
 
@@ -1140,7 +1209,7 @@ contract('Orders', async (accounts) => {
             updateMethod.should.be.bignumber.equal(UPDATE_ONLY_AMOUNTS);
             let order = await getOrderById(firstId);
             order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(310);
+            order.dstAmount.should.be.bignumber.equal(90);
 
             // after: HEAD -> first -> second -> third -> TAIL
             await assertOrdersOrder3(firstId, secondId, thirdId);
@@ -1151,7 +1220,7 @@ contract('Orders', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -1159,7 +1228,7 @@ contract('Orders', async (accounts) => {
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
 
             const [updated, updateMethod] = await updateWithPositionHint(
                 secondId /* orderId */,
@@ -1183,7 +1252,7 @@ contract('Orders', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                100 /* dstAmount */);
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -1191,19 +1260,20 @@ contract('Orders', async (accounts) => {
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                300 /* dstAmount */);
 
             const [updated, updateMethod] = await updateWithPositionHint(
                 thirdId /* orderId */,
                 10 /* srcAmount */,
-                110 /* dstAmount */,
+                280 /* dstAmount */,
                 secondId /* prevId */
             );
 
             updated.should.be.true;
+            updateMethod.should.be.bignumber.equal(UPDATE_ONLY_AMOUNTS);
             let order = await getOrderById(thirdId);
             order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(110);
+            order.dstAmount.should.be.bignumber.equal(280);
 
             // after: HEAD -> first -> second -> third -> TAIL
             await assertOrdersOrder3(firstId, secondId, thirdId);
@@ -1236,6 +1306,27 @@ contract('Orders', async (accounts) => {
                     TAIL_ID /* orderId */,
                     10 /* srcAmount */,
                     310 /* dstAmount */,
+                    firstId /* prevId */
+                );
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(
+                    Helper.isRevertErrorMessage(e),
+                    "expected revert but got: " + e);
+            }
+        });
+
+        it("reject if prevId is orderId", async () => {
+            let firstId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                300 /* dstAmount */);
+
+            try {
+                await updateWithPositionHint(
+                    firstId /* orderId */,
+                    10 /* srcAmount */,
+                    190 /* dstAmount */,
                     firstId /* prevId */
                 );
                 assert(false, "throw was expected in line above.")
@@ -1401,4 +1492,15 @@ async function assertOrdersOrder3(orderId1, orderId2, orderId3) {
     order3.prevId.should.be.bignumber.equal(order2.id);
     order2.prevId.should.be.bignumber.equal(order1.id);
     order1.prevId.should.be.bignumber.equal(head.id);
+}
+
+async function debugOrders(max) {
+    let maker, prevId, nextId, srcAmount, dstAmount;
+    for (i = 0; i < max; i++) {
+    [maker, prevId, nextId, srcAmount, dstAmount] = await orders.orders(i);
+        console.log(
+            `orders[${i}]=(maker=${maker}, prevId=${prevId}, nextId=${nextId}, `
+                + `srcAmount=${srcAmount}, dstAmount=${dstAmount})`
+            );
+    }
 }

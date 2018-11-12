@@ -51,23 +51,26 @@ contract OrderIdManager {
     function allocateOrders(
         OrdersData storage freeOrders,
         uint32 firstAllocatedId,
-        uint32 howMany
+        uint howMany
     )
         internal
         returns(bool)
     {
-        require(howMany <= 256);
-
-        if (freeOrders.takenBitmap != 0) return true; //already allocated and in use.
-        if (howMany == freeOrders.numOrders) return true;
-
-        // make sure no orders in use at the moment if its re allocate case
-        require(freeOrders.takenBitmap == 0);
+        if ((howMany > 256) || (howMany <= uint(freeOrders.numOrders)) || (freeOrders.takenBitmap != 0)) {
+            return false;
+        }
 
         freeOrders.firstOrderId = firstAllocatedId;
-        freeOrders.numOrders = howMany;
+        freeOrders.numOrders = uint32(howMany);
         freeOrders.takenBitmap = 0;
 
         return true;
+    }
+
+    function orderAllocationRequired(OrdersData storage freeOrders, uint howMany) internal view returns (bool) {
+
+        if ((howMany > uint(freeOrders.numOrders)) && (freeOrders.takenBitmap == 0)) return true;
+
+        return false;
     }
 }

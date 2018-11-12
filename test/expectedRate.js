@@ -1,19 +1,20 @@
-let ConversionRates = artifacts.require("./ConversionRates.sol");
-let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let Reserve = artifacts.require("./KyberReserve.sol");
-let Network = artifacts.require("./KyberNetwork.sol");
-let WhiteList = artifacts.require("./WhiteList.sol");
-let ExpectedRate = artifacts.require("./ExpectedRate.sol");
-let FeeBurner = artifacts.require("./FeeBurner.sol");
+const ConversionRates = artifacts.require("./ConversionRates.sol");
+const TestToken = artifacts.require("./mockContracts/TestToken.sol");
+const Reserve = artifacts.require("./KyberReserve.sol");
+const Network = artifacts.require("./KyberNetwork.sol");
+const WhiteList = artifacts.require("./WhiteList.sol");
+const ExpectedRate = artifacts.require("./ExpectedRate.sol");
+const FeeBurner = artifacts.require("./FeeBurner.sol");
 
-let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+const Helper = require("./helper.js");
+const BigNumber = require('bignumber.js');
 
 
-let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-let precisionUnits = (new BigNumber(10).pow(18));
+const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+const precisionUnits = (new BigNumber(10).pow(18));
+const ethToKncRatePrecision = precisionUnits.mul(550);
 
-let bps = 10000;
+const bps = 10000;
 let minSlippageBps = 400;
 let quantityFactor = 2;
 let expectedRates;
@@ -169,7 +170,7 @@ contract('ExpectedRate', function(accounts) {
         await network.addReserve(reserve1.address, true, false, {from: operator});
 
         //set contracts
-        feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address);
+        feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address, ethToKncRatePrecision);
         let kgtToken = await TestToken.new("kyber genesis token", "KGT", 0);
         whiteList = await WhiteList.new(admin, kgtToken.address);
         await whiteList.addOperator(operator);
@@ -236,7 +237,7 @@ contract('ExpectedRate', function(accounts) {
             assert(false, "expect qty slippage rate to be lower");
         }
 
-        rates = await expectedRates.getExpectedRate(ethAddress, tokenAdd[tokenInd], qty);
+        rates = await expectedRates.getExpectedRate(ethAddress, tokenAdd[tokenInd], qty, false);
 
         assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
         assert.equal(rates[1].valueOf(), qtySlippageRate, "unexpected rate");
@@ -260,7 +261,7 @@ contract('ExpectedRate', function(accounts) {
             assert(false, "expect min slippage rate to be lower");
         }
 
-        rates = await expectedRates.getExpectedRate(ethAddress, tokenAdd[tokenInd], qty);
+        rates = await expectedRates.getExpectedRate(ethAddress, tokenAdd[tokenInd], qty, false);
 
         assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
         assert.equal(rates[1].valueOf(), qtySlippageRate, "unexpected rate");
@@ -281,7 +282,7 @@ contract('ExpectedRate', function(accounts) {
             assert(false, "expect qty slippage rate to be lower");
         }
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty, false);
 
         assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
         assert.equal(rates[1].valueOf(), qtySlippageRate.valueOf(), "unexpected rate");
@@ -305,7 +306,7 @@ contract('ExpectedRate', function(accounts) {
             assert(false, "expect min slippage rate to be lower");
         }
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty, false);
 
         assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
         assert.equal(rates[1].valueOf(), qtySlippageRate.valueOf(), "unexpected rate");
@@ -313,19 +314,19 @@ contract('ExpectedRate', function(accounts) {
 
     it("should verify get expected rate reverted when quantity factor is 0.", async function() {
         let qty = 100;
-        rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty, false);
 
         await expectedRates.setQuantityFactor(0, {from: operator});
 
         try {
-            rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty);
+            rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty, false);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         await expectedRates.setQuantityFactor(2, {from: operator});
-        rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty, false);
     });
 
     it("should verify set quantity factor reverts when > 100.", async function() {
@@ -376,10 +377,10 @@ contract('ExpectedRate', function(accounts) {
 
         //with quantity factor 1
         await expectedRates.setQuantityFactor(1, {from: operator});
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, legalQty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, legalQty, false);
 
         try {
-            rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, illegalQty);
+            rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, illegalQty, false);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -393,11 +394,11 @@ contract('ExpectedRate', function(accounts) {
 
         //with quantity factor 2a
         await expectedRates.setQuantityFactor(2, {from: operator});
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, legalQty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, legalQty, false);
 
         illegalQty = legalQty.add(1);
         try {
-            rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, illegalQty);
+            rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, illegalQty, false);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -411,8 +412,8 @@ contract('ExpectedRate', function(accounts) {
 
         await expectedRates.setWorstCaseRateFactor(minSlippageBps, {from: operator});
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
-        let expectedRate = await network.searchBestRate(tokenAdd[tokenInd], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty, false);
+        let expectedRate = await network.searchBestRate(tokenAdd[tokenInd], ethAddress, qty, false);
 
         assert(rates[0].valueOf() != 0, "unexpected rate");
         assert.equal(rates[0].valueOf(), expectedRate[1].valueOf(), "unexpected rate");
@@ -423,8 +424,8 @@ contract('ExpectedRate', function(accounts) {
         let tokenInd = 2;
         let qty = 1;
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
-        let expectedRate = await network.searchBestRate(tokenAdd[tokenInd], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty, false);
+        let expectedRate = await network.searchBestRate(tokenAdd[tokenInd], ethAddress, qty, false);
         assert.equal(rates[0].valueOf(), expectedRate[1].valueOf(), "unexpected rate");
         assert(rates[1].valueOf() == 0, "unexpected rate");
     });
@@ -433,7 +434,7 @@ contract('ExpectedRate', function(accounts) {
         let tokenInd = 2;
         let qty = maxPerBlockImbalance;
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty, false);
         assert.equal(rates[0].valueOf(), 0)
         assert.equal(rates[1].valueOf(), 0)
     });
@@ -442,7 +443,7 @@ contract('ExpectedRate', function(accounts) {
         let tokenInd = 2;
         let qty = maxPerBlockImbalance - 1;
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty, false);
         assert(rates[0].valueOf() > 0)
         assert.equal(rates[1].valueOf(), 0)
     });
@@ -452,7 +453,7 @@ contract('ExpectedRate', function(accounts) {
         let qty = maxPerBlockImbalance - 1;
         await expectedRates.setQuantityFactor(1, {from: operator});
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty, false);
         assert(rates[0].valueOf() > 0)
         assert(rates[1].valueOf() > 0)
         assert(rates[0].valueOf() > rates[1].valueOf())
@@ -464,10 +465,10 @@ contract('ExpectedRate', function(accounts) {
         let tokenDestInd = 1;
         let qty = 0;
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], qty);
-        let srcToEthRate = await network.searchBestRate(tokenAdd[tokenSrcInd], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], qty, false);
+        let srcToEthRate = await network.searchBestRate(tokenAdd[tokenSrcInd], ethAddress, qty, false);
         srcToEthRate = new BigNumber(srcToEthRate[1].valueOf());
-        let ethToDestRate = await network.searchBestRate(ethAddress, tokenAdd[tokenDestInd], qty);
+        let ethToDestRate = await network.searchBestRate(ethAddress, tokenAdd[tokenDestInd], qty, false);
         ethToDestRate = new BigNumber(ethToDestRate[1].valueOf());
 
         assert(rates[0].valueOf() != 0, "unexpected rate");

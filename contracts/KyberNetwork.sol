@@ -42,6 +42,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
     enum ReserveType {NONE, PERMISSIONED, PERMISSIONLESS}
     bytes empty;
+    bytes permHint = "PERM";
 
     uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
     KyberReserveInterface[] public reserves;
@@ -266,7 +267,15 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         returns(uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
-        return expectedRateContract.getExpectedRate(src, dest, srcQty);
+        return expectedRateContract.getExpectedRate(src, dest, srcQty, true);
+    }
+
+    function getExpectedRateOnlyPermissioned(ERC20 src, ERC20 dest, uint srcQty)
+        public view
+        returns(uint expectedRate, uint slippageRate)
+    {
+        require(expectedRateContract != address(0));
+        return expectedRateContract.getExpectedRate(src, dest, srcQty, false);
     }
 
     function getUserCapInWei(address user) public view returns(uint) {
@@ -301,6 +310,15 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         return(0, result.rate);
     }
 
+    function findBestRateOnlyPermissioned(ERC20 src, ERC20 dest, uint srcAmount)
+        public
+        view
+        returns(uint obsolete, uint rate)
+    {
+        BestRateResult memory result = findBestRateTokenToToken(src, dest, srcAmount, permHint);
+        return(0, result.rate);
+    }
+
     function enabled() public view returns(bool) {
         return isEnabled;
     }
@@ -309,20 +327,12 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         return infoFields[field];
     }
 
-    function searchBestRate(ERC20 src, ERC20 dest, uint srcAmount) public view returns(address, uint) {
-        return searchBestRatePerm(src, dest, srcAmount, true);
-    }
-
-    function searchBestRateOnlyPermissioned(ERC20 src, ERC20 dest, uint srcAmount) public view returns(address, uint) {
-        return searchBestRatePerm(src, dest, srcAmount, false);
-    }
-
     /* solhint-disable code-complexity */
     // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
     //  It has been tested, reviewed and found to be clear enough.
     //@dev this function always src or dest are ether. can't do token to token
-    function searchBestRatePerm(ERC20 src, ERC20 dest, uint srcAmount, bool usePermissionless)
-        internal
+    function searchBestRate(ERC20 src, ERC20 dest, uint srcAmount, bool usePermissionless)
+        public
         view
         returns(address, uint)
     {
@@ -387,19 +397,19 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
         // PERM ascii == P = 80, E = 69, R = 82, M = 77
         if ((hint.length >= 4) &&
-            (keccak256(hint[0], hint[1], hint[2], hint[3]) == keccak256(byte(80), byte(69), byte(82), byte(77)))){
+            (keccak256(hint[0], hint[1], hint[2], hint[3]) == keccak256(byte(80), byte(69), byte(82), byte(77)))) {
 
             //use permissioned only
             usePermissionless = false;
         }
 
         (result.reserve1, result.rateSrcToEth) =
-            searchBestRatePerm(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
+            searchBestRate(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
 
         result.weiAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcAmount, result.rateSrcToEth);
 
         (result.reserve2, result.rateEthToDest) =
-            searchBestRatePerm(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
+            searchBestRate(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
 
         result.destAmount = calcDestAmount(ETH_TOKEN_ADDRESS, dest, result.weiAmount, result.rateEthToDest);
 

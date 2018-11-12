@@ -4,14 +4,14 @@ pragma solidity 0.4.18;
 import "./OrdersInterface.sol";
 import "./OrderIdManager.sol";
 import "./FeeBurnerResolverInterface.sol";
-import "./OrdersFactoryInterface.sol";
+import "./OrderFactoryInterface.sol";
 import "./OrderBookReserveInterface.sol";
 import "../Utils2.sol";
 import "../KyberReserveInterface.sol";
 
 
-contract FeeBurnerSimpleIf {
-    uint public kncPerETHRate;
+contract FeeBurnerRateInterface {
+    uint public ethKncRatePrecision;
 }
 
 
@@ -19,35 +19,36 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
     uint public minOrderValueWei = 10 ** 18;                 // below this value order will be removed.
     uint public minOrderMakeValueWei = 2 * minOrderValueWei; // Below this value can't create new order.
-    uint public makersBurnFeeBps;                            // knc burn fee per order that is taken.
+    uint public makerBurnFeeBps;                             // knc burn fee per order that is taken.
 
-    ERC20 public token; // this reserve will serve buy / sell for this token.
-    FeeBurnerSimpleIf public feeBurnerContract;
+    ERC20 public token; // this reserve will serve only this token vs ETH.
+    FeeBurnerRateInterface public feeBurnerContract;
     FeeBurnerResolverInterface public feeBurnerResolverContract;
-    OrdersFactoryInterface ordersFactoryContract;
+    OrderFactoryInterface ordersFactoryContract;
 
     ERC20 public kncToken;  //not constant. to enable testing and test net usage
-    int public kncStakePerEtherBps = 20000; //for validating orders
-    uint32 public numOrdersToAllocate = 60;
+    uint public kncStakePerEtherBps = 20000; //for validating orders
+    uint public numOrdersToAllocate = 256;
 
-    OrdersInterface public sellList;
-    OrdersInterface public buyList;
+    OrdersInterface public tokenToEthList;
+    OrdersInterface public ethToTokenList;
 
     uint32 orderListTailId;
+    uint32 orderListHeadId;
 
-    // KNC stakes
-    struct KncStakes {
+    // KNC stake
+    struct KncStake {
         uint128 freeKnc;    // knc that can be used to validate funds
         uint128 kncOnStake; // per order some knc will move to be kncOnStake. part of it will be used for burning.
     }
 
     //funds data
     mapping(address => mapping(address => uint)) public makerFunds; // deposited maker funds,
-    mapping(address => KncStakes) public makerKncStakes; // knc funds are required for validating deposited funds
+    mapping(address => KncStake) public makerKncStake; // knc funds are required for validating deposited funds
 
     //each maker will have orders that will be reused.
-    mapping(address => OrdersData) public makerOrdersSell;
-    mapping(address => OrdersData) public makerOrdersBuy;
+    mapping(address => OrdersData) public makerOrdersTokenToEth;
+    mapping(address => OrdersData) public makerOrdersEthToToken;
 
     struct OrderData {
         address maker;
@@ -59,92 +60,94 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
     function OrderBookReserve(
         ERC20 knc,
-        ERC20 _token,
+        ERC20 reserveToken,
         FeeBurnerResolverInterface resolver,
-        OrdersFactoryInterface factory,
-        uint _makersBurnFeeBps
+        OrderFactoryInterface factory,
+        uint minOrderMakeWei,
+        uint minOrderWei,
+        uint burnFeeBps
     )
         public
     {
 
         require(knc != address(0));
-        require(_token != address(0));
+        require(reserveToken != address(0));
         require(resolver != address(0));
         require(factory != address(0));
+        require(burnFeeBps != 0);
+        require(minOrderWei != 0);
+        require(minOrderMakeWei > minOrderWei);
 
         feeBurnerResolverContract = resolver;
-        feeBurnerContract = FeeBurnerSimpleIf(feeBurnerResolverContract.getFeeBurnerAddress());
+        feeBurnerContract = FeeBurnerRateInterface(feeBurnerResolverContract.getFeeBurnerAddress());
         kncToken = knc;
-        token = _token;
+        token = reserveToken;
         ordersFactoryContract = factory;
-        makersBurnFeeBps = _makersBurnFeeBps;
+        makerBurnFeeBps = burnFeeBps;
+        minOrderMakeValueWei = minOrderMakeWei;
+        minOrderValueWei = minOrderWei;
 
         require(kncToken.approve(feeBurnerContract, (2**255)));
 
-//        notice. if decimal API not supported this should revert
+        //can only support tokens with decimal() API
         setDecimals(token);
-        require(getDecimals(token) > 0);
     }
 
+    ///@dev separate init function for this contract, if this init is in the C'tor. gas consumption too high.
     function init() public returns(bool) {
-        require(sellList == address(0));
-        require(buyList == address(0));
+        require(tokenToEthList == address(0));
+        require(ethToTokenList == address(0));
 
-        sellList = ordersFactoryContract.newOrdersContract(this);
-        buyList = ordersFactoryContract.newOrdersContract(this);
+        tokenToEthList = ordersFactoryContract.newOrdersContract(this);
+        ethToTokenList = ordersFactoryContract.newOrdersContract(this);
 
-        orderListTailId = buyList.getTailId();
+        orderListTailId = ethToTokenList.getTailId();
+        orderListHeadId = ethToTokenList.getHeadId();
 
         return true;
     }
 
-    function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
+    function getConversionRate(ERC20 src, ERC20 dst, uint srcQty, uint blockNumber) public view returns(uint) {
 
-        require((src == ETH_TOKEN_ADDRESS) || (dest == ETH_TOKEN_ADDRESS));
-        require((src == token) || (dest == token));
+        require((src == ETH_TOKEN_ADDRESS) || (dst == ETH_TOKEN_ADDRESS));
+        require((src == token) || (dst == token));
         blockNumber; // in this reserve no order expiry == no use for blockNumber. here to avoid compiler warning.
 
-        OrdersInterface list = (src == ETH_TOKEN_ADDRESS) ? buyList : sellList;
+        //user order ETH -> token is matched with maker order token -> ETH
+        OrdersInterface list = (src == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
 
         uint32 orderId;
         OrderData memory orderData;
 
+        //orderId, isEmptyList
         (orderId, orderData.isLastOrder) = list.getFirstOrder();
 
-        if (orderData.isLastOrder) return 0;
+        uint128 userRemainingSrcQty = uint128(srcQty);
+        uint128 totalUserDstAmount = 0;
 
-        uint128 remainingSrcAmount = uint128(srcQty);
-        uint128 totalDstAmount = 0;
+        for (; ((userRemainingSrcQty > 0) && !orderData.isLastOrder); orderId = orderData.nextId) {
 
-        orderData.isLastOrder = false;
-
-        while (!orderData.isLastOrder) {
-
-            (orderData.maker, orderData.nextId, orderData.isLastOrder, orderData.srcAmount, orderData.dstAmount) =
-                getOrderData(list, orderId);
-
-            if (orderData.srcAmount <= remainingSrcAmount) {
-                totalDstAmount += orderData.dstAmount;
-                remainingSrcAmount -= orderData.srcAmount;
+            orderData = getOrderData(list, orderId);
+            // user src quantity is matched with maker dst quantity
+            if (orderData.dstAmount <= userRemainingSrcQty) {
+                totalUserDstAmount += orderData.srcAmount;
+                userRemainingSrcQty -= orderData.dstAmount;
             } else {
-                totalDstAmount += orderData.dstAmount * remainingSrcAmount / orderData.srcAmount;
-                remainingSrcAmount = 0;
-                break;
+                totalUserDstAmount += orderData.srcAmount * userRemainingSrcQty / orderData.dstAmount;
+                userRemainingSrcQty = 0;
             }
-
-            orderId = orderData.nextId;
         }
 
-        if ((remainingSrcAmount != 0) || (totalDstAmount == 0)) return 0; //not enough tokens to exchange.
+        if (userRemainingSrcQty != 0) return 0; //not enough tokens to exchange.
 
-        return calcRateFromQty(srcQty, totalDstAmount, getDecimals(src), getDecimals(dest));
+        return calcRateFromQty(srcQty, totalUserDstAmount, getDecimals(src), getDecimals(dst));
     }
 
     function trade(
         ERC20 srcToken,
         uint srcAmount,
-        ERC20 destToken,
-        address destAddress,
+        ERC20 dstToken,
+        address dstAddress,
         uint conversionRate,
         bool validate
     )
@@ -152,64 +155,53 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         payable
         returns(bool)
     {
-        require((srcToken == ETH_TOKEN_ADDRESS) || (destToken == ETH_TOKEN_ADDRESS));
-        require((srcToken == token) || (destToken == token));
+        require((srcToken == ETH_TOKEN_ADDRESS) || (dstToken == ETH_TOKEN_ADDRESS));
+        require((srcToken == token) || (dstToken == token));
 
         conversionRate;
         validate;
-
-        OrdersInterface list;
+        OrdersInterface list = (srcToken == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
 
         if (srcToken == ETH_TOKEN_ADDRESS) {
             require(msg.value == srcAmount);
-            list = buyList;
         } else {
             require(msg.value == 0);
             require(srcToken.transferFrom(msg.sender, this, srcAmount));
-            list = sellList;
         }
 
         uint32 orderId;
         OrderData memory orderData;
 
+        //getFirstOrder return values: (orderId, isEmptyList)
         (orderId, orderData.isLastOrder) = list.getFirstOrder();
 
-        if (orderData.isLastOrder) require(false);
+        uint128 userRemainingSrcQty = uint128(srcAmount);
+        uint128 totalUserDstAmount = 0;
 
-        uint128 remainingSrcAmount = uint128(srcAmount);
-        uint128 totalDstAmount = 0;
+        for (; (userRemainingSrcQty > 0) && !orderData.isLastOrder; orderId = orderData.nextId) {
 
-        orderData.isLastOrder = false;
-
-        while (!orderData.isLastOrder) {
-
-            (orderData.maker, orderData.nextId, orderData.isLastOrder, orderData.srcAmount, orderData.dstAmount) =
-                getOrderData(list, orderId);
-
-            if (orderData.srcAmount <= remainingSrcAmount) {
-                totalDstAmount += orderData.dstAmount;
-                remainingSrcAmount -= orderData.srcAmount;
-                require(takeFullOrder(orderData.maker, orderId, srcToken, destToken,
-                    orderData.srcAmount, orderData.dstAmount));
-                if (remainingSrcAmount == 0) break;
-
+            orderData = getOrderData(list, orderId);
+            if (orderData.dstAmount <= userRemainingSrcQty) {
+                totalUserDstAmount += orderData.srcAmount;
+                userRemainingSrcQty -= orderData.dstAmount;
+                require(takeFullOrder(orderData.maker, orderId, srcToken, dstToken,
+                    orderData.dstAmount, orderData.srcAmount));
             } else {
-                uint128 partialDstQty = orderData.dstAmount * remainingSrcAmount / orderData.srcAmount;
-                totalDstAmount += partialDstQty;
-                require(takePartialOrder(orderData.maker, orderId, srcToken, destToken, remainingSrcAmount,
+                uint128 partialDstQty = orderData.srcAmount * userRemainingSrcQty / orderData.dstAmount;
+                totalUserDstAmount += partialDstQty;
+                require(takePartialOrder(orderData.maker, orderId, srcToken, dstToken, userRemainingSrcQty,
                     partialDstQty, orderData.srcAmount, orderData.dstAmount));
-                remainingSrcAmount = 0;
-                break;
+                userRemainingSrcQty = 0;
             }
-
-            orderId = orderData.nextId;
         }
 
-        //all orders were successfully taken. send to destAddress
-        if (destToken == ETH_TOKEN_ADDRESS) {
-            destAddress.transfer(totalDstAmount);
+        require(userRemainingSrcQty == 0 && totalUserDstAmount > 0);
+
+        //all orders were successfully taken. send to dstAddress
+        if (dstToken == ETH_TOKEN_ADDRESS) {
+            dstAddress.transfer(totalUserDstAmount);
         } else {
-            require(destToken.transfer(destAddress, totalDstAmount));
+            require(dstToken.transfer(dstAddress, totalUserDstAmount));
         }
 
         return true;
@@ -224,125 +216,123 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         bool addedWithHint
     );
 
-    function submitSellTokenOrder(uint128 srcAmount, uint128 dstAmount)
+    ///@param srcAmount is the token amount that will be payed. must be deposited before hand in the makers account.
+    ///@param dstAmount is the eth amount the maker expects to get for his tokens.
+    function submitTokenToEthOrder(uint128 srcAmount, uint128 dstAmount)
         public
         returns(bool)
     {
-        submitSellTokenOrderWHint(srcAmount, dstAmount, 0);
+        return submitTokenToEthOrderWHint(srcAmount, dstAmount, 0);
     }
 
-    function submitSellTokenOrderWHint(uint128 srcAmount, uint128 dstAmount, uint32 hintPrevOrder)
-        public
-        returns(bool)
-    {
-        address maker = msg.sender;
-        uint32 newId = getNewOrderId(makerOrdersSell[maker]);
-
-        addOrder(maker, false, newId, srcAmount, dstAmount, hintPrevOrder);
-    }
-
-    function submitBuyTokenOrder(uint128 srcAmount, uint128 dstAmount)
-        public
-        returns(bool)
-    {
-        submitBuyTokenOrderWHint(srcAmount, dstAmount, 0);
-    }
-
-    function submitBuyTokenOrderWHint(uint128 srcAmount, uint128 dstAmount, uint32 hintPrevOrder)
+    function submitTokenToEthOrderWHint(uint128 srcAmount, uint128 dstAmount, uint32 hintPrevOrder)
         public
         returns(bool)
     {
         address maker = msg.sender;
-        uint32 newId = getNewOrderId(makerOrdersBuy[maker]);
+        uint32 newId = getNewOrderId(makerOrdersTokenToEth[maker]);
 
-        addOrder(maker, true, newId, srcAmount, dstAmount, hintPrevOrder);
+        return addOrder(maker, false, newId, srcAmount, dstAmount, hintPrevOrder);
     }
 
-    function addOrderBatch(bool[] isBuyOrder, uint128[] srcAmount, uint128[] dstAmount,
-        uint32[] hintPrevOrder, bool[] isAfterMyPrevOrder) public
+    ///@param srcAmount is the Ether amount that will be payed, must be deposited before hand.
+    ///@param dstAmount is the token amount the maker expects to get for his Ether.
+    function submitEthToTokenOrder(uint128 srcAmount, uint128 dstAmount)
+        public
+        returns(bool)
     {
-        require(isBuyOrder.length == hintPrevOrder.length);
-        require(isBuyOrder.length == dstAmount.length);
-        require(isBuyOrder.length == srcAmount.length);
-        require(isBuyOrder.length == isAfterMyPrevOrder.length);
+        return submitEthToTokenOrderWHint(srcAmount, dstAmount, 0);
+    }
+
+    function submitEthToTokenOrderWHint(uint128 srcAmount, uint128 dstAmount, uint32 hintPrevOrder)
+        public
+        returns(bool)
+    {
+        address maker = msg.sender;
+        uint32 newId = getNewOrderId(makerOrdersEthToToken[maker]);
+
+        return addOrder(maker, true, newId, srcAmount, dstAmount, hintPrevOrder);
+    }
+
+    function addOrderBatch(bool[] isEthToToken, uint128[] srcAmount, uint128[] dstAmount,
+        uint32[] hintPrevOrder, bool[] isAfterPrevOrder)
+        public
+        returns(bool)
+    {
+        require(isEthToToken.length == hintPrevOrder.length);
+        require(isEthToToken.length == dstAmount.length);
+        require(isEthToToken.length == srcAmount.length);
+        require(isEthToToken.length == isAfterPrevOrder.length);
 
         address maker = msg.sender;
 
         uint32 prevId;
         uint32 newId = 0;
 
-        for (uint i = 0; i < isBuyOrder.length; ++i) {
-
-            prevId = isAfterMyPrevOrder[i] ? newId : hintPrevOrder[i];
-
-            newId = isBuyOrder[i] ? getNewOrderId(makerOrdersBuy[maker]) : getNewOrderId(makerOrdersSell[maker]);
-
-            require(addOrder(maker, isBuyOrder[i], newId, srcAmount[i], dstAmount[i], prevId));
+        for (uint i = 0; i < isEthToToken.length; ++i) {
+            prevId = isAfterPrevOrder[i] ? newId : hintPrevOrder[i];
+            newId = isEthToToken[i] ? getNewOrderId(makerOrdersEthToToken[maker]) : getNewOrderId(makerOrdersTokenToEth[maker]);
+            require(addOrder(maker, isEthToToken[i], newId, srcAmount[i], dstAmount[i], prevId));
         }
+
+        return true;
     }
 
     event OrderUpdated(
         address indexed maker,
-        bool isBuyOrder,
+        bool isEthToToken,
         uint orderId,
         uint128 srcAmount,
         uint128 dstAmount,
         bool updatedWithHint
     );
 
-
-    function updateSellTokenOrder(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount)
+    function updateTokenToEthOrder(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount)
         public
         returns(bool)
     {
-        updateSellTokenOrderWHint(orderId, newSrcAmount, newDstAmount, 0);
-        return true;
+        return updateTokenToEthOrderWHint(orderId, newSrcAmount, newDstAmount, 0);
     }
 
-
-    function updateSellTokenOrderWHint(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount, uint32 hintPrevOrder)
-        public
-        returns(bool)
-    {
-        address maker = msg.sender;
-
-        require(updateOrder(maker, false, orderId, newSrcAmount, newDstAmount, hintPrevOrder));
-        return true;
-    }
-
-
-    function updateBuyTokenOrder(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount)
-        public
-        returns(bool)
-    {
-        require(updateBuyTokenOrderWHint(orderId, newSrcAmount, newDstAmount, 0));
-        return true;
-    }
-
-    function updateBuyTokenOrderWHint(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount, uint32 hintPrevOrder)
+    function updateTokenToEthOrderWHint(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount, uint32 hintPrevOrder)
         public
         returns(bool)
     {
         address maker = msg.sender;
 
-        require(updateOrder(maker, true, orderId, newSrcAmount, newDstAmount, hintPrevOrder));
-        return true;
+        return updateOrder(maker, false, orderId, newSrcAmount, newDstAmount, hintPrevOrder);
     }
 
-    function updateOrderBatch(bool[] isBuyOrder, uint32[] orderId, uint128[] newSrcAmount,
+    function updateEthToTokenOrder(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount)
+        public
+        returns(bool)
+    {
+        return updateEthToTokenOrderWHint(orderId, newSrcAmount, newDstAmount, 0);
+    }
+
+    function updateEthToTokenOrderWHint(uint32 orderId, uint128 newSrcAmount, uint128 newDstAmount, uint32 hintPrevOrder)
+        public
+        returns(bool)
+    {
+        address maker = msg.sender;
+
+        return updateOrder(maker, true, orderId, newSrcAmount, newDstAmount, hintPrevOrder);
+    }
+
+    function updateOrderBatch(bool[] isEthToToken, uint32[] orderId, uint128[] newSrcAmount,
         uint128[] newDstAmount, uint32[] hintPrevOrder)
         public
         returns(bool)
     {
-        require(isBuyOrder.length == orderId.length);
-        require(isBuyOrder.length == newSrcAmount.length);
-        require(isBuyOrder.length == newDstAmount.length);
-        require(isBuyOrder.length == hintPrevOrder.length);
+        require(isEthToToken.length == orderId.length);
+        require(isEthToToken.length == newSrcAmount.length);
+        require(isEthToToken.length == newDstAmount.length);
+        require(isEthToToken.length == hintPrevOrder.length);
 
         address maker = msg.sender;
 
-        for (uint i = 0; i < isBuyOrder.length; ++i) {
-            require(updateOrder(maker, isBuyOrder[i], orderId[i], newSrcAmount[i], newDstAmount[i], hintPrevOrder[i]));
+        for (uint i = 0; i < isEthToToken.length; ++i) {
+            require(updateOrder(maker, isEthToToken[i], orderId[i], newSrcAmount[i], newDstAmount[i], hintPrevOrder[i]));
         }
 
         return true;
@@ -371,30 +361,34 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
     event KncFeeDeposited(address indexed maker, uint amount);
 
-    function depositKncFee(address maker, uint amount) public payable {
+    function depositKncFee(address maker, uint amount) public {
         require(maker != address(0));
         require(amount < MAX_QTY);
 
         require(kncToken.transferFrom(msg.sender, this, amount));
 
-        KncStakes memory amounts = makerKncStakes[maker];
+        KncStake memory amounts = makerKncStake[maker];
 
         amounts.freeKnc += uint128(amount);
-        makerKncStakes[maker] = amounts;
+        makerKncStake[maker] = amounts;
 
         KncFeeDeposited(maker, amount);
 
-        require(allocateOrders(
-            makerOrdersSell[maker], /* freeOrders */
-            sellList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
-            numOrdersToAllocate /* howMany */
-        ));
+        if (orderAllocationRequired(makerOrdersTokenToEth[maker], numOrdersToAllocate)) {
+            require(allocateOrders(
+                makerOrdersTokenToEth[maker], /* freeOrders */
+                tokenToEthList.allocateIds(uint32(numOrdersToAllocate)), /* firstAllocatedId */
+                numOrdersToAllocate /* howMany */
+            ));
+        }
 
-        require(allocateOrders(
-            makerOrdersBuy[maker], /* freeOrders */
-            buyList.allocateIds(numOrdersToAllocate), /* firstAllocatedId */
-            numOrdersToAllocate /* howMany */
-        ));
+        if (orderAllocationRequired(makerOrdersEthToToken[maker], numOrdersToAllocate)) {
+            require(allocateOrders(
+                makerOrdersEthToToken[maker], /* freeOrders */
+                ethToTokenList.allocateIds(uint32(numOrdersToAllocate)), /* firstAllocatedId */
+                numOrdersToAllocate /* howMany */
+            ));
+        }
     }
 
     function withdrawToken(uint amount) public {
@@ -424,38 +418,37 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     function withdrawKncFee(uint amount) public {
 
         address maker = msg.sender;
-        uint256 makerFreeAmount = uint256(makerKncStakes[maker].freeKnc);
+        uint256 makerFreeAmount = uint256(makerKncStake[maker].freeKnc);
 
         require(makerFreeAmount >= amount);
 
         require(uint256(uint128(amount)) == amount);
 
-        makerKncStakes[maker].freeKnc -= uint128(amount);
+        makerKncStake[maker].freeKnc -= uint128(amount);
 
         require(kncToken.transfer(maker, amount));
     }
 
-    function cancelSellOrder(uint32 orderId) public returns(bool) {
+    function cancelTokenToEthOrder(uint32 orderId) public returns(bool) {
         require(cancelOrder(false, orderId));
         return true;
     }
 
-    function cancelBuyOrder(uint32 orderId) public returns(bool) {
+    function cancelEthToTokenOrder(uint32 orderId) public returns(bool) {
         require(cancelOrder(true, orderId));
         return true;
     }
 
-    function addOrder(address maker, bool isBuyOrder, uint32 newId, uint128 srcAmount, uint128 dstAmount,
+    function addOrder(address maker, bool isEthToToken, uint32 newId, uint128 srcAmount, uint128 dstAmount,
         uint32 hintPrevOrder
     )
         internal
         returns(bool)
     {
-        require(validateOrder(maker, isBuyOrder, srcAmount, dstAmount));
-
-        OrdersInterface list = isBuyOrder ? buyList : sellList;
-
+        require(validateAddOrder(maker, isEthToToken, srcAmount, dstAmount));
         bool addedWithHint = false;
+
+        OrdersInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
 
         if (hintPrevOrder != 0) {
             addedWithHint = list.addAfterId(maker, newId, srcAmount, dstAmount, hintPrevOrder);
@@ -465,145 +458,139 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
             list.add(maker, newId, srcAmount, dstAmount);
         }
 
-        NewMakeOrder(maker, newId, isBuyOrder, srcAmount, dstAmount, addedWithHint);
+        NewMakeOrder(maker, newId, isEthToToken, srcAmount, dstAmount, addedWithHint);
 
         return true;
     }
 
-    event UpdatedWithHint(bool updateSuccess, uint updateType);
-    event UpdatedWithSearch(address maker);
-    function updateOrder(address maker, bool isBuyOrder, uint32 orderId, uint128 srcAmount,
-        uint128 dstAmount, uint32 hintPrevOrder)
+    function updateOrder(address maker, bool isEthToToken, uint32 orderId, uint128 newSrcAmount,
+        uint128 newDstAmount, uint32 hintPrevOrder)
         internal
         returns(bool)
     {
-        uint128 currDestAmount;
+        uint128 currDstAmount;
         uint128 currSrcAmount;
         address orderMaker;
 
-        OrdersInterface list = isBuyOrder ? buyList : sellList;
+        OrdersInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
 
-        (orderMaker, currSrcAmount, currDestAmount, , ) = list.getOrderDetails(orderId);
+        (orderMaker, currSrcAmount, currDstAmount, , ) = list.getOrderDetails(orderId);
         require(orderMaker == maker);
 
-        require(validateUpdateOrder(maker, isBuyOrder, currSrcAmount, currDestAmount, srcAmount, dstAmount));
+        if (!validateUpdateOrder(maker, isEthToToken, currSrcAmount, currDstAmount, newSrcAmount, newDstAmount)) return false;
 
         bool updatedWithHint = false;
 
         if (hintPrevOrder != 0) {
-//            uint updateType;
-            (updatedWithHint, ) = list.updateWithPositionHint(orderId, srcAmount, dstAmount, hintPrevOrder);
-            UpdatedWithHint(updatedWithHint, 1);
+            (updatedWithHint, ) = list.updateWithPositionHint(orderId, newSrcAmount, newDstAmount, hintPrevOrder);
         }
 
         if (!updatedWithHint) {
-            list.update(orderId, srcAmount, dstAmount);
-            UpdatedWithSearch(maker);
+            list.update(orderId, newSrcAmount, newDstAmount);
         }
 
-        OrderUpdated(maker, isBuyOrder, orderId, srcAmount, dstAmount, updatedWithHint);
+        OrderUpdated(maker, isEthToToken, orderId, newSrcAmount, newDstAmount, updatedWithHint);
 
         return true;
     }
 
-    event OrderCanceled(address indexed maker, bool isBuyOrder, uint32 orderId, uint128 srcAmount, uint dstAmount);
-    function cancelOrder(bool isBuyOrder, uint32 orderId) internal returns(bool) {
+    event OrderCanceled(address indexed maker, bool isEthToToken, uint32 orderId, uint128 srcAmount, uint dstAmount);
+    function cancelOrder(bool isEthToToken, uint32 orderId) internal returns(bool) {
 
         address maker = msg.sender;
-        OrdersInterface list = isBuyOrder ? buyList : sellList;
-
-        OrderData memory orderData;
-
-        (orderData.maker, orderData.nextId, orderData.isLastOrder, orderData.srcAmount, orderData.dstAmount) =
-            getOrderData(list, orderId);
+        OrdersInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
+        OrderData memory orderData = getOrderData(list, orderId);
 
         require(orderData.maker == maker);
 
-        int weiAmount = calcWei(isBuyOrder, orderData.srcAmount, orderData.dstAmount);
+        uint weiAmount = isEthToToken ? orderData.srcAmount : orderData.dstAmount;
 
-        require(handleOrderStakes(orderData.maker, uint(calcKncStake(weiAmount)), 0));
+        require(handleOrderStakes(orderData.maker, uint(calcKncStake(int(weiAmount))), 0));
 
-        removeOrder(list, maker, isBuyOrder, orderId);
+        require(removeOrder(list, maker, isEthToToken ? ETH_TOKEN_ADDRESS : token, orderId));
 
-        //funds go back to maker
-        makerFunds[maker][isBuyOrder ? token : ETH_TOKEN_ADDRESS] += orderData.dstAmount;
+        //funds go back to makers account
+        makerFunds[maker][isEthToToken ? ETH_TOKEN_ADDRESS : token] += orderData.srcAmount;
 
-        OrderCanceled(maker, isBuyOrder, orderId, orderData.srcAmount, orderData.dstAmount);
+        OrderCanceled(maker, isEthToToken, orderId, orderData.srcAmount, orderData.dstAmount);
 
         return true;
     }
 
-    function setFeeBurner(FeeBurnerSimpleIf burner) public {
+    event FeeBurnerContractSet(address currentBurner, address newBurner, address sender);
+    function setFeeBurner(FeeBurnerRateInterface burner) public {
         require(burner != address(0));
         require(feeBurnerResolverContract.getFeeBurnerAddress() == address(burner));
-
         require(kncToken.approve(feeBurnerContract, 0));
 
-        feeBurnerContract = burner;
+        FeeBurnerContractSet(feeBurnerContract, burner, msg.sender);
 
+        feeBurnerContract = burner;
         require(kncToken.approve(feeBurnerContract, (2**255)));
     }
 
-    function setStakePerEth(int newStakeBps) public {
+    event KncStakePerEthSet(uint currectStakeBps, uint newStakeBps, address feeBurnerContract, address sender);
+    function setStakePerEth(uint newStakeBps) public {
 
         //todo: 2? 3? what factor is good for us?
         uint factor = 3;
-        uint burnPerWeiBps = makersBurnFeeBps * feeBurnerContract.kncPerETHRate();
+        uint burnPerWeiBps = (makerBurnFeeBps * feeBurnerContract.ethKncRatePrecision()) / PRECISION;
 
         // old factor should be too small
-        require(uint(kncStakePerEtherBps) < factor * burnPerWeiBps);
+        require(kncStakePerEtherBps < factor * burnPerWeiBps);
 
         // new value should be high enough
-        require(uint(newStakeBps) > factor * burnPerWeiBps);
+        require(newStakeBps > factor * burnPerWeiBps);
 
         // but not too high...
-        require(uint(newStakeBps) > (factor + 1) * burnPerWeiBps);
+        require(newStakeBps > (factor + 1) * burnPerWeiBps);
 
+        KncStakePerEthSet(kncStakePerEtherBps, newStakeBps, feeBurnerContract, msg.sender);
         // Ta daaa
         kncStakePerEtherBps = newStakeBps;
     }
 
-    function getAddOrderHintSellToken(uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
+    function getAddOrderHintTokenToEth(uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
         require(srcAmount >= minOrderMakeValueWei);
-        return sellList.findPrevOrderId(srcAmount, dstAmount);
+        return tokenToEthList.findPrevOrderId(srcAmount, dstAmount);
     }
 
-    function getAddOrderHintBuyToken(uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
+    function getAddOrderHintEthToToken(uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
         require(dstAmount >= minOrderMakeValueWei);
-        return buyList.findPrevOrderId(srcAmount, dstAmount);
+        return ethToTokenList.findPrevOrderId(srcAmount, dstAmount);
     }
 
-    function getUpdateOrderHintSellToken(uint32 orderId, uint128 srcAmount, uint128 dstAmount)
+    function getUpdateOrderHintTokenToEth(uint32 orderId, uint128 srcAmount, uint128 dstAmount)
         public
         view
         returns (uint32)
     {
         require(srcAmount >= minOrderMakeValueWei);
-        uint32 prevId = sellList.findPrevOrderId(srcAmount, dstAmount);
+        uint32 prevId = tokenToEthList.findPrevOrderId(srcAmount, dstAmount);
 
         if (prevId == orderId) {
-            (,,, prevId,) = sellList.getOrderDetails(orderId);
+            (,,, prevId,) = tokenToEthList.getOrderDetails(orderId);
         }
 
         return prevId;
     }
 
-    function getUpdateOrderHintBuyToken(uint32 orderId, uint128 srcAmount, uint128 dstAmount)
+    function getUpdateOrderHintEthToToken(uint32 orderId, uint128 srcAmount, uint128 dstAmount)
         public
         view
         returns (uint32)
     {
         require(dstAmount >= minOrderMakeValueWei);
-        uint32 prevId = buyList.findPrevOrderId(srcAmount, dstAmount);
+        uint32 prevId = ethToTokenList.findPrevOrderId(srcAmount, dstAmount);
 
         if (prevId == orderId) {
-            (,,, prevId,) = buyList.getOrderDetails(orderId);
+            (,,, prevId,) = ethToTokenList.getOrderDetails(orderId);
         }
 
         return prevId;
     }
 
-    function getSellTokenOrder(uint32 orderId) public view
+    function getTokenToEthOrder(uint32 orderId) public view
         returns (
             address _maker,
             uint128 _srcAmount,
@@ -612,10 +599,10 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
             uint32 _nextId
         )
     {
-        return sellList.getOrderDetails(orderId);
+        return tokenToEthList.getOrderDetails(orderId);
     }
 
-    function getBuyTokenOrder(uint32 orderId) public view
+    function getEthToTokenOrder(uint32 orderId) public view
         returns (
             address _maker,
             uint128 _srcAmount,
@@ -624,22 +611,24 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
             uint32 _nextId
         )
     {
-        return buyList.getOrderDetails(orderId);
+        return ethToTokenList.getOrderDetails(orderId);
     }
 
-    function getBuyTokenOrderList() public view returns(uint32[] orderList) {
+    function getEthToTokenOrderList() public view returns(uint32[] orderList) {
 
-        OrdersInterface list = buyList;
+        OrdersInterface list = ethToTokenList;
         return getList(list);
     }
 
-    function getSellTokenOrderList() public view returns(uint32[] orderList) {
+    function getTokenToEthOrderList() public view returns(uint32[] orderList) {
 
-        OrdersInterface list = sellList;
+        OrdersInterface list = tokenToEthList;
         return getList(list);
     }
 
     function getList(OrdersInterface list) internal view returns(uint32[] memory orderList) {
+        OrderData memory orderData;
+
         uint32 orderId;
         bool isEmpty;
 
@@ -647,79 +636,67 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         if (isEmpty) return(new uint32[](0));
 
         uint numOrders = 0;
-        bool isLast = false;
 
-        while (!isLast) {
-            (orderId, isLast) = list.getNextOrder(orderId);
+        for( ; !orderData.isLastOrder; orderId = orderData.nextId) {
+            orderData = getOrderData(list, orderId);
             numOrders++;
         }
 
         orderList = new uint32[](numOrders);
 
-        (orderId, isEmpty) = list.getFirstOrder();
+        (orderId, orderData.isLastOrder) = list.getFirstOrder();
 
         for (uint i = 0; i < numOrders; i++) {
             orderList[i] = orderId;
-            (orderId, isLast) = list.getNextOrder(orderId);
+            orderData = getOrderData(list, orderId);
+            orderId = orderData.nextId;
         }
     }
 
-    function bindOrderFunds(address maker, bool isBuyOrder, int256 dstAmount)
+    ///@param maker is the maker of this order
+    ///@param isEthToToken which order type the maker is updating / adding
+    ///@param srcAmount is the orders src amount (token or ETH) could be negative if funds are released.
+    function bindOrderFunds(address maker, bool isEthToToken, int256 srcAmount)
         internal
         returns(bool)
     {
-        address myToken = isBuyOrder ? token : ETH_TOKEN_ADDRESS;
+        address fundsAddress = isEthToToken ? ETH_TOKEN_ADDRESS : token;
 
-        if (dstAmount < 0) {
-            makerFunds[maker][myToken] += uint256(-dstAmount);
+        if (srcAmount < 0) {
+            makerFunds[maker][fundsAddress] += uint256(-srcAmount);
         } else {
-            require(makerFunds[maker][myToken] >= uint256(dstAmount));
-            makerFunds[maker][myToken] -= uint256(dstAmount);
+            require(makerFunds[maker][fundsAddress] >= uint256(srcAmount));
+            makerFunds[maker][fundsAddress] -= uint256(srcAmount);
         }
 
         return true;
     }
 
     function calcKncStake(int weiAmount) public view returns(int) {
-        return(weiAmount * kncStakePerEtherBps / 1000);
+        return(weiAmount * int(kncStakePerEtherBps) / 1000);
     }
 
-    function calcBurnAmount(int weiAmount) public view returns(uint) {
-        return(uint(weiAmount) * makersBurnFeeBps * feeBurnerContract.kncPerETHRate() / 1000);
+    function calcBurnAmount(uint weiAmount) public view returns(uint) {
+        return(weiAmount * makerBurnFeeBps * feeBurnerContract.ethKncRatePrecision() / (1000 * PRECISION));
     }
 
     function makerUnusedKNC(address maker) public view returns (uint) {
-        return (uint(makerKncStakes[maker].freeKnc));
+        return (uint(makerKncStake[maker].freeKnc));
     }
 
     function makerStakedKNC(address maker) public view returns (uint) {
-        return (uint(makerKncStakes[maker].kncOnStake));
+        return (uint(makerKncStake[maker].kncOnStake));
     }
 
-    // TODO: is this call required? Maybe extract isLastOrder funtion from it...
-    function getOrderData(OrdersInterface list, uint32 orderId) internal view
-        returns (
-            address maker,
-            uint32 nextId,
-            bool isLastOrder,
-            uint128 srcAmount,
-            uint128 dstAmount
-        )
+    function getOrderData(OrdersInterface list, uint32 orderId) internal view returns (OrderData data)
     {
-        (maker, srcAmount, dstAmount, , nextId) = list.getOrderDetails(orderId);
-
-        return (
-            maker,
-            nextId,
-            nextId == orderListTailId, /* isLastOrder */
-            srcAmount,
-            dstAmount
-        );
+        (data.maker, data.srcAmount, data.dstAmount, , data.nextId) = list.getOrderDetails(orderId);
+        data.isLastOrder = (data.nextId == orderListTailId);
     }
 
     function bindOrderStakes(address maker, int stakeAmount) internal returns(bool) {
 
-        KncStakes storage amounts = makerKncStakes[maker];
+        KncStake storage amounts = makerKncStake[maker];
 
         require(amounts.freeKnc >= stakeAmount);
 
@@ -735,46 +712,48 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return true;
     }
 
-    //@dev if burnAmount is 0 we only release stakes.
-    function handleOrderStakes(address maker, uint releaseAmount, uint burnAmount) internal returns(bool) {
-        require(releaseAmount > burnAmount);
+    ///@dev if burnAmount is 0 we only release stakes.
+    ///@dev if burnAmount == stakedAmount. all staked amount will be burned. so no knc returned to maker
+    function handleOrderStakes(address maker, uint stakedAmount, uint burnAmount) internal returns(bool) {
 
-        KncStakes storage amounts = makerKncStakes[maker];
+        KncStake storage amounts = makerKncStake[maker];
 
-        require(amounts.kncOnStake >= uint128(releaseAmount));
+        //if knc rate had a big change. Previous stakes might not be enough. but can still take order.
+        if (amounts.kncOnStake < uint128(stakedAmount)) stakedAmount = amounts.kncOnStake;
+        if (burnAmount > stakedAmount) burnAmount = stakedAmount;
 
-        amounts.kncOnStake -= uint128(releaseAmount);
-        amounts.freeKnc += uint128(releaseAmount - burnAmount);
+        amounts.kncOnStake -= uint128(stakedAmount);
+        amounts.freeKnc += uint128(stakedAmount - burnAmount);
 
         return true;
     }
 
     ///@dev funds are valid only when required knc amount can be staked for this order.
-    function validateOrder(address maker, bool isEthToToken, uint128 srcAmount, uint128 dstAmount)
+    function validateAddOrder(address maker, bool isEthToToken, uint128 srcAmount, uint128 dstAmount)
         internal returns(bool)
     {
-        require(bindOrderFunds(maker, isEthToToken, int256(dstAmount)));
+        require(bindOrderFunds(maker, isEthToToken, int256(srcAmount)));
 
-        int weiAmount = calcWei(isEthToToken, srcAmount, dstAmount);
+        uint weiAmount = isEthToToken ? srcAmount : dstAmount;
 
         require(uint(weiAmount) >= minOrderMakeValueWei);
-        require(bindOrderStakes(maker, calcKncStake(weiAmount)));
+        require(bindOrderStakes(maker, calcKncStake(int(weiAmount))));
 
         return true;
     }
 
     ///@dev funds are valid only when required knc amount can be staked for this order.
-    function validateUpdateOrder(address maker, bool isBuyOrder, uint128 prevSrcAmount, uint128 prevDstAmount,
+    function validateUpdateOrder(address maker, bool isEthToToken, uint128 prevSrcAmount, uint128 prevDstAmount,
         uint128 newSrcAmount, uint128 newDstAmount)
         internal
         returns(bool)
     {
-        uint weiAmount = isBuyOrder ? newSrcAmount : newDstAmount;
-        int weiDiff = isBuyOrder ? (int(newSrcAmount) - int(prevSrcAmount)) : (int(newDstAmount) - int(prevDstAmount));
+        uint weiAmount = isEthToToken ? newSrcAmount : newDstAmount;
+        int weiDiff = isEthToToken ? (int(newSrcAmount) - int(prevSrcAmount)) : (int(newDstAmount) - int(prevDstAmount));
 
         require(weiAmount >= minOrderMakeValueWei);
 
-        require(bindOrderFunds(maker, isBuyOrder, int256(int256(newDstAmount) - int256(prevDstAmount))));
+        require(bindOrderFunds(maker, isEthToToken, int(int(newSrcAmount) - int(prevSrcAmount))));
 
         require(bindOrderStakes(maker, calcKncStake(weiDiff)));
 
@@ -784,93 +763,94 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     function takeFullOrder(
         address maker,
         uint32 orderId,
-        ERC20 src,
-        ERC20 dest,
-        uint128 orderSrcAmount,
-        uint128 orderDstAmount
+        ERC20 userSrc,
+        ERC20 userDst,
+        uint128 userSrcAmount,
+        uint128 userDstAmount
     )
         internal
         returns (bool)
     {
-        OrdersInterface list = (src == ETH_TOKEN_ADDRESS) ? buyList : sellList;
-        dest;
+        OrdersInterface list = (userSrc == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
 
-        require(removeOrder(list, maker, (src == ETH_TOKEN_ADDRESS), orderId));
+        //userDst == maker source
+        require(removeOrder(list, maker, userDst, orderId));
 
-        return takeOrder(maker, (src == ETH_TOKEN_ADDRESS), orderSrcAmount, orderDstAmount);
+        return takeOrder(maker, userSrc, userSrcAmount, userDstAmount, 0);
     }
 
     function takePartialOrder(
         address maker,
         uint32 orderId,
-        ERC20 src,
-        ERC20 dest,
-        uint128 srcAmount,
-        uint128 partialDstAmount,
+        ERC20 userSrc,
+        ERC20 userDst,
+        uint128 userPartialSrcAmount,
+        uint128 userTakeDstAmount,
         uint128 orderSrcAmount,
         uint128 orderDstAmount
     )
         internal
         returns(bool)
     {
-        require(srcAmount < orderSrcAmount);
-        require(partialDstAmount < orderDstAmount);
+        require(userPartialSrcAmount < orderDstAmount);
+        require(userTakeDstAmount < orderSrcAmount);
 
-        orderSrcAmount -= srcAmount;
-        orderDstAmount -= partialDstAmount;
+        orderSrcAmount -= userTakeDstAmount;
+        orderDstAmount -= userPartialSrcAmount;
 
-        OrdersInterface list = (src == ETH_TOKEN_ADDRESS) ? buyList : sellList;
-        uint remainingWeiValue = (src == ETH_TOKEN_ADDRESS) ? orderSrcAmount : orderDstAmount;
+        OrdersInterface list = (userSrc == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
+        uint remainingWeiValue = (userSrc == ETH_TOKEN_ADDRESS) ? orderDstAmount : orderSrcAmount;
 
         if (remainingWeiValue < minOrderValueWei) {
             // remaining order amount too small. remove order and add remaining funds to free funds
-            makerFunds[maker][dest] += orderDstAmount;
-            handleOrderStakes(maker, remainingWeiValue, 0);
-            removeOrder(list, maker, (src == ETH_TOKEN_ADDRESS), orderId);
+            makerFunds[maker][userDst] += orderSrcAmount;
+
+            //for remove order we give makerSrc == userDst
+            require(removeOrder(list, maker, userDst, orderId));
         } else {
-            // update order values in storage
-            uint128 subDst = list.subSrcAndDstAmounts(orderId, srcAmount);
-            require(subDst == partialDstAmount);
+            // update order values, taken order is always first order
+            list.updateWithPositionHint(orderId, orderSrcAmount, orderDstAmount, orderListHeadId);
         }
 
-        return(takeOrder(maker, (src == ETH_TOKEN_ADDRESS), srcAmount, partialDstAmount));
+        //stakes are returned for unused wei value
+        return(takeOrder(maker, userSrc, userPartialSrcAmount, userTakeDstAmount, remainingWeiValue));
     }
 
     function takeOrder(
         address maker,
-        bool isBuyOrder,
-        uint srcAmount,
-        uint dstAmount
+        ERC20 userSrc,
+        uint userSrcAmount,
+        uint userDstAmount,
+        uint releasedWeiValue
     )
         internal
         returns(bool)
     {
-        int weiAmount = calcWei(isBuyOrder, srcAmount, dstAmount);
+        uint weiAmount = userSrc == (ETH_TOKEN_ADDRESS) ? userSrcAmount : userDstAmount;
 
-        //tokens already collected. just update maker balance
-        makerFunds[maker][isBuyOrder ? ETH_TOKEN_ADDRESS : token] += srcAmount;
+        //token / eth already collected. just update maker balance
+        makerFunds[maker][userSrc] += userSrcAmount;
 
-        // send dest tokens in one batch. not here
+        // send dst tokens in one batch. not here
 
-        //handle knc stakes and fee
-        handleOrderStakes(maker, uint(calcKncStake(weiAmount)), calcBurnAmount(weiAmount));
-
-        return true;
+        //handle knc stakes and fee. releasedWeiValue was released and not traded.
+        return handleOrderStakes(maker, uint(calcKncStake(int(weiAmount + releasedWeiValue))),
+            calcBurnAmount(weiAmount));
     }
 
-    function removeOrder(OrdersInterface list, address maker, bool isBuyOrder, uint32 orderId) internal returns(bool) {
-        list.removeById(orderId);
-        OrdersData storage orders = isBuyOrder ? makerOrdersBuy[maker] : makerOrdersSell[maker];
+    function removeOrder(
+        OrdersInterface list,
+        address maker,
+        ERC20 makerSrc,
+        uint32 orderId
+    )
+        internal returns(bool)
+    {
+        require(list.removeById(orderId));
+        OrdersData storage orders = (makerSrc == ETH_TOKEN_ADDRESS) ?
+            makerOrdersEthToToken[maker] : makerOrdersTokenToEth[maker];
         releaseOrderId(orders, orderId);
 
         return true;
-    }
-
-    function calcWei(bool isBuyOrder, uint srcAmount, uint dstAmount) internal pure returns(int) {
-
-        int weiAmount = isBuyOrder ? int(srcAmount) : int(dstAmount);
-
-        require(weiAmount > 0);
-        return weiAmount;
     }
 }

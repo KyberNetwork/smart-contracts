@@ -41,7 +41,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
     //@dev when srcQty too small or 0 the expected rate will be calculated without quantity,
     // will enable rate reference before committing to any quantity
     //@dev when srcQty too small (no actual dest qty) slippage rate will be 0.
-    function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
+    function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty, bool usePermissionless)
         public view
         returns (uint expectedRate, uint slippageRate)
     {
@@ -54,11 +54,16 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
         uint bestReserve;
         uint worstCaseSlippageRate;
 
-        (bestReserve, expectedRate) = kyberNetwork.findBestRate(src, dest, srcQty);
-        (bestReserve, slippageRate) = kyberNetwork.findBestRate(src, dest, (srcQty * quantityFactor));
+        if (usePermissionless) {
+            (bestReserve, expectedRate) = kyberNetwork.findBestRate(src, dest, srcQty);
+            (bestReserve, slippageRate) = kyberNetwork.findBestRate(src, dest, (srcQty * quantityFactor));
+        } else {
+            (bestReserve, expectedRate) = kyberNetwork.findBestRateOnlyPermissioned(src, dest, srcQty);
+            (bestReserve, slippageRate) = kyberNetwork.findBestRateOnlyPermissioned(src, dest, (srcQty * quantityFactor));
+        }
 
         if (expectedRate == 0) {
-            expectedRate = expectedRateSmallQty(src, dest, srcQty);
+            expectedRate = expectedRateSmallQty(src, dest, srcQty, usePermissionless);
         }
 
         require(expectedRate <= MAX_RATE);
@@ -73,15 +78,15 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
 
     //@dev for small src quantities dest qty might be 0, then returned rate is zero.
     //@dev for backward compatibility we would like to return non zero rate (correct one) for small src qty
-    function expectedRateSmallQty(ERC20 src, ERC20 dest, uint srcQty) internal view returns(uint) {
+    function expectedRateSmallQty(ERC20 src, ERC20 dest, uint srcQty, bool usePermissionless) internal view returns(uint) {
         address reserve;
         uint rateSrcToEth;
         uint rateEthToDest;
-        (reserve, rateSrcToEth) = kyberNetwork.searchBestRate(src, ETH_TOKEN_ADDRESS, srcQty);
+        (reserve, rateSrcToEth) = kyberNetwork.searchBestRate(src, ETH_TOKEN_ADDRESS, srcQty, usePermissionless);
 
         uint ethQty = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcQty, rateSrcToEth);
 
-        (reserve, rateEthToDest) = kyberNetwork.searchBestRate(ETH_TOKEN_ADDRESS, dest, ethQty);
+        (reserve, rateEthToDest) = kyberNetwork.searchBestRate(ETH_TOKEN_ADDRESS, dest, ethQty, usePermissionless);
         return rateSrcToEth * rateEthToDest / PRECISION;
     }
 }

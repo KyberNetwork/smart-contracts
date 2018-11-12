@@ -68,11 +68,12 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
     )
         public
         onlyAdmin
+        returns(bool)
     {
         require(orderId != 0 && orderId != HEAD_ID && orderId != TAIL_ID);
 
         uint32 prevId = findPrevOrderId(srcAmount, dstAmount);
-        addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
+        return addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
     // Returns false if provided with bad hint.
@@ -95,22 +96,24 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         return true;
     }
 
-    function removeById(uint32 orderId) public onlyAdmin {
+    function removeById(uint32 orderId) public onlyAdmin returns (bool) {
         verifyCanRemoveOrderById(orderId);
 
         // Disconnect order from list
         Order storage order = orders[orderId];
         orders[order.prevId].nextId = order.nextId;
         orders[order.nextId].prevId = order.prevId;
+        return true;
     }
 
     function update(uint32 orderId, uint128 srcAmount, uint128 dstAmount)
         public
         onlyAdmin
+        returns(bool)
     {
         address maker = orders[orderId].maker;
         removeById(orderId);
-        add(maker, orderId, srcAmount, dstAmount);
+        return add(maker, orderId, srcAmount, dstAmount);
     }
 
     // Returns false if provided with a bad hint.
@@ -125,6 +128,10 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         returns (bool, uint)
     {
         require(orderId != HEAD_ID && orderId != TAIL_ID);
+
+        // Normal orders usually cannot serve as their own previous order.
+        // For further discussion see Heinlein's '—All You Zombies—'.
+        require(orderId != prevId);
 
         uint32 nextId;
 
@@ -142,7 +149,7 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
                 // Let's move the order to the hinted position.
                 address maker = orders[orderId].maker;
                 removeById(orderId);
-                addAfterId(maker, orderId, srcAmount, dstAmount, prevId);
+                addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
                 return (true, UPDATE_MOVE_ORDER);
             }
         }
@@ -161,12 +168,28 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         return TAIL_ID;
     }
 
-    function calculateOrderSortKey(uint128 srcAmount, uint128 dstAmount)
+    function getHeadId() public view returns(uint32) {
+        return HEAD_ID;
+    }
+
+    function compareOrders(
+        uint128 srcAmount1,
+        uint128 dstAmount1,
+        uint128 srcAmount2,
+        uint128 dstAmount2
+    )
         public
         pure
-        returns(uint)
+        returns(int)
     {
-        return dstAmount * PRECISION / srcAmount;
+        uint256 s1 = srcAmount1;
+        uint256 d1 = dstAmount1;
+        uint256 s2 = srcAmount2;
+        uint256 d2 = dstAmount2;
+
+        if (s2 * d1 < s1 * d2) return -1;
+        if (s2 * d1 > s1 * d2) return 1;
+        return 0;
     }
 
     function findPrevOrderId(uint128 srcAmount, uint128 dstAmount)
@@ -174,20 +197,31 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         view
         returns(uint32)
     {
-        uint newOrderKey = calculateOrderSortKey(srcAmount, dstAmount);
-
-        // TODO: eliminate while loop.
         uint32 currId = HEAD_ID;
         Order storage curr = orders[currId];
+
         while (curr.nextId != TAIL_ID) {
             currId = curr.nextId;
             curr = orders[currId];
-            uint key = calculateOrderSortKey(curr.srcAmount, curr.dstAmount);
-            if (newOrderKey > key) {
+            int cmp = compareOrders(
+                srcAmount,
+                dstAmount,
+                curr.srcAmount,
+                curr.dstAmount
+            );
+
+            if (cmp < 0) {
                 return curr.prevId;
             }
         }
         return currId;
+    }
+
+    function getFirstOrder() public view returns(uint32 orderId, bool isEmpty) {
+        return (
+            orders[HEAD_ID].nextId,
+            orders[HEAD_ID].nextId == TAIL_ID
+        );
     }
 
     function addAfterValidId(
@@ -198,6 +232,7 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         uint32 prevId
     )
         private
+        returns(bool)
     {
         Order storage prevOrder = orders[prevId];
 
@@ -216,6 +251,8 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
 
         // Update previous order to point to added order
         prevOrder.nextId = orderId;
+
+        return true;
     }
 
     function verifyCanRemoveOrderById(uint32 orderId) private view {
@@ -239,67 +276,37 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
     {
         if (prevId == TAIL_ID || nextId == HEAD_ID) return false;
 
-        // TODO: check gas cost with this or memory or orders[prevId].
         Order storage prev = orders[prevId];
 
         // Make sure prev order is initialised.
         if (prev.prevId == 0 || prev.nextId == 0) return false;
 
-        uint newKey = calculateOrderSortKey(srcAmount, dstAmount);
-
+        int cmp;
         // Make sure that the new order should be after the provided prevId.
         if (prevId != HEAD_ID) {
-            uint prevKey = calculateOrderSortKey(
+            cmp = compareOrders(
+                srcAmount,
+                dstAmount,
                 prev.srcAmount,
                 prev.dstAmount
             );
-            if (prevKey < newKey) return false;
+            // new order is better than prev
+            if (cmp < 0) return false;
         }
 
-        // Make sure that the new order should be before provided prevId's next
-        // order.
+        // Make sure that the new order should be before provided prevId's next order.
         if (nextId != TAIL_ID) {
-            // TODO: check gas cost with this or memory or orders[prevId].
             Order storage next = orders[nextId];
-            uint nextKey = calculateOrderSortKey(
+            cmp = compareOrders(
+                srcAmount,
+                dstAmount,
                 next.srcAmount,
-                next.dstAmount);
-            if (newKey < nextKey) return false;
+                next.dstAmount
+            );
+            // new order is worse than next
+            if (cmp > 0) return false;
         }
 
         return true;
-    }
-
-    // XXX Convenience functions for Ilan
-    // ----------------------------------
-    function subSrcAndDstAmounts(uint32 orderId, uint128 subFromSrc)
-        public
-        onlyAdmin
-        returns (uint128 _subDst)
-    {
-        //if buy with x src. how much dest would it be
-        uint128 subDst = subFromSrc * orders[orderId].dstAmount / orders[orderId].srcAmount;
-
-        orders[orderId].srcAmount -= subFromSrc;
-        orders[orderId].dstAmount -= subDst;
-        return(subDst);
-    }
-
-    // TODO: move to PermissionLessReserve
-    function getFirstOrder() public view returns(uint32 orderId, bool isEmpty) {
-        return (
-            orders[HEAD_ID].nextId,
-            orders[HEAD_ID].nextId == TAIL_ID
-        );
-    }
-
-    // TODO: move to PermissionLessReserve
-    function getNextOrder(uint32 orderId)
-        public
-        view
-        returns(uint32, bool isLast)
-    {
-        isLast = orders[orderId].nextId == TAIL_ID;
-        return(orders[orderId].nextId, isLast);
     }
 }

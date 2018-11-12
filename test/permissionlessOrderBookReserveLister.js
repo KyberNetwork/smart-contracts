@@ -21,7 +21,7 @@ require("chai")
 //////////////////
 const precisionUnits = (new BigNumber(10).pow(18));
 const gasPrice = (new BigNumber(10).pow(9).mul(50));
-const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
 let withDrawAddress;
 
@@ -46,6 +46,7 @@ let kgtToken;
 
 const negligibleRateDiff = 11;
 
+const ethToKncRatePrecision = precisionUnits.mul(550);
 //addresses
 let admin;
 let operator;
@@ -82,7 +83,7 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
         kncAddress = KNCToken.address;
 
         network = await KyberNetwork.new(admin);
-        feeBurner = await FeeBurner.new(admin, kncAddress, network.address);
+        feeBurner = await FeeBurner.new(admin, kncAddress, network.address, ethToKncRatePrecision);
 
         feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
         ordersFactory = await OrdersFactory.new();
@@ -234,48 +235,52 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
     })
 
     it("test reserve maker add a few sell orders. user takes orders. see taken orders are removed as expected.", async function () {
-        let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
-        let orderDstWei = new BigNumber(2 * 10 ** 18);
-
-        let amountKnc = 600 * 10 ** 18;
-        let amountEth = (new BigNumber(6 * 10 ** 18)).add(600);
-
+        let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+        let kncTweiDepositAmount = 600 * 10 ** 18;
+        let ethWeiDepositAmount = (new BigNumber(6 * 10 ** 18)).add(30000);
         let res = await OrderBookReserve.at(await reserveLister.reserves(tokenAdd));
 
-        await makerDeposit(res, maker1, amountEth, 0, amountKnc.valueOf(), KNCToken);
+        await makerDeposit(res, maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount, KNCToken);
 
-        // first getConversionRate should return 0
-        let rate = await res.getConversionRate(token.address, ethAddress, 10 ** 18, 0);
+        let srcAmountWei = new BigNumber(2 * 10 ** 18);
+        let orderDstTwei = new BigNumber(9 * 10 ** 18);
+
+        // add order
+        let rc = await res.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+        rc = await res.submitEthToTokenOrder(srcAmountWei, orderDstTwei.add(1000), {from: maker1});
+        rc = await res.submitEthToTokenOrder(srcAmountWei, orderDstTwei.add(2000), {from: maker1});
+
+                //take all orders
+        //  function trade(ERC20 srcToken, uint srcAmount, ERC20 destToken, address destAddress, uint conversionRate, bool validate)
+
+        let balance = await res.makerFunds(maker1, ethAddress);
+        assert.equal(balance.valueOf(), 30000);
+        let makerInitialTokenBalance = await res.makerFunds(maker1, tokenAdd);
+
+        let userWeiBefore = new BigNumber(await Helper.getBalancePromise(user1));
+
+        let EthOrderValue = srcAmountWei;
+        let totalPayValue = orderDstTwei.mul(3).add(3000);
+
+        let userTokBalanceBefore = await token.balanceOf(user1);
+
+        await token.transfer(user1, totalPayValue);
+        await token.approve(reserve.address, totalPayValue, {from: user1})
+        rc = await reserve.trade(tokenAdd, totalPayValue, ethAddress, user1, 300, false, {from:user1});
+
+        //check maker balance
+        balance = await reserve.makerFunds(maker1, tokenAdd);
+        assert.equal(balance.valueOf(), totalPayValue.add(makerInitialTokenBalance).valueOf());
+
+        //user1 balance
+        let userBalanceAfter = await token.balanceOf(user1);
+        assert.equal(userBalanceAfter.valueOf(), userTokBalanceBefore.valueOf());
+
+        rate = await reserve.getConversionRate(token.address, ethAddress, 10 ** 18, 0);
         assert.equal(rate.valueOf(), 0);
 
-        //now add order
-        //////////////
-        let rc;
-        rc = await res.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
-        rc = await res.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei.add(400), {from: maker1});
-        rc = await res.submitSellTokenOrder(orderSrcAmountTwei, orderDstWei.add(200), {from: maker1});
-//        log(rc.logs[0].args)
-
-        let orderList = await res.getSellTokenOrderList();
-        assert.equal(orderList.length, 3);
-
-        //tokens to user
-        let totalPayValue = orderSrcAmountTwei.mul(3);
-        await token.transfer(totalPayValue, user1);
-        await token.approve(res.address, totalPayValue);
-
-        let userInitialBalance = await await Helper.getBalancePromise(user1);
-        //trade
-        rc = await res.trade(tokenAdd, totalPayValue, ethAddress, user1, 300, false);
-        log("take 3 sell orders gas: " + rc.receipt.gasUsed);
-
-        orderList = await res.getSellTokenOrderList();
-        assert.equal(orderList.length, 0);
-
-        let userBalanceAfter = await Helper.getBalancePromise(user1);
-        let expectedBalance = userInitialBalance.add(amountEth);
-
-        assert.equal(userBalanceAfter.valueOf(), expectedBalance.valueOf());
+        list = await reserve.getEthToTokenOrderList();
+        assert.equal(list.length, 0);
     });
 });
 
@@ -306,7 +311,8 @@ contract('PermissionlessOrderBookReserveLister_feeBurner_tests', async (accounts
         const feeBurner = await FeeBurner.new(
             admin,
             kncToken.address,
-            kyberNetwork.address
+            kyberNetwork.address,
+            ethToKncRatePrecision
         );
         const feeBurnerResolver = await FeeBurnerResolver.new(
             feeBurner.address
@@ -352,7 +358,7 @@ contract('PermissionlessOrderBookReserveLister_feeBurner_tests', async (accounts
         const reserve = await OrderBookReserve.at(
             await lister.reserves(someToken.address)
         );
-        let amountTokenInWei = new BigNumber(500 * 10 ** 18); //500 tokens
+        let amountTokenInWei = new BigNumber(0 * 10 ** 18);
         let amountKncInWei = new BigNumber(600 * 10 ** 18);
         let amountEthInWei = new BigNumber(2 * 10 ** 18);
         await makerDeposit(
@@ -364,19 +370,27 @@ contract('PermissionlessOrderBookReserveLister_feeBurner_tests', async (accounts
             kncToken
         );
 
-        await reserve.submitBuyTokenOrder(
-            2 * 10 ** 18 /* srcAmount */,
-            100 * 10 ** 18 /* dstAmount */,
+        const tokenTweiToSwap = new BigNumber(12 * 10 ** 18);
+        const ethWeiSrcAmount = new BigNumber(2 * 10 ** 18);
+        await reserve.submitEthToTokenOrder(
+            ethWeiSrcAmount /* srcAmount */,
+            tokenTweiToSwap /* dstAmount */,
             {from: maker}
         );
 
-        // swap ETH to someToken
-        const ethWeiToSwap = 0.5 * 10 ** 18;
-        await kyberProxy.swapEtherToToken(
+        // swap someToken to ETH
+        await someToken.transfer(taker, tokenTweiToSwap);
+        await someToken.approve(kyberProxy.address, tokenTweiToSwap, {from: taker});
+        let tradeLog = await kyberProxy.swapTokenToEther(
             someToken.address /* token */,
+            tokenTweiToSwap /* src amount*/,
             1 /* minConversionRate */,
-            {from: taker, value: ethWeiToSwap}
+            {from: taker}
         );
+
+        let actualWeiValue = new BigNumber(tradeLog.logs[0].args.actualDestAmount);
+        assert(actualWeiValue.valueOf() < ethWeiSrcAmount.valueOf())
+        assert(actualWeiValue.valueOf() > ethWeiSrcAmount.sub(100).valueOf())
 
         // burn fees
         const result = await feeBurner.burnReserveFees(reserve.address);
@@ -386,10 +400,15 @@ contract('PermissionlessOrderBookReserveLister_feeBurner_tests', async (accounts
         burnAssignedFeesEvent.event.should.equal('BurnAssignedFees');
         burnAssignedFeesEvent.args.reserve.should.equal(reserve.address);
 
-        // (ethWeiToSwap * (300: kncPerETHRate) * (25: BURN_FEE_BPS) / 10000) - 1
-        const expectedFeesInKncWei = BigNumber("374999999999999999");
+        const ethKncRatePrecision = await feeBurner.ethKncRatePrecision();
+        const burnReserveFeeBps = await lister.ORDER_BOOK_BURN_FEE_BPS();
+
+        // (ethWeiToSwap * (ethKncRatePrecision) * (25: BURN_FEE_BPS) / 10000) - 1
+        const kncAmount = actualWeiValue.mul(ethKncRatePrecision).div(precisionUnits).floor();
+        const expectedBurnFeesInKncWei = kncAmount.mul(burnReserveFeeBps).div(10000).floor().sub(1);
+
         burnAssignedFeesEvent.args.quantity.should.be.bignumber.equal(
-            expectedFeesInKncWei
+            expectedBurnFeesInKncWei
         );
     });
 });

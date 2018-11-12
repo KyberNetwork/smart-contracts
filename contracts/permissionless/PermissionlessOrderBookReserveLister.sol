@@ -29,7 +29,7 @@ interface InternalNetworkInterface {
 contract PermissionlessOrderBookReserveLister {
     InternalNetworkInterface public kyberNetworkContract;
     FeeBurnerResolverInterface public feeBurnerResolverContract;
-    OrdersFactoryInterface public ordersFactory;
+    OrderFactoryInterface public ordersFactory;
     ERC20 public kncToken;
 
     enum ListingStage {NO_RESERVE, RESERVE_ADDED, RESERVE_INIT, RESERVE_LISTED}
@@ -39,11 +39,13 @@ contract PermissionlessOrderBookReserveLister {
 
     // KNC burn fee per order that is taken. = 25 / 1000 = 0.25 %
     uint constant public ORDER_BOOK_BURN_FEE_BPS = 25;
+    uint constant public MIN_ORDER_VALUE_WEI = 10 ** 18;                 // below this value order will be removed.
+    uint constant public MIN_MAKE_ORDER_VALUE_WEI = 2 * MIN_ORDER_VALUE_WEI; // Below this value can't create new order.
 
     function PermissionlessOrderBookReserveLister(
         InternalNetworkInterface kyber,
         FeeBurnerResolverInterface resolver,
-        OrdersFactoryInterface factory,
+        OrderFactoryInterface factory,
         ERC20 knc
     )
         public
@@ -70,8 +72,11 @@ contract PermissionlessOrderBookReserveLister {
             token,
             feeBurnerResolverContract,
             ordersFactory,
+            MIN_MAKE_ORDER_VALUE_WEI,
+            MIN_ORDER_VALUE_WEI,
             ORDER_BOOK_BURN_FEE_BPS
         );
+
         reserveListingStage[token] = ListingStage.RESERVE_ADDED;
 
         TokenOrderBookListingStage(token, ListingStage.RESERVE_ADDED);
