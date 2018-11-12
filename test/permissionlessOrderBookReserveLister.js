@@ -21,7 +21,7 @@ require("chai")
 //////////////////
 const precisionUnits = (new BigNumber(10).pow(18));
 const gasPrice = (new BigNumber(10).pow(9).mul(50));
-const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
 let withDrawAddress;
 

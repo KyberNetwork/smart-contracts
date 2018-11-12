@@ -20,7 +20,7 @@ const BigNumber = require('bignumber.js');
 //////////////////
 const precisionUnits = (new BigNumber(10).pow(18));
 const ethToKncRatePrecision = precisionUnits.mul(550);
-const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 const gasPrice = (new BigNumber(10).pow(9).mul(50));
 let negligibleRateDiff = 11;
 
@@ -2530,7 +2530,7 @@ contract('KyberNetworkProxy', function(accounts) {
         }
     });
 
-    it("verify trade with reverses trade = (dest address after is lower then dest address before), reverts.", async function () {
+    it("verify trade with reversed trade (malicious token or network) ->dest address after is lower then dest address before, reverts.", async function () {
         //trade data
         let tokenInd = numTokens - 1;
         let token = tokens[tokenInd]; //choose some token

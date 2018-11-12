@@ -12,7 +12,7 @@ const BigNumber = require('bignumber.js');
 //global variables
 //////////////////
 const precisionUnits = (new BigNumber(10).pow(18));
-const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
 //permission groups
 let admin;
@@ -1822,7 +1822,7 @@ contract('OrderBookReserve', async (accounts) => {
         await token.transfer(user1, totalPayValue);
         await token.approve(reserve.address, totalPayValue, {from: user1})
         rc = await reserve.trade(tokenAdd, totalPayValue, ethAddress, user1, 300, false, {from:user1});
-        log("take 3 orders gas: " + rc.receipt.gasUsed);
+        log("take 3 eth to token orders gas: " + rc.receipt.gasUsed);
 
         //check maker balance
         balance = await reserve.makerFunds(maker1, tokenAdd);
@@ -1926,7 +1926,7 @@ contract('OrderBookReserve', async (accounts) => {
 
         //add order
         //////////////
-//        makeOrder(address maker, bool isEthToToken, uint128 payAmount, uint128 exchangeAmount, uint32 hintPrevOrder)
+//
         let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
             rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(200), {from: maker1});
             rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(400), {from: maker1});
@@ -2240,6 +2240,18 @@ contract('OrderBookReserve', async (accounts) => {
         balance = await reserve.makerFunds(maker3, tokenAdd);
         assert.equal(balance.valueOf(), expectedBalanceMaker3.valueOf());
     });
+
+    xit("take orders, see some knc released to burn amount and some knc set as free knc", async() => {
+    });
+
+    xit("create knc rate change, so stakes per order aren't enough. see can still take order", async() => {
+    });
+
+    xit("create rate change so burn amount is bigger then calculated stake amount, see burn amounts are modified to equal stake amount", async() => {
+    });
+
+    xit("make sure that when updating rate. the stake amount is enough for at least x2 rate change", async() => {
+    })
 });
 
 

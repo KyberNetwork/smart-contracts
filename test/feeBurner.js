@@ -5,7 +5,7 @@ let MockKyberNetwork = artifacts.require("./MockKyberNetwork.sol");
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
 
-let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+let ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 let precision = new BigNumber(10 ** 18);
 //global variables
 let kncToken;
@@ -576,7 +576,7 @@ contract('FeeBurner', function(accounts) {
         assert.equal(rc.logs[0].args.updater.valueOf(), operator);
     });
 
-    xit("test revert conditions for setKncRate", => {
+    xit("test revert conditions for setKncRate", async() => {
     })
 });
 
