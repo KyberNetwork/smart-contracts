@@ -1,12 +1,12 @@
 {
-  "rate": 0.004,
+  "rate": 0.01,
   "min_ratio": 0.5,
   "max_ratio" : 2.0,
-  "ether": 200.0,
-  "tokens": 100000.0,
-  "price": 0.00197042000000000007,
-  "max_cap_buy_eth": 20.0,
-  "max_cap_sell_eth": 20.0,
-  "fee_in_precents": 1.25,
+  "ether": 70.0,
+  "tokens": 724638,
+  "price":  0.000069,
+  "max_cap_buy_eth": 10.0,
+  "max_cap_sell_eth": 10.0,
+  "fee_in_precents": 0.25,
   "num_formula_precision_bits": 40
 }

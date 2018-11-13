@@ -1,189 +1,200 @@
+import sys
+import argparse
+import json
 import numpy as np
+from pprint import pprint
 
 
-class LiquidityParams:
+def calc_balances_from_pmin_pmax(
+    rate,
+    price,
+    min_ratio,
+    max_ratio
+):
 
-    def __init__(self,
-                 rate,
-                 P_0_tokens_to_eth,
-                 num_formula_precision_bits,
-                 max_cap_buy_eth,
-                 max_cap_sell_eth,
-                 fee_in_precents):
+    min_rate = min_ratio * price
+    max_rate = max_ratio * price
 
-        self.rate = rate 
-        self.P_0_tokens_to_eth = P_0_tokens_to_eth
-        self.num_formula_precision_bits = num_formula_precision_bits
-        self.max_cap_buy_eth= max_cap_buy_eth
-        self.max_cap_sell_eth = max_cap_sell_eth
-        self.fee_in_precents = fee_in_precents
+    ether = (1 / rate) * np.log(price / min_rate)
+    tokens = (1 / rate) * (1 / price - 1 / max_rate)
+    tokens_in_eth = tokens * price
 
-    def calc_balances_based_on_pmin_pmax(self,
-                                         min_token_to_eth_rate,
-                                         max_token_to_eth_rate):
+    print("ether: " + str(ether))
+    print("tokens: " + str(tokens))
+    print("tokens_in_eth: " + str(tokens_in_eth))
 
-        print("\ncalc_balances_based_on_pmin_pmax:")
-
-        E_0_ether = (1/self.rate) * np.log(self.P_0_tokens_to_eth / min_token_to_eth_rate)
-        print("E_0_ether: " + str(E_0_ether))
-
-        T_0_tokens = (1/self.rate) * (1/self.P_0_tokens_to_eth - 1/ max_token_to_eth_rate)
-        print("T_0_tokens: " + str(T_0_tokens))
-
-        T_0_tokens_in_eth = T_0_tokens * self.P_0_tokens_to_eth
-        print("T_0_tokens_in_eth: " + str(T_0_tokens_in_eth))
-
-        return E_0_ether, T_0_tokens
-
-    def calc_pmin_pmax_ratio_based_on_balances(self,
-                                               E_0_ether,
-                                               T_0_tokens):
-
-        print("\ncalc_pmin_pmax_ratio_based_on_balances:")
-
-        # auto calculated values in natural units (Eth, Tokens)
-        max_token_to_eth_rate = self.P_0_tokens_to_eth / (1 - self.rate * self.P_0_tokens_to_eth * T_0_tokens)
-        min_token_to_eth_rate = self.P_0_tokens_to_eth / np.exp(self.rate * E_0_ether)
-        pmin_ratio = min_token_to_eth_rate / self.P_0_tokens_to_eth
-        pmax_ratio = max_token_to_eth_rate / self.P_0_tokens_to_eth
-        print("minimal_pmin_ratio: " + str(pmin_ratio))
-        print("maximal_pmax_ratio: " + str(pmax_ratio))
-
-        return pmin_ratio, pmax_ratio
-
-    def calc_params_based_on_ratios(self,
-                                    pmin_ratio,
-                                    pmax_ratio):
-
-        print("\ncalc_params_based_on_ratios:")
-
-        print("params in human units: ")
-        # auto calculated values in natural units (Eth, Tokens)
-        max_token_to_eth_rate = pmax_ratio * self.P_0_tokens_to_eth
-        min_token_to_eth_rate = pmin_ratio * self.P_0_tokens_to_eth
-
-        print("P_0_tokens_to_eth:" + "%.20f" % self.P_0_tokens_to_eth)
-        print("num_formula_precision_bits:" + str(self.num_formula_precision_bits))
-        print("max_cap_buy_eth:" + str(self.max_cap_buy_eth))
-        print("max_cap_sell_eth:" + str(self.max_cap_sell_eth))
-        print("fee_in_precents:" + str(self.fee_in_precents))
-        print("max_token_to_eth_rate:" + "%.20f" % max_token_to_eth_rate)
-        print("min_token_to_eth_rate:" + "%.20f" % min_token_to_eth_rate)
-        print("pmin_ratio:" + str(pmin_ratio))
-        print("pmax_ratio:" + str(pmax_ratio))
-
-        print("\nparams to configure in contract units (Wei, Precision): ")
-        _rInFp = self.rate * (2**self.num_formula_precision_bits)
-        _pMinInFp = min_token_to_eth_rate * (2 ** self.num_formula_precision_bits)
-        _numFpBits = self.num_formula_precision_bits
-        _maxCapBuyInWei = self.max_cap_buy_eth * (10 ** 18)
-        _maxCapSellInWei = self.max_cap_sell_eth * (10 ** 18)
-        _feeInBps = self.fee_in_precents * 100
-        _maxTokenToEthRateInPrecision = max_token_to_eth_rate * (10 ** 18)
-        _minTokenToEthRateInPrecision = min_token_to_eth_rate * (10 ** 18)
-
-        print("_rInFp: " + str(_rInFp))
-        print("_pMinInFp: " + str(_pMinInFp))
-        print("_numFpBits: " + str(_numFpBits))
-        print("_maxCapBuyInWei: " + "%.20f" % _maxCapBuyInWei)
-        print("_maxCapSellInWei: " + "%.20f" % _maxCapSellInWei)
-        print("_feeInBps: " + str(_feeInBps))
-        print("_maxTokenToEthRateInPrecision: " + str(_maxTokenToEthRateInPrecision))
-        print("_minTokenToEthRateInPrecision: " + str(_minTokenToEthRateInPrecision))
+    return ether, tokens
 
 
-knc_options = { "token": "knc",
-                "p0": 0.00229499,
-                "options": [{"rate": 0.01,
-                             "min_token_to_eth_ratio": 0.7,
-                             "max_token_to_eth_ratio": 1.3},
-                            {"rate": 0.01,
-                             "min_token_to_eth_ratio": 0.8,
-                             "max_token_to_eth_ratio": 1.2},
-                            {"rate": 0.01,
-                             "min_token_to_eth_ratio": 0.9,
-                             "max_token_to_eth_ratio": 1.1},
-                            {"rate": 0.005,
-                             "min_token_to_eth_ratio": 0.7,
-                             "max_token_to_eth_ratio": 1.3}]
-             }
+def calc_min_max_ratio_from_balances(
+        price,
+        rate,
+        ether,
+        tokens
+):
 
-dai_options = { "token": "dai",
-                "p0": 0.00209461,
-                "options": [{"rate": 0.01,
-                             "min_token_to_eth_ratio": 0.7,
-                             "max_token_to_eth_ratio": 1.3},
-                            {"rate": 0.01,
-                             "min_token_to_eth_ratio": 0.8,
-                             "max_token_to_eth_ratio": 1.2},
-                            {"rate": 0.01,
-                             "min_token_to_eth_ratio": 0.9,
-                             "max_token_to_eth_ratio": 1.1},
-                            {"rate": 0.0075,
-                             "min_token_to_eth_ratio": 0.8,
-                             "max_token_to_eth_ratio": 1.2}]
-             }
+    max_rate = price / (1 - rate * price * tokens)
+    min_rate = price / np.exp(rate * ether)
+    min_ratio = min_rate / price
+    max_ratio = max_rate / price
+    print("min_min_ratio: " + str(min_ratio))
+    print("max_max_ratio: " + str(max_ratio) + "\n")
 
-bbo_options = { "token": "bbo",
-                "p0": 0.00001077,
-                "options": [{"rate": 0.01,
-                             "min_token_to_eth_ratio": 0.5,
-                             "max_token_to_eth_ratio": 2.0}]
-             }
-
-midas_options = { "token": "midas",
-                  "p0": 0.0001, # 1m tokens = 100 eth
-                  "options": [{"rate": 0.01 * 0.693,
-                               "min_token_to_eth_ratio": 0.5,
-                               "max_token_to_eth_ratio": 2.0}]
-             }
-
-midas_tomo_options = { "token": "midas",
-                      "p0": 0.00197042, # 1m tokens = 100 eth
-                      "options": [{"rate": 0.004,
-                                   "min_token_to_eth_ratio": 0.5,
-                                   "max_token_to_eth_ratio": 2.0}]
-             }
+    return min_ratio, max_ratio
 
 
-#midas tomo:
-# 200ETH and 100K TOMO
-#r = 0.008
-#_maxCapBuyInWei = _maxCapSellInWei = 20000000000000000000 (20ETH)
-#_feeInBps = 125 (1.25% commission)
+def calc_rate_from_eth_balance(ether, price, min_ratio):
+    min_rate = min_ratio * price
+    rate = (1 / ether) * np.log(price / min_rate)
+    print("rate: " + str(rate))
 
 
+def calc_params_from_ratios(
+    rate,
+    price,
+    num_formula_precision_bits,
+    max_cap_buy_eth,
+    max_cap_sell_eth,
+    fee_in_precents,
+    min_ratio,
+    max_ratio
+):
+
+    max_rate = max_ratio * price
+    min_rate = min_ratio * price
+
+    _rInFp = rate * (2 ** num_formula_precision_bits)
+    _pMinInFp = min_rate * (2 ** num_formula_precision_bits)
+    _numFpBits = num_formula_precision_bits
+    _maxCapBuyInWei = max_cap_buy_eth * (10 ** 18)
+    _maxCapSellInWei = max_cap_sell_eth * (10 ** 18)
+    _feeInBps = fee_in_precents * 100
+    _maxTokenToEthRateInPrecision = max_rate * (10 ** 18)
+    _minTokenToEthRateInPrecision = min_rate * (10 ** 18)
+
+    print("_rInFp: %.0f" % _rInFp)
+    print("_pMinInFp: %.0f" % _pMinInFp)
+    print("_numFpBits: %.0f" % _numFpBits)
+    print("_maxCapBuyInWei: %.0f" % _maxCapBuyInWei)
+    print("_maxCapSellInWei: %.0f" % _maxCapSellInWei)
+    print("_feeInBps: %.0f" % _feeInBps)
+    print("_maxTokenToEthRateInPrecision: %.0f" % _maxTokenToEthRateInPrecision)
+    print("_minTokenToEthRateInPrecision: %.0f" % _minTokenToEthRateInPrecision)
 
 
-
-for token_options in [midas_tomo_options]:
-    print("*********************************************")
-
-    print("token: " + str(token_options["token"]))
-    print("current price: " + str(token_options["p0"]))
-
-    for option in token_options["options"]:
-        print("****\n" + str(option))
-
-        liq = LiquidityParams(rate=option["rate"],
-                              P_0_tokens_to_eth=token_options["p0"],
-                              num_formula_precision_bits=40,
-                              max_cap_buy_eth=20.0,
-                              max_cap_sell_eth=20.0,
-                              fee_in_precents=1.25)
+def require_args(names, args):
+    if not set(names).issubset(args):
+        raise ValueError("following parameters are missing from input: " +
+                         str(set(names).difference(args)))
 
 
-        # calculate ptoential minimal and maximal ratios according to fix amounts the rm is willing to put (100 eth, 1M tokens).
-        (minimal_pmin_ratio, maximal_pmax_ratio) = liq.calc_pmin_pmax_ratio_based_on_balances(E_0_ether=200.0, T_0_tokens=100000.0)
-        # actually use pmin and pmax as fixed 0.5 and 2.0
-        (pmin_ratio, pmax_ratio) = (midas_tomo_options["options"][0]["min_token_to_eth_ratio"],
-                                    midas_tomo_options["options"][0]["max_token_to_eth_ratio"])
-        liq.calc_params_based_on_ratios(pmin_ratio, pmax_ratio)
+parser = argparse.ArgumentParser(
+    description='Get automatic market making ("liquidity") parameters.'
+)
+parser.add_argument(
+    '--get',
+    choices=[
+        'params',
+        'inventories',
+        'price_changes_boundaries',
+        'rate'
+    ],
+    help='Values to get'
+)
+parser.add_argument('--input')
+args = parser.parse_args()
 
-        #E_0_ether, T_0_tokens = liq.calc_balances_based_on_pmin_pmax(
-        #    min_token_to_eth_rate=option["min_token_to_eth_ratio"] * token_options["p0"],
-        #    max_token_to_eth_rate=option["max_token_to_eth_ratio"] * token_options["p0"]
-        #)
+with open(args.input) as json_data:
+    d = json.load(json_data)
 
-        #liq.calc_params_based_on_ratios(option["min_token_to_eth_ratio"],
-        #                                option["max_token_to_eth_ratio"])
+    if args.get == 'params':
+        require_args([
+                "rate",
+                "price",
+                "num_formula_precision_bits",
+                "max_cap_buy_eth",
+                "max_cap_sell_eth",
+                "fee_in_precents",
+                "min_ratio",
+                "max_ratio",
+                "ether",
+                "tokens"
+            ],
+            d.keys()
+        )
+
+        (min_min_ratio, max_max_ratio) = \
+            calc_min_max_ratio_from_balances(
+                d["price"],
+                d["rate"],
+                d["ether"],
+                d["tokens"]
+        )
+
+        if min_min_ratio > d["min_ratio"]:
+            raise ValueError(
+                "min_min_ratio " + str(min_min_ratio) +
+                " > configured min_ratio " + str(d["min_ratio"])
+            )
+
+        if max_max_ratio < d["max_ratio"]:
+            raise ValueError(
+                "max_max_ratio " + str(max_max_ratio) +
+                " > configured max_ratio " + str(d["max_ratio"])
+            )
+
+        calc_params_from_ratios(
+            d["rate"],
+            d["price"],
+            d["num_formula_precision_bits"],
+            d["max_cap_buy_eth"],
+            d["max_cap_sell_eth"],
+            d["fee_in_precents"],
+            d["min_ratio"],
+            d["max_ratio"]
+        )
+
+    elif args.get == 'price_changes_boundaries':
+        require_args([
+                "price",
+                "rate",
+                "ether",
+                "tokens"
+            ],
+            d.keys()
+        )
+
+        (min_min_ratio, max_max_ratio) = calc_min_max_ratio_from_balances(
+            d["price"],
+            d["rate"],
+            d["ether"],
+            d["tokens"]
+        )
+
+    elif args.get == 'inventories':
+        require_args([
+                "rate",
+                "price",
+                "min_ratio",
+                "max_ratio"
+            ],
+            d.keys()
+        )
+
+        calc_balances_from_pmin_pmax(
+            d["rate"],
+            d["price"],
+            d["min_ratio"],
+            d["max_ratio"]
+        )
+
+    elif args.get == 'rate':
+        require_args([
+                "ether",
+                "price",
+                "min_ratio"
+            ],
+            d.keys()
+        )
+
+        calc_rate_from_eth_balance(d["ether"], d["price"], d["min_ratio"])
