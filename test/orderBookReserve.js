@@ -1464,19 +1464,16 @@ contract('OrderBookReserve', async (accounts) => {
         orderDstTwei = orderDstTwei.add(2000);
 
         rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
-//        log("make buy order gas(order 3 in list): ID: " + rc.logs[0].args.orderId.valueOf() + " gas: "+ rc.receipt.gasUsed);
         gasAmountOrderReuse = gasAmountOrderReuse.add(rc.receipt.gasUsed);
 
         orderDstTwei = orderDstTwei.sub(6000);
 
         rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
-//        log("make buy order gas(order 1 in list): ID: " + rc.logs[0].args.orderId.valueOf() + " gas: "+ rc.receipt.gasUsed);
         gasAmountOrderReuse = gasAmountOrderReuse.add(rc.receipt.gasUsed);
 
         //now insert order as 2nd best.
         orderDstTwei = orderDstTwei.add(300);
         rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
-//        log("make buy order gas(order 2 in list): ID: " + rc.logs[0].args.orderId.valueOf() + " gas: "+ rc.receipt.gasUsed);
         gasAmountOrderReuse = gasAmountOrderReuse.add(rc.receipt.gasUsed);
 
         orderList = await reserve.getEthToTokenOrderList();
@@ -1839,6 +1836,89 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(list.length, 0);
     });
 
+    it("buy orders print gas for taking 0.5 order 1.5 order 2.5 orders. remaining removed", async () => {
+        let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+        let kncTweiDepositAmount = 600 * 10 ** 18;
+        let ethWeiDepositAmount = (new BigNumber(12 * 10 ** 18)).add(30000);
+        await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+        let srcAmountWei = new BigNumber(2 * 10 ** 18);
+        let orderDstTwei = new BigNumber(9 * 10 ** 18);
+
+        // add order
+        let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+        rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+        rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+        rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+        rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+        rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+
+        //trade
+        let payValueTwei = orderDstTwei.mul(0.5).add(6000);
+        await token.transfer(user1, payValueTwei);
+        await token.approve(reserve.address, payValueTwei, {from: user1})
+        rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from:user1});
+        log("take 0.5 buy orders (remaining removed) gas: " + rc.receipt.gasUsed);
+
+        //trade
+        payValueTwei = payValueTwei.add(orderDstTwei);
+        await token.transfer(user1, payValueTwei);
+        await token.approve(reserve.address, payValueTwei, {from: user1})
+        rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from:user1});
+        log("take 1.5 buy orders (remaining removed) gas: " + rc.receipt.gasUsed);
+
+        //trade
+        payValueTwei = payValueTwei.add(orderDstTwei);
+        await token.transfer(user1, payValueTwei);
+        await token.approve(reserve.address, payValueTwei, {from: user1})
+        rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from:user1});
+        log("take 2.5 buy orders (remaining removed) gas: " + rc.receipt.gasUsed);
+//        assert(false)
+    });
+
+    it("buy orders print gas for taking 0.5 order 1.5 order 2.5 orders. remaining not removed", async () => {
+        let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+        let kncTweiDepositAmount = 600 * 10 ** 18;
+        let ethWeiDepositAmount = (new BigNumber(12 * 10 ** 18)).add(30000);
+        await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+        let srcAmountWei = new BigNumber(2 * 10 ** 18);
+        let orderDstTwei = new BigNumber(9 * 10 ** 18);
+
+        // add order
+        let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+        rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+        rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+        rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+        rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+        rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+
+        //trade
+        let payValueTwei = orderDstTwei.mul(0.5).sub(6000);
+        await token.transfer(user1, payValueTwei.add(orderDstTwei.div(2)));
+        await token.approve(reserve.address, payValueTwei.add(orderDstTwei.div(2)), {from: user1})
+        rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from:user1});
+        log("take 0.5 buy orders (remaining not removed) gas: " + rc.receipt.gasUsed);
+        await reserve.trade(tokenAdd, orderDstTwei.div(2), ethAddress, user1, 300, false, {from:user1});
+
+        //trade
+        payValueTwei = payValueTwei.add(orderDstTwei);
+        await token.transfer(user1, payValueTwei.add(orderDstTwei.div(2)));
+        await token.approve(reserve.address, payValueTwei.add(orderDstTwei.div(2)), {from: user1})
+        rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from:user1});
+        log("take 1.5 buy orders (remaining not removed) gas: " + rc.receipt.gasUsed);
+        await reserve.trade(tokenAdd, orderDstTwei.div(2), ethAddress, user1, 300, false, {from:user1});
+
+        //trade
+        payValueTwei = payValueTwei.add(orderDstTwei);
+        await token.transfer(user1, payValueTwei.add(orderDstTwei.div(2)));
+        await token.approve(reserve.address, payValueTwei.add(orderDstTwei.div(2)), {from: user1})
+        rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from:user1});
+        log("take 2.5 buy orders (remaining not removed) gas: " + rc.receipt.gasUsed);
+        await reserve.trade(tokenAdd, orderDstTwei.div(2), ethAddress, user1, 300, false, {from:user1});
+//        assert(false)
+    });
+
     it("maker add buy order. user takes partial. remaining order stays in book.", async () => {
         let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
         let kncTweiDepositAmount = 600 * 10 ** 18;
@@ -1912,6 +1992,10 @@ contract('OrderBookReserve', async (accounts) => {
     });
 
     it("maker add a few sell orders. check correct rate replies.", async () => {
+        //rebalance accounts
+        await Helper.sendEtherWithPromise(user1, maker1, (23 * 10 ** 18));
+        await Helper.sendEtherWithPromise(user1, user2, (11 * 10 ** 18));
+
         let tokenWeiDepositAmount = new BigNumber(70).mul(10 ** 18);
         let kncTweiDepositAmount = 600 * 10 ** 18;
         let ethWeiDepositAmount = (new BigNumber(0 * 10 ** 18));
@@ -1992,6 +2076,100 @@ contract('OrderBookReserve', async (accounts) => {
         let makerEthBalance = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(makerEthBalance.valueOf(), totalPayValueWei);
     });
+
+    it("sell orders print gas for taking 0.5 order 1.5 order 2.5 orders. remaining removed", async () => {
+        let tokenWeiDepositAmount = new BigNumber(70).mul(10 ** 18);
+        let kncTweiDepositAmount = 600 * 10 ** 18;
+        let ethWeiDepositAmount = (new BigNumber(0 * 10 ** 18));
+        await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+        let orderSrcAmountTwei = new BigNumber(6 * 10 ** 18);
+        let orderDstWei = new BigNumber(2 * 10 ** 18);
+
+        //add order
+        //////////////
+        let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
+            rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(200), {from: maker1});
+            rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(400), {from: maker1});
+            rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(600), {from: maker1});
+            rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(800), {from: maker1});
+            rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(1000), {from: maker1});
+
+        //trade
+        let payValueWei = orderDstWei.mul(0.5).add(3000);
+        rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: user2, value: payValueWei});
+        log("take 0.5 sell orders. (remaining removed) gas: " + rc.receipt.gasUsed);
+
+        orderList = await reserve.getTokenToEthOrderList();
+        assert.equal(orderList.length, 5);
+
+        //trade
+        payValueWei = payValueWei.add(orderDstWei);
+        rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: user2, value: payValueWei});
+        log("take 1.5 sell orders. (remaining removed) gas: " + rc.receipt.gasUsed);
+
+        orderList = await reserve.getTokenToEthOrderList();
+        assert.equal(orderList.length, 3);
+
+        //trade
+        payValueWei = payValueWei.add(orderDstWei);
+        rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: user2, value: payValueWei});
+        log("take 2.5 sell orders. (remaining removed) gas: " + rc.receipt.gasUsed);
+
+        orderList = await reserve.getTokenToEthOrderList();
+        assert.equal(orderList.length, 0);
+    });
+
+    it("sell orders print gas for taking 0.5 order 1.5 order 2.5 orders. remaining not removed", async () => {
+        let tokenWeiDepositAmount = new BigNumber(70).mul(10 ** 18);
+        let kncTweiDepositAmount = 600 * 10 ** 18;
+        let ethWeiDepositAmount = (new BigNumber(0 * 10 ** 18));
+        await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+        let orderSrcAmountTwei = new BigNumber(6 * 10 ** 18);
+        let orderDstWei = new BigNumber(2 * 10 ** 18);
+
+        //add order
+        //////////////
+        let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
+            rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(200), {from: maker1});
+            rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(400), {from: maker1});
+            rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(600), {from: maker1});
+            rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(800), {from: maker1});
+            rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(1000), {from: maker1});
+
+        //trade
+        let payValueWei = orderDstWei.mul(0.5).sub(3000);
+        rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: user2, value: payValueWei});
+        log("take 0.5 sell orders. (remaining left) gas: " + rc.receipt.gasUsed);
+        await reserve.trade(ethAddress, orderDstWei.div(2), tokenAdd, user1, 300, false, {from: user2, value: orderDstWei.div(2)});
+
+        //remove left part of order
+        orderList = await reserve.getTokenToEthOrderList();
+        assert.equal(orderList.length, 5);
+
+        //trade
+        payValueWei = payValueWei.add(orderDstWei);
+        rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: user2, value: payValueWei});
+        log("take 1.5 sell orders. (remaining left) gas: " + rc.receipt.gasUsed);
+        await reserve.trade(ethAddress, orderDstWei.div(2), tokenAdd, user1, 300, false, {from: user2, value: orderDstWei.div(2)});
+
+        orderList = await reserve.getTokenToEthOrderList();
+        assert.equal(orderList.length, 3);
+
+        //trade
+        payValueWei = payValueWei.add(orderDstWei);
+        rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: user2, value: payValueWei});
+        log("take 2.5 sell orders. (remaining left) gas: " + rc.receipt.gasUsed);
+        orderList = await reserve.getTokenToEthOrderList();
+        assert.equal(orderList.length, 1);
+
+        await reserve.trade(ethAddress, orderDstWei.div(2), tokenAdd, user1, 300, false, {from: user2, value: orderDstWei.div(2)});
+
+        orderList = await reserve.getTokenToEthOrderList();
+        assert.equal(orderList.length, 0);
+    });
+
 
     it("add max number of orders per maker 256 sell and 256 buy. see next order reverted.", async () => {
         let tokenWeiDepositAmount = new BigNumber(3000).mul(10 ** 18);

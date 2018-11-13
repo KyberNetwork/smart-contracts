@@ -757,6 +757,8 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return true;
     }
 
+    event FullOrderTaken(address maker, uint32 orderId, bool isEthToToken);
+
     function takeFullOrder(
         address maker,
         uint32 orderId,
@@ -773,8 +775,12 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         //userDst == maker source
         require(removeOrder(list, maker, userDst, orderId));
 
+        FullOrderTaken(maker, orderId, userSrc == ETH_TOKEN_ADDRESS);
+
         return takeOrder(maker, userSrc, userSrcAmount, userDstAmount, 0);
     }
+
+    event PartialOrderTaken(address maker, uint32 orderId, bool isEthToToken, bool isRemoved);
 
     function takePartialOrder(
         address maker,
@@ -808,6 +814,8 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
             // update order values, taken order is always first order
             list.updateWithPositionHint(orderId, orderSrcAmount, orderDstAmount, orderListHeadId);
         }
+
+        PartialOrderTaken(maker, orderId, userSrc == ETH_TOKEN_ADDRESS, remainingWeiValue < minOrderValueWei);
 
         //stakes are returned for unused wei value
         return(takeOrder(maker, userSrc, userPartialSrcAmount, userTakeDstAmount, remainingWeiValue));
