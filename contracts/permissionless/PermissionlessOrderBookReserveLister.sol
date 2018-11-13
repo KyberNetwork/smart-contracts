@@ -62,6 +62,7 @@ contract PermissionlessOrderBookReserveLister {
     }
 
     event TokenOrderBookListingStage(ERC20 token, ListingStage stage);
+
     /// @dev anyone can call
     function addOrderBookContract(ERC20 token) public returns(bool) {
         require(reserveListingStage[token] == ListingStage.NO_RESERVE);
