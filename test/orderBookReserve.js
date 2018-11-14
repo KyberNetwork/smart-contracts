@@ -1993,8 +1993,10 @@ contract('OrderBookReserve', async (accounts) => {
 
     it("maker add a few sell orders. check correct rate replies.", async () => {
         //rebalance accounts
-        await Helper.sendEtherWithPromise(user1, maker1, (23 * 10 ** 18));
-        await Helper.sendEtherWithPromise(user1, user2, (11 * 10 ** 18));
+        await Helper.sendEtherWithPromise(user1, maker1, (65 * 10 ** 18));
+        await Helper.sendEtherWithPromise(user1, user2, (19 * 10 ** 18));
+        await Helper.sendEtherWithPromise(user1, admin, (6 * 10 ** 18));
+        await Helper.sendEtherWithPromise(user1, maker2, (6 * 10 ** 18));
 
         let tokenWeiDepositAmount = new BigNumber(70).mul(10 ** 18);
         let kncTweiDepositAmount = 600 * 10 ** 18;
