@@ -216,11 +216,11 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, SimpleNetworkInterface
         return kyberNetworkContract.getExpectedRate(src, dest, srcQty);
     }
 
-    function getExpectedRateOnlyPermissioned(ERC20 src, ERC20 dest, uint srcAmount)
+    function getExpectedRateOnlyPermission(ERC20 src, ERC20 dest, uint srcAmount)
         public view
         returns(uint expectedRate, uint slippageRate)
     {
-        return kyberNetworkContract.getExpectedRateOnlyPermissioned(src, dest, srcAmount);
+        return kyberNetworkContract.getExpectedRateOnlyPermission(src, dest, srcAmount);
     }
 
     function getUserCapInWei(address user) public view returns(uint) {
