@@ -1,6 +1,9 @@
 pragma solidity 0.4.18;
 
 
+import "./OrderFactoryInterface.sol";
+
+
 interface OrderBookReserveInterface {
-    function init() public returns(bool);
+    function init(OrderFactoryInterface orderFactory) public returns(bool);
 }

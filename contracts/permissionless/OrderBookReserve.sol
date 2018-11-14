@@ -4,7 +4,6 @@ pragma solidity 0.4.18;
 import "./OrdersInterface.sol";
 import "./OrderIdManager.sol";
 import "./FeeBurnerResolverInterface.sol";
-import "./OrderFactoryInterface.sol";
 import "./OrderBookReserveInterface.sol";
 import "../Utils2.sol";
 import "../KyberReserveInterface.sol";
@@ -24,17 +23,17 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     ERC20 public token; // this reserve will serve only this token vs ETH.
     FeeBurnerRateInterface public feeBurnerContract;
     FeeBurnerResolverInterface public feeBurnerResolverContract;
-    OrderFactoryInterface public ordersFactoryContract;
 
     ERC20 public kncToken;  //not constant. to enable testing and test net usage
     uint public kncStakePerEtherBps = 20000; //for validating orders
-    uint public numOrdersToAllocate = 256;
-
+    
     OrdersInterface public tokenToEthList;
     OrdersInterface public ethToTokenList;
 
     uint32 internal orderListTailId;
     uint32 internal orderListHeadId;
+    uint constant public NUM_ORDERS_TO_ALLOCATE = 256;
+    address internal initCallerAddress;
 
     // KNC stake
     struct KncStake {
@@ -62,7 +61,6 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         ERC20 knc,
         ERC20 reserveToken,
         FeeBurnerResolverInterface resolver,
-        OrderFactoryInterface factory,
         uint minOrderMakeWei,
         uint minOrderWei,
         uint burnFeeBps
@@ -73,7 +71,6 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         require(knc != address(0));
         require(reserveToken != address(0));
         require(resolver != address(0));
-        require(factory != address(0));
         require(burnFeeBps != 0);
         require(minOrderWei != 0);
         require(minOrderMakeWei > minOrderWei);
@@ -82,10 +79,11 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         feeBurnerContract = FeeBurnerRateInterface(feeBurnerResolverContract.getFeeBurnerAddress());
         kncToken = knc;
         token = reserveToken;
-        ordersFactoryContract = factory;
         makerBurnFeeBps = burnFeeBps;
         minOrderMakeValueWei = minOrderMakeWei;
         minOrderValueWei = minOrderWei;
+
+        initCallerAddress = msg.sender;
 
         require(kncToken.approve(feeBurnerContract, (2**255)));
 
@@ -94,12 +92,13 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     ///@dev separate init function for this contract, if this init is in the C'tor. gas consumption too high.
-    function init() public returns(bool) {
+    function init(OrderFactoryInterface orderFactory) public returns(bool) {
         require(tokenToEthList == address(0));
         require(ethToTokenList == address(0));
+        require(initCallerAddress == msg.sender);
 
-        tokenToEthList = ordersFactoryContract.newOrdersContract(this);
-        ethToTokenList = ordersFactoryContract.newOrdersContract(this);
+        tokenToEthList = orderFactory.newOrdersContract(this);
+        ethToTokenList = orderFactory.newOrdersContract(this);
 
         orderListTailId = ethToTokenList.getTailId();
         orderListHeadId = ethToTokenList.getHeadId();
@@ -383,19 +382,19 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         KncFeeDeposited(maker, amount);
 
-        if (orderAllocationRequired(makerOrdersTokenToEth[maker], numOrdersToAllocate)) {
+        if (orderAllocationRequired(makerOrdersTokenToEth[maker], NUM_ORDERS_TO_ALLOCATE)) {
             require(allocateOrders(
                 makerOrdersTokenToEth[maker], /* freeOrders */
-                tokenToEthList.allocateIds(uint32(numOrdersToAllocate)), /* firstAllocatedId */
-                numOrdersToAllocate /* howMany */
+                tokenToEthList.allocateIds(uint32(NUM_ORDERS_TO_ALLOCATE)), /* firstAllocatedId */
+                NUM_ORDERS_TO_ALLOCATE /* howMany */
             ));
         }
 
-        if (orderAllocationRequired(makerOrdersEthToToken[maker], numOrdersToAllocate)) {
+        if (orderAllocationRequired(makerOrdersEthToToken[maker], NUM_ORDERS_TO_ALLOCATE)) {
             require(allocateOrders(
                 makerOrdersEthToToken[maker], /* freeOrders */
-                ethToTokenList.allocateIds(uint32(numOrdersToAllocate)), /* firstAllocatedId */
-                numOrdersToAllocate /* howMany */
+                ethToTokenList.allocateIds(uint32(NUM_ORDERS_TO_ALLOCATE)), /* firstAllocatedId */
+                NUM_ORDERS_TO_ALLOCATE /* howMany */
             ));
         }
     }

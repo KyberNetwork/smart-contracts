@@ -77,16 +77,14 @@ contract('OrderBookReserve', async (accounts) => {
 
         let minMakeOrderWei = new BigNumber(2 * 10 ** 18);
         let minOrderWei = new BigNumber(10 ** 18);
-        reserve = await OrderBookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address, ordersFactory.address,
+        reserve = await OrderBookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address,
             minMakeOrderWei, minOrderWei, 25);
 //        log(reserve);
-        await reserve.init();
-
-        numOrderIdsPerMaker = await reserve.numOrdersToAllocate();
+        await reserve.init(ordersFactory.address);
+        numOrderIdsPerMaker = await reserve.NUM_ORDERS_TO_ALLOCATE();
 
         let ordersAdd = await reserve.tokenToEthList();
         let orders = Orders.at(ordersAdd.valueOf());
-
         headId = (await orders.HEAD_ID()).valueOf();
         tailId = (await orders.TAIL_ID()).valueOf();
         firstFreeOrderIdPerReserveList = (await orders.nextFreeId()).valueOf();
@@ -97,12 +95,10 @@ contract('OrderBookReserve', async (accounts) => {
 //        log(feeBurner.address + " " + kncAddress + " " + tokenAdd)
         let minMakeOrderWei = new BigNumber(2 * 10 ** 18);
         let minOrderWei = new BigNumber(10 ** 18);
-        reserve = await OrderBookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address, ordersFactory.address,
+        reserve = await OrderBookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address,
             minMakeOrderWei, minOrderWei, 25);
 //        log(reserve);
-        await reserve.init();
-
-        numOrderIdsPerMaker = await reserve.numOrdersToAllocate();
+        await reserve.init(ordersFactory.address);
     });
 
     afterEach('withdraw ETH from contracts', async () => {
