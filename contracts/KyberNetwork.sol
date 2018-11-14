@@ -270,7 +270,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         return expectedRateContract.getExpectedRate(src, dest, srcQty, true);
     }
 
-    function getExpectedRateOnlyPermissioned(ERC20 src, ERC20 dest, uint srcQty)
+    function getExpectedRateOnlyPermission(ERC20 src, ERC20 dest, uint srcQty)
         public view
         returns(uint expectedRate, uint slippageRate)
     {

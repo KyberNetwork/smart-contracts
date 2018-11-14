@@ -2462,7 +2462,7 @@ contract('KyberNetwork', function(accounts) {
             // first getExpectedRate eth to new toekn should return 0
             let rate = await network.getExpectedRate(ethAddress, permissionlessTok.address, 10 ** 18);
             assert.equal(rate[0].valueOf(), 0);
-            let permRate = await network.getExpectedRateOnlyPermissioned(ethAddress, permissionlessTok.address, 10 ** 18);
+            let permRate = await network.getExpectedRateOnlyPermission(ethAddress, permissionlessTok.address, 10 ** 18);
             assert.equal(permRate[0].valueOf(), 0);
 
             //now add order
@@ -2478,7 +2478,7 @@ contract('KyberNetwork', function(accounts) {
 
             assert.equal(rate[0].div(10).floor().valueOf(), expectedRate.div(10).floor().valueOf());
 
-            permRate = await network.getExpectedRateOnlyPermissioned(ethAddress, permissionlessTok.address, totalPayValue);
+            permRate = await network.getExpectedRateOnlyPermission(ethAddress, permissionlessTok.address, totalPayValue);
             assert.equal(permRate[0].valueOf(), 0);
 
             let orderList = await orderBookReserve.getTokenToEthOrderList();
@@ -2512,7 +2512,7 @@ contract('KyberNetwork', function(accounts) {
             let reserveRate = await orderBookReserve.getConversionRate(permissionlessTok.address, ethAddress, totalPayValue, 1);
             assert.equal(reserveRate.div(10).floor().valueOf(), rate[0].div(10).floor().valueOf(), "rate from reserve should match rate from network")
 
-            let permRate = await network.getExpectedRateOnlyPermissioned(permissionlessTok.address, ethAddress, totalPayValue);
+            let permRate = await network.getExpectedRateOnlyPermission(permissionlessTok.address, ethAddress, totalPayValue);
             assert.equal(permRate[0].valueOf(), 0);
 
             assert.equal(rate[0].div(10).floor().valueOf(), expectedRate.div(10).floor().valueOf());
@@ -2630,7 +2630,7 @@ contract('KyberNetwork', function(accounts) {
 
 //            assert.equal(networkRate[0].div(10).floor().valueOf(), expectedRate.div(10).floor().valueOf());
 
-            let networkRateOnlyPerm = await network.getExpectedRateOnlyPermissioned(ethAddress, token0, tradeValue);
+            let networkRateOnlyPerm = await network.getExpectedRateOnlyPermission(ethAddress, token0, tradeValue);
 
             assert.equal(networkRateOnlyPerm[0].valueOf(), networkRateBefore[0].valueOf());
         })
@@ -2694,7 +2694,7 @@ contract('KyberNetwork', function(accounts) {
 
 //            assert.equal(networkRate[0].div(10).floor().valueOf(), expectedRate.div(10).floor().valueOf());
 
-            let networkRateOnlyPerm = await network.getExpectedRateOnlyPermissioned(token0, ethAddress, tradeValue);
+            let networkRateOnlyPerm = await network.getExpectedRateOnlyPermission(token0, ethAddress, tradeValue);
 
             assert.equal(networkRateOnlyPerm[0].valueOf(), networkRateBefore[0].valueOf());
         })
@@ -2717,7 +2717,7 @@ contract('KyberNetwork', function(accounts) {
 
         it("trade (sell) token listed regular and order book permissionless not allowed. see token taken from regular reserve", async() => {
             let tradeValue = 10000;
-            let rate = await network.getExpectedRateOnlyPermissioned(token0, ethAddress, tradeValue);
+            let rate = await network.getExpectedRateOnlyPermission(token0, ethAddress, tradeValue);
 
             //trade
             let hint = 'PERM';
@@ -2738,11 +2738,11 @@ contract('KyberNetwork', function(accounts) {
             token1 = tokens[1].address;
 
             let rate = await network.getExpectedRate(token0, token1, tradeValue);
-            let permRate = await network.getExpectedRateOnlyPermissioned(token0, token1, tradeValue.valueOf());
+            let permRate = await network.getExpectedRateOnlyPermission(token0, token1, tradeValue.valueOf());
             assert(rate[0].valueOf() > permRate[0].valueOf());
 
             rate = await network.getExpectedRate(token1, token0, tradeValue);
-            permRate = await network.getExpectedRateOnlyPermissioned(token1, token0, tradeValue.valueOf());
+            permRate = await network.getExpectedRateOnlyPermission(token1, token0, tradeValue.valueOf());
             assert(rate[0].valueOf() > permRate[0].valueOf());
         });
 
@@ -2763,7 +2763,7 @@ contract('KyberNetwork', function(accounts) {
             assert.equal(makerTokFundsAfter1.valueOf(), expectedMakerTokFunds.valueOf());
 
             //now only permissioned
-            rate = await network.getExpectedRateOnlyPermissioned(token0, token1, tradeValue);
+            rate = await network.getExpectedRateOnlyPermission(token0, token1, tradeValue);
             let hint = web3.fromAscii("PERM");
             await tokens[0].transfer(network.address, tradeValue);
             txData = await network.tradeWithHint(user1, token0, tradeValue, token1, user2,
@@ -2787,7 +2787,7 @@ contract('KyberNetwork', function(accounts) {
             assert(makerTokFundsAfter1.valueOf() > makerTokFundsBefore.valueOf());
 
             //now only permissioned
-            rate = await network.getExpectedRateOnlyPermissioned(token1, token0, tradeValue);
+            rate = await network.getExpectedRateOnlyPermission(token1, token0, tradeValue);
             let hint = web3.fromAscii("PERM");
             await tokens[1].transfer(network.address, tradeValue);
             txData = await network.tradeWithHint(user1, token1, tradeValue, token0, user2,
