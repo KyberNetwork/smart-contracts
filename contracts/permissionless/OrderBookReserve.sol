@@ -842,6 +842,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return(takeOrder(maker, userSrc, userPartialSrcAmount, userTakeDstAmount, remainingWeiValue));
     }
 
+    
     function takeOrder(
         address maker,
         ERC20 userSrc,
