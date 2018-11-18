@@ -7,11 +7,21 @@ import "../../ERC20Interface.sol";
 contract MockOtc {
 
     uint constant internal OFFER_WEI_VALUE = 3 * (10**18);
-    uint constant internal MAKER_PAYS_TOKEN_OFFER_ID = 0;
-    uint constant internal MAKER_PAYS_WETH_OFFER_ID = 1;
+    uint constant internal MAKER_PAYS_DAI_OFFER_ID = 1;
+    uint constant internal MAKER_BUYS_DAI_OFFER_ID = 2;
+    uint constant internal MAKER_PAYS_MKR_FIRST_OFFER_ID = 3;
+    uint constant internal MAKER_PAYS_MKR_SECOND_OFFER_ID = 4;
+    uint constant internal MAKER_PAYS_MKR_THIRD_OFFER_ID = 5;
+    uint constant internal MAKER_BUYS_MKR_FIRST_OFFER_ID = 6;
+    uint constant internal MAKER_BUYS_MKR_SECOND_OFFER_ID = 7;
+    uint constant internal MAKER_BUYS_MKR_THIRD_OFFER_ID = 8;
     ERC20 public wethToken;
-    ERC20 public tradeToken;
-    uint public tokensForPayEth;
+    ERC20 public daiToken;
+    ERC20 public mkrToken;
+    uint public daisForPayEth;
+    uint public mkrForPayEth1st;
+    uint public mkrForPayEth2nd;
+    uint public mkrForPayEth3rd;
 
     mapping (uint => OfferInfo) public offers;
 
@@ -24,31 +34,77 @@ contract MockOtc {
         uint64   timestamp;
     }
 
-    function MockOtc(ERC20 _wethToken, ERC20 _tradeToken, uint _tokensForPayEth) public {
+    function MockOtc(
+        ERC20 _wethToken,
+        ERC20 _daiToken,
+        ERC20 _mkrToken,
+        uint _daisForPayEth,
+        uint _mkrForPayEth1st,
+        uint _mkrForPayEth2nd,
+        uint _mkrForPayEth3rd
+    )
+        public
+    {
         wethToken = _wethToken;
-        tradeToken = _tradeToken;
-        tokensForPayEth = _tokensForPayEth;
+        daiToken = _daiToken;
+        mkrToken = _mkrToken;
+        daisForPayEth = _daisForPayEth;
+        mkrForPayEth1st = _mkrForPayEth1st;
+        mkrForPayEth2nd = _mkrForPayEth2nd;
+        mkrForPayEth3rd = _mkrForPayEth3rd;
 
-        OfferInfo memory payWethInfo;
-        OfferInfo memory payTokenInfo;
+        OfferInfo memory buyDaiInfo;
+        OfferInfo memory payDaiInfo;
+        OfferInfo memory buyMkrInfo;
+        OfferInfo memory payMkrInfo;
 
-        // create 1 order where the maker buys weth and pays tokens.
-        payWethInfo.payAmt = OFFER_WEI_VALUE * _tokensForPayEth;
-        payWethInfo.payGem = tradeToken;
-        payWethInfo.buyAmt = OFFER_WEI_VALUE;
-        payWethInfo.buyGem = wethToken;
-        payWethInfo.owner = 0;
-        payWethInfo.timestamp = 0;
-        offers[MAKER_PAYS_TOKEN_OFFER_ID] = payWethInfo;
+        // create 1 order where the maker buys weth and pays dai.
+        payDaiInfo.payAmt = OFFER_WEI_VALUE * _daisForPayEth;
+        payDaiInfo.payGem = daiToken;
+        payDaiInfo.buyAmt = OFFER_WEI_VALUE;
+        payDaiInfo.buyGem = wethToken;
+        payDaiInfo.owner = 0;
+        payDaiInfo.timestamp = 0;
+        offers[MAKER_PAYS_DAI_OFFER_ID] = payDaiInfo;
 
-        // create 1 order where the maker buys tokens and pays weth.
-        payTokenInfo.payAmt = OFFER_WEI_VALUE;
-        payTokenInfo.payGem = wethToken;
-        payTokenInfo.buyAmt = OFFER_WEI_VALUE * _tokensForPayEth;
-        payTokenInfo.buyGem = tradeToken;
-        payTokenInfo.owner = 0;
-        payTokenInfo.timestamp = 0;
-        offers[MAKER_PAYS_WETH_OFFER_ID] = payTokenInfo;
+        // create 1 order where the maker buys dai and pays weth.
+        buyDaiInfo.payAmt = OFFER_WEI_VALUE;
+        buyDaiInfo.payGem = wethToken;
+        buyDaiInfo.buyAmt = OFFER_WEI_VALUE * _daisForPayEth;
+        buyDaiInfo.buyGem = daiToken;
+        buyDaiInfo.owner = 0;
+        buyDaiInfo.timestamp = 0;
+        offers[MAKER_BUYS_DAI_OFFER_ID] = buyDaiInfo;
+
+        // create 3 orders where the maker buys weth and pays mkr.
+        payMkrInfo.payAmt = 1 * OFFER_WEI_VALUE  * _mkrForPayEth1st;
+        payMkrInfo.payGem = mkrToken;
+        payMkrInfo.buyAmt = 1 * OFFER_WEI_VALUE;
+        payMkrInfo.buyGem = wethToken;
+        offers[MAKER_PAYS_MKR_FIRST_OFFER_ID] = payMkrInfo;
+
+        payMkrInfo.payAmt = 2 * OFFER_WEI_VALUE  * _mkrForPayEth2nd;
+        payMkrInfo.buyAmt = 2 * OFFER_WEI_VALUE;
+        offers[MAKER_PAYS_MKR_SECOND_OFFER_ID] = payMkrInfo;
+
+        payMkrInfo.payAmt = 3 * OFFER_WEI_VALUE  * _mkrForPayEth3rd;
+        payMkrInfo.buyAmt = 3 * OFFER_WEI_VALUE;
+        offers[MAKER_PAYS_MKR_THIRD_OFFER_ID] = payMkrInfo;
+
+        // create 3 orders where the maker buys mkr and pays weth.
+        buyMkrInfo.payAmt = 1 * OFFER_WEI_VALUE;
+        buyMkrInfo.payGem = wethToken;
+        buyMkrInfo.buyAmt = 1 * OFFER_WEI_VALUE  * _mkrForPayEth1st;
+        buyMkrInfo.buyGem = mkrToken;
+        offers[MAKER_BUYS_MKR_FIRST_OFFER_ID] = buyMkrInfo;
+
+        buyMkrInfo.payAmt = 2 * OFFER_WEI_VALUE;
+        buyMkrInfo.buyAmt = 2 * OFFER_WEI_VALUE  * _mkrForPayEth2nd;
+        offers[MAKER_BUYS_MKR_SECOND_OFFER_ID] = buyMkrInfo;
+
+        buyMkrInfo.payAmt = 3 * OFFER_WEI_VALUE;
+        buyMkrInfo.buyAmt = 3 * OFFER_WEI_VALUE  * _mkrForPayEth3rd;
+        offers[MAKER_BUYS_MKR_THIRD_OFFER_ID] = buyMkrInfo;
     }
 
     function() public payable {}
@@ -58,36 +114,72 @@ contract MockOtc {
         return (offer.payAmt, offer.payGem, offer.buyAmt, offer.buyGem);
     }
 
-    function getBestOffer(ERC20 sellGem, ERC20 buyGem) public constant returns(uint) {
+    function getBestOffer(ERC20 offerSellGem, ERC20 offerBuyGem) public constant returns(uint) {
 
-        buyGem;
-
-        if (sellGem == wethToken) {
-            // maker pays weth
-            return MAKER_PAYS_WETH_OFFER_ID;
+        if (offerSellGem == wethToken && offerBuyGem == daiToken) {
+            return MAKER_BUYS_DAI_OFFER_ID;
+        } else if (offerSellGem == daiToken && offerBuyGem == wethToken) {
+            return MAKER_PAYS_DAI_OFFER_ID;
+        } else if (offerSellGem == mkrToken && offerBuyGem == wethToken) {
+            return MAKER_PAYS_MKR_FIRST_OFFER_ID;
+        } else if (offerSellGem == wethToken && offerBuyGem == mkrToken ) {
+            return MAKER_BUYS_MKR_FIRST_OFFER_ID;
         } else {
-            // maker pays tokens
-            return MAKER_PAYS_TOKEN_OFFER_ID;
+            return 0;
         }
     }
 
-    function sellAllAmount(ERC20 payGem, uint payAmt, ERC20 buyGem, uint minFillAmount)
+    function sellAllAmount(ERC20 takerPayGem, uint takerPayAmt, ERC20 takerBuyGem, uint minFillAmount)
         public
         returns (uint fillAmount)
     {
-
-
-        if (payGem == wethToken) {
-            // taker pays weth, look for offer where maker pays tokens
-            fillAmount = payAmt * offers[MAKER_PAYS_TOKEN_OFFER_ID].payAmt / offers[MAKER_PAYS_TOKEN_OFFER_ID].buyAmt;
+        if (takerPayGem == wethToken && takerBuyGem == daiToken) {
+            fillAmount = takerPayAmt * offers[MAKER_PAYS_DAI_OFFER_ID].payAmt / offers[MAKER_PAYS_DAI_OFFER_ID].buyAmt;
+        } else if (takerPayGem == daiToken && takerBuyGem == wethToken) {
+            fillAmount = takerPayAmt * offers[MAKER_BUYS_DAI_OFFER_ID].payAmt / offers[MAKER_BUYS_DAI_OFFER_ID].buyAmt;
         } else {
-            // taker pays tokens, look for offer where maker pays weth
-            fillAmount = payAmt * offers[MAKER_PAYS_WETH_OFFER_ID].payAmt / offers[MAKER_PAYS_WETH_OFFER_ID].buyAmt;
+            return 0;
         }
 
         require(minFillAmount <= fillAmount);
+        buy(takerPayGem, takerPayAmt, takerBuyGem, fillAmount);
+    }
 
-        require(payGem.transferFrom(msg.sender, this, payAmt));
-        require(buyGem.transfer(msg.sender, fillAmount));
+    function getWorseOffer(uint id) public pure returns(uint) {
+        if (id == MAKER_PAYS_MKR_FIRST_OFFER_ID) {
+            return MAKER_PAYS_MKR_SECOND_OFFER_ID;
+        } else if (id == MAKER_PAYS_MKR_SECOND_OFFER_ID) {
+            return MAKER_PAYS_MKR_THIRD_OFFER_ID;
+        } else if (id == MAKER_PAYS_MKR_THIRD_OFFER_ID) {
+            return 0;
+        } if (id == MAKER_BUYS_MKR_FIRST_OFFER_ID) {
+            return MAKER_BUYS_MKR_SECOND_OFFER_ID;
+        } else if (id == MAKER_BUYS_MKR_SECOND_OFFER_ID) {
+            return MAKER_BUYS_MKR_THIRD_OFFER_ID;
+        } else if (id == MAKER_BUYS_MKR_THIRD_OFFER_ID) {
+            return 0;
+        } else {
+            return 0;
+        }
+    }
+
+    function take(bytes32 id, uint128 takerBuyAmount) public {
+        uint offerPayAmt;
+        ERC20 offerPayGem;
+        uint offerBuyAmt;
+        ERC20 offerBuyGem;
+    
+        (offerPayAmt, offerPayGem, offerBuyAmt, offerBuyGem) = getOffer(uint256(id));
+ 
+        uint takerPayAmount = takerBuyAmount * offerBuyAmt / offerPayAmt;
+    
+        require(uint128(takerBuyAmount) == takerBuyAmount);
+        require(uint128(takerPayAmount) == takerPayAmount);
+        buy(offerBuyGem, takerPayAmount, offerPayGem, takerBuyAmount);
+    }
+
+    function buy(ERC20 takerPayGem, uint takerPayAmt, ERC20 takerBuyGem, uint actualBuyAmt) internal {
+        require(takerPayGem.transferFrom(msg.sender, this, takerPayAmt));
+        require(takerBuyGem.transfer(msg.sender, actualBuyAmt));
     }
 }
