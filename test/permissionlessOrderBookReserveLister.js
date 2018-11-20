@@ -21,7 +21,7 @@ require("chai")
 //////////////////
 const precisionUnits = (new BigNumber(10).pow(18));
 const gasPrice = (new BigNumber(10).pow(9).mul(50));
-const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
 let withDrawAddress;
 
@@ -400,7 +400,7 @@ contract('PermissionlessOrderBookReserveLister_feeBurner_tests', async (accounts
         burnAssignedFeesEvent.event.should.equal('BurnAssignedFees');
         burnAssignedFeesEvent.args.reserve.should.equal(reserve.address);
 
-        const ethKncRatePrecision = await feeBurner.ethKncRatePrecision();
+        const ethKncRatePrecision = await feeBurner.kncPerEthRatePrecision();
         const burnReserveFeeBps = await lister.ORDER_BOOK_BURN_FEE_BPS();
 
         // (ethWeiToSwap * (ethKncRatePrecision) * (25: BURN_FEE_BPS) / 10000) - 1

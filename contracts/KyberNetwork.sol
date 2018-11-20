@@ -41,7 +41,8 @@ contract ReentrancyGuard {
 contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, ReentrancyGuard {
 
     enum ReserveType {NONE, PERMISSIONED, PERMISSIONLESS}
-    bytes empty;
+    bytes internal empty;
+    bytes internal permHint = "PERM";
 
     uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
     KyberReserveInterface[] public reserves;
@@ -97,8 +98,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         address walletId,
         bytes hint
     )
-        nonReentrant
         public
+        nonReentrant
         payable
         returns(uint)
     {
@@ -135,7 +136,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
             require(reserveType[reserve] == ReserveType.NONE);
             reserves.push(reserve);
 
-            reserveType[reserve] = isPermissionless? ReserveType.PERMISSIONLESS : ReserveType.PERMISSIONED;
+            reserveType[reserve] = isPermissionless ? ReserveType.PERMISSIONLESS : ReserveType.PERMISSIONED;
 
             AddReserveToNetwork(reserve, true);
         } else {
@@ -266,7 +267,15 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         returns(uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
-        return expectedRateContract.getExpectedRate(src, dest, srcQty);
+        return expectedRateContract.getExpectedRate(src, dest, srcQty, true);
+    }
+
+    function getExpectedRateOnlyPermission(ERC20 src, ERC20 dest, uint srcQty)
+        public view
+        returns(uint expectedRate, uint slippageRate)
+    {
+        require(expectedRateContract != address(0));
+        return expectedRateContract.getExpectedRate(src, dest, srcQty, false);
     }
 
     function getUserCapInWei(address user) public view returns(uint) {
@@ -301,6 +310,15 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         return(0, result.rate);
     }
 
+    function findBestRateOnlyPermission(ERC20 src, ERC20 dest, uint srcAmount)
+        public
+        view
+        returns(uint obsolete, uint rate)
+    {
+        BestRateResult memory result = findBestRateTokenToToken(src, dest, srcAmount, permHint);
+        return(0, result.rate);
+    }
+
     function enabled() public view returns(bool) {
         return isEnabled;
     }
@@ -309,20 +327,12 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         return infoFields[field];
     }
 
-    function searchBestRate(ERC20 src, ERC20 dest, uint srcAmount) public view returns(address, uint) {
-        return searchBestRatePerm(src, dest, srcAmount, true);
-    }
-
-    function searchBestRateOnlyPermissioned(ERC20 src, ERC20 dest, uint srcAmount) public view returns(address, uint) {
-        return searchBestRatePerm(src, dest, srcAmount, false);
-    }
-
     /* solhint-disable code-complexity */
     // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
     //  It has been tested, reviewed and found to be clear enough.
     //@dev this function always src or dest are ether. can't do token to token
-    function searchBestRatePerm(ERC20 src, ERC20 dest, uint srcAmount, bool usePermissionless)
-        internal
+    function searchBestRate(ERC20 src, ERC20 dest, uint srcAmount, bool usePermissionless)
+        public
         view
         returns(address, uint)
     {
@@ -335,7 +345,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
         address[] memory reserveArr;
 
-        reserveArr = src == ETH_TOKEN_ADDRESS? reservesPerTokenDest[dest] : reservesPerTokenSrc[src];
+        reserveArr = src == ETH_TOKEN_ADDRESS ? reservesPerTokenDest[dest] : reservesPerTokenSrc[src];
 
         if (reserveArr.length == 0) return (reserves[bestReserve], bestRate);
 
@@ -387,19 +397,19 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
         // PERM ascii == P = 80, E = 69, R = 82, M = 77
         if ((hint.length >= 4) &&
-            (keccak256(hint[0], hint[1], hint[2], hint[3]) == keccak256(byte(80), byte(69), byte(82), byte(77)))){
+            (keccak256(hint[0], hint[1], hint[2], hint[3]) == keccak256(byte(80), byte(69), byte(82), byte(77)))) {
 
             //use permissioned only
             usePermissionless = false;
         }
 
         (result.reserve1, result.rateSrcToEth) =
-            searchBestRatePerm(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
+            searchBestRate(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
 
         result.weiAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcAmount, result.rateSrcToEth);
 
         (result.reserve2, result.rateEthToDest) =
-            searchBestRatePerm(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
+            searchBestRate(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
 
         result.destAmount = calcDestAmount(ETH_TOKEN_ADDRESS, dest, result.weiAmount, result.rateEthToDest);
 
@@ -434,6 +444,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
     event KyberTrade(address srcAddress, ERC20 srcToken, uint srcAmount, address destAddress, ERC20 destToken,
         uint destAmount);
+
     // Most of the lins here are functions calls spread over multiple lines. We find this function readable enough
     //  and keep its size as is.
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
@@ -461,15 +472,10 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
             tradeInput.maxDestAmount,
             rateResult);
 
-        // verify trade size is smaller than user cap
         require(getUserCapInWei(tradeInput.trader) >= weiAmount);
-
-        //if any "change" in src token, send back to trader
         require(handleChange(tradeInput.src, tradeInput.srcAmount, actualSrcAmount, tradeInput.trader));
 
-        //do the trade
-        //src to ETH
-        require(doReserveTrade(
+        require(doReserveTrade(     //src to ETH
                 tradeInput.src,
                 actualSrcAmount,
                 ETH_TOKEN_ADDRESS,
@@ -479,8 +485,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
                 rateResult.rateSrcToEth,
                 true));
 
-        //Eth to dest
-        require(doReserveTrade(
+        require(doReserveTrade(     //Eth to dest
                 ETH_TOKEN_ADDRESS,
                 weiAmount,
                 tradeInput.dest,
@@ -490,13 +495,10 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
                 rateResult.rateEthToDest,
                 true));
 
-        //when src is ether, reserve1 is doing a "fake" trade. (ether to ether) - don't burn.
-        //when dest is ether, reserve2 is doing a "fake" trade. (ether to ether) - don't burn.
-        if (tradeInput.src != ETH_TOKEN_ADDRESS)
+        if (tradeInput.src != ETH_TOKEN_ADDRESS) //"fake" trade. (ether to ether) - don't burn.
             require(feeBurnerContract.handleFees(weiAmount, rateResult.reserve1, tradeInput.walletId));
-        if (tradeInput.dest != ETH_TOKEN_ADDRESS)
+        if (tradeInput.dest != ETH_TOKEN_ADDRESS) //"fake" trade. (ether to ether) - don't burn.
             require(feeBurnerContract.handleFees(weiAmount, rateResult.reserve2, tradeInput.walletId));
-
         KyberTrade(tradeInput.trader, tradeInput.src, actualSrcAmount, tradeInput.destAddress, tradeInput.dest,
             actualDestAmount);
 
@@ -569,7 +571,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     }
 
     /// when user sets max dest amount we could have too many source tokens == change. so we send it back to user.
-    function handleChange (ERC20 src, uint srcAmount, uint requiredSrcAmount, address trader) internal returns (bool){
+    function handleChange (ERC20 src, uint srcAmount, uint requiredSrcAmount, address trader) internal returns (bool) {
 
         if (requiredSrcAmount < srcAmount) {
             //if there is "change" send back to trader

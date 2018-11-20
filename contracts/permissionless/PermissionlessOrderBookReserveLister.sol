@@ -62,6 +62,7 @@ contract PermissionlessOrderBookReserveLister {
     }
 
     event TokenOrderBookListingStage(ERC20 token, ListingStage stage);
+
     /// @dev anyone can call
     function addOrderBookContract(ERC20 token) public returns(bool) {
         require(reserveListingStage[token] == ListingStage.NO_RESERVE);
@@ -71,7 +72,6 @@ contract PermissionlessOrderBookReserveLister {
             kncToken,
             token,
             feeBurnerResolverContract,
-            ordersFactory,
             MIN_MAKE_ORDER_VALUE_WEI,
             MIN_ORDER_VALUE_WEI,
             ORDER_BOOK_BURN_FEE_BPS
@@ -86,7 +86,7 @@ contract PermissionlessOrderBookReserveLister {
     /// @dev anyone can call
     function initOrderBookContract(ERC20 token) public returns(bool) {
         require(reserveListingStage[token] == ListingStage.RESERVE_ADDED);
-        require(reserves[token].init());
+        require(reserves[token].init(ordersFactory));
 
         reserveListingStage[token] = ListingStage.RESERVE_INIT;
         TokenOrderBookListingStage(token, ListingStage.RESERVE_INIT);

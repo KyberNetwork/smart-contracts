@@ -10,12 +10,12 @@ interface ENS {
 
 
 interface Resolver {
-    function addr(bytes32 node) view public returns (address);
+    function addr(bytes32 node) public view returns (address);
 }
 
 
 contract KyberNetworkENSResolver {
-    ENS constant ENS_CONTRACT = ENS(0x314159265dD8dbb310642f98f50C066173C1259b);
+    ENS public constant ENS_CONTRACT = ENS(0x314159265dD8dbb310642f98f50C066173C1259b);
 
     function calcNode() internal pure returns(bytes32) {
         string[2] memory parts;
@@ -23,7 +23,7 @@ contract KyberNetworkENSResolver {
         parts[1] = "eth";
         bytes32 namehash = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
-        for(uint i = 0; i < parts.length; i++) {
+        for (uint i = 0; i < parts.length; i++) {
             namehash = keccak256(namehash, keccak256(parts[parts.length - i - 1]));
         }
 
@@ -45,12 +45,12 @@ interface KyberNetworkIf {
 
 ///@dev kyber network proxy local interface contract.
 interface KyberNetworkProxyIf {
-    function KyberNetworkContract() public view returns(KyberNetworkIf);
+    function kyberNetworkContract() public view returns(KyberNetworkIf);
 }
 
 
 contract FeeBurnerResolver is KyberNetworkENSResolver, FeeBurnerResolverInterface {
     function getFeeBurnerAddress() public view returns(address) {
-        return KyberNetworkProxyIf(getKyberNetworkAddress()).KyberNetworkContract().feeBurnerContract();
+        return KyberNetworkProxyIf(getKyberNetworkAddress()).kyberNetworkContract().feeBurnerContract();
     }
 }

@@ -10,13 +10,12 @@ contract MockOrderBookReserve is OrderBookReserve {
         ERC20 knc,
         ERC20 reserveToken,
         FeeBurnerResolverInterface resolver,
-        OrderFactoryInterface factory,
         uint minOrderMakeWei,
         uint minOrderWei,
         uint burnFeeBps
     )
         public
-        OrderBookReserve(knc, reserveToken, resolver, factory, minOrderMakeWei, minOrderWei, burnFeeBps)
+        OrderBookReserve(knc, reserveToken, resolver, minOrderMakeWei, minOrderWei, burnFeeBps)
     {
     }
 
