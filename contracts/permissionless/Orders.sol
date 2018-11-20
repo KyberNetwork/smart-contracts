@@ -32,7 +32,7 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         require(_admin != address(0));
 
         admin = _admin;
-        
+
         // Initializing a "dummy" order as HEAD.
         orders[HEAD_ID].maker = 0;
         orders[HEAD_ID].prevId = 0;
@@ -163,13 +163,15 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
             ) {
                 // Let's move the order to the hinted position.
                 address maker = orders[orderId].maker;
-                remove(orderId);
-                addAfterValidId(
-                    maker,
-                    orderId,
-                    updatedSrcAmount,
-                    updatedDstAmount,
-                    updatedPrevId
+                require(remove(orderId));
+                require(
+                    addAfterValidId(
+                        maker,
+                        orderId,
+                        updatedSrcAmount,
+                        updatedDstAmount,
+                        updatedPrevId
+                    )
                 );
                 return (true, UPDATE_MOVE_ORDER);
             }
