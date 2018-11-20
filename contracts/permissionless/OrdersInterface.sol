@@ -6,7 +6,7 @@ interface OrdersInterface {
     function add(address maker, uint32 orderId, uint128 srcAmount, uint128 dstAmount) public returns (bool);
     function addAfterId(address maker, uint32 orderId, uint128 srcAmount, uint128 dstAmount, uint32 prevId) public
         returns (bool);
-    function removeById(uint32 orderId) public returns (bool);
+    function remove(uint32 orderId) public returns (bool);
     function update(uint32 orderId, uint128 srcAmount, uint128 dstAmount) public returns (bool);
     function updateWithPositionHint(uint32 orderId, uint128 srcAmount, uint128 dstAmount, uint32 prevId) public
         returns(bool, uint);

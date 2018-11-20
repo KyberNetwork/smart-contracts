@@ -18,13 +18,13 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
 
     mapping (uint32 => Order) public orders;
 
+    // Results of calling updateWithPositionHint.
+    uint constant public UPDATE_ONLY_AMOUNTS = 0;
+    uint constant public UPDATE_MOVE_ORDER = 1;
+    uint constant public UPDATE_FAILED = 2;
+
     uint32 constant public TAIL_ID = 1;
     uint32 constant public HEAD_ID = 2;
-
-    // Results of calling updateWithPositionHint.
-    uint8 constant public UPDATE_ONLY_AMOUNTS = 0;
-    uint8 constant public UPDATE_MOVE_ORDER = 1;
-    uint8 constant public UPDATE_FAILED = 2;
 
     uint32 public nextFreeId = 3;
 
@@ -32,8 +32,10 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         require(_admin != address(0));
 
         admin = _admin;
+        
+        // Initializing a "dummy" order as HEAD.
         orders[HEAD_ID].maker = 0;
-        orders[HEAD_ID].prevId = HEAD_ID;
+        orders[HEAD_ID].prevId = 0;
         orders[HEAD_ID].nextId = TAIL_ID;
         orders[HEAD_ID].srcAmount = 0;
         orders[HEAD_ID].dstAmount = 0;
@@ -43,21 +45,20 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         public
         view
         returns (
-            address _maker,
-            uint128 _srcAmount,
-            uint128 _dstAmount,
-            uint32 _prevId,
-            uint32 _nextId
+            address maker,
+            uint128 srcAmount,
+            uint128 dstAmount,
+            uint32 prevId,
+            uint32 nextId
         )
     {
         Order storage order = orders[orderId];
-        return (
-            order.maker,
-            order.srcAmount,
-            order.dstAmount,
-            order.prevId,
-            order.nextId
-        );
+
+        maker = order.maker;
+        srcAmount = order.srcAmount;
+        dstAmount = order.dstAmount;
+        prevId = order.prevId;
+        nextId = order.nextId;
     }
 
     function add(
@@ -92,11 +93,10 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         if (!isRightPosition(srcAmount, dstAmount, prevId, nextId)) {
             return false;
         }
-        addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
-        return true;
+        return addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
     }
 
-    function removeById(uint32 orderId) public onlyAdmin returns (bool) {
+    function remove(uint32 orderId) public onlyAdmin returns (bool) {
         verifyCanRemoveOrderById(orderId);
 
         // Disconnect order from list
@@ -112,44 +112,65 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
         returns(bool)
     {
         address maker = orders[orderId].maker;
-        removeById(orderId);
-        return add(maker, orderId, srcAmount, dstAmount);
+        require(remove(orderId));
+        require(add(maker, orderId, srcAmount, dstAmount));
+
+        return true;
     }
 
     // Returns false if provided with a bad hint.
     function updateWithPositionHint(
         uint32 orderId,
-        uint128 srcAmount,
-        uint128 dstAmount,
-        uint32 prevId
+        uint128 updatedSrcAmount,
+        uint128 updatedDstAmount,
+        uint32 updatedPrevId
     )
         public
         onlyAdmin
         returns (bool, uint)
     {
-        require(orderId != HEAD_ID && orderId != TAIL_ID);
+        require(orderId != 0 && orderId != HEAD_ID && orderId != TAIL_ID);
 
         // Normal orders usually cannot serve as their own previous order.
         // For further discussion see Heinlein's '—All You Zombies—'.
-        require(orderId != prevId);
+        require(orderId != updatedPrevId);
 
         uint32 nextId;
 
-        // If not changing place, only update amounts.
-        if (orders[orderId].prevId == prevId) {
+        // updatedPrevId is the intended prevId of the order, after updating its
+        // values.
+        // If it is the same as the current prevId of the order, the order does
+        // not need to change place in the list, only update its amounts.
+        if (orders[orderId].prevId == updatedPrevId) {
             nextId = orders[orderId].nextId;
-            if (isRightPosition(srcAmount, dstAmount, prevId, nextId)) {
-                orders[orderId].srcAmount = srcAmount;
-                orders[orderId].dstAmount = dstAmount;
+            if (isRightPosition(
+                updatedSrcAmount,
+                updatedDstAmount,
+                updatedPrevId,
+                nextId)
+            ) {
+                orders[orderId].srcAmount = updatedSrcAmount;
+                orders[orderId].dstAmount = updatedDstAmount;
                 return (true, UPDATE_ONLY_AMOUNTS);
             }
         } else {
-            nextId = orders[prevId].nextId;
-            if (isRightPosition(srcAmount, dstAmount, prevId, nextId)) {
+            nextId = orders[updatedPrevId].nextId;
+            if (isRightPosition(
+                updatedSrcAmount,
+                updatedDstAmount,
+                updatedPrevId,
+                nextId)
+            ) {
                 // Let's move the order to the hinted position.
                 address maker = orders[orderId].maker;
-                removeById(orderId);
-                addAfterValidId(maker, orderId, srcAmount, dstAmount, prevId);
+                remove(orderId);
+                addAfterValidId(
+                    maker,
+                    orderId,
+                    updatedSrcAmount,
+                    updatedDstAmount,
+                    updatedPrevId
+                );
                 return (true, UPDATE_MOVE_ORDER);
             }
         }
@@ -256,7 +277,7 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
     }
 
     function verifyCanRemoveOrderById(uint32 orderId) private view {
-        require(orderId != HEAD_ID);
+        require(orderId != 0 && orderId != HEAD_ID && orderId != TAIL_ID);
 
         Order storage order = orders[orderId];
 
@@ -278,8 +299,10 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
 
         Order storage prev = orders[prevId];
 
-        // Make sure prev order is initialised.
-        if (prev.prevId == 0 || prev.nextId == 0) return false;
+        // Make sure prev order is either HEAD or properly initialised.
+        if (prevId != HEAD_ID && (prev.prevId == 0 || prev.nextId == 0)) {
+            return false;
+        }
 
         int cmp;
         // Make sure that the new order should be after the provided prevId.
