@@ -871,7 +871,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     )
         internal returns(bool)
     {
-        require(list.removeById(orderId));
+        require(list.remove(orderId));
         OrdersData storage orders = (makerSrc == ETH_TOKEN_ADDRESS) ?
             makerOrdersEthToToken[maker] : makerOrdersTokenToEth[maker];
         releaseOrderId(orders, orderId);
