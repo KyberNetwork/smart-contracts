@@ -2795,6 +2795,12 @@ contract('KyberNetwork', function(accounts) {
             let makerTokFundsAfter2 = await orderbookReserveTok0.makerFunds(maker1, ethAddress);
             assert.equal(makerTokFundsAfter1.valueOf(), makerTokFundsAfter2.valueOf());
         });
+
+        xit("test kyberTrade event", async() => {
+        });
+
+        xit("test ExecuteTrade event", async() => {
+        });
     });
 });
 
