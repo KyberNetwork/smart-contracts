@@ -1,9 +1,9 @@
 const TestToken = artifacts.require("./mockContracts/TestToken.sol");
 const KyberNetwork = artifacts.require("./KyberNetwork.sol");
 const FeeBurner = artifacts.require("./FeeBurner.sol");
-const Orders = artifacts.require("./permissionless/Orders.sol");
-const OrdersFactory = artifacts.require("./permissionless/OrdersFactory.sol");
-const OrderBookReserve = artifacts.require("./permissionless/mock/MockOrderBookReserve.sol");
+const Orders = artifacts.require("./permissionless/OrderList.sol");
+const OrdersFactory = artifacts.require("./permissionless/OrderListFactory.sol");
+const OrderbookReserve = artifacts.require("./permissionless/mock/MockOrderbookReserve.sol");
 const FeeBurnerResolver = artifacts.require("./permissionless/mock/MockFeeBurnerResolver.sol");
 
 const Helper = require("./helper.js");
@@ -49,7 +49,7 @@ const ethToKncRatePrecision = precisionUnits.mul(550);
 
 let currentBlock;
 
-contract('OrderBookReserve', async (accounts) => {
+contract('OrderbookReserve', async (accounts) => {
 
     before('one time init. tokens, accounts', async() => {
         admin = accounts[0];
@@ -77,7 +77,7 @@ contract('OrderBookReserve', async (accounts) => {
 
         let minMakeOrderWei = new BigNumber(2 * 10 ** 18);
         let minOrderWei = new BigNumber(10 ** 18);
-        reserve = await OrderBookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address,
+        reserve = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address,
             minMakeOrderWei, minOrderWei, 25);
 //        log(reserve);
         await reserve.init(ordersFactory.address);
@@ -95,7 +95,7 @@ contract('OrderBookReserve', async (accounts) => {
 //        log(feeBurner.address + " " + kncAddress + " " + tokenAdd)
         let minMakeOrderWei = new BigNumber(2 * 10 ** 18);
         let minOrderWei = new BigNumber(10 ** 18);
-        reserve = await OrderBookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address,
+        reserve = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address,
             minMakeOrderWei, minOrderWei, 25);
 //        log(reserve);
         await reserve.init(ordersFactory.address);
@@ -2431,7 +2431,7 @@ contract('OrderBookReserve', async (accounts) => {
 });
 
 
-contract('OrderBookReserve on network', async (accounts) => {
+contract('OrderbookReserve on network', async (accounts) => {
 
     beforeEach('setup contract for each test', async () => {
 
@@ -2456,7 +2456,7 @@ contract('OrderBookReserve on network', async (accounts) => {
             init = false;
         }
 
-        reserve = await OrderBookReserve.new(feeBurner.address, kncAddress, tokenAdd, admin, 25);
+        reserve = await OrderbookReserve.new(feeBurner.address, kncAddress, tokenAdd, admin, 25);
     });
 });
 

@@ -1,10 +1,10 @@
 pragma solidity 0.4.18;
 
 
-import "./OrdersInterface.sol";
+import "./OrderListInterface.sol";
 import "./OrderIdManager.sol";
 import "./FeeBurnerResolverInterface.sol";
-import "./OrderBookReserveInterface.sol";
+import "./OrderbookReserveInterface.sol";
 import "../Utils2.sol";
 import "../KyberReserveInterface.sol";
 
@@ -14,7 +14,7 @@ contract FeeBurnerRateInterface {
 }
 
 
-contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, OrderBookReserveInterface {
+contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, OrderbookReserveInterface {
 
     uint public minOrderValueWei = 10 ** 18;                 // below this value order will be removed.
     uint public minOrderMakeValueWei = 2 * minOrderValueWei; // Below this value can't create new order.
@@ -57,7 +57,7 @@ contract OrderBookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint128 dstAmount;
     }
 
-    function OrderBookReserve(
+    function OrderbookReserve(
         ERC20 knc,
         ERC20 reserveToken,
         FeeBurnerResolverInterface resolver,

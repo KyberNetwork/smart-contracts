@@ -1,7 +1,7 @@
 pragma solidity 0.4.18;
 
 
-import "./OrderBookReserve.sol";
+import "./OrderbookReserve.sol";
 import "../FeeBurnerInterface.sol";
 
 
@@ -26,7 +26,7 @@ interface InternalNetworkInterface {
 }
 
 
-contract PermissionlessOrderBookReserveLister {
+contract PermissionlessOrderbookReserveLister {
     InternalNetworkInterface public kyberNetworkContract;
     FeeBurnerResolverInterface public feeBurnerResolverContract;
     OrderFactoryInterface public ordersFactory;
@@ -35,14 +35,14 @@ contract PermissionlessOrderBookReserveLister {
     enum ListingStage {NO_RESERVE, RESERVE_ADDED, RESERVE_INIT, RESERVE_LISTED}
 
     mapping(address => ListingStage) public reserveListingStage;
-    mapping(address => OrderBookReserveInterface) public reserves;
+    mapping(address => OrderbookReserveInterface) public reserves;
 
     // KNC burn fee per order that is taken. = 25 / 1000 = 0.25 %
     uint constant public ORDER_BOOK_BURN_FEE_BPS = 25;
     uint constant public MIN_ORDER_VALUE_WEI = 10 ** 18;                 // below this value order will be removed.
     uint constant public MIN_MAKE_ORDER_VALUE_WEI = 2 * MIN_ORDER_VALUE_WEI; // Below this value can't create new order.
 
-    function PermissionlessOrderBookReserveLister(
+    function PermissionlessOrderbookReserveLister(
         InternalNetworkInterface kyber,
         FeeBurnerResolverInterface resolver,
         OrderFactoryInterface factory,
@@ -68,7 +68,7 @@ contract PermissionlessOrderBookReserveLister {
         require(reserveListingStage[token] == ListingStage.NO_RESERVE);
         require(token != kncToken);
 
-        reserves[token] = new OrderBookReserve(
+        reserves[token] = new OrderbookReserve(
             kncToken,
             token,
             feeBurnerResolverContract,

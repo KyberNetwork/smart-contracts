@@ -19,7 +19,7 @@ contract KyberNetworkENSResolver {
 
     function calcNode() internal pure returns(bytes32) {
         string[2] memory parts;
-        parts[0] = "KyberNetworkIf";
+        parts[0] = "KyberNetwork";
         parts[1] = "eth";
         bytes32 namehash = 0x0000000000000000000000000000000000000000000000000000000000000000;
 

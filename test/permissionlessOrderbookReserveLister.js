@@ -4,9 +4,9 @@ const KyberNetworkProxy = artifacts.require("./KyberNetworkProxy.sol");
 const FeeBurner = artifacts.require("./FeeBurner.sol");
 const WhiteList = artifacts.require("./WhiteList.sol");
 
-const OrderBookReserve = artifacts.require("./permissionless/mock/MockOrderBookReserve.sol");
-const PermissionlessOrderBookReserveLister = artifacts.require("./permissionless/PermissionlessOrderBookReserveLister.sol");
-const OrdersFactory = artifacts.require("./permissionless/OrdersFactory.sol");
+const OrderbookReserve = artifacts.require("./permissionless/mock/MockOrderbookReserve.sol");
+const PermissionlessOrderbookReserveLister = artifacts.require("./permissionless/PermissionlessOrderbookReserveLister.sol");
+const OrdersFactory = artifacts.require("./permissionless/OrderListFactory.sol");
 const FeeBurnerResolver = artifacts.require("./permissionless/mock/MockFeeBurnerResolver.sol");
 
 const Helper = require("./helper.js");
@@ -63,7 +63,7 @@ const LISTING_STATE_INIT = 2;
 const LISTING_STATE_LISTED = 3;
 
 
-contract('PermissionlessOrderBookReserveLister', async (accounts) => {
+contract('PermissionlessOrderbookReserveLister', async (accounts) => {
 
     // TODO: consider changing to beforeEach with a separate deploy per test
     before('setup contract before all tests', async () => {
@@ -103,7 +103,7 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
         await network.setEnable(true);
 
 //log(network.address + " " + feeBurnerResolver.address + " " + kncAddress)
-        reserveLister = await PermissionlessOrderBookReserveLister.new(
+        reserveLister = await PermissionlessOrderbookReserveLister.new(
             network.address,
             feeBurnerResolver.address,
             ordersFactory.address,
@@ -144,7 +144,7 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
         let listReserveAddress = await reserveLister.reserves(tokenAdd);
         assert.equal(reserveAddress.valueOf(), listReserveAddress.valueOf());
 
-        reserve = await OrderBookReserve.at(reserveAddress.valueOf());
+        reserve = await OrderbookReserve.at(reserveAddress.valueOf());
 
         let rxToken = await reserve.token();
         assert.equal(rxToken.valueOf(), tokenAdd);
@@ -183,7 +183,7 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
         let amountKnc = new BigNumber(600 * 10 ** 18);
         let amountEth = 2 * 10 ** 18;
 
-        let res = await OrderBookReserve.at(await reserveLister.reserves(tokenAdd));
+        let res = await OrderbookReserve.at(await reserveLister.reserves(tokenAdd));
 
         await makerDeposit(res, maker1, amountEth, amountTwei.valueOf(), amountKnc.valueOf(), KNCToken);
 
@@ -238,7 +238,7 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
         let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
         let kncTweiDepositAmount = 600 * 10 ** 18;
         let ethWeiDepositAmount = (new BigNumber(6 * 10 ** 18)).add(30000);
-        let res = await OrderBookReserve.at(await reserveLister.reserves(tokenAdd));
+        let res = await OrderbookReserve.at(await reserveLister.reserves(tokenAdd));
 
         await makerDeposit(res, maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount, KNCToken);
 
@@ -285,7 +285,7 @@ contract('PermissionlessOrderBookReserveLister', async (accounts) => {
 });
 
 
-contract('PermissionlessOrderBookReserveLister_feeBurner_tests', async (accounts) => {
+contract('PermissionlessOrderbookReserveLister_feeBurner_tests', async (accounts) => {
 
     beforeEach('setup contract before all tests', async () => {
         admin = accounts[0];
@@ -319,7 +319,7 @@ contract('PermissionlessOrderBookReserveLister_feeBurner_tests', async (accounts
         );
         const ordersFactory = await OrdersFactory.new();
 
-        const lister = await PermissionlessOrderBookReserveLister.new(
+        const lister = await PermissionlessOrderbookReserveLister.new(
             kyberNetwork.address,
             feeBurnerResolver.address,
             ordersFactory.address,
@@ -355,7 +355,7 @@ contract('PermissionlessOrderBookReserveLister_feeBurner_tests', async (accounts
         await lister.listOrderBookContract(someToken.address);
 
         // add orders
-        const reserve = await OrderBookReserve.at(
+        const reserve = await OrderbookReserve.at(
             await lister.reserves(someToken.address)
         );
         let amountTokenInWei = new BigNumber(0 * 10 ** 18);

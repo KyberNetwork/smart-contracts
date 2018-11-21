@@ -1,7 +1,7 @@
 pragma solidity 0.4.18;
 
 
-import "./OrdersInterface.sol";
+import "./OrderListInterface.sol";
 
 
 interface OrderFactoryInterface {

@@ -1,12 +1,12 @@
 pragma solidity 0.4.18;
 
 
-import "../OrderBookReserve.sol";
+import "../OrderbookReserve.sol";
 
 
-contract MockOrderBookReserve is OrderBookReserve {
+contract MockOrderbookReserve is OrderbookReserve {
 
-    function MockOrderBookReserve(
+    function MockOrderbookReserve(
         ERC20 knc,
         ERC20 reserveToken,
         FeeBurnerResolverInterface resolver,
@@ -15,7 +15,7 @@ contract MockOrderBookReserve is OrderBookReserve {
         uint burnFeeBps
     )
         public
-        OrderBookReserve(knc, reserveToken, resolver, minOrderMakeWei, minOrderWei, burnFeeBps)
+        OrderbookReserve(knc, reserveToken, resolver, minOrderMakeWei, minOrderWei, burnFeeBps)
     {
     }
 

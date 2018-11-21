@@ -3,7 +3,7 @@ pragma solidity 0.4.18;
 
 import "../Utils2.sol";
 import "../Withdrawable.sol";
-import "./OrdersInterface.sol";
+import "./OrderListInterface.sol";
 
 
 contract Orders is Withdrawable, Utils2, OrdersInterface {
