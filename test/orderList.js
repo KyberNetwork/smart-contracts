@@ -7,16 +7,16 @@ require("chai")
 
 let Helper = require("./helper.js");
 
-const Orders = artifacts.require("Orders");
+const OrderList = artifacts.require("OrderList");
 
-contract('Orders', async (accounts) => {
+contract('OrderList', async (accounts) => {
     before('setup accounts', async () => {
         user1 = accounts[0];
         user2 = accounts[1];
     });
 
     beforeEach('setup contract for each test', async () => {
-        orders = await Orders.new(user1);
+        orders = await OrderList.new(user1);
         HEAD_ID = await orders.HEAD_ID();
         TAIL_ID = await orders.TAIL_ID();
     });
@@ -34,7 +34,7 @@ contract('Orders', async (accounts) => {
 
         it("should not allow deploying with address 0 as admin", async () => {
             try {
-                await Orders.new(0);
+                await OrderList.new(0);
                 assert(false, "throw was expected in line above.")
             } catch(e){
                 assert(

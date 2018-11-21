@@ -27,8 +27,8 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     ERC20 public kncToken;  //not constant. to enable testing and test net usage
     uint public kncStakePerEtherBps = 20000; //for validating orders
     
-    OrdersInterface public tokenToEthList;
-    OrdersInterface public ethToTokenList;
+    OrderListInterface public tokenToEthList;
+    OrderListInterface public ethToTokenList;
 
     uint32 internal orderListTailId;
     uint32 internal orderListHeadId;
@@ -113,7 +113,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         blockNumber; // in this reserve no order expiry == no use for blockNumber. here to avoid compiler warning.
 
         //user order ETH -> token is matched with maker order token -> ETH
-        OrdersInterface list = (src == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
+        OrderListInterface list = (src == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
 
         uint32 orderId;
         OrderData memory orderData;
@@ -159,7 +159,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         conversionRate;
         validate;
-        OrdersInterface list = (srcToken == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
+        OrderListInterface list = (srcToken == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
 
         if (srcToken == ETH_TOKEN_ADDRESS) {
             require(msg.value == srcAmount);
@@ -566,17 +566,17 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
     function getEthToTokenOrderList() public view returns(uint32[] orderList) {
 
-        OrdersInterface list = ethToTokenList;
+        OrderListInterface list = ethToTokenList;
         return getList(list);
     }
 
     function getTokenToEthOrderList() public view returns(uint32[] orderList) {
 
-        OrdersInterface list = tokenToEthList;
+        OrderListInterface list = tokenToEthList;
         return getList(list);
     }
 
-    function getList(OrdersInterface list) internal view returns(uint32[] memory orderList) {
+    function getList(OrderListInterface list) internal view returns(uint32[] memory orderList) {
         OrderData memory orderData;
 
         uint32 orderId;
@@ -612,7 +612,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         require(validateAddOrder(maker, isEthToToken, srcAmount, dstAmount));
         bool addedWithHint = false;
 
-        OrdersInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
+        OrderListInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
 
         if (hintPrevOrder != 0) {
             addedWithHint = list.addAfterId(maker, newId, srcAmount, dstAmount, hintPrevOrder);
@@ -636,7 +636,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint128 currSrcAmount;
         address orderMaker;
 
-        OrdersInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
+        OrderListInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
 
         (orderMaker, currSrcAmount, currDstAmount,  ,  ) = list.getOrderDetails(orderId);
         require(orderMaker == maker);
@@ -665,7 +665,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     function cancelOrder(bool isEthToToken, uint32 orderId) internal returns(bool) {
 
         address maker = msg.sender;
-        OrdersInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
+        OrderListInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
         OrderData memory orderData = getOrderData(list, orderId);
 
         require(orderData.maker == maker);
@@ -703,7 +703,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return true;
     }
 
-    function getOrderData(OrdersInterface list, uint32 orderId) internal view returns (OrderData data)
+    function getOrderData(OrderListInterface list, uint32 orderId) internal view returns (OrderData data)
     {
         uint32 prevId;
         (data.maker, data.srcAmount, data.dstAmount, prevId, data.nextId) = list.getOrderDetails(orderId);
@@ -790,7 +790,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         internal
         returns (bool)
     {
-        OrdersInterface list = (userSrc == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
+        OrderListInterface list = (userSrc == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
 
         //userDst == maker source
         require(removeOrder(list, maker, userDst, orderId));
@@ -821,7 +821,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         orderSrcAmount -= userTakeDstAmount;
         orderDstAmount -= userPartialSrcAmount;
 
-        OrdersInterface list = (userSrc == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
+        OrderListInterface list = (userSrc == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
         uint remainingWeiValue = (userSrc == ETH_TOKEN_ADDRESS) ? orderDstAmount : orderSrcAmount;
 
         if (remainingWeiValue < minOrderValueWei) {
@@ -864,7 +864,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     function removeOrder(
-        OrdersInterface list,
+        OrderListInterface list,
         address maker,
         ERC20 makerSrc,
         uint32 orderId

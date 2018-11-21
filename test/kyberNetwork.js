@@ -8,7 +8,7 @@ const FeeBurner = artifacts.require("./FeeBurner.sol");
 
 const OrderbookReserve = artifacts.require("./permissionless/mock/MockOrderbookReserve.sol");
 const PermissionlessOrderbookReserveLister = artifacts.require("./permissionless/PermissionlessOrderbookReserveLister.sol");
-const OrdersFactory = artifacts.require("./permissionless/OrderListFactory.sol");
+const OrderListFactory = artifacts.require("./permissionless/OrderListFactory.sol");
 const FeeBurnerResolver = artifacts.require("./permissionless/mock/MockFeeBurnerResolver.sol");
 
 let Helper = require("./helper.js");
@@ -2428,7 +2428,7 @@ contract('KyberNetwork', function(accounts) {
 
         it("add permission less order book reserve for new token using reserve lister. see success... ", async() => {
             feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
-            ordersFactory = await OrdersFactory.new();
+            ordersFactory = await OrderListFactory.new();
             reserveLister = await PermissionlessOrderbookReserveLister.new(network.address, feeBurnerResolver.address,
                 ordersFactory.address, KNC.address);
 

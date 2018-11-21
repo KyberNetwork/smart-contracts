@@ -5,5 +5,5 @@ import "./OrderListInterface.sol";
 
 
 interface OrderFactoryInterface {
-    function newOrdersContract(address admin) public returns(OrdersInterface);
+    function newOrdersContract(address admin) public returns(OrderListInterface);
 }

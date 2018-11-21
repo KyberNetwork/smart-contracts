@@ -6,7 +6,7 @@ const WhiteList = artifacts.require("./WhiteList.sol");
 
 const OrderbookReserve = artifacts.require("./permissionless/mock/MockOrderbookReserve.sol");
 const PermissionlessOrderbookReserveLister = artifacts.require("./permissionless/PermissionlessOrderbookReserveLister.sol");
-const OrdersFactory = artifacts.require("./permissionless/OrderListFactory.sol");
+const OrderListFactory = artifacts.require("./permissionless/OrderListFactory.sol");
 const FeeBurnerResolver = artifacts.require("./permissionless/mock/MockFeeBurnerResolver.sol");
 
 const Helper = require("./helper.js");
@@ -86,7 +86,7 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
         feeBurner = await FeeBurner.new(admin, kncAddress, network.address, ethToKncRatePrecision);
 
         feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
-        ordersFactory = await OrdersFactory.new();
+        ordersFactory = await OrderListFactory.new();
 
         currentBlock = await Helper.getCurrentBlock();
     });
@@ -317,7 +317,7 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', async (accounts
         const feeBurnerResolver = await FeeBurnerResolver.new(
             feeBurner.address
         );
-        const ordersFactory = await OrdersFactory.new();
+        const ordersFactory = await OrderListFactory.new();
 
         const lister = await PermissionlessOrderbookReserveLister.new(
             kyberNetwork.address,

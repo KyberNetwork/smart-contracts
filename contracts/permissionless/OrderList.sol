@@ -6,7 +6,7 @@ import "../Withdrawable.sol";
 import "./OrderListInterface.sol";
 
 
-contract Orders is Withdrawable, Utils2, OrdersInterface {
+contract OrderList is Withdrawable, Utils2, OrderListInterface {
 
     struct Order {
         address maker;
@@ -28,7 +28,7 @@ contract Orders is Withdrawable, Utils2, OrdersInterface {
 
     uint32 public nextFreeId = 3;
 
-    function Orders(address _admin) public {
+    function OrderList(address _admin) public {
         require(_admin != address(0));
 
         admin = _admin;

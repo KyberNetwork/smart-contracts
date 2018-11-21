@@ -1,10 +1,10 @@
-const TestToken = artifacts.require("./mockContracts/TestToken.sol");
-const KyberNetwork = artifacts.require("./KyberNetwork.sol");
-const FeeBurner = artifacts.require("./FeeBurner.sol");
-const Orders = artifacts.require("./permissionless/OrderList.sol");
-const OrdersFactory = artifacts.require("./permissionless/OrderListFactory.sol");
-const OrderbookReserve = artifacts.require("./permissionless/mock/MockOrderbookReserve.sol");
-const FeeBurnerResolver = artifacts.require("./permissionless/mock/MockFeeBurnerResolver.sol");
+const TestToken = artifacts.require("TestToken.sol");
+const KyberNetwork = artifacts.require("KyberNetwork.sol");
+const FeeBurner = artifacts.require("FeeBurner.sol");
+const OrderList = artifacts.require("OrderList.sol");
+const OrderListFactory = artifacts.require("OrderListFactory.sol");
+const OrderbookReserve = artifacts.require("MockOrderbookReserve.sol");
+const FeeBurnerResolver = artifacts.require("MockFeeBurnerResolver.sol");
 
 const Helper = require("./helper.js");
 const BigNumber = require('bignumber.js');
@@ -71,7 +71,7 @@ contract('OrderbookReserve', async (accounts) => {
 
         feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
 
-        ordersFactory = await OrdersFactory.new();
+        ordersFactory = await OrderListFactory.new();
 
         currentBlock = await Helper.getCurrentBlock();
 
@@ -84,7 +84,7 @@ contract('OrderbookReserve', async (accounts) => {
         numOrderIdsPerMaker = await reserve.NUM_ORDERS_TO_ALLOCATE();
 
         let ordersAdd = await reserve.tokenToEthList();
-        let orders = Orders.at(ordersAdd.valueOf());
+        let orders = OrderList.at(ordersAdd.valueOf());
         headId = (await orders.HEAD_ID()).valueOf();
         tailId = (await orders.TAIL_ID()).valueOf();
         firstFreeOrderIdPerReserveList = (await orders.nextFreeId()).valueOf();
