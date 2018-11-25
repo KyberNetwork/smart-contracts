@@ -62,6 +62,7 @@ const LISTING_STATE_ADDED = 1;
 const LISTING_STATE_INIT = 2;
 const LISTING_STATE_LISTED = 3;
 
+let minNewOrderWei;
 
 contract('PermissionlessOrderbookReserveLister', async (accounts) => {
 
@@ -109,6 +110,8 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
             ordersFactory.address,
             kncAddress
         );
+
+        minNewOrderWei = await reserveLister.MIN_NEW_ORDER_VALUE_WEI();
 
         // lister should be added as a feeburner operator.
         await feeBurner.addOperator(reserveLister.address, {from: admin});
@@ -237,12 +240,13 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
     it("test reserve maker add a few sell orders. user takes orders. see taken orders are removed as expected.", async function () {
         let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
         let kncTweiDepositAmount = 600 * 10 ** 18;
-        let ethWeiDepositAmount = (new BigNumber(6 * 10 ** 18)).add(30000);
+        let numOrders = 3;
+        let ethWeiDepositAmount = (new BigNumber(minNewOrderWei)).mul(numOrders).add(30000);
         let res = await OrderbookReserve.at(await reserveLister.reserves(tokenAdd));
 
         await makerDeposit(res, maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount, KNCToken);
 
-        let srcAmountWei = new BigNumber(2 * 10 ** 18);
+        let srcAmountWei = new BigNumber(minNewOrderWei);
         let orderDstTwei = new BigNumber(9 * 10 ** 18);
 
         // add order
@@ -360,7 +364,7 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', async (accounts
         );
         let amountTokenInWei = new BigNumber(0 * 10 ** 18);
         let amountKncInWei = new BigNumber(600 * 10 ** 18);
-        let amountEthInWei = new BigNumber(2 * 10 ** 18);
+        let amountEthInWei = new BigNumber(minNewOrderWei);
         await makerDeposit(
             reserve,
             maker,
@@ -371,7 +375,7 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', async (accounts
         );
 
         const tokenTweiToSwap = new BigNumber(12 * 10 ** 18);
-        const ethWeiSrcAmount = new BigNumber(2 * 10 ** 18);
+        const ethWeiSrcAmount = new BigNumber(minNewOrderWei);
         await reserve.submitEthToTokenOrder(
             ethWeiSrcAmount /* srcAmount */,
             tokenTweiToSwap /* dstAmount */,
