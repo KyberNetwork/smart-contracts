@@ -5,7 +5,7 @@ require("chai")
     .use(require('chai-bignumber')(BigNumber))
     .should()
 
-let Helper = require("./helper.js");
+const Helper = require("./helper.js");
 
 const OrderList = artifacts.require("OrderList");
 
@@ -27,7 +27,7 @@ contract('OrderList', async (accounts) => {
         });
 
         it("head should initially point to tail as its nextId", async () => {
-            let head = await getOrderById(HEAD_ID);
+            const head = await getOrderById(HEAD_ID);
 
             head.nextId.should.be.bignumber.equal(TAIL_ID);
         });
@@ -46,7 +46,7 @@ contract('OrderList', async (accounts) => {
 
     describe("#allocateIds", async () => {
         it("should return ids different from head and tail", async () => {
-            let firstId = await allocateIds(1);
+            const firstId = await allocateIds(1);
 
             firstId.should.be.bignumber.not.equal(HEAD_ID);
             firstId.should.be.bignumber.not.equal(TAIL_ID);
@@ -560,6 +560,14 @@ contract('OrderList', async (accounts) => {
 
         it("should allow adding order specifically after head", async () => {
             let orderId = await allocateIds(1);
+
+            const added = await orders.addAfterId.call(
+                user1 /* maker */,
+                orderId /* orderId */,
+                10 /* srcAmount */,
+                100 /* dstAmount */,
+                HEAD_ID /* prevId */
+            );
             await orders.addAfterId(
                 user1 /* maker */,
                 orderId /* orderId */,
@@ -568,6 +576,7 @@ contract('OrderList', async (accounts) => {
                 HEAD_ID /* prevId */
             );
 
+            added.should.be.true;
             await assertOrdersOrder1(orderId);
         });
 
@@ -595,14 +604,14 @@ contract('OrderList', async (accounts) => {
         // });
     });
 
-    describe("#removeById", async () => {
+    describe("#remove", async () => {
         it("remove order removes from list but does not delete order", async () => {
             let orderId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
                 100 /* dstAmount */);
 
-            await orders.removeById(orderId);
+            await orders.remove(orderId);
 
             let order = await getOrderById(orderId);
             order.maker.should.be.bignumber.equal(user1);
@@ -620,8 +629,8 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 200 /* dstAmount */);
 
-            await orders.removeById(worseId);
-            await orders.removeById(betterId);
+            await orders.remove(worseId);
+            await orders.remove(betterId);
 
             // List is empty
             let head = await getOrderById(HEAD_ID);
@@ -638,8 +647,8 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 200 /* dstAmount */);
 
-            await orders.removeById(betterId);
-            await orders.removeById(worseId);
+            await orders.remove(betterId);
+            await orders.remove(worseId);
 
             // List is empty
             let head = await getOrderById(HEAD_ID);
@@ -656,7 +665,7 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 200 /* dstAmount */);
 
-            await orders.removeById(worseId);
+            await orders.remove(worseId);
 
             // HEAD -> better -> TAIL
             await assertOrdersOrder1(betterId);
@@ -672,7 +681,7 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 200 /* dstAmount */);
 
-            await orders.removeById(betterId);
+            await orders.remove(betterId);
 
             // HEAD -> worse -> TAIL
             await assertOrdersOrder1(worseId);
@@ -692,7 +701,7 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 100 /* dstAmount */);
 
-            await orders.removeById(middleId);
+            await orders.remove(middleId);
 
             // HEAD -> better -> worse -> TAIL
             await assertOrdersOrder2(betterId, worseId);
@@ -700,7 +709,29 @@ contract('OrderList', async (accounts) => {
 
         it("should reject removing HEAD", async () => {
             try {
-                await orders.removeById(HEAD_ID);
+                await orders.remove(HEAD_ID);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(
+                    Helper.isRevertErrorMessage(e),
+                    "expected revert but got: " + e);
+            }
+        });
+
+        it("should reject removing TAIL", async () => {
+            try {
+                await orders.remove(TAIL_ID);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(
+                    Helper.isRevertErrorMessage(e),
+                    "expected revert but got: " + e);
+            }
+        });
+
+        it("should reject removing order with id 0", async () => {
+            try {
+                await orders.remove(0);
                 assert(false, "throw was expected in line above.")
             } catch(e){
                 assert(
@@ -715,7 +746,7 @@ contract('OrderList', async (accounts) => {
             let nonExistantOrderId = await orders.allocateIds.call(1);
 
             try {
-                await orders.removeById(nonExistantOrderId);
+                await orders.remove(nonExistantOrderId);
                 assert(false, "throw was expected in line above.")
             } catch(e){
                 assert(
@@ -1279,7 +1310,7 @@ contract('OrderList', async (accounts) => {
             await assertOrdersOrder3(firstId, secondId, thirdId);
         });
 
-        it("should revert updates to HEAD", async () => {
+        it("should reject updates to HEAD", async () => {
             try {
                 await updateWithPositionHint(
                     HEAD_ID /* orderId */,
@@ -1295,7 +1326,7 @@ contract('OrderList', async (accounts) => {
             }
         });
 
-        it("should revert updates to TAIL", async () => {
+        it("should reject updates to TAIL", async () => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -1304,6 +1335,27 @@ contract('OrderList', async (accounts) => {
             try {
                 await updateWithPositionHint(
                     TAIL_ID /* orderId */,
+                    10 /* srcAmount */,
+                    310 /* dstAmount */,
+                    firstId /* prevId */
+                );
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(
+                    Helper.isRevertErrorMessage(e),
+                    "expected revert but got: " + e);
+            }
+        });
+
+        it("should reject updates to node with id 0", async () => {
+            let firstId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                300 /* dstAmount */);
+
+            try {
+                await updateWithPositionHint(
+                    0 /* orderId */,
                     10 /* srcAmount */,
                     310 /* dstAmount */,
                     firstId /* prevId */
