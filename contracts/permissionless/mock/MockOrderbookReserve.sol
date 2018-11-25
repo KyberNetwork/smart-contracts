@@ -9,13 +9,13 @@ contract MockOrderbookReserve is OrderbookReserve {
     function MockOrderbookReserve(
         ERC20 knc,
         ERC20 reserveToken,
-        FeeBurnerResolverInterface resolver,
+        address burner,
         uint minOrderMakeWei,
         uint minOrderWei,
         uint burnFeeBps
     )
         public
-        OrderbookReserve(knc, reserveToken, resolver, minOrderMakeWei, minOrderWei, burnFeeBps)
+        OrderbookReserve(knc, reserveToken, burner, minOrderMakeWei, minOrderWei, burnFeeBps)
     {
     }
 

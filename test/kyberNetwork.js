@@ -324,8 +324,8 @@ contract('KyberNetwork', function(accounts) {
 
     it("should init Kyber network data, list token pairs.", async function () {
         // add reserves
-        await network.addReserve(reserve1.address, true, false, {from: operator});
-        await network.addReserve(reserve2.address, true, false, {from: operator});
+        await network.addReserve(reserve1.address, false, {from: operator});
+        await network.addReserve(reserve2.address, false, {from: operator});
 
         await network.setKyberProxy(networkProxy);
 
@@ -378,12 +378,12 @@ contract('KyberNetwork', function(accounts) {
                 buyRate[1].valueOf(), walletId, 0, {from:networkProxy, value:amountWei});
 //            log(txData.logs[0].args)
             let exactEthAdd = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-            assert.equal(txData.logs[0].args.srcAddress, user1, "src address");
-            assert.equal(txData.logs[0].args.srcToken, exactEthAdd, "src token");
+            assert.equal(txData.logs[0].args.trader, user1, "src address");
+            assert.equal(txData.logs[0].args.src, exactEthAdd, "src token");
             assert.equal(txData.logs[0].args.srcAmount.valueOf(), amountWei);
             assert.equal(txData.logs[0].args.destAddress, user2);
-            assert.equal(txData.logs[0].args.destToken, tokenAdd[tokenInd]);
-            assert.equal(txData.logs[0].args.destAmount.valueOf(), expectedTweiAmount.valueOf());
+            assert.equal(txData.logs[0].args.dest, tokenAdd[tokenInd]);
+            assert.equal(txData.logs[0].args.dstAmount.valueOf(), expectedTweiAmount.valueOf());
 
             //check higher ether balance on reserve
             expectedReserve2BalanceWei = expectedReserve2BalanceWei.add(amountWei);
@@ -1107,7 +1107,7 @@ contract('KyberNetwork', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await network.addReserve(reserve3.address, true, false, {from: operator});
+        await network.addReserve(reserve3.address, false, {from: operator});
         await network.listPairForReserve(reserve3.address, uniqueToken.address, true, true, true, {from: operator});
 
         reserveGet = await network.reservesPerTokenSrc(uniqueToken.address, 0);
@@ -1611,7 +1611,7 @@ contract('KyberNetwork', function(accounts) {
 
         //try adding existing reserve
         try {
-            await network.addReserve(reserve1.address, true, false, {from: operator});
+            await network.addReserve(reserve1.address, false, {from: operator});
             assert(false, "throw was expected in line above.");
         }
         catch(e){
@@ -1619,9 +1619,9 @@ contract('KyberNetwork', function(accounts) {
         }
 
         // remove reserves and see same add success.
-        await network.addReserve(reserve1.address, false, false, {from: operator});
+        await network.removeReserve(reserve1.address, 0, {from: operator});
 
-        await network.addReserve(reserve1.address, true, false, {from: operator});
+        await network.addReserve(reserve1.address, false, {from: operator});
     });
 
     it("should remove reserves and verify reserve array length is 0.", async function () {
@@ -1630,17 +1630,17 @@ contract('KyberNetwork', function(accounts) {
         assert.equal(numRes.valueOf(), 3, "unexpected number of reserves.");
 
         // remove reserves
-        await network.addReserve(reserve1.address, false, false, {from: operator});
-        await network.addReserve(reserve2.address, false, false, {from: operator});
-        await network.addReserve(reserve3.address, false, false, {from: operator});
+        await network.removeReserve(reserve1.address, 2, {from: operator});
+        await network.removeReserve(reserve2.address, 1, {from: operator});
+        await network.removeReserve(reserve3.address, 0, {from: operator});
 
         numRes = await network.getNumReserves();
 
         assert.equal(numRes.valueOf(), 0, "unexpected number of reserves.");
 
-        await network.addReserve(reserve1.address, true, false, {from: operator});
-        await network.addReserve(reserve2.address, true, false, {from: operator});
-        await network.addReserve(reserve3.address, true, false, {from: operator});
+        await network.addReserve(reserve1.address, false, {from: operator});
+        await network.addReserve(reserve2.address, false, {from: operator});
+        await network.addReserve(reserve3.address, false, {from: operator});
 
         numRes = await network.getNumReserves();
 
@@ -2425,6 +2425,8 @@ contract('KyberNetwork', function(accounts) {
         let orderbookReserveTok0;
         let token0;
         let token1;
+        let minOrderValue = new BigNumber(25 * 10 ** 17);
+        let minNewOrderValue = minOrderValue.mul(2);
 
         it("add permission less order book reserve for new token using reserve lister. see success... ", async() => {
             feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
@@ -2438,9 +2440,9 @@ contract('KyberNetwork', function(accounts) {
             permissionlessTok = await TestToken.new("permissionLess", "PRM", 18);
             let tokenAdd = permissionlessTok.address;
 
-            let rc = await reserveLister.addOrderBookContract(tokenAdd);
-            rc = await reserveLister.initOrderBookContract(tokenAdd);
-            rc = await reserveLister.listOrderBookContract(tokenAdd);
+            let rc = await reserveLister.addOrderbookContract(tokenAdd);
+            rc = await reserveLister.initOrderbookContract(tokenAdd);
+            rc = await reserveLister.listOrderbookContract(tokenAdd);
 
             //verify reserve exists in network
             let reserveAddress = await network.reservesPerTokenDest(tokenAdd, 0);
@@ -2457,7 +2459,7 @@ contract('KyberNetwork', function(accounts) {
             await makerDeposit(orderbookReserve, permissionlessTok, maker1, 0, amountTokenWeiDeposit, amountKnc);
 
             let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
-            let orderDstWei = new BigNumber(2 * 10 ** 18);
+            let orderDstWei = minNewOrderValue;
 
             // first getExpectedRate eth to new toekn should return 0
             let rate = await network.getExpectedRate(ethAddress, permissionlessTok.address, 10 ** 18);
@@ -2487,11 +2489,12 @@ contract('KyberNetwork', function(accounts) {
 
         it("deposit EthWei to new orderbookReserve, make eth to token orders, see network returns rate value", async() => {
             //maker deposits tokens
+            let numOrders = 2;
             let amountKnc = 600 * 10 ** 18;
-            let amountEthWeiDeposit = new BigNumber(4 * 10 ** 18);
+            let amountEthWeiDeposit = minNewOrderValue.mul(numOrders);
             await makerDeposit(orderbookReserve, permissionlessTok, maker1, amountEthWeiDeposit, 0, amountKnc);
 
-            let orderSrcWei = new BigNumber(2 * 10 ** 18);
+            let orderSrcWei = minNewOrderValue;
             let orderDstAmountTwei = new BigNumber(9 * 10 ** 18);
 
             // first getExpectedRate eth to new toekn should return 0
@@ -2546,7 +2549,7 @@ contract('KyberNetwork', function(accounts) {
             let expectedBalance = expectedTokenTransfer.add(user2InitialTok);
 
             let user2TokBalanceAfter = await permissionlessTok.balanceOf(user2);
-            assert.equal(user2TokBalanceAfter.div(10).floor().valueOf(), expectedBalance.div(10).floor().valueOf());
+            assert.equal(user2TokBalanceAfter.div(100).floor().valueOf(), expectedBalance.div(100).floor().valueOf());
         });
 
         it("trade permissionless token to ETH through network", async() => {
@@ -2590,9 +2593,9 @@ contract('KyberNetwork', function(accounts) {
 
         it("create order book reserve for token that is already listed in regular reserve. list it in network", async() => {
             token0 = tokens[0].address;
-            let rc = await reserveLister.addOrderBookContract(token0);
-            rc = await reserveLister.initOrderBookContract(token0);
-            rc = await reserveLister.listOrderBookContract(token0);
+            let rc = await reserveLister.addOrderbookContract(token0);
+            rc = await reserveLister.initOrderbookContract(token0);
+            rc = await reserveLister.listOrderbookContract(token0);
 
             //verify reserve exists in network
             let reserveAddress = await network.reservesPerTokenDest(token0, 2);
@@ -2609,7 +2612,7 @@ contract('KyberNetwork', function(accounts) {
             await makerDeposit(orderbookReserveTok0, tokens[0], maker1, 0, amountTokenWeiDeposit, amountKnc);
 
             let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
-            let orderDstWei = new BigNumber(2 * 10 ** 18);
+            let orderDstWei = minNewOrderValue;
 
             let tradeValue = 10000;
             let networkRateBefore = await network.getExpectedRate(ethAddress, token0, tradeValue);
@@ -2669,10 +2672,10 @@ contract('KyberNetwork', function(accounts) {
 
         it("list an existing token with better rate then other reserves (sell), get rate with / without permissionless, see rate diff", async() => {
             //maker deposits Eth
-            let amountEthWeiDeposit = (new BigNumber(2 * 10 ** 18)).add(600);
+            let amountEthWeiDeposit = minNewOrderValue.add(600);
             await makerDeposit(orderbookReserveTok0, tokens[0], maker1, amountEthWeiDeposit, 0, 0);
 
-            let orderSrcAmountWei = new BigNumber(2 * 10 ** 18);
+            let orderSrcAmountWei = minNewOrderValue;
             let orderDstTwei = new BigNumber(1.7 * 10 ** 14);
 
             let tradeValue = 10000;
@@ -2739,7 +2742,8 @@ contract('KyberNetwork', function(accounts) {
 
             let rate = await network.getExpectedRate(token0, token1, tradeValue);
             let permRate = await network.getExpectedRateOnlyPermission(token0, token1, tradeValue.valueOf());
-            assert(rate[0].valueOf() > permRate[0].valueOf());
+            assert(rate[0].valueOf() > permRate[0].valueOf(), "rate: " + rate[0].valueOf() + " !>  permission only rate: " +
+                permRate[0].valueOf());
 
             rate = await network.getExpectedRate(token1, token0, tradeValue);
             permRate = await network.getExpectedRateOnlyPermission(token1, token0, tradeValue.valueOf());
@@ -2784,7 +2788,8 @@ contract('KyberNetwork', function(accounts) {
             log("token to token with permissionless. partial order amount. gas: " + txData.receipt.gasUsed);
 
             let makerTokFundsAfter1 = await orderbookReserveTok0.makerFunds(maker1, ethAddress);
-            assert(makerTokFundsAfter1.valueOf() > makerTokFundsBefore.valueOf());
+            assert(makerTokFundsAfter1.valueOf() > makerTokFundsBefore.valueOf(), "makerTokFundsAfter1: " + makerTokFundsAfter1 +
+                " should be > makerTokFundsBefore: " + makerTokFundsBefore);
 
             //now only permissioned
             rate = await network.getExpectedRateOnlyPermission(token1, token0, tradeValue);

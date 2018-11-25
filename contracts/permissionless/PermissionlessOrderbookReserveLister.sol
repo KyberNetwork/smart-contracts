@@ -2,13 +2,13 @@ pragma solidity 0.4.18;
 
 
 import "./OrderbookReserve.sol";
+import "./FeeBurnerResolverInterface.sol";
 import "../FeeBurnerInterface.sol";
 
 
 interface InternalNetworkInterface {
     function addReserve(
         KyberReserveInterface reserve,
-        bool add,
         bool isPermissionless
     )
         public
@@ -39,8 +39,8 @@ contract PermissionlessOrderbookReserveLister {
 
     // KNC burn fee per order that is taken. = 25 / 1000 = 0.25 %
     uint constant public ORDER_BOOK_BURN_FEE_BPS = 25;
-    uint constant public MIN_ORDER_VALUE_WEI = 10 ** 18;                 // below this value order will be removed.
-    uint constant public MIN_MAKE_ORDER_VALUE_WEI = 2 * MIN_ORDER_VALUE_WEI; // Below this value can't create new order.
+    uint constant public MIN_ORDER_VALUE_WEI = 25 * 10 ** 17;                // Min Eth value for order to stay in list
+    uint constant public MIN_NEW_ORDER_VALUE_WEI = 2 * MIN_ORDER_VALUE_WEI; // Min Eth value for a new order.
 
     function PermissionlessOrderbookReserveLister(
         InternalNetworkInterface kyber,
@@ -61,46 +61,45 @@ contract PermissionlessOrderbookReserveLister {
         ordersFactory = factory;
     }
 
-    event TokenOrderBookListingStage(ERC20 token, ListingStage stage);
+    event TokenOrderbookListingStage(ERC20 token, ListingStage stage);
 
     /// @dev anyone can call
-    function addOrderBookContract(ERC20 token) public returns(bool) {
+    function addOrderbookContract(ERC20 token) public returns(bool) {
         require(reserveListingStage[token] == ListingStage.NO_RESERVE);
         require(token != kncToken);
 
         reserves[token] = new OrderbookReserve(
             kncToken,
             token,
-            feeBurnerResolverContract,
-            MIN_MAKE_ORDER_VALUE_WEI,
+            feeBurnerResolverContract.getFeeBurnerAddress(),
+            MIN_NEW_ORDER_VALUE_WEI,
             MIN_ORDER_VALUE_WEI,
             ORDER_BOOK_BURN_FEE_BPS
         );
 
         reserveListingStage[token] = ListingStage.RESERVE_ADDED;
 
-        TokenOrderBookListingStage(token, ListingStage.RESERVE_ADDED);
+        TokenOrderbookListingStage(token, ListingStage.RESERVE_ADDED);
         return true;
     }
 
     /// @dev anyone can call
-    function initOrderBookContract(ERC20 token) public returns(bool) {
+    function initOrderbookContract(ERC20 token) public returns(bool) {
         require(reserveListingStage[token] == ListingStage.RESERVE_ADDED);
         require(reserves[token].init(ordersFactory));
 
         reserveListingStage[token] = ListingStage.RESERVE_INIT;
-        TokenOrderBookListingStage(token, ListingStage.RESERVE_INIT);
+        TokenOrderbookListingStage(token, ListingStage.RESERVE_INIT);
         return true;
     }
 
     /// @dev anyone can call
-    function listOrderBookContract(ERC20 token) public returns(bool) {
+    function listOrderbookContract(ERC20 token) public returns(bool) {
         require(reserveListingStage[token] == ListingStage.RESERVE_INIT);
 
         require(
             kyberNetworkContract.addReserve(
                 KyberReserveInterface(reserves[token]),
-                true,
                 true
             )
         );
@@ -125,12 +124,12 @@ contract PermissionlessOrderbookReserveLister {
         );
 
         reserveListingStage[token] = ListingStage.RESERVE_LISTED;
-        TokenOrderBookListingStage(token, ListingStage.RESERVE_LISTED);
+        TokenOrderbookListingStage(token, ListingStage.RESERVE_LISTED);
         return true;
     }
 
     /// @dev permission less reserve currently supports one token per reserve.
-    function getOrderBookContractState(ERC20 token)
+    function getOrderbookContractState(ERC20 token)
         public
         view
         returns(address, ListingStage)

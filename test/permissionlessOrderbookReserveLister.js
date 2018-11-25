@@ -131,13 +131,13 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
     });
 
     it("test adding and listing order book reserve, get through network contract and through lister", async() => {
-        let rc = await reserveLister.addOrderBookContract(tokenAdd);
+        let rc = await reserveLister.addOrderbookContract(tokenAdd);
         log("add reserve gas: " + rc.receipt.gasUsed);
 
-        rc = await reserveLister.initOrderBookContract(tokenAdd);
+        rc = await reserveLister.initOrderbookContract(tokenAdd);
         log("init reserve gas: " + rc.receipt.gasUsed);
 
-        rc = await reserveLister.listOrderBookContract(tokenAdd);
+        rc = await reserveLister.listOrderbookContract(tokenAdd);
         log("list reserve gas: " + rc.receipt.gasUsed);
 //
         let reserveAddress = await network.reservesPerTokenDest(tokenAdd, 0);
@@ -152,25 +152,25 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
 
     it("maker sure can't add same token twice.", async() => {
         // make sure its already added
-        ready =  await reserveLister.getOrderBookContractState(tokenAdd);
+        ready =  await reserveLister.getOrderbookContractState(tokenAdd);
         assert.equal(ready[1].valueOf(), LISTING_STATE_LISTED);
 
         try {
-            let rc = await reserveLister.addOrderBookContract(tokenAdd);
+            let rc = await reserveLister.addOrderbookContract(tokenAdd);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            rc = await reserveLister.initOrderBookContract(tokenAdd);
+            rc = await reserveLister.initOrderbookContract(tokenAdd);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            rc = await reserveLister.listOrderBookContract(tokenAdd);
+            rc = await reserveLister.listOrderbookContract(tokenAdd);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -210,26 +210,26 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
         newToken = await TestToken.new("new token", "NEW", 18);
         newTokenAdd = newToken.address;
 
-        let ready =  await reserveLister.getOrderBookContractState(newTokenAdd);
+        let ready =  await reserveLister.getOrderbookContractState(newTokenAdd);
         assert.equal(ready[0].valueOf(), 0);
         assert.equal(ready[1].valueOf(), LISTING_NONE);
 
-        let rc = await reserveLister.addOrderBookContract(newTokenAdd);
+        let rc = await reserveLister.addOrderbookContract(newTokenAdd);
         let reserveAddress = await reserveLister.reserves(newTokenAdd);
 
-        ready = await reserveLister.getOrderBookContractState(newTokenAdd);
+        ready = await reserveLister.getOrderbookContractState(newTokenAdd);
         assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
         assert.equal(ready[1].valueOf(), LISTING_STATE_ADDED);
 
-        rc = await reserveLister.initOrderBookContract(newTokenAdd);
+        rc = await reserveLister.initOrderbookContract(newTokenAdd);
 
-        ready =  await reserveLister.getOrderBookContractState(newTokenAdd);
+        ready =  await reserveLister.getOrderbookContractState(newTokenAdd);
         assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
         assert.equal(ready[1].valueOf(), LISTING_STATE_INIT);
 
-        rc = await reserveLister.listOrderBookContract(newTokenAdd);
+        rc = await reserveLister.listOrderbookContract(newTokenAdd);
 
-        ready =  await reserveLister.getOrderBookContractState(newTokenAdd);
+        ready =  await reserveLister.getOrderbookContractState(newTokenAdd);
         assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
         assert.equal(ready[1].valueOf(), LISTING_STATE_LISTED);
     })
@@ -350,9 +350,9 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', async (accounts
         await kyberNetwork.addOperator(lister.address);
 
         // list an order book reserve
-        await lister.addOrderBookContract(someToken.address);
-        await lister.initOrderBookContract(someToken.address);
-        await lister.listOrderBookContract(someToken.address);
+        await lister.addOrderbookContract(someToken.address);
+        await lister.initOrderbookContract(someToken.address);
+        await lister.listOrderbookContract(someToken.address);
 
         // add orders
         const reserve = await OrderbookReserve.at(
