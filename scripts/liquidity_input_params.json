@@ -7,6 +7,6 @@
   "max_supported_price_factor" : 2.0,
   "max_tx_buy_amount_eth": 10.0,
   "max_tx_sell_amount_eth": 10.0,
-  "fee_in_precents": 0.25,
+  "fee_percent": 0.25,
   "formula_precision_bits": 40
 }

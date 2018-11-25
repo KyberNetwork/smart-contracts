@@ -134,7 +134,7 @@ def print_params(
     formula_precision_bits,
     max_tx_buy_amount_eth,
     max_tx_sell_amount_eth,
-    fee_in_precents,
+    fee_percent,
     min_supported_price_factor,
     max_supported_price_factor
 ):
@@ -147,7 +147,7 @@ def print_params(
     _numFpBits = formula_precision_bits
     _maxCapBuyInWei = max_tx_buy_amount_eth * (10 ** 18)
     _maxCapSellInWei = max_tx_sell_amount_eth * (10 ** 18)
-    _feeInBps = fee_in_precents * 100
+    _feeInBps = fee_percent * 100
     _maxTokenToEthRateInPrecision = max_supported_price * (10 ** 18)
     _minTokenToEthRateInPrecision = min_supported_price * (10 ** 18)
 
@@ -193,7 +193,7 @@ with open(args.input) as json_data:
                 "formula_precision_bits",
                 "max_tx_buy_amount_eth",
                 "max_tx_sell_amount_eth",
-                "fee_in_precents",
+                "fee_percent",
                 "min_supported_price_factor",
                 "max_supported_price_factor",
                 "initial_ether_amount",
@@ -217,7 +217,7 @@ with open(args.input) as json_data:
             formula_precision_bits=d["formula_precision_bits"],
             max_tx_buy_amount_eth=d["max_tx_buy_amount_eth"],
             max_tx_sell_amount_eth=d["max_tx_sell_amount_eth"],
-            fee_in_precents=d["fee_in_precents"],
+            fee_percent=d["fee_percent"],
             min_supported_price_factor=d["min_supported_price_factor"],
             max_supported_price_factor=d["max_supported_price_factor"]
         )
