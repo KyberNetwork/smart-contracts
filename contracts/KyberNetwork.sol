@@ -121,38 +121,43 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         return trade(tradeInput);
     }
 
-    event AddReserveToNetwork(KyberReserveInterface reserve, bool add);
+    event AddReserveToNetwork(KyberReserveInterface indexed reserve, bool add, bool isPermissionLess);
 
     /// @notice can be called only by operator
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
-    /// @param isPermissionless is added reserve permissionless one.
-    /// @param add If true, the add reserve. Otherwise delete reserve.
-    function addReserve(KyberReserveInterface reserve, bool add, bool isPermissionless) public onlyOperator
+    /// @param isPermissionless is the new reserve from permissionless type.
+    function addReserve(KyberReserveInterface reserve, bool isPermissionless) public onlyOperator
+        returns(bool)
+    {
+        require(reserveType[reserve] == ReserveType.NONE);
+        reserves.push(reserve);
+
+        reserveType[reserve] = isPermissionless ? ReserveType.PERMISSIONLESS : ReserveType.PERMISSIONED;
+
+        AddReserveToNetwork(reserve, true, isPermissionless);
+
+        return true;
+    }
+
+    event RemoveReserveFromNetwork(KyberReserveInterface reserve);
+
+    /// @notice can be called only by operator
+    /// @dev removes a reserve from Kyber network.
+    /// @param reserve The reserve address.
+    /// @param index in reserve array.
+    function removeReserve(KyberReserveInterface reserve, uint index) public onlyOperator
         returns(bool)
     {
 
-        if (add) {
-            require(reserveType[reserve] == ReserveType.NONE);
-            reserves.push(reserve);
+        require(reserveType[reserve] != ReserveType.NONE);
+        require(reserves[index] == reserve);
 
-            reserveType[reserve] = isPermissionless ? ReserveType.PERMISSIONLESS : ReserveType.PERMISSIONED;
+        reserveType[reserve] = ReserveType.NONE;
+        reserves[index] = reserves[reserves.length - 1];
+        reserves.length--;
 
-            AddReserveToNetwork(reserve, true);
-        } else {
-            reserveType[reserve] = ReserveType.NONE;
-
-            // will have trouble if more than xxx reserves...
-            for (uint i = 0; i < reserves.length; i++) {
-
-                if (reserves[i] == reserve) {
-                    reserves[i] = reserves[reserves.length - 1];
-                    reserves.length--;
-                    AddReserveToNetwork(reserve, false);
-                    break;
-                }
-            }
-        }
+        RemoveReserveFromNetwork(reserve);
 
         return true;
     }
@@ -442,8 +447,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         }
     }
 
-    event KyberTrade(address srcAddress, ERC20 srcToken, uint srcAmount, address destAddress, ERC20 destToken,
-        uint destAmount);
+    event KyberTrade(address indexed trader, ERC20 src, ERC20 dest, uint srcAmount, uint dstAmount,
+        address destAddress, uint ethWeiValue, bytes hint);
 
     // Most of the lins here are functions calls spread over multiple lines. We find this function readable enough
     //  and keep its size as is.
@@ -499,8 +504,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
             require(feeBurnerContract.handleFees(weiAmount, rateResult.reserve1, tradeInput.walletId));
         if (tradeInput.dest != ETH_TOKEN_ADDRESS) //"fake" trade. (ether to ether) - don't burn.
             require(feeBurnerContract.handleFees(weiAmount, rateResult.reserve2, tradeInput.walletId));
-        KyberTrade(tradeInput.trader, tradeInput.src, actualSrcAmount, tradeInput.destAddress, tradeInput.dest,
-            actualDestAmount);
+        KyberTrade(tradeInput.trader, tradeInput.src, tradeInput.dest, actualSrcAmount, actualDestAmount,
+            tradeInput.destAddress, weiAmount, tradeInput.hint);
 
         return actualDestAmount;
     }

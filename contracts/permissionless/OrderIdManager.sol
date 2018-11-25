@@ -2,21 +2,21 @@ pragma solidity 0.4.18;
 
 
 contract OrderIdManager {
-    struct OrdersData {
+    struct OrderIdData {
         uint32 firstOrderId;
-        uint32 numOrders; //max is 256
-        uint256 takenBitmap;
+        uint takenBitmap;
     }
 
-    function getNewOrderId(OrdersData storage freeOrders)
+    uint constant public NUM_ORDERS = 32;
+
+    function fetchNewOrderId(OrderIdData storage freeOrders)
         internal
         returns(uint32)
     {
-        uint numOrders = freeOrders.numOrders;
         uint orderBitmap = freeOrders.takenBitmap;
         uint bitPointer = 1;
 
-        for (uint i = 0; i < numOrders; ++i) {
+        for (uint i = 0; i < NUM_ORDERS; ++i) {
 
             if ((orderBitmap & bitPointer) == 0) {
                 freeOrders.takenBitmap = orderBitmap | bitPointer;
@@ -26,50 +26,46 @@ contract OrderIdManager {
             bitPointer *= 2;
         }
 
-        require(false);
+        revert();
     }
 
     /// @dev mark order as free to use.
-    function releaseOrderId(OrdersData storage freeOrders, uint32 orderId)
+    function releaseOrderId(OrderIdData storage freeOrders, uint32 orderId)
         internal
         returns(bool)
     {
         require(orderId >= freeOrders.firstOrderId);
-        require(orderId < (freeOrders.firstOrderId + freeOrders.numOrders));
+        require(orderId < (freeOrders.firstOrderId + NUM_ORDERS));
 
         uint orderBitNum = uint(orderId) - uint(freeOrders.firstOrderId);
-        uint256 bitPointer = 1 * (2 ** orderBitNum);
+        uint bitPointer = uint(1) << orderBitNum;
 
         require(bitPointer & freeOrders.takenBitmap > 0);
 
-        uint256 bitNegation = bitPointer ^ 0xffffffffffffffff;
-
-        freeOrders.takenBitmap &= bitNegation;
+        freeOrders.takenBitmap &= ~bitPointer;
         return true;
     }
 
-    function allocateOrders(
-        OrdersData storage freeOrders,
-        uint32 firstAllocatedId,
-        uint howMany
+    function allocateOrderIds(
+        OrderIdData storage freeOrders,
+        uint32 firstAllocatedId
     )
         internal
         returns(bool)
     {
-        if ((howMany > 256) || (howMany <= uint(freeOrders.numOrders)) || (freeOrders.takenBitmap != 0)) {
+        if (freeOrders.firstOrderId > 0) {
             return false;
         }
 
         freeOrders.firstOrderId = firstAllocatedId;
-        freeOrders.numOrders = uint32(howMany);
         freeOrders.takenBitmap = 0;
 
         return true;
     }
 
-    function orderAllocationRequired(OrdersData storage freeOrders, uint howMany) internal view returns (bool) {
+    function orderAllocationRequired(OrderIdData storage freeOrders) internal view returns (bool) {
 
-        if ((howMany > uint(freeOrders.numOrders)) && (freeOrders.takenBitmap == 0)) return true;
+        if (freeOrders.firstOrderId == 0) return true;
 
         return false;
     }

@@ -167,7 +167,7 @@ contract('ExpectedRate', function(accounts) {
         }
 
         // add reserves
-        await network.addReserve(reserve1.address, true, false, {from: operator});
+        await network.addReserve(reserve1.address, false, {from: operator});
 
         //set contracts
         feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address, ethToKncRatePrecision);

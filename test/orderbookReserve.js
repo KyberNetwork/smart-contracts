@@ -1,10 +1,10 @@
-const TestToken = artifacts.require("./mockContracts/TestToken.sol");
-const KyberNetwork = artifacts.require("./KyberNetwork.sol");
-const FeeBurner = artifacts.require("./FeeBurner.sol");
-const Orders = artifacts.require("./permissionless/Orders.sol");
-const OrdersFactory = artifacts.require("./permissionless/OrdersFactory.sol");
-const OrderBookReserve = artifacts.require("./permissionless/mock/MockOrderBookReserve.sol");
-const FeeBurnerResolver = artifacts.require("./permissionless/mock/MockFeeBurnerResolver.sol");
+const TestToken = artifacts.require("TestToken.sol");
+const KyberNetwork = artifacts.require("KyberNetwork.sol");
+const FeeBurner = artifacts.require("FeeBurner.sol");
+const OrderList = artifacts.require("OrderList.sol");
+const OrderListFactory = artifacts.require("OrderListFactory.sol");
+const OrderbookReserve = artifacts.require("MockOrderbookReserve.sol");
+const FeeBurnerResolver = artifacts.require("MockFeeBurnerResolver.sol");
 
 const Helper = require("./helper.js");
 const BigNumber = require('bignumber.js');
@@ -49,7 +49,7 @@ const ethToKncRatePrecision = precisionUnits.mul(550);
 
 let currentBlock;
 
-contract('OrderBookReserve', async (accounts) => {
+contract('OrderbookReserve', async (accounts) => {
 
     before('one time init. tokens, accounts', async() => {
         admin = accounts[0];
@@ -71,20 +71,20 @@ contract('OrderBookReserve', async (accounts) => {
 
         feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
 
-        ordersFactory = await OrdersFactory.new();
+        ordersFactory = await OrderListFactory.new();
 
         currentBlock = await Helper.getCurrentBlock();
 
         let minMakeOrderWei = new BigNumber(2 * 10 ** 18);
         let minOrderWei = new BigNumber(10 ** 18);
-        reserve = await OrderBookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address,
+        reserve = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address,
             minMakeOrderWei, minOrderWei, 25);
 //        log(reserve);
         await reserve.init(ordersFactory.address);
-        numOrderIdsPerMaker = await reserve.NUM_ORDERS_TO_ALLOCATE();
+        numOrderIdsPerMaker = await reserve.NUM_ORDERS();
 
         let ordersAdd = await reserve.tokenToEthList();
-        let orders = Orders.at(ordersAdd.valueOf());
+        let orders = OrderList.at(ordersAdd.valueOf());
         headId = (await orders.HEAD_ID()).valueOf();
         tailId = (await orders.TAIL_ID()).valueOf();
         firstFreeOrderIdPerReserveList = (await orders.nextFreeId()).valueOf();
@@ -93,10 +93,10 @@ contract('OrderBookReserve', async (accounts) => {
     beforeEach('setup contract for each test', async () => {
 
 //        log(feeBurner.address + " " + kncAddress + " " + tokenAdd)
-        let minMakeOrderWei = new BigNumber(2 * 10 ** 18);
+        let minNewOrderWei = new BigNumber(2 * 10 ** 18);
         let minOrderWei = new BigNumber(10 ** 18);
-        reserve = await OrderBookReserve.new(kncAddress, tokenAdd, feeBurnerResolver.address,
-            minMakeOrderWei, minOrderWei, 25);
+        reserve = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address,
+            minNewOrderWei, minOrderWei, 25);
 //        log(reserve);
         await reserve.init(ordersFactory.address);
     });
@@ -223,6 +223,7 @@ contract('OrderBookReserve', async (accounts) => {
         let tokenWeiDepositAmount = 500;
         let kncTweiDepositAmount = 300 * 10 ** 18;
         let ethWeiDepositAmount = 10 ** 18;
+
         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -314,7 +315,6 @@ contract('OrderBookReserve', async (accounts) => {
 
         //add order
         let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
-
         let expectedFreeWei = ethWeiDepositAmount.sub(srcAmountWei);
 
         rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
@@ -1492,7 +1492,6 @@ contract('OrderBookReserve', async (accounts) => {
 
         let makerTokenBalance = await reserve.makerFunds(maker1, tokenAdd);
         assert.equal(makerTokenBalance.valueOf(), tokenWeiDepositAmount.valueOf());
-
         let orderSrcAmountTwei = new BigNumber(9).mul(10 ** 18);
         let orderDstWei = (new BigNumber(2).mul(10 ** 18)).add(2000);
 
@@ -1505,17 +1504,14 @@ contract('OrderBookReserve', async (accounts) => {
         assert.equal(list.length, 1);
 
         let user1StartTokenBalance = await token.balanceOf(user1);
-
         rc = await reserve.trade(ethAddress, orderDstWei, tokenAdd, user1, 300, false, {from:user1, value: orderDstWei});
         list = await reserve.getTokenToEthOrderList();
         assert.equal(list.length, 0);
-
         makerTokenBalance = await reserve.makerFunds(maker1, tokenAdd);
         assert.equal(makerTokenBalance.valueOf(), tokenWeiDepositAmount.sub(orderSrcAmountTwei).valueOf());
 
         let makerEthBalance = await reserve.makerFunds(maker1, ethAddress);
         assert.equal(makerEthBalance.valueOf(), orderDstWei.valueOf());
-
         let expectedBalance = user1StartTokenBalance.add(orderSrcAmountTwei);
         let user1TokenBalanceAfter = await token.balanceOf(user1);
         assert.equal(expectedBalance.valueOf(), user1TokenBalanceAfter.valueOf());
@@ -2428,35 +2424,8 @@ contract('OrderBookReserve', async (accounts) => {
 
     xit("make sure that when updating rate. the stake amount is enough for at least x2 rate change", async() => {
     })
-});
 
-
-contract('OrderBookReserve on network', async (accounts) => {
-
-    beforeEach('setup contract for each test', async () => {
-
-        if(init) {
-            //below should happen once
-            admin = accounts[0];
-            user1 = accounts[1];
-            user2 = accounts[2];
-            maker1 = accounts[3];
-            maker2 = accounts[4];
-            let network = accounts[5];
-            withDrawAddress = accounts[6];
-
-            token = await TestToken.new("the token", "TOK", 18);
-            tokenAdd = token.address;
-
-            KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
-            kncAddress = KNCToken.address;
-
-            feeBurner = await FeeBurner.new(admin, kncAddress, network, ethToKncRatePrecision);
-            currentBlock = await Helper.getCurrentBlock();
-            init = false;
-        }
-
-        reserve = await OrderBookReserve.new(feeBurner.address, kncAddress, tokenAdd, admin, 25);
+    xit("test trade event, take full order event, take partial order event", async()=> {
     });
 });
 

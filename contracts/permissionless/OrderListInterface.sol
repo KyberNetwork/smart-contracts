@@ -1,7 +1,7 @@
 pragma solidity 0.4.18;
 
 
-interface OrdersInterface {
+interface OrderListInterface {
     function getOrderDetails(uint32 orderId) public view returns (address, uint128, uint128, uint32, uint32);
     function add(address maker, uint32 orderId, uint128 srcAmount, uint128 dstAmount) public returns (bool);
     function remove(uint32 orderId) public returns (bool);
