@@ -9,7 +9,7 @@ contract MockOrderIdManager is OrderIdManager {
     OrderIdData orderIdData;
 
     function allocatOrderIds(uint firstId) public {
-        allocateOrderIds(orderIdData, uint32(firstId));
+        require(allocateOrderIds(orderIdData, uint32(firstId)));
     }
 
     event NewOrderId(uint orderId);
