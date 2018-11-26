@@ -1,6 +1,8 @@
 const OrderIdManager = artifacts.require("./permissionless/mock/MockOrderIdManager.sol");
 const TestToken = artifacts.require("./mockContracts/TestToken.sol");
 
+const Helper = require("./helper.js");
+
 let orderIdManager;
 
 const firstOrderId = 9;
@@ -172,6 +174,77 @@ contract("OrderIdManager", async(accounts) => {
             rxOrderId = rc.logs[0].args.orderId.valueOf();
             assert.equal(rxOrderId.valueOf(), (firstOrderId * 1 + i * 1));
         }
+    })
+
+    it("verify can allocate orders only if not allocated before.", async() => {
+        try {
+             let rc =  await orderIdManager.allocatOrderIds(firstOrderId);
+             assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    })
+
+    it("verify when allocating ID after all are used, reverts", async() => {
+        for (let i = 0; i < howMany; i++) {
+            let rc =  await orderIdManager.fetchNewOrderId();
+            rxOrderId = rc.logs[0].args.orderId.valueOf();
+            assert.equal(rxOrderId.valueOf(), (firstOrderId * 1 + i * 1));
+        }
+
+        try {
+             let rc =  await orderIdManager.fetchNewOrderId();
+             assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    })
+
+    it("verify when releasing order ID that wan't allocated -> reverts", async() => {
+        let rc =  await orderIdManager.fetchNewOrderId();
+        rxOrderId = rc.logs[0].args.orderId.valueOf();
+
+        await orderIdManager.releaseOrderId(rxOrderId.valueOf());
+
+        try {
+            await orderIdManager.releaseOrderId(rxOrderId.valueOf());
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    })
+
+    it("verify when releasing order ID out of allocation boundaries -> reverts", async() => {
+        let maxOrderId = firstOrderId * 1 + howMany * 1 - 1;
+        let minOrderId = firstOrderId;
+        let aboveMax = maxOrderId * 1 + 1 * 1;
+        belowMin =  firstOrderId * 1 - 1 * 1;
+
+        for (let i = 0; i < howMany; i++) {
+            let rc =  await orderIdManager.fetchNewOrderId();
+            rxOrderId = rc.logs[0].args.orderId.valueOf();
+            assert.equal(rxOrderId.valueOf(), (firstOrderId * 1 + i * 1));
+        }
+
+        try {
+            await orderIdManager.releaseOrderId(aboveMax);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //see that in boundaries can release
+        await orderIdManager.releaseOrderId(maxOrderId);
+
+        try {
+            await orderIdManager.releaseOrderId(belowMin);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //see that in boundaries can release
+        await orderIdManager.releaseOrderId(minOrderId);
     })
 })
 
