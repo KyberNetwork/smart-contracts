@@ -37,7 +37,7 @@ contract PermissionlessOrderbookReserveLister {
     mapping(address => ListingStage) public reserveListingStage;
     mapping(address => OrderbookReserveInterface) public reserves;
 
-    // KNC burn fee per order that is taken. = 25 / 1000 = 0.25 %
+    // KNC burn fee per wei value of an order. 25 in BPS = 0.25%.
     uint constant public ORDER_BOOK_BURN_FEE_BPS = 25;
     uint constant public MIN_ORDER_VALUE_WEI = 25 * 10 ** 17;                // Min Eth value for order to stay in list
     uint constant public MIN_NEW_ORDER_VALUE_WEI = 2 * MIN_ORDER_VALUE_WEI; // Min Eth value for a new order.
@@ -129,7 +129,7 @@ contract PermissionlessOrderbookReserveLister {
     }
 
     /// @dev permission less reserve currently supports one token per reserve.
-    function getOrderbookContractState(ERC20 token)
+    function getOrderbookListingStage(ERC20 token)
         public
         view
         returns(address, ListingStage)

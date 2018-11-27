@@ -155,7 +155,7 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
 
     it("maker sure can't add same token twice.", async() => {
         // make sure its already added
-        ready =  await reserveLister.getOrderbookContractState(tokenAdd);
+        ready =  await reserveLister.getOrderbookListingStage(tokenAdd);
         assert.equal(ready[1].valueOf(), LISTING_STATE_LISTED);
 
         try {
@@ -213,26 +213,26 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
         newToken = await TestToken.new("new token", "NEW", 18);
         newTokenAdd = newToken.address;
 
-        let ready =  await reserveLister.getOrderbookContractState(newTokenAdd);
+        let ready =  await reserveLister.getOrderbookListingStage(newTokenAdd);
         assert.equal(ready[0].valueOf(), 0);
         assert.equal(ready[1].valueOf(), LISTING_NONE);
 
         let rc = await reserveLister.addOrderbookContract(newTokenAdd);
         let reserveAddress = await reserveLister.reserves(newTokenAdd);
 
-        ready = await reserveLister.getOrderbookContractState(newTokenAdd);
+        ready = await reserveLister.getOrderbookListingStage(newTokenAdd);
         assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
         assert.equal(ready[1].valueOf(), LISTING_STATE_ADDED);
 
         rc = await reserveLister.initOrderbookContract(newTokenAdd);
 
-        ready =  await reserveLister.getOrderbookContractState(newTokenAdd);
+        ready =  await reserveLister.getOrderbookListingStage(newTokenAdd);
         assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
         assert.equal(ready[1].valueOf(), LISTING_STATE_INIT);
 
         rc = await reserveLister.listOrderbookContract(newTokenAdd);
 
-        ready =  await reserveLister.getOrderbookContractState(newTokenAdd);
+        ready =  await reserveLister.getOrderbookListingStage(newTokenAdd);
         assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
         assert.equal(ready[1].valueOf(), LISTING_STATE_LISTED);
     })
