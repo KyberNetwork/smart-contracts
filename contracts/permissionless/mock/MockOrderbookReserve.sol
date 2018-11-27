@@ -10,20 +10,21 @@ contract MockOrderbookReserve is OrderbookReserve {
         ERC20 knc,
         ERC20 reserveToken,
         address burner,
+        address network,
         uint minOrderMakeWei,
         uint minOrderWei,
         uint burnFeeBps
     )
         public
-        OrderbookReserve(knc, reserveToken, burner, minOrderMakeWei, minOrderWei, burnFeeBps)
+        OrderbookReserve(knc, reserveToken, burner, network, minOrderMakeWei, minOrderWei, burnFeeBps)
     {
     }
 
-    function testBindStakes(address maker, int amountTwei) public {
-        bindOrderStakes(maker, amountTwei);
+    function testBindStakes(address maker, int amountWei) public {
+        bindOrderStakes(maker, amountWei);
     }
 
-    function testHandleStakes(address maker, uint stakeAmountTwei, uint burnAmountTwei) public {
-        handleOrderStakes(maker, stakeAmountTwei, burnAmountTwei);
+    function testHandleStakes(address maker, uint weiAmount, uint burnWeiAmount) public {
+        handleOrderStakes(maker, weiAmount, burnWeiAmount);
     }
 }
