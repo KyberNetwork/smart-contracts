@@ -1054,7 +1054,7 @@ contract('OrderbookReserve', async (accounts) => {
         await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
         let srcAmountWei = (new BigNumber(2 * 10 ** 18)).add(800); // 2 ether
-        let orderDstTwei = new BigNumber(9 * 10 ** 18);
+        let orderDstTwei = new BigNumber(1.4 * 10 ** 18);
 
         // insert 1st order
         let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -2201,15 +2201,15 @@ contract('OrderbookReserve', async (accounts) => {
         //add without hint
         orderDstWei = orderDstWei.add(500);
         rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
-        let addGasOrder255NoHint = rc.receipt.gasUsed;
+        let addGasOrderLastIdNoHint = rc.receipt.gasUsed;
 
         orderDstWei = orderDstWei.add(500);
         rc = await reserve.submitTokenToEthOrderWHint(orderSrcAmountTwei, orderDstWei, rc.logs[0].args.orderId.valueOf(),
                         {from: maker1});
-        let addGasOrder256WithHint = rc.receipt.gasUsed;
+        let addGasLastIdWithHint = rc.receipt.gasUsed;
 
-        log("addGasOrder255NoHint " + addGasOrder255NoHint);
-        log("addGasOrder256WithHint " + addGasOrder256WithHint);
+        log("addGasOrderLastIdNoHint (" + numOrderIdsPerMaker + ") " + addGasOrderLastIdNoHint);
+        log("addGasLastIdWithHint " + addGasLastIdWithHint);
 
         //now max orders for maker2
         await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -2423,6 +2423,9 @@ contract('OrderbookReserve', async (accounts) => {
     })
 
     xit("test trade event, take full order event, take partial order event", async()=> {
+    });
+
+    xit("test get order hint with different values", async() => {
     });
 });
 

@@ -444,12 +444,12 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     function getTokenToEthAddOrderHint(uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
-        require(srcAmount >= minNewOrderSizeWei);
+        require(dstAmount >= minNewOrderSizeWei);
         return tokenToEthList.findPrevOrderId(srcAmount, dstAmount);
     }
 
     function getEthToTokenAddOrderHint(uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
-        require(dstAmount >= minNewOrderSizeWei);
+        require(srcAmount >= minNewOrderSizeWei);
         return ethToTokenList.findPrevOrderId(srcAmount, dstAmount);
     }
 
@@ -458,7 +458,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         view
         returns (uint32)
     {
-        require(srcAmount >= minNewOrderSizeWei);
+        require(dstAmount >= minNewOrderSizeWei);
         uint32 prevId = tokenToEthList.findPrevOrderId(srcAmount, dstAmount);
 
         if (prevId == orderId) {
@@ -473,7 +473,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         view
         returns (uint32)
     {
-        require(dstAmount >= minNewOrderSizeWei);
+        require(srcAmount >= minNewOrderSizeWei);
         uint32 prevId = ethToTokenList.findPrevOrderId(srcAmount, dstAmount);
 
         if (prevId == orderId) {
@@ -581,7 +581,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         require(dstAmount < MAX_QTY);
         address maker = msg.sender;
 
-        require(validateAddOrder(maker, isEthToToken, srcAmount, dstAmount));
+        require(secureAddOrderFunds(maker, isEthToToken, srcAmount, dstAmount));
 
         bool addedWithHint = false;
         OrderListInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
@@ -625,7 +625,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         (orderMaker, currSrcAmount, currDstAmount,  ,  ) = list.getOrderDetails(orderId);
         require(orderMaker == maker);
 
-        if (!validateUpdateOrder(maker, isEthToToken, currSrcAmount, currDstAmount, newSrcAmount, newDstAmount)) {
+        if (!secureUpdateOrderFunds(maker, isEthToToken, currSrcAmount, currDstAmount, newSrcAmount, newDstAmount)) {
             return false;
         }
 
@@ -726,7 +726,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     ///@dev funds are valid only when required knc amount can be staked for this order.
-    function validateAddOrder(address maker, bool isEthToToken, uint128 srcAmount, uint128 dstAmount)
+    function secureAddOrderFunds(address maker, bool isEthToToken, uint128 srcAmount, uint128 dstAmount)
         internal returns(bool)
     {
         uint weiAmount = isEthToToken ? srcAmount : dstAmount;
@@ -739,7 +739,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     ///@dev funds are valid only when required knc amount can be staked for this order.
-    function validateUpdateOrder(address maker, bool isEthToToken, uint128 prevSrcAmount, uint128 prevDstAmount,
+    function secureUpdateOrderFunds(address maker, bool isEthToToken, uint128 prevSrcAmount, uint128 prevDstAmount,
         uint128 newSrcAmount, uint128 newDstAmount)
         internal
         returns(bool)
