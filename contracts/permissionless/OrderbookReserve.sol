@@ -19,6 +19,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     uint public minNewOrderSizeWei; // Below this value can't create new order.
     uint public makerBurnFeeBps;    // knc burn fee per order that is taken.
     uint public constant BURN_TO_STAKE_FACTOR = 4; // stake per order must be x4 then expected burn amount.
+    uint public constant MAX_BURN_FEE_BPS = 100; //1%
 
     ERC20 public token;             // this reserve will serve this token vs ETH.
     FeeBurnerRateInterface public feeBurnerContract;
@@ -70,6 +71,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         require(burner != address(0));
         require(network != address(0));
         require(burnFeeBps != 0);
+        require(burnFeeBps <= MAX_BURN_FEE_BPS);
         require(minOrderWei != 0);
         require(minNewOrderWei > minOrderWei);
 
