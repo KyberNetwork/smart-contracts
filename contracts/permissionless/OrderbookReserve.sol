@@ -15,17 +15,17 @@ contract FeeBurnerRateInterface {
 
 contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, OrderbookReserveInterface {
 
+    uint public constant BURN_TO_STAKE_FACTOR = 4; // stake per order must be x4 then expected burn amount.
+    uint public constant MAX_BURN_FEE_BPS = 100;   //1%
+
     uint public minOrderSizeWei;    // below this value order will be removed.
     uint public minNewOrderSizeWei; // Below this value can't create new order.
     uint public makerBurnFeeBps;    // knc burn fee per order that is taken.
-    uint public constant BURN_TO_STAKE_FACTOR = 4; // stake per order must be x4 then expected burn amount.
-    uint public constant MAX_BURN_FEE_BPS = 100; //1%
 
-    ERC20 public token;             // this reserve will serve this token vs ETH.
+    ERC20 public kncToken;          // not constant. to enable testing while not on main net
+    ERC20 public token;             // only supported token.
     FeeBurnerRateInterface public feeBurnerContract;
     address public kyberNetworkContract;
-
-    ERC20 public kncToken;          //not constant. to enable testing not on main net
 
     // sorted lists of orders. one list for token to Eth, other for Eth to token.
     // Each order is added in the correct position in the list to keep it sorted.
@@ -44,15 +44,6 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     //each maker will have orders that will be reused.
     mapping(address => OrderIdData) public makerOrdersTokenToEth;
     mapping(address => OrderIdData) public makerOrdersEthToToken;
-
-    //struct for getOrderData() return value. used only in memory.
-    struct OrderData {
-        address maker;
-        uint32 nextId;
-        bool isLastOrder;
-        uint128 srcAmount;
-        uint128 dstAmount;
-    }
 
     function OrderbookReserve(
         ERC20 knc,
@@ -104,6 +95,15 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         orderListHeadId = ethToTokenList.getHeadId();
 
         return true;
+    }
+
+    //struct for getOrderData() return value. used only in memory.
+    struct OrderData {
+        address maker;
+        uint32 nextId;
+        bool isLastOrder;
+        uint128 srcAmount;
+        uint128 dstAmount;
     }
 
     function getConversionRate(ERC20 src, ERC20 dst, uint srcQty, uint blockNumber) public view returns(uint) {
@@ -381,7 +381,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         require(kncToken.transferFrom(msg.sender, this, amount));
 
-        makerKnc[maker] += uint128(amount);
+        makerKnc[maker] += amount;
 
         KncFeeDeposited(maker, amount);
 
@@ -430,7 +430,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         require(makerUnlockedKnc(maker) >= amount);
 
-        makerKnc[maker] -= uint128(amount);
+        makerKnc[maker] -= amount;
 
         require(kncToken.transfer(maker, amount));
     }
@@ -511,20 +511,20 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return ethToTokenList.getOrderDetails(orderId);
     }
 
-    function calcKncStake(uint weiAmount) public view returns(uint) {
-        return(calcBurnAmount(weiAmount) * BURN_TO_STAKE_FACTOR);
-    }
-
-    function calcBurnAmount(uint weiAmount) public view returns(uint) {
-        return((weiAmount * makerBurnFeeBps / 10000) * feeBurnerContract.kncPerEthRatePrecision() / PRECISION);
+    function makerStakedKNC(address maker) public view returns (uint) {
+        return(calcKncStake(makerTotalOrdersWei[maker]));
     }
 
     function makerUnlockedKnc(address maker) public view returns (uint) {
         return (makerKnc[maker] - makerStakedKNC(maker));
     }
 
-    function makerStakedKNC(address maker) public view returns (uint) {
-        return(calcKncStake(makerTotalOrdersWei[maker]));
+    function calcKncStake(uint weiAmount) public view returns(uint) {
+        return(calcBurnAmount(weiAmount) * BURN_TO_STAKE_FACTOR);
+    }
+
+    function calcBurnAmount(uint weiAmount) public view returns(uint) {
+        return((weiAmount * makerBurnFeeBps / 10000) * feeBurnerContract.kncPerEthRatePrecision() / PRECISION);
     }
 
     function getEthToTokenOrderList() public view returns(uint32[] orderList) {
@@ -657,7 +657,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         require(orderData.maker == maker);
 
         uint weiAmount = isEthToToken ? orderData.srcAmount : orderData.dstAmount;
-        handleOrderStakes(maker, weiAmount, 0);
+        require(handleOrderStakes(maker, weiAmount, 0));
 
         require(removeOrder(list, maker, isEthToToken ? ETH_TOKEN_ADDRESS : token, orderId));
 
@@ -708,8 +708,8 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return true;
     }
 
-    ///@dev if burnAmount is 0 we only release stakes.
-    ///@dev if burnAmount == stakedAmount. all staked amount will be burned. so no knc returned to maker
+    ///@dev if totalWeiAmount is 0 we only release stakes.
+    ///@dev if totalWeiAmount == weiForBurn. all staked amount will be burned. so no knc returned to maker
     function handleOrderStakes(address maker, uint totalWeiAmount, uint weiForBurn) internal returns(bool) {
 
         require(weiForBurn <= totalWeiAmount);
@@ -721,6 +721,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         uint burnAmount = calcBurnAmount(weiForBurn);
 
+        // if not enough knc to burn. just zero knc amount.
         if (makerKnc[maker] < burnAmount) makerKnc[maker] = 0;
         else makerKnc[maker] -= burnAmount;
 
