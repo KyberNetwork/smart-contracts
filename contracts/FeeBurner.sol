@@ -84,7 +84,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
 
     event KNCRateSet(uint ethToKncRatePrecision, uint kyberEthKnc, uint kyberKncEth, address updater);
 
-    function setKNCRate() public onlyOperator {
+    function setKNCRate() public {
         //query kyber for knc rate sell and buy
         uint kyberEthKncRate;
         uint kyberKncEthRate;

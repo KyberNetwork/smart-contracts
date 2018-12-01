@@ -148,7 +148,7 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
 
     it("maker sure can't add same token twice.", async() => {
         // make sure its already added
-        ready =  await reserveLister.getOrderbookListingStage(tokenAdd);
+        let ready =  await reserveLister.getOrderbookListingStage(tokenAdd);
         assert.equal(ready[1].valueOf(), LISTING_STATE_LISTED);
 
         try {
@@ -167,6 +167,109 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
 
         try {
             rc = await reserveLister.listOrderbookContract(tokenAdd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    })
+
+    it("maker sure in each listing stage can only perform the next stage listing.", async() => {
+        // make sure its already added
+        let newToken = await TestToken.new("token", "TOK", 18);
+        newTokAdd = newToken.address;
+
+        let listed =  await reserveLister.getOrderbookListingStage(newTokAdd);
+        assert.equal(listed[1].valueOf(), LISTING_NONE);
+
+        try {
+            rc = await reserveLister.initOrderbookContract(newTokAdd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            rc = await reserveLister.listOrderbookContract(newTokAdd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        let rc = await reserveLister.addOrderbookContract(newTokAdd);
+
+        listed =  await reserveLister.getOrderbookListingStage(newTokAdd);
+        assert.equal(listed[1].valueOf(), LISTING_STATE_ADDED);
+
+        try {
+            let rc = await reserveLister.addOrderbookContract(newTokAdd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            rc = await reserveLister.listOrderbookContract(newTokAdd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        rc = await reserveLister.initOrderbookContract(newTokAdd);
+
+        listed =  await reserveLister.getOrderbookListingStage(newTokAdd);
+        assert.equal(listed[1].valueOf(), LISTING_STATE_INIT);
+
+        try {
+            rc = await reserveLister.initOrderbookContract(newTokAdd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            let rc = await reserveLister.addOrderbookContract(newTokAdd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        rc = await reserveLister.listOrderbookContract(newTokAdd);
+
+        listed =  await reserveLister.getOrderbookListingStage(newTokAdd);
+        assert.equal(listed[1].valueOf(), LISTING_STATE_LISTED);
+
+        try {
+            rc = await reserveLister.initOrderbookContract(newTokAdd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            let rc = await reserveLister.addOrderbookContract(newTokAdd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            rc = await reserveLister.listOrderbookContract(newTokAdd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        listed =  await reserveLister.getOrderbookListingStage(newTokAdd);
+        assert.equal(listed[1].valueOf(), LISTING_STATE_LISTED);
+    })
+
+    it("maker sure can't list KNC.", async() => {
+        // make sure its already added
+        let isListed =  await reserveLister.getOrderbookListingStage(kncAddress);
+        assert.equal(isListed[1].valueOf(), LISTING_NONE);
+
+        try {
+            let rc = await reserveLister.addOrderbookContract(kncAddress);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -201,7 +304,6 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
         assert.equal(rxWei.valueOf(), 0);
     });
 
-
     it("add and list order book reserve, see getter has correct ready flag.", async() => {
         newToken = await TestToken.new("new token", "NEW", 18);
         newTokenAdd = newToken.address;
@@ -228,6 +330,92 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
         ready =  await reserveLister.getOrderbookListingStage(newTokenAdd);
         assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
         assert.equal(ready[1].valueOf(), LISTING_STATE_LISTED);
+    })
+
+    it("verify can't construct new lister with address 0.", async() => {
+
+        let newLister;
+
+        try {
+            newLister = await PermissionlessOrderbookReserveLister.new(0, orderFactory.address, kncAddress);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            newLister = await PermissionlessOrderbookReserveLister.new(network.address, 0, kncAddress);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, 0);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //and now. at last.
+        newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, kncAddress);
+
+        assert (newLister.address != 0);
+    })
+
+    it("verify if order book reserve init fails. can't add list it on kyber.", async() => {
+
+        let newLister;
+
+        let dummyOrdersFactory = accounts[8];
+
+        newLister = await PermissionlessOrderbookReserveLister.new(network.address, dummyOrdersFactory, kncAddress);
+
+        let rc = await newLister.addOrderbookContract(tokenAdd);
+
+        // init should fail
+        try {
+            rc = await newLister.initOrderbookContract(tokenAdd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        let listingStage = await newLister.getOrderbookListingStage(kncAddress);
+        assert.equal(listingStage[1].valueOf(), LISTING_NONE);
+    })
+
+    it("verify if listing on kyber fails. reserve listing stage will stay in init stage.", async() => {
+
+        newToken = await TestToken.new("new token", "NEW", 18);
+        newTokenAdd = newToken.address;
+
+        let rc = await reserveLister.addOrderbookContract(newTokenAdd);
+        rc = await reserveLister.initOrderbookContract(newTokenAdd);
+
+        let listingStage =  await reserveLister.getOrderbookListingStage(newTokenAdd);
+        assert.equal(listingStage[1].valueOf(), LISTING_STATE_INIT);
+
+        //remove permissions on kyber.
+        await network.removeOperator(reserveLister.address)
+
+        try {
+            rc = await reserveLister.listOrderbookContract(newTokenAdd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        listingStage =  await reserveLister.getOrderbookListingStage(newTokenAdd);
+        assert.equal(listingStage[1].valueOf(), LISTING_STATE_INIT);
+
+        //add permissions on kyber.
+        await network.addOperator(reserveLister.address)
+
+        rc = await reserveLister.listOrderbookContract(newTokenAdd);
+
+        listingStage =  await reserveLister.getOrderbookListingStage(newTokenAdd);
+        assert.equal(listingStage[1].valueOf(), LISTING_STATE_LISTED);
     })
 });
 
