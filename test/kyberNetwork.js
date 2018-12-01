@@ -9,7 +9,6 @@ const FeeBurner = artifacts.require("./FeeBurner.sol");
 const OrderbookReserve = artifacts.require("./permissionless/mock/MockOrderbookReserve.sol");
 const PermissionlessOrderbookReserveLister = artifacts.require("./permissionless/PermissionlessOrderbookReserveLister.sol");
 const OrderListFactory = artifacts.require("./permissionless/OrderListFactory.sol");
-const FeeBurnerResolver = artifacts.require("./permissionless/mock/MockFeeBurnerResolver.sol");
 
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
@@ -2417,8 +2416,7 @@ contract('KyberNetwork', function(accounts) {
     });
 
     describe("permissionless order book reserve", async() => {
-        let feeBurnerResolver;
-        let ordersFactory;
+        let orderListFactory;
         let reserveLister;
         let permissionlessTok;
         let orderbookReserve;
@@ -2429,10 +2427,9 @@ contract('KyberNetwork', function(accounts) {
         let minNewOrderValue = minOrderValue.mul(2);
 
         it("add permission less order book reserve for new token using reserve lister. see success... ", async() => {
-            feeBurnerResolver = await FeeBurnerResolver.new(feeBurner.address);
-            ordersFactory = await OrderListFactory.new();
-            reserveLister = await PermissionlessOrderbookReserveLister.new(network.address, feeBurnerResolver.address,
-                ordersFactory.address, KNC.address);
+            orderListFactory = await OrderListFactory.new();
+            reserveLister = await PermissionlessOrderbookReserveLister.new(network.address, orderListFactory.address,
+                KNC.address);
 
             await network.addOperator(reserveLister.address);
             await feeBurner.addOperator(reserveLister.address);
@@ -2955,6 +2952,6 @@ async function makerDeposit(res, permTok, maker, ethWei, tokenTwei, kncTwei) {
     await permTok.approve(res.address, tokenTwei);
     await res.depositToken(maker, tokenTwei);
     await KNC.approve(res.address, kncTwei);
-    await res.depositKncFee(maker, kncTwei);
+    await res.depositKncForFee(maker, kncTwei);
     await res.depositEther(maker, {from: maker, value: ethWei});
 }

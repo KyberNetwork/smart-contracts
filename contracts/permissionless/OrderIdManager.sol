@@ -47,18 +47,18 @@ contract OrderIdManager {
     }
 
     function allocateOrderIds(
-        OrderIdData storage freeOrders,
+        OrderIdData storage makerOrders,
         uint32 firstAllocatedId
     )
         internal
         returns(bool)
     {
-        if (freeOrders.firstOrderId > 0) {
+        if (makerOrders.firstOrderId > 0) {
             return false;
         }
 
-        freeOrders.firstOrderId = firstAllocatedId;
-        freeOrders.takenBitmap = 0;
+        makerOrders.firstOrderId = firstAllocatedId;
+        makerOrders.takenBitmap = 0;
 
         return true;
     }
