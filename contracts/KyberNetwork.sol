@@ -32,7 +32,6 @@ contract ReentrancyGuard {
         _;
         require(localCounter == guardCounter);
     }
-
 }
 
 
@@ -162,7 +161,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         return true;
     }
 
-    event ListReservePairs(address reserve, ERC20 src, ERC20 dest, bool add);
+    event ListReservePairs(address indexed reserve, ERC20 src, ERC20 dest, bool add);
 
     /// @notice can be called only by operator
     /// @dev allow or prevent a specific reserve to trade a pair of tokens
@@ -201,20 +200,33 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         return true;
     }
 
+    event WhiteListContractSet(WhiteListInterface newContract, WhiteListInterface currentContract);
+
     ///@param whiteList can be empty
     function setWhiteList(WhiteListInterface whiteList) public onlyAdmin {
+        WhiteListContractSet(whiteList, whiteListContract);
         whiteListContract = whiteList;
     }
 
+    event ExpectedRateContractSet(ExpectedRateInterface newContract, ExpectedRateInterface currentContract);
+
     function setExpectedRate(ExpectedRateInterface expectedRate) public onlyAdmin {
         require(expectedRate != address(0));
+
+        ExpectedRateContractSet(expectedRate, expectedRateContract);
         expectedRateContract = expectedRate;
     }
 
+    event FeeBurnerContractSet(FeeBurnerInterface newContract, FeeBurnerInterface currentContract);
+
     function setFeeBurner(FeeBurnerInterface feeBurner) public onlyAdmin {
         require(feeBurner != address(0));
+
+        FeeBurnerContractSet(feeBurner, feeBurnerContract);
         feeBurnerContract = feeBurner;
     }
+
+    event KyberNetwrokParamsSet(uint maxGasPrice, uint negligibleRateDiff);
 
     function setParams(
         uint                  _maxGasPrice,
@@ -227,7 +239,10 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
         maxGasPriceValue = _maxGasPrice;
         negligibleRateDiff = _negligibleRateDiff;
+        KyberNetwrokParamsSet(maxGasPriceValue, negligibleRateDiff);
     }
+
+    event KyberNetworkSetEnable(bool isEnabled);
 
     function setEnable(bool _enable) public onlyAdmin {
         if (_enable) {
@@ -236,6 +251,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
             require(kyberNetworkProxyContract != address(0));
         }
         isEnabled = _enable;
+
+        KyberNetworkSetEnable(isEnabled);
     }
 
     function setInfo(bytes32 field, uint value) public onlyOperator {
