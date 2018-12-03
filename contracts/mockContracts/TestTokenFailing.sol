@@ -111,7 +111,7 @@ contract BasicToken is ERC20Basic {
         balances[msg.sender] = balances[msg.sender].sub(_value);
         balances[_to] = balances[_to].add(_value);
         Transfer(msg.sender, _to, _value);
-        return true;
+        return false;
     }
 
     function balanceOf(address _owner) public view returns (uint balance) {
@@ -144,7 +144,7 @@ contract StandardToken is BasicToken, ERC20 {
         balances[_from] = balances[_from].sub(_value);
         allowed[_from][msg.sender] = _allowance.sub(_value);
         Transfer(_from, _to, _value);
-        return true;
+        return false;
     }
 
     function approve(address _spender, uint _value) public returns (bool) {
@@ -189,7 +189,7 @@ contract TestTokenFailing is StandardToken {
         totalSupply = totalSupply.sub(_value);
         Burn(msg.sender, _value);
         Transfer(msg.sender, address(0x0), _value);
-        return true;
+        return false;
     }
 
     // save some gas by making only one contract call

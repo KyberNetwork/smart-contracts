@@ -11,12 +11,13 @@ contract MockOrderbookReserve is OrderbookReserve {
         ERC20 reserveToken,
         address burner,
         address network,
-        uint minOrderMakeWei,
-        uint minOrderWei,
+        MedianizerInterface medianizer,
+        uint minNewOrderDollar,
+        uint maxOrdersPerTrade,
         uint burnFeeBps
     )
         public
-        OrderbookReserve(knc, reserveToken, burner, network, minOrderMakeWei, minOrderWei, burnFeeBps)
+        OrderbookReserve(knc, reserveToken, burner, network, medianizer, minNewOrderDollar, maxOrdersPerTrade, burnFeeBps)
     {
     }
 

@@ -7,6 +7,7 @@ const WhiteList = artifacts.require("./WhiteList.sol");
 const OrderbookReserve = artifacts.require("MockOrderbookReserve.sol");
 const PermissionlessOrderbookReserveLister = artifacts.require("PermissionlessOrderbookReserveLister.sol");
 const OrderListFactory = artifacts.require("OrderListFactory.sol");
+const MockMedianizer = artifacts.reqiure("MockMedianizer.sol");
 
 const Helper = require("./helper.js");
 const BigNumber = require('bignumber.js');
