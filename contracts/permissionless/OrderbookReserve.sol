@@ -14,7 +14,7 @@ contract FeeBurnerRateInterface {
 
 
 interface MedianizerInterface {
-    function peek() constant returns (bytes32, bool);
+    function peek() public view returns (bytes32, bool);
 }
 
 
