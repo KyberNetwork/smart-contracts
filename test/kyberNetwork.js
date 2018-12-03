@@ -1,14 +1,15 @@
-const ConversionRates = artifacts.require("./mockContracts/MockConversionRate.sol");
-const TestToken = artifacts.require("./mockContracts/TestToken.sol");
-const Reserve = artifacts.require("./KyberReserve.sol");
-const Network = artifacts.require("./KyberNetwork.sol");
-const WhiteList = artifacts.require("./WhiteList.sol");
-const ExpectedRate = artifacts.require("./ExpectedRate.sol");
-const FeeBurner = artifacts.require("./FeeBurner.sol");
+const ConversionRates = artifacts.require("MockConversionRate.sol");
+const TestToken = artifacts.require("TestToken.sol");
+const Reserve = artifacts.require("KyberReserve.sol");
+const Network = artifacts.require("KyberNetwork.sol");
+const WhiteList = artifacts.require("WhiteList.sol");
+const ExpectedRate = artifacts.require("ExpectedRate.sol");
+const FeeBurner = artifacts.require("FeeBurner.sol");
 
-const OrderbookReserve = artifacts.require("./permissionless/mock/MockOrderbookReserve.sol");
-const PermissionlessOrderbookReserveLister = artifacts.require("./permissionless/PermissionlessOrderbookReserveLister.sol");
-const OrderListFactory = artifacts.require("./permissionless/OrderListFactory.sol");
+const OrderbookReserve = artifacts.require("MockOrderbookReserve.sol");
+const PermissionlessOrderbookReserveLister = artifacts.require("PermissionlessOrderbookReserveLister.sol");
+const OrderListFactory = artifacts.require("OrderListFactory.sol");
+const MockMedianizer = artifacts.require("MockMedianizer.sol");
 
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
@@ -2418,18 +2419,23 @@ contract('KyberNetwork', function(accounts) {
     describe("permissionless order book reserve", async() => {
         let orderListFactory;
         let reserveLister;
+        let medianizer;
         let permissionlessTok;
         let orderbookReserve;
         let orderbookReserveTok0;
         let token0;
         let token1;
-        let minOrderValue = new BigNumber(25 * 10 ** 17);
-        let minNewOrderValue = minOrderValue.mul(2);
+        let dollarsPerEthPrecision = precisionUnits.mul(400);
+        let minNewOrderValue;
 
         it("add permission less order book reserve for new token using reserve lister. see success... ", async() => {
             orderListFactory = await OrderListFactory.new();
+            medianizer = await MockMedianizer.new();
+            await medianizer.setValid(true);
+            await medianizer.setEthPrice(dollarsPerEthPrecision);
+
             reserveLister = await PermissionlessOrderbookReserveLister.new(network.address, orderListFactory.address,
-                KNC.address);
+                medianizer.address, KNC.address);
 
             await network.addOperator(reserveLister.address);
             await feeBurner.addOperator(reserveLister.address);
@@ -2447,6 +2453,10 @@ contract('KyberNetwork', function(accounts) {
             assert.equal(reserveAddress.valueOf(), listReserveAddress.valueOf());
 
             orderbookReserve = await OrderbookReserve.at(reserveAddress.valueOf());
+            let rxLimits = await orderbookReserve.limits();
+
+            minNewOrderValue = new BigNumber(rxLimits[2].valueOf());
+//            log ("minNewOrderValue: " + minNewOrderValue)
         });
 
         it("deposit tokens to new orderbookReserve, make token to eth orders, see network returns rate value", async() => {
@@ -2585,7 +2595,7 @@ contract('KyberNetwork', function(accounts) {
             let expectedBalance = expectedEthWeiTransfer.add(user2InitialEth);
 
             let user2EthBalanceAfter = await Helper.getBalancePromise(user2);;
-            assert.equal(user2EthBalanceAfter.div(100).floor().valueOf(), expectedBalance.div(100).floor().valueOf());
+            assert.equal(user2EthBalanceAfter.div(1000).floor().valueOf(), expectedBalance.div(1000).floor().valueOf());
         });
 
         it("create order book reserve for token that is already listed in regular reserve. list it in network", async() => {
