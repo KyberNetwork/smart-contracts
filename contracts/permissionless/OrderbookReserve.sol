@@ -20,8 +20,13 @@ interface MedianizerInterface {
 
 contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, OrderbookReserveInterface {
 
-    uint public constant BURN_TO_STAKE_FACTOR = 4; // stake per order must be x4 then expected burn amount.
-    uint public constant MAX_BURN_FEE_BPS = 100;   //1%
+    uint public constant BURN_TO_STAKE_FACTOR = 4;      // stake per order must be x4 then expected burn amount.
+    uint public constant MAX_BURN_FEE_BPS = 100;        // 1%
+    uint public constant MIN_REMAINING_ORDER_RATIO = 2; // Ratio between min new order value and min order value.
+    uint public constant MAX_DOLLARS_PER_ETH = 100000;  // Above this value price is surely compromised.
+
+    uint32 constant public TAIL_ID = 1;         // tail Id in order list contract
+    uint32 constant public HEAD_ID = 2;         // head Id in order list contract
 
     struct OrderLimits {
         uint minNewOrderSizeDollar; // Basis for setting min new order size Eth
@@ -31,8 +36,6 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     struct LocalStatics {
-        uint32 tailId;              // tail Id in order list contract
-        uint32 headId;              // head Id in order list contract
         address ctorCallerAddress;  // Address that called constructor
     }
 
@@ -42,6 +45,15 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         FeeBurnerRateInterface feeBurner;
         address kyberNetwork;
         MedianizerInterface medianizer; // price feed Eth - USD from maker DAO.
+    }
+
+    //struct for getOrderData() return value. used only in memory.
+    struct OrderData {
+        address maker;
+        uint32 nextId;
+        bool isLastOrder;
+        uint128 srcAmount;
+        uint128 dstAmount;
     }
 
     OrderLimits public limits;
@@ -55,7 +67,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
     //funds data
     mapping(address => mapping(address => uint)) public makerFunds; // deposited maker funds.
-    mapping(address => uint) public makerKnc;            // knc are staked per limit order that is added.
+    mapping(address => uint) public makerKnc;            // for knc staking.
     mapping(address => uint) public makerTotalOrdersWei; // per maker how many Wei in orders, for stake calculation.
 
     uint public makerBurnFeeBps;    // knc burn fee per order that is taken.
@@ -115,19 +127,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         tokenToEthList = orderFactory.newOrdersContract(this);
         ethToTokenList = orderFactory.newOrdersContract(this);
 
-        locals.tailId = ethToTokenList.getTailId();
-        locals.headId = ethToTokenList.getHeadId();
-
         return true;
-    }
-
-    //struct for getOrderData() return value. used only in memory.
-    struct OrderData {
-        address maker;
-        uint32 nextId;
-        bool isLastOrder;
-        uint128 srcAmount;
-        uint128 dstAmount;
     }
 
     function getConversionRate(ERC20 src, ERC20 dst, uint srcQty, uint blockNumber) public view returns(uint) {
@@ -539,21 +539,21 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     function setMinOrderSizeEth() public returns(bool) {
         //get eth to $ from maker dao;
         bytes32 dollarPerEthPrecision;
-        bool valid = true;
+        bool valid;
         (dollarPerEthPrecision, valid) = contracts.medianizer.peek();
         require(valid);
 
         // ensuring that there is no underflow or overflow possible,
         // even if the price is compromised
-        uint priceUint = uint(dollarPerEthPrecision) / (10 ** 18);
-        require(priceUint != 0);
-        require(priceUint < 1000000);
+        uint dollarPerEth = uint(dollarPerEthPrecision) / PRECISION;
+        require(dollarPerEth != 0);
+        require(dollarPerEth < MAX_DOLLARS_PER_ETH);
 
         // set Eth order limits according to price
-        uint minNewOrderSizeWei = limits.minNewOrderSizeDollar * 10 ** 36 / uint(dollarPerEthPrecision);
+        uint minNewOrderSizeWei = limits.minNewOrderSizeDollar * PRECISION * PRECISION / uint(dollarPerEthPrecision);
 
         limits.minNewOrderSizeWei = minNewOrderSizeWei;
-        limits.minOrderSizeWei = limits.minNewOrderSizeWei / 2;
+        limits.minOrderSizeWei = limits.minNewOrderSizeWei / MIN_REMAINING_ORDER_RATIO;
 
         return true;
     }
@@ -738,7 +738,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     function getOrderData(OrderListInterface list, uint32 orderId) internal view returns (OrderData data) {
         uint32 prevId;
         (data.maker, data.srcAmount, data.dstAmount, prevId, data.nextId) = list.getOrderDetails(orderId);
-        data.isLastOrder = (data.nextId == locals.tailId);
+        data.isLastOrder = (data.nextId == TAIL_ID);
     }
 
     function bindOrderStakes(address maker, int weiAmount) internal returns(bool) {
@@ -800,7 +800,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         require(weiAmount >= limits.minNewOrderSizeWei);
 
-        require(bindOrderFunds(maker, isEthToToken, int(int(newSrcAmount) - int(prevSrcAmount))));
+        require(bindOrderFunds(maker, isEthToToken, int(newSrcAmount) - int(prevSrcAmount)));
 
         require(bindOrderStakes(maker, weiDiff));
 
@@ -864,7 +864,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
             bool isSuccess;
 
             // update order values, taken order is always first order
-            (isSuccess, ) = list.updateWithPositionHint(orderId, orderSrcAmount, orderDstAmount, locals.headId);
+            (isSuccess, ) = list.updateWithPositionHint(orderId, orderSrcAmount, orderDstAmount, HEAD_ID);
             require(isSuccess);
 
             // if remaining wei shouldn't be released. don't report it to takeOrder

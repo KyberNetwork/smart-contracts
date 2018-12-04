@@ -150,6 +150,11 @@ contract('OrderbookReserve', async (accounts) => {
         let reserve2 = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, localFeeBps);
         burnFees = await reserve2.makerBurnFeeBps();
         assert.equal(burnFees.valueOf(), localFeeBps);
+
+        let headIdInReserve = await reserve.HEAD_ID();
+        let tailIdInReserve = await reserve.TAIL_ID();
+        assert.equal(headId.valueOf(), headIdInReserve.valueOf());
+        assert.equal(tailId.valueOf(), tailIdInReserve.valueOf());
     });
 
     describe("test various revert scenarios", async() => {
