@@ -31,7 +31,8 @@ contract PermissionlessOrderbookReserveLister {
     // KNC burn fee per wei value of an order. 25 in BPS = 0.25%.
     uint constant public ORDER_BOOK_BURN_FEE_BPS = 25;
     uint constant public MIN_NEW_ORDER_VALUE_DOLLAR = 1000;
-    uint constant public MAX_ORDERS_PER_TRADE = 5;
+
+    uint public maxOrdersPerTrade;
 
     InternalNetworkInterface public kyberNetworkContract;
     OrderFactoryInterface public orderFactoryContract;
@@ -43,12 +44,12 @@ contract PermissionlessOrderbookReserveLister {
     mapping(address => ListingStage) public reserveListingStage;
     mapping(address => OrderbookReserveInterface) public reserves;
 
-
     function PermissionlessOrderbookReserveLister(
         InternalNetworkInterface kyber,
         OrderFactoryInterface factory,
         MedianizerInterface medianizer,
-        ERC20 knc
+        ERC20 knc,
+        uint maxOrders
     )
         public
     {
@@ -56,11 +57,13 @@ contract PermissionlessOrderbookReserveLister {
         require(factory != address(0));
         require(medianizer != address(0));
         require(knc != address(0));
+        require(maxOrders > 1);
 
         kyberNetworkContract = kyber;
         orderFactoryContract = factory;
         medianizerContract = medianizer;
         kncToken = knc;
+        maxOrdersPerTrade = maxOrders;
     }
 
     event TokenOrderbookListingStage(ERC20 token, ListingStage stage);
@@ -77,7 +80,7 @@ contract PermissionlessOrderbookReserveLister {
             network: kyberNetworkContract,
             medianizer: medianizerContract,
             minNewOrderDollar: MIN_NEW_ORDER_VALUE_DOLLAR,
-            maxOrdersPerTrade: MAX_ORDERS_PER_TRADE,
+            maxOrdersPerTrade: maxOrdersPerTrade,
             burnFeeBps: ORDER_BOOK_BURN_FEE_BPS}
         );
 

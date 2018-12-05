@@ -1,8 +1,8 @@
-const TestToken = artifacts.require("./mockContracts/TestToken.sol");
-const KyberNetwork = artifacts.require("./KyberNetwork.sol");
-const KyberNetworkProxy = artifacts.require("./KyberNetworkProxy.sol");
-const FeeBurner = artifacts.require("./FeeBurner.sol");
-const WhiteList = artifacts.require("./WhiteList.sol");
+const TestToken = artifacts.require("TestToken.sol");
+const KyberNetwork = artifacts.require("KyberNetwork.sol");
+const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
+const FeeBurner = artifacts.require("FeeBurner.sol");
+const WhiteList = artifacts.require("WhiteList.sol");
 
 const OrderbookReserve = artifacts.require("MockOrderbookReserve.sol");
 const PermissionlessOrderbookReserveLister = artifacts.require("PermissionlessOrderbookReserveLister.sol");
@@ -44,8 +44,8 @@ let KNCToken;
 let kncAddress;
 
 const negligibleRateDiff = 11;
-
 const ethToKncRatePrecision = precisionUnits.mul(550);
+const maxOrdersPerTrade = 5;
 let dollarsPerEthPrecision = precisionUnits.mul(200);
 
 //addresses
@@ -64,6 +64,8 @@ const LISTING_STATE_INIT = 2;
 const LISTING_STATE_LISTED = 3;
 
 let minNewOrderWei;
+
+
 
 contract('PermissionlessOrderbookReserveLister', async (accounts) => {
 
@@ -112,7 +114,8 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
             network.address,
             orderFactory.address,
             medianizer.address,
-            kncAddress
+            kncAddress,
+            maxOrdersPerTrade
         );
 
         // lister should be added as a feeburner operator.
@@ -148,8 +151,8 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
         assert.equal(value.valueOf(), 25);
         value = await reserveLister.MIN_NEW_ORDER_VALUE_DOLLAR();
         assert.equal(value.valueOf(), 1000);
-        value = await reserveLister.MAX_ORDERS_PER_TRADE();
-        assert.equal(value.valueOf(), 5);
+        value = await reserveLister.maxOrdersPerTrade();
+        assert.equal(value.valueOf(), maxOrdersPerTrade);
     })
 
     it("test adding and listing order book reserve, get through network contract and through lister", async() => {
@@ -370,35 +373,42 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
         let newLister;
 
         try {
-            newLister = await PermissionlessOrderbookReserveLister.new(0, orderFactory.address, medianizer.address, kncAddress);
+            newLister = await PermissionlessOrderbookReserveLister.new(0, orderFactory.address, medianizer.address, kncAddress, maxOrdersPerTrade);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            newLister = await PermissionlessOrderbookReserveLister.new(network.address, 0, medianizer.address, kncAddress);
+            newLister = await PermissionlessOrderbookReserveLister.new(network.address, 0, medianizer.address, kncAddress, maxOrdersPerTrade);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, 0, kncAddress);
+            newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, 0, kncAddress, maxOrdersPerTrade);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, 0);
+            newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, 0, maxOrdersPerTrade);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, kncAddress, 1);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         //and now. at last.
-        newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, kncAddress);
+        newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, kncAddress, maxOrdersPerTrade);
 
         assert (newLister.address != 0);
     })
@@ -409,7 +419,7 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
 
         let dummyOrdersFactory = accounts[8];
 
-        newLister = await PermissionlessOrderbookReserveLister.new(network.address, dummyOrdersFactory, medianizer.address, kncAddress);
+        newLister = await PermissionlessOrderbookReserveLister.new(network.address, dummyOrdersFactory, medianizer.address, kncAddress, maxOrdersPerTrade);
 
         let rc = await newLister.addOrderbookContract(tokenAdd);
 
@@ -500,7 +510,8 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', async (accounts
             kyberNetwork.address,
             orderFactory.address,
             medianizer.address,
-            kncToken.address
+            kncToken.address,
+            maxOrdersPerTrade
         );
 
         // configure feeburner
