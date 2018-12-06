@@ -5,6 +5,7 @@ const OrderList = artifacts.require("OrderList.sol");
 const OrderListFactory = artifacts.require("OrderListFactory.sol");
 const OrderbookReserve = artifacts.require("MockOrderbookReserve.sol");
 const TestTokenFailing = artifacts.require("TestTokenFailing.sol");
+const MockMedianizer = artifacts.require("MockMedianizer.sol");
 
 const Helper = require("./helper.js");
 const BigNumber = require('bignumber.js');
@@ -23,6 +24,7 @@ let reserve;
 let feeBurner;
 let network;
 let ordersFactory;
+let medianizer;
 
 //tokens data
 ////////////
@@ -45,12 +47,17 @@ let firstFreeOrderIdPerReserveList;
 
 let numOrderIdsPerMaker;
 const ethToKncRatePrecision = precisionUnits.mul(550);
-let minOrderWei = new BigNumber(10 ** 18);
-let minMakeOrderWei = minOrderWei.mul(2);
+//let minOrderWei = new BigNumber(10 ** 18);
+//let minMakeOrderWei = minOrderWei.mul(2);
 
 let currentBlock;
 
 let burnToStakeFactor;
+
+let makerBurnFeeBps = 25;
+let maxOrdersPerTrade = 10;
+let minOrderSizeDollar = 1000;
+let dollarsPerEthPrecision = precisionUnits.mul(500);
 
 contract('OrderbookReserve', async (accounts) => {
 
@@ -73,11 +80,15 @@ contract('OrderbookReserve', async (accounts) => {
         feeBurner = await FeeBurner.new(admin, kncAddress, network, ethToKncRatePrecision);
 
         ordersFactory = await OrderListFactory.new();
+        medianizer = await MockMedianizer.new();
+        await medianizer.setValid(true);
+        await medianizer.setEthPrice(dollarsPerEthPrecision);
 
         currentBlock = await Helper.getCurrentBlock();
 
-        reserve = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network,
-            minMakeOrderWei, minOrderWei, 25);
+        reserve = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address,
+            minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//log("91")
 //        log(reserve);
         await reserve.init(ordersFactory.address);
         numOrderIdsPerMaker = await reserve.NUM_ORDERS();
@@ -93,10 +104,8 @@ contract('OrderbookReserve', async (accounts) => {
     beforeEach('setup contract for each test', async () => {
 
 //        log(feeBurner.address + " " + kncAddress + " " + tokenAdd)
-        let minNewOrderWei = new BigNumber(2 * 10 ** 18);
-        let minOrderWei = new BigNumber(10 ** 18);
-        reserve = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network,
-            minNewOrderWei, minOrderWei, 25);
+        reserve = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address,
+            minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //        log(reserve);
         await reserve.init(ordersFactory.address);
     });
@@ -121,60 +130,89 @@ contract('OrderbookReserve', async (accounts) => {
     });
 
     it("test globals.", async () => {
-        let rxToken = await reserve.token();
-        assert.equal(rxToken.valueOf(), tokenAdd);
+        let rxContracts = await reserve.contracts();
+        assert.equal(rxContracts[0].valueOf(), kncAddress);
+        assert.equal(rxContracts[1].valueOf(), tokenAdd);
+        assert.equal(rxContracts[2].valueOf(), feeBurner.address);
+        assert.equal(rxContracts[3].valueOf(), network);
+        assert.equal(rxContracts[4].valueOf(), medianizer.address);
 
-        let rxKnc = await reserve.kncToken();
-        assert.equal(rxKnc.valueOf(), kncAddress);
+        let rxLimits = await reserve.limits();
+        assert.equal(rxLimits[0].valueOf(), minOrderSizeDollar);
+        assert.equal(rxLimits[1].valueOf(), maxOrdersPerTrade);
+        assert.equal(rxLimits[2].valueOf(), (2 * 10 ** 18));
+        assert.equal(rxLimits[3].valueOf(), (1 * 10 ** 18));
+
+        let burnFees = await reserve.makerBurnFeeBps();
+        assert.equal(burnFees.valueOf(), makerBurnFeeBps);
+
+        let localFeeBps = 70;
+        let reserve2 = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, localFeeBps);
+        burnFees = await reserve2.makerBurnFeeBps();
+        assert.equal(burnFees.valueOf(), localFeeBps);
+
+        let headIdInReserve = await reserve.HEAD_ID();
+        let tailIdInReserve = await reserve.TAIL_ID();
+        assert.equal(headId.valueOf(), headIdInReserve.valueOf());
+        assert.equal(tailId.valueOf(), tailIdInReserve.valueOf());
     });
 
     describe("test various revert scenarios", async() => {
         it("verify ctor parameters for order book reserve. no zero values", async() => {
             let res;
 
-            res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, minMakeOrderWei, minOrderWei, 25);
+            res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 
             try {
-                res = await OrderbookReserve.new(0, tokenAdd, feeBurner.address, network, minMakeOrderWei, minOrderWei, 25);
-                assert(false, "throw was expected in line above.")
-            } catch(e){
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
-
-            try {
-                res = await OrderbookReserve.new(kncAddress, 0, feeBurner.address, network, minMakeOrderWei, minOrderWei, 25);
+                res = await OrderbookReserve.new(0, tokenAdd, feeBurner.address, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
                 assert(false, "throw was expected in line above.")
             } catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
 
             try {
-                res = await OrderbookReserve.new(kncAddress, tokenAdd, 0, network, minMakeOrderWei, minOrderWei, 25);
+                res = await OrderbookReserve.new(kncAddress, 0, feeBurner.address, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
                 assert(false, "throw was expected in line above.")
             } catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
 
             try {
-                res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, 0, minMakeOrderWei, minOrderWei, 25);
+                res = await OrderbookReserve.new(kncAddress, tokenAdd, 0, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, 0, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, 0, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, 0, maxOrdersPerTrade, makerBurnFeeBps);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, minOrderSizeDollar, 0, makerBurnFeeBps);
                 assert(false, "throw was expected in line above.")
             } catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
             try {
-                res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, 0, minOrderWei, 25);
-                assert(false, "throw was expected in line above.")
-            } catch(e){
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
-            try {
-                res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, minMakeOrderWei, 0, 25);
-                assert(false, "throw was expected in line above.")
-            } catch(e){
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
-            try {
-                res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, minMakeOrderWei, minOrderWei, 0);
+                res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, 0);
                 assert(false, "throw was expected in line above.")
             } catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -183,7 +221,7 @@ contract('OrderbookReserve', async (accounts) => {
             let maxBurnFee = await reserve.MAX_BURN_FEE_BPS();
 
             try {
-                res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, minMakeOrderWei, minOrderWei, (maxBurnFee.add(1)));
+                res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, (maxBurnFee.add(1)));
                 assert(false, "throw was expected in line above.")
             } catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -196,17 +234,17 @@ contract('OrderbookReserve', async (accounts) => {
             let failingKnc = await TestTokenFailing.new("kyber no approve", "KNC", 18);
 
             try {
-                res = await OrderbookReserve.new(failingKnc.address, tokenAdd, feeBurner.address, network, minMakeOrderWei, minOrderWei, 25);
+                res = await OrderbookReserve.new(failingKnc.address, tokenAdd, feeBurner.address, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
                 assert(false, "throw was expected in line above.")
             } catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
 
-            res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, minMakeOrderWei, minOrderWei, 25);
+            res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
         });
 
         it("verify can't init order book reserve by sender who wasn't the constructor sender.", async() => {
-            let res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, minMakeOrderWei, minOrderWei, 25);
+            let res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 
             try {
                 await res.init(ordersFactory.address, {from: accounts[1]});
@@ -2001,7 +2039,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
     });
 
-    describe("trade = add orders and take", async() => {
+    describe("trade (add orders and take)", async() => {
         it("maker add sell order. take using trade. see amounts updated in contracts. see funds transferred.", async() => {
             let tokenWeiDepositAmount = new BigNumber(10).mul(10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
@@ -2692,6 +2730,34 @@ contract('OrderbookReserve', async (accounts) => {
         rate = await reserve.getConversionRate(ethAddress, token.address, srcRateAmount, 0);
         assert.equal(rate.valueOf(), expectedRate.valueOf());
     });
+
+    it("set different dollar ETH values. see min eth per order changes", async() => {
+        let dollarPerEthPrecision = precisionUnits.mul(200);
+        await medianizer.setEthPrice(dollarPerEthPrecision);
+
+        //price before updating ETH rate
+        let rxLimits = await reserve.limits();
+        assert.equal(rxLimits[2].valueOf(), (2 * 10 ** 18)); // min new order Eth
+        assert.equal(rxLimits[3].valueOf(), (1 * 10 ** 18)); // min order Eth
+
+        await reserve.setMinOrderSizeEth();
+
+        rxLimits = await reserve.limits();
+        assert.equal(rxLimits[2].valueOf(), (5 * 10 ** 18)); // min new order Eth
+        assert.equal(rxLimits[3].valueOf(), (25 * 10 ** 17)); // min order Eth
+
+        dollarPerEthPrecision = precisionUnits.mul(500);
+        await medianizer.setEthPrice(dollarPerEthPrecision);
+
+        rxLimits = await reserve.limits();
+        assert.equal(rxLimits[2].valueOf(), (5 * 10 ** 18)); // min new order Eth
+        assert.equal(rxLimits[3].valueOf(), (25 * 10 ** 17)); // min order Eth
+
+        await reserve.setMinOrderSizeEth();
+        rxLimits = await reserve.limits();
+        assert.equal(rxLimits[2].valueOf(), (2 * 10 ** 18)); // min new order Eth
+        assert.equal(rxLimits[3].valueOf(), (1 * 10 ** 18)); // min order Eth
+    })
 
     xit("take orders, see some knc released to burn amount and some knc set as free knc", async() => {
     });
