@@ -2425,6 +2425,8 @@ contract('KyberNetwork', function(accounts) {
         let orderbookReserveTok0;
         let token0;
         let token1;
+        let maxOrdersPerTrade = 100;
+        let minNewOrderValueUSD = 1000;
         let dollarsPerEthPrecision = precisionUnits.mul(400);
         let minNewOrderValue;
 
@@ -2435,7 +2437,7 @@ contract('KyberNetwork', function(accounts) {
             await medianizer.setEthPrice(dollarsPerEthPrecision);
 
             reserveLister = await PermissionlessOrderbookReserveLister.new(network.address, orderListFactory.address,
-                medianizer.address, KNC.address);
+                medianizer.address, KNC.address, maxOrdersPerTrade, minNewOrderValueUSD);
 
             await network.addOperator(reserveLister.address);
             await feeBurner.addOperator(reserveLister.address);
@@ -2660,7 +2662,7 @@ contract('KyberNetwork', function(accounts) {
             assert.equal(makerEthFundsAfter.valueOf(), expectedMakerEthFunds.valueOf());
         })
 
-        it("trade (buy) token listed regular and order book permissionless not allowed. see token taken from regular reserve", async() => {
+        it("trade (buy) token listed regular and order book. when permissionless not allowed. see token taken from regular reserve", async() => {
             let tradeValue = 10000;
             let rate = await network.getExpectedRate(token0, ethAddress, tradeValue.valueOf());
 
@@ -2808,10 +2810,42 @@ contract('KyberNetwork', function(accounts) {
             assert.equal(makerTokFundsAfter1.valueOf(), makerTokFundsAfter2.valueOf());
         });
 
+        it("Add spam orders token to eth see gas affect on trade with other reserve.", async() => {
+            let tradeValue = 10000;
+            let rate = await network.getExpectedRate(token1, token0, tradeValue);
+
+            //trade
+            let makerTokFundsBefore = new BigNumber(await orderbookReserveTok0.makerFunds(maker1, ethAddress));
+            await tokens[1].transfer(network.address, tradeValue);
+            let txData = await network.tradeWithHint(user1, token1, tradeValue, token0, user2,
+                         10 ** 30, rate[1].valueOf(), 0, 0, {from:networkProxy});
+            log("token to token with permissionless. partial order amount. gas: " + txData.receipt.gasUsed);
+
+            let makerTokFundsAfter1 = await orderbookReserveTok0.makerFunds(maker1, ethAddress);
+            assert(makerTokFundsAfter1.valueOf() > makerTokFundsBefore.valueOf(), "makerTokFundsAfter1: " + makerTokFundsAfter1 +
+                " should be > makerTokFundsBefore: " + makerTokFundsBefore);
+
+            //now only permissioned
+            rate = await network.getExpectedRateOnlyPermission(token1, token0, tradeValue);
+            let hint = web3.fromAscii("PERM");
+            await tokens[1].transfer(network.address, tradeValue);
+            txData = await network.tradeWithHint(user1, token1, tradeValue, token0, user2,
+                         10 ** 30, rate[1].valueOf(), 0, hint, {from:networkProxy});
+            let makerTokFundsAfter2 = await orderbookReserveTok0.makerFunds(maker1, ethAddress);
+            assert.equal(makerTokFundsAfter1.valueOf(), makerTokFundsAfter2.valueOf());
+        });
+
+        it("see gas consumption when taking 3.6, 4.6, 5.6, 6.6, 7.6 orders. remaining removed.", async() => {
+            assert(false);
+        });
+
         xit("test kyberTrade event", async() => {
         });
 
         xit("test ExecuteTrade event", async() => {
+        });
+
+        xit("test set contracts events", async() => {
         });
     });
 });

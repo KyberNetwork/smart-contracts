@@ -26,6 +26,6 @@ contract MockOrderbookReserve is OrderbookReserve {
     }
 
     function testHandleStakes(address maker, uint weiAmount, uint burnWeiAmount) public {
-        handleOrderStakes(maker, weiAmount, burnWeiAmount);
+        releaseOrderStakes(maker, weiAmount, burnWeiAmount);
     }
 }

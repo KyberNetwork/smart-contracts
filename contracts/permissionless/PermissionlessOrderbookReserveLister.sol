@@ -29,10 +29,10 @@ contract InternalNetworkInterface {
 
 contract PermissionlessOrderbookReserveLister {
     // KNC burn fee per wei value of an order. 25 in BPS = 0.25%.
-    uint constant public ORDER_BOOK_BURN_FEE_BPS = 25;
-    uint constant public MIN_NEW_ORDER_VALUE_DOLLAR = 1000;
+    uint constant public ORDERBOOK_BURN_FEE_BPS = 25;
 
-    uint public maxOrdersPerTrade;
+    uint public minNewOrderValueUSD = 1000; // set in order book minimum USD value of a new limit order.
+    uint public maxOrdersPerTrade;          // set in order book maximum orders to be traversed in rate query and trade
 
     InternalNetworkInterface public kyberNetworkContract;
     OrderFactoryInterface public orderFactoryContract;
@@ -41,15 +41,16 @@ contract PermissionlessOrderbookReserveLister {
 
     enum ListingStage {NO_RESERVE, RESERVE_ADDED, RESERVE_INIT, RESERVE_LISTED}
 
-    mapping(address => ListingStage) public reserveListingStage;
-    mapping(address => OrderbookReserveInterface) public reserves;
+    mapping(address => OrderbookReserveInterface) public reserves; //Permission less orderbook reserves mapped per token.
+    mapping(address => ListingStage) public reserveListingStage;   //Reserves listing stage.
 
     function PermissionlessOrderbookReserveLister(
         InternalNetworkInterface kyber,
         OrderFactoryInterface factory,
         MedianizerInterface medianizer,
         ERC20 knc,
-        uint maxOrders
+        uint maxOrders,
+        uint minOrderValueUSD
     )
         public
     {
@@ -58,12 +59,14 @@ contract PermissionlessOrderbookReserveLister {
         require(medianizer != address(0));
         require(knc != address(0));
         require(maxOrders > 1);
+        require(minOrderValueUSD > 0);
 
         kyberNetworkContract = kyber;
         orderFactoryContract = factory;
         medianizerContract = medianizer;
         kncToken = knc;
         maxOrdersPerTrade = maxOrders;
+        minNewOrderValueUSD = minOrderValueUSD;
     }
 
     event TokenOrderbookListingStage(ERC20 token, ListingStage stage);
@@ -79,9 +82,9 @@ contract PermissionlessOrderbookReserveLister {
             burner: kyberNetworkContract.feeBurnerContract(),
             network: kyberNetworkContract,
             medianizer: medianizerContract,
-            minNewOrderDollar: MIN_NEW_ORDER_VALUE_DOLLAR,
+            minNewOrderUSD: minNewOrderValueUSD,
             maxOrdersPerTrade: maxOrdersPerTrade,
-            burnFeeBps: ORDER_BOOK_BURN_FEE_BPS}
+            burnFeeBps: ORDERBOOK_BURN_FEE_BPS}
         );
 
         reserveListingStage[token] = ListingStage.RESERVE_ADDED;
@@ -125,7 +128,7 @@ contract PermissionlessOrderbookReserveLister {
 
         feeBurner.setReserveData(
             reserves[token], /* reserve */
-            ORDER_BOOK_BURN_FEE_BPS, /* fee */
+            ORDERBOOK_BURN_FEE_BPS, /* fee */
             reserves[token] /* kncWallet */
         );
 

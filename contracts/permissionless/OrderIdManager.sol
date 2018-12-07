@@ -66,7 +66,12 @@ contract OrderIdManager {
     function orderAllocationRequired(OrderIdData storage freeOrders) internal view returns (bool) {
 
         if (freeOrders.firstOrderId == 0) return true;
-
         return false;
+    }
+
+    function getNumActiveOrderIds(OrderIdData storage makerOrders) internal view returns (uint numActiveOrders) {
+        for (uint32 i = 0; i < NUM_ORDERS; ++i) {
+            if ((makerOrders.takenBitmap & (uint(1) << i)) > 0) numActiveOrders++;
+        }
     }
 }
