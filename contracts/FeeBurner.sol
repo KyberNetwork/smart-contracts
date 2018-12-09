@@ -32,19 +32,19 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
         address _admin,
         BurnableToken _kncToken,
         KyberNetworkInterface _kyberNetwork,
-        uint initialRate
+        uint _initialKncToEthRatePrecision
     )
         public
     {
         require(_admin != address(0));
         require(_kncToken != address(0));
         require(_kyberNetwork != address(0));
-        require(initialRate != 0);
+        require(_initialKncToEthRatePrecision != 0);
 
         kyberNetwork = _kyberNetwork;
         admin = _admin;
         knc = _kncToken;
-        kncPerEthRatePrecision = initialRate;
+        kncPerEthRatePrecision = _initialKncToEthRatePrecision;
     }
 
     event ReserveDataSet(address reserve, uint feeInBps, address kncWallet);

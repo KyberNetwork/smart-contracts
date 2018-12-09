@@ -39,9 +39,7 @@ contract ReentrancyGuard {
 /// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, ReentrancyGuard {
 
-    enum ReserveType {NONE, PERMISSIONED, PERMISSIONLESS}
-    bytes internal constant EMPTY_HINT = "";
-    bytes internal constant PERM_HINT = "PERM";
+    bytes public constant PERM_HINT = "PERM";
     uint  public constant PERM_HINT_GET_RATE = 1 << 255; // for get rate. bit mask hint.
 
     uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
@@ -51,13 +49,15 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     ExpectedRateInterface public expectedRateContract;
     FeeBurnerInterface    public feeBurnerContract;
     address               public kyberNetworkProxyContract;
-
     uint                  public maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool                  public isEnabled = false; // network is enabled
     mapping(bytes32=>uint) public infoFields; // this is only a UI field for external app.
 
     mapping(address=>address[]) public reservesPerTokenSrc; //reserves supporting token to eth
     mapping(address=>address[]) public reservesPerTokenDest;//reserves support eth to token
+
+    enum ReserveType {NONE, PERMISSIONED, PERMISSIONLESS}
+    bytes internal constant EMPTY_HINT = "";
 
     function KyberNetwork(address _admin) public {
         require(_admin != address(0));
@@ -121,7 +121,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         return trade(tradeInput);
     }
 
-    event AddReserveToNetwork(KyberReserveInterface indexed reserve, bool add, bool isPermissionLess);
+    event AddReserveToNetwork(KyberReserveInterface indexed reserve, bool add, bool isPermissionless);
 
     /// @notice can be called only by operator
     /// @dev add or deletes a reserve to/from the network.
@@ -290,14 +290,14 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         returns(uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
-        bool includePermissionLess = true;
+        bool includePermissionless = true;
 
         if (srcQty & PERM_HINT_GET_RATE > 0) {
-            includePermissionLess = false;
+            includePermissionless = false;
             srcQty = srcQty & ~PERM_HINT_GET_RATE;
         }
 
-        return expectedRateContract.getExpectedRate(src, dest, srcQty, includePermissionLess);
+        return expectedRateContract.getExpectedRate(src, dest, srcQty, includePermissionless);
     }
 
     function getExpectedRateOnlyPermission(ERC20 src, ERC20 dest, uint srcQty)
@@ -472,8 +472,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     event KyberTrade(address indexed trader, ERC20 src, ERC20 dest, uint srcAmount, uint dstAmount,
         address destAddress, uint ethWeiValue, bytes hint);
 
-    // Most of the lins here are functions calls spread over multiple lines. We find this function readable enough
-    //  and keep its size as is.
+    /* solhint-disable function-max-lines */
+    //  Most of the lines here are functions calls spread over multiple lines. We find this function readable enough
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev trade api for kyber network.
     /// @param tradeInput structure of trade inputs
@@ -531,6 +531,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
         return actualDestAmount;
     }
+    /* solhint-enable function-max-lines */
 
     function calcActualAmounts (ERC20 src, ERC20 dest, uint srcAmount, uint maxDestAmount, BestRateResult rateResult)
         internal view returns(uint actualSrcAmount, uint weiAmount, uint actualDestAmount)

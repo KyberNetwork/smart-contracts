@@ -31,7 +31,7 @@ contract PermissionlessOrderbookReserveLister {
     // KNC burn fee per wei value of an order. 25 in BPS = 0.25%.
     uint constant public ORDERBOOK_BURN_FEE_BPS = 25;
 
-    uint public minNewOrderValueUSD = 1000; // set in order book minimum USD value of a new limit order.
+    uint public minNewOrderValueUSD = 1000; // set in order book minimum USD value of a new limit order
     uint public maxOrdersPerTrade;          // set in order book maximum orders to be traversed in rate query and trade
 
     InternalNetworkInterface public kyberNetworkContract;
@@ -41,8 +41,8 @@ contract PermissionlessOrderbookReserveLister {
 
     enum ListingStage {NO_RESERVE, RESERVE_ADDED, RESERVE_INIT, RESERVE_LISTED}
 
-    mapping(address => OrderbookReserveInterface) public reserves; //Permission less orderbook reserves mapped per token.
-    mapping(address => ListingStage) public reserveListingStage;   //Reserves listing stage.
+    mapping(address => OrderbookReserveInterface) public reserves; //Permissionless orderbook reserves mapped per token
+    mapping(address => ListingStage) public reserveListingStage;   //Reserves listing stage
 
     function PermissionlessOrderbookReserveLister(
         InternalNetworkInterface kyber,
