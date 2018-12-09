@@ -84,8 +84,8 @@ contract PermissionlessOrderbookReserveLister {
             medianizer: medianizerContract,
             minNewOrderUSD: minNewOrderValueUSD,
             maxOrdersPerTrade: maxOrdersPerTrade,
-            burnFeeBps: ORDERBOOK_BURN_FEE_BPS}
-        );
+            burnFeeBps: ORDERBOOK_BURN_FEE_BPS
+        });
 
         reserveListingStage[token] = ListingStage.RESERVE_ADDED;
 
