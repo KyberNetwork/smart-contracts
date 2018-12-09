@@ -11,8 +11,10 @@ interface OrderListInterface {
     function getTailId() public view returns(uint32);
     function getHeadId() public view returns(uint32);
     function findPrevOrderId(uint128 srcAmount, uint128 dstAmount) public view returns(uint32);
+
     function addAfterId(address maker, uint32 orderId, uint128 srcAmount, uint128 dstAmount, uint32 prevId) public
         returns (bool);
+
     function updateWithPositionHint(uint32 orderId, uint128 srcAmount, uint128 dstAmount, uint32 prevId) public
         returns(bool, uint);
 }

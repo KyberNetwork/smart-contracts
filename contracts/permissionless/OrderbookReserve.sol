@@ -29,7 +29,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     uint32 constant public HEAD_ID = 2;         // head Id in order list contract
 
     struct OrderLimits {
-        uint minNewOrderSizeUSD; // Basis for setting min new order size Eth
+        uint minNewOrderSizeUsd; // Basis for setting min new order size Eth
         uint maxOrdersPerTrade;     // Limit number of iterated orders per trade / getRate loops.
         uint minNewOrderSizeWei;    // Below this value can't create new order.
         uint minOrderSizeWei;       // below this value order will be removed.
@@ -77,7 +77,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         address burner,
         address network,
         MedianizerInterface medianizer,
-        uint minNewOrderUSD,
+        uint minNewOrderUsd,
         uint maxOrdersPerTrade,
         uint burnFeeBps
     )
@@ -92,7 +92,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         require(burnFeeBps != 0);
         require(burnFeeBps <= MAX_BURN_FEE_BPS);
         require(maxOrdersPerTrade != 0);
-        require(minNewOrderUSD > 0);
+        require(minNewOrderUsd > 0);
 
         contracts.kyberNetwork = network;
         contracts.feeBurner = FeeBurnerRateInterface(burner);
@@ -101,7 +101,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         contracts.token = reserveToken;
 
         makerBurnFeeBps = burnFeeBps;
-        limits.minNewOrderSizeUSD = minNewOrderUSD;
+        limits.minNewOrderSizeUsd = minNewOrderUsd;
         limits.maxOrdersPerTrade = maxOrdersPerTrade;
 
         require(setMinOrderSizeEth());
@@ -164,6 +164,8 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
     event OrderbookReserveTrade(ERC20 srcToken, ERC20 dstToken, uint srcAmount, uint dstAmount);
 
+    /* solhint-disable function-max-lines */
+    /* Most of the lines come from spread function calls. We find this function readable enough.*/
     function trade(
         ERC20 srcToken,
         uint srcAmount,
@@ -194,7 +196,6 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         uint32 orderId;
         OrderData memory orderData;
-
         uint128 userRemainingSrcQty = uint128(srcAmount);
         uint128 totalUserDstAmount = 0;
 
@@ -215,8 +216,8 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
                     userSrc: srcToken,
                     userDst: dstToken,
                     userSrcAmount: orderData.dstAmount,
-                    userDstAmount: orderData.srcAmount})
-                );
+                    userDstAmount: orderData.srcAmount
+                }));
             } else {
                 uint128 partialDstQty = orderData.srcAmount * userRemainingSrcQty / orderData.dstAmount;
                 totalUserDstAmount += partialDstQty;
@@ -228,8 +229,8 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
                     userPartialSrcAmount: userRemainingSrcQty,
                     userTakeDstAmount: partialDstQty,
                     orderSrcAmount: orderData.srcAmount,
-                    orderDstAmount: orderData.dstAmount})
-                );
+                    orderDstAmount: orderData.dstAmount
+                }));
                 userRemainingSrcQty = 0;
             }
         }
@@ -244,9 +245,9 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         }
 
         OrderbookReserveTrade(srcToken, dstToken, srcAmount, totalUserDstAmount);
-
         return true;
     }
+    /* solhint-enable function-max-lines */
 
     ///@param srcAmount is the token amount that will be payed. must be deposited before hand in the makers account.
     ///@param dstAmount is the eth amount the maker expects to get for his tokens.
@@ -468,19 +469,19 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
     function setMinOrderSizeEth() public returns(bool) {
         //get eth to $ from maker dao;
-        bytes32 USDPerEthInWei;
+        bytes32 usdPerEthInWei;
         bool valid;
-        (USDPerEthInWei, valid) = contracts.medianizer.peek();
+        (usdPerEthInWei, valid) = contracts.medianizer.peek();
         require(valid);
 
         // ensuring that there is no underflow or overflow possible,
         // even if the price is compromised
-        uint USDPerEth = uint(USDPerEthInWei) / (1 ether);
-        require(USDPerEth != 0);
-        require(USDPerEth < MAX_USD_PER_ETH);
+        uint usdPerEth = uint(usdPerEthInWei) / (1 ether);
+        require(usdPerEth != 0);
+        require(usdPerEth < MAX_USD_PER_ETH);
 
         // set Eth order limits according to price
-        uint minNewOrderSizeWei = limits.minNewOrderSizeUSD * PRECISION * (1 ether) / uint(USDPerEthInWei);
+        uint minNewOrderSizeWei = limits.minNewOrderSizeUsd * PRECISION * (1 ether) / uint(usdPerEthInWei);
 
         limits.minNewOrderSizeWei = minNewOrderSizeWei;
         limits.minOrderSizeWei = limits.minNewOrderSizeWei / MIN_REMAINING_ORDER_RATIO;
@@ -505,9 +506,11 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     {
         require(dstAmount >= limits.minNewOrderSizeWei);
         uint32 prevId = tokenToEthList.findPrevOrderId(srcAmount, dstAmount);
+        address add;
+        uint128 noUse;
 
         if (prevId == orderId) {
-            (, , , prevId,) = tokenToEthList.getOrderDetails(orderId);
+            (add, noUse, noUse, prevId, ) = tokenToEthList.getOrderDetails(orderId);
         }
 
         return prevId;
@@ -520,9 +523,11 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     {
         require(srcAmount >= limits.minNewOrderSizeWei);
         uint32 prevId = ethToTokenList.findPrevOrderId(srcAmount, dstAmount);
+        address add;
+        uint128 noUse;
 
         if (prevId == orderId) {
-            (,,, prevId,) = ethToTokenList.getOrderDetails(orderId);
+            (add, noUse, noUse, prevId,) = ethToTokenList.getOrderDetails(orderId);
         }
 
         return prevId;
@@ -651,15 +656,15 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     {
         require(newSrcAmount < MAX_QTY);
         require(newDstAmount < MAX_QTY);
-        address maker = msg.sender;
+        address maker;
         uint128 currDstAmount;
         uint128 currSrcAmount;
-        address orderMaker;
+        uint32 noUse;
 
         OrderListInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
 
-        (orderMaker, currSrcAmount, currDstAmount,  ,  ) = list.getOrderDetails(orderId);
-        require(orderMaker == maker);
+        (maker, currSrcAmount, currDstAmount, noUse, noUse) = list.getOrderDetails(orderId);
+        require(maker == maker);
 
         if (!secureUpdateOrderFunds(maker, isEthToToken, currSrcAmount, currDstAmount, newSrcAmount, newDstAmount)) {
             return false;
@@ -727,7 +732,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     function bindOrderStakes(address maker, int weiAmount) internal returns(bool) {
 
         if (weiAmount < 0) {
-            if (uint(-weiAmount) > makerTotalOrdersWei[maker]) weiAmount = int(0 - makerTotalOrdersWei[maker]);
+            if (uint(-weiAmount) > makerTotalOrdersWei[maker]) weiAmount = int(-makerTotalOrdersWei[maker]);
             makerTotalOrdersWei[maker] -= uint(-weiAmount);
             return true;
         }
@@ -748,16 +753,22 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         require(weiForBurn <= totalWeiAmount);
 
-        if (totalWeiAmount > makerTotalOrdersWei[maker]) makerTotalOrdersWei[maker] = 0;
-        else makerTotalOrdersWei[maker] -= totalWeiAmount;
+        if (totalWeiAmount > makerTotalOrdersWei[maker]) {
+            makerTotalOrdersWei[maker] = 0;
+        } else {
+            makerTotalOrdersWei[maker] -= totalWeiAmount;
+        }
 
         if (weiForBurn == 0) return true;
 
         uint burnAmount = calcBurnAmount(weiForBurn);
 
         // if not enough knc to burn. just zero knc amount.
-        if (makerKnc[maker] < burnAmount) makerKnc[maker] = 0;
-        else makerKnc[maker] -= burnAmount;
+        if (makerKnc[maker] < burnAmount) {
+            makerKnc[maker] = 0;
+        } else {
+            makerKnc[maker] -= burnAmount;
+        }
 
         return true;
     }

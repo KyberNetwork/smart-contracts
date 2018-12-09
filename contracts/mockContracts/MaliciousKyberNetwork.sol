@@ -27,7 +27,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
         require(tx.gasprice <= maxGasPriceValue);
 
         BestRateResult memory rateResult =
-        findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount, empty);
+        findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount, EMPTY_HINT);
 
         require(rateResult.rate > 0);
         require(rateResult.rate < MAX_RATE);

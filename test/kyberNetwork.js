@@ -322,6 +322,11 @@ contract('KyberNetwork', function(accounts) {
         }
     });
 
+    it("test Kyber global parameters", async() => {
+        let hint = await network.PERM_HINT_GET_RATE();
+        assert.equal(hint.valueOf(), (2 ** 255));
+    })
+
     it("should init Kyber network data, list token pairs.", async function () {
         // add reserves
         await network.addReserve(reserve1.address, false, {from: operator});
@@ -2429,6 +2434,7 @@ contract('KyberNetwork', function(accounts) {
         let minNewOrderValueUSD = 1000;
         let dollarsPerEthPrecision = precisionUnits.mul(400);
         let minNewOrderValue;
+        let rateHint;
 
         it("add permission less order book reserve for new token using reserve lister. see success... ", async() => {
             orderListFactory = await OrderListFactory.new();
@@ -2647,6 +2653,18 @@ contract('KyberNetwork', function(accounts) {
             assert.equal(networkRateOnlyPerm[0].valueOf(), networkRateBefore[0].valueOf());
         })
 
+        it("test getting rate only permissioned with hint", async() => {
+            rateHint = new BigNumber(await network.PERM_HINT_GET_RATE());
+            let qty = 10 ** 18;
+
+            let networkRate = await network.getExpectedRate(ethAddress, token0, qty);
+            let networkRateOnlyPerm = await network.getExpectedRateOnlyPermission(ethAddress, token0, qty);
+            let networkRateOnlyPermWhint = await network.getExpectedRate(ethAddress, token0, rateHint.add(qty));
+
+            assert(networkRate[0].valueOf() != networkRateOnlyPerm[0].valueOf());
+            assert.equal(networkRateOnlyPerm[0].valueOf(), networkRateOnlyPermWhint[0].valueOf());
+        })
+
         it("trade (buy) token listed regular and order book. see token taken from order book reserve(better rate)", async() => {
             let tradeValue = 10000;
             let rate = await network.getExpectedRate(ethAddress, token0, tradeValue);
@@ -2810,7 +2828,7 @@ contract('KyberNetwork', function(accounts) {
             assert.equal(makerTokFundsAfter1.valueOf(), makerTokFundsAfter2.valueOf());
         });
 
-        it("Add spam orders token to eth see gas affect on trade with other reserve.", async() => {
+        xit("Add spam orders token to eth see gas affect on trade with other reserve.", async() => {
             let tradeValue = 10000;
             let rate = await network.getExpectedRate(token1, token0, tradeValue);
 
@@ -2835,7 +2853,7 @@ contract('KyberNetwork', function(accounts) {
             assert.equal(makerTokFundsAfter1.valueOf(), makerTokFundsAfter2.valueOf());
         });
 
-        it("see gas consumption when taking 3.6, 4.6, 5.6, 6.6, 7.6 orders. remaining removed.", async() => {
+        xit("see gas consumption when taking 3.6, 4.6, 5.6, 6.6, 7.6 orders. remaining removed.", async() => {
             assert(false);
         });
 

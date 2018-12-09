@@ -86,17 +86,12 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
 
         KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
         kncAddress = KNCToken.address;
-
         network = await KyberNetwork.new(admin);
         feeBurner = await FeeBurner.new(admin, kncAddress, network.address, ethToKncRatePrecision);
-
         orderFactory = await OrderListFactory.new();
-
         medianizer = await MockMedianizer.new();
         await medianizer.setValid(true);
         await medianizer.setEthPrice(dollarsPerEthPrecision);
-
-        currentBlock = await Helper.getCurrentBlock();
     });
 
     it("init network and reserveLister. see init success.", async function () {
