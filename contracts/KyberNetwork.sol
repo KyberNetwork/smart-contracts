@@ -40,8 +40,9 @@ contract ReentrancyGuard {
 contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, ReentrancyGuard {
 
     enum ReserveType {NONE, PERMISSIONED, PERMISSIONLESS}
-    bytes internal empty;
-    bytes internal permHint = "PERM";
+    bytes internal constant EMPTY_HINT = "";
+    bytes internal constant PERM_HINT = "PERM";
+    uint  public constant PERM_HINT_GET_RATE = 1 << 255; // for get rate. bit mask hint.
 
     uint public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
     KyberReserveInterface[] public reserves;
@@ -273,7 +274,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         return reserves.length;
     }
 
-    /// @notice should be called off chain with as much gas as needed
+    /// @notice should be called off chain
     /// @dev get an array of all reserves
     /// @return An array of all reserves
     function getReserves() public view returns(KyberReserveInterface[]) {
@@ -289,7 +290,14 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         returns(uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
-        return expectedRateContract.getExpectedRate(src, dest, srcQty, true);
+        bool includePermissionLess = true;
+
+        if (srcQty & PERM_HINT_GET_RATE > 0) {
+            includePermissionLess = false;
+            srcQty = srcQty & ~PERM_HINT_GET_RATE;
+        }
+
+        return expectedRateContract.getExpectedRate(src, dest, srcQty, includePermissionLess);
     }
 
     function getExpectedRateOnlyPermission(ERC20 src, ERC20 dest, uint srcQty)
@@ -328,7 +336,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     /// @param dest Destination token
     /// @return obsolete - used to return best reserve index. not relevant anymore for this API.
     function findBestRate(ERC20 src, ERC20 dest, uint srcAmount) public view returns(uint obsolete, uint rate) {
-        BestRateResult memory result = findBestRateTokenToToken(src, dest, srcAmount, empty);
+        BestRateResult memory result = findBestRateTokenToToken(src, dest, srcAmount, EMPTY_HINT);
         return(0, result.rate);
     }
 
@@ -337,7 +345,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         view
         returns(uint obsolete, uint rate)
     {
-        BestRateResult memory result = findBestRateTokenToToken(src, dest, srcAmount, permHint);
+        BestRateResult memory result = findBestRateTokenToToken(src, dest, srcAmount, PERM_HINT);
         return(0, result.rate);
     }
 
@@ -417,11 +425,8 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         //by default we use permission less reserves
         bool usePermissionless = true;
 
-        // PERM ascii == P = 80, E = 69, R = 82, M = 77
-        if ((hint.length >= 4) &&
-            (keccak256(hint[0], hint[1], hint[2], hint[3]) == keccak256(byte(80), byte(69), byte(82), byte(77)))) {
-
-            //use permissioned only
+        // if hint in first 4 bytes == 'PERM' only permissioned reserves will be used.
+        if ((hint.length >= 4) && (keccak256(hint[0], hint[1], hint[2], hint[3]) == keccak256(PERM_HINT))) {
             usePermissionless = false;
         }
 

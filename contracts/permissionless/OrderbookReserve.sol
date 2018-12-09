@@ -727,7 +727,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     function bindOrderStakes(address maker, int weiAmount) internal returns(bool) {
 
         if (weiAmount < 0) {
-            if (uint(-weiAmount) > makerTotalOrdersWei[maker]) weiAmount = int(0 - makerTotalOrdersWei[maker]);
+            if (uint(-weiAmount) > makerTotalOrdersWei[maker]) weiAmount = int(-makerTotalOrdersWei[maker]);
             makerTotalOrdersWei[maker] -= uint(-weiAmount);
             return true;
         }

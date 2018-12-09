@@ -70,7 +70,7 @@ contract OrderIdManager {
     }
 
     function getNumActiveOrderIds(OrderIdData storage makerOrders) internal view returns (uint numActiveOrders) {
-        for (uint32 i = 0; i < NUM_ORDERS; ++i) {
+        for (uint i = 0; i < NUM_ORDERS; ++i) {
             if ((makerOrders.takenBitmap & (uint(1) << i)) > 0) numActiveOrders++;
         }
     }

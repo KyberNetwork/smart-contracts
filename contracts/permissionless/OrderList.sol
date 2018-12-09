@@ -183,6 +183,7 @@ contract OrderList is Withdrawable, Utils2, OrderListInterface {
 
     function allocateIds(uint32 howMany) public onlyAdmin returns(uint32) {
         uint32 firstId = nextFreeId;
+        require(nextFreeId + howMany > nextFreeId);
         nextFreeId += howMany;
         return firstId;
     }

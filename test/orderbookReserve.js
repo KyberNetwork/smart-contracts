@@ -155,6 +155,8 @@ contract('OrderbookReserve', async (accounts) => {
         let tailIdInReserve = await reserve.TAIL_ID();
         assert.equal(headId.valueOf(), headIdInReserve.valueOf());
         assert.equal(tailId.valueOf(), tailIdInReserve.valueOf());
+
+        let permHintForGetRate = await reserve.permHint
     });
 
     describe("test various revert scenarios", async() => {
@@ -684,7 +686,68 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("test getMakerOrders with two makers", async() => {
-            assert(false)
+            let ethWeiDepositAmount = 20 * 10 ** 18;
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker2, ethWeiDepositAmount, 0, kncTweiDepositAmount.valueOf());
+
+            let srcAmountWei = 2 * 10 ** 18;
+            let orderDstTwei = 9 * 10 ** 18;
+
+            //add orders maker1
+            let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+            let maker1order1Id = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+            let maker1order2Id = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+            let maker1order3Id = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+            let maker1order4Id = rc.logs[0].args.orderId.valueOf();
+
+            //query orders maker1
+            orderList = await reserve.getEthToTokenMakerOrderIds(maker1);
+            assert.equal(orderList[0].valueOf(), maker1order1Id);
+            assert.equal(orderList[1].valueOf(), maker1order2Id);
+            assert.equal(orderList[2].valueOf(), maker1order3Id);
+            assert.equal(orderList[3].valueOf(), maker1order4Id);
+
+            //add orders maker2
+            rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker2});
+            let maker2order1Id = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker2});
+            let maker2order2Id = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker2});
+            let maker2order3Id = rc.logs[0].args.orderId.valueOf();
+
+            //query maker2
+            orderList = await reserve.getEthToTokenMakerOrderIds(maker2);
+            assert.equal(orderList[0].valueOf(), maker2order1Id);
+            assert.equal(orderList[1].valueOf(), maker2order2Id);
+            assert.equal(orderList[2].valueOf(), maker2order3Id);
+
+            // cancler orders maker 1
+            await reserve.cancelEthToTokenOrder(maker1order3Id, {from: maker1});
+            await reserve.cancelEthToTokenOrder(maker1order1Id, {from: maker1});
+
+            //query maker1 again
+            orderList = await reserve.getEthToTokenMakerOrderIds(maker1);
+            assert.equal(orderList[0].valueOf(), maker1order2Id);
+            assert.equal(orderList[1].valueOf(), maker1order4Id);
+
+            // Cancel for maker2 and query
+            await reserve.cancelEthToTokenOrder(maker2order2Id, {from: maker2});
+            orderList = await reserve.getEthToTokenMakerOrderIds(maker2);
+            assert.equal(orderList[0].valueOf(), maker2order1Id);
+            assert.equal(orderList[1].valueOf(), maker2order3Id);
+
+            //submer for maker1 and query
+            rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+            maker1order1Id = rc.logs[0].args.orderId.valueOf();
+
+            orderList = await reserve.getEthToTokenMakerOrderIds(maker1);
+            assert.equal(orderList[0].valueOf(), maker1order1Id);
+            assert.equal(orderList[1].valueOf(), maker1order2Id);
+            assert.equal(orderList[2].valueOf(), maker1order4Id);
         });
 
         it("maker add buy token order. see rate updated. verify order details.", async () => {
