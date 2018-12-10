@@ -664,7 +664,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         OrderListInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
 
         (maker, currSrcAmount, currDstAmount, noUse, noUse) = list.getOrderDetails(orderId);
-        require(maker == maker);
+        require(maker == msg.sender);
 
         if (!secureUpdateOrderFunds(maker, isEthToToken, currSrcAmount, currDstAmount, newSrcAmount, newDstAmount)) {
             return false;
