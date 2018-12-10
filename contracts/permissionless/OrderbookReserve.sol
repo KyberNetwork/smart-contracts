@@ -508,9 +508,10 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint32 prevId = tokenToEthList.findPrevOrderId(srcAmount, dstAmount);
         address add;
         uint128 noUse;
+        uint32 next;
 
         if (prevId == orderId) {
-            (add, noUse, noUse, prevId, ) = tokenToEthList.getOrderDetails(orderId);
+            (add, noUse, noUse, prevId, next) = tokenToEthList.getOrderDetails(orderId);
         }
 
         return prevId;
@@ -525,9 +526,10 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint32 prevId = ethToTokenList.findPrevOrderId(srcAmount, dstAmount);
         address add;
         uint128 noUse;
+        uint32 next;
 
         if (prevId == orderId) {
-            (add, noUse, noUse, prevId,) = ethToTokenList.getOrderDetails(orderId);
+            (add, noUse, noUse, prevId, next) = ethToTokenList.getOrderDetails(orderId);
         }
 
         return prevId;
@@ -660,6 +662,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint128 currDstAmount;
         uint128 currSrcAmount;
         uint32 noUse;
+        uint noUse2;
 
         OrderListInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
 
@@ -673,7 +676,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         bool updatedWithHint = false;
 
         if (hintPrevOrder != 0) {
-            (updatedWithHint, ) = list.updateWithPositionHint(orderId, newSrcAmount, newDstAmount, hintPrevOrder);
+            (updatedWithHint, noUse2) = list.updateWithPositionHint(orderId, newSrcAmount, newDstAmount, hintPrevOrder);
         }
 
         if (!updatedWithHint) {
@@ -864,7 +867,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
             bool isSuccess;
 
             // update order values, taken order is always first order
-            (isSuccess, ) = list.updateWithPositionHint(orderId, orderSrcAmount, orderDstAmount, HEAD_ID);
+            (isSuccess,) = list.updateWithPositionHint(orderId, orderSrcAmount, orderDstAmount, HEAD_ID);
             require(isSuccess);
         }
 
