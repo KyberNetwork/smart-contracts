@@ -31,7 +31,7 @@ contract PermissionlessOrderbookReserveLister {
     // KNC burn fee per wei value of an order. 25 in BPS = 0.25%.
     uint constant public ORDERBOOK_BURN_FEE_BPS = 25;
 
-    uint public minNewOrderValueUSD = 1000; // set in order book minimum USD value of a new limit order
+    uint public minNewOrderValueUsd = 1000; // set in order book minimum USD value of a new limit order
     uint public maxOrdersPerTrade;          // set in order book maximum orders to be traversed in rate query and trade
 
     InternalNetworkInterface public kyberNetworkContract;
@@ -50,7 +50,7 @@ contract PermissionlessOrderbookReserveLister {
         MedianizerInterface medianizer,
         ERC20 knc,
         uint maxOrders,
-        uint minOrderValueUSD
+        uint minOrderValueUsd
     )
         public
     {
@@ -59,14 +59,14 @@ contract PermissionlessOrderbookReserveLister {
         require(medianizer != address(0));
         require(knc != address(0));
         require(maxOrders > 1);
-        require(minOrderValueUSD > 0);
+        require(minOrderValueUsd > 0);
 
         kyberNetworkContract = kyber;
         orderFactoryContract = factory;
         medianizerContract = medianizer;
         kncToken = knc;
         maxOrdersPerTrade = maxOrders;
-        minNewOrderValueUSD = minOrderValueUSD;
+        minNewOrderValueUsd = minOrderValueUsd;
     }
 
     event TokenOrderbookListingStage(ERC20 token, ListingStage stage);
@@ -82,7 +82,7 @@ contract PermissionlessOrderbookReserveLister {
             burner: kyberNetworkContract.feeBurnerContract(),
             network: kyberNetworkContract,
             medianizer: medianizerContract,
-            minNewOrderUSD: minNewOrderValueUSD,
+            minNewOrderUsd: minNewOrderValueUsd,
             maxOrdersPerTrade: maxOrdersPerTrade,
             burnFeeBps: ORDERBOOK_BURN_FEE_BPS
         });
