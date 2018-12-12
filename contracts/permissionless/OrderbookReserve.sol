@@ -625,6 +625,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         address maker = msg.sender;
 
         require(secureAddOrderFunds(maker, isEthToToken, srcAmount, dstAmount));
+        require(validateLegalRate(srcAmount, dstAmount, isEthToToken));
 
         bool addedWithHint = false;
         OrderListInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
@@ -663,6 +664,8 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint128 currSrcAmount;
         uint32 noUse;
         uint noUse2;
+
+        require(validateLegalRate(newSrcAmount, newDstAmount, isEthToToken));
 
         OrderListInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
 
@@ -943,5 +946,29 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint32 prevId;
         (data.maker, data.srcAmount, data.dstAmount, prevId, data.nextId) = list.getOrderDetails(orderId);
         data.isLastOrder = (data.nextId == TAIL_ID);
+    }
+
+    function validateLegalRate (uint srcAmount, uint dstAmount, bool isEthToToken)
+        internal view returns(bool)
+    {
+        uint srcDecimals;
+        uint dstDecimals;
+
+        if (isEthToToken) {
+            srcDecimals = ETH_DECIMALS;
+            dstDecimals = getDecimals(contracts.token);
+        } else {
+            srcDecimals = getDecimals(contracts.token);
+            dstDecimals = ETH_DECIMALS;
+        }
+
+        /// notice, for taker amounts are opposite. order srcAmount will be DstAmount for taker.
+        if (dstDecimals >= srcDecimals) {
+            if ((srcAmount / ((10 ** (dstDecimals - srcDecimals)) * dstAmount)) > (MAX_RATE / PRECISION)) return false;
+            return true;
+        } else {
+            if (((srcAmount * (10 ** (srcDecimals - dstDecimals))) / dstAmount) > (MAX_RATE / PRECISION)) return false;
+            return true;
+        }
     }
 }
