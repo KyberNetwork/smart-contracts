@@ -951,24 +951,17 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     function validateLegalRate (uint srcAmount, uint dstAmount, bool isEthToToken)
         internal view returns(bool)
     {
-        uint srcDecimals;
-        uint dstDecimals;
+        uint rate;
 
+        /// notice, rate is calculated from taker perspective,
+        ///     for taker amounts are opposite. order srcAmount will be DstAmount for taker.
         if (isEthToToken) {
-            srcDecimals = ETH_DECIMALS;
-            dstDecimals = getDecimals(contracts.token);
+            rate = calcRateFromQty(dstAmount, srcAmount, getDecimals(contracts.token), ETH_DECIMALS);
         } else {
-            srcDecimals = getDecimals(contracts.token);
-            dstDecimals = ETH_DECIMALS;
+            rate = calcRateFromQty(dstAmount, srcAmount, ETH_DECIMALS, getDecimals(contracts.token));
         }
 
-        /// notice, for taker amounts are opposite. order srcAmount will be DstAmount for taker.
-        if (dstDecimals >= srcDecimals) {
-            if ((srcAmount / ((10 ** (dstDecimals - srcDecimals)) * dstAmount)) > (MAX_RATE / PRECISION)) return false;
-            return true;
-        } else {
-            if (((srcAmount * (10 ** (srcDecimals - dstDecimals))) / dstAmount) > (MAX_RATE / PRECISION)) return false;
-            return true;
-        }
+        if (rate > MAX_RATE) return false;
+        return true;
     }
 }
