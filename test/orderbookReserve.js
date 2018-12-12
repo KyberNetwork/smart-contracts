@@ -14,6 +14,7 @@ const BigNumber = require('bignumber.js');
 //////////////////
 const precisionUnits = (new BigNumber(10).pow(18));
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+const max_rate = precisionUnits.mul(10 ** 6); //internal parameter in Utils.sol
 
 //permission groups
 let admin;
@@ -88,8 +89,6 @@ contract('OrderbookReserve', async (accounts) => {
 
         reserve = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address,
             minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
-//log("91")
-//        log(reserve);
         await reserve.init(ordersFactory.address);
         numOrderIdsPerMaker = await reserve.NUM_ORDERS();
         burnToStakeFactor = await reserve.BURN_TO_STAKE_FACTOR();
@@ -159,7 +158,7 @@ contract('OrderbookReserve', async (accounts) => {
         let permHintForGetRate = await reserve.permHint
     });
 
-    describe("test various revert scenarios", async() => {
+    describe("test various revert scenarios", function() {
         it("verify ctor parameters for order book reserve. no zero values", async() => {
             let res;
 
@@ -318,6 +317,7 @@ contract('OrderbookReserve', async (accounts) => {
 
             //add orders
             let rc = await reserve.submitEthToTokenOrder(valueWei, valueTwei, {from: maker1});
+            log("gas add first order: " + rc.receipt.gasUsed)
 
             //validate we have rate values
             let rate = await reserve.getConversionRate(tokenAdd, ethAddress, 10 ** 18, 0);
@@ -440,7 +440,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
     });
 
-    describe ("deposit funds, bind funds, withdraw funds", async() => {
+    describe ("deposit funds, bind funds, withdraw funds", function() {
         it("maker deposit tokens, ethers, knc, validate updated in contract", async () => {
             let tokenWeiDepositAmount = 50 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
@@ -638,7 +638,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
     });
 
-    describe("add and remove orders", async() => {
+    describe("add and remove orders", function() {
         it("test getMakerOrders", async() => {
             let ethWeiDepositAmount = 20 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
@@ -757,6 +757,38 @@ contract('OrderbookReserve', async (accounts) => {
 
             let srcAmountWei = 2 * 10 ** 18;
             let orderDstTwei = 9 * 10 ** 18;
+
+            // first getConversionRate should return 0
+    //        getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint)
+            let rate = await reserve.getConversionRate(tokenAdd, ethAddress, 10 ** 18, 0);
+            assert.equal(rate.valueOf(), 0);
+
+            //add order
+            let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+            let orderId = rc.logs[0].args.orderId.valueOf();
+
+            let orderDetails = await reserve.getEthToTokenOrder(rc.logs[0].args.orderId.valueOf());
+    //        log(orderDetails);
+
+            assert.equal(orderDetails[0].valueOf(), maker1);
+            assert.equal(orderDetails[1].valueOf(), srcAmountWei);
+            assert.equal(orderDetails[2].valueOf(), orderDstTwei);
+            assert.equal(orderDetails[3].valueOf(), headId); // prev should be buy head id - since first
+            assert.equal(orderDetails[4].valueOf(), tailId); // next should be tail ID - since last
+
+            rate = await reserve.getConversionRate(token.address, ethAddress, 10 ** 18, 0);
+    //        log("rate " + rate);
+            let expectedRate = precisionUnits.mul(srcAmountWei).div(orderDstTwei).floor();
+            assert.equal(rate.valueOf(), expectedRate.valueOf());
+        });
+
+        it("maker add eth to rate order. rate > MAX_RATE, see revert.", async () => {
+            let ethWeiDepositAmount = 20 * 10 ** 18;
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount.valueOf());
+
+            let srcAmountWei = 2 * 10 ** 18;
+            let orderDstTwei = 2 * 10 ** 12;
 
             // first getConversionRate should return 0
     //        getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint)
@@ -2148,7 +2180,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
     });
 
-    describe("trade (add orders and take)", async() => {
+    describe("trade (add orders and take)", function() {
         it("maker add sell order. take using trade. see amounts updated in contracts. see funds transferred.", async() => {
             let tokenWeiDepositAmount = new BigNumber(10).mul(10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
@@ -2869,6 +2901,7 @@ contract('OrderbookReserve', async (accounts) => {
     })
 
     xit("take orders, see some knc released to burn amount and some knc set as free knc", async() => {
+
     });
 
     xit("create knc rate change, so stakes per order aren't enough. see can still take order", async() => {

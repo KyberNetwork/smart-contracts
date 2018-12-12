@@ -625,6 +625,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         address maker = msg.sender;
 
         require(secureAddOrderFunds(maker, isEthToToken, srcAmount, dstAmount));
+        require(validateLegalRate(srcAmount, dstAmount, isEthToToken));
 
         bool addedWithHint = false;
         OrderListInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
@@ -663,6 +664,8 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint128 currSrcAmount;
         uint32 noUse;
         uint noUse2;
+
+        require(validateLegalRate(newSrcAmount, newDstAmount, isEthToToken));
 
         OrderListInterface list = isEthToToken ? ethToTokenList : tokenToEthList;
 
@@ -943,5 +946,22 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint32 prevId;
         (data.maker, data.srcAmount, data.dstAmount, prevId, data.nextId) = list.getOrderDetails(orderId);
         data.isLastOrder = (data.nextId == TAIL_ID);
+    }
+
+    function validateLegalRate (uint srcAmount, uint dstAmount, bool isEthToToken)
+        internal view returns(bool)
+    {
+        uint rate;
+
+        /// notice, rate is calculated from taker perspective,
+        ///     for taker amounts are opposite. order srcAmount will be DstAmount for taker.
+        if (isEthToToken) {
+            rate = calcRateFromQty(dstAmount, srcAmount, getDecimals(contracts.token), ETH_DECIMALS);
+        } else {
+            rate = calcRateFromQty(dstAmount, srcAmount, ETH_DECIMALS, getDecimals(contracts.token));
+        }
+
+        if (rate > MAX_RATE) return false;
+        return true;
     }
 }
