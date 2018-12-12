@@ -14,7 +14,7 @@ const BigNumber = require('bignumber.js');
 //////////////////
 const precisionUnits = (new BigNumber(10).pow(18));
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
-const max_rate = precisionUnits.mul(10 ** 6); //internal parameter in Utils.sol
+const max_rate = precisionUnits.mul(10 ** 6); //internal parameter in Utils.sol.
 
 //permission groups
 let admin;
@@ -782,35 +782,98 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(rate.valueOf(), expectedRate.valueOf());
         });
 
-        it("maker add eth to rate order. rate > MAX_RATE, see revert.", async () => {
+        it("maker add eth to token order. rate > MAX_RATE, see revert for add and update.", async () => {
             let ethWeiDepositAmount = 20 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount.valueOf());
 
-            let srcAmountWei = 2 * 10 ** 18;
-            let orderDstTwei = 2 * 10 ** 12;
+            srcAmountWei = 2 * 10 ** 18;
+            orderDstTwei = new BigNumber(2 * 10 ** 12);
 
-            // first getConversionRate should return 0
-    //        getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint)
+            orderRate = calcRateFromQty(orderDstTwei, srcAmountWei, 18, 18);
+            assert.equal(orderRate.valueOf(), max_rate.valueOf());
+
             let rate = await reserve.getConversionRate(tokenAdd, ethAddress, 10 ** 18, 0);
             assert.equal(rate.valueOf(), 0);
 
             //add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+            log("add gas " + rc.receipt.gasUsed)
             let orderId = rc.logs[0].args.orderId.valueOf();
 
-            let orderDetails = await reserve.getEthToTokenOrder(rc.logs[0].args.orderId.valueOf());
-    //        log(orderDetails);
-
-            assert.equal(orderDetails[0].valueOf(), maker1);
-            assert.equal(orderDetails[1].valueOf(), srcAmountWei);
-            assert.equal(orderDetails[2].valueOf(), orderDstTwei);
-            assert.equal(orderDetails[3].valueOf(), headId); // prev should be buy head id - since first
-            assert.equal(orderDetails[4].valueOf(), tailId); // next should be tail ID - since last
-
-            rate = await reserve.getConversionRate(token.address, ethAddress, 10 ** 18, 0);
-    //        log("rate " + rate);
+            rate = await reserve.getConversionRate(token.address, ethAddress, orderDstTwei, 0);
             let expectedRate = precisionUnits.mul(srcAmountWei).div(orderDstTwei).floor();
+            assert.equal(rate.valueOf(), expectedRate.valueOf());
+
+            let illegalOrderDstTwei = orderDstTwei.sub(1)
+            orderRate = calcRateFromQty(illegalOrderDstTwei, srcAmountWei, 18, 18);
+//            log("orderRate " + orderRate.valueOf())
+            assert(orderRate.gt(max_rate));
+
+            try {
+                await reserve.submitEthToTokenOrder(srcAmountWei, illegalOrderDstTwei, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            //see also update fails
+            try {
+                await reserve.updateEthToTokenOrder(orderId, srcAmountWei, illegalOrderDstTwei, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            rate = await reserve.getConversionRate(token.address, ethAddress, orderDstTwei, 0);
+            expectedRate = precisionUnits.mul(srcAmountWei).div(orderDstTwei).floor();
+            assert.equal(rate.valueOf(), expectedRate.valueOf());
+        });
+
+        it("maker add token to eth order. rate > MAX_RATE, see revert for 'add' and 'update'.", async () => {
+            let tokenTweiDepositAmount = 20 * 10 ** 25;
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            await makerDeposit(maker1, 0, tokenTweiDepositAmount, kncTweiDepositAmount.valueOf());
+
+            srcAmountTwei = 2 * 10 ** 24;
+            orderDstWei = new BigNumber(2 * 10 ** 18);
+
+            orderRate = calcRateFromQty(orderDstWei, srcAmountTwei, 18, 18);
+            assert.equal(orderRate.valueOf(), max_rate.valueOf());
+
+            let rate = await reserve.getConversionRate(tokenAdd, ethAddress, 10 ** 18, 0);
+            assert.equal(rate.valueOf(), 0);
+
+            //add order
+            let rc = await reserve.submitTokenToEthOrder(srcAmountTwei, orderDstWei, {from: maker1});
+            log("add gas " + rc.receipt.gasUsed)
+            let orderId = rc.logs[0].args.orderId.valueOf();
+
+            rate = await reserve.getConversionRate(ethAddress, token.address, orderDstTwei, 0);
+            let expectedRate = precisionUnits.mul(srcAmountTwei).div(orderDstWei).floor();
+            assert.equal(rate.valueOf(), expectedRate.valueOf());
+
+            let illegalOrderDstWei = orderDstWei.sub(1)
+            orderRate = calcRateFromQty(illegalOrderDstWei, srcAmountTwei, 18, 18);
+            assert(orderRate.gt(max_rate));
+
+            try {
+                await reserve.updateEthToTokenOrder(orderId, srcAmountWei, illegalOrderDstWei, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            //see also update fails
+            try {
+                await reserve.submitEthToTokenOrder(srcAmountWei, illegalOrderDstWei, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            rate = await reserve.getConversionRate(ethAddress, token.address, orderDstTwei, 0);
+            expectedRate = precisionUnits.mul(srcAmountWei).div(orderDstTwei).floor();
             assert.equal(rate.valueOf(), expectedRate.valueOf());
         });
 
@@ -2933,38 +2996,12 @@ async function makerDeposit(maker, ethWei, tokenTwei, kncTwei) {
     await reserve.depositEther(maker, {from: maker, value: ethWei});
 }
 
-async function twoStringsSoliditySha(str1, str2) {
-    let str1Cut = str1.slice(2);
-    let str2Cut = str2.slice(2);
-    let combinedSTR = str1Cut + str2Cut;
-
-    // Convert a string to a byte array
-    for (var bytes = [], c = 0; c < combinedSTR.length; c += 2)
-        bytes.push(parseInt(combinedSTR.substr(c, 2), 16));
-
-    let sha3Res = await web3.sha3(bytes, {encoding: "hex"});
-
-    return sha3Res;
-};
-
-function addBps (price, bps) {
-    return (price.mul(10000 + bps).div(10000));
-};
-
-function compareRates (receivedRate, expectedRate) {
-    expectedRate = expectedRate - (expectedRate % 10);
-    receivedRate = receivedRate - (receivedRate % 10);
-    assert.equal(expectedRate, receivedRate, "different prices");
-};
-
-
-function calcDstQty(srcQty, srcDecimals, dstDecimals, rate) {
-    rate = new BigNumber(rate);
+function calcRateFromQty(srcAmount, dstAmount, srcDecimals, dstDecimals) {
     if (dstDecimals >= srcDecimals) {
-        let decimalDiff = (new BigNumber(10)).pow(dstDecimals - srcDecimals);
-        return (rate.mul(srcQty).mul(decimalDiff).div(precisionUnits)).floor();
+        let decimals = new BigNumber(10 ** (dstDecimals - srcDecimals));
+        return ((precisionUnits.mul(dstAmount)).div(decimals.mul(srcAmount))).floor();
     } else {
-        let decimalDiff = (new BigNumber(10)).pow(srcDecimals - dstDecimals);
-        return (rate.mul(srcQty).div(decimalDiff.mul(precisionUnits))).floor();
+        let decimals = new BigNumber(10 ** (srcDecimals - dstDecimals));
+        return ((precisionUnits.mul(dstAmount).mul(decimals)).div(srcAmount)).floor();
     }
 }
