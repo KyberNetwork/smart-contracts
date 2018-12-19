@@ -1,10 +1,8 @@
-//let ConversionRates = artifacts.require("./ConversionRates.sol");
-let ConversionRates = artifacts.require("./mockContracts/MockConversionRate.sol");
-let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
+const ConversionRates = artifacts.require("MockConversionRate.sol");
+const TestToken = artifacts.require("TestToken.sol");
 
-let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+const Helper = require("./helper.js");
+const BigNumber = require('bignumber.js');
 
 //global variables
 let precisionUnits = (new BigNumber(10).pow(18));
@@ -42,25 +40,25 @@ let compactSellArr1 = [];
 let compactSellArr2 = [];
 
 // getStepFunctionData command IDs
-let comID_BuyRateStpQtyXLength = 0;
-let comID_BuyRateStpQtyParamX = 1;
-let comID_BuyRateStpQtyYLength = 2;
-let comID_BuyRateStpQtyParamY = 3;
+const comID_BuyRateStpQtyXLength = 0;
+const comID_BuyRateStpQtyParamX = 1;
+const comID_BuyRateStpQtyYLength = 2;
+const comID_BuyRateStpQtyParamY = 3;
 
-let comID_SellRateStpQtyXLength = 4;
-let comID_SellRateStpQtyParamX = 5;
-let comID_SellRateStpQtyYLength = 6;
-let comID_SellRateStpQtyParamY = 7;
+const comID_SellRateStpQtyXLength = 4;
+const comID_SellRateStpQtyParamX = 5;
+const comID_SellRateStpQtyYLength = 6;
+const comID_SellRateStpQtyParamY = 7;
 
-let comID_BuyRateStpImbalanceXLength = 8;
-let comID_BuyRateStpImbalanceParamX = 9;
-let comID_BuyRateStpImbalanceYLength = 10;
-let comID_BuyRateStpImbalanceParamY = 11;
+const comID_BuyRateStpImbalanceXLength = 8;
+const comID_BuyRateStpImbalanceParamX = 9;
+const comID_BuyRateStpImbalanceYLength = 10;
+const comID_BuyRateStpImbalanceParamY = 11;
 
-let comID_SellRateStpImbalanceXLength = 12;
-let comID_SellRateStpImbalanceParamX = 13;
-let comID_SellRateStpImbalanceYLength = 14;
-let comID_SellRateStpImbalanceParamY = 15;
+const comID_SellRateStpImbalanceXLength = 12;
+const comID_SellRateStpImbalanceParamX = 13;
+const comID_SellRateStpImbalanceYLength = 14;
+const comID_SellRateStpImbalanceParamY = 15;
 
 let convRatesInst;
 
@@ -75,8 +73,6 @@ contract('ConversionRates', function(accounts) {
         let arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
         let hexArr = Helper.bytesToHex(arr);
         let byte;
-
-        wrapper = await Wrapper.new();
 
         for (let i = 0; i < 14; i++) {
             byte = await wrapper.getInt8FromByte(hexArr, i);
