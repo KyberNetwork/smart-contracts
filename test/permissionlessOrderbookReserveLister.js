@@ -8,6 +8,7 @@ const OrderbookReserve = artifacts.require("MockOrderbookReserve.sol");
 const PermissionlessOrderbookReserveLister = artifacts.require("PermissionlessOrderbookReserveLister.sol");
 const OrderListFactory = artifacts.require("OrderListFactory.sol");
 const MockMedianizer = artifacts.require("MockMedianizer.sol");
+const MockKyberNetwork = artifacts.require("./MockKyberNetwork.sol");
 
 const Helper = require("./helper.js");
 const BigNumber = require('bignumber.js');
@@ -179,7 +180,7 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
         assert.equal(rxContracts[4].valueOf(), medianizer.address);
     })
 
-    it("see listing arbitrary address - not a token reverts, see results", async() => {
+    it("see listing arbitrary address = no token contract - reverts", async() => {
         try {
             let rc = await reserveLister.addOrderbookContract(accounts[9]);
             assert(false, "throw was expected in line above.")
@@ -334,7 +335,7 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
         let rxKncTwei = await res.makerUnlockedKnc(maker1);
         assert.equal(rxKncTwei.valueOf(), amountKnc);
 
-        rxKncTwei = await res.makerStakedKnc(maker1);
+        rxKncTwei = await res.makerRequiredKncStake(maker1);
         assert.equal(rxKncTwei.valueOf(), 0);
 
         //makerDepositEther
@@ -491,6 +492,9 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', async (accounts
         expectedRate = accounts[2];
         maker = accounts[4];
         taker = accounts[5];
+
+        KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
+        kncAddress = KNCToken.address;
     });
 
     it("listing orderbook reserve so that it could burn fees", async () => {
@@ -613,6 +617,94 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', async (accounts
             expectedBurnFeesInKncWei
         );
     });
+
+    it("list order book reserve. see can't unlist if knc rate is in boundaries. can unlist when knc rate too low", async() => {
+        const someToken = await TestToken.new("the token", "tok", 18);
+        const kncToken = await TestToken.new("kyber crystals", "knc", 18);
+        const kncAddress = kncToken.address;
+        const proxy = accounts[9];
+
+        // prepare kyber network
+        const kyberNetwork = await KyberNetwork.new(admin);
+        const mockNetwork = await MockKyberNetwork.new(admin);
+
+        let ethKncRate = 100;
+        let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
+
+        const feeBurner = await FeeBurner.new(
+            admin,
+            kncToken.address,
+            mockNetwork.address,
+            ethToKncRatePrecision
+        );
+
+        ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
+        let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        await feeBurner.setKNCRate();
+
+        const orderFactory = await OrderListFactory.new();
+
+        medianizer = await MockMedianizer.new();
+        await medianizer.setValid(true);
+        await medianizer.setEthPrice(dollarsPerEthPrecision);
+
+        const lister = await PermissionlessOrderbookReserveLister.new(
+            kyberNetwork.address,
+            orderFactory.address,
+            medianizer.address,
+            kncAddress,
+            maxOrdersPerTrade,
+            minNewOrderValueUsd
+        );
+
+        // configure feeburner
+        await feeBurner.addOperator(lister.address, {from: admin});
+
+        // configure kyber network
+        await kyberNetwork.setFeeBurner(feeBurner.address);
+        await kyberNetwork.addOperator(lister.address);
+
+        // list an order book reserve
+        await lister.addOrderbookContract(someToken.address);
+        await lister.initOrderbookContract(someToken.address);
+        await lister.listOrderbookContract(someToken.address);
+
+        // add orders
+        const reserve = await OrderbookReserve.at(
+            await lister.reserves(someToken.address)
+        );
+
+        let baseKncEthRate = await reserve.kncPerEthBaseRatePrecision();
+
+        let reserveIndex = 0;
+        let address = await kyberNetwork.reserves(reserveIndex);
+        assert.equal(address.valueOf(), reserve.address);
+
+         // see unlist fails
+        try {
+            await lister.unlistOrderbookContract(someToken.address, reserveIndex);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        let stakeFactor = await reserve.BURN_TO_STAKE_FACTOR();
+
+        ethKncRate = ethKncRate * (stakeFactor * 1 + 1 * 1);
+
+        ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
+        kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+        await feeBurner.setKNCRate();
+
+        await lister.unlistOrderbookContract(someToken.address, reserveIndex);
+    })
 });
 
 function log(str) {

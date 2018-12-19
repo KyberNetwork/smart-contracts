@@ -6,9 +6,19 @@ import "../FeeBurnerInterface.sol";
 
 
 contract InternalNetworkInterface {
-    FeeBurnerInterface public feeBurnerContract;
-    function addReserve(KyberReserveInterface reserve, bool isPermissionless) public returns(bool);
-    function removeReserve(KyberReserveInterface reserve, uint index) public returns(bool);
+    function addReserve(
+        KyberReserveInterface reserve,
+        bool isPermissionless
+    )
+        public
+        returns(bool);
+
+    function removeReserve(
+        KyberReserveInterface reserve,
+        uint index
+    )
+        public
+        returns(bool);
 
     function listPairForReserve(
         address reserve,
@@ -20,7 +30,7 @@ contract InternalNetworkInterface {
         public
         returns(bool);
 
-
+    FeeBurnerInterface public feeBurnerContract;
 }
 
 

@@ -527,7 +527,7 @@ contract('FeeBurner', function(accounts) {
 
     it("verify if spread in kyber too big (rate tampered). can't set knc rate in fee burner", async function () {
         kncPerEthRatePrecision = 431;
-        kncPerEthRatePrecisionWSpread = kncPerEthRatePrecision * 2.1;
+        kncPerEthRatePrecisionWSpread = kncPerEthRatePrecision * 2.0001;
         let ethToKncRatePrecision = precision.mul(kncPerEthRatePrecisionWSpread);
         let kncToEthRatePrecision = precision.div(kncPerEthRatePrecision).floor();
 
@@ -542,7 +542,7 @@ contract('FeeBurner', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
         }
 
-        kncPerEthRatePrecisionWSpread = (new BigNumber(kncPerEthRatePrecision * 1.98)).floor();
+        kncPerEthRatePrecisionWSpread = (new BigNumber(kncPerEthRatePrecision * 1.99999)).floor();
         ethToKncRatePrecision = precision.mul(kncPerEthRatePrecisionWSpread);
 
         await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, ethToKncRatePrecision);
@@ -551,18 +551,29 @@ contract('FeeBurner', function(accounts) {
 
         let rc = await feeBurnerInst.setKNCRate();
 
-        kncPerEthRatePrecisionWSpread = (new BigNumber(kncPerEthRatePrecision * 0.51)).floor();
-        kncToEthRatePrecision = precision.div(kncPerEthRatePrecisionWSpread).floor();
-        ethToKncRatePrecision = precision.mul(kncPerEthRatePrecision);
+        kncPerEthRatePrecisionWSpread = (new BigNumber(kncPerEthRatePrecision * 0.5)).floor();
+        kncToEthRatePrecision = precision.div(kncPerEthRatePrecision).floor();
+        ethToKncRatePrecision = precision.mul(kncPerEthRatePrecisionWSpread);
 
         await mockKyberNetwork.setPairRate(kncToken.address, ethAddress, kncToEthRatePrecision);
         await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, ethToKncRatePrecision);
 
         rc = await feeBurnerInst.setKNCRate({from: accounts[3]});
-    });
 
-    xit("test revert conditions for setKncRate", async() => {
-    })
+
+        //now higher spread
+        kncPerEthRatePrecisionWSpread = (new BigNumber(kncPerEthRatePrecision * 0.499999)).floor();
+        ethToKncRatePrecision = precision.mul(kncPerEthRatePrecisionWSpread);
+
+        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, ethToKncRatePrecision);
+
+        try {
+            let rc = await feeBurnerInst.setKNCRate();
+            assert(false, "expected throw in line above..")
+        } catch(e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
+        }
+    });
 });
 
 
