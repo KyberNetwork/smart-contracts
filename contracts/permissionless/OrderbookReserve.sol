@@ -496,7 +496,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         limits.minNewOrderSizeWei = minNewOrderSizeWei;
         limits.minOrderSizeWei = limits.minNewOrderSizeWei / MIN_REMAINING_ORDER_RATIO;
 
-        limits.minKncPerEthRatePrecision = contracts.feeBurner.kncPerEthRatePrecision() / BURN_TO_STAKE_FACTOR;
+        setKncPerEthMinRate();
 
         return true;
     }
@@ -580,12 +580,12 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return ethToTokenList.getOrderDetails(orderId);
     }
 
-    function makerStakedKnc(address maker) public view returns (uint stakedKnc) {
+    function makerRequiredKncStake(address maker) public view returns (uint stakedKnc) {
         stakedKnc = calcKncStake(makerTotalOrdersWei[maker]);
     }
 
     function makerUnlockedKnc(address maker) public view returns (uint) {
-        uint stakedKnc = makerStakedKnc(maker);
+        uint stakedKnc = makerRequiredKncStake(maker);
         if (stakedKnc > makerKnc[maker]) stakedKnc = makerKnc[maker];
         return (makerKnc[maker] - stakedKnc);
     }
