@@ -10,14 +10,18 @@ const OrderbookReserve = artifacts.require("./permissionless/mock/MockOrderbookR
 const PermissionlessOrderbookReserveLister = artifacts.require("./permissionless/PermissionlessOrderbookReserveLister.sol");
 const OrderListFactory = artifacts.require("./permissionless/OrderListFactory.sol");
 
-let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+const Helper = require("./helper.js");
+const BigNumber = require('bignumber.js');
+const truffleAssert = require('truffle-assertions');
 
 //global variables
 //////////////////
-let precisionUnits = (new BigNumber(10).pow(18));
-let ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
-let gasPrice = (new BigNumber(10).pow(9).mul(50));
+const precisionUnits = (new BigNumber(10).pow(18));
+const max_rate = (precisionUnits.mul(10 ** 6)).valueOf(); //internal parameter in Utils.sol
+const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+const exactEthAdd = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const zeroAddress = '0x0000000000000000000000000000000000000000';
+const gasPrice = (new BigNumber(10).pow(9).mul(50));
 let negligibleRateDiff = 11;
 
 //balances
@@ -277,7 +281,7 @@ contract('KyberNetwork', function(accounts) {
         await reserve3.approveWithdrawAddress(uniqueToken.address, accounts[0], true);
 
         //set reserve balance. 10**18 wei ether + per token 10**18 wei ether value according to base rate.
-        let reserveEtherInit = (new BigNumber(10)).pow(19);
+        let reserveEtherInit = (new BigNumber(10)).pow(20).mul(4);
         await Helper.sendEtherWithPromise(accounts[8], reserve1.address, reserveEtherInit);
         await Helper.sendEtherWithPromise(accounts[9], reserve2.address, reserveEtherInit);
         await Helper.sendEtherWithPromise(accounts[6], reserve3.address, reserveEtherInit);
@@ -294,7 +298,7 @@ contract('KyberNetwork', function(accounts) {
         for (let i = 0; i < numTokens; ++i) {
             token = tokens[i];
             let balance;
-            let amount1 = (new BigNumber(reserveEtherInit)).div(precisionUnits).mul(baseBuyRate1[i]).floor();
+            let amount1 = (new BigNumber(reserveEtherInit.mul(10))).div(precisionUnits).mul(baseBuyRate1[i]).floor();
 
             if(i == 0) {
                 await token.transfer(walletForToken, amount1.valueOf());
@@ -352,6 +356,103 @@ contract('KyberNetwork', function(accounts) {
         }
     });
 
+    it("test kyber network set contract events", async() => {
+
+        let tempNetwork = await Network.new(admin);
+        let txData = await tempNetwork.addOperator(operator);
+        truffleAssert.eventEmitted(txData, 'OperatorAdded', (ev) => {
+                                return (
+                                    ev.newOperator === operator
+                                    && ev.isAdd === true
+                                )
+                            });
+
+        txData = await tempNetwork.addReserve(reserve1.address, false, {from: operator});
+        truffleAssert.eventEmitted(txData, 'AddReserveToNetwork', (ev) => {
+                                        return (
+                                            ev.reserve === reserve1.address
+                                            && ev.isPermissionless === false
+                                        )
+                                    });
+
+        txData = await tempNetwork.setKyberProxy(networkProxy);
+        truffleAssert.eventEmitted(txData, 'KyberProxySet', (ev) => {
+                                        return (
+                                            ev.proxy === networkProxy
+                                            && ev.sender === accounts[0]
+                                        )
+                                    });
+
+        txData = await tempNetwork.setExpectedRate(expectedRate.address);
+//        log('txData.logs[0].args')
+//        log(txData.logs[0])
+        truffleAssert.eventEmitted(txData, 'ExpectedRateContractSet', (ev) => {
+                                        return (
+                                            ev.newContract === expectedRate.address
+                                            && ev.currentContract === zeroAddress
+                                        )
+                                    });
+
+        txData = await tempNetwork.setFeeBurner(feeBurner.address);
+        truffleAssert.eventEmitted(txData, 'FeeBurnerContractSet', (ev) => {
+                                        return (
+                                            ev.newContract === feeBurner.address
+                                            && ev.currentContract === zeroAddress
+                                        )
+                                    });
+
+        txData = await tempNetwork.setParams(gasPrice, negligibleRateDiff);
+//        truffleAssert.eventEmitted(txData, 'KyberNetwrokParamsSet', (ev) => {
+//                                        return (
+//                                            ev.maxGasPrice.valueOf() === gasPrice.valueOf()
+//                                            && ev.negligibleRateDiff.valueOf() === negligibleRateDiff
+//                                        )
+//                                    });
+
+        assert.equal(txData.logs[0].args.maxGasPrice.valueOf(), gasPrice.valueOf());
+        assert.equal(txData.logs[0].args.negligibleRateDiff.valueOf(), negligibleRateDiff);
+
+        txData = await tempNetwork.setEnable(true);
+        truffleAssert.eventEmitted(txData, 'KyberNetworkSetEnable', (ev) => {
+                                        return (
+                                            ev.isEnabled === true
+                                        )
+                                    });
+
+        //list token
+        txData = await tempNetwork.listPairForReserve(reserve1.address, tokenAdd[0], true, true, true, {from: operator});
+        assert.equal(txData.logs[0].event, 'ListReservePairs');
+        assert.equal(txData.logs[0].args.src, exactEthAdd);
+        assert.equal(txData.logs[0].args.dest, tokenAdd[0]);
+        assert.equal(txData.logs[0].args.add, true);
+        assert.equal(txData.logs[1].args.dest, exactEthAdd);
+        assert.equal(txData.logs[1].args.src, tokenAdd[0]);
+        assert.equal(txData.logs[1].args.add, true);
+
+        txData = await tempNetwork.listPairForReserve(reserve1.address, tokenAdd[0], true, true, false, {from: operator});
+        assert.equal(txData.logs[0].args.src, exactEthAdd);
+        assert.equal(txData.logs[0].args.dest, tokenAdd[0]);
+        assert.equal(txData.logs[0].args.add, false);
+        assert.equal(txData.logs[1].args.dest, exactEthAdd);
+        assert.equal(txData.logs[1].args.src, tokenAdd[0]);
+        assert.equal(txData.logs[1].args.add, false);
+
+        txData = await tempNetwork.listPairForReserve(reserve1.address, tokenAdd[1], true, false, true, {from: operator});
+        assert.equal(txData.logs[0].args.src, exactEthAdd);
+        assert.equal(txData.logs[0].args.dest, tokenAdd[1]);
+        assert.equal(txData.logs[0].args.add, true);
+
+        txData = await tempNetwork.listPairForReserve(reserve1.address, tokenAdd[1], true, false, false, {from: operator});
+        assert.equal(txData.logs[0].args.src, exactEthAdd);
+        assert.equal(txData.logs[0].args.dest, tokenAdd[1]);
+        assert.equal(txData.logs[0].args.add, false);
+
+        txData = await tempNetwork.listPairForReserve(reserve1.address, tokenAdd[2], false, true, true, {from: operator});
+        assert.equal(txData.logs[0].args.dest, exactEthAdd);
+        assert.equal(txData.logs[0].args.src, tokenAdd[2]);
+        assert.equal(txData.logs[0].args.add, true);
+    })
+
     it("should disable 1 reserve. perform buy and check: balances changed as expected.", async function () {
         let tokenInd = 1;
         let token = tokens[tokenInd]; //choose some token
@@ -376,13 +477,16 @@ contract('KyberNetwork', function(accounts) {
             let txData = await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 50000,
                 buyRate[1].valueOf(), walletId, 0, {from:networkProxy, value:amountWei});
 //            log(txData.logs[0].args)
-            let exactEthAdd = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+//            log("txData logs 0" + txData.logs[0])
+            assert.equal(txData.logs[0].event, 'KyberTrade');
             assert.equal(txData.logs[0].args.trader, user1, "src address");
             assert.equal(txData.logs[0].args.src, exactEthAdd, "src token");
             assert.equal(txData.logs[0].args.srcAmount.valueOf(), amountWei);
             assert.equal(txData.logs[0].args.destAddress, user2);
             assert.equal(txData.logs[0].args.dest, tokenAdd[tokenInd]);
             assert.equal(txData.logs[0].args.dstAmount.valueOf(), expectedTweiAmount.valueOf());
+            assert.equal(txData.logs[0].args.ethWeiValue.valueOf(), amountWei.valueOf());
+            assert.equal(txData.logs[0].args.hint, '0x');
 
             //check higher ether balance on reserve
             expectedReserve2BalanceWei = expectedReserve2BalanceWei.add(amountWei);
@@ -1468,7 +1572,6 @@ contract('KyberNetwork', function(accounts) {
 
         // transfer funds to user and approve funds to network - for all trades in this 'it'
         await token.transfer(network.address, amountTWei);
-//        await token.approve(network.address, amountTWei, {from:user1})
 
         //more ether to reserve
         await Helper.sendEtherWithPromise(accounts[7], reserve1.address, 11050000000000000000);
@@ -1539,12 +1642,10 @@ contract('KyberNetwork', function(accounts) {
 
         // transfer funds to user and approve funds to network - for all trades in this 'it'
         await token.transfer(network.address, amountTWei);
-//        await token.approve(network.address, amountTWei, {from:user1})
 
-        let maxRate = (new BigNumber(10).pow(24)).valueOf();
         //modify rate
-        baseSellRate1[tokenInd] = maxRate;
-        baseSellRate2[tokenInd] = maxRate;
+        baseSellRate1[tokenInd] = max_rate;
+        baseSellRate2[tokenInd] = max_rate;
 
         buys.length = sells.length = indices.length = 0;
 
@@ -1764,7 +1865,7 @@ contract('KyberNetwork', function(accounts) {
         await networkTemp.getExpectedRate(tokenAdd[2], ethAddress, amountTwei);
     });
 
-    it("should use setInfo (UI info) and check value is set.", async function () {
+    it("should use setInfo (UI info) and check value is set.", async () => {
         let info = 15;
         let field = 10;
 
@@ -1773,8 +1874,8 @@ contract('KyberNetwork', function(accounts) {
         assert.equal(info.valueOf(), rxInfo.valueOf(), "info data doesn't match");
     });
 
-    describe("token to token trades", async() => {
-        it("should test token to token trade 1 reserve.", async function () {
+    describe("token to token trades", function() {
+        it("should test token to token trade 1 reserve.", async () => {
             let tokenSrcInd = 1;
             let tokenDestInd = 0;
             let tokenSrc = tokens[tokenSrcInd];
@@ -1799,7 +1900,7 @@ contract('KyberNetwork', function(accounts) {
             await pricing2.setBaseRate(tokenAdd, baseBuyRate2, baseSellRate2, buys, sells, currentBlock, indices, {from: operator});
             priceUpdateBlock = currentBlock;
 
-            maxPerBlockImbalance = 60000000;
+            maxPerBlockImbalance = new BigNumber(5 * 10 ** 18);
             maxTotalImbalance = 12 * maxPerBlockImbalance;
 
             //set higher imbalance values - and set local imbalance values to 0 since we update compact data.
@@ -2359,6 +2460,7 @@ contract('KyberNetwork', function(accounts) {
             let cumulativeGas = new BigNumber(0);
             let numTrades = 19;
             for (let i = 0; i < numTrades; i++) {
+//                log("start trade loop: " + i)
                 tokenSrcInd = (i + 1) % numTokens;
                 tokenDestInd = i % numTokens;
                 tokenSrc = tokens[tokenSrcInd];
@@ -2415,7 +2517,8 @@ contract('KyberNetwork', function(accounts) {
         });
     });
 
-    describe("permissionless order book reserve", async() => {
+    describe("permissionless order book reserve", function() {
+        const permissionlessTokDecimals = 18;
         let orderListFactory;
         let reserveLister;
         let permissionlessTok;
@@ -2434,7 +2537,7 @@ contract('KyberNetwork', function(accounts) {
             await network.addOperator(reserveLister.address);
             await feeBurner.addOperator(reserveLister.address);
 
-            permissionlessTok = await TestToken.new("permissionLess", "PRM", 18);
+            permissionlessTok = await TestToken.new("permissionLess", "PRM", permissionlessTokDecimals);
             let tokenAdd = permissionlessTok.address;
 
             let rc = await reserveLister.addOrderbookContract(tokenAdd);
@@ -2652,7 +2755,7 @@ contract('KyberNetwork', function(accounts) {
 
         it("trade (buy) token listed regular and order book permissionless not allowed. see token taken from regular reserve", async() => {
             let tradeValue = 10000;
-            let rate = await network.getExpectedRate(token0, ethAddress, tradeValue.valueOf());
+            let rate = await network.getExpectedRate(ethAddress, token0, tradeValue.valueOf());
 
             //trade
             let hint = 'PERM';
@@ -2793,16 +2896,222 @@ contract('KyberNetwork', function(accounts) {
             let hint = web3.fromAscii("PERM");
             await tokens[1].transfer(network.address, tradeValue);
             txData = await network.tradeWithHint(user1, token1, tradeValue, token0, user2,
-                         10 ** 30, rate[1].valueOf(), 0, hint, {from:networkProxy});
+                         10 ** 30, rate[1], 0, hint, {from:networkProxy});
             let makerTokFundsAfter2 = await orderbookReserveTok0.makerFunds(maker1, ethAddress);
             assert.equal(makerTokFundsAfter1.valueOf(), makerTokFundsAfter2.valueOf());
         });
 
-        xit("test kyberTrade event", async() => {
+        it("Add 9 'spam' orders Eth to token see gas affect on trade with other reserve.", async() => {
+            let numOrders = 10;
+            let amountKnc = 600 * 10 ** 18;
+            let tokIndex = 0;
+            let tokenAdd = tokens[tokIndex].address;
+            let amountEthWeiDeposit = minNewOrderValue.mul(numOrders);
+            await makerDeposit(orderbookReserveTok0, tokens[tokIndex], maker1, amountEthWeiDeposit, 0, amountKnc);
+
+            let orderSrcWei = minNewOrderValue;
+            //calculate smallest possible dest amount. one that achieves max_rate
+            let orderDstAmountTwei = calcSrcQty(orderSrcWei, tokenDecimals[tokIndex], 18, max_rate);
+//            log('orderSrcWei ' + orderSrcWei);
+//            log('orderDstAmountTwei ' + orderDstAmountTwei);
+
+//            let orderRate = calcRateFromQty(orderDstAmountTwei, orderSrcWei, tokenDecimals[tokIndex], 18);
+//            assert.equal(orderRate.div(100).valueOf(), max_rate.div(100).valueOf());
+//            log("orderRate " + orderRate)
+            orderList = await orderbookReserveTok0.getEthToTokenOrderList();
+//            log("order list: " + orderList)
+            for (let i = 0; i < orderList.length; i++) {
+                await orderbookReserveTok0.cancelEthToTokenOrder(orderList[i].valueOf(), {from: maker1})
+            }
+
+            //add 9 orders
+            //////////////
+            let totalPayValue = new BigNumber(0);
+            for(let i = 0; i < 9; i++) {
+                await orderbookReserveTok0.submitEthToTokenOrder(orderSrcWei, (orderDstAmountTwei.add((10 * i))), {from: maker1});
+                totalPayValue = totalPayValue.add(orderDstAmountTwei.add(10 * i));
+            }
+
+//            orderList = await orderbookReserveTok0.getEthToTokenOrderList();
+//            log("order list: " + orderList)
+
+            //see good rate value for this amount
+            goodRate = await network.getExpectedRate(tokenAdd, ethAddress, totalPayValue);
+            //not as good when a bit higher quantity
+            let regularRate = await network.getExpectedRate(tokenAdd, ethAddress, totalPayValue.add(4));
+            assert(goodRate[0].valueOf() > regularRate[0].valueOf());
+
+            //now trade this token with permission less disabled. see gas
+            let hint = 'PERM';
+            let hintBytes32 = web3.fromAscii(hint);
+            let tradeValue = totalPayValue.add(4);
+
+            await tokens[0].transfer(network.address, tradeValue);
+            let txPermData = await network.tradeWithHint(user1, token0, tradeValue, ethAddress, user2,
+                                  10 ** 30, regularRate[1].valueOf(), 0, hintBytes32, {from:networkProxy});
+            log("gas only permissioned: " + txPermData.receipt.gasUsed);
+
+            await tokens[0].transfer(network.address, tradeValue);
+            txPermLessData = await network.tradeWithHint(user1, token0, tradeValue, ethAddress, user2,
+                                  10 ** 30, regularRate[1].valueOf(), 0, 0, {from:networkProxy});
+            log("gas with traversing permissionless 9 orders (not taking): " + txPermLessData.receipt.gasUsed);
+
+            log("gas effect of traversing 9 orders in get rate (not taking): " +
+                (txPermLessData.receipt.gasUsed - txPermData.receipt.gasUsed));
+
+            await tokens[0].transfer(network.address, tradeValue);
+            txData = await network.tradeWithHint(user1, token0, totalPayValue, ethAddress, user2,
+                                              10 ** 30, regularRate[1].valueOf(), 0, 0, {from:networkProxy});
+            log("gas 9 orders from permissionless: " + txData.receipt.gasUsed);
         });
 
-        xit("test ExecuteTrade event", async() => {
+        it("Add 5 'spam' orders Eth to token see gas affect on trade with other reserve.", async() => {
+            let numOrders = 10;
+            let amountKnc = 600 * 10 ** 18;
+            let tokIndex = 0;
+            let tokenAdd = tokens[tokIndex].address;
+            let amountEthWeiDeposit = minNewOrderValue.mul(numOrders);
+            await makerDeposit(orderbookReserveTok0, tokens[tokIndex], maker1, amountEthWeiDeposit, 0, amountKnc);
+
+            let orderSrcWei = minNewOrderValue;
+            //calculate smallest possible dest amount. one that achieves max_rate
+            let orderDstAmountTwei = calcSrcQty(orderSrcWei, tokenDecimals[tokIndex], 18, max_rate);
+            orderList = await orderbookReserveTok0.getEthToTokenOrderList();
+
+            for (let i = 0; i < orderList.length; i++) {
+                await orderbookReserveTok0.cancelEthToTokenOrder(orderList[i].valueOf(), {from: maker1})
+            }
+
+            //add 9 orders
+            //////////////
+            let totalPayValue = new BigNumber(0);
+            for(let i = 0; i < 5; i++) {
+                await orderbookReserveTok0.submitEthToTokenOrder(orderSrcWei, (orderDstAmountTwei.add((10 * i))), {from: maker1});
+                totalPayValue = totalPayValue.add(orderDstAmountTwei.add(10 * i));
+            }
+
+            //see good rate value for this amount
+            goodRate = await network.getExpectedRate(tokenAdd, ethAddress, totalPayValue);
+            //not as good when a bit higher quantity
+            let regularRate = await network.getExpectedRate(tokenAdd, ethAddress, totalPayValue.add(4));
+            assert(goodRate[0].valueOf() > regularRate[0].valueOf());
+
+            //now trade this token with permission less disabled. see gas
+            let hint = 'PERM';
+            let hintBytes32 = web3.fromAscii(hint);
+            let tradeValue = totalPayValue.add(4);
+
+            await tokens[0].transfer(network.address, tradeValue);
+            let txPermData = await network.tradeWithHint(user1, token0, tradeValue, ethAddress, user2,
+                                  10 ** 30, regularRate[1].valueOf(), 0, hintBytes32, {from:networkProxy});
+            log("gas only permissioned: " + txPermData.receipt.gasUsed);
+
+            await tokens[0].transfer(network.address, tradeValue);
+            txPermLessData = await network.tradeWithHint(user1, token0, tradeValue, ethAddress, user2,
+                                  10 ** 30, regularRate[1].valueOf(), 0, 0, {from:networkProxy});
+            log("gas with traversing permissionless 5 orders (not taking): " + txPermLessData.receipt.gasUsed);
+
+            log("gas effect of traversing 5 orders in get rate (not taking): " +
+                (txPermLessData.receipt.gasUsed - txPermData.receipt.gasUsed));
+
+            await tokens[0].transfer(network.address, tradeValue);
+            txData = await network.tradeWithHint(user1, token0, totalPayValue, ethAddress, user2,
+                                              10 ** 30, regularRate[1].valueOf(), 0, 0, {from:networkProxy});
+            log("gas 5 orders from permissionless: " + txData.receipt.gasUsed);
         });
+
+        it("see gas consumption when taking 3.6, 4.6, 5.6, 6.6, 7.6 orders. remaining removed.", async() => {
+            //maker deposits tokens
+            let numOrders = 27;
+            let amountKnc = 600 * 10 ** 18;
+            let amountEthWeiDeposit = minNewOrderValue.mul(numOrders);
+            await makerDeposit(orderbookReserve, permissionlessTok, maker1, amountEthWeiDeposit, 0, amountKnc);
+
+            let orderSrcWei = minNewOrderValue;
+            //calculate smallest possible dest amount. one that achieves max_rate
+            let orderDstAmountTwei = calcSrcQty(orderSrcWei, permissionlessTokDecimals, 18, max_rate);
+
+            //4 orders
+            //////////////
+            let totalPayValue = new BigNumber(0);
+            for(let i = 0; i < 4; i++) {
+                await orderbookReserve.submitEthToTokenOrder(orderSrcWei, (orderDstAmountTwei.add(100 * i)), {from: maker1});
+                totalPayValue = totalPayValue.add(orderDstAmountTwei.add(100 * i));
+            }
+
+            orderList = await orderbookReserve.getEthToTokenOrderList();
+            assert.equal(orderList.length, 4);
+
+            let tradeValue = totalPayValue.sub(orderDstAmountTwei.mul(0.3));
+            await permissionlessTok.transfer(network.address, tradeValue);
+            txData = await network.tradeWithHint(user1, permissionlessTok.address, tradeValue, ethAddress, user2,
+                                                    10 ** 30, 10, 0, 0, {from:networkProxy});
+            log("gas price taking 3.7 orders. remaining removed: " + txData.receipt.gasUsed);
+
+            orderList = await orderbookReserve.getEthToTokenOrderList();
+            assert.equal(orderList.length, 0);
+
+            //5 orders
+            //////////////
+            totalPayValue = new BigNumber(0);
+            for(let i = 0; i < 5; i++) {
+                await orderbookReserve.submitEthToTokenOrder(orderSrcWei, (orderDstAmountTwei.add(100 * i)), {from: maker1});
+                totalPayValue = totalPayValue.add(orderDstAmountTwei.add(100 * i));
+            }
+
+            orderList = await orderbookReserve.getEthToTokenOrderList();
+            assert.equal(orderList.length, 5);
+
+            tradeValue = totalPayValue.sub(orderDstAmountTwei.mul(0.3));
+            await permissionlessTok.transfer(network.address, tradeValue);
+            txData = await network.tradeWithHint(user1, permissionlessTok.address, tradeValue, ethAddress, user2,
+                                                    10 ** 30, 10, 0, 0, {from:networkProxy});
+            log("gas price taking 4.7 orders. remaining removed: " + txData.receipt.gasUsed);
+
+            orderList = await orderbookReserve.getEthToTokenOrderList();
+            assert.equal(orderList.length, 0);
+
+            //6 orders
+            //////////////
+            totalPayValue = new BigNumber(0);
+            for(let i = 0; i < 6; i++) {
+                await orderbookReserve.submitEthToTokenOrder(orderSrcWei, (orderDstAmountTwei.add(100 * i)), {from: maker1});
+                totalPayValue = totalPayValue.add(orderDstAmountTwei.add(100 * i));
+            }
+
+            orderList = await orderbookReserve.getEthToTokenOrderList();
+            assert.equal(orderList.length, 6);
+
+            tradeValue = totalPayValue.sub(orderDstAmountTwei.mul(0.3));
+            await permissionlessTok.transfer(network.address, tradeValue);
+            txData = await network.tradeWithHint(user1, permissionlessTok.address, tradeValue, ethAddress, user2,
+                                                    10 ** 30, 10, 0, 0, {from:networkProxy});
+            log("gas price taking 5.7 orders. remaining removed: " + txData.receipt.gasUsed);
+
+            orderList = await orderbookReserve.getEthToTokenOrderList();
+            assert.equal(orderList.length, 0);
+
+            //7 orders
+            //////////////
+            totalPayValue = new BigNumber(0);
+            for(let i = 0; i < 7; i++) {
+                await orderbookReserve.submitEthToTokenOrder(orderSrcWei, (orderDstAmountTwei.add(100 * i)), {from: maker1});
+                totalPayValue = totalPayValue.add(orderDstAmountTwei.add(100 * i));
+            }
+
+            orderList = await orderbookReserve.getEthToTokenOrderList();
+            assert.equal(orderList.length, 7);
+
+            tradeValue = totalPayValue.sub(orderDstAmountTwei.mul(0.3));
+            await permissionlessTok.transfer(network.address, tradeValue);
+            txData = await network.tradeWithHint(user1, permissionlessTok.address, tradeValue, ethAddress, user2,
+                                                    10 ** 30, 10, 0, 0, {from:networkProxy});
+            log("gas price taking 6.7 orders. remaining removed: " + txData.receipt.gasUsed);
+
+            orderList = await orderbookReserve.getEthToTokenOrderList();
+            assert.equal(orderList.length, 0);
+        });
+>>>>>>> Stashed changes
     });
 });
 
@@ -2954,4 +3263,15 @@ async function makerDeposit(res, permTok, maker, ethWei, tokenTwei, kncTwei) {
     await KNC.approve(res.address, kncTwei);
     await res.depositKncForFee(maker, kncTwei);
     await res.depositEther(maker, {from: maker, value: ethWei});
+}
+
+
+function calcRateFromQty(srcAmount, dstAmount, srcDecimals, dstDecimals) {
+    if (dstDecimals >= srcDecimals) {
+        let decimals = new BigNumber(10 ** (dstDecimals - srcDecimals));
+        return ((precisionUnits.mul(dstAmount)).div(decimals.mul(srcAmount))).floor();
+    } else {
+        let decimals = new BigNumber(10 ** (srcDecimals - dstDecimals));
+        return ((precisionUnits.mul(dstAmount).mul(decimals)).div(srcAmount)).floor();
+    }
 }
