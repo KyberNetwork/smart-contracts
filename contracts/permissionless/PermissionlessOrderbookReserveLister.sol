@@ -6,12 +6,9 @@ import "../FeeBurnerInterface.sol";
 
 
 contract InternalNetworkInterface {
-    function addReserve(
-        KyberReserveInterface reserve,
-        bool isPermissionless
-    )
-        public
-        returns(bool);
+    FeeBurnerInterface public feeBurnerContract;
+    function addReserve(KyberReserveInterface reserve, bool isPermissionless) public returns(bool);
+    function removeReserve(KyberReserveInterface reserve, uint index) public returns(bool);
 
     function listPairForReserve(
         address reserve,
@@ -23,7 +20,7 @@ contract InternalNetworkInterface {
         public
         returns(bool);
 
-    FeeBurnerInterface public feeBurnerContract;
+
 }
 
 
@@ -135,6 +132,12 @@ contract PermissionlessOrderbookReserveLister {
         reserveListingStage[token] = ListingStage.RESERVE_LISTED;
         TokenOrderbookListingStage(token, ListingStage.RESERVE_LISTED);
         return true;
+    }
+
+    function unlistOrderbookContract(ERC20 token, uint hintReserveIndex) public {
+        require(reserves[token].kncRateBlocksTrade());
+        require(kyberNetworkContract.removeReserve(KyberReserveInterface(reserves[token]), hintReserveIndex));
+        reserveListingStage[token] = ListingStage.NO_RESERVE;
     }
 
     /// @dev permission less reserve currently supports one token per reserve.

@@ -591,11 +591,19 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     function calcKncStake(uint weiAmount) public view returns(uint) {
-        return(calcBurnAmount(weiAmount, limits.minKncPerEthRatePrecision) * BURN_TO_STAKE_FACTOR);
+        return(calcBurnAmountMinSetRate(weiAmount) * BURN_TO_STAKE_FACTOR);
     }
 
     function calcBurnAmount(uint weiAmount, uint kncPerEthRatePrecision) public view returns(uint) {
         return(weiAmount * makerBurnFeeBps * kncPerEthRatePrecision / (10000 * PRECISION));
+    }
+
+    function calcBurnAmountFromFeeBurner(uint weiAmount) public view returns(uint) {
+        return calcBurnAmount(weiAmount, contracts.feeBurner.kncPerEthRatePrecision());
+    }
+
+    function calcBurnAmountMinSetRate(uint weiAmount) public view returns(uint) {
+        return calcBurnAmount(weiAmount, limits.minKncPerEthRatePrecision);
     }
 
     function getEthToTokenMakerOrderIds(address maker) public view returns(uint32[] orderList) {
@@ -788,7 +796,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         if (weiForBurn == 0) return true;
 
-        uint burnAmount = calcBurnAmount(weiForBurn, contracts.feeBurner.kncPerEthRatePrecision());
+        uint burnAmount = calcBurnAmountFromFeeBurner(weiForBurn);
 
         require(makerKnc[maker] >= burnAmount);
         makerKnc[maker] -= burnAmount;
