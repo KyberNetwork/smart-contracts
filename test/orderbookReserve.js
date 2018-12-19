@@ -23,6 +23,7 @@ const gasPrice = (new BigNumber(10).pow(9).mul(50));
 const negligibleRateDiff = 11;
 const initialEthKncRate = 280;
 const initialEthToKncRatePrecision = precisionUnits.mul(initialEthKncRate);
+const MAX_QTY = new BigNumber(10 ** 28);
 
 //permission groups
 let admin;
@@ -57,8 +58,6 @@ let taker;
 let firstFreeOrderIdPerReserveList;
 
 let numOrderIdsPerMaker;
-//let minOrderWei = new BigNumber(10 ** 18);
-//let minMakeOrderWei = minOrderWei.mul(2);
 
 let currentBlock;
 
@@ -68,6 +67,7 @@ let makerBurnFeeBps = 25;
 let maxOrdersPerTrade = 10;
 let minOrderSizeDollar = 1000;
 let minNewOrderWei;
+let minKncPerEthRatePrecision;
 let dollarsPerEthPrecision = precisionUnits.mul(500);
 
 contract('OrderbookReserve', async (accounts) => {
@@ -106,6 +106,10 @@ contract('OrderbookReserve', async (accounts) => {
         let orders = OrderList.at(ordersAdd.valueOf());
         headId = (await orders.HEAD_ID()).valueOf();
         tailId = (await orders.TAIL_ID()).valueOf();
+
+        let rxLimits = await reserve.limits();
+        minNewOrderWei = rxLimits[2].valueOf();
+        minKncPerEthRatePrecision = rxLimits[4].valueOf();
         firstFreeOrderIdPerReserveList = (await orders.nextFreeId()).valueOf();
     });
 
@@ -282,6 +286,47 @@ contract('OrderbookReserve', async (accounts) => {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
         });
+
+        it("verify 2ne init for same reserve doesn't deploy new orderList", async() => {
+            let listEthToToken = await reserve.ethToTokenList();
+            let listTokenToEth = await reserve.tokenToEthList();
+
+            await reserve.init(ordersFactory.address);
+
+            assert.equal(listEthToToken, (await reserve.ethToTokenList()))
+            assert.equal(listTokenToEth, (await reserve.tokenToEthList()))
+        })
+
+        it("verify can't deploy reserve if eth to dollar price is not valid", async() => {
+            let res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+
+            await medianizer.setValid(false);
+
+            try {
+                res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            await medianizer.setValid(true);
+        })
+
+        it("verify get conversion rate reverts if qty > max_qty", async() => {
+            let qty = MAX_QTY;
+            let rate = await reserve.getConversionRate(tokenAdd, ethAddress, qty, 0);
+
+            qty = qty.add(1);
+
+            try {
+                rate = await reserve.getConversionRate(tokenAdd, ethAddress, qty, 0);
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            await medianizer.setValid(true);
+        })
 
         it("verify can't construct order book reserve if approve knc to burner fails.", async() => {
             let res;
@@ -487,6 +532,62 @@ contract('OrderbookReserve', async (accounts) => {
 
             try {
                 await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network, value: 1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        });
+
+        it("verify trade not from network reverts", async() => {
+            let tokenWeiDepositAmount = 90 * 10 ** 18;
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let ethWeiDepositAmount = 10 * 10 ** 18;
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
+
+            let valueWei = 5 * 10 ** 18;
+            let valueTwei = 15 * 10 ** 18;
+
+            //add order
+            await reserve.submitTokenToEthOrder(valueTwei, valueWei, {from: maker1});
+
+            // legal trade - from network
+            let payValueWei = 3000;
+            await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: payValueWei});
+
+            try {
+                await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: maker3, value: payValueWei});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        });
+
+        it("verify trade with src Amount >= max qty reverts.", async() => {
+            let tokenWeiDepositAmount = 0 * 10 ** 18;
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let ethWeiDepositAmount = 7 * 10 ** 18;
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
+
+            let valueWei = 2 * 10 ** 18;
+            let valueTwei = MAX_QTY.sub(1);
+
+            //add order
+            await reserve.submitEthToTokenOrder(valueWei, valueTwei, {from: maker1});
+            await reserve.submitEthToTokenOrder(valueWei, valueTwei, {from: maker1});
+            await reserve.submitEthToTokenOrder(valueWei, valueTwei, {from: maker1});
+
+            // legal trade - below max Qty
+            let payValueTwei = MAX_QTY;
+            await token.transfer(network, payValueTwei);
+            await token.approve(reserve.address, payValueTwei, {from: network})
+            await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
+
+            payValueTwei = payValueTwei.add(1);
+            await token.transfer(network, payValueTwei);
+            await token.approve(reserve.address, payValueTwei, {from: network})
+
+            try {
+                await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -2161,7 +2262,7 @@ contract('OrderbookReserve', async (accounts) => {
             rxKncStakes = await reserve.makerStakedKnc(maker1);
             assert.equal(rxKncStakes.valueOf(), expectedStakedKnc.valueOf());
 
-            let burnAmount = await reserve.calcBurnAmount(orderSrcAmountWei.add(300));
+            let burnAmount = await reserve.calcBurnAmount(orderSrcAmountWei.add(300), minKncPerEthRatePrecision);
             expectedFreeKnc = kncTweiDepositAmount.sub(expectedStakedKnc.add(burnAmount));
             rxFreeKnc = await reserve.makerUnlockedKnc(maker1);
             assert.equal(expectedFreeKnc.valueOf(), rxFreeKnc.valueOf());
@@ -2179,7 +2280,7 @@ contract('OrderbookReserve', async (accounts) => {
             rxKncStakes = await reserve.makerStakedKnc(maker1);
             assert.equal(rxKncStakes.valueOf(), expectedStakedKnc.valueOf());
 
-            burnAmount = await reserve.calcBurnAmount(orderSrcAmountWei.div(2).add(100));
+            burnAmount = await reserve.calcBurnAmount(orderSrcAmountWei.div(2).add(100), minKncPerEthRatePrecision);
             expectedFreeKnc = expectedFreeKnc.add(burnAmount.mul(3));
             rxFreeKnc = await reserve.makerUnlockedKnc(maker1);
             assert.equal(expectedFreeKnc.valueOf(), rxFreeKnc.valueOf());
@@ -2221,7 +2322,7 @@ contract('OrderbookReserve', async (accounts) => {
             rxKncStakes = await reserve.makerStakedKnc(maker1);
             assert.equal(rxKncStakes.valueOf(), expectedStakedKnc.valueOf());
 
-            let burnAmount = await reserve.calcBurnAmount(dstWei);
+            let burnAmount = await reserve.calcBurnAmount(dstWei, minKncPerEthRatePrecision);
             expectedFreeKnc = kncTweiDepositAmount.sub(expectedStakedKnc.add(burnAmount));
             rxFreeKnc = await reserve.makerUnlockedKnc(maker1);
             assert.equal(expectedFreeKnc.valueOf(), rxFreeKnc.valueOf());
@@ -2237,7 +2338,7 @@ contract('OrderbookReserve', async (accounts) => {
             rxKncStakes = await reserve.makerStakedKnc(maker1);
             assert.equal(rxKncStakes.valueOf(), expectedStakedKnc.valueOf());
 
-            burnAmount = await reserve.calcBurnAmount(dstWei.div(2));
+            burnAmount = await reserve.calcBurnAmount(dstWei.div(2), minKncPerEthRatePrecision);
             expectedFreeKnc = expectedFreeKnc.add(burnAmount.mul(3));
             rxFreeKnc = await reserve.makerUnlockedKnc(maker1);
             assert.equal(expectedFreeKnc.valueOf(), rxFreeKnc.valueOf());
@@ -2503,7 +2604,7 @@ contract('OrderbookReserve', async (accounts) => {
             let expectedBurn = (weiValue.mul(feeBps).div(10000).mul(kncToEthRatePrecision).div(precisionUnits));
     //        log ("expected burn " + expectedBurn);
 
-            let calcBurn = await reserve.calcBurnAmount(weiValue);
+            let calcBurn = await reserve.calcBurnAmount(weiValue, minKncPerEthRatePrecision);
             assert.equal(expectedBurn.valueOf(), calcBurn.valueOf());
 
             let calcExpectedStake = expectedBurn.mul(burnToStakeFactor);
@@ -3127,7 +3228,7 @@ contract('OrderbookReserve', async (accounts) => {
         assert.equal(rxLimits[2].valueOf(), (2 * 10 ** 18)); // min new order Eth
         assert.equal(rxLimits[3].valueOf(), (1 * 10 ** 18)); // min order Eth
 
-        await reserve.setMinOrderSizeEth();
+        await reserve.setOrderLimits();
 
         rxLimits = await reserve.limits();
         assert.equal(rxLimits[2].valueOf(), (5 * 10 ** 18)); // min new order Eth
@@ -3140,7 +3241,7 @@ contract('OrderbookReserve', async (accounts) => {
         assert.equal(rxLimits[2].valueOf(), (5 * 10 ** 18)); // min new order Eth
         assert.equal(rxLimits[3].valueOf(), (25 * 10 ** 17)); // min order Eth
 
-        await reserve.setMinOrderSizeEth();
+        await reserve.setOrderLimits();
         rxLimits = await reserve.limits();
         assert.equal(rxLimits[2].valueOf(), (2 * 10 ** 18)); // min new order Eth
         assert.equal(rxLimits[3].valueOf(), (1 * 10 ** 18)); // min order Eth
@@ -3187,10 +3288,11 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
         let rxLimits = await reserve.limits();
 //        log (rxLimits)
         minNewOrderWei = rxLimits[2].valueOf();
+        minKncPerEthRatePrecision = rxLimits[4].valueOf();
         burnToStakeFactor = await reserve.BURN_TO_STAKE_FACTOR();
     });
 
-    beforeEach('setup contract for each test', async () => {
+    beforeEach('setup reserve contract for each test', async () => {
         reserve = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address,
                 minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
         await reserve.init(ordersFactory.address);
@@ -3203,7 +3305,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
     });
 
-    it("add orders modify knc rate, see unlocked knc and staked knc numbers change", async() => {
+    it("add orders modify knc rate to lower knc value, see unlocked knc and staked knc don't change", async() => {
         let tokenWeiDepositAmount = new BigNumber(70 * 10 ** 18);
         let kncTweiDepositAmount = 600 * 10 ** 18;
         let ethWeiDepositAmount = (new BigNumber(0 * 10 ** 18));
@@ -3240,6 +3342,12 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
         await feeBurner.setKNCRate();
         let freeKnc2 = await reserve.makerUnlockedKnc(maker1);
         let stakedKnc2 = await reserve.makerStakedKnc(maker1);
+        assert.equal(stakedKnc2.valueOf(), stakedKnc1.valueOf());
+        assert.equal(freeKnc2.valueOf(), freeKnc1.valueOf());
+
+        await reserve.setKncPerEthMinRate();
+        freeKnc2 = await reserve.makerUnlockedKnc(maker1);
+        stakedKnc2 = await reserve.makerStakedKnc(maker1);
 //        log('stakedKnc1')
 //        log(stakedKnc1.valueOf())
 //        log('stakedKnc2')
@@ -3249,8 +3357,8 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
 //        log('freeKnc2')
 //        log(freeKnc2.valueOf())
 
-        assert.equal(stakedKnc2.valueOf(), stakedKnc1.mul(2).valueOf());
-        assert.equal(freeKnc2.valueOf(), freeKnc1.sub(stakedKnc2.sub(stakedKnc1)).valueOf());
+        assert.equal(stakedKnc2.valueOf(), stakedKnc1.valueOf());
+        assert.equal(freeKnc2.valueOf(), freeKnc1.valueOf());
     })
 
     it("create knc rate change, so stakes per order aren't enough. see can still take order", async() => {
@@ -3331,7 +3439,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
 
         let freeKnc1 = await reserve.makerUnlockedKnc(maker1);
         let stakedKnc1 = await reserve.makerStakedKnc(maker1);
-        let expectedBurn1 = await reserve.calcBurnAmount(orderDstWei);
+        let expectedBurn1 = await reserve.calcBurnAmount(orderDstWei, minKncPerEthRatePrecision);
         assert.equal(expectedBurn1.mul(burnToStakeFactor).valueOf(), stakedKnc1.valueOf());
         await reserve.withdrawKncFee(freeKnc1, {from: maker1});
 
@@ -3350,7 +3458,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
         let stakedKnc2 = await reserve.makerStakedKnc(maker1);
         assert.equal(stakedKnc2.valueOf(), stakedKnc1.valueOf());
 
-        let expectedBurn2 = await reserve.calcBurnAmount(orderDstWei);
+        let expectedBurn2 = await reserve.calcBurnAmount(orderDstWei, );
         assert(expectedBurn2.valueOf() > stakedKnc2.valueOf());
 
         //see can take orders
