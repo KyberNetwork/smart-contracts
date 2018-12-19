@@ -561,8 +561,9 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return ethToTokenList.getOrderDetails(orderId);
     }
 
-    function makerStakedKnc(address maker) public view returns (uint) {
-        return(calcKncStake(makerTotalOrdersWei[maker]));
+    function makerStakedKnc(address maker) public view returns (uint stakedKnc) {
+        stakedKnc = calcKncStake(makerTotalOrdersWei[maker]);
+        if (stakedKnc > makerKnc[maker]) stakedKnc = makerKnc[maker];
     }
 
     function makerUnlockedKnc(address maker) public view returns (uint) {
