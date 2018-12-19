@@ -585,9 +585,9 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     function makerUnlockedKnc(address maker) public view returns (uint) {
-        uint stakedKnc = makerRequiredKncStake(maker);
-        if (stakedKnc > makerKnc[maker]) stakedKnc = makerKnc[maker];
-        return (makerKnc[maker] - stakedKnc);
+        uint requiredKncStake = makerRequiredKncStake(maker);
+        if (requiredKncStake > makerKnc[maker]) return 0;
+        return (makerKnc[maker] - requiredKncStake);
     }
 
     function calcKncStake(uint weiAmount) public view returns(uint) {
