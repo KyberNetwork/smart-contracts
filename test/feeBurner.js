@@ -526,7 +526,7 @@ contract('FeeBurner', function(accounts) {
     });
 
     it("verify if spread in kyber too big (rate tampered). can't set knc rate in fee burner", async function () {
-        kncPerEthRatePrecision = 431;
+        kncPerEthRatePrecision = 410;
         kncPerEthRatePrecisionWSpread = kncPerEthRatePrecision * 2.0001;
         let ethToKncRatePrecision = precision.mul(kncPerEthRatePrecisionWSpread);
         let kncToEthRatePrecision = precision.div(kncPerEthRatePrecision).floor();
@@ -551,7 +551,7 @@ contract('FeeBurner', function(accounts) {
 
         let rc = await feeBurnerInst.setKNCRate();
 
-        kncPerEthRatePrecisionWSpread = (new BigNumber(kncPerEthRatePrecision * 0.5)).floor();
+        kncPerEthRatePrecisionWSpread = (new BigNumber(kncPerEthRatePrecision * 0.6)).floor();
         kncToEthRatePrecision = precision.div(kncPerEthRatePrecision).floor();
         ethToKncRatePrecision = precision.mul(kncPerEthRatePrecisionWSpread);
 
@@ -559,7 +559,6 @@ contract('FeeBurner', function(accounts) {
         await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, ethToKncRatePrecision);
 
         rc = await feeBurnerInst.setKNCRate({from: accounts[3]});
-
 
         //now higher spread
         kncPerEthRatePrecisionWSpread = (new BigNumber(kncPerEthRatePrecision * 0.499999)).floor();
