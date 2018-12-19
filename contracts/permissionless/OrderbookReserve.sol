@@ -29,7 +29,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     uint32 constant public HEAD_ID = 2;         // head Id in order list contract
 
     struct OrderLimits {
-        uint minNewOrderSizeUsd;    // Basis for setting min new order size Eth
+        uint minNewOrderSizeUsd; // Basis for setting min new order size Eth
         uint maxOrdersPerTrade;     // Limit number of iterated orders per trade / getRate loops.
         uint minNewOrderSizeWei;    // Below this value can't create new order.
         uint minOrderSizeWei;       // below this value order will be removed.
