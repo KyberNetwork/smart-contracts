@@ -591,7 +591,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     function calcKncStake(uint weiAmount) public view returns(uint) {
-        return(calcBurnAmountLocalKncRate(weiAmount) * BURN_TO_STAKE_FACTOR);
+        return(calcBurnAmount(weiAmount) * BURN_TO_STAKE_FACTOR);
     }
 
     function calcBurnAmount(uint weiAmount) public view returns(uint) {
