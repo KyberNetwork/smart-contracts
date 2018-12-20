@@ -553,7 +553,7 @@ contract('OrderbookReserve', async (accounts) => {
             let valueTwei = 15 * 10 ** 18;
 
             //add orders
-            await reserve.submitEthToTokenOrde(valueWei, valueTwei, {from: maker1});
+            await reserve.submitEthToTokenOrder(valueWei, valueTwei, {from: maker1});
 
             // legal trade
             let payValueTwei = 11000;
@@ -575,7 +575,7 @@ contract('OrderbookReserve', async (accounts) => {
             }
         });
 
-        it("verify add order batch with bad array sizes reverts", async() => {
+        it.only("verify add order batch with bad array sizes reverts", async() => {
             let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
@@ -608,14 +608,6 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             //failing batch orders
-            try {
-                await reserve.addOrderBatch(isBuyOrder, makeOrdersSrcAmounts, makeOrdersDstAmount, hintArray,
-                                        isAfterMyPrevOrder, {from: maker1});
-                assert(false, "throw was expected in line above.")
-            } catch(e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
-
             try {
                 await reserve.addOrderBatch(badIsBuyOrder, makeOrdersSrcAmounts, makeOrdersDstAmount, hintArray,
                                         isAfterMyPrevOrder, {from: maker1});
@@ -656,7 +648,7 @@ contract('OrderbookReserve', async (accounts) => {
             }
         })
 
-        it("verify update order batch with bad array sizes reverts", async() => {
+        it.only("verify update order batch with bad array sizes reverts", async() => {
             let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
@@ -671,6 +663,7 @@ contract('OrderbookReserve', async (accounts) => {
             let badDstAmounts  = [orderDst, orderDst.add(200), orderDst.add(500), orderDst];
             let hintArray = [0, 0, 0];
             let badHintArr = [0, 0, 0, 0]
+            let isAfterMyPrevOrder = [false, false, false];
             let isBuyOrder = [true, true, true];
             let badIsBuyOrder = [true, true];
 
