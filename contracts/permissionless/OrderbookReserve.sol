@@ -107,7 +107,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         limits.maxOrdersPerTrade = maxOrdersPerTrade;
 
         require(setMinOrderSizeEth());
-
+    
         require(contracts.kncToken.approve(contracts.feeBurner, (2**255)));
 
         //can only support tokens with decimals() API
@@ -594,16 +594,12 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return(calcBurnAmountLocalKncRate(weiAmount) * BURN_TO_STAKE_FACTOR);
     }
 
-    function calcBurnAmount(uint weiAmount, uint kncPerEthRatePrecision) public view returns(uint) {
-        return(weiAmount * makerBurnFeeBps * kncPerEthRatePrecision / (10000 * PRECISION));
+    function calcBurnAmount(uint weiAmount) public view returns(uint) {
+        return(weiAmount * makerBurnFeeBps * kncPerEthBaseRatePrecision / (10000 * PRECISION));
     }
 
     function calcBurnAmountFromFeeBurner(uint weiAmount) public view returns(uint) {
-        return calcBurnAmount(weiAmount, contracts.feeBurner.kncPerEthRatePrecision());
-    }
-
-    function calcBurnAmountLocalKncRate(uint weiAmount) public view returns(uint) {
-        return calcBurnAmount(weiAmount, kncPerEthBaseRatePrecision);
+        return(weiAmount * makerBurnFeeBps * contracts.feeBurner.kncPerEthRatePrecision() / (10000 * PRECISION))
     }
 
     function getEthToTokenMakerOrderIds(address maker) public view returns(uint32[] orderList) {
