@@ -498,7 +498,7 @@ contract('OrderbookReserve', async (accounts) => {
         it("verify trade illegal message eth value revert", async() => {
             let tokenWeiDepositAmount = 90 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
-            let ethWeiDepositAmount = 10 * 10 ** 18;
+            let ethWeiDepositAmount = 5 * 10 ** 18;
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
 
             let valueWei = 5 * 10 ** 18;
@@ -538,6 +538,200 @@ contract('OrderbookReserve', async (accounts) => {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
         });
+
+        it("verify trade token to eth with not enough tokens approved to reserve, reverts", async() => {
+            let tokenWeiDepositAmount = 0 * 10 ** 18;
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let ethWeiDepositAmount = 5 * 10 ** 18;
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
+
+            let valueWei = 5 * 10 ** 18;
+            let valueTwei = 15 * 10 ** 18;
+
+            //add orders
+            await reserve.submitEthToTokenOrde(valueWei, valueTwei, {from: maker1});
+
+            // legal trade
+            let payValueTwei = 11000;
+            await token.transfer(network, payValueTwei);
+            await token.approve(reserve.address, payValueTwei, {from: network})
+            await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
+
+            // legal trade
+            payValueTwei = 13000;
+            let badTransferValue = 12999;
+            await token.transfer(network, badTransferValue);
+            await token.approve(reserve.address, badTransferValue, {from: network});
+
+            try {
+                await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        });
+
+        it("verify add order batch with bad array sizes reverts", async() => {
+            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            orderSrc = new BigNumber(2 * 10 ** 18);
+            orderDst = new BigNumber(6 * 10 ** 18);
+
+            let makeOrdersSrcAmounts = [orderSrc, orderSrc, orderSrc];
+            let badSrcAmounts = [orderSrc, orderSrc, orderSrc, orderSrc]
+            let makeOrdersDstAmount = [orderDst, orderDst.add(200), orderDst.add(500)];
+            let badDstAmounts  = [orderDst, orderDst.add(200), orderDst.add(500), orderDst];
+            let hintArray = [0, 0, 0];
+            let badHintArr = [0, 0, 0, 0]
+            let isAfterMyPrevOrder = [false, false, false];
+            let badIsAfter = [false, false]
+            let isBuyOrder = [true, true, true];
+            let badIsBuyOrder = [true, true];
+
+            let totalPayValue = new BigNumber(0);
+            for (let i = 0; i < makeOrdersSrcAmounts.length; i++) {
+                totalPayValue = totalPayValue.add(makeOrdersDstAmount[i]);
+            }
+
+            //legal batch order
+            rc = await reserve.addOrderBatch(isBuyOrder, makeOrdersSrcAmounts, makeOrdersDstAmount, hintArray,
+                                        isAfterMyPrevOrder, {from: maker1});
+
+
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            //failing batch orders
+            try {
+                await reserve.addOrderBatch(isBuyOrder, makeOrdersSrcAmounts, makeOrdersDstAmount, hintArray,
+                                        isAfterMyPrevOrder, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                await reserve.addOrderBatch(badIsBuyOrder, makeOrdersSrcAmounts, makeOrdersDstAmount, hintArray,
+                                        isAfterMyPrevOrder, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            try {
+                await reserve.addOrderBatch(isBuyOrder, badSrcAmounts, makeOrdersDstAmount, hintArray,
+                                        isAfterMyPrevOrder, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                await reserve.addOrderBatch(isBuyOrder, makeOrdersSrcAmounts, badDstAmounts, hintArray,
+                                        isAfterMyPrevOrder, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                await reserve.addOrderBatch(isBuyOrder, makeOrdersSrcAmounts, makeOrdersDstAmount, badHintArr,
+                                        isAfterMyPrevOrder, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                await reserve.addOrderBatch(isBuyOrder, makeOrdersSrcAmounts, makeOrdersDstAmount, hintArray,
+                                        badIsAfter, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        })
+
+        it("verify update order batch with bad array sizes reverts", async() => {
+            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            orderSrc = new BigNumber(2 * 10 ** 18);
+            orderDst = new BigNumber(6 * 10 ** 18);
+
+            let makeOrdersSrcAmounts = [orderSrc, orderSrc, orderSrc];
+            let badSrcAmounts = [orderSrc, orderSrc, orderSrc, orderSrc]
+            let makeOrdersDstAmount = [orderDst, orderDst.add(200), orderDst.add(500)];
+            let badDstAmounts  = [orderDst, orderDst.add(200), orderDst.add(500), orderDst];
+            let hintArray = [0, 0, 0];
+            let badHintArr = [0, 0, 0, 0]
+            let isBuyOrder = [true, true, true];
+            let badIsBuyOrder = [true, true];
+
+            let totalPayValue = new BigNumber(0);
+            for (let i = 0; i < makeOrdersSrcAmounts.length; i++) {
+                totalPayValue = totalPayValue.add(makeOrdersDstAmount[i]);
+            }
+
+            //legal batch update order
+            rc = await reserve.addOrderBatch(isBuyOrder, makeOrdersSrcAmounts, makeOrdersDstAmount, hintArray,
+                                        isAfterMyPrevOrder, {from: maker1});
+
+            let ordersArray = [firstFreeOrderIdPerReserveList,
+                               firstFreeOrderIdPerReserveList*1 + 1*1,
+                               firstFreeOrderIdPerReserveList*1 + 2*1];
+
+            let badOrdersArray = [firstFreeOrderIdPerReserveList,
+                                  firstFreeOrderIdPerReserveList*1 + 1*1];
+
+
+            rc = await reserve.updateOrderBatch(isBuyOrder, ordersArray, makeOrdersSrcAmounts,
+                            makeOrdersDstAmount, hintArray, {from: maker1})
+
+            //failing update batch orders
+            try {
+                rc = await reserve.updateOrderBatch(badIsBuyOrder, ordersArray, makeOrdersSrcAmounts,
+                            makeOrdersDstAmount, hintArray, {from: maker1})
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                rc = await reserve.updateOrderBatch(isBuyOrder, badOrdersArray, makeOrdersSrcAmounts,
+                            makeOrdersDstAmount, hintArray, {from: maker1})
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                rc = await reserve.updateOrderBatch(isBuyOrder, ordersArray, badSrcAmounts,
+                                makeOrdersDstAmount, hintArray, {from: maker1})
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                rc = await reserve.updateOrderBatch(isBuyOrder, ordersArray, makeOrdersSrcAmounts,
+                                badDstAmounts, hintArray, {from: maker1})
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                rc = await reserve.updateOrderBatch(isBuyOrder, ordersArray, makeOrdersSrcAmounts,
+                            makeOrdersDstAmount, badHintArr, {from: maker1})
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        })
+
 
         it("verify trade not from network reverts", async() => {
             let tokenWeiDepositAmount = 90 * 10 ** 18;
