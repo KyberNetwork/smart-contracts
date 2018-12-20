@@ -145,9 +145,11 @@ contract PermissionlessOrderbookReserveLister {
     }
 
     function unlistOrderbookContract(ERC20 token, uint hintReserveIndex) public {
+        require(reserveListingStage[token] == ListingStage.RESERVE_LISTED);
         require(reserves[token].kncRateBlocksTrade());
         require(kyberNetworkContract.removeReserve(KyberReserveInterface(reserves[token]), hintReserveIndex));
         reserveListingStage[token] = ListingStage.NO_RESERVE;
+        reserves[token] = OrderbookReserveInterface(0);
     }
 
     /// @dev permission less reserve currently supports one token per reserve.
