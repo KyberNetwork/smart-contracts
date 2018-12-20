@@ -107,7 +107,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         limits.maxOrdersPerTrade = maxOrdersPerTrade;
 
         require(setMinOrderSizeEth());
-
+    
         require(contracts.kncToken.approve(contracts.feeBurner, (2**255)));
 
         //can only support tokens with decimals() API
