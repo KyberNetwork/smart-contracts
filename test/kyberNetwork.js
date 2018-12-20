@@ -20,7 +20,6 @@ const truffleAssert = require('truffle-assertions');
 const precisionUnits = (new BigNumber(10).pow(18));
 const max_rate = (precisionUnits.mul(10 ** 6)).valueOf(); //internal parameter in Utils.sol
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
-const exactEthAdd = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 const zeroAddress = '0x0000000000000000000000000000000000000000';
 const gasPrice = (new BigNumber(10).pow(9).mul(50));
 let negligibleRateDiff = 11;
@@ -172,6 +171,10 @@ contract('KyberNetwork', function(accounts) {
 
         KNC = await TestToken.new("Kyber krystal", "KNC", 18);
         kncAddress = KNC.address;
+        await pricing3.addToken(kncAddress);
+        await pricing3.setTokenControlInfo(kncAddress, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
+        await pricing3.enableTokenTrade(kncAddress);
+
 
         assert.equal(tokens.length, numTokens, "bad number tokens");
 
@@ -226,8 +229,10 @@ contract('KyberNetwork', function(accounts) {
         let uniqueAddArr = [uniqueToken.address];
         let baseBuyUnique = [precisionUnits.mul(18).valueOf()];
         let baseSellUnique = [precisionUnits.div(18).valueOf()];
+        let kncAddressArr = [kncAddress];
 //        log(uniqueAddArr + "  " + baseBuyUnique + "  " + baseSellUnique)
         await pricing3.setBaseRate(uniqueAddArr, baseBuyUnique, baseSellUnique, buys, sells, currentBlock, indices, {from: operator});
+        await pricing3.setBaseRate(kncAddressArr, baseBuyUnique, baseSellUnique, buys, sells, currentBlock, indices, {from: operator});
         //set compact data
         compactBuyArr = [0, 0, 0, 0, 0, 06, 07, 08, 09, 1, 0, 11, 12, 13, 14];
         let compactBuyHex = Helper.bytesToHex(compactBuyArr);
@@ -257,6 +262,8 @@ contract('KyberNetwork', function(accounts) {
 
         await pricing3.setQtyStepFunction(uniqueToken.address, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
         await pricing3.setImbalanceStepFunction(uniqueToken.address, imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+        await pricing3.setQtyStepFunction(kncAddress, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+        await pricing3.setImbalanceStepFunction(kncAddress, imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
     });
 
     it("should init network and reserves and set all reserve data including balances", async function () {
@@ -280,6 +287,7 @@ contract('KyberNetwork', function(accounts) {
             await reserve2.approveWithdrawAddress(tokenAdd[i], accounts[0], true);
         }
         await reserve3.approveWithdrawAddress(uniqueToken.address, accounts[0], true);
+        await reserve3.approveWithdrawAddress(kncAddress, accounts[0], true);
 
         //set reserve balance. 10**18 wei ether + per token 10**18 wei ether value according to base rate.
         let reserveEtherInit = (new BigNumber(10)).pow(20).mul(4);
@@ -287,6 +295,7 @@ contract('KyberNetwork', function(accounts) {
         await Helper.sendEtherWithPromise(accounts[9], reserve2.address, reserveEtherInit);
         await Helper.sendEtherWithPromise(accounts[6], reserve3.address, reserveEtherInit);
         await uniqueToken.transfer(reserve3.address, 1000000000000);
+        await KNC.transfer(reserve3.address, 10 ** 24);
 
         let balance = await Helper.getBalancePromise(reserve1.address);
         expectedReserve1BalanceWei = new BigNumber (balance.valueOf());
@@ -428,33 +437,33 @@ contract('KyberNetwork', function(accounts) {
         //list token
         txData = await tempNetwork.listPairForReserve(reserve1.address, tokenAdd[0], true, true, true, {from: operator});
         assert.equal(txData.logs[0].event, 'ListReservePairs');
-        assert.equal(txData.logs[0].args.src, exactEthAdd);
+        assert.equal(txData.logs[0].args.src, ethAddress.toLowerCase());
         assert.equal(txData.logs[0].args.dest, tokenAdd[0]);
         assert.equal(txData.logs[0].args.add, true);
-        assert.equal(txData.logs[1].args.dest, exactEthAdd);
+        assert.equal(txData.logs[1].args.dest, ethAddress.toLowerCase());
         assert.equal(txData.logs[1].args.src, tokenAdd[0]);
         assert.equal(txData.logs[1].args.add, true);
 
         txData = await tempNetwork.listPairForReserve(reserve1.address, tokenAdd[0], true, true, false, {from: operator});
-        assert.equal(txData.logs[0].args.src, exactEthAdd);
+        assert.equal(txData.logs[0].args.src, ethAddress.toLowerCase());
         assert.equal(txData.logs[0].args.dest, tokenAdd[0]);
         assert.equal(txData.logs[0].args.add, false);
-        assert.equal(txData.logs[1].args.dest, exactEthAdd);
+        assert.equal(txData.logs[1].args.dest, ethAddress.toLowerCase());
         assert.equal(txData.logs[1].args.src, tokenAdd[0]);
         assert.equal(txData.logs[1].args.add, false);
 
         txData = await tempNetwork.listPairForReserve(reserve1.address, tokenAdd[1], true, false, true, {from: operator});
-        assert.equal(txData.logs[0].args.src, exactEthAdd);
+        assert.equal(txData.logs[0].args.src, ethAddress.toLowerCase());
         assert.equal(txData.logs[0].args.dest, tokenAdd[1]);
         assert.equal(txData.logs[0].args.add, true);
 
         txData = await tempNetwork.listPairForReserve(reserve1.address, tokenAdd[1], true, false, false, {from: operator});
-        assert.equal(txData.logs[0].args.src, exactEthAdd);
+        assert.equal(txData.logs[0].args.src, ethAddress.toLowerCase());
         assert.equal(txData.logs[0].args.dest, tokenAdd[1]);
         assert.equal(txData.logs[0].args.add, false);
 
         txData = await tempNetwork.listPairForReserve(reserve1.address, tokenAdd[2], false, true, true, {from: operator});
-        assert.equal(txData.logs[0].args.dest, exactEthAdd);
+        assert.equal(txData.logs[0].args.dest, ethAddress.toLowerCase());
         assert.equal(txData.logs[0].args.src, tokenAdd[2]);
         assert.equal(txData.logs[0].args.add, true);
     })
@@ -486,7 +495,7 @@ contract('KyberNetwork', function(accounts) {
 //            log("txData logs 0" + txData.logs[0])
             assert.equal(txData.logs[0].event, 'KyberTrade');
             assert.equal(txData.logs[0].args.trader, user1, "src address");
-            assert.equal(txData.logs[0].args.src, exactEthAdd, "src token");
+            assert.equal(txData.logs[0].args.src, ethAddress.toLowerCase(), "src token");
             assert.equal(txData.logs[0].args.srcAmount.valueOf(), amountWei);
             assert.equal(txData.logs[0].args.destAddress, user2);
             assert.equal(txData.logs[0].args.dest, tokenAdd[tokenInd]);
@@ -2785,7 +2794,7 @@ contract('KyberNetwork', function(accounts) {
 
         it("trade (buy) token listed regular and order book. when permissionless not allowed. see token taken from regular reserve", async() => {
             let tradeValue = 10000;
-            let rate = await network.getExpectedRate(ethAddress, token0, tradeValue.valueOf());
+            let rate = await network.getExpectedRateOnlyPermission(ethAddress, token0, tradeValue.valueOf());
 
             //trade
             let hint = 'PERM';
@@ -2993,7 +3002,6 @@ contract('KyberNetwork', function(accounts) {
             txData = await network.tradeWithHint(user1, token0, totalPayValue, ethAddress, user2,
                                               10 ** 30, regularRate[1].valueOf(), 0, 0, {from:networkProxy});
             log("gas 9 orders from permissionless: " + txData.receipt.gasUsed);
->>>>>>> 1401bfb16891c7483b99305f8fbcfb0d3ebdef8b
         });
 
         it("Add 5 'spam' orders Eth to token see gas affect on trade with other reserve.", async() => {
@@ -3142,8 +3150,6 @@ contract('KyberNetwork', function(accounts) {
             orderList = await orderbookReserve.getEthToTokenOrderList();
             assert.equal(orderList.length, 0);
         });
->>>>>>> Stashed changes
->>>>>>> 1401bfb16891c7483b99305f8fbcfb0d3ebdef8b
     });
 });
 

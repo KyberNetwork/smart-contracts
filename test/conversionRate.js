@@ -1,5 +1,6 @@
 const ConversionRates = artifacts.require("MockConversionRate.sol");
 const TestToken = artifacts.require("TestToken.sol");
+const Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
 
 const Helper = require("./helper.js");
 const BigNumber = require('bignumber.js');
@@ -73,6 +74,8 @@ contract('ConversionRates', function(accounts) {
         let arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
         let hexArr = Helper.bytesToHex(arr);
         let byte;
+
+        wrapper = await Wrapper.new();
 
         for (let i = 0; i < 14; i++) {
             byte = await wrapper.getInt8FromByte(hexArr, i);
