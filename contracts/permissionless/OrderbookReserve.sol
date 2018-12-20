@@ -599,7 +599,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     function calcBurnAmountFromFeeBurner(uint weiAmount) public view returns(uint) {
-        return(weiAmount * makerBurnFeeBps * contracts.feeBurner.kncPerEthRatePrecision() / (10000 * PRECISION))
+        return(weiAmount * makerBurnFeeBps * contracts.feeBurner.kncPerEthRatePrecision() / (10000 * PRECISION));
     }
 
     function getEthToTokenMakerOrderIds(address maker) public view returns(uint32[] orderList) {
