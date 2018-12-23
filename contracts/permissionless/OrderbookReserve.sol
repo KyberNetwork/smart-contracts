@@ -179,11 +179,6 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return calcRateFromQty(srcQty, totalUserDstAmount, getDecimals(src), getDecimals(dst));
     }
 
-    struct Amounts {
-        uint128 userRemainingSrc;
-        uint128 totalUserDst;
-    }
-
     event OrderbookReserveTrade(ERC20 srcToken, ERC20 dstToken, uint srcAmount, uint dstAmount);
 
     function trade(
@@ -219,7 +214,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
                 dstToken
             );
 
-        require(conversionRate == calcRateFromQty(srcAmount, totalDstAmount, getDecimals(srcToken),
+        require(conversionRate <= calcRateFromQty(srcAmount, totalDstAmount, getDecimals(srcToken),
             getDecimals(dstToken)));
 
         //all orders were successfully taken. send to dstAddress
@@ -629,7 +624,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return(weiAmount * makerBurnFeeBps * contracts.feeBurner.kncPerEthRatePrecision() / (10000 * PRECISION));
     }
 
-    function getEthToTokenMakerOrderIds(address maker) external view returns(uint32[] orderList) {
+    function getEthToTokenMakerOrderIds(address maker) public view returns(uint32[] orderList) {
         OrderIdData storage makerOrders = makerOrdersEthToToken[maker];
         orderList = new uint32[](getNumActiveOrderIds(makerOrders));
         uint activeOrder = 0;
@@ -639,7 +634,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         }
     }
 
-    function getTokenToEthMakerOrderIds(address maker) external view returns(uint32[] orderList) {
+    function getTokenToEthMakerOrderIds(address maker) public view returns(uint32[] orderList) {
         OrderIdData storage makerOrders = makerOrdersTokenToEth[maker];
         orderList = new uint32[](getNumActiveOrderIds(makerOrders));
         uint activeOrder = 0;
@@ -649,12 +644,12 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         }
     }
 
-    function getEthToTokenOrderList() external view returns(uint32[] orderList) {
+    function getEthToTokenOrderList() public view returns(uint32[] orderList) {
         OrderListInterface list = ethToTokenList;
         return getList(list);
     }
 
-    function getTokenToEthOrderList() external view returns(uint32[] orderList) {
+    function getTokenToEthOrderList() public view returns(uint32[] orderList) {
         OrderListInterface list = tokenToEthList;
         return getList(list);
     }
