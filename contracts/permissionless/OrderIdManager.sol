@@ -23,7 +23,7 @@ contract OrderIdManager {
                 return(uint32(uint(freeOrders.firstOrderId) + i));
             }
 
-            bitPointer << 1;
+            bitPointer *= 2;
         }
 
         revert();

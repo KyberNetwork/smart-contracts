@@ -116,6 +116,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         //can only support tokens with decimals() API
         setDecimals(contracts.token);
+        setDecimals(ETH_TOKEN_ADDRESS);
 
         kncPerEthBaseRatePrecision = contracts.feeBurner.kncPerEthRatePrecision();
     }

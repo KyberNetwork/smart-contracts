@@ -176,7 +176,7 @@ contract('OrderbookReserve', async (accounts) => {
         let permHintForGetRate = await reserve.permHint
     });
 
-    it("test trade event, take full order event, take partial order event", async()=> {
+    it.only("test trade event, take full order event, take partial order event", async()=> {
         let tokenWeiDepositAmount = 60 * 10 ** 18;
         let kncTweiDepositAmount = 600 * 10 ** 18;
         let ethWeiDepositAmount = 0 * 10 ** 18;
@@ -186,12 +186,16 @@ contract('OrderbookReserve', async (accounts) => {
         let valueTwei = new BigNumber(12 * 10 ** 18);
 
         //add orders
+        log("before submit")
         await reserve.submitTokenToEthOrder(valueTwei, valueWei, {from: maker1});
         await reserve.submitTokenToEthOrder(valueTwei, valueWei.add(100), {from: maker1});
 
         // legal trade
         let payValueWei = valueWei.div(2);
-        rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: payValueWei});
+        log("before rate")
+        let rate = await reserve.getConversionRate(ethAddress, tokenAdd, payValueWei, 0);
+        log("rate " + rate)
+        rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from: network, value: payValueWei});
 //        log(rc.logs[0])
         assert.equal(rc.logs[0].event, 'PartialOrderTaken');
         assert.equal(rc.logs[0].args.maker, maker1);
@@ -206,7 +210,8 @@ contract('OrderbookReserve', async (accounts) => {
         assert.equal(rc.logs[1].args.dstAmount, valueTwei.div(2).valueOf());
 
         payValueWei = valueWei.div(2).sub(500)
-        rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: payValueWei});
+        rate = await reserve.getConversionRate(ethAddress, tokenAdd, payValueWei, 0);
+        rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from: network, value: payValueWei});
         assert.equal(rc.logs[0].event, 'PartialOrderTaken');
         assert.equal(rc.logs[0].args.maker, maker1);
         assert.equal(rc.logs[0].args.orderId.valueOf(), firstFreeOrderIdPerReserveList.valueOf());
@@ -214,7 +219,8 @@ contract('OrderbookReserve', async (accounts) => {
         assert.equal(rc.logs[0].args.isRemoved, true);
 
         payValueWei = valueWei.add(100)
-        rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: payValueWei});
+        rate = await reserve.getConversionRate(ethAddress, tokenAdd, payValueWei, 0);
+        rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from: network, value: payValueWei});
         assert.equal(rc.logs[0].event, 'FullOrderTaken');
         assert.equal(rc.logs[0].args.maker, maker1);
         assert.equal(rc.logs[0].args.orderId.valueOf(), firstFreeOrderIdPerReserveList * 1 + 1 * 1);
