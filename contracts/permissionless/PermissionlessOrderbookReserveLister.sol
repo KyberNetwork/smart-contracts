@@ -13,6 +13,13 @@ contract InternalNetworkInterface {
         public
         returns(bool);
 
+    function removeReserve(
+        KyberReserveInterface reserve,
+        uint index
+    )
+        public
+        returns(bool);
+
     function listPairForReserve(
         address reserve,
         ERC20 token,
@@ -136,6 +143,14 @@ contract PermissionlessOrderbookReserveLister {
         reserveListingStage[token] = ListingStage.RESERVE_LISTED;
         TokenOrderbookListingStage(token, ListingStage.RESERVE_LISTED);
         return true;
+    }
+
+    function unlistOrderbookContract(ERC20 token, uint hintReserveIndex) public {
+        require(reserveListingStage[token] == ListingStage.RESERVE_LISTED);
+        require(reserves[token].kncRateBlocksTrade());
+        require(kyberNetworkContract.removeReserve(KyberReserveInterface(reserves[token]), hintReserveIndex));
+        reserveListingStage[token] = ListingStage.NO_RESERVE;
+        reserves[token] = OrderbookReserveInterface(0);
     }
 
     /// @dev permission less reserve currently supports one token per reserve.

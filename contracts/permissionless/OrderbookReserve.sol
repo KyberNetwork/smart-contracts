@@ -35,6 +35,8 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint minOrderSizeWei;       // below this value order will be removed.
     }
 
+    uint public kncPerEthBaseRatePrecision; // according to base rate all stakes are calculated.
+
     struct ExternalContracts {
         ERC20 kncToken;          // not constant. to enable testing while not on main net
         ERC20 token;             // only supported token.
@@ -114,6 +116,8 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         //can only support tokens with decimals() API
         setDecimals(contracts.token);
+
+        kncPerEthBaseRatePrecision = contracts.feeBurner.kncPerEthRatePrecision();
     }
 
     ///@dev separate init function for this contract, if this init is in the C'tor. gas consumption too high.
@@ -127,10 +131,19 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return true;
     }
 
+    function setKncPerEthBaseRate() public {
+        uint kncPerEthRatePrecision = contracts.feeBurner.kncPerEthRatePrecision();
+        if (kncPerEthRatePrecision < kncPerEthBaseRatePrecision) {
+            kncPerEthBaseRatePrecision = kncPerEthRatePrecision;
+        }
+    }
+
     function getConversionRate(ERC20 src, ERC20 dst, uint srcQty, uint blockNumber) public view returns(uint) {
         require((src == ETH_TOKEN_ADDRESS) || (dst == ETH_TOKEN_ADDRESS));
         require((src == contracts.token) || (dst == contracts.token));
         require(srcQty <= MAX_QTY);
+
+        if (kncRateBlocksTrade()) return 0;
 
         blockNumber; // in this reserve no order expiry == no use for blockNumber. here to avoid compiler warning.
 
@@ -500,6 +513,12 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return true;
     }
 
+    ///@dev Each maker stakes per order KNC that is factor of the required burn amount.
+    ///@dev If Knc per Eth rate becomes lower by more then factor, stake will not be enough and trade will be blocked.
+    function kncRateBlocksTrade() public view returns (bool) {
+        return (contracts.feeBurner.kncPerEthRatePrecision() > kncPerEthBaseRatePrecision * BURN_TO_STAKE_FACTOR);
+    }
+
     function getTokenToEthAddOrderHint(uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
         require(dstAmount >= limits.minNewOrderSizeWei);
         return tokenToEthList.findPrevOrderId(srcAmount, dstAmount);
@@ -572,12 +591,14 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return ethToTokenList.getOrderDetails(orderId);
     }
 
-    function makerStakedKnc(address maker) public view returns (uint) {
+    function makerRequiredKncStake(address maker) public view returns (uint) {
         return(calcKncStake(makerTotalOrdersWei[maker]));
     }
 
     function makerUnlockedKnc(address maker) public view returns (uint) {
-        return (makerKnc[maker] - makerStakedKnc(maker));
+        uint requiredKncStake = makerRequiredKncStake(maker);
+        if (requiredKncStake > makerKnc[maker]) return 0;
+        return (makerKnc[maker] - requiredKncStake);
     }
 
     function calcKncStake(uint weiAmount) public view returns(uint) {
@@ -585,6 +606,10 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     function calcBurnAmount(uint weiAmount) public view returns(uint) {
+        return(weiAmount * makerBurnFeeBps * kncPerEthBaseRatePrecision / (10000 * PRECISION));
+    }
+
+    function calcBurnAmountFromFeeBurner(uint weiAmount) public view returns(uint) {
         return(weiAmount * makerBurnFeeBps * contracts.feeBurner.kncPerEthRatePrecision() / (10000 * PRECISION));
     }
 
@@ -779,14 +804,10 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         if (weiForBurn == 0) return true;
 
-        uint burnAmount = calcBurnAmount(weiForBurn);
+        uint burnAmount = calcBurnAmountFromFeeBurner(weiForBurn);
 
-        // if not enough knc to burn. just zero knc amount.
-        if (makerKnc[maker] < burnAmount) {
-            makerKnc[maker] = 0;
-        } else {
-            makerKnc[maker] -= burnAmount;
-        }
+        require(makerKnc[maker] >= burnAmount);
+        makerKnc[maker] -= burnAmount;
 
         return true;
     }
