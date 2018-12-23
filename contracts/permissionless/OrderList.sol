@@ -1,12 +1,11 @@
 pragma solidity 0.4.18;
 
 
-import "../Utils2.sol";
-import "../Withdrawable.sol";
+import "../PermissionGroups.sol";
 import "./OrderListInterface.sol";
 
 
-contract OrderList is Withdrawable, Utils2, OrderListInterface {
+contract OrderList is PermissionGroups, OrderListInterface {
 
     struct Order {
         address maker;
@@ -186,14 +185,6 @@ contract OrderList is Withdrawable, Utils2, OrderListInterface {
         require(nextFreeId + howMany >= nextFreeId);
         nextFreeId += howMany;
         return firstId;
-    }
-
-    function getTailId() public view returns(uint32) {
-        return TAIL_ID;
-    }
-
-    function getHeadId() public view returns(uint32) {
-        return HEAD_ID;
     }
 
     function compareOrders(

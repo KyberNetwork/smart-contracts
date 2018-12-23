@@ -12,12 +12,14 @@ contract MockOrderbookReserve is OrderbookReserve {
         address burner,
         address network,
         MedianizerInterface medianizer,
+        OrderListFactoryInterface factory,
         uint minNewOrderDollar,
         uint maxOrdersPerTrade,
         uint burnFeeBps
     )
         public
-        OrderbookReserve(knc, reserveToken, burner, network, medianizer, minNewOrderDollar, maxOrdersPerTrade, burnFeeBps)
+        OrderbookReserve(knc, reserveToken, burner, network, medianizer, factory, minNewOrderDollar, maxOrdersPerTrade,
+            burnFeeBps)
     {
     }
 
