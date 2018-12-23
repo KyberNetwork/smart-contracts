@@ -116,7 +116,6 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         //can only support tokens with decimals() API
         setDecimals(contracts.token);
-        setDecimals(ETH_TOKEN_ADDRESS);
 
         kncPerEthBaseRatePrecision = contracts.feeBurner.kncPerEthRatePrecision();
     }
@@ -187,8 +186,6 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
     event OrderbookReserveTrade(ERC20 srcToken, ERC20 dstToken, uint srcAmount, uint dstAmount);
 
-    /* solhint-disable function-max-lines */
-    /* Most of the lines come from spread function calls. We find this function readable enough.*/
     function trade(
         ERC20 srcToken,
         uint srcAmount,
@@ -208,33 +205,60 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         conversionRate;
         validate;
-        OrderListInterface list;
 
         if (srcToken == ETH_TOKEN_ADDRESS) {
             require(msg.value == srcAmount);
-            list = tokenToEthList;
         } else {
             require(msg.value == 0);
             require(srcToken.transferFrom(msg.sender, this, srcAmount));
-            list = ethToTokenList;
         }
+
+        uint totalDstAmount = doTrade(
+                srcToken,
+                srcAmount,
+                dstToken
+            );
+
+        require(conversionRate == calcRateFromQty(srcAmount, totalDstAmount, getDecimals(srcToken),
+            getDecimals(dstToken)));
+
+        //all orders were successfully taken. send to dstAddress
+        if (dstToken == ETH_TOKEN_ADDRESS) {
+            dstAddress.transfer(totalDstAmount);
+        } else {
+            require(dstToken.transfer(dstAddress, totalDstAmount));
+        }
+
+        OrderbookReserveTrade(srcToken, dstToken, srcAmount, totalDstAmount);
+        return true;
+    }
+
+    function doTrade(
+        ERC20 srcToken,
+        uint srcAmount,
+        ERC20 dstToken
+    )
+        internal
+        returns(uint)
+    {
+        OrderListInterface list = (srcToken == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
 
         uint32 orderId;
         OrderData memory orderData;
-        Amounts memory amounts;
-        amounts.userRemainingSrc = uint128(srcAmount);
+        uint128 userRemainingSrcQty = uint128(srcAmount);
+        uint128 totalUserDstAmount = 0;
 
         for (
             (orderId, orderData.isLastOrder) = list.getFirstOrder();
-            ((amounts.userRemainingSrc > 0) && (!orderData.isLastOrder));
+            ((userRemainingSrcQty > 0) && (!orderData.isLastOrder));
             orderId = orderData.nextId
         ) {
         // maker dst quantity is the requested quantity he wants to receive. user src quantity is what user gives.
         // so user src quantity is matched with maker dst quantity
             orderData = getOrderData(list, orderId);
-            if (orderData.dstAmount <= amounts.userRemainingSrc) {
-                amounts.totalUserDst += orderData.srcAmount;
-                amounts.userRemainingSrc -= orderData.dstAmount;
+            if (orderData.dstAmount <= userRemainingSrcQty) {
+                totalUserDstAmount += orderData.srcAmount;
+                userRemainingSrcQty -= orderData.dstAmount;
                 require(takeFullOrder({
                     maker: orderData.maker,
                     orderId: orderId,
@@ -244,35 +268,26 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
                     userDstAmount: orderData.srcAmount
                 }));
             } else {
-                amounts.totalUserDst += orderData.srcAmount * amounts.userRemainingSrc / orderData.dstAmount;
+                uint128 partialDstQty = orderData.srcAmount * userRemainingSrcQty / orderData.dstAmount;
+                totalUserDstAmount += partialDstQty;
                 require(takePartialOrder({
                     maker: orderData.maker,
                     orderId: orderId,
                     userSrc: srcToken,
                     userDst: dstToken,
-                    userPartialSrcAmount: amounts.userRemainingSrc,
+                    userPartialSrcAmount: userRemainingSrcQty,
+                    userTakeDstAmount: partialDstQty,
                     orderSrcAmount: orderData.srcAmount,
                     orderDstAmount: orderData.dstAmount
                 }));
-                amounts.userRemainingSrc = 0;
+                userRemainingSrcQty = 0;
             }
         }
 
-        require(amounts.userRemainingSrc == 0);
-        require(conversionRate == calcRateFromQty(srcAmount, amounts.totalUserDst, decimals[srcToken],
-                    decimals[dstToken]));
+        require(userRemainingSrcQty == 0 && totalUserDstAmount > 0);
 
-        //all orders were successfully taken. send to dstAddress
-        if (dstToken == ETH_TOKEN_ADDRESS) {
-            dstAddress.transfer(amounts.totalUserDst);
-        } else {
-            require(dstToken.transfer(dstAddress, amounts.totalUserDst));
-        }
-
-        OrderbookReserveTrade(srcToken, dstToken, srcAmount, amounts.totalUserDst);
-        return true;
+        return totalUserDstAmount;
     }
-    /* solhint-enable function-max-lines */
 
     ///@param srcAmount is the token amount that will be payed. must be deposited before hand in the makers account.
     ///@param dstAmount is the eth amount the maker expects to get for his tokens.
@@ -876,6 +891,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         ERC20 userSrc,
         ERC20 userDst,
         uint128 userPartialSrcAmount,
+        uint128 userTakeDstAmount,
         uint128 orderSrcAmount,
         uint128 orderDstAmount
     )
@@ -883,7 +899,6 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         returns(bool)
     {
         require(userPartialSrcAmount < orderDstAmount);
-        uint128 userTakeDstAmount = orderSrcAmount * userPartialSrcAmount / orderDstAmount;
         require(userTakeDstAmount < orderSrcAmount);
 
         //must reuse parameters, otherwise stack too deep error.

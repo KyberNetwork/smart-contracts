@@ -176,7 +176,7 @@ contract('OrderbookReserve', async (accounts) => {
         let permHintForGetRate = await reserve.permHint
     });
 
-    it.only("test trade event, take full order event, take partial order event", async()=> {
+    it("test trade event, take full order event, take partial order event", async()=> {
         let tokenWeiDepositAmount = 60 * 10 ** 18;
         let kncTweiDepositAmount = 600 * 10 ** 18;
         let ethWeiDepositAmount = 0 * 10 ** 18;
@@ -192,9 +192,7 @@ contract('OrderbookReserve', async (accounts) => {
 
         // legal trade
         let payValueWei = valueWei.div(2);
-        log("before rate")
         let rate = await reserve.getConversionRate(ethAddress, tokenAdd, payValueWei, 0);
-        log("rate " + rate)
         rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from: network, value: payValueWei});
 //        log(rc.logs[0])
         assert.equal(rc.logs[0].event, 'PartialOrderTaken');
@@ -454,14 +452,14 @@ contract('OrderbookReserve', async (accounts) => {
 
             rate = await reserve.getConversionRate(tokenAdd, ethAddress, payValueTwei, 0);
             try {
-                await reserve.trade(tokenAdd, payValueTwei, tokenAdd, user1, 300, false, {from: network});
+                await reserve.trade(tokenAdd, payValueTwei, tokenAdd, user1, rate, false, {from:network});
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
 
             try {
-                await reserve.trade(tokenAdd, payValueTwei, otherTokAddress, user1, 300, false, {from: network});
+                await reserve.trade(tokenAdd, payValueTwei, otherTokAddress, user1, rate, false, {from:network});
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -483,33 +481,33 @@ contract('OrderbookReserve', async (accounts) => {
             //add orders
             let rc = await reserve.submitTokenToEthOrder(valueTwei, valueWei, {from: maker1});
 
-            //validate we have rate values
-            let rate = await reserve.getConversionRate(ethAddress, tokenAdd, 10 ** 18, 0);
-            assert(rate.valueOf() != 0);
-
             let otherTok = await TestToken.new("other", "oth", 15);
             let otherTokAddress = otherTok.address;
 
             // legal trade
             let payValueWei = 3000;
-            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: payValueWei});
+            //validate we have rate values
+            let rate = await reserve.getConversionRate(ethAddress, tokenAdd, payValueWei, 0);
+            assert(rate.valueOf() != 0);
+            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from: network, value: payValueWei});
 
             try {
-                await reserve.trade(ethAddress, payValueWei, ethAddress, user1, 300, false, {from: network, value: payValueWei});
+                await reserve.trade(ethAddress, payValueWei, ethAddress, user1, rate, false, {from: network, value: payValueWei});
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
 
             try {
-                await reserve.trade(ethAddress, payValueWei, otherTokAddress, user1, 300, false, {from: network, value: payValueWei});
+                await reserve.trade(ethAddress, payValueWei, otherTokAddress, user1, rate, false, {from: network, value: payValueWei});
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
 
             //verify trade is legal
-            await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: payValueWei});
+            rate = await reserve.getConversionRate(ethAddress, tokenAdd, payValueWei, 0);
+            await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from: network, value: payValueWei});
         });
 
         it("verify trade illegal message eth value revert", async() => {
@@ -527,12 +525,14 @@ contract('OrderbookReserve', async (accounts) => {
 
             // legal trade
             let payValueWei = 3000;
-            await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: payValueWei});
+            let rate = await reserve.getConversionRate(ethAddress, tokenAdd, payValueWei, 0);
+            await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from: network, value: payValueWei});
 
             let badMessageValue = 3001;
-
+            
+            rate = await reserve.getConversionRate(ethAddress, tokenAdd, payValueWei, 0);
             try {
-                await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: badMessageValue});
+                await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from: network, value: badMessageValue});
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -542,14 +542,15 @@ contract('OrderbookReserve', async (accounts) => {
             let payValueTwei = 30000;
             await token.transfer(network, payValueTwei);
             await token.approve(reserve.address, payValueTwei, {from: network})
-            await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
+            rate = await reserve.getConversionRate(tokenAdd, ethAddress, payValuTwei, 0);
+            await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, rate, false, {from: network});
 
             //now with wrong message value
             await token.transfer(network, payValueTwei);
             await token.approve(reserve.address, payValueTwei, {from: network})
-
+            rate = await reserve.getConversionRate(tokenAdd, ethAddress, payValuTwei, 0);
             try {
-                await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network, value: 1});
+                await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, rate, false, {from:network, value: 1});
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -572,23 +573,25 @@ contract('OrderbookReserve', async (accounts) => {
             let payValueTwei = 11000;
             await token.transfer(network, payValueTwei);
             await token.approve(reserve.address, payValueTwei, {from: network})
-            await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
+            let rate = await reserve.getConversionRate(tokenAdd, ethAddress, payValuTwei, 0);
+            await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, rate, false, {from: network});
 
             // legal trade
             payValueTwei = 13000;
             let badTransferValue = 12999;
             await token.transfer(network, badTransferValue);
             await token.approve(reserve.address, badTransferValue, {from: network});
+            rate = await reserve.getConversionRate(tokenAdd, ethAddress, payValuTwei, 0);
 
             try {
-                await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
+                await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, rate, false, {from:network});
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
         });
 
-        it.only("verify add order batch with bad array sizes reverts", async() => {
+        it("verify add order batch with bad array sizes reverts", async() => {
             let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
@@ -661,7 +664,7 @@ contract('OrderbookReserve', async (accounts) => {
             }
         })
 
-        it.only("verify update order batch with bad array sizes reverts", async() => {
+        it("verify update order batch with bad array sizes reverts", async() => {
             let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
@@ -742,7 +745,6 @@ contract('OrderbookReserve', async (accounts) => {
             }
         })
 
-
         it("verify trade not from network reverts", async() => {
             let tokenWeiDepositAmount = 90 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
@@ -757,10 +759,13 @@ contract('OrderbookReserve', async (accounts) => {
 
             // legal trade - from network
             let payValueWei = 3000;
-            await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: payValueWei});
+            let rate = await reserve.getConversionRate(ethAddress, tokenAdd, payValuWei, 0);
+            await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from:network, value: payValueWei});
+
+            rate = await reserve.getConversionRate(ethAddress, tokenAdd, payValuWei, 0);
 
             try {
-                await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: maker3, value: payValueWei});
+                await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from:maker3, value: payValueWei});
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -785,14 +790,14 @@ contract('OrderbookReserve', async (accounts) => {
             let payValueTwei = MAX_QTY;
             await token.transfer(network, payValueTwei);
             await token.approve(reserve.address, payValueTwei, {from: network})
-            await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
+            await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, rate, false, {from:network});
 
             payValueTwei = payValueTwei.add(1);
             await token.transfer(network, payValueTwei);
             await token.approve(reserve.address, payValueTwei, {from: network})
 
             try {
-                await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
+                await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, rate, false, {from:network});
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -818,7 +823,7 @@ contract('OrderbookReserve', async (accounts) => {
             await token.approve(reserve.address, payValueTwei, {from: network})
 
             try {
-                await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
+                await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, rate, false, {from:network});
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -2182,7 +2187,7 @@ contract('OrderbookReserve', async (accounts) => {
 
             await token.transfer(network, totalPayValue);
             await token.approve(reserve.address, totalPayValue, {from: network})
-            let rc = await reserve.trade(tokenAdd, totalPayValue, ethAddress, user1, 300, false, {from: network});
+            let rc = await reserve.trade(tokenAdd, totalPayValue, ethAddress, user1, rate, false, {from:network});
 
             //now run batch with maker2
             let hintArray = [0, 0, 0, 0, 0];
@@ -2360,7 +2365,7 @@ contract('OrderbookReserve', async (accounts) => {
 
             //take two orders and add again. (this time with hint)
             let payValueWei = new BigNumber(4 * 10 ** 18).add(500);
-            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: payValueWei});
+            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from:network, value: payValueWei});
 
             orderList = await reserve.getTokenToEthOrderList();
             assert.equal(orderList.length, (numOrderIdsPerMaker - 2));
@@ -2483,7 +2488,7 @@ contract('OrderbookReserve', async (accounts) => {
             //take one full order
             await token.transfer(network, orderDstTwei);
             await token.approve(reserve.address, orderDstTwei, {from: network})
-            await reserve.trade(tokenAdd, orderDstTwei, ethAddress, user1, 300, false, {from: network});
+            await reserve.trade(tokenAdd, orderDstTwei, ethAddress, user1, rate, false, {from:network});
 
             expectedTotalWeiInOrders = expectedTotalWeiInOrders.sub(orderSrcAmountWei.add(300));
             rxOrdersWei = await reserve.makerTotalOrdersWei(maker1);
@@ -2501,7 +2506,7 @@ contract('OrderbookReserve', async (accounts) => {
             //take half order
             await token.transfer(network, orderDstTwei.div(2));
             await token.approve(reserve.address, orderDstTwei.div(2), {from: network})
-            await reserve.trade(tokenAdd, orderDstTwei.div(2), ethAddress, user1, 300, false, {from: network});
+            await reserve.trade(tokenAdd, orderDstTwei.div(2), ethAddress, user1, rate, false, {from:network});
 
             expectedTotalWeiInOrders = expectedTotalWeiInOrders.sub(orderSrcAmountWei.div(2).add(100));
             rxOrdersWei = await reserve.makerTotalOrdersWei(maker1);
@@ -2543,7 +2548,7 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(expectedFreeKnc.valueOf(), rxFreeKnc.valueOf());
 
             //take one full order
-            await reserve.trade(ethAddress, dstWei, tokenAdd, user1, 300, false, {from: network, value: dstWei});
+            await reserve.trade(ethAddress, dstWei, tokenAdd, user1, rate, false, {from:network, value: dstWei});
 
             expectedTotalWeiInOrders = expectedTotalWeiInOrders.sub(dstWei);
             rxOrdersWei = await reserve.makerTotalOrdersWei(maker1);
@@ -2559,7 +2564,7 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(expectedFreeKnc.valueOf(), rxFreeKnc.valueOf());
 
             //take half order
-            await reserve.trade(ethAddress, dstWei.div(2), tokenAdd, user1, 300, false, {from: network, value: dstWei.div(2)});
+            await reserve.trade(ethAddress, dstWei.div(2), tokenAdd, user1, rate, false, {from:network, value: dstWei.div(2)});
 
             expectedTotalWeiInOrders = expectedTotalWeiInOrders.sub(dstWei.div(2));
             rxOrdersWei = await reserve.makerTotalOrdersWei(maker1);
@@ -2863,7 +2868,7 @@ contract('OrderbookReserve', async (accounts) => {
 
             await token.transfer(network, orderDstTwei);
             await token.approve(reserve.address, orderDstTwei, {from: network})
-            rc = await reserve.trade(tokenAdd, orderDstTwei, ethAddress, user1, 300, false, {from: network});
+            rc = await reserve.trade(tokenAdd, orderDstTwei, ethAddress, user1, rate, false, {from:network});
 
             log("take single order gas: " + rc.receipt.gasUsed);
             assert(rc.receipt.gasUsed < 130000);
@@ -2907,7 +2912,7 @@ contract('OrderbookReserve', async (accounts) => {
 
             await token.transfer(network, totalPayValue);
             await token.approve(reserve.address, totalPayValue, {from: network})
-            rc = await reserve.trade(tokenAdd, totalPayValue, ethAddress, user1, 300, false, {from: network});
+            rc = await reserve.trade(tokenAdd, totalPayValue, ethAddress, user1, rate, false, {from:network});
             log("take 3 eth to token orders gas: " + rc.receipt.gasUsed);
 
             //check maker balance
@@ -2946,21 +2951,21 @@ contract('OrderbookReserve', async (accounts) => {
             let payValueTwei = orderDstTwei.mul(0.5).add(6000);
             await token.transfer(network, payValueTwei);
             await token.approve(reserve.address, payValueTwei, {from: network})
-            rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
+            rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, rate, false, {from:network});
             log("take 0.5 buy orders (remaining removed) gas: " + rc.receipt.gasUsed);
 
             //trade
             payValueTwei = payValueTwei.add(orderDstTwei);
             await token.transfer(network, payValueTwei);
             await token.approve(reserve.address, payValueTwei, {from: network})
-            rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
+            rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, rate, false, {from:network});
             log("take 1.5 buy orders (remaining removed) gas: " + rc.receipt.gasUsed);
 
             //trade
             payValueTwei = payValueTwei.add(orderDstTwei);
             await token.transfer(network, payValueTwei);
             await token.approve(reserve.address, payValueTwei, {from: network})
-            rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
+            rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, rate, false, {from:network});
             log("take 2.5 buy orders (remaining removed) gas: " + rc.receipt.gasUsed);
     //        assert(false)
         });
@@ -2986,25 +2991,25 @@ contract('OrderbookReserve', async (accounts) => {
             let payValueTwei = orderDstTwei.mul(0.5).sub(6000);
             await token.transfer(network, payValueTwei.add(orderDstTwei.div(2)));
             await token.approve(reserve.address, payValueTwei.add(orderDstTwei.div(2)), {from: network})
-            rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
+            rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, rate, false, {from:network});
             log("take 0.5 buy orders (remaining not removed) gas: " + rc.receipt.gasUsed);
-            await reserve.trade(tokenAdd, orderDstTwei.div(2), ethAddress, user1, 300, false, {from: network});
+            await reserve.trade(tokenAdd, orderDstTwei.div(2), ethAddress, user1, rate, false, {from:network});
 
             //trade
             payValueTwei = payValueTwei.add(orderDstTwei);
             await token.transfer(network, payValueTwei.add(orderDstTwei.div(2)));
             await token.approve(reserve.address, payValueTwei.add(orderDstTwei.div(2)), {from: network})
-            rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
+            rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, rate, false, {from:network});
             log("take 1.5 buy orders (remaining not removed) gas: " + rc.receipt.gasUsed);
-            await reserve.trade(tokenAdd, orderDstTwei.div(2), ethAddress, user1, 300, false, {from: network});
+            await reserve.trade(tokenAdd, orderDstTwei.div(2), ethAddress, user1, rate, false, {from:network});
 
             //trade
             payValueTwei = payValueTwei.add(orderDstTwei);
             await token.transfer(network, payValueTwei.add(orderDstTwei.div(2)));
             await token.approve(reserve.address, payValueTwei.add(orderDstTwei.div(2)), {from: network})
-            rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, 300, false, {from: network});
+            rc = await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, rate, false, {from:network});
             log("take 2.5 buy orders (remaining not removed) gas: " + rc.receipt.gasUsed);
-            await reserve.trade(tokenAdd, orderDstTwei.div(2), ethAddress, user1, 300, false, {from: network});
+            await reserve.trade(tokenAdd, orderDstTwei.div(2), ethAddress, user1, rate, false, {from:network});
     //        assert(false)
         });
 
@@ -3029,7 +3034,7 @@ contract('OrderbookReserve', async (accounts) => {
 
             await token.transfer(network, takeAmount);
             await token.approve(reserve.address, takeAmount, {from: network})
-            rc = await reserve.trade(tokenAdd, takeAmount, ethAddress, user1, 300, false, {from: network});
+            rc = await reserve.trade(tokenAdd, takeAmount, ethAddress, user1, rate, false, {from:network});
 
             log("take partial order gas (remaining not removed): " + rc.receipt.gasUsed);
 
@@ -3064,7 +3069,7 @@ contract('OrderbookReserve', async (accounts) => {
 
             await token.transfer(network, tokenPayAmount);
             await token.approve(reserve.address, tokenPayAmount, {from: network})
-            rc = await reserve.trade(tokenAdd, tokenPayAmount, ethAddress, user1, 300, false, {from: network});
+            rc = await reserve.trade(tokenAdd, tokenPayAmount, ethAddress, user1, rate, false, {from:network});
 
             log("take partial order gas (remaining removed): " + rc.receipt.gasUsed);
 
@@ -3099,7 +3104,7 @@ contract('OrderbookReserve', async (accounts) => {
             let userInitialTokBalance = await token.balanceOf(user1);
 
             //trade
-            rc = await reserve.trade(ethAddress, totalPayValueWei, tokenAdd, user1, 300, false, {from: network, value: totalPayValueWei});
+            rc = await reserve.trade(ethAddress, totalPayValueWei, tokenAdd, user1, rate, false, {from:network, value: totalPayValueWei});
             log("take 3 sell orders gas: " + rc.receipt.gasUsed);
 
             orderList = await reserve.getTokenToEthOrderList();
@@ -3133,7 +3138,7 @@ contract('OrderbookReserve', async (accounts) => {
 
             //trade
             let payValueWei = orderDstWei.mul(0.5).add(3000);
-            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: payValueWei});
+            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from:network, value: payValueWei});
             log("take 0.5 sell orders. (remaining removed) gas: " + rc.receipt.gasUsed);
 
             orderList = await reserve.getTokenToEthOrderList();
@@ -3141,7 +3146,7 @@ contract('OrderbookReserve', async (accounts) => {
 
             //trade
             payValueWei = payValueWei.add(orderDstWei);
-            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: payValueWei});
+            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from:network, value: payValueWei});
             log("take 1.5 sell orders. (remaining removed) gas: " + rc.receipt.gasUsed);
 
             orderList = await reserve.getTokenToEthOrderList();
@@ -3149,7 +3154,7 @@ contract('OrderbookReserve', async (accounts) => {
 
             //trade
             payValueWei = payValueWei.add(orderDstWei);
-            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: payValueWei});
+            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from:network, value: payValueWei});
             log("take 2.5 sell orders. (remaining removed) gas: " + rc.receipt.gasUsed);
 
             orderList = await reserve.getTokenToEthOrderList();
@@ -3176,9 +3181,9 @@ contract('OrderbookReserve', async (accounts) => {
 
             //trade
             let payValueWei = orderDstWei.mul(0.5).sub(3000);
-            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: payValueWei});
+            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from:network, value: payValueWei});
             log("take 0.5 sell orders. (remaining left) gas: " + rc.receipt.gasUsed);
-            await reserve.trade(ethAddress, orderDstWei.div(2), tokenAdd, user1, 300, false, {from: network, value: orderDstWei.div(2)});
+            await reserve.trade(ethAddress, orderDstWei.div(2), tokenAdd, user1, rate, false, {from:network, value: orderDstWei.div(2)});
 
             //remove left part of order
             orderList = await reserve.getTokenToEthOrderList();
@@ -3186,21 +3191,21 @@ contract('OrderbookReserve', async (accounts) => {
 
             //trade
             payValueWei = payValueWei.add(orderDstWei);
-            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: payValueWei});
+            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from:network, value: payValueWei});
             log("take 1.5 sell orders. (remaining left) gas: " + rc.receipt.gasUsed);
-            await reserve.trade(ethAddress, orderDstWei.div(2), tokenAdd, user1, 300, false, {from: network, value: orderDstWei.div(2)});
+            await reserve.trade(ethAddress, orderDstWei.div(2), tokenAdd, user1, rate, false, {from:network, value: orderDstWei.div(2)});
 
             orderList = await reserve.getTokenToEthOrderList();
             assert.equal(orderList.length, 3);
 
             //trade
             payValueWei = payValueWei.add(orderDstWei);
-            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, 300, false, {from: network, value: payValueWei});
+            rc = await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from:network, value: payValueWei});
             log("take 2.5 sell orders. (remaining left) gas: " + rc.receipt.gasUsed);
             orderList = await reserve.getTokenToEthOrderList();
             assert.equal(orderList.length, 1);
 
-            await reserve.trade(ethAddress, orderDstWei.div(2), tokenAdd, user1, 300, false, {from: network, value: orderDstWei.div(2)});
+            await reserve.trade(ethAddress, orderDstWei.div(2), tokenAdd, user1, rate, false, {from:network, value: orderDstWei.div(2)});
 
             orderList = await reserve.getTokenToEthOrderList();
             assert.equal(orderList.length, 0);
@@ -3229,7 +3234,7 @@ contract('OrderbookReserve', async (accounts) => {
         //  function trade(ERC20 srcToken, uint srcAmount, ERC20 destToken, address destAddress, uint conversionRate, bool validate)
             await token.transfer(network, totalPayAmountTwei);
             await token.approve(reserve.address, totalPayAmountTwei, {from: network})
-            rc = await reserve.trade(tokenAdd, totalPayAmountTwei, ethAddress, user1, 300, false, {from: network});
+            rc = await reserve.trade(tokenAdd, totalPayAmountTwei, ethAddress, user1, rate, false, {from:network});
 
             log("take gas 9 full orders from 1 maker: " + rc.receipt.gasUsed);
 
@@ -3266,7 +3271,7 @@ contract('OrderbookReserve', async (accounts) => {
             totalPayAmountTwei = totalPayAmountTwei.sub(orderDstTwei);
             await token.transfer(network, totalPayAmountTwei);
             await token.approve(reserve.address, totalPayAmountTwei, {from: network})
-            rc = await reserve.trade(tokenAdd, totalPayAmountTwei, ethAddress, user1, 300, false, {from: network});
+            rc = await reserve.trade(tokenAdd, totalPayAmountTwei, ethAddress, user1, rate, false, {from:network});
 
             log("take 9 full orders one partial. remaining order stays in book: " + rc.receipt.gasUsed);
 
@@ -3304,7 +3309,7 @@ contract('OrderbookReserve', async (accounts) => {
             totalPayAmountTwei = totalPayAmountTwei.sub(100000);
             await token.transfer(network, totalPayAmountTwei);
             await token.approve(reserve.address, totalPayAmountTwei, {from: network})
-            rc = await reserve.trade(tokenAdd, totalPayAmountTwei, ethAddress, user1, 300, false, {from: network});
+            rc = await reserve.trade(tokenAdd, totalPayAmountTwei, ethAddress, user1, rate, false, {from:network});
 
             log("take 9 full orders one partial. remaining order removed from book: " + rc.receipt.gasUsed);
 
@@ -3368,7 +3373,7 @@ contract('OrderbookReserve', async (accounts) => {
         //  function trade(ERC20 srcToken, uint srcAmount, ERC20 destToken, address destAddress, uint conversionRate, bool validate)
             await token.transfer(network, totalPayAmountTwei);
             await token.approve(reserve.address, totalPayAmountTwei, {from: network})
-            rc = await reserve.trade(tokenAdd, totalPayAmountTwei, ethAddress, user1, 300, false, {from: network});
+            rc = await reserve.trade(tokenAdd, totalPayAmountTwei, ethAddress, user1, rate, false, {from:network});
 
             log("take gas 9 full orders from 3 makers: " + rc.receipt.gasUsed);
 
@@ -3646,7 +3651,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
 
         //see can take orders
         let totalPayValue = orderDstWei.mul(3).add(600);
-        rc = await reserve.trade(ethAddress, totalPayValue, tokenAdd, user1, 300, false, {from: network, value: totalPayValue});
+        rc = await reserve.trade(ethAddress, totalPayValue, tokenAdd, user1, rate, false, {from:network, value: totalPayValue});
     });
 
     it("create knc rate that sets stake amount equal to expected burn amount, see can take order", async() => {
@@ -3695,7 +3700,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
 
         //see can take order
         let totalPayValue = orderDstWei;
-        rc = await reserve.trade(ethAddress, totalPayValue, tokenAdd, user1, 300, false, {from: network, value: totalPayValue});
+        rc = await reserve.trade(ethAddress, totalPayValue, tokenAdd, user1, rate, false, {from:network, value: totalPayValue});
     });
 
     it("change knc rate so stake amount < burn amount, see get rate blocked == returns 0", async() => {
