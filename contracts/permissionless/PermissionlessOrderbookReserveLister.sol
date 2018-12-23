@@ -35,7 +35,7 @@ contract PermissionlessOrderbookReserveLister {
     uint public maxOrdersPerTrade;          // set in order book maximum orders to be traversed in rate query and trade
 
     InternalNetworkInterface public kyberNetworkContract;
-    OrderFactoryInterface public orderFactoryContract;
+    OrderListFactoryInterface public orderFactoryContract;
     MedianizerInterface public medianizerContract;
     ERC20 public kncToken;
 
@@ -46,7 +46,7 @@ contract PermissionlessOrderbookReserveLister {
 
     function PermissionlessOrderbookReserveLister(
         InternalNetworkInterface kyber,
-        OrderFactoryInterface factory,
+        OrderListFactoryInterface factory,
         MedianizerInterface medianizer,
         ERC20 knc,
         uint maxOrders,
@@ -82,6 +82,7 @@ contract PermissionlessOrderbookReserveLister {
             burner: kyberNetworkContract.feeBurnerContract(),
             network: kyberNetworkContract,
             medianizer: medianizerContract,
+            factory: orderFactoryContract,
             minNewOrderUsd: minNewOrderValueUsd,
             maxOrdersPerTrade: maxOrdersPerTrade,
             burnFeeBps: ORDERBOOK_BURN_FEE_BPS
@@ -96,7 +97,7 @@ contract PermissionlessOrderbookReserveLister {
     /// @dev anyone can call
     function initOrderbookContract(ERC20 token) public returns(bool) {
         require(reserveListingStage[token] == ListingStage.RESERVE_ADDED);
-        require(reserves[token].init(orderFactoryContract));
+        require(reserves[token].init());
 
         reserveListingStage[token] = ListingStage.RESERVE_INIT;
         TokenOrderbookListingStage(token, ListingStage.RESERVE_INIT);

@@ -41,6 +41,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         FeeBurnerRateInterface feeBurner;
         address kyberNetwork;
         MedianizerInterface medianizer; // price feed Eth - USD from maker DAO.
+        OrderListFactoryInterface orderListFactory;
     }
 
     //struct for getOrderData() return value. used only in memory.
@@ -77,6 +78,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         address burner,
         address network,
         MedianizerInterface medianizer,
+        OrderListFactoryInterface factory,
         uint minNewOrderUsd,
         uint maxOrdersPerTrade,
         uint burnFeeBps
@@ -89,6 +91,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         require(burner != address(0));
         require(network != address(0));
         require(medianizer != address(0));
+        require(factory != address(0));
         require(burnFeeBps != 0);
         require(burnFeeBps <= MAX_BURN_FEE_BPS);
         require(maxOrdersPerTrade != 0);
@@ -97,6 +100,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         contracts.kyberNetwork = network;
         contracts.feeBurner = FeeBurnerRateInterface(burner);
         contracts.medianizer = medianizer;
+        contracts.orderListFactory = factory;
         contracts.kncToken = knc;
         contracts.token = reserveToken;
 
@@ -113,12 +117,12 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     ///@dev separate init function for this contract, if this init is in the C'tor. gas consumption too high.
-    function init(OrderFactoryInterface orderFactory) public returns(bool) {
+    function init() public returns(bool) {
         if ((tokenToEthList != address(0)) && (ethToTokenList != address(0))) return true;
         if ((tokenToEthList != address(0)) || (ethToTokenList != address(0))) revert();
 
-        tokenToEthList = orderFactory.newOrdersContract(this);
-        ethToTokenList = orderFactory.newOrdersContract(this);
+        tokenToEthList = contracts.orderListFactory.newOrdersContract(this);
+        ethToTokenList = contracts.orderListFactory.newOrdersContract(this);
 
         return true;
     }
@@ -162,6 +166,11 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return calcRateFromQty(srcQty, totalUserDstAmount, getDecimals(src), getDecimals(dst));
     }
 
+    struct Amounts {
+        uint128 userRemainingSrc;
+        uint128 totalUserDst;
+    }
+
     event OrderbookReserveTrade(ERC20 srcToken, ERC20 dstToken, uint srcAmount, uint dstAmount);
 
     /* solhint-disable function-max-lines */
@@ -185,31 +194,33 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         conversionRate;
         validate;
-        OrderListInterface list = (srcToken == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
+        OrderListInterface list;
 
         if (srcToken == ETH_TOKEN_ADDRESS) {
             require(msg.value == srcAmount);
+            list = tokenToEthList;
         } else {
             require(msg.value == 0);
             require(srcToken.transferFrom(msg.sender, this, srcAmount));
+            list = ethToTokenList;
         }
 
         uint32 orderId;
         OrderData memory orderData;
-        uint128 userRemainingSrcQty = uint128(srcAmount);
-        uint128 totalUserDstAmount = 0;
+        Amounts memory amounts;
+        amounts.userRemainingSrc = uint128(srcAmount);
 
         for (
             (orderId, orderData.isLastOrder) = list.getFirstOrder();
-            ((userRemainingSrcQty > 0) && (!orderData.isLastOrder));
+            ((amounts.userRemainingSrc > 0) && (!orderData.isLastOrder));
             orderId = orderData.nextId
         ) {
         // maker dst quantity is the requested quantity he wants to receive. user src quantity is what user gives.
         // so user src quantity is matched with maker dst quantity
             orderData = getOrderData(list, orderId);
-            if (orderData.dstAmount <= userRemainingSrcQty) {
-                totalUserDstAmount += orderData.srcAmount;
-                userRemainingSrcQty -= orderData.dstAmount;
+            if (orderData.dstAmount <= amounts.userRemainingSrc) {
+                amounts.totalUserDst += orderData.srcAmount;
+                amounts.userRemainingSrc -= orderData.dstAmount;
                 require(takeFullOrder({
                     maker: orderData.maker,
                     orderId: orderId,
@@ -219,32 +230,32 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
                     userDstAmount: orderData.srcAmount
                 }));
             } else {
-                uint128 partialDstQty = orderData.srcAmount * userRemainingSrcQty / orderData.dstAmount;
-                totalUserDstAmount += partialDstQty;
+                amounts.totalUserDst += orderData.srcAmount * amounts.userRemainingSrc / orderData.dstAmount;
                 require(takePartialOrder({
                     maker: orderData.maker,
                     orderId: orderId,
                     userSrc: srcToken,
                     userDst: dstToken,
-                    userPartialSrcAmount: userRemainingSrcQty,
-                    userTakeDstAmount: partialDstQty,
+                    userPartialSrcAmount: amounts.userRemainingSrc,
                     orderSrcAmount: orderData.srcAmount,
                     orderDstAmount: orderData.dstAmount
                 }));
-                userRemainingSrcQty = 0;
+                amounts.userRemainingSrc = 0;
             }
         }
 
-        require(userRemainingSrcQty == 0 && totalUserDstAmount > 0);
+        require(amounts.userRemainingSrc == 0);
+        require(conversionRate == calcRateFromQty(srcAmount, amounts.totalUserDst, decimals[srcToken],
+                    decimals[dstToken]));
 
         //all orders were successfully taken. send to dstAddress
         if (dstToken == ETH_TOKEN_ADDRESS) {
-            dstAddress.transfer(totalUserDstAmount);
+            dstAddress.transfer(amounts.totalUserDst);
         } else {
-            require(dstToken.transfer(dstAddress, totalUserDstAmount));
+            require(dstToken.transfer(dstAddress, amounts.totalUserDst));
         }
 
-        OrderbookReserveTrade(srcToken, dstToken, srcAmount, totalUserDstAmount);
+        OrderbookReserveTrade(srcToken, dstToken, srcAmount, amounts.totalUserDst);
         return true;
     }
     /* solhint-enable function-max-lines */
@@ -577,7 +588,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return(weiAmount * makerBurnFeeBps * contracts.feeBurner.kncPerEthRatePrecision() / (10000 * PRECISION));
     }
 
-    function getEthToTokenMakerOrderIds(address maker) public view returns(uint32[] orderList) {
+    function getEthToTokenMakerOrderIds(address maker) external view returns(uint32[] orderList) {
         OrderIdData storage makerOrders = makerOrdersEthToToken[maker];
         orderList = new uint32[](getNumActiveOrderIds(makerOrders));
         uint activeOrder = 0;
@@ -587,7 +598,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         }
     }
 
-    function getTokenToEthMakerOrderIds(address maker) public view returns(uint32[] orderList) {
+    function getTokenToEthMakerOrderIds(address maker) external view returns(uint32[] orderList) {
         OrderIdData storage makerOrders = makerOrdersTokenToEth[maker];
         orderList = new uint32[](getNumActiveOrderIds(makerOrders));
         uint activeOrder = 0;
@@ -597,12 +608,12 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         }
     }
 
-    function getEthToTokenOrderList() public view returns(uint32[] orderList) {
+    function getEthToTokenOrderList() external view returns(uint32[] orderList) {
         OrderListInterface list = ethToTokenList;
         return getList(list);
     }
 
-    function getTokenToEthOrderList() public view returns(uint32[] orderList) {
+    function getTokenToEthOrderList() external view returns(uint32[] orderList) {
         OrderListInterface list = tokenToEthList;
         return getList(list);
     }
@@ -738,8 +749,9 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     function bindOrderStakes(address maker, int weiAmount) internal returns(bool) {
 
         if (weiAmount < 0) {
-            if (uint(-weiAmount) > makerTotalOrdersWei[maker]) weiAmount = int(-makerTotalOrdersWei[maker]);
-            makerTotalOrdersWei[maker] -= uint(-weiAmount);
+            uint decreaseWeiAmount = uint(-weiAmount);
+            if (decreaseWeiAmount > makerTotalOrdersWei[maker]) decreaseWeiAmount = makerTotalOrdersWei[maker];
+            makerTotalOrdersWei[maker] -= decreaseWeiAmount;
             return true;
         }
 
@@ -842,7 +854,6 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         ERC20 userSrc,
         ERC20 userDst,
         uint128 userPartialSrcAmount,
-        uint128 userTakeDstAmount,
         uint128 orderSrcAmount,
         uint128 orderDstAmount
     )
@@ -850,8 +861,10 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         returns(bool)
     {
         require(userPartialSrcAmount < orderDstAmount);
+        uint128 userTakeDstAmount = orderSrcAmount * userPartialSrcAmount / orderDstAmount;
         require(userTakeDstAmount < orderSrcAmount);
 
+        //must reuse parameters, otherwise stack too deep error.
         orderSrcAmount -= userTakeDstAmount;
         orderDstAmount -= userPartialSrcAmount;
 
