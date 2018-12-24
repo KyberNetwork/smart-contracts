@@ -624,6 +624,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return(weiAmount * makerBurnFeeBps * contracts.feeBurner.kncPerEthRatePrecision() / (10000 * PRECISION));
     }
 
+    ///@dev This function is not fully optimized gas wise. Consider before calling on chain.
     function getEthToTokenMakerOrderIds(address maker) public view returns(uint32[] orderList) {
         OrderIdData storage makerOrders = makerOrdersEthToToken[maker];
         orderList = new uint32[](getNumActiveOrderIds(makerOrders));
@@ -634,6 +635,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         }
     }
 
+    ///@dev This function is not fully optimized gas wise. Consider before calling on chain.
     function getTokenToEthMakerOrderIds(address maker) public view returns(uint32[] orderList) {
         OrderIdData storage makerOrders = makerOrdersTokenToEth[maker];
         orderList = new uint32[](getNumActiveOrderIds(makerOrders));
@@ -644,11 +646,13 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         }
     }
 
+    ///@dev This function is not fully optimized gas wise. Consider before calling on chain.
     function getEthToTokenOrderList() public view returns(uint32[] orderList) {
         OrderListInterface list = ethToTokenList;
         return getList(list);
     }
 
+    ///@dev This function is not fully optimized gas wise. Consider before calling on chain.
     function getTokenToEthOrderList() public view returns(uint32[] orderList) {
         OrderListInterface list = tokenToEthList;
         return getList(list);
