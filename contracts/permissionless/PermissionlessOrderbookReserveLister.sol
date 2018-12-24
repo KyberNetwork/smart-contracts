@@ -151,6 +151,7 @@ contract PermissionlessOrderbookReserveLister {
         require(kyberNetworkContract.removeReserve(KyberReserveInterface(reserves[token]), hintReserveIndex));
         reserveListingStage[token] = ListingStage.NO_RESERVE;
         reserves[token] = OrderbookReserveInterface(0);
+        TokenOrderbookListingStage(token, ListingStage.NO_RESERVE);
     }
 
     /// @dev permission less reserve currently supports one token per reserve.
