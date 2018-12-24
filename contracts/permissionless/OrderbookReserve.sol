@@ -35,12 +35,15 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint minOrderSizeWei;       // below this value order will be removed.
     }
 
+    uint public kncPerEthBaseRatePrecision; // according to base rate all stakes are calculated.
+
     struct ExternalContracts {
         ERC20 kncToken;          // not constant. to enable testing while not on main net
         ERC20 token;             // only supported token.
         FeeBurnerRateInterface feeBurner;
         address kyberNetwork;
         MedianizerInterface medianizer; // price feed Eth - USD from maker DAO.
+        OrderListFactoryInterface orderListFactory;
     }
 
     //struct for getOrderData() return value. used only in memory.
@@ -77,6 +80,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         address burner,
         address network,
         MedianizerInterface medianizer,
+        OrderListFactoryInterface factory,
         uint minNewOrderUsd,
         uint maxOrdersPerTrade,
         uint burnFeeBps
@@ -89,6 +93,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         require(burner != address(0));
         require(network != address(0));
         require(medianizer != address(0));
+        require(factory != address(0));
         require(burnFeeBps != 0);
         require(burnFeeBps <= MAX_BURN_FEE_BPS);
         require(maxOrdersPerTrade != 0);
@@ -97,6 +102,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         contracts.kyberNetwork = network;
         contracts.feeBurner = FeeBurnerRateInterface(burner);
         contracts.medianizer = medianizer;
+        contracts.orderListFactory = factory;
         contracts.kncToken = knc;
         contracts.token = reserveToken;
 
@@ -110,23 +116,34 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         //can only support tokens with decimals() API
         setDecimals(contracts.token);
+
+        kncPerEthBaseRatePrecision = contracts.feeBurner.kncPerEthRatePrecision();
     }
 
     ///@dev separate init function for this contract, if this init is in the C'tor. gas consumption too high.
-    function init(OrderFactoryInterface orderFactory) public returns(bool) {
+    function init() public returns(bool) {
         if ((tokenToEthList != address(0)) && (ethToTokenList != address(0))) return true;
         if ((tokenToEthList != address(0)) || (ethToTokenList != address(0))) revert();
 
-        tokenToEthList = orderFactory.newOrdersContract(this);
-        ethToTokenList = orderFactory.newOrdersContract(this);
+        tokenToEthList = contracts.orderListFactory.newOrdersContract(this);
+        ethToTokenList = contracts.orderListFactory.newOrdersContract(this);
 
         return true;
+    }
+
+    function setKncPerEthBaseRate() public {
+        uint kncPerEthRatePrecision = contracts.feeBurner.kncPerEthRatePrecision();
+        if (kncPerEthRatePrecision < kncPerEthBaseRatePrecision) {
+            kncPerEthBaseRatePrecision = kncPerEthRatePrecision;
+        }
     }
 
     function getConversionRate(ERC20 src, ERC20 dst, uint srcQty, uint blockNumber) public view returns(uint) {
         require((src == ETH_TOKEN_ADDRESS) || (dst == ETH_TOKEN_ADDRESS));
         require((src == contracts.token) || (dst == contracts.token));
         require(srcQty <= MAX_QTY);
+
+        if (kncRateBlocksTrade()) return 0;
 
         blockNumber; // in this reserve no order expiry == no use for blockNumber. here to avoid compiler warning.
 
@@ -164,8 +181,6 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
     event OrderbookReserveTrade(ERC20 srcToken, ERC20 dstToken, uint srcAmount, uint dstAmount);
 
-    /* solhint-disable function-max-lines */
-    /* Most of the lines come from spread function calls. We find this function readable enough.*/
     function trade(
         ERC20 srcToken,
         uint srcAmount,
@@ -185,7 +200,6 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         conversionRate;
         validate;
-        OrderListInterface list = (srcToken == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
 
         if (srcToken == ETH_TOKEN_ADDRESS) {
             require(msg.value == srcAmount);
@@ -193,6 +207,36 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
             require(msg.value == 0);
             require(srcToken.transferFrom(msg.sender, this, srcAmount));
         }
+
+        uint totalDstAmount = doTrade(
+                srcToken,
+                srcAmount,
+                dstToken
+            );
+
+        require(conversionRate <= calcRateFromQty(srcAmount, totalDstAmount, getDecimals(srcToken),
+            getDecimals(dstToken)));
+
+        //all orders were successfully taken. send to dstAddress
+        if (dstToken == ETH_TOKEN_ADDRESS) {
+            dstAddress.transfer(totalDstAmount);
+        } else {
+            require(dstToken.transfer(dstAddress, totalDstAmount));
+        }
+
+        OrderbookReserveTrade(srcToken, dstToken, srcAmount, totalDstAmount);
+        return true;
+    }
+
+    function doTrade(
+        ERC20 srcToken,
+        uint srcAmount,
+        ERC20 dstToken
+    )
+        internal
+        returns(uint)
+    {
+        OrderListInterface list = (srcToken == ETH_TOKEN_ADDRESS) ? tokenToEthList : ethToTokenList;
 
         uint32 orderId;
         OrderData memory orderData;
@@ -237,17 +281,8 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         require(userRemainingSrcQty == 0 && totalUserDstAmount > 0);
 
-        //all orders were successfully taken. send to dstAddress
-        if (dstToken == ETH_TOKEN_ADDRESS) {
-            dstAddress.transfer(totalUserDstAmount);
-        } else {
-            require(dstToken.transfer(dstAddress, totalUserDstAmount));
-        }
-
-        OrderbookReserveTrade(srcToken, dstToken, srcAmount, totalUserDstAmount);
-        return true;
+        return totalUserDstAmount;
     }
-    /* solhint-enable function-max-lines */
 
     ///@param srcAmount is the token amount that will be payed. must be deposited before hand in the makers account.
     ///@param dstAmount is the eth amount the maker expects to get for his tokens.
@@ -489,6 +524,12 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return true;
     }
 
+    ///@dev Each maker stakes per order KNC that is factor of the required burn amount.
+    ///@dev If Knc per Eth rate becomes lower by more then factor, stake will not be enough and trade will be blocked.
+    function kncRateBlocksTrade() public view returns (bool) {
+        return (contracts.feeBurner.kncPerEthRatePrecision() > kncPerEthBaseRatePrecision * BURN_TO_STAKE_FACTOR);
+    }
+
     function getTokenToEthAddOrderHint(uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
         require(dstAmount >= limits.minNewOrderSizeWei);
         return tokenToEthList.findPrevOrderId(srcAmount, dstAmount);
@@ -561,12 +602,14 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return ethToTokenList.getOrderDetails(orderId);
     }
 
-    function makerStakedKnc(address maker) public view returns (uint) {
+    function makerRequiredKncStake(address maker) public view returns (uint) {
         return(calcKncStake(makerTotalOrdersWei[maker]));
     }
 
     function makerUnlockedKnc(address maker) public view returns (uint) {
-        return (makerKnc[maker] - makerStakedKnc(maker));
+        uint requiredKncStake = makerRequiredKncStake(maker);
+        if (requiredKncStake > makerKnc[maker]) return 0;
+        return (makerKnc[maker] - requiredKncStake);
     }
 
     function calcKncStake(uint weiAmount) public view returns(uint) {
@@ -574,6 +617,10 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     function calcBurnAmount(uint weiAmount) public view returns(uint) {
+        return(weiAmount * makerBurnFeeBps * kncPerEthBaseRatePrecision / (10000 * PRECISION));
+    }
+
+    function calcBurnAmountFromFeeBurner(uint weiAmount) public view returns(uint) {
         return(weiAmount * makerBurnFeeBps * contracts.feeBurner.kncPerEthRatePrecision() / (10000 * PRECISION));
     }
 
@@ -738,8 +785,9 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     function bindOrderStakes(address maker, int weiAmount) internal returns(bool) {
 
         if (weiAmount < 0) {
-            if (uint(-weiAmount) > makerTotalOrdersWei[maker]) weiAmount = int(-makerTotalOrdersWei[maker]);
-            makerTotalOrdersWei[maker] -= uint(-weiAmount);
+            uint decreaseWeiAmount = uint(-weiAmount);
+            if (decreaseWeiAmount > makerTotalOrdersWei[maker]) decreaseWeiAmount = makerTotalOrdersWei[maker];
+            makerTotalOrdersWei[maker] -= decreaseWeiAmount;
             return true;
         }
 
@@ -767,14 +815,10 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         if (weiForBurn == 0) return true;
 
-        uint burnAmount = calcBurnAmount(weiForBurn);
+        uint burnAmount = calcBurnAmountFromFeeBurner(weiForBurn);
 
-        // if not enough knc to burn. just zero knc amount.
-        if (makerKnc[maker] < burnAmount) {
-            makerKnc[maker] = 0;
-        } else {
-            makerKnc[maker] -= burnAmount;
-        }
+        require(makerKnc[maker] >= burnAmount);
+        makerKnc[maker] -= burnAmount;
 
         return true;
     }
@@ -852,6 +896,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         require(userPartialSrcAmount < orderDstAmount);
         require(userTakeDstAmount < orderSrcAmount);
 
+        //must reuse parameters, otherwise stack too deep error.
         orderSrcAmount -= userTakeDstAmount;
         orderDstAmount -= userPartialSrcAmount;
 

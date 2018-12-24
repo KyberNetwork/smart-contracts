@@ -8,8 +8,6 @@ interface OrderListInterface {
     function update(uint32 orderId, uint128 srcAmount, uint128 dstAmount) public returns (bool);
     function getFirstOrder() public view returns(uint32 orderId, bool isEmpty);
     function allocateIds(uint32 howMany) public returns(uint32);
-    function getTailId() public view returns(uint32);
-    function getHeadId() public view returns(uint32);
     function findPrevOrderId(uint128 srcAmount, uint128 dstAmount) public view returns(uint32);
 
     function addAfterId(address maker, uint32 orderId, uint128 srcAmount, uint128 dstAmount, uint32 prevId) public

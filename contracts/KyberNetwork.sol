@@ -188,9 +188,9 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
             listPairs(reserve, token, true, add);
 
             if (add) {
-                token.approve(reserve, 2**255); // approve infinity
+                require(token.approve(reserve, 2**255)); // approve infinity
             } else {
-                token.approve(reserve, 0);
+                require(token.approve(reserve, 0));
             }
 
             ListReservePairs(reserve, token, ETH_TOKEN_ADDRESS, add);
@@ -459,6 +459,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
                     //remove
                     reserveArr[i] = reserveArr[reserveArr.length - 1];
                     reserveArr.length--;
+                    break;
                 }
             }
         }
@@ -470,7 +471,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     }
 
     event KyberTrade(address indexed trader, ERC20 src, ERC20 dest, uint srcAmount, uint dstAmount,
-        address destAddress, uint ethWeiValue, bytes hint);
+        address destAddress, uint ethWeiValue, address reserve1, address reserve2, bytes hint);
 
     /* solhint-disable function-max-lines */
     //  Most of the lines here are functions calls spread over multiple lines. We find this function readable enough
@@ -527,7 +528,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         if (tradeInput.dest != ETH_TOKEN_ADDRESS) //"fake" trade. (ether to ether) - don't burn.
             require(feeBurnerContract.handleFees(weiAmount, rateResult.reserve2, tradeInput.walletId));
         KyberTrade(tradeInput.trader, tradeInput.src, tradeInput.dest, actualSrcAmount, actualDestAmount,
-            tradeInput.destAddress, weiAmount, tradeInput.hint);
+            tradeInput.destAddress, weiAmount, rateResult.reserve1, rateResult.reserve2, tradeInput.hint);
 
         return actualDestAmount;
     }
