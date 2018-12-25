@@ -174,7 +174,7 @@ contract TestTokenFailing is StandardToken {
     uint public decimals = 18;
     uint public INITIAL_SUPPLY = 10**(50+18);
 
-    function TestToken(string _name, string _symbol, uint _decimals) public {
+    function TestTokenFailing(string _name, string _symbol, uint _decimals) public {
         totalSupply = INITIAL_SUPPLY;
         balances[msg.sender] = INITIAL_SUPPLY;
         name = _name;
