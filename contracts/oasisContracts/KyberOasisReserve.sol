@@ -29,6 +29,10 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
     WethInterface public wethToken;
     mapping(address=>bool) public isTokenListed;
     mapping(address=>uint) public tokenMinSrcAmount;
+    mapping(address=>uint) public minTokenBalance;
+    mapping(address=>uint) public maxTokenBalance;
+    mapping(address=>uint) public internalPricePremiumBps;
+    mapping(address=>uint) public minOasisSpreadForinternalPricingBps;
     bool public tradeEnabled;
     uint public feeBps;
 
@@ -70,6 +74,10 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         require(token.approve(otc, 2**255));
         isTokenListed[token] = true;
         tokenMinSrcAmount[token] = minSrcAmount;
+        minTokenBalance[token] = 2 ** 255; // disable by default
+        maxTokenBalance[token] = 0; // disable by default;
+        internalPricePremiumBps[token] = 0; // NA by default
+        minOasisSpreadForinternalPricingBps[token] = 0; // NA by default
     }
 
     function delistToken(ERC20 token) public onlyAdmin {
@@ -78,6 +86,31 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         require(token.approve(otc, 0));
         delete isTokenListed[token];
         delete tokenMinSrcAmount[token];
+        delete minTokenBalance[token];
+        delete maxTokenBalance[token];
+        delete internalPricePremiumBps[token];
+        delete minOasisSpreadForinternalPricingBps[token];
+    }
+
+    function setInternalPriceAdminParams(ERC20 token,
+                                         uint minSpreadBps,
+                                         uint premiumBps) public onlyAdmin {
+        require(isTokenListed[token]);
+        require(premiumBps <= 500); // premium <= 5%
+        require(minSpreadBps <= 1000); // min spread <= 10%
+
+        internalPricePremiumBps[token] = premiumBps;
+        minOasisSpreadForinternalPricingBps[token] = minSpreadBps;
+    }
+
+    function setInternalInventoryMinMax(ERC20 token,
+                                        uint  minBalance,
+                                        uint  maxBalance) public onlyOperator {
+        require(isTokenListed[token]);
+
+        // don't require anything on min and max balance as it might be used for disable
+        minTokenBalance[token] = minBalance;
+        maxTokenBalance[token] = maxBalance;
     }
 
     event TradeExecute(
@@ -154,6 +187,48 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         return val * 10000 / (10000 - feeBps);
     }
 
+    function valueAfterAddingPremium(ERC20 token, uint val) public view returns(uint) {
+        require(val <= MAX_QTY);
+        uint premium = internalPricePremiumBps[token];
+
+        return val * (10000 + premium) / 10000;
+    }
+
+    function shouldUseInternalInventory(ERC20 token,
+                                        uint tokenVal,
+                                        uint ethVal,
+                                        bool ethToToken) public view returns(bool) {
+        require(tokenVal <= MAX_QTY);
+
+        uint tokenBalance = token.balanceOf(token);
+        if (ethToToken) {
+            if (tokenBalance < tokenVal) return false;
+            if (tokenBalance - tokenVal < minTokenBalance[token]) return false;
+        }
+        else {
+            if (this.balance < ethVal) return false;
+            if (tokenBalance + tokenVal > maxTokenBalance[token]) return false;
+        }
+
+        // check that spread in first level makes sense
+        uint x1; uint y1; uint x2; uint y2;
+        (,x1,y1) = getMatchingOffer(token, wethToken, 0);
+        (,y2,x2) = getMatchingOffer(wethToken, token, 0);
+
+        require(x1 <= MAX_QTY && x2 <= MAX_QTY && y1 <= MAX_QTY && y2 <= MAX_QTY);
+
+        // if one starts with x1, buy and sell, he ends up with x2*y1/y2
+
+        // if x1 < x2*y1/y2 there is an arbitrage
+        if (x1*y2 < x2*y1) return false;
+
+        // (x1 - x2*y1/y2)/x1 is spread = (x1*y2 - x2*y1)/(x1*y2)
+        if(10000 * (x1*y2 - x2*y1) < x1*y2*minOasisSpreadForinternalPricingBps[token]) return false;
+        
+
+        return true;
+    }
+
     function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
         uint  rate;
         uint  actualSrcQty;
@@ -186,13 +261,33 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         }
 
         // otc's terminology is of offer maker, so their sellGem is the taker's dest token.
-        (, offerPayAmt, offerBuyAmt) = getMatchingOffer(actualDest, actualSrc, actualSrcQty); 
+        (, offerPayAmt, offerBuyAmt) = getMatchingOffer(actualDest, actualSrc, actualSrcQty);
 
         // make sure to take only one level of order book to avoid gas inflation.
         if (actualSrcQty > offerBuyAmt) return 0;
 
+        bool tradeFromInventory = false;
+        uint valueWithPremium = valueAfterAddingPremium(token, offerPayAmt);
+        ERC20 token;
+        if (src == ETH_TOKEN_ADDRESS) {
+            token = dest;
+            tradeFromInventory = shouldUseInternalInventory(token,
+                                                            valueWithPremium,
+                                                            offerBuyAmt,
+                                                            true);
+        }
+        else {
+            token = src;
+            tradeFromInventory = shouldUseInternalInventory(token,
+                                                            offerBuyAmt,
+                                                            valueWithPremium,
+                                                            false);
+        }
+
         rate = calcRateFromQty(offerBuyAmt, offerPayAmt, COMMON_DECIMALS, COMMON_DECIMALS);
-        return valueAfterReducingFee(rate);
+
+        if (tradeFromInventory) return valueAfterAddingPremium(token,rate);
+        else return valueAfterReducingFee(rate);
     }
 
     function doTrade(
@@ -225,22 +320,32 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         uint destAmountIncludingFees = valueBeforeFeesWereReduced(userExpectedDestAmount);
 
         if (srcToken == ETH_TOKEN_ADDRESS) {
-            wethToken.deposit.value(msg.value)();
+            if(!shouldUseInternalInventory(destToken,
+                                           userExpectedDestAmount,
+                                           srcAmount,
+                                           true)) {
+                wethToken.deposit.value(msg.value)();
 
-            actualDestAmount = takeMatchingOffer(wethToken, destToken, srcAmount);
-            require(actualDestAmount >= destAmountIncludingFees);
+                actualDestAmount = takeMatchingOffer(wethToken, destToken, srcAmount);
+                require(actualDestAmount >= destAmountIncludingFees);
+            }
 
             // transfer back only requested dest amount.
             require(destToken.transfer(destAddress, userExpectedDestAmount));
         } else {
             require(srcToken.transferFrom(msg.sender, this, srcAmount));
- 
-            actualDestAmount = takeMatchingOffer(srcToken, wethToken, srcAmount);
-            require(actualDestAmount >= destAmountIncludingFees);
-            wethToken.withdraw(actualDestAmount);
+
+            if(!shouldUseInternalInventory(srcToken,
+                                           srcAmount,
+                                           userExpectedDestAmount,
+                                           false)) {
+                actualDestAmount = takeMatchingOffer(srcToken, wethToken, srcAmount);
+                require(actualDestAmount >= destAmountIncludingFees);
+                wethToken.withdraw(actualDestAmount);
+            }
 
             // transfer back only requested dest amount.
-            destAddress.transfer(userExpectedDestAmount); 
+            destAddress.transfer(userExpectedDestAmount);
         }
 
         TradeExecute(msg.sender, srcToken, srcAmount, destToken, userExpectedDestAmount, destAddress);
