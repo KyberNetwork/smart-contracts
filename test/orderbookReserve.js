@@ -7,6 +7,7 @@ const OrderList = artifacts.require("OrderList.sol");
 const OrderListFactory = artifacts.require("OrderListFactory.sol");
 const OrderbookReserve = artifacts.require("MockOrderbookReserve.sol");
 const TestTokenFailing = artifacts.require("TestTokenFailing.sol");
+const TestTokenTransferFailing = artifacts.require("TestTokenTransferFailing.sol");
 const MockMedianizer = artifacts.require("MockMedianizer.sol");
 const MockKyberNetwork = artifacts.require("MockKyberNetwork.sol");
 const PermissionlessOrderbookReserveLister = artifacts.require("PermissionlessOrderbookReserveLister.sol");
@@ -117,11 +118,8 @@ contract('OrderbookReserve', async (accounts) => {
     });
 
     beforeEach('setup contract for each test', async () => {
-
-//        log(feeBurner.address + " " + kncAddress + " " + tokenAdd)
         reserve = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address,
             ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
-//        log(reserve);
         await reserve.init();
     });
 
@@ -177,11 +175,11 @@ contract('OrderbookReserve', async (accounts) => {
         let permHintForGetRate = await reserve.permHint
     });
 
-    it("test trade event, take full order event, take partial order event", async()=> {
+    it("test events, 'take full order' event, 'take partial order' event", async()=> {
         let tokenWeiDepositAmount = 60 * 10 ** 18;
         let kncTweiDepositAmount = 600 * 10 ** 18;
         let ethWeiDepositAmount = 0 * 10 ** 18;
-        await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
+        await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
         let valueWei = new BigNumber(2 * 10 ** 18);
         let valueTwei = new BigNumber(12 * 10 ** 18);
@@ -327,19 +325,38 @@ contract('OrderbookReserve', async (accounts) => {
             await medianizer.setValid(true);
         })
 
-        it("verify get conversion rate reverts if qty > max_qty", async() => {
-            let qty = MAX_QTY;
-            let rate = await reserve.getConversionRate(tokenAdd, ethAddress, qty, 0);
+        it("verify can't set min order size Eth when price result from medianizer is out of range", async() => {
+            await reserve.setMinOrderSizeEth();
 
-            qty = qty.add(1);
+            let rxLimits = await reserve.limits();
+            let minNewOrderWeiValue = rxLimits[2].valueOf();
 
+            await medianizer.setEthPrice(0);
             try {
-                rate = await reserve.getConversionRate(tokenAdd, ethAddress, qty, 0);
+                await reserve.setMinOrderSizeEth();
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
 
+            rxLimits = await reserve.limits();
+            assert.equal(minNewOrderWeiValue, rxLimits[2].valueOf());
+
+            let maxUsdPerEth = await reserve.MAX_USD_PER_ETH();
+            let maxUsdPerEthInWei = maxUsdPerEth.mul(10 ** 18);
+
+            await medianizer.setEthPrice(maxUsdPerEthInWei);
+            try {
+                await reserve.setMinOrderSizeEth();
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            rxLimits = await reserve.limits();
+            assert.equal(minNewOrderWeiValue, rxLimits[2].valueOf());
+
+            await medianizer.setEthPrice(dollarsPerEthPrecision);
             await medianizer.setValid(true);
         })
 
@@ -411,7 +428,6 @@ contract('OrderbookReserve', async (accounts) => {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
 
-
             try {
                 rate = await reserve.getConversionRate(ethAddress, address, 10 ** 18, 0);
                 assert(false, "throw was expected in line above.")
@@ -420,11 +436,34 @@ contract('OrderbookReserve', async (accounts) => {
             }
         });
 
+        it("verify get hint reverts if Eth value is below min order value", async() => {
+            let weiAmount = new BigNumber(minNewOrderWei);
+            let tweiAmount = 9 * 10 ** 12;
+
+            await reserve.getEthToTokenAddOrderHint(weiAmount, tweiAmount);
+
+            try {
+                await reserve.getEthToTokenAddOrderHint(weiAmount.sub(1), tweiAmount);
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            await reserve.getTokenToEthAddOrderHint(tweiAmount, weiAmount);
+
+            try {
+                await reserve.getTokenToEthAddOrderHint(tweiAmount, weiAmount.sub(1));
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        })
+
         it("verify trade with token source only works for token->Eth. other options revert", async() => {
             let tokenWeiDepositAmount = 0 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = 10 * 10 ** 18;
-            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let valueWei = 5 * 10 ** 18;
             let valueTwei = 15 * 10 ** 18;
@@ -473,7 +512,7 @@ contract('OrderbookReserve', async (accounts) => {
             let tokenWeiDepositAmount = 60 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = 0 * 10 ** 18;
-            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let valueWei = 5 * 10 ** 18;
             let valueTwei = 15 * 10 ** 18;
@@ -514,7 +553,7 @@ contract('OrderbookReserve', async (accounts) => {
             let tokenWeiDepositAmount = 90 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = 5 * 10 ** 18;
-            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let valueWei = 5 * 10 ** 18;
             let valueTwei = 15 * 10 ** 18;
@@ -561,7 +600,7 @@ contract('OrderbookReserve', async (accounts) => {
             let tokenWeiDepositAmount = 0 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = 5 * 10 ** 18;
-            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let valueWei = 5 * 10 ** 18;
             let valueTwei = 15 * 10 ** 18;
@@ -585,6 +624,40 @@ contract('OrderbookReserve', async (accounts) => {
 
             try {
                 await reserve.trade(tokenAdd, payValueTwei, ethAddress, user1, rate, false, {from:network});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        });
+
+        it("verify trade eth to token reverts if token transfer fails", async() => {
+            let failToken = await TestTokenTransferFailing.new("failing", "fail", 18, {from: network});
+            let failAdd = failToken.address;
+            let aReserve = await OrderbookReserve.new(kncAddress, failAdd, feeBurner.address, network, medianizer.address,
+                        ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+            await aReserve.init();
+
+            let tokenWeiDepositAmount = new BigNumber(20 * 10 ** 18);
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let ethWeiDepositAmount = 5 * 10 ** 18;
+
+            await failToken.approve(aReserve.address, tokenWeiDepositAmount, {from: network});
+            await aReserve.depositToken(maker1, tokenWeiDepositAmount, {from: network});
+            await KNCToken.approve(aReserve.address, kncTweiDepositAmount);
+            await aReserve.depositKncForFee(maker1, kncTweiDepositAmount);
+            await aReserve.depositEther(maker1, {from: maker1, value: ethWeiDepositAmount});
+
+            let valueWei = 5 * 10 ** 18;
+            let valueTwei = 15 * 10 ** 18;
+
+            //add orders
+            await aReserve.submitTokenToEthOrder(valueTwei, valueWei, {from: maker1});
+
+            // legal trade
+            let payValueWei = 11000;
+
+            try {
+                await aReserve.trade(ethAddress, payValueWei, failAdd, user1, lowRate, false, {from: network, value: payValueWei});
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -787,7 +860,7 @@ contract('OrderbookReserve', async (accounts) => {
             let tokenWeiDepositAmount = 90 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = 10 * 10 ** 18;
-            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let valueWei = 5 * 10 ** 18;
             let valueTwei = 15 * 10 ** 18;
@@ -814,7 +887,7 @@ contract('OrderbookReserve', async (accounts) => {
             let tokenWeiDepositAmount = 0 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = 7 * 10 ** 18;
-            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let valueWei = 2 * 10 ** 18;
             let valueTwei = MAX_QTY.sub(1);
@@ -847,7 +920,7 @@ contract('OrderbookReserve', async (accounts) => {
             let tokenWeiDepositAmount = 0 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = 7 * 10 ** 18;
-            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let valueWei = 2 * 10 ** 18;
             let valueTwei = MAX_QTY.sub(1);
@@ -871,12 +944,11 @@ contract('OrderbookReserve', async (accounts) => {
             }
         });
 
-
         it("verify trade with not enough tokens for taker src amount, reverts.", async() => {
             let tokenWeiDepositAmount = 0 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = 7 * 10 ** 18;
-            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let valueWei = 2 * 10 ** 18;
             let valueTwei = new BigNumber(9 * 10 ** 18);
@@ -904,7 +976,7 @@ contract('OrderbookReserve', async (accounts) => {
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = 2 * 10 ** 18;
 
-            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let rxNumTwei = await reserve.makerFunds(maker1, tokenAdd);
             assert.equal(rxNumTwei.valueOf(), tokenWeiDepositAmount);
@@ -929,7 +1001,7 @@ contract('OrderbookReserve', async (accounts) => {
             let kncTweiDepositAmount = 60 * 10 ** 18;
             let ethWeiDepositAmount = 2 * 10 ** 18;
 
-            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let rxNumTwei = await reserve.makerFunds(maker1, tokenAdd);
             assert.equal(rxNumTwei.valueOf(), tokenWeiDepositAmount);
@@ -958,6 +1030,192 @@ contract('OrderbookReserve', async (accounts) => {
             rxKncTwei = await reserve.makerUnlockedKnc(maker1);
             assert.equal(rxKncTwei.valueOf(), (kncTweiDepositAmount / 2));
         });
+
+        it("test deposit token reverts when maker address 0", async()=> {
+            let tokenTweiDepositAmount = new BigNumber(2 * 10 ** 18);
+
+            await token.approve(reserve.address, tokenTweiDepositAmount);
+            try {
+                await reserve.depositToken(0, tokenTweiDepositAmount);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        })
+
+        it("test deposit token reverts when approve amount < deposit token call amount", async()=> {
+            let tokenTweiDepositAmount = new BigNumber(2 * 10 ** 18);
+
+            await token.approve(reserve.address, tokenTweiDepositAmount.sub(1));
+            try {
+                await reserve.depositToken(maker1, tokenTweiDepositAmount);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        })
+
+        it("test deposit token reverts when amount >= maxQty", async()=> {
+            let tokenTweiDepositAmount = new BigNumber(MAX_QTY);
+
+            await token.approve(reserve.address, tokenTweiDepositAmount);
+            try {
+                await reserve.depositToken(maker1, tokenTweiDepositAmount);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            await reserve.depositToken(maker1, tokenTweiDepositAmount.sub(1));
+        })
+
+        it("test deposit ether reverts for maker address 0", async()=> {
+            try {
+                await reserve.depositEther(0, {value: 1000});
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            await reserve.depositEther(maker1, {value: 1000});
+        })
+
+        it("test deposit knc reverts when maker address 0", async()=> {
+            let tokenTweiDepositAmount = new BigNumber(2 * 10 ** 18);
+
+            await KNCToken.approve(reserve.address, tokenTweiDepositAmount);
+            try {
+                await reserve.depositKncForFee(0, tokenTweiDepositAmount);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        })
+
+        it("test deposit knc reverts when approve amount < deposit token call amount", async()=> {
+            let tokenTweiDepositAmount = new BigNumber(2 * 10 ** 18);
+
+            await KNCToken.approve(reserve.address, tokenTweiDepositAmount.sub(1));
+            try {
+                await reserve.depositKncForFee(maker1, tokenTweiDepositAmount);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            await reserve.depositKncForFee(maker1, tokenTweiDepositAmount.sub(1));
+        })
+
+        it("test deposit knc reverts when amount >= maxQty", async()=> {
+            let tokenTweiDepositAmount = new BigNumber(MAX_QTY);
+
+            await KNCToken.approve(reserve.address, tokenTweiDepositAmount);
+            try {
+                await reserve.depositKncForFee(maker1, tokenTweiDepositAmount);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            await reserve.depositKncForFee(maker1, tokenTweiDepositAmount.sub(1));
+        })
+
+        it("test withdraw token reverts when amount above free amount", async() => {
+            let tokenTweiDepositAmount = new BigNumber(20 * 10 ** 18);
+            await token.approve(reserve.address, tokenTweiDepositAmount);
+            await reserve.depositToken(maker1, tokenTweiDepositAmount);
+
+            try {
+                await reserve.withdrawToken(tokenTweiDepositAmount.add(1), {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            await reserve.withdrawToken(tokenTweiDepositAmount, {from: maker1});
+        })
+
+        it("test withdraw ether reverts when amount above free amount", async() => {
+            let weiDepositAmount = new BigNumber(2 * 10 ** 18);
+
+            await reserve.depositEther(maker1, {value: weiDepositAmount});
+
+            try {
+                await reserve.withdrawEther(weiDepositAmount.add(1), {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            await reserve.withdrawEther(weiDepositAmount, {from: maker1});
+        })
+
+        it("test withdraw token reverts if token transfer doesn't return true =~ fails", async() => {
+            let failingTok = await TestTokenTransferFailing.new("no transfer", "NTNC", 11);
+            let aReserve = await OrderbookReserve.new(kncAddress, failingTok.address, feeBurner.address, network,
+                        medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+            await aReserve.init();
+
+            let tokenTweiDepositAmount = new BigNumber(20 * 10 ** 18);
+            await failingTok.approve(aReserve.address, tokenTweiDepositAmount);
+            await aReserve.depositToken(maker1, tokenTweiDepositAmount);
+
+            try {
+                await aReserve.withdrawToken(tokenTweiDepositAmount, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        })
+
+        it("test withdraw KNC reverts when amount above total maker knc amount", async() => {
+            let tokenTweiDepositAmount = new BigNumber(20 * 10 ** 18);
+            await KNCToken.approve(reserve.address, tokenTweiDepositAmount);
+            await reserve.depositKncForFee(maker1, tokenTweiDepositAmount);
+
+            try {
+                await reserve.withdrawKncFee(tokenTweiDepositAmount.add(1), {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            await reserve.withdrawKncFee(tokenTweiDepositAmount, {from: maker1});
+        })
+
+        it("test withdraw KNC reverts when amount above maker unlocked knc amount", async() => {
+            let tokenTweiDepositAmount = new BigNumber(20 * 10 ** 18);
+            await KNCToken.approve(reserve.address, tokenTweiDepositAmount);
+            await reserve.depositKncForFee(maker1, tokenTweiDepositAmount);
+
+            let orderWei = 2 * 10 ** 18;
+            let orderTwei = 1 * 10 ** 18;
+
+            await reserve.depositEther(maker1, {value: orderWei});
+
+
+            await reserve.submitEthToTokenOrder(orderWei, orderTwei, {from: maker1});
+
+            let unlockedKnc = await reserve.makerUnlockedKnc(maker1);
+
+            try {
+                await reserve.withdrawKncFee(unlockedKnc.add(1), {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            await reserve.withdrawKncFee(unlockedKnc, {from: maker1});
+        })
+
+        it("test withdraw KNC reverts if knc transfer doesn't return true =~ fails", async() => {
+            let failingKnc = await TestTokenTransferFailing.new("KNC no transfer", "NTNC", 11);
+            let aReserve = await OrderbookReserve.new(failingKnc.address, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+            await aReserve.init();
+
+            let tokenTweiDepositAmount = new BigNumber(20 * 10 ** 18);
+            await failingKnc.approve(aReserve.address, tokenTweiDepositAmount);
+            await aReserve.depositKncForFee(maker1, tokenTweiDepositAmount);
+
+            try {
+                await aReserve.withdrawKncFee(tokenTweiDepositAmount, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        })
 
         it("perform few knc deposits from same maker. later knc deposit from other maker. see sums correct.", async () => {
             let tokenWeiDepositAmount = 500;
@@ -1018,18 +1276,18 @@ contract('OrderbookReserve', async (accounts) => {
         it("maker deposit knc, test bind knc.", async () => {
             let kncTweiDepositAmount = new BigNumber(2 * 10 ** 18);
 
-            await makerDeposit(maker1, 0, 0, kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, 0, 0, kncTweiDepositAmount);
 
             let stakedKnc = await reserve.makerRequiredKncStake(maker1);
             assert.equal(stakedKnc.valueOf(), 0);
 
             let freeKnc = await reserve.makerUnlockedKnc(maker1);
-            assert.equal(freeKnc.valueOf(), kncTweiDepositAmount.valueOf());
+            assert.equal(freeKnc.valueOf(), kncTweiDepositAmount);
 
             let weiValueForStakeCalc = new BigNumber(10 ** 16);
             let expectedStake = await reserve.calcKncStake(weiValueForStakeCalc);
-            assert(expectedStake.valueOf() > kncTweiDepositAmount.valueOf(), "expected Stake: " + expectedStake.valueOf() +
-                " !< " + kncTweiDepositAmount.valueOf());
+            assert(expectedStake.valueOf() > kncTweiDepositAmount, "expected Stake: " + expectedStake.valueOf() +
+                " !< " + kncTweiDepositAmount);
 
             await reserve.testBindStakes(maker1, weiValueForStakeCalc);
 
@@ -1054,7 +1312,7 @@ contract('OrderbookReserve', async (accounts) => {
         it("maker deposit knc, bind knc. test release knc stakes", async () => {
             let kncTweiDepositAmount = new BigNumber(6 * 10 ** 18);
 
-            await makerDeposit(maker1, 0, 0, kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, 0, 0, kncTweiDepositAmount);
             let weiValueForStakeCalc = new BigNumber(10 ** 17);
             await reserve.testBindStakes(maker1, weiValueForStakeCalc.valueOf());
 
@@ -1078,14 +1336,14 @@ contract('OrderbookReserve', async (accounts) => {
             let ethWeiDepositAmount = (new BigNumber(2 * 10 ** 18)).add(200);
             let kncTweiDepositAmount = 600 * 10 ** 18;
 
-            await makerDeposit(maker1, ethWeiDepositAmount.valueOf(), 0, kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = 2 * 10 ** 18;
             let orderDstTwei = 9 * 10 ** 18;
 
             //check maker free token funds
             let rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
-            assert.equal(rxFreeWei.valueOf(), ethWeiDepositAmount.valueOf() );
+            assert.equal(rxFreeWei.valueOf(), ethWeiDepositAmount );
 
             //add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -1097,10 +1355,10 @@ contract('OrderbookReserve', async (accounts) => {
     });
 
     describe("add and remove orders", function() {
-        it("test getMakerOrders", async() => {
+        it("test getMakerOrders eth to token", async() => {
             let ethWeiDepositAmount = 20 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
-            await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = 2 * 10 ** 18;
             let orderDstTwei = 9 * 10 ** 18;
@@ -1143,11 +1401,11 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(orderList[3].valueOf(), order4Id);
         });
 
-        it("test getMakerOrders with two makers", async() => {
+        it("test getMakerOrders eth to token with two makers", async() => {
             let ethWeiDepositAmount = 20 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
-            await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount.valueOf());
-            await makerDeposit(maker2, ethWeiDepositAmount, 0, kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+            await makerDeposit(maker2, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = 2 * 10 ** 18;
             let orderDstTwei = 9 * 10 ** 18;
@@ -1208,10 +1466,75 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(orderList[2].valueOf(), maker1order4Id);
         });
 
+        it("test getMakerOrders token to eth with two makers", async() => {
+            let tokenWeiDepositAmount = 80 * 10 ** 18;
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker2, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            let srcTwei = 2 * 10 ** 18;
+            let dstWei = 9 * 10 ** 18;
+
+            //add orders maker1
+            let rc = await reserve.submitTokenToEthOrder(srcTwei, dstWei, {from: maker1});
+            let maker1order1Id = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitTokenToEthOrder(srcTwei, dstWei, {from: maker1});
+            let maker1order2Id = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitTokenToEthOrder(srcTwei, dstWei, {from: maker1});
+            let maker1order3Id = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitTokenToEthOrder(srcTwei, dstWei, {from: maker1});
+            let maker1order4Id = rc.logs[0].args.orderId.valueOf();
+
+            //query orders maker1
+            orderList = await reserve.getTokenToEthMakerOrderIds(maker1);
+            assert.equal(orderList[0].valueOf(), maker1order1Id);
+            assert.equal(orderList[1].valueOf(), maker1order2Id);
+            assert.equal(orderList[2].valueOf(), maker1order3Id);
+            assert.equal(orderList[3].valueOf(), maker1order4Id);
+
+            //add orders maker2
+            rc = await reserve.submitTokenToEthOrder(srcTwei, dstWei, {from: maker2});
+            let maker2order1Id = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitTokenToEthOrder(srcTwei, dstWei, {from: maker2});
+            let maker2order2Id = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitTokenToEthOrder(srcTwei, dstWei, {from: maker2});
+            let maker2order3Id = rc.logs[0].args.orderId.valueOf();
+
+            //query maker2
+            orderList = await reserve.getTokenToEthMakerOrderIds(maker2);
+            assert.equal(orderList[0].valueOf(), maker2order1Id);
+            assert.equal(orderList[1].valueOf(), maker2order2Id);
+            assert.equal(orderList[2].valueOf(), maker2order3Id);
+
+            // cancler orders maker 1
+            await reserve.cancelTokenToEthOrder(maker1order3Id, {from: maker1});
+            await reserve.cancelTokenToEthOrder(maker1order1Id, {from: maker1});
+
+            //query maker1 again
+            orderList = await reserve.getTokenToEthMakerOrderIds(maker1);
+            assert.equal(orderList[0].valueOf(), maker1order2Id);
+            assert.equal(orderList[1].valueOf(), maker1order4Id);
+
+            // Cancel for maker2 and query
+            await reserve.cancelTokenToEthOrder(maker2order2Id, {from: maker2});
+            orderList = await reserve.getTokenToEthMakerOrderIds(maker2);
+            assert.equal(orderList[0].valueOf(), maker2order1Id);
+            assert.equal(orderList[1].valueOf(), maker2order3Id);
+
+            //submer for maker1 and query
+            rc = await reserve.submitTokenToEthOrder(srcTwei, dstWei, {from: maker1});
+            maker1order1Id = rc.logs[0].args.orderId.valueOf();
+
+            orderList = await reserve.getTokenToEthMakerOrderIds(maker1);
+            assert.equal(orderList[0].valueOf(), maker1order1Id);
+            assert.equal(orderList[1].valueOf(), maker1order2Id);
+            assert.equal(orderList[2].valueOf(), maker1order4Id);
+        });
+
         it("maker add buy token order. see rate updated. verify order details.", async () => {
             let ethWeiDepositAmount = 20 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
-            await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = 2 * 10 ** 18;
             let orderDstTwei = 9 * 10 ** 18;
@@ -1243,7 +1566,7 @@ contract('OrderbookReserve', async (accounts) => {
         it("maker add eth to token order. rate > MAX_RATE, see revert for add and update.", async () => {
             let ethWeiDepositAmount = 20 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
-            await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             srcAmountWei = 2 * 10 ** 18;
             orderDstTwei = new BigNumber(2 * 10 ** 12);
@@ -1288,10 +1611,68 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(rate.valueOf(), expectedRate.valueOf());
         });
 
+        it("test min eth to token order size. see revert when wei size below min", async() => {
+            let ethWeiDepositAmount = 20 * 10 ** 18;
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let tokenTweiDepositAmount = 0 * 10 ** 18;
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenTweiDepositAmount, kncTweiDepositAmount);
+
+            let weiAmount = new BigNumber(minNewOrderWei);
+            let tweiAmount = 9 * 10 ** 12;
+
+            //add order legal
+            await reserve.submitEthToTokenOrder(weiAmount, tweiAmount, {from: maker1});
+
+            try {
+                await reserve.submitEthToTokenOrder(weiAmount.sub(1), tweiAmount, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                await reserve.updateEthToTokenOrder(firstFreeOrderIdPerReserveList, weiAmount.sub(1), tweiAmount, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            await reserve.updateEthToTokenOrder(firstFreeOrderIdPerReserveList, weiAmount.add(1), tweiAmount, {from: maker1});
+        })
+
+        it("test min token to eth order size. see revert when wei size below min", async() => {
+            let ethWeiDepositAmount = 0 * 10 ** 18;
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let tokenTweiDepositAmount = 2 * 10 ** 18;
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenTweiDepositAmount, kncTweiDepositAmount);
+
+            let weiAmount = new BigNumber(minNewOrderWei);
+            let tweiAmount = 9 * 10 ** 12;
+
+            //add order legal
+            await reserve.submitTokenToEthOrder(tweiAmount, weiAmount, {from: maker1});
+
+            try {
+                await reserve.submitTokenToEthOrder(tweiAmount, weiAmount.sub(1), {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                await reserve.updateTokenToEthOrder(firstFreeOrderIdPerReserveList, tweiAmount,  weiAmount.sub(1), {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            await reserve.updateTokenToEthOrder(firstFreeOrderIdPerReserveList, tweiAmount,  weiAmount.add(1), {from: maker1});
+        })
+
         it("maker add token to eth order. rate > MAX_RATE, see revert for 'add' and 'update'.", async () => {
             let tokenTweiDepositAmount = 20 * 10 ** 25;
             let kncTweiDepositAmount = 600 * 10 ** 18;
-            await makerDeposit(maker1, 0, tokenTweiDepositAmount, kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, 0, tokenTweiDepositAmount, kncTweiDepositAmount);
 
             srcAmountTwei = 2 * 10 ** 24;
             orderDstWei = new BigNumber(2 * 10 ** 18);
@@ -1337,7 +1718,7 @@ contract('OrderbookReserve', async (accounts) => {
 
         it("maker add buy token order. cancel order and see canceled.", async () => {
             let ethWeiDepositAmount = new BigNumber(20  * 10 ** 18);
-            await makerDeposit(maker1, ethWeiDepositAmount.valueOf(), 0, (600 * 10 ** 18));
+            await makerDeposit(maker1, ethWeiDepositAmount, 0, (600 * 10 ** 18));
 
             let srcAmountWei = 2 * 10 ** 18;
             let orderDstTwei = 9 * 10 ** 18;
@@ -1358,7 +1739,7 @@ contract('OrderbookReserve', async (accounts) => {
         it("maker add sell token order. see rate updated. verify order details.", async () => {
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let tokenWeiDepositAmount = (new BigNumber(9 * 10 ** 18)).add(3000);
-            await makerDeposit(maker1, 0, tokenWeiDepositAmount.valueOf(), kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let orderSrcAmountTwei = 9 * 10 ** 18;
             let orderDstWei = 2 * 10 ** 18;
@@ -1389,6 +1770,71 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(rate.valueOf(), expectedRate.valueOf());
         });
 
+        it("verify 'add order' with src / dst amount above MAX_QTY revert", async() => {
+            let tokenWeiDepositAmount = MAX_QTY.div(4);
+            let kncTweiDepositAmount = MAX_QTY.sub(1);
+            let ethWeiDepositAmount = 0;
+
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            let valueWei = MAX_QTY.sub(1);
+            let valueTwei = MAX_QTY.sub(1);
+
+            try {
+                await reserve.submitTokenToEthOrder(valueTwei.add(1), valueWei, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                await reserve.submitTokenToEthOrder(valueTwei, valueWei.add(1), {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            //add order
+            await reserve.submitTokenToEthOrder(valueTwei, valueWei, {from: maker1});
+        })
+
+        it("verify 'update order' with src / dst amount above MAX_QTY revert", async() => {
+            let tokenWeiDepositAmount = MAX_QTY.div(4);
+            let kncTweiDepositAmount = MAX_QTY.sub(1);
+            let ethWeiDepositAmount = 0;
+
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            let valueWei = MAX_QTY.sub(1);
+            let valueTwei = MAX_QTY.sub(1);
+
+            //add order
+            let rc = await reserve.submitTokenToEthOrder(valueTwei, valueWei, {from: maker1});
+            let orderId = rc.logs[0].args.orderId.valueOf();
+
+            try {
+                await reserve.updateTokenToEthOrder(orderId, valueTwei.add(1), valueWei, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                await reserve.updateTokenToEthOrder(orderId, valueTwei, valueWei.add(1), {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        })
+
         it("maker add buy token order. update to smaller illegal amount, see reverted.", async () => {
             let ethWeiDepositAmount = (new BigNumber(2 * 10 ** 18)).add(700);
             let kncTweiDepositAmount = new BigNumber(600 * 10 ** 18);
@@ -1399,7 +1845,7 @@ contract('OrderbookReserve', async (accounts) => {
 
             //check maker free token funds
             let rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
-            assert.equal(rxFreeWei.valueOf(), ethWeiDepositAmount.valueOf() );
+            assert.equal(rxFreeWei.valueOf(), ethWeiDepositAmount );
 
             //add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -2229,6 +2675,71 @@ contract('OrderbookReserve', async (accounts) => {
             log("Order reuse gas consumption is " + (gasAmountFirstOrderUse.sub(gasAmountOrderReuse)).div(5) + " less");
         });
 
+        it("use batch add order - 3 orders. print gas for using hint array.", async() => {
+            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let ethWeiDepositAmount = (new BigNumber(6 * 10 ** 18));
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            orderSrc = new BigNumber(2 * 10 ** 18);
+            orderDst = new BigNumber(6 * 10 ** 18);
+
+            let makeOrdersSrcAmounts = [orderSrc, orderSrc, orderSrc];
+            let makeOrdersDstAmount = [orderDst, orderDst.add(200), orderDst.add(500)];
+
+            let hintArray = [headId, firstFreeOrderIdPerReserveList, firstFreeOrderIdPerReserveList * 1 + 1*1];
+            let isAfterMyPrevOrder = [false, false, false];
+            let isBuyOrder = [true, true, true];
+
+            //batch order
+            rc = await reserve.addOrderBatch(isBuyOrder, makeOrdersSrcAmounts, makeOrdersDstAmount, hintArray,
+                                        isAfterMyPrevOrder, {from: maker1});
+            log("gas for add batch 3 orders (using hint array): " + rc.receipt.gasUsed);
+
+        })
+
+        it("use batch add order. print gas for using special add array.", async() => {
+            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let ethWeiDepositAmount = (new BigNumber(6 * 10 ** 18));
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            orderSrc = new BigNumber(2 * 10 ** 18);
+            orderDst = new BigNumber(6 * 10 ** 18);
+
+            let makeOrdersSrcAmounts = [orderSrc, orderSrc, orderSrc];
+            let makeOrdersDstAmount = [orderDst, orderDst.add(200), orderDst.add(500)];
+            let hintArray = [headId, 0, 0];
+            let isAfterMyPrevOrder = [false, true, true];
+            let isBuyOrder = [true, true, true];
+
+            //legal batch order
+            rc = await reserve.addOrderBatch(isBuyOrder, makeOrdersSrcAmounts, makeOrdersDstAmount, hintArray,
+                                        isAfterMyPrevOrder, {from: maker1});
+            log("gas for add batch 3 orders (using special hint array): " + rc.receipt.gasUsed);
+        })
+
+        it("use batch add order. print gas when using no hints.", async() => {
+            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let ethWeiDepositAmount = (new BigNumber(6 * 10 ** 18));
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            orderSrc = new BigNumber(2 * 10 ** 18);
+            orderDst = new BigNumber(6 * 10 ** 18);
+
+            let makeOrdersSrcAmounts = [orderSrc, orderSrc, orderSrc];
+            let makeOrdersDstAmount = [orderDst, orderDst.add(200), orderDst.add(500)];
+            let hintArray = [0, 0, 0];
+            let isAfterMyPrevOrder = [false, false, false];
+            let isBuyOrder = [true, true, true];
+
+            //legal batch order
+            rc = await reserve.addOrderBatch(isBuyOrder, makeOrdersSrcAmounts, makeOrdersDstAmount, hintArray,
+                                        isAfterMyPrevOrder, {from: maker1});
+            log("gas for add batch 3 orders (using no hints): " + rc.receipt.gasUsed);
+        })
+
         it("maker - compare gas price for making 5 buy orders. one by one in order vs batch add.", async () => {
             let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
@@ -2470,16 +2981,16 @@ contract('OrderbookReserve', async (accounts) => {
         it("maker add sell token order. see funds & knc stakes updated.", async () => {
             let kncTweiDepositAmount = new BigNumber(600 * 10 ** 18);
             let tokenWeiDepositAmount = new BigNumber(11.1 * 10 ** 18);
-            await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let orderSrcAmountTwei = 9 * 10 ** 18;
             let orderDstWei = (new BigNumber(2)).mul(10 ** 18);
 
             //check maker free token funds
             let rxFreeTwei = await reserve.makerFunds(maker1, tokenAdd);
-            assert.equal(rxFreeTwei.valueOf(), tokenWeiDepositAmount.valueOf() );
+            assert.equal(rxFreeTwei.valueOf(), tokenWeiDepositAmount );
             let freeKnc = await reserve.makerUnlockedKnc(maker1);
-            assert.equal(freeKnc.valueOf(), kncTweiDepositAmount.valueOf());
+            assert.equal(freeKnc.valueOf(), kncTweiDepositAmount);
             let stakedKnc =  await reserve.makerRequiredKncStake(maker1);
             assert.equal(stakedKnc.valueOf(), 0);
 
@@ -2502,16 +3013,16 @@ contract('OrderbookReserve', async (accounts) => {
         it("maker add buy token order. see funds & knc stakes updated.", async () => {
             let kncTweiDepositAmount = new BigNumber(600 * 10 ** 18);
             let ethWeiDepositAmount = (new BigNumber(2 * 10 ** 18)).add(700);
-            await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let orderSrcAmountWei = 2 * 10 ** 18;
             let orderDstTwei = new BigNumber(5 * 10 ** 18);
 
             //check maker free token funds
             let rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
-            assert.equal(rxFreeWei.valueOf(), ethWeiDepositAmount.valueOf() );
+            assert.equal(rxFreeWei.valueOf(), ethWeiDepositAmount );
             let freeKnc = await reserve.makerUnlockedKnc(maker1);
-            assert.equal(freeKnc.valueOf(), kncTweiDepositAmount.valueOf());
+            assert.equal(freeKnc.valueOf(), kncTweiDepositAmount);
             let stakedKnc =  await reserve.makerRequiredKncStake(maker1);
             assert.equal(stakedKnc.valueOf(), 0);
 
@@ -2532,7 +3043,7 @@ contract('OrderbookReserve', async (accounts) => {
         it("maker add buy token orders. take orders. see total orders wei and knc stakes updated.", async () => {
             let kncTweiDepositAmount = new BigNumber(600 * 10 ** 18);
             let ethWeiDepositAmount = (new BigNumber(6 * 10 ** 18)).add(700);
-            await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let orderSrcAmountWei = new BigNumber(2 * 10 ** 18);
             let orderDstTwei = new BigNumber(2 * 10 ** 14);
@@ -2596,7 +3107,7 @@ contract('OrderbookReserve', async (accounts) => {
         it("maker add sell token orders. take orders. see total orders wei and knc stakes updated.", async () => {
             let kncTweiDepositAmount = new BigNumber(600 * 10 ** 18);
             let tokenTweiDepositAmount = (new BigNumber(16 * 10 ** 18)).add(700);
-            await makerDeposit(maker1, 0, tokenTweiDepositAmount, kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, 0, tokenTweiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountTwei = new BigNumber(3 * 10 ** 18);
             let dstWei = new BigNumber(2 * 10 ** 18);
@@ -2656,7 +3167,7 @@ contract('OrderbookReserve', async (accounts) => {
         it("maker add sell token order. cancel order. verify order removed and funds & knc updated.", async () => {
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let tokenWeiDepositAmount = new BigNumber(11.1 * 10 ** 18);
-            await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount.valueOf());
+            await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let orderSrcAmountTwei = 9 * 10 ** 18;
             let orderDstWei = (new BigNumber(2)).mul(10 ** 18);
@@ -2679,9 +3190,9 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(orderList.length, 0);
             //see all values back to start state
             rxFreeTwei = await reserve.makerFunds(maker1, tokenAdd);
-            assert.equal(rxFreeTwei.valueOf(), tokenWeiDepositAmount.valueOf() );
+            assert.equal(rxFreeTwei.valueOf(), tokenWeiDepositAmount );
             let freeKnc = await reserve.makerUnlockedKnc(maker1);
-            assert.equal(freeKnc.valueOf(), kncTweiDepositAmount.valueOf());
+            assert.equal(freeKnc.valueOf(), kncTweiDepositAmount);
             let stakedKnc =  await reserve.makerRequiredKncStake(maker1);
             assert.equal(stakedKnc.valueOf(), 0);
         });
@@ -2695,7 +3206,7 @@ contract('OrderbookReserve', async (accounts) => {
             let orderDstWei = (new BigNumber(2)).mul(10 ** 18);
 
             let freeTwei = await reserve.makerFunds(maker1, tokenAdd);
-            assert.equal(freeTwei.valueOf(), tokenWeiDepositAmount.valueOf());
+            assert.equal(freeTwei.valueOf(), tokenWeiDepositAmount);
             //add order
             let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
 
@@ -2732,7 +3243,7 @@ contract('OrderbookReserve', async (accounts) => {
 
             //check maker free token funds
             let rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
-            assert.equal(rxFreeWei.valueOf(), ethWeiDepositAmount.valueOf() );
+            assert.equal(rxFreeWei.valueOf(), ethWeiDepositAmount );
 
             //add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -2766,7 +3277,7 @@ contract('OrderbookReserve', async (accounts) => {
             let orderDstWei = (new BigNumber(2)).mul(10 ** 18);
 
             let freeTwei = await reserve.makerFunds(maker1, tokenAdd);
-            assert.equal(freeTwei.valueOf(), tokenWeiDepositAmount.valueOf());
+            assert.equal(freeTwei.valueOf(), tokenWeiDepositAmount);
             //add order
             let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
 
@@ -2803,7 +3314,7 @@ contract('OrderbookReserve', async (accounts) => {
 
             //check maker free token funds
             let rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
-            assert.equal(rxFreeWei.valueOf(), ethWeiDepositAmount.valueOf() );
+            assert.equal(rxFreeWei.valueOf(), ethWeiDepositAmount );
 
             //add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -2845,7 +3356,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let makerTokenBalance = await reserve.makerFunds(maker1, tokenAdd);
-            assert.equal(makerTokenBalance.valueOf(), tokenWeiDepositAmount.valueOf());
+            assert.equal(makerTokenBalance.valueOf(), tokenWeiDepositAmount);
             let orderSrcAmountTwei = new BigNumber(9).mul(10 ** 18);
             let orderDstWei = (new BigNumber(2).mul(10 ** 18)).add(2000);
 
@@ -3608,6 +4119,11 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
         minNewOrderWei = rxLimits[2].valueOf();
         baseKncPerEthRatePrecision = await reserve.kncPerEthBaseRatePrecision();
         burnToStakeFactor = await reserve.BURN_TO_STAKE_FACTOR();
+        let ordersAdd = await reserve.tokenToEthList();
+        let orders = OrderList.at(ordersAdd.valueOf());
+        headId = (await orders.HEAD_ID()).valueOf();
+        tailId = (await orders.TAIL_ID()).valueOf();
+        firstFreeOrderIdPerReserveList = (await orders.nextFreeId()).valueOf();
     });
 
     beforeEach('setup reserve contract for each test', async () => {
@@ -3928,6 +4444,44 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
         rate = await reserve.getConversionRate(ethAddress, tokenAdd, 10 ** 8, 52);
         assert(rate.valueOf() > 0);
     });
+
+    it("add order. reduce knc rate by factor. see can't take order if not enough burn amount", async() => {
+        let tokenWeiDepositAmount = new BigNumber(6 * 10 ** 18);
+        let kncTweiDepositAmount = 600 * 10 ** 18;
+
+        await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+        let srcTwei = 3 * 10 ** 18;
+        let dstWei = new BigNumber(minNewOrderWei);
+
+        //add order
+        await reserve.submitTokenToEthOrder(srcTwei, dstWei, {from: maker1});
+
+        rxFreeKnc = await reserve.makerUnlockedKnc(maker1);
+        await reserve.withdrawKncFee(rxFreeKnc, {from: maker1});
+
+        let ethKncRate = initialEthKncRate * (burnToStakeFactor * 1 + 1 * 1);
+        let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
+        let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        await feeBurner.setKNCRate();
+
+        let totalPayValue = dstWei;
+
+        try {
+            await reserve.trade(ethAddress, totalPayValue, tokenAdd, user1, lowRate, false, {from:network, value: totalPayValue});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //partial order can still be taken
+        totalPayValue = totalPayValue.div(2);
+        await reserve.trade(ethAddress, totalPayValue, tokenAdd, user1, lowRate, false, {from:network, value: totalPayValue});
+    })
 });
 
 
@@ -3942,6 +4496,14 @@ async function makerDeposit(maker, ethWei, tokenTwei, kncTwei) {
     await KNCToken.approve(reserve.address, kncTwei);
     await reserve.depositKncForFee(maker, kncTwei);
     await reserve.depositEther(maker, {from: maker, value: ethWei});
+}
+
+async function makerDepositFull(maker, otherReserve, someToken, ethWei, tokenTwei, kncTwei) {
+    await someToken.approve(otherReserve.address, tokenTwei);
+    await otherReserve.depositToken(maker, tokenTwei);
+    await KNCToken.approve(otherReserve.address, kncTwei);
+    await otherReserve.depositKncForFee(maker, kncTwei);
+    await otherReserve.depositEther(maker, {from: maker, value: ethWei});
 }
 
 function calcRateFromQty(srcAmount, dstAmount, srcDecimals, dstDecimals) {

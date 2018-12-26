@@ -68,7 +68,7 @@ const LISTING_STATE_LISTED = 3;
 let minNewOrderWei;
 
 
-contract('PermissionlessOrderbookReserveLister', async (accounts) => {
+contract('PermissionlessOrderbookReserveLister', function (accounts) {
 
     // TODO: consider changing to beforeEach with a separate deploy per test
     before('setup contract before all tests', async () => {
@@ -305,13 +305,14 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
         assert.equal(listed[1].valueOf(), LISTING_STATE_LISTED);
     })
 
-    it("maker sure can't list KNC.", async() => {
+    it("make sure can't list Digix.", async() => {
         // make sure its already added
-        let isListed =  await reserveLister.getOrderbookListingStage(kncAddress);
+        let digix = '0x4f3AfEC4E5a3F2A6a1A411DEF7D7dFe50eE057bF';
+        let isListed =  await reserveLister.getOrderbookListingStage(digix);
         assert.equal(isListed[1].valueOf(), LISTING_NONE);
 
         try {
-            let rc = await reserveLister.addOrderbookContract(kncAddress);
+            let rc = await reserveLister.addOrderbookContract(digix);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -426,7 +427,7 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
         assert (newLister.address != 0);
     })
 
-    it("verify if order book reserve init fails. can't add list it on kyber.", async() => {
+    it("verify if order book reserve init fails. can't list it on kyber.", async() => {
 
         let newLister;
 
@@ -444,11 +445,11 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        let listingStage = await newLister.getOrderbookListingStage(kncAddress);
-        assert.equal(listingStage[1].valueOf(), LISTING_NONE);
+        let listingStage = await newLister.getOrderbookListingStage(tokenAdd);
+        assert.equal(listingStage[1].valueOf(), LISTING_STATE_ADDED);
     })
 
-    it("verify if listing on kyber fails. reserve listing stage will stay in init stage.", async() => {
+    it("verify if listing on kyber fails. reserve listing reverts and stage will stay in init stage.", async() => {
 
         newToken = await TestToken.new("new token", "NEW", 18);
         newTokenAdd = newToken.address;
@@ -483,7 +484,7 @@ contract('PermissionlessOrderbookReserveLister', async (accounts) => {
 });
 
 
-contract('PermissionlessOrderbookReserveLister_feeBurner_tests', async (accounts) => {
+contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accounts) {
 
     let orderFactory;
     let medianizer;
