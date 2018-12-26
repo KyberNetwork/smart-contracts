@@ -290,7 +290,7 @@ contract('KyberNetwork', function(accounts) {
         await reserve3.approveWithdrawAddress(kncAddress, accounts[0], true);
 
         //set reserve balance. 10**18 wei ether + per token 10**18 wei ether value according to base rate.
-        let reserveEtherInit = (new BigNumber(10)).pow(20).mul(4);
+        let reserveEtherInit = (new BigNumber(10)).pow(19).mul(2);
         await Helper.sendEtherWithPromise(accounts[8], reserve1.address, reserveEtherInit);
         await Helper.sendEtherWithPromise(accounts[9], reserve2.address, reserveEtherInit);
         await Helper.sendEtherWithPromise(accounts[6], reserve3.address, reserveEtherInit);
@@ -308,7 +308,7 @@ contract('KyberNetwork', function(accounts) {
         for (let i = 0; i < numTokens; ++i) {
             token = tokens[i];
             let balance;
-            let amount1 = (new BigNumber(reserveEtherInit.mul(10))).div(precisionUnits).mul(baseBuyRate1[i]).floor();
+            let amount1 = (new BigNumber(reserveEtherInit.mul(30))).div(precisionUnits).mul(baseBuyRate1[i]).floor();
 
             if(i == 0) {
                 await token.transfer(walletForToken, amount1.valueOf());
@@ -323,7 +323,7 @@ contract('KyberNetwork', function(accounts) {
 
             reserve1StartTokenBalance[i] = amount1;
 
-            let amount2 = (new BigNumber(reserveEtherInit)).div(precisionUnits).mul(baseBuyRate2[i]).floor();
+            let amount2 = (new BigNumber(reserveEtherInit.mul(10))).div(precisionUnits).mul(baseBuyRate2[i]).floor();
             reserve2StartTokenBalance[i] = amount2
             await token.transfer(reserve2.address, amount2.valueOf());
 
