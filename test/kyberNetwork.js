@@ -975,7 +975,7 @@ contract('KyberNetwork', function(accounts) {
     it("should verify trade reverted when handle fee fails (due to different network address in burner).", async function () {
         let tokenInd = 0;
         let token = tokens[tokenInd]; //choose some token
-        let amountWei = 98000;
+        let amountWei = 450;
         let minConversionRate = 0;
 
         let tempBurner = await FeeBurner.new(admin, tokenAdd[0], user1, ethToKncRatePrecision);
@@ -991,7 +991,7 @@ contract('KyberNetwork', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        let amountTwei = 11000;
+        let amountTwei = 4000;
         await token.transfer(network.address, amountTwei)
         try {
              await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, ethAddress, user2, 10 ** 21,
@@ -1016,7 +1016,7 @@ contract('KyberNetwork', function(accounts) {
     it("should verify trade reverted when different network address in reserve.", async function () {
         let tokenInd = 0;
         let token = tokens[tokenInd]; //choose some token
-        let amountWei = 98000;
+        let amountWei = 300;
         let minConversionRate = 0;
 
         await reserve1.setContracts(user1, pricing1.address, 0);
@@ -1031,7 +1031,7 @@ contract('KyberNetwork', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        let amountTwei = 11000;
+        let amountTwei = 3000;
         await token.transfer(network.address, amountTwei)
         try {
              await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, ethAddress, user2, 10 ** 21,

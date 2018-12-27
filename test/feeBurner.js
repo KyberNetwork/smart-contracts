@@ -1,6 +1,6 @@
-const FeeBurner = artifacts.require("./FeeBurner.sol");
-const TestToken = artifacts.require("./TestToken.sol");
-const MockKyberNetwork = artifacts.require("./MockKyberNetwork.sol");
+const FeeBurner = artifacts.require("FeeBurner.sol");
+const TestToken = artifacts.require("TestToken.sol");
+const MockKyberNetwork = artifacts.require("MockKyberNetwork.sol");
 
 const Helper = require("./helper.js");
 const BigNumber = require('bignumber.js');
@@ -140,6 +140,22 @@ contract('FeeBurner', function(accounts) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
         }
     });
+
+    it("verify burn reverts if transferFrom knc wallet fail", async() => {
+        let feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
+        assert(feesWaitingToBurn.valueOf() > 1, "unexpected waiting to burn.");
+
+        await kncToken.approve(feeBurnerInst.address, 0, {from: mockKNCWallet});
+
+        try {
+            await feeBurnerInst.burnReserveFees(mockReserve);
+            assert(false, "expected throw in line above..")
+        } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
+        }
+
+        await kncToken.approve(feeBurnerInst.address, initialKNCWalletBalance / 10, {from: mockKNCWallet});
+    })
 
     it("should test burn fee success. See waiting fees 'zeroed' (= 1).", async function () {
         let feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
