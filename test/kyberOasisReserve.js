@@ -746,7 +746,7 @@ contract('KyberOasisReserve', function (accounts) {
         const reserveDaiBalanceBeforeBuy = await myDaiToken.balanceOf(hybridReserve.address);
         const otcDaiBalanceBeforeBuy = await myDaiToken.balanceOf(otcForHybrid.address);
         const reserveEthBalanceBeforeBuy = await Helper.getBalancePromise(hybridReserve.address);
-        const otcEthBalanceBeforeBuy = await Helper.getBalancePromise(otcForHybrid.address);
+        const otcEthBalanceBeforeBuy = await myWethToken.balanceOf(otcForHybrid.address);
 
         await hybridReserve.trade(ethAddress,BigNumber(10).pow(18),myDaiToken.address,
                                   user, BigNumber(400).mul(10**18), true,
@@ -756,7 +756,7 @@ contract('KyberOasisReserve', function (accounts) {
         const reserveDaiBalanceAfterBuy = await myDaiToken.balanceOf(hybridReserve.address);
         const otcDaiBalanceAfterBuy = await myDaiToken.balanceOf(otcForHybrid.address);
         const reserveEthBalanceAfterBuy = await Helper.getBalancePromise(hybridReserve.address);
-        const otcEthBalanceAfterBuy = await Helper.getBalancePromise(otcForHybrid.address);
+        const otcEthBalanceAfterBuy = await myWethToken.balanceOf(otcForHybrid.address);
 
         const expectedDaiDelta = BigNumber(400).mul(10**18);
         const expectedEthDelta = BigNumber(10).pow(18);
@@ -783,13 +783,13 @@ contract('KyberOasisReserve', function (accounts) {
 
     });
 
-    it("do sell to internal inventory", async function (){ // TODO
+    it("do sell to internal inventory", async function (){
         const user = accounts[7];
         const ethUserBalanceBeforeSell = await Helper.getBalancePromise(user);
         const reserveDaiBalanceBeforeSell = await myDaiToken.balanceOf(hybridReserve.address);
         const otcDaiBalanceBeforeSell = await myDaiToken.balanceOf(otcForHybrid.address);
         const reserveEthBalanceBeforeSell = await Helper.getBalancePromise(hybridReserve.address);
-        const otcEthBalanceBeforeSell = await Helper.getBalancePromise(otcForHybrid.address);
+        const otcEthBalanceBeforeSell = await myWethToken.balanceOf(otcForHybrid.address);
 
         await hybridReserve.trade(myDaiToken.address,BigNumber(10).pow(18),ethAddress,
                                   user, BigNumber(1/500).mul(10**18), true,
@@ -799,7 +799,7 @@ contract('KyberOasisReserve', function (accounts) {
         const reserveDaiBalanceAfterSell = await myDaiToken.balanceOf(hybridReserve.address);
         const otcDaiBalanceAfterSell = await myDaiToken.balanceOf(otcForHybrid.address);
         const reserveEthBalanceAfterSell = await Helper.getBalancePromise(hybridReserve.address);
-        const otcEthBalanceAfterSell = await Helper.getBalancePromise(otcForHybrid.address);
+        const otcEthBalanceAfterSell = await myWethToken.balanceOf(otcForHybrid.address);
 
         const expectedDaiDelta = BigNumber(10).pow(18);
         const expectedEthDelta = BigNumber(1/500).mul(10**18);
@@ -826,5 +826,255 @@ contract('KyberOasisReserve', function (accounts) {
                      "otc eth balance is not expected to change");
 
     });
+
+    it("check that cannot buy from internal inventory when amt exceed balance", async function (){
+        const reserveTokenBalance = await myDaiToken.balanceOf(hybridReserve.address);
+        const tooManyTokens = reserveTokenBalance.add(1);
+        const canBuy = await hybridReserve.shouldUseInternalInventory(myDaiToken.address,
+                                                                tooManyTokens,
+                                                                BigNumber(100),
+                                                                true);
+        assert(!canBuy, "can buy from hybrid when there is not enough amount");
+    });
+
+    it("check that cannot buy from internal inventory when exceed min dai balance", async function (){
+        const reserveTokenBalance = await myDaiToken.balanceOf(hybridReserve.address);
+        const tooManyTokens = (reserveTokenBalance.minus(minDaiBalnace)).add(1);
+        const canBuy = await hybridReserve.shouldUseInternalInventory(myDaiToken.address,
+                                                                tooManyTokens,
+                                                                BigNumber(100),
+                                                                true);
+        assert(!canBuy, "can buy from hybrid when there expecting to go under min amount");
+    });
+
+    it("check that cannot sell to internal inventory when amt exceed balance", async function (){
+        const reserveEthBalance = await Helper.getBalancePromise(hybridReserve.address);
+        const tooManyEth = reserveEthBalance.add(1);
+        const canSell = await hybridReserve.shouldUseInternalInventory(myDaiToken.address,
+                                                                BigNumber(100),
+                                                                tooManyEth,
+                                                                false);
+        assert(!canSell, "can buy sell to hybrid when there is not enough eth");
+    });
+
+    it("check that cannot sell to internal inventory when exceed max dai balance", async function (){
+        const reserveTokenBalance = await myDaiToken.balanceOf(hybridReserve.address);
+        const tooManyTokens = maxDaiBalnace.minus(reserveTokenBalance).add(1);
+        const canBuy = await hybridReserve.shouldUseInternalInventory(myDaiToken.address,
+                                                                tooManyTokens,
+                                                                BigNumber(100),
+                                                                false);
+        assert(!canBuy, "can sell to hybrid when there expecting to go over max amount");
+    });
+
+    it("check that cannot buy or sell with internal inventory when there is price arbitrage", async function (){
+        await otcForHybrid.setFirstLevelDaiPrices(400, 500);
+
+        const canBuy = await hybridReserve.shouldUseInternalInventory(myDaiToken.address,
+                                                                BigNumber(100),
+                                                                BigNumber(100),
+                                                                true);
+        assert(!canBuy, "can buy from hybrid when there is price arbitrage");
+
+        const canSell = await hybridReserve.shouldUseInternalInventory(myDaiToken.address,
+                                                                BigNumber(100),
+                                                                BigNumber(100),
+                                                                false);
+        assert(!canBuy, "can sell from hybrid when there is price arbitrage");
+    });
+
+    it("check that cannot buy or sell with internal inventory when there is small spread", async function (){
+        await otcForHybrid.setFirstLevelDaiPrices(2000, 1999);
+
+        const canBuy = await hybridReserve.shouldUseInternalInventory(myDaiToken.address,
+                                                                BigNumber(100),
+                                                                BigNumber(100),
+                                                                true);
+        assert(!canBuy, "can buy from hybrid when there is small spread");
+
+        const canSell = await hybridReserve.shouldUseInternalInventory(myDaiToken.address,
+                                                                BigNumber(100),
+                                                                BigNumber(100),
+                                                                false);
+        assert(!canBuy, "can sell from hybrid when there is small spread");
+    });
+
+    it("do buy from otc inventory", async function (){
+        const expectedConversionRate = ((BigNumber(1999).mul(100 - feePercent)).div(100)).mul(10**18);
+        const conversionRate = await hybridReserve.getConversionRate(ethAddress,
+                                                                     myDaiToken.address,
+                                                                     BigNumber(10).pow(18),
+                                                                     0);
+        assert.equal(expectedConversionRate.valueOf(), conversionRate.valueOf(),
+                     "unexpected conversionRate")
+
+        const user = accounts[0];
+        const daiUserBalanceBeforeBuy = await myDaiToken.balanceOf(user);
+        const reserveDaiBalanceBeforeBuy = await myDaiToken.balanceOf(hybridReserve.address);
+        const otcDaiBalanceBeforeBuy = await myDaiToken.balanceOf(otcForHybrid.address);
+        const reserveEthBalanceBeforeBuy = await Helper.getBalancePromise(hybridReserve.address);
+        const otcEthBalanceBeforeBuy = await myWethToken.balanceOf(otcForHybrid.address);
+
+        await hybridReserve.trade(ethAddress,BigNumber(10).pow(18),myDaiToken.address,
+                                  user, expectedConversionRate, true,
+                                  {from:admin,value:BigNumber(10).pow(18)});
+
+        const daiUserBalanceAfterBuy = await myDaiToken.balanceOf(user);
+        const reserveDaiBalanceAfterBuy = await myDaiToken.balanceOf(hybridReserve.address);
+        const otcDaiBalanceAfterBuy = await myDaiToken.balanceOf(otcForHybrid.address);
+        const reserveEthBalanceAfterBuy = await Helper.getBalancePromise(hybridReserve.address);
+        const otcEthBalanceAfterBuy = await myWethToken.balanceOf(otcForHybrid.address);
+
+        const expectedDaiDelta = expectedConversionRate;
+        const expectedDaiDeltaInReserve = (BigNumber(1999).mul(10**18)).minus(expectedDaiDelta);
+        const expectedEthDelta = BigNumber(10).pow(18);
+
+        assert.equal(daiUserBalanceBeforeBuy.add(expectedDaiDelta).valueOf(),
+                     daiUserBalanceAfterBuy.valueOf(),
+                     "unexpected change in user dai balance");
+
+        assert.equal(reserveDaiBalanceBeforeBuy.add(expectedDaiDeltaInReserve).valueOf(),
+                     reserveDaiBalanceAfterBuy.valueOf(),
+                     "unexpected change in reserve dai balance");
+
+        assert.equal(otcDaiBalanceBeforeBuy.valueOf(),
+                     otcDaiBalanceAfterBuy.add(BigNumber(1999).mul(10**18)).valueOf(),
+                     "otc dai balance is not expected to change");
+
+        assert.equal(reserveEthBalanceBeforeBuy.valueOf(),
+                     reserveEthBalanceAfterBuy.valueOf(),
+                                  "unexpected change in reserve eth balance");
+
+        assert.equal(otcEthBalanceBeforeBuy.add(expectedEthDelta).valueOf(),
+                     otcEthBalanceAfterBuy.valueOf(),
+                     "otc eth balance is not expected to change");
+
+    });
+
+    it("do sell to internal inventory", async function (){
+      const expectedConversionRate = ((BigNumber(1/2000).mul(100 - feePercent)).div(100)).mul(10**18);
+      const conversionRate = await hybridReserve.getConversionRate(myDaiToken.address,
+                                                                   ethAddress,
+                                                                   BigNumber(10).pow(18),
+                                                                   0);
+      assert.equal(expectedConversionRate.valueOf(), conversionRate.valueOf(),
+                   "unexpected conversionRate")
+
+
+        const user = accounts[7];
+        const ethUserBalanceBeforeSell = await Helper.getBalancePromise(user);
+        const reserveDaiBalanceBeforeSell = await myDaiToken.balanceOf(hybridReserve.address);
+        const otcDaiBalanceBeforeSell = await myDaiToken.balanceOf(otcForHybrid.address);
+        const reserveEthBalanceBeforeSell = await Helper.getBalancePromise(hybridReserve.address);
+        const otcEthBalanceBeforeSell = await myWethToken.balanceOf(otcForHybrid.address);
+
+        await hybridReserve.trade(myDaiToken.address,BigNumber(10).pow(18),ethAddress,
+                                  user, expectedConversionRate, true,
+                                  {from:admin});
+
+        const ethUserBalanceAfterSell = await Helper.getBalancePromise(user);
+        const reserveDaiBalanceAfterSell = await myDaiToken.balanceOf(hybridReserve.address);
+        const otcDaiBalanceAfterSell = await myDaiToken.balanceOf(otcForHybrid.address);
+        const reserveEthBalanceAfterSell = await Helper.getBalancePromise(hybridReserve.address);
+        const otcEthBalanceAfterSell = await myWethToken.balanceOf(otcForHybrid.address);
+
+        const expectedDaiDelta = BigNumber(10).pow(18);
+        const expectedEthDelta = expectedConversionRate;
+        const expectedReserveEthDelta = (BigNumber(1/2000).mul(10**18)).minus(expectedEthDelta);
+
+
+        assert.equal(ethUserBalanceBeforeSell.add(expectedEthDelta).valueOf(),
+                     ethUserBalanceAfterSell.valueOf(),
+                     "unexpected change in user eth balance");
+
+        assert.equal(reserveDaiBalanceBeforeSell.valueOf(),
+                     reserveDaiBalanceAfterSell.valueOf(),
+                     "unexpected change in reserve dai balance");
+
+        assert.equal(otcDaiBalanceBeforeSell.add(expectedDaiDelta).valueOf(),
+                     otcDaiBalanceAfterSell.valueOf(),
+                     "otc dai balance is not expected to change");
+
+        assert.equal(reserveEthBalanceBeforeSell.add(expectedReserveEthDelta).valueOf(),
+                     reserveEthBalanceAfterSell.valueOf(),
+                     "unexpected change in reserve eth balance");
+
+        assert.equal(otcEthBalanceBeforeSell.valueOf(),
+                     otcEthBalanceAfterSell.add(BigNumber(1/2000).mul(10**18)).valueOf(),
+                     "otc eth balance is not expected to change");
+    });
+
+    it("check setInternalPriceAdminParams from non admin", async function (){
+        try {
+            await hybridReserve.setInternalPriceAdminParams(myDaiToken.address,
+                                                            0,
+                                                            0,
+                                                            {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("check setInternalPriceAdminParams for non listed token", async function (){
+        try {
+            await hybridReserve.setInternalPriceAdminParams(admin,
+                                                            0,
+                                                            0,
+                                                            {from:admin});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("check setInternalPriceAdminParams for too high premium", async function (){
+        try {
+            await hybridReserve.setInternalPriceAdminParams(myDaiToken.address,
+                                                            0,
+                                                            501,
+                                                            {from:admin});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("check setInternalPriceAdminParams for too high min spread", async function (){
+        try {
+            await hybridReserve.setInternalPriceAdminParams(myDaiToken.address,
+                                                            1001,
+                                                            0,
+                                                            {from:admin});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("check setInternalInventoryMinMax from non operator", async function (){
+        try {
+            await hybridReserve.setInternalInventoryMinMax(myDaiToken.address,
+                                                           0,
+                                                           0,
+                                                           {from:admin});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("check setInternalInventoryMinMax for non listed token", async function (){
+        try {
+            await hybridReserve.setInternalInventoryMinMax(admin,
+                                                           0,
+                                                           0,
+                                                           {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
 
 });
