@@ -93,6 +93,22 @@ contract('OrderList', async (accounts) => {
             firstAllocationIds.should.not.have.any.keys(Array.from(secondAllocationIds));
             secondAllocationIds.should.not.have.any.keys(Array.from(firstAllocationIds));
         });
+
+        it("should reach over flow in nextFreeId, see revert", async() => {
+            let maxUint32 = new BigNumber(2 ** 32);
+            let nextFreeId = await orders.nextFreeId();
+
+            await orders.allocateIds(maxUint32.sub(nextFreeId).sub(1));
+
+            try {
+                await orders.allocateIds(2);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(
+                    Helper.isRevertErrorMessage(e),
+                    "expected revert but got: " + e);
+            }
+        })
     });
 
     describe("#compareOrders", async () => {
@@ -410,52 +426,6 @@ contract('OrderList', async (accounts) => {
                     Helper.isRevertErrorMessage(e),
                     "expected revert but got: " + e);
             }
-        });
-
-        // TODO: do we want to add a validation for this?
-        xit("should reject adding an order with invalid id: not allocated", async () => {
-            try {
-                // Calling locally so that the order will not be in fact added
-                // to the list and thus the id will be invalid.
-                let nonExistantOrderId = await orders.allocateIds.call(1);
-
-                await orders.add(
-                    user1 /* maker */,
-                    nonExistantOrderId /* orderId */,
-                    10 /* srcAmount */,
-                    200 /* dstAmount */,
-                );
-                assert(false, "throw was expected in line above.")
-            } catch(e){
-                assert(
-                    Helper.isRevertErrorMessage(e),
-                    "expected revert but got: " + e);
-            }
-        });
-
-        // TODO: do we want to validate for these cases? (id.next == 0, id.prev == 0)
-        xit("adding using non-allocated id should have no influence", async () => {
-            let allocatedId = await allocateIds(1);
-            await orders.add(
-                user1 /* maker */,
-                allocatedId /* orderId */,
-                10 /* srcAmount */,
-                300 /* dstAmount */,
-            );
-
-            // Calling locally so that the order will not be in fact added
-            // to the list and thus the id will be invalid.
-            let nonExistantOrderId = await orders.allocateIds.call(1);
-
-            await orders.add(
-                user1 /* maker */,
-                nonExistantOrderId /* orderId */,
-                10 /* srcAmount */,
-                200 /* dstAmount */,
-            );
-
-            // HEAD -> allocated -> TAIL
-            await assertOrdersOrder1(allocatedId);
         });
     });
 

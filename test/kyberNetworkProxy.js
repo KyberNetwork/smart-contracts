@@ -1148,7 +1148,7 @@ contract('KyberNetworkProxy', function(accounts) {
         let amountWei = 41;
         let minConversionRate = 0;
         let maxPrice = await networkProxy.maxGasPrice();
-        let highGas = maxPrice * 2;
+        let highGas = maxPrice.add(1);
 
         //perform trade
         try {

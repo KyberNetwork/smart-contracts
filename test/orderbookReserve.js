@@ -3412,7 +3412,8 @@ contract('OrderbookReserve', async (accounts) => {
             let rc = await reserve.trade(tokenAdd, totalPayValue, ethAddress, user1, rate, false, {from:network});
 
             log("take 5 orders gas: " + rc.receipt.gasUsed);
-            assert(rc.receipt.gasUsed < 330000);
+            let maxExpectedGas = 330000;
+            assert(rc.receipt.gasUsed < maxExpectedGas, "used gas in take 5 orders trade should have been below " + maxExpectedGas);
         });
 
         it("calc expected stake and calc burn amount. validate match", async () => {
@@ -3458,7 +3459,8 @@ contract('OrderbookReserve', async (accounts) => {
             rc = await reserve.trade(tokenAdd, orderDstTwei, ethAddress, user1, rate, false, {from:network});
 
             log("take single order gas: " + rc.receipt.gasUsed);
-            assert(rc.receipt.gasUsed < 130000);
+            let maxExpectedGas = 130000;
+            assert(rc.receipt.gasUsed < maxExpectedGas, "Gas for single trade should have been below: " + maxExpectedGas);
 
             list = await reserve.getEthToTokenOrderList();
             assert.equal(list.length, 0);
