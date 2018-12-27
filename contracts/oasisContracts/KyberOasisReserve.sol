@@ -63,7 +63,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
     }
 
     function() public payable {
-        require(msg.sender == address(wethToken));
+        // anyone can deposit ether
     }
 
     function listToken(ERC20 token, uint minSrcAmount) public onlyAdmin {
@@ -193,14 +193,13 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
         return val * (10000 + premium) / 10000;
     }
-
     function shouldUseInternalInventory(ERC20 token,
                                         uint tokenVal,
                                         uint ethVal,
                                         bool ethToToken) public view returns(bool) {
         require(tokenVal <= MAX_QTY);
 
-        uint tokenBalance = token.balanceOf(token);
+        uint tokenBalance = token.balanceOf(this);
         if (ethToToken) {
             if (tokenBalance < tokenVal) return false;
             if (tokenBalance - tokenVal < minTokenBalance[token]) return false;
@@ -217,14 +216,12 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
         require(x1 <= MAX_QTY && x2 <= MAX_QTY && y1 <= MAX_QTY && y2 <= MAX_QTY);
 
-        // if one starts with x1, buy and sell, he ends up with x2*y1/y2
+        // check if there is an arbitrage
+        if (x1*y2 > x2*y1) return false;
 
-        // if x1 < x2*y1/y2 there is an arbitrage
-        if (x1*y2 < x2*y1) return false;
+        // spread is (x1/y1 - x2/y2) / (x1/y1)
+        if (10000 * (x2*y1 - x1*y2) < x1*y2*minOasisSpreadForinternalPricingBps[token]) return false;
 
-        // (x1 - x2*y1/y2)/x1 is spread = (x1*y2 - x2*y1)/(x1*y2)
-        if(10000 * (x1*y2 - x2*y1) < x1*y2*minOasisSpreadForinternalPricingBps[token]) return false;
-        
 
         return true;
     }
