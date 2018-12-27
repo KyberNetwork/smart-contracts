@@ -1,5 +1,5 @@
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let WethToken = artifacts.require("./oasisContracts/mockContracts/WethToken.sol"); 
+let WethToken = artifacts.require("./oasisContracts/mockContracts/WethToken.sol");
 let MockOtc = artifacts.require("./oasisContracts/mockContracts/MockOtc.sol");
 let KyberOasisReserve = artifacts.require("./oasisContracts/KyberOasisReserve");
 
@@ -20,6 +20,14 @@ const alternativeFeeBps = alternativeFeePercent * 100;
 const otcOfferWeiValue =  BigNumber(3).mul(BigNumber(10).pow(18))
 const minSrcAmount =  BigNumber(0.001).mul(BigNumber(10).pow(18))
 
+// hybrid params
+const minDaiBalnace  = BigNumber(1000).mul(BigNumber(10).pow(18))
+const maxDaiBalnace  = BigNumber(10000).mul(BigNumber(10).pow(18))
+const initDaiBalance = BigNumber(5000).mul(BigNumber(10).pow(18))
+const minSpreadInBps = 70;
+const permiumBps     = 10;
+
+
 let admin;
 let myWethToken;
 let myDaiToken;
@@ -30,10 +38,18 @@ let oasisWeiInit;
 let supply;
 let reserve;
 
+let otcForHybrid;
+let hybridReserve;
+let operator;
 
-function valueAfterReducingFee(val, feePercent) { 
+function valueAfterReducingFee(val, feePercent) {
     return val * (100-feePercent)/100;
 }
+
+function valueAfterAddingPremium(val, premiumPercent) {
+    return (val.mul(100+premiumPercent)).div(100);
+}
+
 
 
 contract('KyberOasisReserve', function (accounts) {
@@ -42,7 +58,7 @@ contract('KyberOasisReserve', function (accounts) {
         // use admin address as network
         admin = accounts[0]
 
-        // create test tokens. 
+        // create test tokens.
         myWethToken = await WethToken.new("my weth token", "weth", 18);
         myDaiToken = await TestToken.new("my dai token", "dai", 18);
         myMkrToken = await TestToken.new("my mkr token", "mkr", 18);
@@ -83,10 +99,10 @@ contract('KyberOasisReserve', function (accounts) {
 
         // approve for reserve to claim tokens from admin
         supply = await myDaiToken.INITIAL_SUPPLY();
-        myDaiToken.approve(reserve.address, supply);
+        await myDaiToken.approve(reserve.address, supply);
 
         supply = await myMkrToken.INITIAL_SUPPLY();
-        myMkrToken.approve(reserve.address, supply);
+        await myMkrToken.approve(reserve.address, supply);
 
     });
 
@@ -489,7 +505,7 @@ contract('KyberOasisReserve', function (accounts) {
     });
     it("should try getconversionrate for a token other than trade token and see it reverts", async function (){
         let otherToken = await TestToken.new("other token", "oth", 18);
-        
+
         let weiSrcQty = new BigNumber(10).pow(18); // 1 eth
         let buyRate = await reserve.getConversionRate(ethAddress, otherToken.address, weiSrcQty, 0);
         try {
@@ -536,16 +552,6 @@ contract('KyberOasisReserve', function (accounts) {
 
         // make sure it does not revert when sending full amount
         let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty});
-    });
-    it("should try to send eth to reserve and make sure default payable function throws", async function (){
-
-        let weiSrcQty = new BigNumber(10).pow(18); // 1 token
-        try {
-            await Helper.sendEtherWithPromise(accounts[8], reserve.address, weiSrcQty);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
     });
     it("should try to trade but send from address other than network", async function (){
 
@@ -633,4 +639,192 @@ contract('KyberOasisReserve', function (accounts) {
         sellRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, exceedingOtcOfferTweiValue, 0);
         assert.equal(sellRate, 0, "sell rate should be 0");
     });
+
+    it("should init hybrid reserve", async function (){
+        // use admin address as network
+        admin = accounts[0];
+        operator = accounts[1];
+
+        // create test tokens.
+        myWethToken = await WethToken.new("my weth token", "weth", 18);
+        myDaiToken = await TestToken.new("my dai token", "dai", 18);
+        myMkrToken = await TestToken.new("my mkr token", "mkr", 18);
+
+        // create mock otc.
+        otcForHybrid = await MockOtc.new(
+                myWethToken.address,
+                myDaiToken.address,
+                myMkrToken.address,
+                daisForEth,
+                mkrForEth1st,
+                mkrForEth2nd,
+                mkrForEth3rd
+        );
+
+        // move eth to the otc
+        oasisWeiInit = (new BigNumber(10)).pow(19); // 10 eth
+        await Helper.sendEtherWithPromise(accounts[8], otcForHybrid.address, oasisWeiInit);
+
+        // move tokens to the otc
+        supply = await myDaiToken.INITIAL_SUPPLY();
+        await myDaiToken.transfer(otcForHybrid.address, supply.div(2));
+
+        supply = await myMkrToken.INITIAL_SUPPLY();
+        await myMkrToken.transfer(otcForHybrid.address, supply);
+
+        await otcForHybrid.setFirstLevelDaiPrices(500, 400);
+
+        // create reserve, use admin as network
+        hybridReserve = await KyberOasisReserve.new(
+                admin,
+                otcForHybrid.address,
+                myWethToken.address,
+                admin,
+                feeBps
+        );
+
+        await hybridReserve.listToken(myDaiToken.address, minSrcAmount);
+        await hybridReserve.listToken(myMkrToken.address, minSrcAmount);
+        await hybridReserve.addOperator(operator, {from:admin})
+        await hybridReserve.setInternalPriceAdminParams(myDaiToken.address,
+                                                        minSpreadInBps,
+                                                        permiumBps,
+                                                        {from: admin});
+        await hybridReserve.setInternalInventoryMinMax(myDaiToken.address,
+                                                       minDaiBalnace,
+                                                       maxDaiBalnace,
+                                                       {from:operator})
+
+        // approve for reserve to claim tokens from admin
+        supply = await myDaiToken.INITIAL_SUPPLY();
+        await myDaiToken.approve(hybridReserve.address, supply);
+
+        supply = await myMkrToken.INITIAL_SUPPLY();
+        await myMkrToken.approve(hybridReserve.address, supply);
+        // move eth and dai to the reserve
+        oasisWeiInit = (new BigNumber(10)).pow(19); // 10 eth
+        await Helper.sendEtherWithPromise(accounts[7], hybridReserve.address, oasisWeiInit);
+        await myDaiToken.transfer(hybridReserve.address, initDaiBalance)
+    });
+
+    it("check that can buy and sell from internal inventory", async function (){
+        const canBuy = await hybridReserve.shouldUseInternalInventory(myDaiToken.address,
+                                                                BigNumber(100),
+                                                                BigNumber(100),
+                                                                true);
+        assert(canBuy, "cannot buy from hybrid");
+
+        const canSell = await hybridReserve.shouldUseInternalInventory(myDaiToken.address,
+                                                                 100,
+                                                                 100,
+                                                                 false);
+        assert(canBuy, "cannot sell from hybrid");
+    });
+
+    it("check conversion rates from internal inventory", async function (){
+        const wethToDai = await hybridReserve.getConversionRate(ethAddress,
+                                                                myDaiToken.address,
+                                                                BigNumber(10).pow(18),
+                                                                0);
+
+        assert.equal(wethToDai.valueOf(), valueAfterAddingPremium(BigNumber(400).mul(10**18),permiumBps/100).valueOf(),
+                     "unexpected eth to dai rate")
+
+
+        const daiToWeth = await hybridReserve.getConversionRate(myDaiToken.address,
+                                                                ethAddress,
+                                                                BigNumber(10).pow(18),
+                                                                0);
+
+        assert.equal(daiToWeth.valueOf(), valueAfterAddingPremium(BigNumber(1/500).mul(10**18),permiumBps/100).valueOf(),
+                     "unexpected dai to eth rate")
+    });
+
+    it("do buy from internal inventory", async function (){
+        const user = accounts[0];
+        const daiUserBalanceBeforeBuy = await myDaiToken.balanceOf(user);
+        const reserveDaiBalanceBeforeBuy = await myDaiToken.balanceOf(hybridReserve.address);
+        const otcDaiBalanceBeforeBuy = await myDaiToken.balanceOf(otcForHybrid.address);
+        const reserveEthBalanceBeforeBuy = await Helper.getBalancePromise(hybridReserve.address);
+        const otcEthBalanceBeforeBuy = await Helper.getBalancePromise(otcForHybrid.address);
+
+        await hybridReserve.trade(ethAddress,BigNumber(10).pow(18),myDaiToken.address,
+                                  user, BigNumber(400).mul(10**18), true,
+                                  {from:admin,value:BigNumber(10).pow(18)});
+
+        const daiUserBalanceAfterBuy = await myDaiToken.balanceOf(user);
+        const reserveDaiBalanceAfterBuy = await myDaiToken.balanceOf(hybridReserve.address);
+        const otcDaiBalanceAfterBuy = await myDaiToken.balanceOf(otcForHybrid.address);
+        const reserveEthBalanceAfterBuy = await Helper.getBalancePromise(hybridReserve.address);
+        const otcEthBalanceAfterBuy = await Helper.getBalancePromise(otcForHybrid.address);
+
+        const expectedDaiDelta = BigNumber(400).mul(10**18);
+        const expectedEthDelta = BigNumber(10).pow(18);
+
+        assert.equal(daiUserBalanceBeforeBuy.add(expectedDaiDelta).valueOf(),
+                     daiUserBalanceAfterBuy.valueOf(),
+                     "unexpected change in user dai balance");
+
+        assert.equal(reserveDaiBalanceBeforeBuy.valueOf(),
+                     reserveDaiBalanceAfterBuy.add(expectedDaiDelta).valueOf(),
+                     "unexpected change in reserve dai balance");
+
+        assert.equal(otcDaiBalanceBeforeBuy.valueOf(),
+                     otcDaiBalanceAfterBuy.valueOf(),
+                     "otc dai balance is not expected to change");
+
+        assert.equal(reserveEthBalanceBeforeBuy.add(expectedEthDelta).valueOf(),
+                     reserveEthBalanceAfterBuy.valueOf(),
+                                  "unexpected change in reserve eth balance");
+
+        assert.equal(otcEthBalanceBeforeBuy.valueOf(),
+                     otcEthBalanceAfterBuy.valueOf(),
+                     "otc eth balance is not expected to change");
+
+    });
+
+    it("do sell to internal inventory", async function (){ // TODO
+        const user = accounts[7];
+        const ethUserBalanceBeforeSell = await Helper.getBalancePromise(user);
+        const reserveDaiBalanceBeforeSell = await myDaiToken.balanceOf(hybridReserve.address);
+        const otcDaiBalanceBeforeSell = await myDaiToken.balanceOf(otcForHybrid.address);
+        const reserveEthBalanceBeforeSell = await Helper.getBalancePromise(hybridReserve.address);
+        const otcEthBalanceBeforeSell = await Helper.getBalancePromise(otcForHybrid.address);
+
+        await hybridReserve.trade(myDaiToken.address,BigNumber(10).pow(18),ethAddress,
+                                  user, BigNumber(1/500).mul(10**18), true,
+                                  {from:admin});
+
+        const ethUserBalanceAfterSell = await Helper.getBalancePromise(user);
+        const reserveDaiBalanceAfterSell = await myDaiToken.balanceOf(hybridReserve.address);
+        const otcDaiBalanceAfterSell = await myDaiToken.balanceOf(otcForHybrid.address);
+        const reserveEthBalanceAfterSell = await Helper.getBalancePromise(hybridReserve.address);
+        const otcEthBalanceAfterSell = await Helper.getBalancePromise(otcForHybrid.address);
+
+        const expectedDaiDelta = BigNumber(10).pow(18);
+        const expectedEthDelta = BigNumber(1/500).mul(10**18);
+
+
+        assert.equal(ethUserBalanceBeforeSell.add(expectedEthDelta).valueOf(),
+                     ethUserBalanceAfterSell.valueOf(),
+                     "unexpected change in user eth balance");
+
+        assert.equal(reserveDaiBalanceBeforeSell.add(expectedDaiDelta).valueOf(),
+                     reserveDaiBalanceAfterSell.valueOf(),
+                     "unexpected change in reserve dai balance");
+
+        assert.equal(otcDaiBalanceBeforeSell.valueOf(),
+                     otcDaiBalanceAfterSell.valueOf(),
+                     "otc dai balance is not expected to change");
+
+        assert.equal(reserveEthBalanceBeforeSell.valueOf(),
+                     reserveEthBalanceAfterSell.add(expectedEthDelta).valueOf(),
+                     "unexpected change in reserve eth balance");
+
+        assert.equal(otcEthBalanceBeforeSell.valueOf(),
+                     otcEthBalanceAfterSell.valueOf(),
+                     "otc eth balance is not expected to change");
+
+    });
+
 });

@@ -107,6 +107,11 @@ contract MockOtc {
         offers[MAKER_BUYS_MKR_THIRD_OFFER_ID] = buyMkrInfo;
     }
 
+    function setFirstLevelDaiPrices(uint _daiPerEthBuy, uint _daiPerEthSell) public {
+        offers[MAKER_PAYS_DAI_OFFER_ID].payAmt = OFFER_WEI_VALUE * _daiPerEthSell;
+        offers[MAKER_BUYS_DAI_OFFER_ID].buyAmt = OFFER_WEI_VALUE * _daiPerEthBuy;
+    }
+
     function() public payable {}
 
     function getOffer(uint id) public constant returns (uint, ERC20, uint, ERC20) {
