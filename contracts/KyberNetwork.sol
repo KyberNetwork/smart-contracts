@@ -527,8 +527,19 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
             require(feeBurnerContract.handleFees(weiAmount, rateResult.reserve1, tradeInput.walletId));
         if (tradeInput.dest != ETH_TOKEN_ADDRESS) //"fake" trade. (ether to ether) - don't burn.
             require(feeBurnerContract.handleFees(weiAmount, rateResult.reserve2, tradeInput.walletId));
-        KyberTrade(tradeInput.trader, tradeInput.src, tradeInput.dest, actualSrcAmount, actualDestAmount,
-            tradeInput.destAddress, weiAmount, rateResult.reserve1, rateResult.reserve2, tradeInput.hint);
+
+        KyberTrade({
+            trader: tradeInput.trader,
+            src: tradeInput.src,
+            dest: tradeInput.dest,
+            srcAmount: actualSrcAmount,
+            dstAmount: actualDestAmount,
+            destAddress: tradeInput.destAddress,
+            ethWeiValue: weiAmount,
+            reserve1: (tradeInput.src == ETH_TOKEN_ADDRESS) ? address(0) : rateResult.reserve1,
+            reserve2:  (tradeInput.dest == ETH_TOKEN_ADDRESS) ? address(0) : rateResult.reserve2,
+            hint: tradeInput.hint
+        });
 
         return actualDestAmount;
     }
