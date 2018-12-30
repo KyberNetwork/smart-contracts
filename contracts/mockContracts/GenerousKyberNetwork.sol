@@ -1,12 +1,7 @@
 pragma solidity 0.4.18;
 
 
-import "../ERC20Interface.sol";
-import "../KyberReserveInterface.sol";
 import "../KyberNetwork.sol";
-import "../Withdrawable.sol";
-import "../Utils2.sol";
-import "../PermissionGroups.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
