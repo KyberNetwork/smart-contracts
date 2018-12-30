@@ -6,6 +6,10 @@ import "../Utils.sol";
 /// @title Kyber utils contract
 contract MockUtils is Utils {
 
+    function getMaxRate() public pure returns(uint) {
+        return MAX_RATE;
+    }
+
     function mockCalcDstQty(uint srcQty, uint srcDecimals, uint dstDecimals, uint rate) public pure returns(uint) {
         return calcDstQty(srcQty, srcDecimals, dstDecimals, rate);
     }

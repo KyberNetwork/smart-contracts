@@ -62,4 +62,11 @@ contract MockKyberNetwork {
         expectedRate = pairRate[keccak256(src, dest)];
         slippageRate = expectedRate * 97 / 100;
     }
+
+    function findBestRate(ERC20 src, ERC20 dest, uint srcAmount) public view returns(uint obsolete, uint rate) {
+        srcAmount;
+        rate = pairRate[keccak256(src, dest)];
+        return(0, rate);
+    }
+
 }
