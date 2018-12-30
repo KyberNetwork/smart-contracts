@@ -354,6 +354,18 @@ contract('KyberNetwork', function(accounts) {
         assert.equal(hint.valueOf(), (2 ** 255));
     })
 
+    it("test enable API", async() => {
+        let isEnabled = await network.enabled();
+        assert.equal(isEnabled.valueOf(), true);
+
+        await network.setEnable(false);
+
+        isEnabled = await network.enabled();
+        assert.equal(isEnabled.valueOf(), false);
+
+        await network.setEnable(true);
+    })
+
     it("should init Kyber network data, list token pairs.", async function () {
         // add reserves
         await network.addReserve(reserve1.address, false, {from: operator});
@@ -975,6 +987,47 @@ contract('KyberNetwork', function(accounts) {
     it("should verify trade reverted when handle fee fails (due to different network address in burner).", async function () {
         let tokenInd = 0;
         let token = tokens[tokenInd]; //choose some token
+        let amountWei = 250;
+        let minConversionRate = 0;
+
+        let tempBurner = await FeeBurner.new(admin, tokenAdd[0], user1, ethToKncRatePrecision);
+
+        await network.setFeeBurner(tempBurner.address);
+
+        //perform trade
+        try {
+             await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 10 * 21,
+                minConversionRate, walletId, 0, {from:networkProxy, value:amountWei});
+             assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        let amountTwei = 1000;
+        await token.transfer(network.address, amountTwei)
+        try {
+             await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, ethAddress, user2, 10 ** 21,
+                minConversionRate, walletId, 0, {from:networkProxy});
+             assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+             await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, tokenAdd[1], user2, 10 ** 21,
+                minConversionRate, walletId, 0, {from:networkProxy});
+             assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //enable trade
+        await network.setFeeBurner(feeBurner.address);
+    });
+
+    it("should verify trade reverted when handle fee fails (due to different network address in burner).", async function () {
+        let tokenInd = 0;
+        let token = tokens[tokenInd]; //choose some token
         let amountWei = 450;
         let minConversionRate = 0;
 
@@ -1013,15 +1066,36 @@ contract('KyberNetwork', function(accounts) {
         await network.setFeeBurner(feeBurner.address);
     });
 
+    it("should verify trade reverted when hint size no as expected (0 or 4 bytes)", async() => {
+        let tokenInd = 0;
+        let token = tokens[tokenInd]; //choose some token
+        let amountWei = 150;
+        let minConversionRate = 0;
+
+        let hint = "PERMM";
+        let hintBytes32 = web3.fromAscii(hint);
+
+        //perform trade
+        try {
+             await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 10 * 21,
+                minConversionRate, walletId, hintBytes32, {from:networkProxy, value:amountWei});
+             assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    })
+
     it("should verify trade reverted when different network address in reserve.", async function () {
         let tokenInd = 0;
         let token = tokens[tokenInd]; //choose some token
-        let amountWei = 300;
+        let amountWei = 30;
         let minConversionRate = 0;
+        let worongNetworkAddress = accounts[6];
 
-        await reserve1.setContracts(user1, pricing1.address, 0);
+        await reserve1.setContracts(worongNetworkAddress, pricing1.address, 0);
         await reserve2.disableTrade({from: alerter});
         await reserve3.disableTrade({from: alerter});
+        await reserve4.disableTrade({from: alerter});
 
         try {
              await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 10 ** 21,
@@ -1053,6 +1127,52 @@ contract('KyberNetwork', function(accounts) {
         await reserve1.setContracts(network.address, pricing1.address, 0);
         await reserve2.enableTrade({from:admin});
         await reserve3.enableTrade({from:admin});
+        await reserve4.enableTrade({from:admin});
+    });
+
+    it("should verify trade reverted when different network address in reserve.", async function () {
+        let tokenInd = 1;
+        let token = tokens[tokenInd]; //choose some token
+        let amountWei = 30;
+        let minConversionRate = 0;
+        let worongNetworkAddress = accounts[6];
+
+        await reserve1.setContracts(worongNetworkAddress, pricing1.address, 0);
+        await reserve2.disableTrade({from: alerter});
+        await reserve3.disableTrade({from: alerter});
+        await reserve4.disableTrade({from: alerter});
+
+        try {
+            await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 10 ** 21,
+               minConversionRate, walletId, 0, {from:networkProxy, value:amountWei});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        let amountTwei = 1500;
+        await token.transfer(network.address, amountTwei)
+        try {
+            await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, ethAddress, user2, 10 ** 21,
+               minConversionRate, walletId, 0, {from:networkProxy});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, tokenAdd[1], user2, 10 ** 21,
+               minConversionRate, walletId, 0, {from:networkProxy});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+           assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //enable trade
+        await reserve1.setContracts(network.address, pricing1.address, 0);
+        await reserve2.enableTrade({from:admin});
+        await reserve3.enableTrade({from:admin});
+        await reserve4.enableTrade({from:admin});
     });
 
     it("should verify trade reverted when sender isn't networkProxy.", async function () {
