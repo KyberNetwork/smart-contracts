@@ -2,9 +2,11 @@ const ConversionRates = artifacts.require("./ConversionRates.sol");
 const TestToken = artifacts.require("./mockContracts/TestToken.sol");
 const Reserve = artifacts.require("./KyberReserve.sol");
 const Network = artifacts.require("./KyberNetwork.sol");
+const MockNetwork = artifacts.require("./MockKyberNetwork.sol");
 const WhiteList = artifacts.require("./WhiteList.sol");
 const ExpectedRate = artifacts.require("./ExpectedRate.sol");
 const FeeBurner = artifacts.require("./FeeBurner.sol");
+const MockUtils = artifacts.require("MockUtils.sol");
 
 const Helper = require("./helper.js");
 const BigNumber = require('bignumber.js');
@@ -37,6 +39,8 @@ let tokenAdd = [];
 let minimalRecordResolution = 2; //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
 let maxPerBlockImbalance = 4000;
 let maxTotalImbalance = maxPerBlockImbalance * 12;
+
+let MAX_RATE;
 
 contract('ExpectedRate', function(accounts) {
     it("should init kyber network and all its components.", async function () {
@@ -194,6 +198,9 @@ contract('ExpectedRate', function(accounts) {
         for (let i = 0; i < numTokens; i++) {
             await network.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true, {from: operator});
         }
+
+        let mockUtils = await MockUtils.new();
+        MAX_RATE = await mockUtils.getMaxRate();
     });
 
     it("should init expected rate.", async function () {
@@ -475,6 +482,28 @@ contract('ExpectedRate', function(accounts) {
         assert.equal(rates[0].valueOf(), srcToEthRate.mul(ethToDestRate).div(precisionUnits).floor(), "unexpected rate");
         assert.equal(rates[1].valueOf(), 0, "unexpected rate");
     });
+
+    it("should verify when rate received from kyber network is > MAX_RATE, get expected rate reverts.", async function() {
+        let mockNetwork = await MockNetwork.new();
+        let tempExpectedRate = ExpectedRate.new(mockNetwork.address, admin);
+
+        let token = await TestToken.new("someToke", "some", 16);
+
+        aRate = MAX_RATE.div(precisionUnits).add(1);
+        let ethToTokRatePrecision = precisionUnits.mul(aRate);
+        let tokToEthRatePrecision = precisionUnits.div(aRate);
+
+        mockNetwork.setPairRate(ethAddress, token.address, ethToTokRatePrecision);
+        mockNetwork.setPairRate(token.address, ethAddress, tokToEthRatePrecision);
+
+        try {
+            rates = await expectedRates.getExpectedRate(ethAddress, token.address, 1000, false);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
 });
 
 
