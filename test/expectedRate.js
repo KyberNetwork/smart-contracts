@@ -485,19 +485,25 @@ contract('ExpectedRate', function(accounts) {
 
     it("should verify when rate received from kyber network is > MAX_RATE, get expected rate reverts.", async function() {
         let mockNetwork = await MockNetwork.new();
-        let tempExpectedRate = ExpectedRate.new(mockNetwork.address, admin);
+        let tempExpectedRate = await ExpectedRate.new(mockNetwork.address, admin);
 
         let token = await TestToken.new("someToke", "some", 16);
 
-        aRate = MAX_RATE.div(precisionUnits).add(1);
+        aRate = MAX_RATE.div(precisionUnits).add(100);
         let ethToTokRatePrecision = precisionUnits.mul(aRate);
         let tokToEthRatePrecision = precisionUnits.div(aRate);
 
-        mockNetwork.setPairRate(ethAddress, token.address, ethToTokRatePrecision);
-        mockNetwork.setPairRate(token.address, ethAddress, tokToEthRatePrecision);
+        await mockNetwork.setPairRate(ethAddress, token.address, ethToTokRatePrecision);
+        await mockNetwork.setPairRate(token.address, ethAddress, tokToEthRatePrecision);
+
+        let rate = await mockNetwork.findBestRate(ethAddress, token.address, 1000);
+        log("rate " + rate[1].valueOf())
+        log("rate " + rate[1])
+        log("max rate " + MAX_RATE.valueOf())
+        assert(rate[1].gt(MAX_RATE));
 
         try {
-            rates = await expectedRates.getExpectedRate(ethAddress, token.address, 1000, false);
+            await tempExpectedRate.getExpectedRate(ethAddress, token.address, 1000, true);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);

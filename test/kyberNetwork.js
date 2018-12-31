@@ -354,18 +354,6 @@ contract('KyberNetwork', function(accounts) {
         assert.equal(hint.valueOf(), (2 ** 255));
     })
 
-    it("test enable API", async() => {
-        let isEnabled = await network.enabled();
-        assert.equal(isEnabled.valueOf(), true);
-
-        await network.setEnable(false);
-
-        isEnabled = await network.enabled();
-        assert.equal(isEnabled.valueOf(), false);
-
-        await network.setEnable(true);
-    })
-
     it("should init Kyber network data, list token pairs.", async function () {
         // add reserves
         await network.addReserve(reserve1.address, false, {from: operator});
@@ -492,6 +480,18 @@ contract('KyberNetwork', function(accounts) {
         assert.equal(txData.logs[0].args.dest, ethAddress.toLowerCase());
         assert.equal(txData.logs[0].args.src, tokenAdd[2]);
         assert.equal(txData.logs[0].args.add, true);
+    })
+
+    it("test enable API", async() => {
+        let isEnabled = await network.enabled();
+        assert.equal(isEnabled.valueOf(), true);
+
+        await network.setEnable(false);
+
+        isEnabled = await network.enabled();
+        assert.equal(isEnabled.valueOf(), false);
+
+        await network.setEnable(true);
     })
 
     it("should disable 1 reserve. perform buy and check: balances changed as expected.", async function () {
@@ -1095,7 +1095,6 @@ contract('KyberNetwork', function(accounts) {
         await reserve1.setContracts(worongNetworkAddress, pricing1.address, 0);
         await reserve2.disableTrade({from: alerter});
         await reserve3.disableTrade({from: alerter});
-        await reserve4.disableTrade({from: alerter});
 
         try {
              await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 10 ** 21,
@@ -1127,7 +1126,6 @@ contract('KyberNetwork', function(accounts) {
         await reserve1.setContracts(network.address, pricing1.address, 0);
         await reserve2.enableTrade({from:admin});
         await reserve3.enableTrade({from:admin});
-        await reserve4.enableTrade({from:admin});
     });
 
     it("should verify trade reverted when different network address in reserve.", async function () {
@@ -1140,7 +1138,6 @@ contract('KyberNetwork', function(accounts) {
         await reserve1.setContracts(worongNetworkAddress, pricing1.address, 0);
         await reserve2.disableTrade({from: alerter});
         await reserve3.disableTrade({from: alerter});
-        await reserve4.disableTrade({from: alerter});
 
         try {
             await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 10 ** 21,
@@ -1172,7 +1169,6 @@ contract('KyberNetwork', function(accounts) {
         await reserve1.setContracts(network.address, pricing1.address, 0);
         await reserve2.enableTrade({from:admin});
         await reserve3.enableTrade({from:admin});
-        await reserve4.enableTrade({from:admin});
     });
 
     it("should verify trade reverted when sender isn't networkProxy.", async function () {
@@ -1217,14 +1213,14 @@ contract('KyberNetwork', function(accounts) {
     it("should verify sell reverted when not enough token allowance.", async function () {
         let tokenInd = 1;
         let token = tokens[tokenInd]; //choose some token
-        let amountTWei = 15*1;
+        let amountTWei = new BigNumber(1501);
 
         // transfer funds to user and approve funds to network
-        await token.transfer(network.address, amountTWei*1-1);
-//        await token.approve(network.address, amountTWei*1-1, {from:user1})
+        let networkBalance = await token.balanceOf(network.address);
+        await token.transfer(network.address, amountTWei.sub(networkBalance.valueOf()).sub(1));
 
         try {
-            await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTWei.valueOf(), ethAddress, user2, 5000, 0, walletId, 0, {from:networkProxy});
+            await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTWei.valueOf(), ethAddress, user2, 50000, 0, walletId, 0, {from:networkProxy});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -1235,7 +1231,7 @@ contract('KyberNetwork', function(accounts) {
 //        await token.approve(network.address, amountTWei*1, {from:user1});
 
         //perform same trade
-        await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTWei.valueOf(), ethAddress, user2, 5000, 0, walletId, 0, {from:networkProxy});
+        await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTWei.valueOf(), ethAddress, user2, 50000, 0, walletId, 0, {from:networkProxy});
     });
 
     it("should verify sell reverted when sent with ether value.", async function () {
@@ -1516,9 +1512,17 @@ contract('KyberNetwork', function(accounts) {
     it("should test can't list token that its approve API fails.", async function () {
         let failingToken = await TestTokenFailing.new("failing tok", "fail", 14);
 
-        //here list should fail
+        //here list should revert
         try {
             await network.listPairForReserve(reserve3.address, failingToken.address, true, true, true, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // remove listing should revert
+        try {
+            await network.listPairForReserve(reserve3.address, failingToken.address, false, true, false, {from: operator});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);

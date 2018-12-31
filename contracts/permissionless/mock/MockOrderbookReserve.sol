@@ -30,4 +30,8 @@ contract MockOrderbookReserve is OrderbookReserve {
     function testHandleStakes(address maker, uint weiAmount, uint burnWeiAmount) public {
         releaseOrderStakes(maker, weiAmount, burnWeiAmount);
     }
+
+    function setBaseKncPerEthRate(uint rate) public {
+        kncPerEthBaseRatePrecision = rate;
+    }
 }

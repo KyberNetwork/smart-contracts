@@ -1,5 +1,6 @@
 const TestToken = artifacts.require("TestToken.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
+const KyberNetworkFailsListing = artifacts.require("MockNetworkFailsListing.sol");
 const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
 const FeeBurner = artifacts.require("FeeBurner.sol");
 const WhiteList = artifacts.require("WhiteList.sol");
@@ -214,6 +215,44 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     })
+
+    it("verify if network list token pairs fails, listing is reverted.", async() => {
+//set contracts
+        const tok = await TestToken.new("sdf", "sdf", 14);
+        const networkFail = await KyberNetworkFailsListing.new(admin);
+
+        await networkFail.setKyberProxy(kyberProxy);
+        await networkFail.setExpectedRate(expectedRate);
+        await networkFail.setFeeBurner(feeBurner.address);
+        await networkFail.setParams(gasPrice.valueOf(), negligibleRateDiff);
+        await networkFail.setEnable(true);
+
+        let tempLister = await PermissionlessOrderbookReserveLister.new(
+            networkFail.address,
+            orderFactory.address,
+            medianizer.address,
+            kncAddress,
+            maxOrdersPerTrade,
+            minNewOrderValueUsd
+        );
+
+        // lister should be added as a feeburner operator.
+        await feeBurner.addOperator(tempLister.address, {from: admin});
+        await networkFail.addOperator(tempLister.address);
+
+        await tempLister.addOrderbookContract(tok.address);
+        await tempLister.initOrderbookContract(tok.address);
+
+        try {
+            await tempLister.listOrderbookContract(tok.address);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        let listingStage = await tempLister.getOrderbookListingStage(tok.address);
+        assert.equal(listingStage[1].valueOf(), LISTING_STATE_INIT)
+    });
 
     it("maker sure in each listing stage can only perform the next stage listing.", async() => {
         // make sure its already added

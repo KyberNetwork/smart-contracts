@@ -5,7 +5,8 @@ const FeeBurner = artifacts.require("FeeBurner.sol");
 const ExpectedRate = artifacts.require("ExpectedRate.sol");
 const OrderList = artifacts.require("OrderList.sol");
 const OrderListFactory = artifacts.require("OrderListFactory.sol");
-const OrderbookReserve = artifacts.require("MockOrderbookReserve.sol");
+const OrderbookReserve = artifacts.require("OrderbookReserve.sol");
+const MockOrderbookReserve = artifacts.require("MockOrderbookReserve.sol");
 const TestTokenFailing = artifacts.require("TestTokenFailing.sol");
 const TestTokenTransferFailing = artifacts.require("TestTokenTransferFailing.sol");
 const MockMedianizer = artifacts.require("MockMedianizer.sol");
@@ -436,7 +437,7 @@ contract('OrderbookReserve', async (accounts) => {
             }
         });
 
-        it("verify get hint reverts if Eth value is below min order value", async() => {
+        it("verify get add order hint reverts if Eth value is below min order value", async() => {
             let weiAmount = new BigNumber(minNewOrderWei);
             let tweiAmount = 9 * 10 ** 12;
 
@@ -453,6 +454,38 @@ contract('OrderbookReserve', async (accounts) => {
 
             try {
                 await reserve.getTokenToEthAddOrderHint(tweiAmount, weiAmount.sub(1));
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        })
+
+        it("verify get update order hint reverts if Eth value is below min order value", async() => {
+            let tokenWeiDepositAmount = 30 * 10 ** 18;
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let ethWeiDepositAmount = 3 * 10 ** 18;
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            let weiAmount = new BigNumber(minNewOrderWei);
+            let tweiAmount = 9 * 10 ** 12;
+
+            await reserve.submitTokenToEthOrder(tweiAmount, weiAmount, {from: maker1});
+            await reserve.submitEthToTokenOrder(weiAmount, tweiAmount, {from: maker1});
+            let orderId = firstFreeOrderIdPerReserveList;
+
+            await reserve.getEthToTokenUpdateOrderHint(orderId, weiAmount.add(1), tweiAmount);
+
+            try {
+                await reserve.getEthToTokenUpdateOrderHint(orderId, weiAmount.sub(1), tweiAmount);
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            await reserve.getTokenToEthUpdateOrderHint(orderId, tweiAmount, weiAmount.add(1));
+
+            try {
+                await reserve.getTokenToEthUpdateOrderHint(orderId, tweiAmount, weiAmount.sub(1));
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -1276,60 +1309,166 @@ contract('OrderbookReserve', async (accounts) => {
         it("maker deposit knc, test bind knc.", async () => {
             let kncTweiDepositAmount = new BigNumber(2 * 10 ** 18);
 
-            await makerDeposit(maker1, 0, 0, kncTweiDepositAmount);
+            let mockReserve = await MockOrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+            await mockReserve.init();
 
-            let stakedKnc = await reserve.makerRequiredKncStake(maker1);
+            await makerDepositFull(maker1, mockReserve, token, 0, 0, kncTweiDepositAmount);
+            let stakedKnc = await mockReserve.makerRequiredKncStake(maker1);
             assert.equal(stakedKnc.valueOf(), 0);
 
-            let freeKnc = await reserve.makerUnlockedKnc(maker1);
+            let freeKnc = await mockReserve.makerUnlockedKnc(maker1);
             assert.equal(freeKnc.valueOf(), kncTweiDepositAmount);
 
             let weiValueForStakeCalc = new BigNumber(10 ** 16);
-            let expectedStake = await reserve.calcKncStake(weiValueForStakeCalc);
+            let expectedStake = await mockReserve.calcKncStake(weiValueForStakeCalc);
             assert(expectedStake.valueOf() > kncTweiDepositAmount, "expected Stake: " + expectedStake.valueOf() +
                 " !< " + kncTweiDepositAmount);
 
-            await reserve.testBindStakes(maker1, weiValueForStakeCalc);
+            await mockReserve.testBindStakes(maker1, weiValueForStakeCalc);
 
-            stakedKnc = await reserve.makerRequiredKncStake(maker1);
+            stakedKnc = await mockReserve.makerRequiredKncStake(maker1);
             assert.equal(stakedKnc.valueOf(), expectedStake.valueOf());
 
-            freeKnc = await reserve.makerUnlockedKnc(maker1);
+            freeKnc = await mockReserve.makerUnlockedKnc(maker1);
             assert.equal(freeKnc.valueOf(), kncTweiDepositAmount.sub(expectedStake).valueOf());
 
             let weiValueForStakeCalc2nd = 10 ** 15;
-            await reserve.testBindStakes(maker1, weiValueForStakeCalc2nd);
-            let expectedStake2nd = await reserve.calcKncStake(weiValueForStakeCalc2nd);
+            await mockReserve.testBindStakes(maker1, weiValueForStakeCalc2nd);
+            let expectedStake2nd = await mockReserve.calcKncStake(weiValueForStakeCalc2nd);
             expectedStake = expectedStake.add(expectedStake2nd);
 
-            stakedKnc = await reserve.makerRequiredKncStake(maker1);
+            stakedKnc = await mockReserve.makerRequiredKncStake(maker1);
             assert.equal(stakedKnc.valueOf(), expectedStake.valueOf());
 
-            freeKnc = await reserve.makerUnlockedKnc(maker1);
+            freeKnc = await mockReserve.makerUnlockedKnc(maker1);
             assert.equal(freeKnc.valueOf(), kncTweiDepositAmount.sub(expectedStake).valueOf());
         });
 
         it("maker deposit knc, bind knc. test release knc stakes", async () => {
-            let kncTweiDepositAmount = new BigNumber(6 * 10 ** 18);
+             let kncTweiDepositAmount = new BigNumber(2 * 10 ** 18);
 
-            await makerDeposit(maker1, 0, 0, kncTweiDepositAmount);
+            let mockReserve = await MockOrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+            await mockReserve.init();
+
+            await makerDepositFull(maker1, mockReserve, token, 0, 0, kncTweiDepositAmount);
             let weiValueForStakeCalc = new BigNumber(10 ** 17);
-            await reserve.testBindStakes(maker1, weiValueForStakeCalc.valueOf());
+            await mockReserve.testBindStakes(maker1, weiValueForStakeCalc.valueOf());
 
-            let initialStakedKnc = await reserve.makerRequiredKncStake(maker1);
-            let freeKnc = await reserve.makerUnlockedKnc(maker1);
+            let initialStakedKnc = await mockReserve.makerRequiredKncStake(maker1);
+            let freeKnc = await mockReserve.makerUnlockedKnc(maker1);
 
             // now release
             let releaseAmountWei = 10 ** 17;
-            await reserve.testHandleStakes(maker1, releaseAmountWei, 0);
-            let expectedKncRelease = await reserve.calcKncStake(releaseAmountWei);
+            await mockReserve.testHandleStakes(maker1, releaseAmountWei, 0);
+            let expectedKncRelease = await mockReserve.calcKncStake(releaseAmountWei);
 
-            let stakedKnc = await reserve.makerRequiredKncStake(maker1);
+            let stakedKnc = await mockReserve.makerRequiredKncStake(maker1);
             assert.equal(stakedKnc.valueOf(), initialStakedKnc.sub(expectedKncRelease).valueOf());
 
             let expectedFreeKnc = freeKnc.add(expectedKncRelease);
-            freeKnc = await reserve.makerUnlockedKnc(maker1);
+            freeKnc = await mockReserve.makerUnlockedKnc(maker1);
             assert.equal(freeKnc.valueOf(), expectedFreeKnc.valueOf());
+        });
+
+        it("test release order stakes(using bind stakes). doesn't underflow if released wei amount is higher the total orders wei", async () => {
+             let kncTweiDepositAmount = new BigNumber(2 * 10 ** 18);
+
+            let mockReserve = await MockOrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+            await mockReserve.init();
+
+            await makerDepositFull(maker1, mockReserve, token, 0, 0, kncTweiDepositAmount);
+
+            let weiValueToBindStake = new BigNumber(10 ** 17);
+            await mockReserve.testBindStakes(maker1, weiValueToBindStake.valueOf());
+            let stakedWei = await mockReserve.makerTotalOrdersWei(maker1);
+
+            assert.equal(stakedWei.valueOf(), weiValueToBindStake.valueOf());
+
+            // release more wei.
+            let weiToRelease = weiValueToBindStake.sub(weiValueToBindStake.mul(2).add(5000));
+            await mockReserve.testBindStakes(maker1, weiToRelease.valueOf());
+
+            stakedWei = await mockReserve.makerTotalOrdersWei(maker1);
+            assert.equal(stakedWei.valueOf(), 0);
+        });
+
+        it("test release order stakes(using release stakes). doesn't underflow if released wei amount is higher the total orders wei", async () => {
+             let kncTweiDepositAmount = new BigNumber(2 * 10 ** 18);
+
+            let mockReserve = await MockOrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+            await mockReserve.init();
+
+            await makerDepositFull(maker1, mockReserve, token, 0, 0, kncTweiDepositAmount);
+
+            let weiValueToBindStake = new BigNumber(10 ** 17);
+            await mockReserve.testBindStakes(maker1, weiValueToBindStake.valueOf());
+            let stakedWei = await mockReserve.makerTotalOrdersWei(maker1);
+            assert.equal(stakedWei.valueOf(), weiValueToBindStake.valueOf());
+
+            // release more wei.
+            let weiToRelease = weiValueToBindStake.sub(weiValueToBindStake.mul(2).add(5000));
+            await mockReserve.testHandleStakes(maker1, weiToRelease.valueOf(), 0);
+
+            stakedWei = await mockReserve.makerTotalOrdersWei(maker1);
+            assert.equal(stakedWei.valueOf(), 0);
+        });
+
+        it("test release order stakes, if weiForBurn > weiToRelease, reverts", async () => {
+            let kncTweiDepositAmount = new BigNumber(2 * 10 ** 18);
+
+            let mockReserve = await MockOrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+            await mockReserve.init();
+
+            await makerDepositFull(maker1, mockReserve, token, 0, 0, kncTweiDepositAmount);
+
+            let weiValueToBindStake = new BigNumber(10 ** 17);
+            await mockReserve.testBindStakes(maker1, weiValueToBindStake.valueOf());
+            let stakedWei = await mockReserve.makerTotalOrdersWei(maker1);
+            assert.equal(stakedWei.valueOf(), weiValueToBindStake.valueOf());
+
+            // release more wei.
+            let weiToRelease = 100;
+            let weiToBurn = 101;
+
+            try {
+                await mockReserve.testHandleStakes(maker1, weiToRelease, weiToBurn);
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        });
+
+        it("change knc rate so stake amount < burn amount, see unlocked knc return 0 - no underflow", async() => {
+            let kncTweiDepositAmount = new BigNumber(30 * 10 ** 18);
+
+            let mockReserve = await MockOrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+            await mockReserve.init();
+
+            await makerDepositFull(maker1, mockReserve, token, 0, 10 ** 19, kncTweiDepositAmount);
+
+            let orderSrcAmountTwei = new BigNumber(6 * 10 ** 18);
+            let orderDstWei = new BigNumber(minNewOrderWei);
+
+            //add orders
+            //////////////
+            let rc = await mockReserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
+            let rate = await mockReserve.getConversionRate(ethAddress, tokenAdd, 10 ** 8, 522);
+            assert(rate.valueOf() > 0);
+
+            let freeKnc1 = await mockReserve.makerUnlockedKnc(maker1);
+            await mockReserve.withdrawKncFee(freeKnc1, {from: maker1});
+
+            let kncPerEthRate = await mockReserve.kncPerEthBaseRatePrecision();
+
+            await mockReserve.setBaseKncPerEthRate(kncPerEthRate.mul(2));
+            let requiredStake = await mockReserve.makerRequiredKncStake(maker1);
+            let makerKnc = await mockReserve.makerKnc(maker1);
+log("required " + requiredStake.valueOf())
+log("maker knc " + makerKnc.valueOf())
+//            assert(requiredStake.valueOf() > makerKnc.valueOf(), "makerKnc " + makerKnc.valueOf() + " require stake " + requiredStake.valueOf())
+
+            let freeKnc = await mockReserve.makerUnlockedKnc(maker1);
+            assert.equal(freeKnc.valueOf(), 0);
         });
 
         it("maker add buy token order. see funds updated.", async () => {
@@ -1540,7 +1679,6 @@ contract('OrderbookReserve', async (accounts) => {
             let orderDstTwei = 9 * 10 ** 18;
 
             // first getConversionRate should return 0
-    //        getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint)
             let rate = await reserve.getConversionRate(tokenAdd, ethAddress, 10 ** 18, 0);
             assert.equal(rate.valueOf(), 0);
 
@@ -3338,14 +3476,6 @@ contract('OrderbookReserve', async (accounts) => {
             let freeKnc = await reserve.makerUnlockedKnc(maker1);
             assert.equal(freeKnc.valueOf(), kncTweiDepositAmount.sub(expectedStake).valueOf());
         });
-
-        it("add a few orders. update knc to eth rate in fee burner. see burn amount updated", async() => {
-            network
-        })
-
-
-        it("create rate change so burn amount is bigger then calculated stake amount, see burn amounts are reduced upon taking, to equal stake amount", async() => {
-        });
     })
 
     describe("trade (add orders and take)", function() {
@@ -4142,6 +4272,8 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
                 ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
         await reserve.init();
 
+        await reserve.setKncPerEthBaseRate();
+
         baseKncPerEthRatePrecision = await reserve.kncPerEthBaseRatePrecision();
     });
 
@@ -4332,9 +4464,13 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
 
         await feeBurner.setKNCRate();
+        await reserve.setKncPerEthBaseRate();
 
         // now staked amount should be bigger then maker knc amount. get rate should be blocked
         ////
+        rate = await reserve.getConversionRate(ethAddress, tokenAdd, 10 ** 8, 522);
+        assert.equal(rate.valueOf(), 0);
+
         let freeKnc2 = await reserve.makerUnlockedKnc(maker1);
         assert.equal(freeKnc2.valueOf(), 0);
 
