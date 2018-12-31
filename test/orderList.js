@@ -1382,10 +1382,6 @@ contract('OrderList', async (accounts) => {
             isEmpty.should.equal(true);
         });
     });
-
-    it("all: should revert if orderId passed is HEAD_ID or TAIL_ID")
-    // TODO: add without position to a long list fails
-    // TODO: update without new position to a long list fails
 });
 
 class Order {
