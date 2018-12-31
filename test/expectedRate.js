@@ -497,9 +497,6 @@ contract('ExpectedRate', function(accounts) {
         await mockNetwork.setPairRate(token.address, ethAddress, tokToEthRatePrecision);
 
         let rate = await mockNetwork.findBestRate(ethAddress, token.address, 1000);
-        log("rate " + rate[1].valueOf())
-        log("rate " + rate[1])
-        log("max rate " + MAX_RATE.valueOf())
         assert(rate[1].gt(MAX_RATE));
 
         try {
