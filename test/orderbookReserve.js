@@ -1481,8 +1481,6 @@ contract('OrderbookReserve', async (accounts) => {
             await mockReserve.setBaseKncPerEthRate(kncPerEthRate.mul(2));
             let requiredStake = await mockReserve.makerRequiredKncStake(maker1);
             let makerKnc = await mockReserve.makerKnc(maker1);
-log("required " + requiredStake.valueOf())
-log("maker knc " + makerKnc.valueOf())
 //            assert(requiredStake.valueOf() > makerKnc.valueOf(), "makerKnc " + makerKnc.valueOf() + " require stake " + requiredStake.valueOf())
 
             let freeKnc = await mockReserve.makerUnlockedKnc(maker1);
