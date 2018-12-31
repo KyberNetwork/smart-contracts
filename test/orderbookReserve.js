@@ -301,6 +301,24 @@ contract('OrderbookReserve', async (accounts) => {
             }
         });
 
+        it("take partial order revert conditions", async() => {
+            let res = await MockOrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+
+            try {
+                await res.testTakePartialOrder(maker1, 3, ethAddress, tokenAdd, 100, 200, 199, 101);
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                await res.testTakePartialOrder(maker1, 3, ethAddress, tokenAdd, 100, 200, 201, 99);
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        })
+
         it("verify 2nd init for same reserve doesn't deploy new orderList", async() => {
             let listEthToToken = await reserve.ethToTokenList();
             let listTokenToEth = await reserve.tokenToEthList();

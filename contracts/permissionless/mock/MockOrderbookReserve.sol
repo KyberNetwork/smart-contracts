@@ -34,4 +34,17 @@ contract MockOrderbookReserve is OrderbookReserve {
     function setBaseKncPerEthRate(uint rate) public {
         kncPerEthBaseRatePrecision = rate;
     }
+
+    function testTakePartialOrder(
+        address maker,
+        uint32 orderId,
+        ERC20 userSrc,
+        ERC20 userDst,
+        uint128 userPartialSrcAmount,
+        uint128 userTakeDstAmount,
+        uint128 orderSrcAmount,
+        uint128 orderDstAmount
+    ) public {
+        takePartialOrder(maker, orderId, userSrc, userDst, userPartialSrcAmount, userTakeDstAmount, orderSrcAmount, orderDstAmount);
+    }
 }
