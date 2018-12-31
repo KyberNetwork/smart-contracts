@@ -51,12 +51,14 @@ contract PermissionlessOrderbookReserveLister {
 
     mapping(address => OrderbookReserveInterface) public reserves; //Permissionless orderbook reserves mapped per token
     mapping(address => ListingStage) public reserveListingStage;   //Reserves listing stage
+    mapping(address => bool) isTokenUnsupported;
 
     function PermissionlessOrderbookReserveLister(
         InternalNetworkInterface kyber,
         OrderListFactoryInterface factory,
         MedianizerInterface medianizer,
         ERC20 knc,
+        address[] unsupportedTokens,
         uint maxOrders,
         uint minOrderValueUsd
     )
@@ -75,6 +77,11 @@ contract PermissionlessOrderbookReserveLister {
         kncToken = knc;
         maxOrdersPerTrade = maxOrders;
         minNewOrderValueUsd = minOrderValueUsd;
+
+        for (uint i = 0; i < unsupportedTokens.length; i++) {
+            require(unsupportedTokens[i] != address(0));
+            isTokenUnsupported[unsupportedTokens[i]] = true;
+        }
     }
 
     event TokenOrderbookListingStage(ERC20 token, ListingStage stage);
@@ -82,7 +89,7 @@ contract PermissionlessOrderbookReserveLister {
     /// @dev anyone can call
     function addOrderbookContract(ERC20 token) public returns(bool) {
         require(reserveListingStage[token] == ListingStage.NO_RESERVE);
-        require(token != DIGIX_TOKEN); //
+        require(!(isTokenUnsupported[token]));
 
         reserves[token] = new OrderbookReserve({
             knc: kncToken,
