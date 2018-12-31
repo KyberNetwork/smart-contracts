@@ -3253,7 +3253,7 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(rxKncStakes.valueOf(), expectedStakedKnc.valueOf());
 
             burnAmount = await reserve.calcBurnAmount(orderSrcAmountWei.div(2).add(100));
-            expectedFreeKnc = expectedFreeKnc.add(burnAmount.mul(3));
+            expectedFreeKnc = expectedFreeKnc.add(burnAmount.mul(burnToStakeFactor.sub(1)));
             rxFreeKnc = await reserve.makerUnlockedKnc(maker1);
             assert.equal(expectedFreeKnc.valueOf(), rxFreeKnc.valueOf());
         });
@@ -3313,7 +3313,7 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(rxKncStakes.valueOf(), expectedStakedKnc.valueOf());
 
             burnAmount = await reserve.calcBurnAmount(dstWei.div(2));
-            expectedFreeKnc = expectedFreeKnc.add(burnAmount.mul(3));
+            expectedFreeKnc = expectedFreeKnc.add(burnAmount.mul(burnToStakeFactor.sub(1)));
             rxFreeKnc = await reserve.makerUnlockedKnc(maker1);
             assert.equal(expectedFreeKnc.valueOf(), rxFreeKnc.valueOf());
         });
