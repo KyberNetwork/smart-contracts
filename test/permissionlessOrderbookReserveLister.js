@@ -68,6 +68,11 @@ const LISTING_STATE_LISTED = 3;
 
 let minNewOrderWei;
 
+let unSupportedTok1;
+let unSupportedTok2;
+let unSupportedTok3;
+
+let unsupportedTokens = [];
 
 contract('PermissionlessOrderbookReserveLister', function (accounts) {
 
@@ -106,12 +111,21 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         await network.addOperator(operator);
         await network.setEnable(true);
 
+        unSupportedTok1 = await TestToken.new("unsupported1", "ho no.", 16);
+        unSupportedTok2 = await TestToken.new("unsupported1", "ho no.", 16);
+        unSupportedTok3 = await TestToken.new("unsupported1", "ho no.", 16);
+
+        unsupportedTokens.push(unSupportedTok1.address);
+        unsupportedTokens.push(unSupportedTok2.address);
+        unsupportedTokens.push(unSupportedTok3.address);
+
 //log(network.address + " " + feeBurnerResolver.address + " " + kncAddress)
         reserveLister = await PermissionlessOrderbookReserveLister.new(
             network.address,
             orderFactory.address,
             medianizer.address,
             kncAddress,
+            unsupportedTokens,
             maxOrdersPerTrade,
             minNewOrderValueUsd
         );
@@ -232,6 +246,7 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
             orderFactory.address,
             medianizer.address,
             kncAddress,
+            unsupportedTokens,
             maxOrdersPerTrade,
             minNewOrderValueUsd
         );
@@ -344,14 +359,20 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         assert.equal(listed[1].valueOf(), LISTING_STATE_LISTED);
     })
 
-    it("make sure can't list Digix.", async() => {
+    it("make sure can't list unsupported tokens.", async() => {
         // make sure its already added
-        let digix = '0x4f3AfEC4E5a3F2A6a1A411DEF7D7dFe50eE057bF';
-        let isListed =  await reserveLister.getOrderbookListingStage(digix);
+        let isListed =  await reserveLister.getOrderbookListingStage(unSupportedTok1.address);
         assert.equal(isListed[1].valueOf(), LISTING_NONE);
 
         try {
-            let rc = await reserveLister.addOrderbookContract(digix);
+            let rc = await reserveLister.addOrderbookContract(unSupportedTok1.address);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            let rc = await reserveLister.addOrderbookContract(unSupportedTok2.address);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -419,49 +440,57 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         let newLister;
 
         try {
-            newLister = await PermissionlessOrderbookReserveLister.new(0, orderFactory.address, medianizer.address, kncAddress, maxOrdersPerTrade, minNewOrderValueUsd);
+            newLister = await PermissionlessOrderbookReserveLister.new(0, orderFactory.address, medianizer.address, kncAddress, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            newLister = await PermissionlessOrderbookReserveLister.new(network.address, 0, medianizer.address, kncAddress, maxOrdersPerTrade, minNewOrderValueUsd);
+            newLister = await PermissionlessOrderbookReserveLister.new(network.address, 0, medianizer.address, kncAddress, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, 0, kncAddress, maxOrdersPerTrade, minNewOrderValueUsd);
+            newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, 0, kncAddress, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, 0, maxOrdersPerTrade, minNewOrderValueUsd);
+            newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, 0, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        let unsupported = [0, unSupportedTok1.address]
+        try {
+            newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, kncAddress, unsupported, maxOrdersPerTrade, minNewOrderValueUsd);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, kncAddress, 1, minNewOrderValueUsd);
+            newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, kncAddress, unsupportedTokens, 1, minNewOrderValueUsd);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, kncAddress, maxOrdersPerTrade, 0);
+            newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, kncAddress, unsupportedTokens, maxOrdersPerTrade, 0);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         //and now. at last.
-        newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, kncAddress, maxOrdersPerTrade, minNewOrderValueUsd);
+        newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, kncAddress, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
 
         assert (newLister.address != 0);
     })
@@ -472,7 +501,7 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
 
         let dummyOrdersFactory = accounts[8];
 
-        newLister = await PermissionlessOrderbookReserveLister.new(network.address, dummyOrdersFactory, medianizer.address, kncAddress, maxOrdersPerTrade, minNewOrderValueUsd);
+        newLister = await PermissionlessOrderbookReserveLister.new(network.address, dummyOrdersFactory, medianizer.address, kncAddress, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
 
         let rc = await newLister.addOrderbookContract(tokenAdd);
 
@@ -571,6 +600,7 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
             orderFactory.address,
             medianizer.address,
             kncToken.address,
+            unsupportedTokens,
             maxOrdersPerTrade,
             minNewOrderValueUsd
         );
@@ -691,6 +721,7 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
             orderFactory.address,
             medianizer.address,
             kncAddress,
+            unsupportedTokens,
             maxOrdersPerTrade,
             minNewOrderValueUsd
         );
@@ -778,6 +809,7 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
             orderFactory.address,
             medianizer.address,
             kncAddress,
+            unsupportedTokens,
             maxOrdersPerTrade,
             minNewOrderValueUsd
         );
@@ -862,6 +894,7 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
             orderFactory.address,
             medianizer.address,
             kncAddress,
+            unsupportedTokens,
             maxOrdersPerTrade,
             minNewOrderValueUsd
         );
@@ -917,6 +950,7 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
             orderFactory.address,
             medianizer.address,
             kncAddress,
+            unsupportedTokens,
             maxOrdersPerTrade,
             minNewOrderValueUsd
         );

@@ -37,7 +37,7 @@ contract InternalNetworkInterface {
 contract PermissionlessOrderbookReserveLister {
     // KNC burn fee per wei value of an order. 25 in BPS = 0.25%.
     uint constant public ORDERBOOK_BURN_FEE_BPS = 25;
-    
+
     uint public minNewOrderValueUsd = 1000; // set in order book minimum USD value of a new limit order
     uint public maxOrdersPerTrade;          // set in order book maximum orders to be traversed in rate query and trade
 
@@ -50,7 +50,7 @@ contract PermissionlessOrderbookReserveLister {
 
     mapping(address => OrderbookReserveInterface) public reserves; //Permissionless orderbook reserves mapped per token
     mapping(address => ListingStage) public reserveListingStage;   //Reserves listing stage
-    mapping(address => bool) isTokenUnsupported;
+    mapping(address => bool) tokenListingBlocked;
 
     function PermissionlessOrderbookReserveLister(
         InternalNetworkInterface kyber,
@@ -79,7 +79,7 @@ contract PermissionlessOrderbookReserveLister {
 
         for (uint i = 0; i < unsupportedTokens.length; i++) {
             require(unsupportedTokens[i] != address(0));
-            isTokenUnsupported[unsupportedTokens[i]] = true;
+            tokenListingBlocked[unsupportedTokens[i]] = true;
         }
     }
 
@@ -88,7 +88,7 @@ contract PermissionlessOrderbookReserveLister {
     /// @dev anyone can call
     function addOrderbookContract(ERC20 token) public returns(bool) {
         require(reserveListingStage[token] == ListingStage.NO_RESERVE);
-        require(!(isTokenUnsupported[token]));
+        require(!(tokenListingBlocked[token]));
 
         reserves[token] = new OrderbookReserve({
             knc: kncToken,

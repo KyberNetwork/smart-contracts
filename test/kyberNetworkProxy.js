@@ -2613,8 +2613,9 @@ contract('KyberNetworkProxy', function(accounts) {
 
             rateHint = new BigNumber(await network.PERM_HINT_GET_RATE());
 
+            let unsupportedTokens = [];
             reserveLister = await PermissionlessOrderbookReserveLister.new(network.address, orderListFactory.address,
-                medianizer.address, KNC.address, maxOrdersPerTrade, minNewOrderValueUSD);
+                medianizer.address, KNC.address, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUSD);
 
             await network.addOperator(reserveLister.address);
             await feeBurner.addOperator(reserveLister.address);

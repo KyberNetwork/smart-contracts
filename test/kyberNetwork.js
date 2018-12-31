@@ -2872,8 +2872,9 @@ contract('KyberNetwork', function(accounts) {
             await medianizer.setValid(true);
             await medianizer.setEthPrice(dollarsPerEthPrecision);
 
+            let unsupportedTokens = [];
             reserveLister = await PermissionlessOrderbookReserveLister.new(network.address, orderListFactory.address,
-                medianizer.address, KNC.address, maxOrdersPerTrade, minNewOrderValueUSD);
+                medianizer.address, KNC.address, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUSD);
 
             await network.addOperator(reserveLister.address);
             await feeBurner.addOperator(reserveLister.address);
