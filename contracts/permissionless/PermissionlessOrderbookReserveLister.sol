@@ -37,8 +37,7 @@ contract InternalNetworkInterface {
 contract PermissionlessOrderbookReserveLister {
     // KNC burn fee per wei value of an order. 25 in BPS = 0.25%.
     uint constant public ORDERBOOK_BURN_FEE_BPS = 25;
-    ERC20 constant DIGIX_TOKEN = ERC20(0x4f3AfEC4E5a3F2A6a1A411DEF7D7dFe50eE057bF);
-
+    
     uint public minNewOrderValueUsd = 1000; // set in order book minimum USD value of a new limit order
     uint public maxOrdersPerTrade;          // set in order book maximum orders to be traversed in rate query and trade
 
