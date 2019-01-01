@@ -12,9 +12,6 @@ interface KyberNetworkInterface {
     function enabled() public view returns(bool);
     function info(bytes32 id) public view returns(uint);
 
-    function searchBestRate(ERC20 src, ERC20 dest, uint srcAmount, bool usePermissionless) public view
-        returns(address, uint);
-
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) public view
         returns (uint expectedRate, uint slippageRate);
 
