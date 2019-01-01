@@ -837,23 +837,20 @@ it("set eth to dgd rate", function() {
 
   it("do converse exchange", function() {
     this.timeout(31000000);
-    var dgdAddress = tokenInstance[1].address;
-    var dgdAmount = 10**tokenDecimals[1];//zelda
+    var tokenInd = 1;
+    var dgdAddress = tokenInstance[tokenInd].address;
+    var dgdAmount = 7**tokenDecimals[tokenInd];//zelda
     var rate = conversionRate;
     var destAddress = "0x001adbc838ede392b5b054a47f8b8c28f2fa9f3c";
 
-    return tokenInstance[1].approve(networkProxy.address,dgdAmount).then(function(){
- console.log("848")
- console.log(destAddress)
-
-      return networkProxy.trade(dgdAddress,
+    return tokenInstance[tokenInd].approve(networkProxy.address,dgdAmount).then(function(){
+    return networkProxy.trade(dgdAddress,
                            dgdAmount,
                            ethAddress,
                            destAddress,
                            new BigNumber(2).pow(255),
-                           0,0,{value:0, gasPrice:49* 10**9});
+                           rate,0,{value:0, gasPrice:49* 10**9});
     }).then(function(result){
-    console.log("856")
       for( var i = 0 ; i < result.receipt.logs.length ; i++ ) {
         console.log(result.receipt.logs[i].data);
       }
