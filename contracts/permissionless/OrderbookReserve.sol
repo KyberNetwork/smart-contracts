@@ -169,7 +169,8 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
                 totalUserDstAmount += orderData.srcAmount;
                 userRemainingSrcQty -= orderData.dstAmount;
             } else {
-                totalUserDstAmount += orderData.srcAmount * userRemainingSrcQty / orderData.dstAmount;
+                totalUserDstAmount += uint128(uint(orderData.srcAmount) * uint(userRemainingSrcQty) /
+                    uint(orderData.dstAmount));
                 userRemainingSrcQty = 0;
             }
         }
@@ -263,7 +264,8 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
                     userDstAmount: orderData.srcAmount
                 }));
             } else {
-                uint128 partialDstQty = orderData.srcAmount * userRemainingSrcQty / orderData.dstAmount;
+                uint128 partialDstQty = uint128(uint(orderData.srcAmount) * uint(userRemainingSrcQty) /
+                    uint(orderData.dstAmount));
                 totalUserDstAmount += partialDstQty;
                 require(takePartialOrder({
                     maker: orderData.maker,

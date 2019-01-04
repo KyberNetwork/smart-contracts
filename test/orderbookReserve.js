@@ -3756,6 +3756,31 @@ contract('OrderbookReserve', async (accounts) => {
     //        assert(false)
         });
 
+        it("test over flows for take partial order. on dest amount calculation", async () => {
+            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let kncTweiDepositAmount = 700 * 10 ** 18;
+            let ethWeiDepositAmount = new BigNumber(10 * 10 ** 18);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            let srcAmountWei = new BigNumber(10 * 10 ** 18);
+            let orderDstTwei = new BigNumber(100 * 10 ** 18);
+
+            // add order
+            let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+
+//            check rate
+            //all amounts should return same rate
+            let tradeAmounts = [4 * 10 ** 18, 25 * 10 ** 18, 50 * 10 ** 18, 90 * 10 ** 18];
+            let rate1 = await reserve.getConversionRate(tokenAdd, ethAddress, tradeAmounts[0], 0);
+            let rate2 = await reserve.getConversionRate(tokenAdd, ethAddress, tradeAmounts[1], 0);
+            let rate3 = await reserve.getConversionRate(tokenAdd, ethAddress, tradeAmounts[2], 0);
+            let rate4 = await reserve.getConversionRate(tokenAdd, ethAddress, tradeAmounts[3], 0);
+
+            assert.equal(rate1.valueOf(), rate2.valueOf());
+            assert.equal(rate1.valueOf(), rate3.valueOf());
+            assert.equal(rate1.valueOf(), rate4.valueOf());
+        });
+
         it("maker add buy order. user takes partial. remaining order stays in book.", async () => {
             let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
             let kncTweiDepositAmount = 700 * 10 ** 18;
