@@ -1,0 +1,60 @@
+{
+  "Permissionless wallets": {
+      "0x09565f8ef3a3395d82c2ba6776a7ef6af39d9485",
+      "0x2d841e088087d3a447d198725291d485dfba024d",
+      "0x27f6119df51a638be7b2b54811b80dd5b4caee9b",
+      "0x79314262481b92695f051161dab8aefc365f060a",
+      "0x0064454b14cddc990ed6520ef94d3e28fe7c41b6",
+      "0x85a55f6636033ee72c196ee69e55fbc93e2b49d1",
+      "0xa6bc6df9eba23abff0d1ecd6c9847893d2b1643d",
+      "0x468fbbcb28e4d2699139c64551d6f0178760209f",
+      "0x673d26360af6688fdd9d788677fd06f58aad5b4d",
+      "0xc9d81352fbdb0294b091e51d774a0652ef776d99",
+      "0xe2d8481eef31cda994833974fffeccd576f8d71e",
+      "0xf7075e232b34e57ca3bb91980b97c4f8a20d7ee4",
+      "0xa4a427e29022187fc470d001423cbbf9084b4a3f",
+      "0xe0a66218c40230967d4240d25f6220a28e52c7ff",
+      "0x351a7dffbe4b4eba06a0b583c970c4f83e89835c",
+      "0x332d87209f7c8296389c307eae170c2440830a47",
+      "0x0bfe4bbc873b378c6b2cc529d1e3da4980c0020a",
+      "0xcc3a572c4d49eeabd53154a59779f7eb6da912a9",
+      "0x9d0f45874c67bcb0858c30a48aaf028443caf4ba",
+      "0x5dd835a893734b8d556eccf87800b76dda5aedc5",
+      "0x440bbd6a888a36de6e2f6a25f65bc4e16874faa9",
+      "0xea1a7de54a427342c8820185867cf49fc2f95d43",
+      "0x21357b3dcb7ae07da23a708dbbd9a2340001a3f4",
+      "0xdb717e3148c09333e21ca93c2c1d4c42ec8b93db",
+      "0xd8a38ae058fb6a6a6cb9517cf9bc1730a6e15617",
+      "0xaa98e2af598ac5edaf35e1975e7dbbabed4f48e8",
+      "0xde63aef60307655405835da74ba02ce4db1a42fb",
+      "0x067d12850d0575713390ab26c7fb47bd2a6988cd"
+  },
+    "olympus": {
+        "address": "0x09227deaeE08a5Ba9D6Eb057F922aDfAd191c36c",
+        "fees": 4000
+    },
+    "imtoken": {
+        "address": "0xb9E29984Fe50602E7A619662EBED4F90D93824C7",
+        "fees": 5000
+    },
+    "trust": {
+        "address": "0xf1aa99c69715f423086008eb9d06dc1e35cc504d",
+        "fees": 5000
+    },
+    "cipher": {
+        "address": "0xDD61803d4a56C597E0fc864F7a20eC7158c6cBA5",
+        "fees": 5000
+    },
+    "mew": {
+        "address": "0xDECAF9CD2367cdbb726E904cD6397eDFcAe6068D",
+        "fees": 4000
+    },
+    "dex": {
+        "address": "0x398d297BAB517770feC4d8Bb7a4127b486c244bB",
+        "fees": 3000
+    },
+    "easwap": {
+        "address": "0xa7615cd307f323172331865181dc8b80a2834324",
+        "fees": 3000
+    }
+}

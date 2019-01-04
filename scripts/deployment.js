@@ -189,11 +189,10 @@ var transferFundsToBank = function( owner, bankAddress, amount ) {
           inputs.push(tokenInstance[i]);
       }
 
-     return inputs.reduce(function (promise, item) {
-      return promise.then(function () {
-          return item.transfer(bankAddress, amount, {from:owner});
-      });
-
+      return inputs.reduce(function (promise, item) {
+        return promise.then(function () {
+            return item.transfer(bankAddress, amount, {from:owner});
+        });
       }, Promise.resolve()).then(function(){
           fulfill(true);
       }).catch(function(err){
