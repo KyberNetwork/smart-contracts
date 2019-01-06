@@ -528,6 +528,8 @@ contract('KyberNetwork', function(accounts) {
             assert.equal(txData.logs[0].args.dstAmount.valueOf(), expectedTweiAmount.valueOf());
             assert.equal(txData.logs[0].args.ethWeiValue.valueOf(), amountWei.valueOf());
             assert.equal(txData.logs[0].args.hint, '0x');
+            assert.equal(txData.logs[0].args.reserve1, '0x0000000000000000000000000000000000000000');
+            assert.equal(txData.logs[0].args.reserve2, reserve2.address);
 
             //check higher ether balance on reserve
             expectedReserve2BalanceWei = expectedReserve2BalanceWei.add(amountWei);
@@ -584,6 +586,18 @@ contract('KyberNetwork', function(accounts) {
             let balance = await Helper.getBalancePromise(reserve2.address);
             let txData = await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, ethAddress, user2, 500000,
                             rate[1].valueOf(), walletId, 0, {from:networkProxy});
+            assert.equal(txData.logs[1].event, 'KyberTrade');
+            assert.equal(txData.logs[1].args.trader, user1, "src address");
+            assert.equal(txData.logs[1].args.dest, ethAddress.toLowerCase(), "src token");
+            assert.equal(txData.logs[1].args.srcAmount.valueOf(), amountTwei);
+            assert.equal(txData.logs[1].args.destAddress, user2);
+            assert.equal(txData.logs[1].args.src, tokenAdd[tokenInd]);
+            assert.equal(txData.logs[1].args.dstAmount.valueOf(), expectedAmountWei.valueOf());
+            assert.equal(txData.logs[1].args.ethWeiValue.valueOf(), expectedAmountWei.valueOf());
+            assert.equal(txData.logs[1].args.hint, '0x');
+            assert.equal(txData.logs[1].args.reserve2, '0x0000000000000000000000000000000000000000');
+            assert.equal(txData.logs[1].args.reserve1, reserve2.address);
+
             //check lower ether balance on reserve
             expectedReserve2BalanceWei = expectedReserve2BalanceWei.sub(expectedAmountWei);
             balance = await Helper.getBalancePromise(reserve2.address);
@@ -2288,6 +2302,18 @@ contract('KyberNetwork', function(accounts) {
                 await tokenSrc.transferFrom(user1, network.address, srcAmountTwei, {from: networkProxy});
                 let result = await network.tradeWithHint(user1, tokenAdd[tokenSrcInd], srcAmountTwei, tokenAdd[tokenDestInd],
                     user2, maxDestAmount, buyRate[1].valueOf(), walletId, 0, {from:networkProxy});
+
+                assert.equal(result.logs[1].event, 'KyberTrade');
+                assert.equal(result.logs[1].args.trader, user1, "src address");
+                assert.equal(result.logs[1].args.src, tokenAdd[tokenSrcInd], "src token");
+                assert.equal(result.logs[1].args.srcAmount.valueOf(), srcAmountTwei);
+                assert.equal(result.logs[1].args.destAddress, user2);
+                assert.equal(result.logs[1].args.dest, tokenAdd[tokenDestInd]);
+                assert.equal(result.logs[1].args.dstAmount.valueOf(), expectedDestTokensTwei.valueOf());
+                assert.equal(result.logs[1].args.ethWeiValue.valueOf(), expectedEthQtyWei.valueOf());
+                assert.equal(result.logs[1].args.hint, '0x');
+                assert.equal(result.logs[1].args.reserve2, reserve2.address);
+                assert.equal(result.logs[1].args.reserve1, reserve2.address);
 
                 //update balance and imbalance
                 reserve2TokenBalance[tokenSrcInd] = (reserve2TokenBalance[tokenSrcInd]).add(srcAmountTwei);

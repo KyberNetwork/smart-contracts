@@ -20,7 +20,7 @@ interface MedianizerInterface {
 
 contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, OrderbookReserveInterface {
 
-    uint public constant BURN_TO_STAKE_FACTOR = 5;      // stake per order must be x4 then expected burn amount.
+    uint public constant BURN_TO_STAKE_FACTOR = 5;      // stake per order must be xfactor expected burn amount.
     uint public constant MAX_BURN_FEE_BPS = 100;        // 1%
     uint public constant MIN_REMAINING_ORDER_RATIO = 2; // Ratio between min new order value and min order value.
     uint public constant MAX_USD_PER_ETH = 100000;      // Above this value price is surely compromised.
@@ -169,7 +169,8 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
                 totalUserDstAmount += orderData.srcAmount;
                 userRemainingSrcQty -= orderData.dstAmount;
             } else {
-                totalUserDstAmount += orderData.srcAmount * userRemainingSrcQty / orderData.dstAmount;
+                totalUserDstAmount += uint128(uint(orderData.srcAmount) * uint(userRemainingSrcQty) /
+                    uint(orderData.dstAmount));
                 userRemainingSrcQty = 0;
             }
         }
@@ -263,7 +264,8 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
                     userDstAmount: orderData.srcAmount
                 }));
             } else {
-                uint128 partialDstQty = orderData.srcAmount * userRemainingSrcQty / orderData.dstAmount;
+                uint128 partialDstQty = uint128(uint(orderData.srcAmount) * uint(userRemainingSrcQty) /
+                    uint(orderData.dstAmount));
                 totalUserDstAmount += partialDstQty;
                 require(takePartialOrder({
                     maker: orderData.maker,
