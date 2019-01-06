@@ -7,7 +7,7 @@ const assert = require('assert');
 const compareVersions = require('compare-versions');
 const solc = require('solc');
 
-const permissionlessReader = require("./readVerifyPermissionless.js");
+const permissionlessReader = require("./permissionlessVerify.js");
 const utils = require("./utils.js");
 const myLog = utils.myLog;
 const a2n = utils.a2n;
@@ -22,18 +22,7 @@ process.on('unhandledRejection', console.error.bind(console))
 /////////////////////
 // script configurations
 //////////////////
-const runExpectedRate = true;
-const runWhiteList = true;
-const runFeeBurner = true;
-const printAdminETC = true;
-const showStepFunctions = true;
-const doReadSanityRateData = true;
-const doVerifyWithdrawAddresses = true;
-const readTokenDataInConvRate = true;
-
-const verifyWhitelistedAddresses = false;
-const verifyTokenDataOnblockChain = false;
-
+//special runs for specific output
 const doAccountingRun = false;
 const numReservesForAccounting = 1;
 const accountingDictPath = './accountingOutputfile.json';
@@ -46,6 +35,24 @@ let tokenListingDict = {};
 const issueWalletSharingFeesList = false;
 const feeSharingWalletsFeesFilePath = './feeSharingWallet.json';
 let feeSharingWalletsDict = {};
+
+
+const reuseCompilationResultFile = true; //notice. after version change, must compile again.
+
+//internal configurations - which contracts
+///////////////////////////////////////////
+
+const runExpectedRate = true;
+const runWhiteList = true;
+const runFeeBurner = true;
+const printAdminETC = true;
+const showStepFunctions = true;
+const doReadSanityRateData = false;
+const doVerifyWithdrawAddresses = true;
+const readTokenDataInConvRate = true;
+
+const verifyWhitelistedAddresses = false;
+const verifyTokenDataOnblockChain = false;
 
 
 ///////////////////////
@@ -327,6 +334,7 @@ async function readNetworkProxy(networkProxyAdd){
     networkAddress = (await NetworkProxy.methods.kyberNetworkContract().call()).toLowerCase();
     myLog((networkAddress != jsonNetworkAdd), 0, "network contract address: " + networkAddress);
 
+//    networkAddress = ('0x9ae49C0d7F8F9EF4B864e004FE86Ac8294E20950').toLowerCase();
     myLog(0, 1, ("enable: " + await NetworkProxy.methods.enabled().call() + "!!!"));
     await printAdminAlertersOperators(NetworkProxy, "KyberNetwork");
 
@@ -1363,6 +1371,7 @@ async function readLiquidityConversionRate(liquidityRateAddress, reserveAddress,
             myLog(0, 0, '');
             myLog(0, 1, "PTT conversion rate. no reader available.")
             myLog(0, 0, '');
+            tokensPerReserve[index] = [];
             return;
         }
 
@@ -1370,6 +1379,13 @@ async function readLiquidityConversionRate(liquidityRateAddress, reserveAddress,
         myLog(1, 0, "Sha3 of Byte code from block chain doesn't match locally saved sha3.")
         myLog(1, 0, "Sha3 of Byte code from block chain " + blockCodeSha3)
         myLog(1, 0, "Locally saved Sha3: " + liquidityConversionRateSha3OfCode)
+        try {
+            let tokenAdd = await Rate.methods.token().call();
+            tokensPerReserve[index] = [tokenAdd];
+        } catch (e) {
+            myLog(1, 0, "can't fetch token address for this reserve.1")
+            tokensPerReserve[index] = [];
+        }
         myLog(0, 0, "")
         return;
     } else {
@@ -1425,12 +1441,12 @@ async function readLiquidityConversionRate(liquidityRateAddress, reserveAddress,
         " (1 eth = " + etherToToken + " " + await a2n(tokenAdd, 0) + ")"));
 
     //sell price
-    let hundredTokensInTwei = web3.utils.toBN(10).pow(web3.utils.toBN(await getTokenDecimals(tokenAdd) + 2));
-    let sellRateXTwei = await Rate.methods.getRate(tokenAdd, blockNum, false, hundredTokensInTwei).call();
+    let TenKTokensInTwei = web3.utils.toBN(10).pow(web3.utils.toBN(await getTokenDecimals(tokenAdd) * 1 + 4 * 1));
+    let sellRateXTwei = await Rate.methods.getRate(tokenAdd, blockNum, false, TenKTokensInTwei).call();
     tokensTweixToEth = (web3.utils.toBN(sellRateXTwei).div(precisionPartial)) / 10000;
     raiseFlag = isKyberReserve && (sellRateXTwei == 0);
-    myLog(raiseFlag, 0, ("for 100 " + await a2n(tokenAdd, 0) + " tokens. Token to eth rate is " +
-    sellRateXTwei + " (100 " + await a2n(tokenAdd, 0) + " tokens = " + tokensTweixToEth + " ether)"));
+    myLog(raiseFlag, 0, ("for 10000 " + await a2n(tokenAdd, 0) + " tokens. Token to eth rate is " +
+    sellRateXTwei + " (10000 " + await a2n(tokenAdd, 0) + " tokens = " + tokensTweixToEth + " ether)"));
 
     //verify token listed in network.
     let toks = [tokenAdd];
@@ -1530,12 +1546,12 @@ async function readTokenDataInConversionRate(conversionRateAddress, tokenAdd, re
         " (1 eth = " + etherToToken + " " + await a2n(tokenAdd, 0) + ")"));
 
     //sell price
-    let hundredTokensInTwei = web3.utils.toBN(10).pow(web3.utils.toBN(await getTokenDecimals(tokenAdd) + 2));
+    let hundredTokensInTwei = web3.utils.toBN(10).pow(web3.utils.toBN(await getTokenDecimals(tokenAdd) * 1 + 4 * 1));
     let sellRateXTwei = await Rate.methods.getRate(tokenAdd, blockNum, false, hundredTokensInTwei).call();
     tokensTweixToEth = (web3.utils.toBN(sellRateXTwei).div(precisionPartial)) / 10000;
     raiseFlag = isKyberReserve && (sellRateXTwei == 0);
-    myLog(raiseFlag, 0, ("for 100 " + await a2n(tokenAdd, 0) + " tokens. Token to eth rate is " +
-        sellRateXTwei + " (100 " + await a2n(tokenAdd, 0) + " tokens = " + tokensTweixToEth + " ether)"));
+    myLog(raiseFlag, 0, ("for 10000 " + await a2n(tokenAdd, 0) + " tokens. Token to eth rate is " +
+        sellRateXTwei + " (10000 " + await a2n(tokenAdd, 0) + " tokens = " + tokensTweixToEth + " ether)"));
 
     //read imbalance info
     let tokenName = await a2n(tokenAdd, 0);
@@ -2175,7 +2191,7 @@ function bpsToPercent (bpsValue) {
 
 async function getCompiledContracts() {
     try{
-        if ((!doAccountingRun) || (!issueTokenListingDict))  throw("err");
+        if ((!doAccountingRun) && (!issueTokenListingDict) && (!reuseCompilationResultFile))  throw("err");
         solcOutput = JSON.parse(fs.readFileSync(solcOutputPath, 'utf8'));
     } catch(err) {
         console.log(err.toString());
