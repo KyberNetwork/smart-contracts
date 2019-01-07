@@ -12,6 +12,7 @@ const TestTokenTransferFailing = artifacts.require("TestTokenTransferFailing.sol
 const MockMedianizer = artifacts.require("MockMedianizer.sol");
 const MockKyberNetwork = artifacts.require("MockKyberNetwork.sol");
 const PermissionlessOrderbookReserveLister = artifacts.require("PermissionlessOrderbookReserveLister.sol");
+const MockUtils = artifacts.require("MockUtils.sol");
 
 const Helper = require("./helper.js");
 const BigNumber = require('bignumber.js');
@@ -21,13 +22,16 @@ const lowRate = 42;
 //////////////////
 const precisionUnits = (new BigNumber(10).pow(18));
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
-const max_rate = precisionUnits.mul(10 ** 6); //internal parameter in Utils.sol.
 const gasPrice = (new BigNumber(10).pow(9).mul(50));
 const negligibleRateDiff = 11;
 const initialEthKncRate = 280;
 const initialEthToKncRatePrecision = precisionUnits.mul(initialEthKncRate);
-const MAX_QTY = new BigNumber(10 ** 28);
 const BPS = 10000;
+const ethDecimals = 18;
+
+//
+let MAX_RATE = precisionUnits.mul(10 ** 6); //internal parameter in Utils.sol.
+let MAX_QTY = new BigNumber(10 ** 28);
 
 //permission groups
 let admin;
@@ -46,6 +50,7 @@ let token;
 let tokenAdd;
 let KNCToken;
 let kncAddress;
+const tokenDecimals = 18;
 
 let headId;
 let tailId;
@@ -85,7 +90,7 @@ contract('OrderbookReserve', async (accounts) => {
         maker3 = accounts[5];
         network = accounts[6];
         
-        token = await TestToken.new("the token", "TOK", 18);
+        token = await TestToken.new("the token", "TOK", tokenDecimals);
         tokenAdd = token.address;
 
         KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
@@ -116,6 +121,10 @@ contract('OrderbookReserve', async (accounts) => {
 
         baseKncPerEthRatePrecision = await reserve.kncPerEthBaseRatePrecision();
         firstFreeOrderIdPerReserveList = (await orders.nextFreeId()).valueOf();
+
+        let mockUtils = await MockUtils.new();
+        MAX_RATE = await mockUtils.getMaxRate();
+        MAX_QTY = await mockUtils.getMaxQty();
     });
 
     beforeEach('setup contract for each test', async () => {
@@ -754,7 +763,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("verify add order batch with bad array sizes reverts", async() => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -827,7 +836,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("verify update order batch with bad array sizes reverts", async() => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -1726,7 +1735,7 @@ contract('OrderbookReserve', async (accounts) => {
             orderDstTwei = new BigNumber(2 * 10 ** 12);
 
             orderRate = calcRateFromQty(orderDstTwei, srcAmountWei, 18, 18);
-            assert.equal(orderRate.valueOf(), max_rate.valueOf());
+            assert.equal(orderRate.valueOf(), MAX_RATE.valueOf());
 
             let rate = await reserve.getConversionRate(tokenAdd, ethAddress, 10 ** 18, 0);
             assert.equal(rate.valueOf(), 0);
@@ -1743,7 +1752,7 @@ contract('OrderbookReserve', async (accounts) => {
             let illegalOrderDstTwei = orderDstTwei.sub(1)
             orderRate = calcRateFromQty(illegalOrderDstTwei, srcAmountWei, 18, 18);
 //            log("orderRate " + orderRate.valueOf())
-            assert(orderRate.gt(max_rate));
+            assert(orderRate.gt(MAX_RATE));
 
             try {
                 await reserve.submitEthToTokenOrder(srcAmountWei, illegalOrderDstTwei, {from: maker1});
@@ -1832,7 +1841,7 @@ contract('OrderbookReserve', async (accounts) => {
             orderDstWei = new BigNumber(2 * 10 ** 18);
 
             orderRate = calcRateFromQty(orderDstWei, srcAmountTwei, 18, 18);
-            assert.equal(orderRate.valueOf(), max_rate.valueOf());
+            assert.equal(orderRate.valueOf(), MAX_RATE.valueOf());
 
             let rate = await reserve.getConversionRate(tokenAdd, ethAddress, 10 ** 18, 0);
             assert.equal(rate.valueOf(), 0);
@@ -1848,7 +1857,7 @@ contract('OrderbookReserve', async (accounts) => {
 
             let illegalOrderDstWei = orderDstWei.sub(1)
             orderRate = calcRateFromQty(illegalOrderDstWei, srcAmountTwei, 18, 18);
-            assert(orderRate.gt(max_rate));
+            assert(orderRate.gt(MAX_RATE));
 
             try {
                 await reserve.updateEthToTokenOrder(orderId, srcAmountWei, illegalOrderDstWei, {from: maker1});
@@ -2664,11 +2673,13 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(list[2].valueOf(), sellOrder1ID);
 
     //        log("updateBatchWithHintGas " + updateBatchWithHintGas + " updateBatchNoHintGas " + updateBatchNoHintGas)
-            assert(updateBatchWithHintGas < (updateBatchNoHintGas - 4000), "expected update with hint to be better by at least 3000 gas");
+            log("updateBatchWithHintGas " + updateBatchWithHintGas)
+            log("updateBatchNoHintGas " + updateBatchNoHintGas)
+            assert(updateBatchWithHintGas < (updateBatchNoHintGas - 1800), "expected update with hint to be better by at least 1800 gas");
         });
 
         it("maker add a few buy orders. see orders added in correct position. print gas price per order", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -2741,7 +2752,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker - check gas price for order reuse is better.", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -2830,7 +2841,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("use batch add order - 3 orders. print gas for using hint array.", async() => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(6 * 10 ** 18));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -2853,7 +2864,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("use batch add order. print gas for using special add array.", async() => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(6 * 10 ** 18));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -2874,7 +2885,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("use batch add order. print gas when using no hints.", async() => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(6 * 10 ** 18));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -2895,7 +2906,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("maker - compare gas price for making 5 buy orders. one by one in order vs batch add.", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -2939,7 +2950,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("make order - compare gas price. add 5th order with / without hint.", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -3132,7 +3143,7 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(orderList.length, (2 * numOrderIdsPerMaker));
         });
 
-        it.only("test can't 'revive' deleted (tok to eth) order by setting it as prev ID (in empty list)", async() => {
+        it("test can't 'revive' deleted (tok to eth) order by setting it as prev ID (in empty list)", async() => {
             let tokenWeiDepositAmount = new BigNumber(500 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(0 * 10 ** 18)).add(30000);
@@ -3156,7 +3167,7 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(orderList.length, 1);
         })
 
-        it.only("test can't 'revive' deleted (tok to eth) order by setting it as prev ID (in non empty list)", async() => {
+        it("test can't 'revive' deleted (tok to eth) order by setting it as prev ID (in non empty list)", async() => {
             let tokenWeiDepositAmount = new BigNumber(500 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(0 * 10 ** 18)).add(30000);
@@ -3183,7 +3194,7 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(orderList.length, 4);
         })
 
-        it.only("test can't 'revive' deleted (eth to tok) order by setting it as prev ID (in empty list)", async() => {
+        it("test can't 'revive' deleted (eth to tok) order by setting it as prev ID (in empty list)", async() => {
             let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
@@ -3207,7 +3218,7 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(orderList.length, 1);
         })
 
-        it.only("test can't 'revive' deleted (eth to tok) order by setting it as prev ID (in non empty list)", async() => {
+        it("test can't 'revive' deleted (eth to tok) order by setting it as prev ID (in non empty list)", async() => {
             let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
@@ -3634,7 +3645,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("maker - make 5 buy orders and take in one trade. see gas for take.", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -3686,7 +3697,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add buy order. user takes order. see taken order removed as expected.", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(2 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -3720,7 +3731,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add a few buy orders. user takes full orders. see user gets traded wei. maker gets tokens.", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(6 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -3771,7 +3782,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("buy orders print gas for taking 0.5 order 1.5 order 2.5 orders. remaining removed", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 700 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(12 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -3814,7 +3825,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("buy orders print gas for taking 0.5 order 1.5 order 2.5 orders. remaining not removed", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 700 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(12 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -3861,7 +3872,95 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("test over flows for get rate on partial order. tests overflow in dest amount calculation", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
+            let kncTweiDepositAmount = 700 * 10 ** 18;
+            let ethWeiDepositAmount = new BigNumber(10 * 10 ** 18);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            let srcAmountWei = new BigNumber(10 * 10 ** 18);
+            let orderDstTwei = new BigNumber(1000 * 10 ** 18);
+
+            // add order
+            let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
+
+//            check rate
+            //all amounts should return same rate
+            let tradeAmounts = [40 * 10 ** 18, 110 * 10 ** 18, 530 * 10 ** 18, 900 * 10 ** 18];
+            let rate1 = await reserve.getConversionRate(tokenAdd, ethAddress, tradeAmounts[0], 0);
+            let rate2 = await reserve.getConversionRate(tokenAdd, ethAddress, tradeAmounts[1], 0);
+            let rate3 = await reserve.getConversionRate(tokenAdd, ethAddress, tradeAmounts[2], 0);
+            let rate4 = await reserve.getConversionRate(tokenAdd, ethAddress, tradeAmounts[3], 0);
+
+            assert.equal(rate1.valueOf(), rate2.valueOf());
+            assert.equal(rate1.valueOf(), rate3.valueOf());
+            assert.equal(rate1.valueOf(), rate4.valueOf());
+        });
+
+        it("test over flows in trade partial order. use MAX_QTY i.e. overflow in dest amount calculation", async () => {
+            let tokenWeiDepositAmount = MAX_QTY.div(4);
+            let kncTweiDepositAmount = MAX_QTY.sub(1);
+            let ethWeiDepositAmount = 0;
+
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            let valueWei = MAX_QTY.sub(1);
+            let valueTwei = MAX_QTY.sub(1);
+
+            // add order
+            let rc = await reserve.submitTokenToEthOrder(valueTwei, valueWei, {from: maker1});
+
+            let tradeAmounts = [2 * 10 ** 18, MAX_QTY.div(4), MAX_QTY.div(2), MAX_QTY.sub(1)];
+            let rate1 = await reserve.getConversionRate(ethAddress, tokenAdd, tradeAmounts[0], 0);
+            let rate2 = await reserve.getConversionRate(ethAddress, tokenAdd, tradeAmounts[1], 0);
+            let rate3 = await reserve.getConversionRate(ethAddress, tokenAdd, tradeAmounts[2], 0);
+            let rate4 = await reserve.getConversionRate(ethAddress, tokenAdd, tradeAmounts[3], 0);
+
+            assert.equal(rate1.valueOf(), rate2.valueOf());
+            assert.equal(rate1.valueOf(), rate3.valueOf());
+            assert.equal(rate1.valueOf(), rate4.valueOf());
+        });
+
+        it("test over flows in trade partial order. use MAX_QTY i.e. overflow in dest amount calculation", async () => {
+            let tokenWeiDepositAmount = MAX_QTY.div(4);
+            let kncTweiDepositAmount = MAX_QTY.sub(1);
+            let ethWeiDepositAmount = 0;
+
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            let valueTwei = MAX_QTY.sub(1);
+
+            let orderDstWei = calcSrcQty(valueTwei, ethDecimals, tokenDecimals, MAX_RATE);
+
+            // add order
+            let rc = await reserve.submitTokenToEthOrder(valueTwei, orderDstWei, {from: maker1});
+
+            let tradeAmounts = [3, 5 * 10 ** 17, orderDstWei.div(2), orderDstWei.sub(1)];
+            let rate1 = (await reserve.getConversionRate(ethAddress, tokenAdd, tradeAmounts[0], 0));
+//            log("rate1  " + rate1)
+            let rate2 = (await reserve.getConversionRate(ethAddress, tokenAdd, tradeAmounts[1], 0));
+//            log("rate2  " + rate2)
+            //rate1 has big rounding error since src amount is very small.
+            assert.equal(rate1.div(10 ** 18).floor().valueOf(), rate2.div(10 ** 18).floor().valueOf());
+
+            let rate3 = (await reserve.getConversionRate(ethAddress, tokenAdd, tradeAmounts[2], 0));
+//            log("rate3  " + rate3)
+            assert.equal(rate2.div(10).floor().valueOf(), rate3.div(10).floor().valueOf());
+
+            let rate4 = (await reserve.getConversionRate(ethAddress, tokenAdd, tradeAmounts[3], 0));
+//            log("rate4  " + rate4)
+            assert.equal(rate3.valueOf(), rate4.valueOf());
+        });
+
+        it("test over flows for get rate on partial order use MAX_QTY.", async () => {
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 700 * 10 ** 18;
             let ethWeiDepositAmount = new BigNumber(10 * 10 ** 18);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -3886,7 +3985,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("test over flows in trade partial order. i.e. overflow in dest amount calculation", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 700 * 10 ** 18;
             let ethWeiDepositAmount = new BigNumber(20 * 10 ** 18);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -3914,7 +4013,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add buy order. user takes partial. remaining order stays in book.", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 700 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(2 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -3949,7 +4048,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add buy order. user takes partial. remaining order removed.", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(2 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -4112,7 +4211,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("add 9 buy orders 1 maker. user takes all orders. print gas", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 1100 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(20 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -4149,7 +4248,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("add 10 buy orders. user takes all and last partial. remaining order stays in book. print gas", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 1400 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(20 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -4186,7 +4285,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("add 10 buy orders. user takes all and last partial. remaining order removed.", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 1500 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(20 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -4229,7 +4328,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("add 3 buy orders per 3 makers. take all orders in one trade. see each maker gets his part of tokens", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(6 * 10 ** 18)).add(3000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -4826,3 +4925,21 @@ function calcRateFromQty(srcAmount, dstAmount, srcDecimals, dstDecimals) {
         return ((precisionUnits.mul(dstAmount).mul(decimals)).div(srcAmount)).floor();
     }
 }
+
+function calcSrcQty(dstQty, srcDecimals, dstDecimals, rate) {
+    //source quantity is rounded up. to avoid dest quantity being too low.
+    let srcQty;
+    let numerator;
+    let denominator;
+
+    if (srcDecimals >= dstDecimals) {
+        numerator = precisionUnits.mul(dstQty).mul((new BigNumber(10)).pow(srcDecimals - dstDecimals));
+        denominator = new BigNumber(rate);
+    } else {
+        numerator = precisionUnits.mul(dstQty);
+        denominator = (new BigNumber(rate)).mul((new BigNumber(10)).pow(dstDecimals - srcDecimals));
+    }
+    srcQty = (numerator.add(denominator.sub(1))).div(denominator).floor(); //avoid rounding down errors
+    return srcQty;
+}
+
