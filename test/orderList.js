@@ -1534,6 +1534,46 @@ contract("OrderList", async accounts => {
                 );
             }
         });
+
+        it("should reject updates using removed order ids", async () => {
+            // before: HEAD -> first -> second -> third -> TAIL
+            let firstId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                100 /* dstAmount */
+            );
+            let secondId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                200 /* dstAmount */
+            );
+            let thirdId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                300 /* dstAmount */
+            );
+
+            await orders.remove(secondId);
+
+            const [updated, updateMethod] = await updateWithPositionHint(
+                thirdId /* orderId */,
+                10 /* srcAmount */,
+                350 /* dstAmount */,
+                secondId /* prevId */
+            );
+
+            updated.should.be.false;
+            updateMethod.should.be.bignumber.equal(UPDATE_FAILED);
+
+            // values changed.
+            const order = await getOrderById(thirdId);
+            order.maker.should.equal(user1);
+            order.srcAmount.should.be.bignumber.equal(10);
+            order.dstAmount.should.be.bignumber.equal(300);
+
+            // after: HEAD -> first -> third -> TAIL
+            await assertOrdersOrder2(firstId, thirdId);
+        });
     });
 
     describe("#getFirstOrder", async () => {
