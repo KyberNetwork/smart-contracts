@@ -9,6 +9,14 @@ const Helper = require("./helper.js");
 
 const OrderList = artifacts.require("OrderList");
 
+let user1;
+let user2;
+
+let orders;
+
+let HEAD_ID;
+let TAIL_ID;
+
 contract("OrderList", async accounts => {
     before("setup accounts", async () => {
         user1 = accounts[0];
@@ -202,7 +210,7 @@ contract("OrderList", async accounts => {
         });
 
         it("find handle list with worse orders", async () => {
-            let worseId = await addOrderGetId(
+            await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
                 300 /* dstAmount */
@@ -221,7 +229,7 @@ contract("OrderList", async accounts => {
                 10 /* srcAmount */,
                 100 /* dstAmount */
             );
-            let worseId = await addOrderGetId(
+            await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
                 300 /* dstAmount */
@@ -527,7 +535,7 @@ contract("OrderList", async accounts => {
                 10 /* srcAmount */,
                 300 /* dstAmount */
             );
-            let betterId = await addOrderGetId(
+            await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
                 200 /* dstAmount */
@@ -1013,6 +1021,10 @@ contract("OrderList", async accounts => {
     });
 
     describe("#updateWithPositionHint", async () => {
+        let UPDATE_ONLY_AMOUNTS;
+        let UPDATE_MOVE_ORDER;
+        let UPDATE_FAILED;
+
         beforeEach("setting up the update method constants", async () => {
             UPDATE_ONLY_AMOUNTS = await orders.UPDATE_ONLY_AMOUNTS();
             UPDATE_MOVE_ORDER = await orders.UPDATE_MOVE_ORDER();
@@ -1026,7 +1038,7 @@ contract("OrderList", async accounts => {
                 10 /* srcAmount */,
                 100 /* dstAmount */
             );
-            let secondId = await addOrderGetId(
+            await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
                 200 /* dstAmount */
@@ -1463,7 +1475,7 @@ contract("OrderList", async accounts => {
 
         it("should return empty if called with getFirstOrder when no order", async () => {
             let params = await orders.getFirstOrder();
-            let [firstOrderId, isEmpty] = params;
+            let [, isEmpty] = params;
 
             isEmpty.should.equal(true);
         });
@@ -1524,7 +1536,7 @@ async function addOrderAfterIdGetId(
 
 async function addOrder(maker, srcAmount, dstAmount, args = {}) {
     let orderId = await addOrderGetId(maker, srcAmount, dstAmount, args);
-    return await getOrderById(orderId);
+    return getOrderById(orderId);
 }
 
 async function addOrderAfterId(maker, srcAmount, dstAmount, prevId, args = {}) {
@@ -1535,7 +1547,7 @@ async function addOrderAfterId(maker, srcAmount, dstAmount, prevId, args = {}) {
         prevId,
         args
     );
-    return await getOrderById(id);
+    return getOrderById(id);
 }
 
 async function allocateIds(howMany) {
@@ -1599,7 +1611,7 @@ async function assertOrdersOrder3(orderId1, orderId2, orderId3) {
 
 async function debugOrders(max) {
     let maker, prevId, nextId, srcAmount, dstAmount;
-    for (i = 0; i < max; i++) {
+    for (let i = 0; i < max; i++) {
         [maker, prevId, nextId, srcAmount, dstAmount] = await orders.orders(i);
         console.log(
             `orders[${i}]=(maker=${maker}, prevId=${prevId}, nextId=${nextId}, ` +
