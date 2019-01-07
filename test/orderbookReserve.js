@@ -2267,7 +2267,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add 2 sell orders. get hint for next sell order and see correct", async() => {
-            let tokenWeiDepositAmount = new BigNumber(500).mul(10 ** 18); // 500 tokens
+            let tokenWeiDepositAmount = new BigNumber(500 * 10 ** 18); // 500 tokens
             let kncTweiDepositAmount = 600 * 10 ** 18;
             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
 
@@ -2347,7 +2347,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add 3 sell orders. test get hint for updating last order to different amounts", async() => {
-            let tokenWeiDepositAmount = new BigNumber(500).mul(10 ** 18); // 500 tokens
+            let tokenWeiDepositAmount = new BigNumber(500 * 10 ** 18); // 500 tokens
             let kncTweiDepositAmount = 600 * 10 ** 18;
             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
 
@@ -2481,7 +2481,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add few buy and sell orders and perform batch update - only amounts. compare gas no hint and good hint.", async() => {
-            let tokenWeiDepositAmount = new BigNumber(500).mul(10 ** 18); // 500 tokens
+            let tokenWeiDepositAmount = new BigNumber(500 * 10 ** 18); // 500 tokens
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(4 * 10 ** 18)).add(3000);
 
@@ -2990,13 +2990,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add a few sell orders. see orders added in correct position.", async () => {
-            let tokenWeiDepositAmount = new BigNumber(500).mul(10 ** 18);
+            let tokenWeiDepositAmount = new BigNumber(500 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(0 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = new BigNumber(9).mul(10 ** 18);
-            let orderDstWei = (new BigNumber(2).mul(10 ** 18)).add(2000);
+            let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
+            let orderDstWei = (new BigNumber(2 * 10 ** 18)).add(2000);
 
             let rc = await reserve.submitTokenToEthOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
 
@@ -3067,7 +3067,9 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(orderDetails[4].valueOf(), order1ID);
         });
 
-        it("add max number of orders per maker 256 sell and 256 buy. see next order reverted.", async () => {
+        it("add max number of orders per maker x sell and x buy. see next order reverted.", async () => {
+            const MAX_ORDERS_PER_MAKER = numOrderIdsPerMaker;
+
             let tokenWeiDepositAmount = new BigNumber(3000).mul(10 ** 18);
             let kncTweiDepositAmount = 300000 * 10 ** 18;
             let ethWeiDepositAmount = (new BigNumber(0 * 10 ** 18));
@@ -3077,7 +3079,7 @@ contract('OrderbookReserve', async (accounts) => {
             let orderDstWei = new BigNumber(2 * 10 ** 18);
 
             let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});;
-            for(let i = 1; i < numOrderIdsPerMaker; i++) {
+            for(let i = 1; i < MAX_ORDERS_PER_MAKER; i++) {
                 orderDstWei = orderDstWei.add(500);
                 let prevId = rc.logs[0].args.orderId.valueOf();
                 rc = await reserve.submitTokenToEthOrderWHint(orderSrcAmountTwei, orderDstWei, prevId, {from: maker1});
@@ -3120,7 +3122,7 @@ contract('OrderbookReserve', async (accounts) => {
             //now max orders for maker2
             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            for(let i = 0; i < numOrderIdsPerMaker; i++) {
+            for(let i = 0; i < MAX_ORDERS_PER_MAKER; i++) {
                 let prevId = rc.logs[0].args.orderId.valueOf();
                 rc = await reserve.submitTokenToEthOrderWHint(orderSrcAmountTwei, orderDstWei, prevId, {from: maker2});
     //            log(i + " add gas: " + rc.receipt.gasUsed);
@@ -3129,6 +3131,108 @@ contract('OrderbookReserve', async (accounts) => {
             orderList = await reserve.getTokenToEthOrderList();
             assert.equal(orderList.length, (2 * numOrderIdsPerMaker));
         });
+
+        it.only("test can't 'revive' deleted (tok to eth) order by setting it as prev ID (in empty list)", async() => {
+            let tokenWeiDepositAmount = new BigNumber(500 * 10 ** 18);
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let ethWeiDepositAmount = (new BigNumber(0 * 10 ** 18)).add(30000);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
+            let orderDstWei = (new BigNumber(2 * 10 ** 18)).add(2000);
+
+            let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
+            let order1ID = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
+            let order2ID = rc.logs[0].args.orderId.valueOf();
+
+            await reserve.cancelTokenToEthOrder(order1ID, {from: maker1});
+            await reserve.cancelTokenToEthOrder(order2ID, {from: maker1});
+
+            await reserve.submitTokenToEthOrderWHint(orderSrcAmountTwei, orderDstWei, order2ID, {from: maker1});
+
+            let orderList = await reserve.getTokenToEthOrderList();
+
+            assert.equal(orderList.length, 1);
+        })
+
+        it.only("test can't 'revive' deleted (tok to eth) order by setting it as prev ID (in non empty list)", async() => {
+            let tokenWeiDepositAmount = new BigNumber(500 * 10 ** 18);
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let ethWeiDepositAmount = (new BigNumber(0 * 10 ** 18)).add(30000);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
+            let orderDstWei = new BigNumber(2 * 10 ** 18);
+
+            await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
+            let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(100), {from: maker1});
+            let id2ndOrder = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(200), {from: maker1});
+            let id3rdOrder = rc.logs[0].args.orderId.valueOf();
+            await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(300), {from: maker1});
+            await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(400), {from: maker1});
+
+            await reserve.cancelTokenToEthOrder(id2ndOrder, {from: maker1});
+            await reserve.cancelTokenToEthOrder(id3rdOrder, {from: maker1});
+
+            await reserve.submitTokenToEthOrderWHint(orderSrcAmountTwei, orderDstWei.add(150), id3rdOrder, {from: maker1});
+
+            let orderList = await reserve.getTokenToEthOrderList();
+
+            assert.equal(orderList.length, 4);
+        })
+
+        it.only("test can't 'revive' deleted (eth to tok) order by setting it as prev ID (in empty list)", async() => {
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            let orderTwei = new BigNumber(9 * 10 ** 18);
+            let orderWei = (new BigNumber(2 * 10 ** 18)).add(2000);
+
+            let rc = await reserve.submitEthToTokenOrder(orderWei, orderTwei, {from: maker1});
+            let order1ID = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitEthToTokenOrder(orderWei, orderTwei.add(150), {from: maker1});
+            let order2ID = rc.logs[0].args.orderId.valueOf();
+
+            await reserve.cancelEthToTokenOrder(order1ID, {from: maker1});
+            await reserve.cancelEthToTokenOrder(order2ID, {from: maker1});
+
+            await reserve.submitEthToTokenOrderWHint(orderWei, orderTwei, order2ID, {from: maker1});
+
+            let orderList = await reserve.getEthToTokenOrderList();
+
+            assert.equal(orderList.length, 1);
+        })
+
+        it.only("test can't 'revive' deleted (eth to tok) order by setting it as prev ID (in non empty list)", async() => {
+            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
+            let kncTweiDepositAmount = 600 * 10 ** 18;
+            let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            let orderTwei = new BigNumber(9 * 10 ** 18);
+            let orderWei = new BigNumber(2 * 10 ** 18);
+
+            await reserve.submitEthToTokenOrder(orderWei, orderTwei, {from: maker1});
+            let rc = await reserve.submitEthToTokenOrder(orderWei, orderTwei.add(100), {from: maker1});
+            let id2ndOrder = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitEthToTokenOrder(orderWei, orderTwei.add(200), {from: maker1});
+            let id3rdOrder = rc.logs[0].args.orderId.valueOf();
+            await reserve.submitEthToTokenOrder(orderWei, orderTwei.add(300), {from: maker1});
+            await reserve.submitEthToTokenOrder(orderWei, orderTwei.add(400), {from: maker1});
+
+            await reserve.cancelEthToTokenOrder(id2ndOrder, {from: maker1});
+            await reserve.cancelEthToTokenOrder(id3rdOrder, {from: maker1});
+
+            await reserve.submitEthToTokenOrderWHint(orderWei, orderTwei.add(150), id3rdOrder, {from: maker1});
+
+            let orderList = await reserve.getEthToTokenOrderList();
+
+            assert.equal(orderList.length, 4);
+        })
     });
 
     describe("knc stakes and burn", function() {
@@ -3503,8 +3607,8 @@ contract('OrderbookReserve', async (accounts) => {
 
             let makerTokenBalance = await reserve.makerFunds(maker1, tokenAdd);
             assert.equal(makerTokenBalance.valueOf(), tokenWeiDepositAmount);
-            let orderSrcAmountTwei = new BigNumber(9).mul(10 ** 18);
-            let orderDstWei = (new BigNumber(2).mul(10 ** 18)).add(2000);
+            let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
+            let orderDstWei = (new BigNumber(2 * 10 ** 18)).add(2000);
 
             let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
 
