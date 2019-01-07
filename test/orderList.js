@@ -466,7 +466,6 @@ contract("OrderList", async accounts => {
             );
 
             let order = await addOrderAfterId(
-                user1 /* maker */,
                 10 /* srcAmount */,
                 200 /* dstAmount */,
                 betterId
@@ -764,6 +763,85 @@ contract("OrderList", async accounts => {
                     "expected revert but got: " + e
                 );
             }
+        });
+
+        it("using removed orders as hint fails with no effect to order list", async () => {
+            // before: HEAD -> first -> second -> third -> TAIL
+            let firstId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                100 /* dstAmount */
+            );
+            let secondId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                200 /* dstAmount */
+            );
+            let thirdId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                300 /* dstAmount */
+            );
+
+            await orders.remove(secondId);
+
+            const newId = await orders.allocateIds.call(1);
+            await orders.allocateIds(1);
+
+            const added = await orders.addAfterId.call(
+                user1 /* maker */,
+                newId /* orderId */,
+                10 /* srcAmount */,
+                250 /* dstAmount */,
+                secondId /* prevId */
+            );
+            await orders.addAfterId(
+                user1 /* maker */,
+                newId /* orderId */,
+                10 /* srcAmount */,
+                250 /* dstAmount */,
+                secondId /* prevId */
+            );
+
+            added.should.be.false;
+
+            // after: HEAD -> first -> third -> TAIL
+            await assertOrdersOrder2(firstId, thirdId);
+        });
+
+        it("using removed order as hint should fail when list is empty", async () => {
+            // before: HEAD -> first -> second -> third -> TAIL
+            let firstId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                100 /* dstAmount */
+            );
+
+            await orders.remove(firstId);
+
+            const newId = await orders.allocateIds.call(1);
+            await orders.allocateIds(1);
+
+            const added = await orders.addAfterId.call(
+                user1 /* maker */,
+                newId /* orderId */,
+                10 /* srcAmount */,
+                250 /* dstAmount */,
+                firstId /* prevId */
+            );
+            await orders.addAfterId(
+                user1 /* maker */,
+                newId /* orderId */,
+                10 /* srcAmount */,
+                250 /* dstAmount */,
+                firstId /* prevId */
+            );
+
+            added.should.be.false;
+
+            // after: HEAD -> TAIL
+            const head = await getOrderById(HEAD_ID);
+            head.nextId.should.be.bignumber.equal(TAIL_ID);
         });
     });
 
@@ -1505,13 +1583,7 @@ async function addOrderGetId(maker, srcAmount, dstAmount, args = {}) {
     return orderId;
 }
 
-async function addOrderAfterIdGetId(
-    maker,
-    srcAmount,
-    dstAmount,
-    prevId,
-    args = {}
-) {
+async function addOrderAfterIdGetId(srcAmount, dstAmount, prevId, args = {}) {
     let orderId = await allocateIds(1);
     let canAdd = await orders.addAfterId.call(
         user1 /* maker */,
@@ -1539,14 +1611,8 @@ async function addOrder(maker, srcAmount, dstAmount, args = {}) {
     return getOrderById(orderId);
 }
 
-async function addOrderAfterId(maker, srcAmount, dstAmount, prevId, args = {}) {
-    let id = await addOrderAfterIdGetId(
-        maker,
-        srcAmount,
-        dstAmount,
-        prevId,
-        args
-    );
+async function addOrderAfterId(srcAmount, dstAmount, prevId, args = {}) {
+    let id = await addOrderAfterIdGetId(srcAmount, dstAmount, prevId, args);
     return getOrderById(id);
 }
 
@@ -1609,6 +1675,8 @@ async function assertOrdersOrder3(orderId1, orderId2, orderId3) {
     order1.prevId.should.be.bignumber.equal(head.id);
 }
 
+// To debug and order list with X orders pass at least X+3 as max (for id 0,
+// head and tail).
 async function debugOrders(max) {
     let maker, prevId, nextId, srcAmount, dstAmount;
     for (let i = 0; i < max; i++) {
