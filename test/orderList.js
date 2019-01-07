@@ -1,21 +1,21 @@
-const BigNumber = require('bignumber.js');
+const BigNumber = require("bignumber.js");
 
 require("chai")
     .use(require("chai-as-promised"))
-    .use(require('chai-bignumber')(BigNumber))
-    .should()
+    .use(require("chai-bignumber")(BigNumber))
+    .should();
 
 const Helper = require("./helper.js");
 
 const OrderList = artifacts.require("OrderList");
 
-contract('OrderList', async (accounts) => {
-    before('setup accounts', async () => {
+contract("OrderList", async accounts => {
+    before("setup accounts", async () => {
         user1 = accounts[0];
         user2 = accounts[1];
     });
 
-    beforeEach('setup contract for each test', async () => {
+    beforeEach("setup contract for each test", async () => {
         orders = await OrderList.new(user1);
         HEAD_ID = await orders.HEAD_ID();
         TAIL_ID = await orders.TAIL_ID();
@@ -35,11 +35,12 @@ contract('OrderList', async (accounts) => {
         it("should not allow deploying with address 0 as admin", async () => {
             try {
                 await OrderList.new(0);
-                assert(false, "throw was expected in line above.")
-            } catch(e){
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
                 assert(
                     Helper.isRevertErrorMessage(e),
-                    "expected revert but got: " + e);
+                    "expected revert but got: " + e
+                );
             }
         });
     });
@@ -68,8 +69,12 @@ contract('OrderList', async (accounts) => {
                 secondAllocationfirstId + 2
             ]);
 
-            firstAllocationIds.should.not.have.any.keys(Array.from(secondAllocationIds));
-            secondAllocationIds.should.not.have.any.keys(Array.from(firstAllocationIds));
+            firstAllocationIds.should.not.have.any.keys(
+                Array.from(secondAllocationIds)
+            );
+            secondAllocationIds.should.not.have.any.keys(
+                Array.from(firstAllocationIds)
+            );
         });
 
         it("should allocate different ids for orders of different sizes", async () => {
@@ -90,11 +95,15 @@ contract('OrderList', async (accounts) => {
                 secondAllocationfirstId + 2
             ]);
 
-            firstAllocationIds.should.not.have.any.keys(Array.from(secondAllocationIds));
-            secondAllocationIds.should.not.have.any.keys(Array.from(firstAllocationIds));
+            firstAllocationIds.should.not.have.any.keys(
+                Array.from(secondAllocationIds)
+            );
+            secondAllocationIds.should.not.have.any.keys(
+                Array.from(firstAllocationIds)
+            );
         });
 
-        it("should reach over flow in nextFreeId, see revert", async() => {
+        it("should reach over flow in nextFreeId, see revert", async () => {
             let maxUint32 = new BigNumber(2 ** 32);
             let nextFreeId = await orders.nextFreeId();
 
@@ -102,13 +111,14 @@ contract('OrderList', async (accounts) => {
 
             try {
                 await orders.allocateIds(2);
-                assert(false, "throw was expected in line above.")
-            } catch(e){
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
                 assert(
                     Helper.isRevertErrorMessage(e),
-                    "expected revert but got: " + e);
+                    "expected revert but got: " + e
+                );
             }
-        })
+        });
     });
 
     describe("#compareOrders", async () => {
@@ -274,11 +284,11 @@ contract('OrderList', async (accounts) => {
                 user1 /* maker */,
                 10 /* srcAmount */,
                 100 /* dstAmount */,
-                {from: user1}
+                { from: user1 }
             );
 
-            let params = await orders.getOrderDetails(orderId, {from: user2});
-            let [maker,,,,] = params;
+            let params = await orders.getOrderDetails(orderId, { from: user2 });
+            let [maker, , , ,] = params;
 
             maker.should.equal(user1);
         });
@@ -287,11 +297,13 @@ contract('OrderList', async (accounts) => {
             let id1 = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let id2 = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
 
             // HEAD -> 1 -> 2 -> TAIL
             await assertOrdersOrder2(id1, id2);
@@ -388,11 +400,12 @@ contract('OrderList', async (accounts) => {
                     10 /* srcAmount */,
                     100 /* dstAmount */
                 );
-                assert(false, "throw was expected in line above.")
-            } catch(e){
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
                 assert(
                     Helper.isRevertErrorMessage(e),
-                    "expected revert but got: " + e);
+                    "expected revert but got: " + e
+                );
             }
         });
 
@@ -404,11 +417,12 @@ contract('OrderList', async (accounts) => {
                     10 /* srcAmount */,
                     100 /* dstAmount */
                 );
-                assert(false, "throw was expected in line above.")
-            } catch(e){
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
                 assert(
                     Helper.isRevertErrorMessage(e),
-                    "expected revert but got: " + e);
+                    "expected revert but got: " + e
+                );
             }
         });
 
@@ -420,11 +434,12 @@ contract('OrderList', async (accounts) => {
                     10 /* srcAmount */,
                     100 /* dstAmount */
                 );
-                assert(false, "throw was expected in line above.")
-            } catch(e){
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
                 assert(
                     Helper.isRevertErrorMessage(e),
-                    "expected revert but got: " + e);
+                    "expected revert but got: " + e
+                );
             }
         });
     });
@@ -500,7 +515,8 @@ contract('OrderList', async (accounts) => {
                 orderId /* orderId */,
                 10 /* srcAmount */,
                 200 /* dstAmount */,
-                worseId);
+                worseId
+            );
 
             added.should.be.false;
         });
@@ -523,7 +539,8 @@ contract('OrderList', async (accounts) => {
                 orderId /* orderId */,
                 10 /* srcAmount */,
                 100 /* dstAmount */,
-                bestId);
+                bestId
+            );
 
             added.should.be.false;
         });
@@ -579,7 +596,8 @@ contract('OrderList', async (accounts) => {
             let orderId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
 
             await orders.remove(orderId);
 
@@ -593,11 +611,13 @@ contract('OrderList', async (accounts) => {
             let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let betterId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
 
             await orders.remove(worseId);
             await orders.remove(betterId);
@@ -611,11 +631,13 @@ contract('OrderList', async (accounts) => {
             let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let betterId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
 
             await orders.remove(betterId);
             await orders.remove(worseId);
@@ -629,11 +651,13 @@ contract('OrderList', async (accounts) => {
             let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let betterId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
 
             await orders.remove(worseId);
 
@@ -645,11 +669,13 @@ contract('OrderList', async (accounts) => {
             let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let betterId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
 
             await orders.remove(betterId);
 
@@ -661,15 +687,18 @@ contract('OrderList', async (accounts) => {
             let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
             let middleId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let betterId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
 
             await orders.remove(middleId);
 
@@ -680,33 +709,36 @@ contract('OrderList', async (accounts) => {
         it("should reject removing HEAD", async () => {
             try {
                 await orders.remove(HEAD_ID);
-                assert(false, "throw was expected in line above.")
-            } catch(e){
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
                 assert(
                     Helper.isRevertErrorMessage(e),
-                    "expected revert but got: " + e);
+                    "expected revert but got: " + e
+                );
             }
         });
 
         it("should reject removing TAIL", async () => {
             try {
                 await orders.remove(TAIL_ID);
-                assert(false, "throw was expected in line above.")
-            } catch(e){
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
                 assert(
                     Helper.isRevertErrorMessage(e),
-                    "expected revert but got: " + e);
+                    "expected revert but got: " + e
+                );
             }
         });
 
         it("should reject removing order with id 0", async () => {
             try {
                 await orders.remove(0);
-                assert(false, "throw was expected in line above.")
-            } catch(e){
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
                 assert(
                     Helper.isRevertErrorMessage(e),
-                    "expected revert but got: " + e);
+                    "expected revert but got: " + e
+                );
             }
         });
 
@@ -717,11 +749,12 @@ contract('OrderList', async (accounts) => {
 
             try {
                 await orders.remove(nonExistantOrderId);
-                assert(false, "throw was expected in line above.")
-            } catch(e){
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
                 assert(
                     Helper.isRevertErrorMessage(e),
-                    "expected revert but got: " + e);
+                    "expected revert but got: " + e
+                );
             }
         });
     });
@@ -731,7 +764,8 @@ contract('OrderList', async (accounts) => {
             let orderId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
 
             let srcAmount = 20;
             let dstAmount = 200;
@@ -748,15 +782,18 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             let srcAmount = 10;
             let dstAmount = 90;
@@ -771,15 +808,18 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             let srcAmount = 10;
             let dstAmount = 220;
@@ -794,15 +834,18 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             let srcAmount = 10;
             let dstAmount = 330;
@@ -817,15 +860,18 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             let srcAmount = 10;
             let dstAmount = 90;
@@ -840,15 +886,18 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             let srcAmount = 10;
             let dstAmount = 220;
@@ -863,15 +912,18 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             let srcAmount = 10;
             let dstAmount = 330;
@@ -886,15 +938,18 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             let srcAmount = 10;
             let dstAmount = 90;
@@ -909,15 +964,18 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             let srcAmount = 10;
             let dstAmount = 180;
@@ -932,15 +990,18 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             let srcAmount = 10;
             let dstAmount = 330;
@@ -952,7 +1013,7 @@ contract('OrderList', async (accounts) => {
     });
 
     describe("#updateWithPositionHint", async () => {
-        beforeEach('setting up the update method constants', async () => {
+        beforeEach("setting up the update method constants", async () => {
             UPDATE_ONLY_AMOUNTS = await orders.UPDATE_ONLY_AMOUNTS();
             UPDATE_MOVE_ORDER = await orders.UPDATE_MOVE_ORDER();
             UPDATE_FAILED = await orders.UPDATE_FAILED();
@@ -963,15 +1024,18 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             let srcAmount = 10;
             let dstAmount = 190;
@@ -995,15 +1059,18 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             let srcAmount = 10;
             let dstAmount = 190;
@@ -1024,7 +1091,7 @@ contract('OrderList', async (accounts) => {
             let order = await addOrder(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */,
+                200 /* dstAmount */
             );
 
             // Calling locally so that the order will not be in fact added to the
@@ -1054,7 +1121,7 @@ contract('OrderList', async (accounts) => {
             let order = await addOrder(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */,
+                200 /* dstAmount */
             );
 
             const [updated, updateMethod] = await updateWithPositionHint(
@@ -1083,7 +1150,7 @@ contract('OrderList', async (accounts) => {
             let order = await addOrder(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */,
+                100 /* dstAmount */
             );
 
             let worseId = await addOrderGetId(
@@ -1115,7 +1182,7 @@ contract('OrderList', async (accounts) => {
             let order = await addOrder(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                400 /* dstAmount */,
+                400 /* dstAmount */
             );
 
             let bestId = await addOrderGetId(
@@ -1153,15 +1220,18 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             const [updated, updateMethod] = await updateWithPositionHint(
                 secondId /* orderId */,
@@ -1189,15 +1259,18 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             const [updated, updateMethod] = await updateWithPositionHint(
                 firstId /* orderId */,
@@ -1221,15 +1294,18 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             const [updated, updateMethod] = await updateWithPositionHint(
                 secondId /* orderId */,
@@ -1253,15 +1329,18 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                100 /* dstAmount */);
+                100 /* dstAmount */
+            );
             let secondId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                200 /* dstAmount */);
+                200 /* dstAmount */
+            );
             let thirdId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             const [updated, updateMethod] = await updateWithPositionHint(
                 thirdId /* orderId */,
@@ -1288,11 +1367,12 @@ contract('OrderList', async (accounts) => {
                     310 /* dstAmount */,
                     HEAD_ID /* prevId */
                 );
-                assert(false, "throw was expected in line above.")
-            } catch(e){
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
                 assert(
                     Helper.isRevertErrorMessage(e),
-                    "expected revert but got: " + e);
+                    "expected revert but got: " + e
+                );
             }
         });
 
@@ -1300,7 +1380,8 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             try {
                 await updateWithPositionHint(
@@ -1309,11 +1390,12 @@ contract('OrderList', async (accounts) => {
                     310 /* dstAmount */,
                     firstId /* prevId */
                 );
-                assert(false, "throw was expected in line above.")
-            } catch(e){
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
                 assert(
                     Helper.isRevertErrorMessage(e),
-                    "expected revert but got: " + e);
+                    "expected revert but got: " + e
+                );
             }
         });
 
@@ -1321,7 +1403,8 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             try {
                 await updateWithPositionHint(
@@ -1330,11 +1413,12 @@ contract('OrderList', async (accounts) => {
                     310 /* dstAmount */,
                     firstId /* prevId */
                 );
-                assert(false, "throw was expected in line above.")
-            } catch(e){
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
                 assert(
                     Helper.isRevertErrorMessage(e),
-                    "expected revert but got: " + e);
+                    "expected revert but got: " + e
+                );
             }
         });
 
@@ -1342,7 +1426,8 @@ contract('OrderList', async (accounts) => {
             let firstId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
-                300 /* dstAmount */);
+                300 /* dstAmount */
+            );
 
             try {
                 await updateWithPositionHint(
@@ -1351,11 +1436,12 @@ contract('OrderList', async (accounts) => {
                     190 /* dstAmount */,
                     firstId /* prevId */
                 );
-                assert(false, "throw was expected in line above.")
-            } catch(e){
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
                 assert(
                     Helper.isRevertErrorMessage(e),
-                    "expected revert but got: " + e);
+                    "expected revert but got: " + e
+                );
             }
         });
     });
@@ -1413,8 +1499,7 @@ async function addOrderAfterIdGetId(
     dstAmount,
     prevId,
     args = {}
-)
-{
+) {
     let orderId = await allocateIds(1);
     let canAdd = await orders.addAfterId.call(
         user1 /* maker */,
@@ -1424,7 +1509,7 @@ async function addOrderAfterIdGetId(
         prevId,
         args
     );
-    if (!canAdd) throw new Error('add after id failed');
+    if (!canAdd) throw new Error("add after id failed");
 
     await orders.addAfterId(
         user1 /* maker */,
@@ -1444,7 +1529,12 @@ async function addOrder(maker, srcAmount, dstAmount, args = {}) {
 
 async function addOrderAfterId(maker, srcAmount, dstAmount, prevId, args = {}) {
     let id = await addOrderAfterIdGetId(
-        maker, srcAmount, dstAmount, prevId, args);
+        maker,
+        srcAmount,
+        dstAmount,
+        prevId,
+        args
+    );
     return await getOrderById(id);
 }
 
@@ -1461,12 +1551,7 @@ async function updateWithPositionHint(orderId, srcAmount, dstAmount, prevId) {
         dstAmount,
         prevId
     );
-    await orders.updateWithPositionHint(
-        orderId,
-        srcAmount,
-        dstAmount,
-        prevId
-    );
+    await orders.updateWithPositionHint(orderId, srcAmount, dstAmount, prevId);
     return [updated, updateMethod];
 }
 
@@ -1515,10 +1600,10 @@ async function assertOrdersOrder3(orderId1, orderId2, orderId3) {
 async function debugOrders(max) {
     let maker, prevId, nextId, srcAmount, dstAmount;
     for (i = 0; i < max; i++) {
-    [maker, prevId, nextId, srcAmount, dstAmount] = await orders.orders(i);
+        [maker, prevId, nextId, srcAmount, dstAmount] = await orders.orders(i);
         console.log(
-            `orders[${i}]=(maker=${maker}, prevId=${prevId}, nextId=${nextId}, `
-                + `srcAmount=${srcAmount}, dstAmount=${dstAmount})`
-            );
+            `orders[${i}]=(maker=${maker}, prevId=${prevId}, nextId=${nextId}, ` +
+                `srcAmount=${srcAmount}, dstAmount=${dstAmount})`
+        );
     }
 }
