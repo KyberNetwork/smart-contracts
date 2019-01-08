@@ -102,11 +102,6 @@ contract OrderList is PermissionGroups, OrderListInterface {
         Order storage order = orders[orderId];
         orders[order.prevId].nextId = order.nextId;
         orders[order.nextId].prevId = order.prevId;
-
-        // Mark deleted order
-        order.prevId = TAIL_ID;
-        order.nextId = HEAD_ID;
-
         return true;
     }
 
@@ -299,11 +294,7 @@ contract OrderList is PermissionGroups, OrderListInterface {
         Order storage prev = orders[prevId];
 
         // Make sure prev order is either HEAD or properly initialised.
-        if (prevId != HEAD_ID && (
-                prev.prevId == 0 ||
-                prev.nextId == 0 ||
-                prev.prevId == TAIL_ID ||
-                prev.nextId == HEAD_ID)) {
+        if (prevId != HEAD_ID && (prev.prevId == 0 || prev.nextId == 0)) {
             return false;
         }
 
