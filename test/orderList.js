@@ -9,6 +9,14 @@ const Helper = require("./helper.js");
 
 const OrderList = artifacts.require("OrderList");
 
+let user1;
+let user2;
+
+let orders;
+
+let HEAD_ID;
+let TAIL_ID;
+
 contract('OrderList', async (accounts) => {
     before('setup accounts', async () => {
         user1 = accounts[0];
@@ -724,6 +732,173 @@ contract('OrderList', async (accounts) => {
                     "expected revert but got: " + e);
             }
         });
+
+        it("using removed orders as hint fails with no effect to order list: first order", async () => {
+            // before: HEAD -> first -> second -> third -> TAIL
+            let firstId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                100 /* dstAmount */
+            );
+            let secondId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                200 /* dstAmount */
+            );
+            let thirdId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                300 /* dstAmount */
+            );
+
+            await orders.remove(firstId);
+
+            const newId = await orders.allocateIds.call(1);
+            await orders.allocateIds(1);
+
+            const added = await orders.addAfterId.call(
+                user1 /* maker */,
+                newId /* orderId */,
+                10 /* srcAmount */,
+                150 /* dstAmount */,
+                firstId /* prevId */
+            );
+            await orders.addAfterId(
+                user1 /* maker */,
+                newId /* orderId */,
+                10 /* srcAmount */,
+                150 /* dstAmount */,
+                firstId /* prevId */
+            );
+
+            added.should.be.false;
+
+            // after: HEAD -> second -> third -> TAIL
+            await assertOrdersOrder2(secondId, thirdId);
+        });
+
+        it("using removed orders as hint fails with no effect to order list: middle order", async () => {
+            // before: HEAD -> first -> second -> third -> TAIL
+            let firstId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                100 /* dstAmount */
+            );
+            let secondId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                200 /* dstAmount */
+            );
+            let thirdId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                300 /* dstAmount */
+            );
+
+            await orders.remove(secondId);
+
+            const newId = await orders.allocateIds.call(1);
+            await orders.allocateIds(1);
+
+            const added = await orders.addAfterId.call(
+                user1 /* maker */,
+                newId /* orderId */,
+                10 /* srcAmount */,
+                250 /* dstAmount */,
+                secondId /* prevId */
+            );
+            await orders.addAfterId(
+                user1 /* maker */,
+                newId /* orderId */,
+                10 /* srcAmount */,
+                250 /* dstAmount */,
+                secondId /* prevId */
+            );
+
+            added.should.be.false;
+
+            // after: HEAD -> first -> third -> TAIL
+            await assertOrdersOrder2(firstId, thirdId);
+        });
+
+        it("using removed orders as hint fails with no effect to order list: last order", async () => {
+            // before: HEAD -> first -> second -> third -> TAIL
+            let firstId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                100 /* dstAmount */
+            );
+            let secondId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                200 /* dstAmount */
+            );
+            let thirdId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                300 /* dstAmount */
+            );
+
+            await orders.remove(thirdId);
+
+            const newId = await orders.allocateIds.call(1);
+            await orders.allocateIds(1);
+
+            const added = await orders.addAfterId.call(
+                user1 /* maker */,
+                newId /* orderId */,
+                10 /* srcAmount */,
+                350 /* dstAmount */,
+                thirdId /* prevId */
+            );
+            await orders.addAfterId(
+                user1 /* maker */,
+                newId /* orderId */,
+                10 /* srcAmount */,
+                350 /* dstAmount */,
+                thirdId /* prevId */
+            );
+
+            added.should.be.false;
+
+            // after: HEAD -> first -> third -> TAIL
+            await assertOrdersOrder2(firstId, secondId);
+        });
+
+        it("using removed order as hint should fail when list is empty", async () => {
+            // before: HEAD -> first -> second -> third -> TAIL
+            let firstId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                100 /* dstAmount */
+            );
+
+            await orders.remove(firstId);
+
+            const newId = await orders.allocateIds.call(1);
+            await orders.allocateIds(1);
+
+            const added = await orders.addAfterId.call(
+                user1 /* maker */,
+                newId /* orderId */,
+                10 /* srcAmount */,
+                250 /* dstAmount */,
+                firstId /* prevId */
+            );
+            await orders.addAfterId(
+                user1 /* maker */,
+                newId /* orderId */,
+                10 /* srcAmount */,
+                250 /* dstAmount */,
+                firstId /* prevId */
+            );
+
+            added.should.be.false;
+
+            // after: HEAD -> TAIL
+            const head = await getOrderById(HEAD_ID);
+            head.nextId.should.be.bignumber.equal(TAIL_ID);
+        });
     });
 
     describe("#update", async () => {
@@ -952,7 +1127,11 @@ contract('OrderList', async (accounts) => {
     });
 
     describe("#updateWithPositionHint", async () => {
-        beforeEach('setting up the update method constants', async () => {
+        let UPDATE_ONLY_AMOUNTS;
+        let UPDATE_MOVE_ORDER;
+        let UPDATE_FAILED;
+
+        beforeEach("setting up the update method constants", async () => {
             UPDATE_ONLY_AMOUNTS = await orders.UPDATE_ONLY_AMOUNTS();
             UPDATE_MOVE_ORDER = await orders.UPDATE_MOVE_ORDER();
             UPDATE_FAILED = await orders.UPDATE_FAILED();
@@ -1358,6 +1537,124 @@ contract('OrderList', async (accounts) => {
                     "expected revert but got: " + e);
             }
         });
+
+        it("should reject updates using removed order ids: first order", async () => {
+            // before: HEAD -> first -> second -> third -> TAIL
+            let firstId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                100 /* dstAmount */
+            );
+            let secondId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                200 /* dstAmount */
+            );
+            let thirdId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                300 /* dstAmount */
+            );
+
+            await orders.remove(firstId);
+
+            const [updated, updateMethod] = await updateWithPositionHint(
+                thirdId /* orderId */,
+                10 /* srcAmount */,
+                150 /* dstAmount */,
+                firstId /* prevId */
+            );
+
+            updated.should.be.false;
+            updateMethod.should.be.bignumber.equal(UPDATE_FAILED);
+
+            // values changed.
+            const order = await getOrderById(thirdId);
+            order.maker.should.equal(user1);
+            order.srcAmount.should.be.bignumber.equal(10);
+            order.dstAmount.should.be.bignumber.equal(300);
+
+            // after: HEAD -> second -> third -> TAIL
+            await assertOrdersOrder2(secondId, thirdId);
+        });
+        it("should reject updates using removed order ids: middle order", async () => {
+            // before: HEAD -> first -> second -> third -> TAIL
+            let firstId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                100 /* dstAmount */
+            );
+            let secondId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                200 /* dstAmount */
+            );
+            let thirdId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                300 /* dstAmount */
+            );
+
+            await orders.remove(secondId);
+
+            const [updated, updateMethod] = await updateWithPositionHint(
+                thirdId /* orderId */,
+                10 /* srcAmount */,
+                350 /* dstAmount */,
+                secondId /* prevId */
+            );
+
+            updated.should.be.false;
+            updateMethod.should.be.bignumber.equal(UPDATE_FAILED);
+
+            // values changed.
+            const order = await getOrderById(thirdId);
+            order.maker.should.equal(user1);
+            order.srcAmount.should.be.bignumber.equal(10);
+            order.dstAmount.should.be.bignumber.equal(300);
+
+            // after: HEAD -> first -> third -> TAIL
+            await assertOrdersOrder2(firstId, thirdId);
+        });
+        it("should reject updates using removed order ids: last order", async () => {
+            // before: HEAD -> first -> second -> third -> TAIL
+            let firstId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                100 /* dstAmount */
+            );
+            let secondId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                200 /* dstAmount */
+            );
+            let thirdId = await addOrderGetId(
+                user1 /* maker */,
+                10 /* srcAmount */,
+                300 /* dstAmount */
+            );
+
+            await orders.remove(thirdId);
+
+            const [updated, updateMethod] = await updateWithPositionHint(
+                firstId /* orderId */,
+                10 /* srcAmount */,
+                350 /* dstAmount */,
+                thirdId /* prevId */
+            );
+
+            updated.should.be.false;
+            updateMethod.should.be.bignumber.equal(UPDATE_FAILED);
+
+            // values changed.
+            const order = await getOrderById(firstId);
+            order.maker.should.equal(user1);
+            order.srcAmount.should.be.bignumber.equal(10);
+            order.dstAmount.should.be.bignumber.equal(100);
+
+            // after: HEAD -> first -> second -> TAIL
+            await assertOrdersOrder2(firstId, secondId);
+        });
     });
 
     describe("#getFirstOrder", async () => {
@@ -1512,6 +1809,8 @@ async function assertOrdersOrder3(orderId1, orderId2, orderId3) {
     order1.prevId.should.be.bignumber.equal(head.id);
 }
 
+// To debug and order list with X orders pass at least X+3 as max (for id 0,
+// head and tail).
 async function debugOrders(max) {
     let maker, prevId, nextId, srcAmount, dstAmount;
     for (i = 0; i < max; i++) {
