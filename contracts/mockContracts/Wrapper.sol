@@ -3,8 +3,11 @@ pragma solidity ^0.4.18;
 import "../ERC20Interface.sol";
 import "../KyberReserve.sol";
 import "../KyberNetwork.sol";
+import "../KyberNetworkProxy.sol";
 import "../Utils.sol";
 import "../ConversionRates.sol";
+import "../permissionless/OrderbookReserve.sol";
+
 
 contract Wrapper is Utils {
 
@@ -113,5 +116,72 @@ contract Wrapper is Utils {
         }
 
         return (rates, slippage);
+    }
+
+    function getListPermissionlessTokensAndDecimals(KyberNetworkProxy networkProxy)
+      public
+      view
+      returns(ERC20[] memory permissionlessTokens, uint[] memory decimals)
+    {
+        // Counting number of tokens in unofficial reserves (include duplicated)
+        KyberNetwork network = KyberNetwork(networkProxy.kyberNetworkContract());
+        uint numberTokens = 0;
+        uint rID;
+        ERC20 knc; ERC20 token; FeeBurnerRateInterface fee; address addr; MedianizerInterface median; OrderListFactoryInterface orderList;
+        for(rID = 0; rID < network.getNumReserves(); rID++) {
+            if (network.reserves(rID) != address(0) && network.reserveType(network.reserves(rID)) == KyberNetwork.ReserveType.PERMISSIONLESS) {
+                // permissionless reserve
+                (knc, token, fee, addr, median, orderList) = OrderbookReserve(network.reserves(rID)).contracts();
+                if (token != address(0)) { numberTokens += 1; }
+            }
+        }
+        ERC20[] memory listTokens = new ERC20[](numberTokens);
+        numberTokens = 0;
+        uint duplicatedTokens = 0;
+        uint i;
+        // getting list of tokens in unofficial reserves, counting number duplicated
+        for(rID = 0; rID < network.getNumReserves(); rID++) {
+            if (network.reserves(rID) != address(0) && network.reserveType(network.reserves(rID)) == KyberNetwork.ReserveType.PERMISSIONLESS) {
+                // permissionless reserve
+                (knc, token, fee, addr, median, orderList) = OrderbookReserve(network.reserves(rID)).contracts();
+                if (token != address(0)) {
+                    // check if duplicated
+                    for(i = 0; i < numberTokens; i++) {
+                        if (listTokens[i] == token) {
+                            duplicatedTokens += 1;
+                            break;
+                        }
+                    }
+                    listTokens[numberTokens] = token;
+                    numberTokens += 1;
+                }
+            }
+        }
+        permissionlessTokens = new ERC20[](numberTokens - duplicatedTokens);
+        decimals = new uint[](numberTokens - duplicatedTokens);
+        numberTokens = 0;
+        // getting final list of tokens in unofficial reserves and decimals
+        for(rID = 0; rID < network.getNumReserves(); rID++) {
+            if (network.reserves(rID) != address(0) && network.reserveType(network.reserves(rID)) == KyberNetwork.ReserveType.PERMISSIONLESS) {
+                // permissionless reserve
+                (knc, token, fee, addr, median, orderList) = OrderbookReserve(network.reserves(rID)).contracts();
+                if (token != address(0)) {
+                    // check if duplicated
+                    bool isDuplicated = false;
+                    for(i = 0; i < numberTokens; i++) {
+                        if (listTokens[i] == token) {
+                            isDuplicated = true;
+                            break;
+                        }
+                    }
+                    if (!isDuplicated) {
+                        permissionlessTokens[numberTokens] = token;
+                        decimals[numberTokens] = getDecimals(token);
+                        numberTokens += 1;
+                    }
+                }
+            }
+        }
+        return (permissionlessTokens, decimals);
     }
 }
