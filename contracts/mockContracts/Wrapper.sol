@@ -117,7 +117,12 @@ contract Wrapper is Utils {
         return (rates, slippage);
     }
 
-    function getListPermissionlessTokensAndDecimals(KyberNetworkProxy networkProxy, uint startIndex, uint endIndex)
+    // iterate from startIndex to endIndex inclusive
+    function getListPermissionlessTokensAndDecimals(
+      KyberNetworkProxy networkProxy,
+      uint startIndex,
+      uint endIndex
+    )
       public
       view
       returns (ERC20[] memory permissionlessTokens, uint[] memory decimals, bool isEnded)
@@ -131,7 +136,7 @@ contract Wrapper is Utils {
             isEnded = true;
             return (permissionlessTokens, decimals, isEnded);
         }
-        uint endIterator = numReserves < endIndex ? numReserves : endIndex;
+        uint endIterator = numReserves <= endIndex ? numReserves - 1 : endIndex;
         uint numberTokens = 0;
         uint rID; // reserveID
         ERC20 token;
@@ -151,7 +156,7 @@ contract Wrapper is Utils {
         decimals = new uint[](numberTokens);
         numberTokens = 0;
         // get final list of tokens and decimals in unofficial reserves
-        for(rID = startIndex; rID < endIterator; rID++) {
+        for(rID = startIndex; rID <= endIterator; rID++) {
             reserve = network.reserves(rID);
             if ( reserve != address(0)
               && network.reserveType(reserve) == KyberNetwork.ReserveType.PERMISSIONLESS)
@@ -165,7 +170,7 @@ contract Wrapper is Utils {
                 }
             }
         }
-        isEnded = endIterator == numReserves;
+        isEnded = endIterator == numReserves - 1;
         return (permissionlessTokens, decimals, isEnded);
     }
 }
