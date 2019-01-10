@@ -117,18 +117,27 @@ contract Wrapper is Utils {
         return (rates, slippage);
     }
 
-    function getListPermissionlessTokensAndDecimals(KyberNetworkProxy networkProxy)
+    function getListPermissionlessTokensAndDecimals(KyberNetworkProxy networkProxy, uint startIndex, uint endIndex)
       public
       view
-      returns (ERC20[] memory permissionlessTokens, uint[] memory decimals)
+      returns (ERC20[] memory permissionlessTokens, uint[] memory decimals, bool isEnded)
     {
         KyberNetwork network = KyberNetwork(networkProxy.kyberNetworkContract());
+        uint numReserves = network.getNumReserves();
+        if (startIndex >= numReserves || startIndex > endIndex) {
+            // no need to iterate
+            permissionlessTokens = new ERC20[](0);
+            decimals = new uint[](0);
+            isEnded = true;
+            return (permissionlessTokens, decimals, isEnded);
+        }
+        uint endIterator = numReserves < endIndex ? numReserves : endIndex;
         uint numberTokens = 0;
         uint rID; // reserveID
         ERC20 token;
-        // count number of tokens in unofficial reserves
         KyberReserveInterface reserve;
-        for(rID = 0; rID < network.getNumReserves(); rID++) {
+        // count number of tokens in unofficial reserves
+        for(rID = startIndex; rID <= endIterator; rID++) {
             reserve = network.reserves(rID);
             if ( reserve != address(0)
               && network.reserveType(reserve) == KyberNetwork.ReserveType.PERMISSIONLESS)
@@ -142,7 +151,7 @@ contract Wrapper is Utils {
         decimals = new uint[](numberTokens);
         numberTokens = 0;
         // get final list of tokens and decimals in unofficial reserves
-        for(rID = 0; rID < network.getNumReserves(); rID++) {
+        for(rID = startIndex; rID < endIterator; rID++) {
             reserve = network.reserves(rID);
             if ( reserve != address(0)
               && network.reserveType(reserve) == KyberNetwork.ReserveType.PERMISSIONLESS)
@@ -156,6 +165,7 @@ contract Wrapper is Utils {
                 }
             }
         }
-        return (permissionlessTokens, decimals);
+        isEnded = endIterator == numReserves;
+        return (permissionlessTokens, decimals, isEnded);
     }
 }
