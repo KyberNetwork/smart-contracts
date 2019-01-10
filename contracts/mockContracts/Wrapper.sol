@@ -117,64 +117,42 @@ contract Wrapper is Utils {
         return (rates, slippage);
     }
 
-    function getListPermissionlessTokensAndDecimals(KyberNetworkProxy networkProxy) public view returns (ERC20[] memory permissionlessTokens, uint[] memory decimals) {
+    function getListPermissionlessTokensAndDecimals(KyberNetworkProxy networkProxy)
+      public
+      view
+      returns (ERC20[] memory permissionlessTokens, uint[] memory decimals)
+    {
         KyberNetwork network = KyberNetwork(networkProxy.kyberNetworkContract());
         uint numberTokens = 0;
-        uint rID;
-        ERC20 knc; ERC20 token; FeeBurnerRateInterface fee; address addr; MedianizerInterface median; OrderListFactoryInterface orderList;
-
+        uint rID; // reserveID
+        ERC20 token;
         // count number of tokens in unofficial reserves
+        KyberReserveInterface reserve;
         for(rID = 0; rID < network.getNumReserves(); rID++) {
-            if (network.reserves(rID) != address(0) && network.reserveType(network.reserves(rID)) == KyberNetwork.ReserveType.PERMISSIONLESS) {
+            reserve = network.reserves(rID);
+            if ( reserve != address(0)
+              && network.reserveType(reserve) == KyberNetwork.ReserveType.PERMISSIONLESS)
+            {
                 // permissionless reserve
-                (knc, token, fee, addr, median, orderList) = OrderbookReserve(network.reserves(rID)).contracts();
+                (, token , , , ,) = OrderbookReserve(reserve).contracts();
                 if (token != address(0)) { numberTokens += 1; }
             }
         }
-        ERC20[] memory listTokens = new ERC20[](numberTokens);
-        numberTokens = 0;
-        uint duplicatedTokens = 0;
-        uint i;
-        // get list of tokens in unofficial reserves and count number duplicated tokens
-        for(rID = 0; rID < network.getNumReserves(); rID++) {
-            if (network.reserves(rID) != address(0) && network.reserveType(network.reserves(rID)) == KyberNetwork.ReserveType.PERMISSIONLESS) {
-                // permissionless reserve
-                (knc, token, fee, addr, median, orderList) = OrderbookReserve(network.reserves(rID)).contracts();
-                if (token != address(0)) {
-                    // check if duplicated
-                    for(i = 0; i < numberTokens; i++) {
-                        if (listTokens[i] == token) {
-                            duplicatedTokens += 1;
-                            break;
-                        }
-                    }
-                    listTokens[numberTokens] = token;
-                    numberTokens += 1;
-                }
-            }
-        }
-        permissionlessTokens = new ERC20[](numberTokens - duplicatedTokens);
-        decimals = new uint[](numberTokens - duplicatedTokens);
+        permissionlessTokens = new ERC20[](numberTokens);
+        decimals = new uint[](numberTokens);
         numberTokens = 0;
         // get final list of tokens and decimals in unofficial reserves
         for(rID = 0; rID < network.getNumReserves(); rID++) {
-            if (network.reserves(rID) != address(0) && network.reserveType(network.reserves(rID)) == KyberNetwork.ReserveType.PERMISSIONLESS) {
+            reserve = network.reserves(rID);
+            if ( reserve != address(0)
+              && network.reserveType(reserve) == KyberNetwork.ReserveType.PERMISSIONLESS)
+            {
                 // permissionless reserve
-                (knc, token, fee, addr, median, orderList) = OrderbookReserve(network.reserves(rID)).contracts();
+                (, token , , , ,) = OrderbookReserve(reserve).contracts();
                 if (token != address(0)) {
-                    // check if duplicated
-                    bool isDuplicated = false;
-                    for(i = 0; i < numberTokens; i++) {
-                        if (listTokens[i] == token) {
-                            isDuplicated = true;
-                            break;
-                        }
-                    }
-                    if (!isDuplicated) {
-                        permissionlessTokens[numberTokens] = token;
-                        decimals[numberTokens] = getDecimals(token);
-                        numberTokens += 1;
-                    }
+                    permissionlessTokens[numberTokens] = token;
+                    decimals[numberTokens] = getDecimals(token);
+                    numberTokens += 1;
                 }
             }
         }
