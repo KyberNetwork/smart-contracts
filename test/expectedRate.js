@@ -521,6 +521,44 @@ contract('ExpectedRate', function(accounts) {
         }
     });
 
+    it("should verify knc arbitrage.", async function() {
+        const mockNetwork = await MockNetwork.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+
+        const token = await TestToken.new("someToke", "some", 16);
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate * 1.01);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        const feeBurnerQty = new BigNumber(10**18);
+
+        // check exact qty
+        const myRate1 = await tempExpectedRate.getExpectedRate(kncAddress,ethAddress,feeBurnerQty,true);
+        assert.equal(myRate1[0].valueOf(), 0, "expected 0 rate in arbitrage");
+        assert.equal(myRate1[1].valueOf(), 0, "expected 0 slippage rate in arbitrage");
+
+        // check different qty
+        const myRate2 = await tempExpectedRate.getExpectedRate(kncAddress,ethAddress,feeBurnerQty.plus(1),true);
+        assert.equal(myRate2[0].valueOf(), kncToEthRatePrecision.valueOf() * 1, "unexpected rate in arbitrage");
+
+        // check converse direction
+        const myRate3 = await tempExpectedRate.getExpectedRate(ethAddress,kncAddress,feeBurnerQty,true);
+        assert.equal(myRate3[0].valueOf(), ethToKncRatePrecision.valueOf() * 1, "expected 0 rate in arbitrage");
+
+        // set non arbitrage rates
+        const ethToKncRatePrecision2 = precisionUnits.mul(aRate);
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision2);
+
+        // check exact qty
+        const myRate4 = await tempExpectedRate.getExpectedRate(kncAddress,ethAddress,feeBurnerQty,true);
+        assert.equal(myRate4[0].valueOf(), kncToEthRatePrecision.valueOf() * 1, "expected rate in arbitrage");
+    });
+
+
 });
 
 
