@@ -369,7 +369,7 @@ contract('KyberNetwork', function(accounts) {
         await whiteList.setCategoryCap(0, capWei, {from:operator});
         await whiteList.setSgdToEthRate(sgdToEthRate, {from:operator});
 
-        expectedRate = await ExpectedRate.new(network.address, admin);
+        expectedRate = await ExpectedRate.new(network.address, KNC.address, admin);
         await network.setWhiteList(whiteList.address);
         await network.setExpectedRate(expectedRate.address);
         await network.setFeeBurner(feeBurner.address);

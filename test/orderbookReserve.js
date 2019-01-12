@@ -2,7 +2,6 @@ const TestToken = artifacts.require("TestToken.sol");
 const NetworkProxy = artifacts.require("KyberNetworkProxy.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const FeeBurner = artifacts.require("FeeBurner.sol");
-const ExpectedRate = artifacts.require("ExpectedRate.sol");
 const OrderList = artifacts.require("OrderList.sol");
 const OrderListFactory = artifacts.require("OrderListFactory.sol");
 const OrderbookReserve = artifacts.require("OrderbookReserve.sol");

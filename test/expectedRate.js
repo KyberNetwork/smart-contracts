@@ -41,9 +41,14 @@ let maxPerBlockImbalance = 4000;
 let maxTotalImbalance = maxPerBlockImbalance * 12;
 
 let MAX_RATE;
+let kncAddress;
 
 contract('ExpectedRate', function(accounts) {
     it("should init kyber network and all its components.", async function () {
+        const knc = await TestToken.new("kyber network crystal", "KNC", 18);
+        kncAddress = knc.address;
+
+
         let gasPrice = (new BigNumber(10).pow(9).mul(50));
 
         //block data
@@ -181,7 +186,7 @@ contract('ExpectedRate', function(accounts) {
         await whiteList.setCategoryCap(0, 1000, {from:operator});
         await whiteList.setSgdToEthRate(30000, {from:operator});
 
-        expectedRates = await ExpectedRate.new(network.address, admin);
+        expectedRates = await ExpectedRate.new(network.address, kncAddress, admin);
         await expectedRates.addOperator(operator);
 
         await network.setWhiteList(whiteList.address);
@@ -211,20 +216,20 @@ contract('ExpectedRate', function(accounts) {
         let expectedRateT;
 
         try {
-            expectedRateT =  await ExpectedRate.new(network.address, 0);
+            expectedRateT =  await ExpectedRate.new(network.address, kncAddress, 0);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            expectedRateT =  await ExpectedRate.new(0, admin);
+            expectedRateT =  await ExpectedRate.new(0, kncAddress, admin);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        expectedRateT =  await ExpectedRate.new(network.address, admin);
+        expectedRateT =  await ExpectedRate.new(network.address, kncAddress, admin);
     });
 
     it("should test eth to token. use qty slippage.", async function() {
@@ -460,10 +465,19 @@ contract('ExpectedRate', function(accounts) {
         let qty = maxPerBlockImbalance - 1;
         await expectedRates.setQuantityFactor(1, {from: operator});
 
+        const myExpectedRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, qty);
+        const slippage = (new BigNumber(10000 - minSlippageBps).mul(new BigNumber(myExpectedRate[1]))).div(10000);
+
         rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty, false);
         assert(rates[0].valueOf() > 0)
         assert(rates[1].valueOf() > 0)
         assert(rates[0].valueOf() > rates[1].valueOf())
+        assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected expected rate")
+
+        // overcome rounding issues in big number
+        const rates1String = rates[1].toString(10);
+        const slippageString = slippage.toString(10);
+        assert.equal(rates1String, slippageString.substring(0, slippageString.indexOf('.')), "unexpected slippage rate")
         await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
     });
 
@@ -485,7 +499,7 @@ contract('ExpectedRate', function(accounts) {
 
     it("should verify when rate received from kyber network is > MAX_RATE, get expected rate reverts.", async function() {
         let mockNetwork = await MockNetwork.new();
-        let tempExpectedRate = await ExpectedRate.new(mockNetwork.address, admin);
+        let tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
 
         let token = await TestToken.new("someToke", "some", 16);
 
