@@ -651,7 +651,7 @@ contract('Deployment', function(accounts) {
 
   it("create expected rate", function() {
     this.timeout(31000000);
-    return ExpectedRate.new(network.address, accounts[0]).then(function(instance){
+    return ExpectedRate.new(network.address, kncInstance.address, accounts[0]).then(function(instance){
         expectedRate = instance;
     }).then(function(){
         return expectedRate.addOperator(accounts[0]);
