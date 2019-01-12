@@ -12,7 +12,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
     KyberNetwork public kyberNetwork;
     uint public quantityFactor = 2;
     uint public worstCaseRateFactorInBps = 50;
-    uint constant KNC_QTY_FOR_FEE_BURNER = 10 ** 18;
+    uint constant UNIT_QTY_FOR_FEE_BURNER = 10 ** 18;
     ERC20 public knc;
 
     function ExpectedRate(KyberNetwork _kyberNetwork, ERC20 _knc, address _admin) public {
@@ -62,16 +62,14 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
             (bestReserve, expectedRate) = kyberNetwork.findBestRate(src, dest, srcQty);
     	    if (quantityFactor != 1) {
                 (bestReserve, slippageRate) = kyberNetwork.findBestRate(src, dest, (srcQty * quantityFactor));
-	    }
-    	    else {
+	    } else {
     		slippageRate = expectedRate;
     	    }
         } else {
             (bestReserve, expectedRate) = kyberNetwork.findBestRateOnlyPermission(src, dest, srcQty);
     	    if (quantityFactor != 1) {
     	        (bestReserve, slippageRate) = kyberNetwork.findBestRateOnlyPermission(src, dest, (srcQty * quantityFactor));
-	    }
-    	    else {
+	    } else {
                 slippageRate = expectedRate;
     	    }
         }
@@ -82,7 +80,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
 
         if (src == knc &&
             dest == ETH_TOKEN_ADDRESS &&
-            srcQty == KNC_QTY_FOR_FEE_BURNER )
+            srcQty == UNIT_QTY_FOR_FEE_BURNER )
         {
             if (checkKncArbitrageRate(expectedRate)) expectedRate = 0;
         }
@@ -98,8 +96,9 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
     }
 
     function checkKncArbitrageRate(uint currentKncToEthRate) public view returns(bool) {
-        uint converseRate; uint slippage;
-	(converseRate, slippage) = getExpectedRate(ETH_TOKEN_ADDRESS,knc,10**18,true);
+        uint converseRate;
+        uint slippage;
+	(converseRate, slippage) = getExpectedRate(ETH_TOKEN_ADDRESS,knc,UNIT_QTY_FOR_FEE_BURNER,true);
         require(converseRate <= MAX_RATE && currentKncToEthRate <= MAX_RATE);
         return ((converseRate * currentKncToEthRate) > (PRECISION ** 2));
     }
