@@ -101,7 +101,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
     function checkKncArbitrageRate(uint currentKncToEthRate) public view returns(bool) {
         uint converseRate;
         uint slippage;
-	(converseRate, slippage) = getExpectedRate(ETH_TOKEN_ADDRESS,knc,UNIT_QTY_FOR_FEE_BURNER,true);
+	(converseRate, slippage) = getExpectedRate(ETH_TOKEN_ADDRESS, knc, UNIT_QTY_FOR_FEE_BURNER, true);
         require(converseRate <= MAX_RATE && currentKncToEthRate <= MAX_RATE);
         return ((converseRate * currentKncToEthRate) > (PRECISION ** 2));
     }
