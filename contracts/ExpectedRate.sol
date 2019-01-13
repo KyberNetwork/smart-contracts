@@ -60,16 +60,19 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
 
         if (usePermissionless) {
             (bestReserve, expectedRate) = kyberNetwork.findBestRate(src, dest, srcQty);
+
     	    if (quantityFactor != 1) {
                 (bestReserve, slippageRate) = kyberNetwork.findBestRate(src, dest, (srcQty * quantityFactor));
-	    } else {
-    		slippageRate = expectedRate;
+	        } else {
+    		    slippageRate = expectedRate;
     	    }
         } else {
             (bestReserve, expectedRate) = kyberNetwork.findBestRateOnlyPermission(src, dest, srcQty);
-    	    if (quantityFactor != 1) {
-    	        (bestReserve, slippageRate) = kyberNetwork.findBestRateOnlyPermission(src, dest, (srcQty * quantityFactor));
-	    } else {
+
+            if (quantityFactor != 1) {
+    	        (bestReserve, slippageRate) = kyberNetwork.findBestRateOnlyPermission(src, dest,
+                    (srcQty * quantityFactor));
+	        } else {
                 slippageRate = expectedRate;
     	    }
         }
