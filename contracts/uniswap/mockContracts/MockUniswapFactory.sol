@@ -19,13 +19,13 @@ interface MockUniswapExchange {
 
 
 contract MockUniswapFactory is MockUniswapExchange {
-    struct Relation {
+    struct Factors {
         uint eth;
         uint token;
     }
 
-    Relation public ethToToken;
-    Relation public tokenToEth;
+    Factors public ethToToken;
+    Factors public tokenToEth;
 
     function getEthToTokenInputPrice(
         uint256 ethWei
@@ -34,7 +34,7 @@ contract MockUniswapFactory is MockUniswapExchange {
         view
         returns (uint256 tokens_bought)
     {
-        return ethToToken.token * ethWei / ethToToken.eth;
+        return ethWei * ethToToken.token / ethToToken.eth;
     }
 
     function getTokenToEthInputPrice(
@@ -44,7 +44,7 @@ contract MockUniswapFactory is MockUniswapExchange {
         view
         returns (uint256 eth_bought)
     {
-        return tokenToEth.eth * tokens_sold / tokenToEth.token;
+        return tokens_sold * tokenToEth.eth / tokenToEth.token;
     }
 
     function getExchange(
@@ -63,7 +63,7 @@ contract MockUniswapFactory is MockUniswapExchange {
     )
         public
     {
-        ethToToken = Relation(eth, token);
+        ethToToken = Factors(eth, token);
     }
 
     function setRateTokenToEth(
@@ -72,6 +72,6 @@ contract MockUniswapFactory is MockUniswapExchange {
     )
         public
     {
-        tokenToEth = Relation(eth, token);
+        tokenToEth = Factors(eth, token);
     }
 }

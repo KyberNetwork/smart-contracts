@@ -58,6 +58,8 @@ contract("UniswapReserve", async accounts => {
 
     beforeEach("setup contract for each test", async () => {
         await reserve.setFee(DEFAULT_FEE_BPS);
+        await uniswapFactoryMock.setRateEthToToken(0, 0);
+        await uniswapFactoryMock.setRateTokenToEth(0, 0);
     });
 
     describe("constructor params", () => {
@@ -137,7 +139,7 @@ contract("UniswapReserve", async accounts => {
     });
 
     describe("#getConversionRate", () => {
-        it("simple conversion rate 1:1", async () => {
+        it("conversion rate 1:1", async () => {
             await reserve.setFee(0, { from: admin });
             await uniswapFactoryMock.setRateEthToToken(
                 1 /* eth */,
@@ -154,7 +156,7 @@ contract("UniswapReserve", async accounts => {
             rate.should.be.bignumber.eq(new BigNumber(10).pow(18));
         });
 
-        it("simple conversion rate eth:token of 1:2", async () => {
+        it("conversion rate eth -> token of 1:2", async () => {
             await reserve.setFee(0, { from: admin });
             await uniswapFactoryMock.setRateEthToToken(
                 1 /* eth */,
@@ -168,10 +170,11 @@ contract("UniswapReserve", async accounts => {
                 0 /* blockNumber */
             );
 
+            // kyber rates are destQty / srcQty
             rate.should.be.bignumber.eq(new BigNumber(10).pow(18).mul(2));
         });
 
-        it("simple conversion rate eth:token of 2:1", async () => {
+        it("conversion rate eth -> token of 2:1", async () => {
             await reserve.setFee(0, { from: admin });
             await uniswapFactoryMock.setRateEthToToken(
                 2 /* eth */,
@@ -188,9 +191,29 @@ contract("UniswapReserve", async accounts => {
             rate.should.be.bignumber.eq(new BigNumber(10).pow(18).mul(0.5));
         });
 
-        it.skip("simple conversion rate token:eth of 2:1", async () => {
+        it("conversion rate token -> eth of 2:1", async () => {
             await reserve.setFee(0, { from: admin });
-            await uniswapFactoryMock.setRate(1 /* eth */, 2 /* token */);
+            await uniswapFactoryMock.setRateTokenToEth(
+                1 /* eth */,
+                2 /* token */
+            );
+
+            const rate = await reserve.getConversionRate(
+                token.address /* src */,
+                ETH_TOKEN_ADDRESS /* dst */,
+                web3.utils.toWei("1") /* srcQty */,
+                0 /* blockNumber */
+            );
+
+            rate.should.be.bignumber.eq(new BigNumber(10).pow(18).mul(0.5));
+        });
+
+        it("conversion rate token -> eth of 1:2", async () => {
+            await reserve.setFee(0, { from: admin });
+            await uniswapFactoryMock.setRateTokenToEth(
+                2 /* eth */,
+                1 /* token */
+            );
 
             const rate = await reserve.getConversionRate(
                 token.address /* src */,
@@ -201,6 +224,9 @@ contract("UniswapReserve", async accounts => {
 
             rate.should.be.bignumber.eq(new BigNumber(10).pow(18).mul(2));
         });
+
+        it("conversion between a non-18 decimals token and ETH");
+        it("conversion between ETH and a non-18 decimals token");
 
         it("if both tokens are ETH return 0");
         it("if no token is ETH return 0");

@@ -59,9 +59,33 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             uniswapFactory.getExchange(token)
         );
 
-        uint tokenWei = exchange.getEthToTokenInputPrice(srcQty);
+        if (src == ETH_TOKEN_ADDRESS) {
+            uint tokenWei = exchange.getEthToTokenInputPrice(srcQty);
+            // TODO: add test for different decimals
+            // return (10 ** 18) * tokenWei / srcQty;
 
-        return (10 ** 18) * tokenWei / srcQty;
+            // XXX save this on token add
+            decimals[dest] = 18;
+            return calcRateFromQty(
+                srcQty, /* srcAmount */
+                tokenWei, /* destAmount */
+                18, /* srcDecimals (of ETH) */
+                decimals[dest] /* dstDecimals */
+            );
+        } else {
+            uint ethWei = exchange.getTokenToEthInputPrice(srcQty);
+            // TODO: add test for different decimals
+            // return (10 ** 18) * ethWei / srcQty;
+
+            // XXX save this on token add
+            decimals[src] = 18;
+            return calcRateFromQty(
+                srcQty, /* srcAmount */
+                ethWei, /* destAmount */
+                decimals[src], /* srcDecimals */
+                18 /* dstDecimals (of ETH) */
+            );
+        }
 
         // function calcRateFromQty(
             // uint srcAmount,
@@ -69,25 +93,25 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             // uint srcDecimals,
             // uint dstDecimals)
 
-        if (src == ETH_TOKEN_ADDRESS) {
-            uint amountWei = srcQty - srcQty * feeBps / 10000;
-            uint amountTokenWei = exchange.getEthToTokenInputPrice(amountWei);
-            return calcRateFromQty(
-                amountWei, /* srcAmount */
-                amountTokenWei, /* destAmount */
-                18, /* srcDecimals */
-                decimals[dest] /* dstDecimals */
-            );
-        } else {
-            uint amountEthWei = exchange.getTokenToEthInputPrice(srcQty);
-            amountEthWei = amountEthWei - amountEthWei * feeBps / 10000;
-            return calcRateFromQty(
-                srcQty, /* srcAmount */
-                amountEthWei, /* destAmount */
-                decimals[dest], /* srcDecimals */
-                18 /* dstDecimals */
-            );
-        }
+        // if (src == ETH_TOKEN_ADDRESS) {
+        //     uint amountWei = srcQty - srcQty * feeBps / 10000;
+        //     uint amountTokenWei = exchange.getEthToTokenInputPrice(amountWei);
+        //     return calcRateFromQty(
+        //         amountWei, /* srcAmount */
+        //         amountTokenWei, /* destAmount */
+        //         18, /* srcDecimals */
+        //         decimals[dest] /* dstDecimals */
+        //     );
+        // } else {
+        //     uint amountEthWei = exchange.getTokenToEthInputPrice(srcQty);
+        //     amountEthWei = amountEthWei - amountEthWei * feeBps / 10000;
+        //     return calcRateFromQty(
+        //         srcQty, /* srcAmount */
+        //         amountEthWei, /* destAmount */
+        //         decimals[dest], /* srcDecimals */
+        //         18 /* dstDecimals */
+        //     );
+        // }
     }
 
     function trade(
