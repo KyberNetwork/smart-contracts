@@ -3194,9 +3194,9 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("test can't 'revive' canceled (tok to eth) order by updating it", async() => {
-            let tokenWeiDepositAmount = new BigNumber(500 * 10 ** 18);
-            let kncTweiDepositAmount = 600 * 10 ** 18;
-            let ethWeiDepositAmount = (new BigNumber(0 * 10 ** 18)).add(30000);
+            const tokenWeiDepositAmount = new BigNumber(500 * 10 ** 18);
+            const kncTweiDepositAmount = 600 * 10 ** 18;
+            const ethWeiDepositAmount = 0;
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
@@ -3206,7 +3206,6 @@ contract('OrderbookReserve', async (accounts) => {
             let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(100), {from: maker1});
             let id2ndOrder = rc.logs[0].args.orderId.valueOf();
             rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(200), {from: maker1});
-            let id3rdOrder = rc.logs[0].args.orderId.valueOf();
             await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(300), {from: maker1});
 
             await reserve.cancelTokenToEthOrder(id2ndOrder, {from: maker1});
@@ -3225,9 +3224,9 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("test can't cancel canceled (tok to eth) order", async() => {
-            let tokenWeiDepositAmount = new BigNumber(500 * 10 ** 18);
-            let kncTweiDepositAmount = 600 * 10 ** 18;
-            let ethWeiDepositAmount = (new BigNumber(0 * 10 ** 18)).add(30000);
+            const tokenWeiDepositAmount = new BigNumber(500 * 10 ** 18);
+            const kncTweiDepositAmount = 600 * 10 ** 18;
+            const ethWeiDepositAmount = new BigNumber(0);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
@@ -3237,7 +3236,6 @@ contract('OrderbookReserve', async (accounts) => {
             let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(100), {from: maker1});
             let id2ndOrder = rc.logs[0].args.orderId.valueOf();
             rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(200), {from: maker1});
-            let id3rdOrder = rc.logs[0].args.orderId.valueOf();
 
             await reserve.cancelTokenToEthOrder(id2ndOrder, {from: maker1});
 
@@ -3700,9 +3698,9 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("maker - make 5 buy orders and take in one trade. see gas for take.", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
-            let kncTweiDepositAmount = 600 * 10 ** 18;
-            let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
+            const tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
+            const kncTweiDepositAmount = 600 * 10 ** 18;
+            const ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             orderSrc = new BigNumber(2 * 10 ** 18);
