@@ -228,8 +228,27 @@ contract("UniswapReserve", async accounts => {
         it("conversion between a non-18 decimals token and ETH");
         it("conversion between ETH and a non-18 decimals token");
 
-        it("if both tokens are ETH return 0");
-        it("if no token is ETH return 0");
+        it("if both tokens are ETH return 0", async () => {
+            const rate = await reserve.getConversionRate(
+                ETH_TOKEN_ADDRESS /* src */,
+                ETH_TOKEN_ADDRESS /* dst */,
+                web3.utils.toWei("1") /* srcQty */,
+                0 /* blockNumber */
+            );
+
+            rate.should.be.bignumber.eq(0);
+        });
+
+        it("if no token is ETH return 0", async () => {
+            const rate = await reserve.getConversionRate(
+                token.address /* src */,
+                token.address /* dst */,
+                web3.utils.toWei("1") /* srcQty */,
+                0 /* blockNumber */
+            );
+
+            rate.should.be.bignumber.eq(0);
+        });
     });
 
     describe("#trade", () => {

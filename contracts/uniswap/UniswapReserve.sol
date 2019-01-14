@@ -46,13 +46,15 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         // This makes the UNUSED warning go away.
         blockNumber;
 
+        if (!isValidTokens(src, dest)) return 0;
+
         ERC20 token;
         if (src == ETH_TOKEN_ADDRESS) {
             token = dest;
         } else if (dest == ETH_TOKEN_ADDRESS) {
             token = src;
-        // } else {
-        //     return 0;
+        } else {
+            return 0;
         }
 
         UniswapExchange exchange = UniswapExchange(
@@ -61,9 +63,6 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
         if (src == ETH_TOKEN_ADDRESS) {
             uint tokenWei = exchange.getEthToTokenInputPrice(srcQty);
-            // TODO: add test for different decimals
-            // return (10 ** 18) * tokenWei / srcQty;
-
             // XXX save this on token add
             decimals[dest] = 18;
             return calcRateFromQty(
@@ -74,9 +73,6 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             );
         } else {
             uint ethWei = exchange.getTokenToEthInputPrice(srcQty);
-            // TODO: add test for different decimals
-            // return (10 ** 18) * ethWei / srcQty;
-
             // XXX save this on token add
             decimals[src] = 18;
             return calcRateFromQty(
@@ -86,12 +82,6 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
                 18 /* dstDecimals (of ETH) */
             );
         }
-
-        // function calcRateFromQty(
-            // uint srcAmount,
-            // uint destAmount,
-            // uint srcDecimals,
-            // uint dstDecimals)
 
         // if (src == ETH_TOKEN_ADDRESS) {
         //     uint amountWei = srcQty - srcQty * feeBps / 10000;
@@ -133,5 +123,19 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         onlyAdmin
     {
         feeBps = bps;
+    }
+
+    function isValidTokens(
+        ERC20 src,
+        ERC20 dest
+    )
+        public
+        view
+        returns(bool)
+    {
+        return (
+            (src == ETH_TOKEN_ADDRESS && dest != ETH_TOKEN_ADDRESS) ||
+            (src != ETH_TOKEN_ADDRESS && dest == ETH_TOKEN_ADDRESS)
+        );
     }
 }
