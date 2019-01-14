@@ -3728,7 +3728,7 @@ contract('OrderbookReserve', async (accounts) => {
             let rc = await reserve.trade(tokenAdd, totalPayValue, ethAddress, user1, rate, false, {from:network});
 
             log("take 5 orders gas: " + rc.receipt.gasUsed);
-            let maxExpectedGas = 330000;
+            let maxExpectedGas = 340000;
             assert(rc.receipt.gasUsed < maxExpectedGas, "take 5 orders trade = " + rc.receipt.gasUsed + " > " + maxExpectedGas);
         });
 
