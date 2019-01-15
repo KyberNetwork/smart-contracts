@@ -280,8 +280,8 @@ contract OrderList is PermissionGroups, OrderListInterface {
 
         Order storage order = orders[orderId];
 
-        // Make sure such order exists in mapping.
-        require(order.prevId != 0 || order.nextId != 0);
+        // Make sure this order actually in the list.
+        require(order.prevId != 0 && order.nextId != 0 && order.prevId != TAIL_ID && order.nextId != HEAD_ID);
     }
 
     function isRightPosition(
