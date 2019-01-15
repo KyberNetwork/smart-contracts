@@ -10,7 +10,7 @@ require("chai")
 const truffleAssert = require("truffle-assertions");
 
 const MockUniswapFactory = artifacts.require("MockUniswapFactory");
-const UniswapReserve = artifacts.require("UniswapReserve");
+const UniswapReserve = artifacts.require("TestingUniswapReserve");
 const TestToken = artifacts.require("TestToken");
 
 const ETH_TOKEN_ADDRESS = "0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
@@ -54,6 +54,7 @@ contract("UniswapReserve", async accounts => {
         DEFAULT_FEE_BPS = await reserve.DEFAULT_FEE_BPS();
 
         token = await deployToken();
+        await reserve.listToken(token.address);
     });
 
     beforeEach("setup contract for each test", async () => {
@@ -228,26 +229,84 @@ contract("UniswapReserve", async accounts => {
         it("conversion between a non-18 decimals token and ETH");
         it("conversion between ETH and a non-18 decimals token");
 
-        it("if both tokens are ETH return 0", async () => {
-            const rate = await reserve.getConversionRate(
-                ETH_TOKEN_ADDRESS /* src */,
-                ETH_TOKEN_ADDRESS /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
-                0 /* blockNumber */
+        it("fail if both tokens are ETH", async () => {
+            await truffleAssert.reverts(
+                reserve.getConversionRate(
+                    ETH_TOKEN_ADDRESS /* src */,
+                    ETH_TOKEN_ADDRESS /* dst */,
+                    web3.utils.toWei("1") /* srcQty */,
+                    0 /* blockNumber */
+                )
             );
-
-            rate.should.be.bignumber.eq(0);
         });
 
-        it("if no token is ETH return 0", async () => {
+        it("fail if both tokens are not ETH", async () => {
+            await truffleAssert.reverts(
+                reserve.getConversionRate(
+                    token.address /* src */,
+                    token.address /* dst */,
+                    web3.utils.toWei("1") /* srcQty */,
+                    0 /* blockNumber */
+                )
+            );
+        });
+
+        it("fail for unsupported tokens", async () => {
+            const newToken = await deployToken();
+
+            await truffleAssert.reverts(
+                reserve.getConversionRate(
+                    newToken.address /* src */,
+                    ETH_TOKEN_ADDRESS /* dst */,
+                    web3.utils.toWei("1") /* srcQty */,
+                    0 /* blockNumber */
+                )
+            );
+        });
+
+        it("conversion rate eth -> token of 1:2, with 1% fees", async () => {
+            await reserve.setFee(100, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                2 /* token */
+            );
+
             const rate = await reserve.getConversionRate(
-                token.address /* src */,
+                ETH_TOKEN_ADDRESS /* src */,
                 token.address /* dst */,
                 web3.utils.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
-            rate.should.be.bignumber.eq(0);
+            // kyber rates are destQty / srcQty
+            rate.should.be.bignumber.eq(
+                new BigNumber(10)
+                    .pow(18)
+                    .mul(0.99)
+                    .mul(2)
+            );
+        });
+
+        it("conversion rate token -> eth of 2:1, with 5% fees", async () => {
+            await reserve.setFee(500, { from: admin });
+            await uniswapFactoryMock.setRateTokenToEth(
+                1 /* eth */,
+                2 /* token */
+            );
+
+            const rate = await reserve.getConversionRate(
+                token.address /* src */,
+                ETH_TOKEN_ADDRESS /* dst */,
+                web3.utils.toWei("1") /* srcQty */,
+                0 /* blockNumber */
+            );
+
+            rate.should.be.bignumber.eq(
+                new BigNumber(10)
+                    .pow(18)
+                    .mul(0.95)
+                    .div(2)
+            );
         });
     });
 
@@ -283,8 +342,86 @@ contract("UniswapReserve", async accounts => {
             feeValue.should.be.bignumber.eq(30);
         });
 
-        it("changable only by admin", async () => {
+        it("calling by admin allowed", async () => {
+            await reserve.setFee(20, { from: admin });
+        });
+
+        it("calling by non-admin reverts", async () => {
             await truffleAssert.reverts(reserve.setFee(20, { from: user }));
+        });
+    });
+
+    describe("#listToken", () => {
+        it("calling by admin allowed", async () => {
+            const newToken = await deployToken();
+
+            await reserve.listToken(newToken.address, { from: admin });
+        });
+
+        it("calling by non-admin reverts", async () => {
+            const newToken = await deployToken();
+
+            await truffleAssert.reverts(
+                reserve.listToken(newToken.address, { from: user })
+            );
+        });
+
+        it("adding token", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            const supported = await reserve.supportedTokens(newToken.address);
+            supported.should.be.true;
+        });
+
+        it("listing a token saves its decimals", async () => {
+            const newToken = await deployToken(10);
+            await reserve.listToken(newToken.address, { from: admin });
+
+            const decimals = await reserve.getTokenDecimals(newToken.address);
+            decimals.should.be.bignumber.eq(10);
+        });
+
+        it("fail for fee > 10000");
+        it("event sent on setFee");
+    });
+
+    describe("#delistToken", () => {
+        it("calling by admin allowed", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            await reserve.delistToken(newToken.address, { from: admin });
+        });
+
+        it("calling by non-admin reverts", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            await truffleAssert.reverts(
+                reserve.delistToken(newToken.address, { from: user })
+            );
+        });
+
+        it("after calling token no longer supported", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            await reserve.delistToken(newToken.address);
+
+            const supported = await reserve.supportedTokens(newToken.address);
+            supported.should.be.false;
+        });
+
+        it("cannot delist unlisted tokens", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            await reserve.delistToken(newToken.address);
+
+            await truffleAssert.reverts(
+                reserve.delistToken(newToken.address, { from: admin })
+            );
         });
     });
 });

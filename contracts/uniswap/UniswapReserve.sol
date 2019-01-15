@@ -17,12 +17,23 @@ interface UniswapFactory {
 
 
 contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
+    // Parts per 1000
     uint public constant DEFAULT_FEE_BPS = 25;
 
     UniswapFactory public uniswapFactory;
     uint public feeBps = DEFAULT_FEE_BPS;
 
-    function UniswapReserve(UniswapFactory _uniswapFactory, address _admin) public {
+    mapping (address => bool) public supportedTokens;
+
+    /**
+        Constructor
+    */
+    function UniswapReserve(
+        UniswapFactory _uniswapFactory,
+        address _admin
+    )
+        public
+    {
         require(address(_uniswapFactory) != 0);
         require(_admin != 0);
 
@@ -46,7 +57,7 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         // This makes the UNUSED warning go away.
         blockNumber;
 
-        if (!isValidTokens(src, dest)) return 0;
+        require(isValidTokens(src, dest));
 
         ERC20 token;
         if (src == ETH_TOKEN_ADDRESS) {
@@ -61,47 +72,22 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             uniswapFactory.getExchange(token)
         );
 
+        uint convertedQuantity;
         if (src == ETH_TOKEN_ADDRESS) {
-            uint tokenWei = exchange.getEthToTokenInputPrice(srcQty);
-            // XXX save this on token add
-            decimals[dest] = 18;
-            return calcRateFromQty(
-                srcQty, /* srcAmount */
-                tokenWei, /* destAmount */
-                18, /* srcDecimals (of ETH) */
-                decimals[dest] /* dstDecimals */
-            );
+            uint quantity = srcQty - srcQty * feeBps / 10000;
+            convertedQuantity = exchange.getEthToTokenInputPrice(quantity);
         } else {
-            uint ethWei = exchange.getTokenToEthInputPrice(srcQty);
-            // XXX save this on token add
-            decimals[src] = 18;
-            return calcRateFromQty(
-                srcQty, /* srcAmount */
-                ethWei, /* destAmount */
-                decimals[src], /* srcDecimals */
-                18 /* dstDecimals (of ETH) */
-            );
+            convertedQuantity = exchange.getTokenToEthInputPrice(srcQty);
+            convertedQuantity = convertedQuantity -
+                convertedQuantity * feeBps / 10000;
         }
 
-        // if (src == ETH_TOKEN_ADDRESS) {
-        //     uint amountWei = srcQty - srcQty * feeBps / 10000;
-        //     uint amountTokenWei = exchange.getEthToTokenInputPrice(amountWei);
-        //     return calcRateFromQty(
-        //         amountWei, /* srcAmount */
-        //         amountTokenWei, /* destAmount */
-        //         18, /* srcDecimals */
-        //         decimals[dest] /* dstDecimals */
-        //     );
-        // } else {
-        //     uint amountEthWei = exchange.getTokenToEthInputPrice(srcQty);
-        //     amountEthWei = amountEthWei - amountEthWei * feeBps / 10000;
-        //     return calcRateFromQty(
-        //         srcQty, /* srcAmount */
-        //         amountEthWei, /* destAmount */
-        //         decimals[dest], /* srcDecimals */
-        //         18 /* dstDecimals */
-        //     );
-        // }
+        return calcRateFromQty(
+            srcQty, /* srcAmount */
+            convertedQuantity, /* destAmount */
+            getDecimals(src), /* srcDecimals */
+            getDecimals(dest) /* dstDecimals */
+        );
     }
 
     function trade(
@@ -125,6 +111,23 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         feeBps = bps;
     }
 
+    function listToken(ERC20 token)
+        public
+        onlyAdmin
+    {
+        supportedTokens[token] = true;
+        setDecimals(token);
+    }
+
+    function delistToken(ERC20 token)
+        public
+        onlyAdmin
+    {
+        require(supportedTokens[token]);
+
+        supportedTokens[token] = false;
+    }
+
     function isValidTokens(
         ERC20 src,
         ERC20 dest
@@ -134,8 +137,8 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         returns(bool)
     {
         return (
-            (src == ETH_TOKEN_ADDRESS && dest != ETH_TOKEN_ADDRESS) ||
-            (src != ETH_TOKEN_ADDRESS && dest == ETH_TOKEN_ADDRESS)
+            (src == ETH_TOKEN_ADDRESS && supportedTokens[dest]) ||
+            (supportedTokens[src] && dest == ETH_TOKEN_ADDRESS)
         );
     }
 }
