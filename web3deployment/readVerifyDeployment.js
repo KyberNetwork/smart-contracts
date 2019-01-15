@@ -36,8 +36,7 @@ const issueWalletSharingFeesList = false;
 const feeSharingWalletsFeesFilePath = './feeSharingWallet.json';
 let feeSharingWalletsDict = {};
 
-
-const reuseCompilationResultFile = true; //notice. after version change, must compile again.
+const reuseCompilationResultFile = false; //notice. after version change, must compile again.
 
 //internal configurations - which contracts
 ///////////////////////////////////////////
