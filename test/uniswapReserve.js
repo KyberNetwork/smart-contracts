@@ -349,6 +349,9 @@ contract("UniswapReserve", async accounts => {
         it("calling by non-admin reverts", async () => {
             await truffleAssert.reverts(reserve.setFee(20, { from: user }));
         });
+
+        it("fail for fee > 10000");
+        it("event sent on setFee");
     });
 
     describe("#listToken", () => {
@@ -368,6 +371,7 @@ contract("UniswapReserve", async accounts => {
 
         it("adding token", async () => {
             const newToken = await deployToken();
+
             await reserve.listToken(newToken.address, { from: admin });
 
             const supported = await reserve.supportedTokens(newToken.address);
@@ -376,14 +380,28 @@ contract("UniswapReserve", async accounts => {
 
         it("listing a token saves its decimals", async () => {
             const newToken = await deployToken(10);
+
             await reserve.listToken(newToken.address, { from: admin });
 
             const decimals = await reserve.getTokenDecimals(newToken.address);
             decimals.should.be.bignumber.eq(10);
         });
 
-        it("fail for fee > 10000");
-        it("event sent on setFee");
+        it("fails for token with address 0", async () => {
+            await truffleAssert.reverts(reserve.listToken(0, { from: user }));
+        });
+
+        it("event sent on token listed", async () => {
+            const newToken = await deployToken();
+
+            const res = await reserve.listToken(newToken.address, {
+                from: admin
+            });
+
+            truffleAssert.eventEmitted(res, "TokenListed", ev => {
+                return ev.token === newToken.address;
+            });
+        });
     });
 
     describe("#delistToken", () => {
@@ -422,6 +440,17 @@ contract("UniswapReserve", async accounts => {
             await truffleAssert.reverts(
                 reserve.delistToken(newToken.address, { from: admin })
             );
+        });
+
+        it("event sent on token delisted", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            const res = await reserve.delistToken(newToken.address);
+
+            truffleAssert.eventEmitted(res, "TokenDelisted", ev => {
+                return ev.token === newToken.address;
+            });
         });
     });
 });

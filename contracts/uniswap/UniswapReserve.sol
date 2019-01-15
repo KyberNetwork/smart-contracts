@@ -111,21 +111,29 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         feeBps = bps;
     }
 
+    event TokenListed(ERC20 token);
+
     function listToken(ERC20 token)
         public
         onlyAdmin
     {
+        require(address(token) != 0);
         supportedTokens[token] = true;
         setDecimals(token);
+
+        TokenListed(token);
     }
+
+    event TokenDelisted(ERC20 token);
 
     function delistToken(ERC20 token)
         public
         onlyAdmin
     {
         require(supportedTokens[token]);
-
         supportedTokens[token] = false;
+
+        TokenDelisted(token);
     }
 
     function isValidTokens(
