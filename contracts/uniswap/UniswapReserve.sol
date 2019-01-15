@@ -21,9 +21,11 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
     uint public constant DEFAULT_FEE_BPS = 25;
 
     UniswapFactory public uniswapFactory;
+
     uint public feeBps = DEFAULT_FEE_BPS;
 
-    mapping (address => bool) public supportedTokens;
+    // token -> exchange
+    mapping (address => address) public tokenExchange;
 
     /**
         Constructor
@@ -111,17 +113,23 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         feeBps = bps;
     }
 
-    event TokenListed(ERC20 token);
+    event TokenListed(
+        ERC20 token,
+        UniswapExchange exchange
+    );
 
     function listToken(ERC20 token)
         public
         onlyAdmin
     {
         require(address(token) != 0);
-        supportedTokens[token] = true;
+        UniswapExchange uniswapExchange = UniswapExchange(
+            uniswapFactory.getExchange(token)
+        );
+        tokenExchange[token] = uniswapExchange;
         setDecimals(token);
 
-        TokenListed(token);
+        TokenListed(token, uniswapExchange);
     }
 
     event TokenDelisted(ERC20 token);
@@ -130,8 +138,9 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         public
         onlyAdmin
     {
-        require(supportedTokens[token]);
-        supportedTokens[token] = false;
+        require(tokenExchange[token] != 0);
+        tokenExchange[token] = 0;
+
 
         TokenDelisted(token);
     }
@@ -145,8 +154,8 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         returns(bool)
     {
         return (
-            (src == ETH_TOKEN_ADDRESS && supportedTokens[dest]) ||
-            (supportedTokens[src] && dest == ETH_TOKEN_ADDRESS)
+            (src == ETH_TOKEN_ADDRESS && tokenExchange[dest] != 0) ||
+            (tokenExchange[src] != 0 && dest == ETH_TOKEN_ADDRESS)
         );
     }
 }

@@ -57,6 +57,15 @@ contract MockUniswapFactory is MockUniswapExchange {
         return address(this);
     }
 
+    function createExchange(
+        address token
+    )
+        external
+        returns(address exchange)
+    {
+        return address(this);
+    }
+
     function setRateEthToToken(
         uint eth,
         uint token

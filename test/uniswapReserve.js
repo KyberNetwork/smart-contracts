@@ -374,8 +374,8 @@ contract("UniswapReserve", async accounts => {
 
             await reserve.listToken(newToken.address, { from: admin });
 
-            const supported = await reserve.supportedTokens(newToken.address);
-            supported.should.be.true;
+            const exchange = await reserve.tokenExchange(newToken.address);
+            exchange.should.not.be.bignumber.eq(0);
         });
 
         it("listing a token saves its decimals", async () => {
@@ -398,9 +398,27 @@ contract("UniswapReserve", async accounts => {
                 from: admin
             });
 
+            const tokenExchange = await uniswapFactoryMock.getExchange(
+                newToken.address
+            );
             truffleAssert.eventEmitted(res, "TokenListed", ev => {
-                return ev.token === newToken.address;
+                return (
+                    ev.token === newToken.address &&
+                    ev.exchange === tokenExchange
+                );
             });
+        });
+
+        it("listing a token saves its uniswap exchange address", async () => {
+            const newToken = await deployToken();
+            const tokenExchange = await uniswapFactoryMock.createExchange.call(
+                newToken.address
+            );
+
+            await reserve.listToken(newToken.address, { from: admin });
+
+            const exchange = await reserve.tokenExchange(newToken.address);
+            exchange.should.be.eq(tokenExchange);
         });
     });
 
@@ -427,8 +445,8 @@ contract("UniswapReserve", async accounts => {
 
             await reserve.delistToken(newToken.address);
 
-            const supported = await reserve.supportedTokens(newToken.address);
-            supported.should.be.false;
+            const exchange = await reserve.tokenExchange(newToken.address);
+            exchange.should.be.bignumber.eq(0);
         });
 
         it("cannot delist unlisted tokens", async () => {
