@@ -5,6 +5,8 @@ import "../KyberReserve.sol";
 import "../KyberNetwork.sol";
 import "../Utils.sol";
 import "../ConversionRates.sol";
+import "../KyberNetworkProxy.sol";
+import "../permissionless/OrderbookReserve.sol";
 
 contract Wrapper is Utils {
 
@@ -113,5 +115,62 @@ contract Wrapper is Utils {
         }
 
         return (rates, slippage);
+    }
+
+    // iterate from startIndex to endIndex inclusive
+    function getListPermissionlessTokensAndDecimals(
+      KyberNetworkProxy networkProxy,
+      uint startIndex,
+      uint endIndex
+    )
+      public
+      view
+      returns (ERC20[] memory permissionlessTokens, uint[] memory decimals, bool isEnded)
+    {
+        KyberNetwork network = KyberNetwork(networkProxy.kyberNetworkContract());
+        uint numReserves = network.getNumReserves();
+        if (startIndex >= numReserves || startIndex > endIndex) {
+            // no need to iterate
+            permissionlessTokens = new ERC20[](0);
+            decimals = new uint[](0);
+            isEnded = true;
+            return (permissionlessTokens, decimals, isEnded);
+        }
+        uint endIterator = numReserves <= endIndex ? numReserves - 1 : endIndex;
+        uint numberTokens = 0;
+        uint rID; // reserveID
+        ERC20 token;
+        KyberReserveInterface reserve;
+        // count number of tokens in unofficial reserves
+        for(rID = startIndex; rID <= endIterator; rID++) {
+            reserve = network.reserves(rID);
+            if ( reserve != address(0)
+              && network.reserveType(reserve) == KyberNetwork.ReserveType.PERMISSIONLESS)
+            {
+                // permissionless reserve
+                (, token , , , ,) = OrderbookReserve(reserve).contracts();
+                if (token != address(0)) { numberTokens += 1; }
+            }
+        }
+        permissionlessTokens = new ERC20[](numberTokens);
+        decimals = new uint[](numberTokens);
+        numberTokens = 0;
+        // get final list of tokens and decimals in unofficial reserves
+        for(rID = startIndex; rID <= endIterator; rID++) {
+            reserve = network.reserves(rID);
+            if ( reserve != address(0)
+              && network.reserveType(reserve) == KyberNetwork.ReserveType.PERMISSIONLESS)
+            {
+                // permissionless reserve
+                (, token , , , ,) = OrderbookReserve(reserve).contracts();
+                if (token != address(0)) {
+                    permissionlessTokens[numberTokens] = token;
+                    decimals[numberTokens] = getDecimals(token);
+                    numberTokens += 1;
+                }
+            }
+        }
+        isEnded = endIterator == numReserves - 1;
+        return (permissionlessTokens, decimals, isEnded);
     }
 }
