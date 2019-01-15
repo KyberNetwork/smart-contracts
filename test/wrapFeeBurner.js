@@ -7,6 +7,7 @@ let KyberRegisterWallet = artifacts.require("./wrapperContracts/KyberRegisterWal
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
 
+const precisionUnits = new BigNumber(10 ** 18);
 //global variables
 let kncToEthMin = 250;
 let kncToEthMax = 450;
@@ -40,12 +41,13 @@ let wrapBurnerInst;
 let proxyWrapperInst;
 let registerWalletInst;
 
-let kncRateRangeNonce = 0;
 let addReserveNonce = 0;
 let otherWalletNonce = 0;
 let taxDataNonce = 0;
 
 let initialKNCWalletBalance = 1000000;
+
+const ethToKncRatePrecision = precisionUnits.mul(550);
 
 contract('WrapFeeBurner', function(accounts) {
     it("should init Fee burner Inst and set general parameters.", async function () {
@@ -72,112 +74,21 @@ contract('WrapFeeBurner', function(accounts) {
         await kncToken.transfer(mockKNCWallet, initialKNCWalletBalance);
         let balance = await kncToken.balanceOf(mockKNCWallet);
         assert.equal(balance.valueOf(), initialKNCWalletBalance, "unexpected wallet balance.");
-        burnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork);
+        burnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork, ethToKncRatePrecision);
     });
 
-    it("should init FeeBurner wrapper and set as fee burner admin.", async function () {
+    it("should init FeeBurner wrapper and set as fee burner admin and operator.", async function () {
         wrapBurnerInst = await WrapFeeBurner.new(burnerInst.address, admin);
         await wrapBurnerInst.addOperator(operator1);
         await wrapBurnerInst.addOperator(operator2);
         await wrapBurnerInst.addOperator(operator3);
 
+        //for some operations, wrapper must be operator
+        burnerInst.addOperator(wrapBurnerInst.address);
+
         //transfer admin to wrapper
         await burnerInst.transferAdmin(wrapBurnerInst.address);
         await wrapBurnerInst.claimWrappedContractAdmin({from: operator1});
-    });
-
-    it("should test setting knc rate range ", async function () {
-        await wrapBurnerInst.setPendingKNCRateRange(kncToEthMin, kncToEthMax, {from: operator1});
-        kncRateRangeNonce++;
-        let rateRangeData = await wrapBurnerInst.getPendingKNCRateRange();
-        assert.equal(rateRangeData[2].valueOf(), kncRateRangeNonce);
-
-        await wrapBurnerInst.setPendingKNCRateRange(kncToEthMin, kncToEthMax, {from: operator1});
-        kncRateRangeNonce++;
-        rateRangeData = await wrapBurnerInst.getPendingKNCRateRange();
-        assert.equal(rateRangeData[2].valueOf(), kncRateRangeNonce);
-        assert.equal(rateRangeData[0].valueOf(), kncToEthMin);
-        assert.equal(rateRangeData[1].valueOf(), kncToEthMax);
-
-        //can't approve with wrong nonce
-        try {
-            await wrapBurnerInst.approveKNCRateRange((kncRateRangeNonce - 1), {from:operator1});
-            assert(false, "throw was expected in line above.")
-        }
-        catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        await wrapBurnerInst.approveKNCRateRange(kncRateRangeNonce, {from:operator1});
-        await wrapBurnerInst.approveKNCRateRange(kncRateRangeNonce, {from:operator2});
-
-        //check approving signatures
-        let rxSignatures = await wrapBurnerInst.getKNCRateRangeSignatures();
-        assert.equal(rxSignatures[0].valueOf(), operator1);
-        assert.equal(rxSignatures[1].valueOf(), operator2);
-
-        //make sure not updated yet
-        let ratesRange = await wrapBurnerInst.getKNCRateRange();
-        assert.equal(ratesRange[0].valueOf(), 0);
-        assert.equal(ratesRange[1].valueOf(), 0);
-
-        //last approval. now should be updated
-        await wrapBurnerInst.approveKNCRateRange(kncRateRangeNonce, {from:operator3});
-
-        ratesRange = await wrapBurnerInst.getKNCRateRange();
-        assert.equal(ratesRange[0].valueOf(), kncToEthMin);
-        assert.equal(ratesRange[1].valueOf(), kncToEthMax);
-    });
-
-    it("should test setting illegal knc rate boundaries = range ", async function () {
-        let kncMax = 10;
-        let kncMin = 15;
-
-        //rate range
-        try {
-            await wrapBurnerInst.setPendingKNCRateRange(kncMin, kncMax, {from: operator1});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        kncMin = 0;
-
-        try {
-            await wrapBurnerInst.setPendingKNCRateRange(kncMin, kncMax, {from: operator1});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-
-        kncMin = kncToEthMin;
-        kncMax = kncToEthMax;
-
-        await wrapBurnerInst.setPendingKNCRateRange(kncMin, kncMax, {from: operator1});
-        kncRateRangeNonce++;
-    });
-
-    it("should test setting knc rate and verify it has to be between min and max", async function () {
-        await wrapBurnerInst.setKNCPerEthRate(kncToEthRate, {from: operator1});
-
-        let rxKncEthRate = await burnerInst.kncPerETHRate();
-        assert.equal(rxKncEthRate.valueOf(), kncToEthRate);
-
-        //rate range
-        try {
-            await wrapBurnerInst.setKNCPerEthRate(kncToEthMin - 1, {from: operator1});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        try {
-            await wrapBurnerInst.setKNCPerEthRate(kncToEthMax * 1 + 1, {from: operator1});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
     });
 
     it("should test adding reserve with its related knc wallet and fees", async function () {
@@ -382,28 +293,6 @@ contract('WrapFeeBurner', function(accounts) {
     });
 
     it("should test only operator can call set and approve function.", async function() {
-        //rate range
-        try {
-            await wrapBurnerInst.setPendingKNCRateRange(kncToEthMin, kncToEthMax, {from: admin});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        try {
-            await wrapBurnerInst.approveKNCRateRange(kncRateRangeNonce, {from:admin});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        //knc rate
-        try {
-            await wrapBurnerInst.setKNCPerEthRate(kncToEthRate, {from: admin});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
 
         //add reserve
         try {
@@ -452,18 +341,6 @@ contract('WrapFeeBurner', function(accounts) {
     });
 
     it("should test each operator can approve only once per new data that was set.", async function() {
-        //knc rate
-        await wrapBurnerInst.setPendingKNCRateRange(kncToEthMin, kncToEthMax, {from: operator1});
-        kncRateRangeNonce++;
-
-        await wrapBurnerInst.approveKNCRateRange(kncRateRangeNonce, {from:operator1});
-        try {
-            await wrapBurnerInst.approveKNCRateRange(kncRateRangeNonce, {from:operator1});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
         //reserve data
         await wrapBurnerInst.setPendingReserveData(mockReserve, reserveFeeBps, mockKNCWallet, {from: operator1});
         addReserveNonce++;

@@ -10,7 +10,7 @@ var myToken;
 
 var myExchange;
 
-var ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+var ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
 contract('MockExchange', function (accounts) {
     it("should test withdraw successful with owner, for token", async function (){

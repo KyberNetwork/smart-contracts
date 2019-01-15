@@ -11,16 +11,6 @@ contract WrapFeeBurner is WrapperBase {
     address[] internal feeSharingWallets;
     uint public feeSharingBps = 3000; // out of 10000 = 30%
 
-    //knc rate range
-    struct KncPerEth {
-        uint minRate;
-        uint maxRate;
-        uint pendingMinRate;
-        uint pendingMaxRate;
-    }
-
-    KncPerEth internal kncPerEth;
-
     //add reserve pending data
     struct AddReserveData {
         address reserve;
@@ -47,7 +37,6 @@ contract WrapFeeBurner is WrapperBase {
     TaxData internal taxData;
     
     //data indexes
-    uint internal constant KNC_RATE_RANGE_INDEX = 0;
     uint internal constant ADD_RESERVE_INDEX = 1;
     uint internal constant WALLET_FEE_INDEX = 2;
     uint internal constant TAX_DATA_INDEX = 3;
@@ -80,55 +69,6 @@ contract WrapFeeBurner is WrapperBase {
         feeBurnerContract.setWalletFees(walletAddress, feeSharingBps);
         feeSharingWallets.push(walletAddress);
         WalletRegisteredForFeeSharing(msg.sender, walletAddress);
-    }
-
-    // knc rate handling
-    //////////////////////
-    function setPendingKNCRateRange(uint minRate, uint maxRate) public onlyOperator {
-        require(minRate < maxRate);
-        require(minRate > 0);
-
-        //update data tracking
-        setNewData(KNC_RATE_RANGE_INDEX);
-
-        kncPerEth.pendingMinRate = minRate;
-        kncPerEth.pendingMaxRate = maxRate;
-    }
-
-    function getPendingKNCRateRange() public view returns(uint minRate, uint maxRate, uint nonce) {
-        address[] memory signatures;
-        minRate = kncPerEth.pendingMinRate;
-        maxRate = kncPerEth.pendingMaxRate;
-        (signatures, nonce) = getDataTrackingParameters(KNC_RATE_RANGE_INDEX);
-
-        return(minRate, maxRate, nonce);
-    }
-
-    function getKNCRateRangeSignatures() public view returns (address[] signatures) {
-        uint nonce;
-        (signatures, nonce) = getDataTrackingParameters(KNC_RATE_RANGE_INDEX);
-        return(signatures);
-    }
-
-    function approveKNCRateRange(uint nonce) public onlyOperator {
-        if (addSignature(KNC_RATE_RANGE_INDEX, nonce, msg.sender)) {
-            // can perform operation.
-            kncPerEth.minRate = kncPerEth.pendingMinRate;
-            kncPerEth.maxRate = kncPerEth.pendingMaxRate;
-        }
-    }
-
-    function getKNCRateRange() public view returns(uint minRate, uint maxRate) {
-        minRate = kncPerEth.minRate;
-        maxRate = kncPerEth.maxRate;
-        return(minRate, maxRate);
-    }
-
-    ///@dev here the operator can set rate without other operators validation. It has to be inside range.
-    function setKNCPerEthRate(uint kncPerEther) public onlyOperator {
-        require(kncPerEther >= kncPerEth.minRate);
-        require(kncPerEther <= kncPerEth.maxRate);
-        feeBurnerContract.setKNCRate(kncPerEther);
     }
 
     //set reserve data
