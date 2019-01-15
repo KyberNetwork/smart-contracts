@@ -659,7 +659,7 @@
   "feeburner wrapper proxy": "0x1DAbb09C85d80d6593e1570DEd731Cdd6e8d1Dce",
   "kyber register wallet": "0xECa04bB23612857650D727B8ed008f80952654ee",
   "whitelist" : "0x0000000000000000000000000000000000000000",
-  "orderbook reserve lister": "0x24AD087a20548148Fd8eEd564A99F97B6254C4bA",
+  "orderbook reserve lister": "0x84AFA106FbF9B45E369724024cae14E8C7529c26",
   "begin_block_setrate": 5069586,
   "third_party_reserves": [
     "0x2aab2b157a03915c8a73adae735d0cf51c872f31","0x6f50e41885fdc44dbdf7797df0393779a9c0a3a6",
