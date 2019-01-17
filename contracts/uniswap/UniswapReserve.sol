@@ -108,12 +108,10 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             token = src;
         } else {
             // Should never arrive here - isValidTokens requires one side to be ETH
-            revert;
+            revert();
         }
 
-        UniswapExchange exchange = UniswapExchange(
-            uniswapFactory.getExchange(token)
-        );
+        UniswapExchange exchange = UniswapExchange(tokenExchange[token]);
 
         uint convertedQuantity;
         if (src == ETH_TOKEN_ADDRESS) {
@@ -156,6 +154,9 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         payable
         returns(bool)
     {
+        // Not using this variable that is part of the interface.
+        validate;
+
         require(tradeEnabled);
         require(msg.sender == kyberNetwork);
         require(isValidTokens(srcToken, destToken));
