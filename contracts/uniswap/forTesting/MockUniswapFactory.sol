@@ -1,20 +1,38 @@
 pragma solidity 0.4.18;
 
+import "../../ERC20Interface.sol";
+
 
 interface MockUniswapExchange {
     function getEthToTokenInputPrice(
         uint256 eth_sold
     )
-        external
+        public
         view
         returns (uint256 tokens_bought);
 
     function getTokenToEthInputPrice(
         uint256 tokens_sold
     )
-        external
+        public
         view
         returns (uint256 eth_bought);
+
+    function ethToTokenSwapInput(
+        uint256 min_tokens,
+        uint256 deadline
+    )
+        external
+        payable
+        returns (uint256  tokens_bought);
+
+    function tokenToEthSwapInput(
+        uint256 tokens_sold,
+        uint256 min_eth,
+        uint256 deadline
+    )
+        external
+        returns (uint256  eth_bought);
 }
 
 
@@ -27,10 +45,16 @@ contract MockUniswapFactory is MockUniswapExchange {
     Factors public ethToToken;
     Factors public tokenToEth;
 
+    ERC20 public token;
+
+    function() public payable {
+        // anyone can deposit ether
+    }
+
     function getEthToTokenInputPrice(
         uint256 ethWei
     )
-        external
+        public
         view
         returns (uint256 tokens_bought)
     {
@@ -40,7 +64,7 @@ contract MockUniswapFactory is MockUniswapExchange {
     function getTokenToEthInputPrice(
         uint256 tokens_sold
     )
-        external
+        public
         view
         returns (uint256 eth_bought)
     {
@@ -66,6 +90,37 @@ contract MockUniswapFactory is MockUniswapExchange {
         return address(this);
     }
 
+    function ethToTokenSwapInput(
+        uint256 min_tokens,
+        uint256 deadline
+    )
+        external
+        payable
+        returns (uint256  tokens_bought)
+    {
+        require(deadline > block.timestamp);
+
+        uint amount = getEthToTokenInputPrice(msg.value);
+        require(token.transfer(msg.sender, amount));
+        return amount;
+    }
+
+    function tokenToEthSwapInput(
+        uint256 tokens_sold,
+        uint256 min_eth,
+        uint256 deadline
+    )
+        external
+        returns (uint256  eth_bought)
+    {
+        require(deadline > block.timestamp);
+
+        require(token.transferFrom(msg.sender, address(this), tokens_sold));
+        uint amount = getTokenToEthInputPrice(tokens_sold);
+        msg.sender.transfer(amount);
+        return amount;
+    }
+
     function setRateEthToToken(
         uint eth,
         uint token
@@ -82,5 +137,11 @@ contract MockUniswapFactory is MockUniswapExchange {
         public
     {
         tokenToEth = Factors(eth, token);
+    }
+
+    function setToken(ERC20 _token)
+        public
+    {
+        token = _token;
     }
 }

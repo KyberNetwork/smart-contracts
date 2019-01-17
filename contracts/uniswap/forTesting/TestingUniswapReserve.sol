@@ -6,9 +6,10 @@ import "../UniswapReserve.sol";
 contract TestingUniswapReserve is UniswapReserve {
     function TestingUniswapReserve(
         UniswapFactory _uniswapFactory,
-        address _admin
+        address _admin,
+        address _kyberNetwork
     )
-        UniswapReserve(_uniswapFactory, _admin)
+        UniswapReserve(_uniswapFactory, _admin, _kyberNetwork)
     {
     }
 

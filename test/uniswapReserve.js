@@ -7,6 +7,8 @@ require("chai")
     .use(require("chai-bignumber")(BigNumber))
     .should();
 
+const helper = require("./helper.js");
+
 const truffleAssert = require("truffle-assertions");
 
 const MockUniswapFactory = artifacts.require("MockUniswapFactory");
@@ -26,6 +28,7 @@ let token;
 
 let admin;
 let user;
+let kyberNetwork;
 
 contract("UniswapReserve", async accounts => {
     const deployToken = async (decimals = 18) => {
@@ -38,22 +41,45 @@ contract("UniswapReserve", async accounts => {
         return token;
     };
 
+    const prepareUniswapFactory = async token => {
+        const uniswapFactory = await MockUniswapFactory.new();
+        dbg(`UniswapFactoryMock deployed to address ${uniswapFactory.address}`);
+
+        const bigAmount = new BigNumber(10).pow(18).mul(100);
+        await helper.sendEtherWithPromise(
+            admin /* sender */,
+            uniswapFactory.address /* recv */,
+            bigAmount /* amount */
+        );
+
+        // TODO: maybe do this after listing the token
+        token.transfer(uniswapFactory.address, bigAmount);
+
+        return uniswapFactory;
+    };
+
     before("setup", async () => {
         admin = accounts[0];
         user = accounts[1];
+        kyberNetwork = accounts[2];
 
-        uniswapFactoryMock = await MockUniswapFactory.new();
-        dbg(
-            `UniswapFactoryMock deployed to address ${
-                uniswapFactoryMock.address
-            }`
+        token = await deployToken();
+
+        // Fund KyberNetwork
+        await token.transfer(kyberNetwork, new BigNumber(10).pow(18).mul(100), {
+            from: admin
+        });
+
+        uniswapFactoryMock = await prepareUniswapFactory(token);
+        reserve = await UniswapReserve.new(
+            uniswapFactoryMock.address /* uniswap */,
+            admin /* admin */,
+            kyberNetwork /* kyberNetwork */
         );
-        reserve = await UniswapReserve.new(uniswapFactoryMock.address, admin);
         dbg(`UniswapReserve deployed to address ${reserve.address}`);
 
         DEFAULT_FEE_BPS = await reserve.DEFAULT_FEE_BPS();
 
-        token = await deployToken();
         await reserve.listToken(token.address);
     });
 
@@ -66,13 +92,27 @@ contract("UniswapReserve", async accounts => {
     describe("constructor params", () => {
         it("UniswapFactory must not be 0", async () => {
             await truffleAssert.reverts(
-                UniswapReserve.new(0 /* _uniswapFactory */, admin)
+                UniswapReserve.new(0 /* _uniswapFactory */, admin, kyberNetwork)
             );
         });
 
         it("admin must not be 0", async () => {
             await truffleAssert.reverts(
-                UniswapReserve.new(uniswapFactoryMock.address, 0 /* _admin */)
+                UniswapReserve.new(
+                    uniswapFactoryMock.address,
+                    0 /* _admin */,
+                    kyberNetwork
+                )
+            );
+        });
+
+        it("kyberNetwork must not be 0", async () => {
+            await truffleAssert.reverts(
+                UniswapReserve.new(
+                    uniswapFactoryMock.address,
+                    admin /* _admin */,
+                    0 /* kyberNetwork */
+                )
             );
         });
 
@@ -81,7 +121,8 @@ contract("UniswapReserve", async accounts => {
                 "0x0000000000000000000000000000000000000001";
             const newReserve = await UniswapReserve.new(
                 uniswapFactoryAddress,
-                admin
+                admin,
+                kyberNetwork
             );
 
             const uniswapFactory = await newReserve.uniswapFactory();
@@ -92,11 +133,24 @@ contract("UniswapReserve", async accounts => {
             const admin = "0x0000000000000000000000000000000000000001";
             const newReserve = await UniswapReserve.new(
                 uniswapFactoryMock.address,
-                admin
+                admin,
+                kyberNetwork
             );
 
             const adminValue = await newReserve.admin();
             adminValue.should.be.eq(admin);
+        });
+
+        it("kyberNetwork is saved", async () => {
+            const kyberNetwork = "0x0000000000000000000000000000000000000001";
+            const newReserve = await UniswapReserve.new(
+                uniswapFactoryMock.address,
+                admin,
+                kyberNetwork
+            );
+
+            const kyberNetworkAddress = await newReserve.kyberNetwork();
+            kyberNetworkAddress.should.be.eq(kyberNetwork);
         });
     });
 
@@ -311,23 +365,414 @@ contract("UniswapReserve", async accounts => {
     });
 
     describe("#trade", () => {
-        it("initial", async () => {
+        it("can be called from KyberNetwork", async () => {
+            await reserve.setFee(0, { from: admin });
+            await uniswapFactoryMock.setToken(token.address);
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                1 /* token */
+            );
+            const exchangeAddress = await reserve.tokenExchange(token.address);
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BigNumber(10).pow(18);
+
             await reserve.trade(
-                token.address /* srcToken */,
-                1 /* srcAmount */,
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                amount /* srcAmount */,
                 token.address /* dstToken */,
-                0x00 /* destAddress */,
-                0 /* conversionRate */,
-                false /* validate */
+                user /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork, value: amount }
             );
         });
+
+        it("can not be called by user other than KyberNetwork", async () => {
+            await reserve.setFee(0, { from: admin });
+            await uniswapFactoryMock.setToken(token.address);
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                1 /* token */
+            );
+            const exchangeAddress = await reserve.tokenExchange(token.address);
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BigNumber(10).pow(18);
+
+            await truffleAssert.reverts(
+                reserve.trade(
+                    ETH_TOKEN_ADDRESS /* srcToken */,
+                    amount /* srcAmount */,
+                    token.address /* dstToken */,
+                    user /* destAddress */,
+                    conversionRate /* conversionRate */,
+                    true /* validate */,
+                    { from: user, value: amount }
+                )
+            );
+        });
+
+        it("fail if ETH in src and dest", async () => {
+            await reserve.setFee(0, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                1 /* token */
+            );
+            await uniswapFactoryMock.setToken(token.address);
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BigNumber(10).pow(18);
+            const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
+
+            await truffleAssert.reverts(
+                reserve.trade(
+                    ETH_TOKEN_ADDRESS /* srcToken */,
+                    amount /* srcAmount */,
+                    ETH_TOKEN_ADDRESS /* destToken */,
+                    kyberNetwork /* destAddress */,
+                    conversionRate /* conversionRate */,
+                    true /* validate */,
+                    { from: kyberNetwork, value: amount }
+                )
+            );
+        });
+
+        it("fail if token in both src and dest", async () => {
+            await reserve.setFee(0, { from: admin });
+            await uniswapFactoryMock.setRateTokenToEth(
+                1 /* eth */,
+                1 /* token */
+            );
+            await uniswapFactoryMock.setToken(token.address);
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BigNumber(10).pow(18);
+            await token.approve(reserve.address, amount, {
+                from: kyberNetwork
+            });
+            const ethBalanceBefore = await helper.getBalancePromise(user);
+
+            await truffleAssert.reverts(
+                reserve.trade(
+                    token.address /* srcToken */,
+                    amount /* srcAmount */,
+                    token.address /* destToken */,
+                    user /* destAddress */,
+                    conversionRate /* conversionRate */,
+                    true /* validate */,
+                    { from: kyberNetwork }
+                )
+            );
+        });
+
+        it("simple trade eth -> token", async () => {
+            await reserve.setFee(0, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                1 /* token */
+            );
+            await uniswapFactoryMock.setToken(token.address);
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BigNumber(10).pow(18);
+            const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
+
+            const traded = await reserve.trade.call(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                amount /* srcAmount */,
+                token.address /* destToken */,
+                kyberNetwork /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork, value: amount }
+            );
+            await reserve.trade(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                amount /* srcAmount */,
+                token.address /* destToken */,
+                kyberNetwork /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork, value: amount }
+            );
+
+            const tokenBalanceAfter = await token.balanceOf(kyberNetwork);
+
+            traded.should.be.true;
+            tokenBalanceAfter.should.be.bignumber.eq(
+                tokenBalanceBefore.add(amount)
+            );
+        });
+
+        it("simple trade token -> ETH", async () => {
+            await reserve.setFee(0, { from: admin });
+            await uniswapFactoryMock.setRateTokenToEth(
+                1 /* eth */,
+                1 /* token */
+            );
+            await uniswapFactoryMock.setToken(token.address);
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BigNumber(10).pow(18);
+            await token.approve(reserve.address, amount, {
+                from: kyberNetwork
+            });
+            const ethBalanceBefore = await helper.getBalancePromise(user);
+
+            const traded = await reserve.trade.call(
+                token.address /* srcToken */,
+                amount /* srcAmount */,
+                ETH_TOKEN_ADDRESS /* destToken */,
+                user /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork }
+            );
+            await reserve.trade(
+                token.address /* srcToken */,
+                amount /* srcAmount */,
+                ETH_TOKEN_ADDRESS /* destToken */,
+                user /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork }
+            );
+
+            const ethBalanceAfter = await helper.getBalancePromise(user);
+
+            traded.should.be.true;
+            ethBalanceAfter.should.be.bignumber.eq(
+                ethBalanceBefore.add(amount)
+            );
+        });
+
+        it("trade eth -> token with 0.25% fee", async () => {
+            await reserve.setFee(25, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                1 /* token */
+            );
+            await uniswapFactoryMock.setToken(token.address);
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BigNumber(10).pow(18).mul(0.9975);
+            const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
+
+            const traded = await reserve.trade.call(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                amount /* srcAmount */,
+                token.address /* destToken */,
+                kyberNetwork /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork, value: amount }
+            );
+            await reserve.trade(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                amount /* srcAmount */,
+                token.address /* destToken */,
+                kyberNetwork /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork, value: amount }
+            );
+
+            const tokenBalanceAfter = await token.balanceOf(kyberNetwork);
+            const expectedBalance = tokenBalanceBefore.add(amount * 0.9975);
+
+            traded.should.be.true;
+            tokenBalanceAfter.should.be.bignumber.eq(expectedBalance);
+        });
+
+        it("trade token -> ETH with 0.25% fee", async () => {
+            await reserve.setFee(25, { from: admin });
+            await uniswapFactoryMock.setRateTokenToEth(
+                1 /* eth */,
+                1 /* token */
+            );
+            await uniswapFactoryMock.setToken(token.address);
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BigNumber(10).pow(18).mul(0.9975);
+            await token.approve(reserve.address, amount, {
+                from: kyberNetwork
+            });
+            const ethBalanceBefore = await helper.getBalancePromise(user);
+
+            const traded = await reserve.trade.call(
+                token.address /* srcToken */,
+                amount /* srcAmount */,
+                ETH_TOKEN_ADDRESS /* destToken */,
+                user /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork }
+            );
+            await reserve.trade(
+                token.address /* srcToken */,
+                amount /* srcAmount */,
+                ETH_TOKEN_ADDRESS /* destToken */,
+                user /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork }
+            );
+
+            const ethBalanceAfter = await helper.getBalancePromise(user);
+
+            traded.should.be.true;
+            ethBalanceAfter.should.be.bignumber.eq(
+                ethBalanceBefore.add(amount * 0.9975)
+            );
+        });
+
+        it("trade eth -> token with rate 1:2 and 0.25% fee", async () => {
+            await reserve.setFee(25, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                2 /* token */
+            );
+            await uniswapFactoryMock.setToken(token.address);
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BigNumber(10)
+                .pow(18)
+                .mul(2)
+                .mul(0.9975);
+            const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
+
+            const traded = await reserve.trade.call(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                amount /* srcAmount */,
+                token.address /* destToken */,
+                kyberNetwork /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork, value: amount }
+            );
+            await reserve.trade(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                amount /* srcAmount */,
+                token.address /* destToken */,
+                kyberNetwork /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork, value: amount }
+            );
+
+            const tokenBalanceAfter = await token.balanceOf(kyberNetwork);
+            const expectedBalance = tokenBalanceBefore.add(amount * 2 * 0.9975);
+
+            traded.should.be.true;
+            tokenBalanceAfter.should.be.bignumber.eq(expectedBalance);
+        });
+
+        it("trade token -> ETH with rate 1:2 and 0.25% fee", async () => {
+            await reserve.setFee(25, { from: admin });
+            await uniswapFactoryMock.setRateTokenToEth(
+                2 /* eth */,
+                1 /* token */
+            );
+            await uniswapFactoryMock.setToken(token.address);
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BigNumber(10)
+                .pow(18)
+                .mul(2)
+                .mul(0.9975);
+            await token.approve(reserve.address, amount, {
+                from: kyberNetwork
+            });
+            const ethBalanceBefore = await helper.getBalancePromise(user);
+
+            const traded = await reserve.trade.call(
+                token.address /* srcToken */,
+                amount /* srcAmount */,
+                ETH_TOKEN_ADDRESS /* destToken */,
+                user /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork }
+            );
+            await reserve.trade(
+                token.address /* srcToken */,
+                amount /* srcAmount */,
+                ETH_TOKEN_ADDRESS /* destToken */,
+                user /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork }
+            );
+
+            const ethBalanceAfter = await helper.getBalancePromise(user);
+
+            traded.should.be.true;
+            ethBalanceAfter.should.be.bignumber.eq(
+                ethBalanceBefore.add(amount * 2 * 0.9975)
+            );
+        });
+
+        it("fail if actual trade rate < conversionRate param", async () => {
+            await reserve.setFee(25, { from: admin });
+            await uniswapFactoryMock.setRateTokenToEth(
+                2 /* eth */,
+                1 /* token */
+            );
+            await uniswapFactoryMock.setToken(token.address);
+            const amount = web3.utils.toWei("1");
+            await token.approve(reserve.address, amount, {
+                from: kyberNetwork
+            });
+            const ethBalanceBefore = await helper.getBalancePromise(user);
+
+            const expectedConversionRate = await reserve.getConversionRate(
+                token.address /* src */,
+                ETH_TOKEN_ADDRESS /* dest */,
+                amount /* srcQty */,
+                0 /* blockNumber */
+            );
+
+            await truffleAssert.reverts(
+                reserve.trade(
+                    token.address /* srcToken */,
+                    amount /* srcAmount */,
+                    ETH_TOKEN_ADDRESS /* destToken */,
+                    user /* destAddress */,
+                    expectedConversionRate.sub(1) /* conversionRate */,
+                    true /* validate */,
+                    { from: kyberNetwork }
+                )
+            );
+        });
+
+        it("ETH -> token, fail if srcAmount != msg.value", async () => {
+            await reserve.setFee(25, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                2 /* token */
+            );
+            await uniswapFactoryMock.setToken(token.address);
+            const amount = new BigNumber(10).pow(18);
+            const conversionRate = new BigNumber(10)
+                .pow(18)
+                .mul(2)
+                .mul(0.9975);
+            const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
+
+            await truffleAssert.reverts(
+                reserve.trade(
+                    ETH_TOKEN_ADDRESS /* srcToken */,
+                    amount /* srcAmount */,
+                    token.address /* destToken */,
+                    kyberNetwork /* destAddress */,
+                    conversionRate /* conversionRate */,
+                    true /* validate */,
+                    { from: kyberNetwork, value: amount.sub(1) }
+                )
+            );
+        });
+
+        it("handle not enough liquidity on uniswap");
+        it("trade event emitted");
     });
 
     describe("#setFee", () => {
         it("default fee", async () => {
             const newReserve = await UniswapReserve.new(
                 1 /* uniswapFactory */,
-                admin
+                admin,
+                kyberNetwork
             );
 
             const feeValue = await newReserve.feeBps();
@@ -350,7 +795,10 @@ contract("UniswapReserve", async accounts => {
             await truffleAssert.reverts(reserve.setFee(20, { from: user }));
         });
 
-        it("fail for fee > 10000");
+        it("fail for fee > 10000", async () => {
+            await truffleAssert.reverts(reserve.setFee(10001, { from: admin }));
+        });
+
         it("event sent on setFee");
     });
 
@@ -419,6 +867,21 @@ contract("UniswapReserve", async accounts => {
 
             const exchange = await reserve.tokenExchange(newToken.address);
             exchange.should.be.eq(tokenExchange);
+        });
+
+        it("listing token gives allowence to exchange", async () => {
+            const newToken = await deployToken();
+            const tokenExchange = await uniswapFactoryMock.createExchange.call(
+                newToken.address
+            );
+
+            await reserve.listToken(newToken.address, { from: admin });
+
+            const amount = await newToken.allowance(
+                reserve.address,
+                tokenExchange
+            );
+            amount.should.be.bignumber.eq(new BigNumber(2).pow(255));
         });
     });
 

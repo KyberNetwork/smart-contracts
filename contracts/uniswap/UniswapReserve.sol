@@ -6,8 +6,35 @@ import "../Utils2.sol";
 
 
 interface UniswapExchange {
-    function getEthToTokenInputPrice(uint256 eth_sold) external view returns (uint256 tokens_bought);
-    function getTokenToEthInputPrice(uint256 tokens_sold) external view returns (uint256 eth_bought);
+    function getEthToTokenInputPrice(
+        uint256 eth_sold
+    )
+        external
+        view
+        returns (uint256 tokens_bought);
+
+    function getTokenToEthInputPrice(
+        uint256 tokens_sold
+    )
+        external
+        view
+        returns (uint256 eth_bought);
+
+    function ethToTokenSwapInput(
+        uint256 min_tokens,
+        uint256 deadline
+    )
+        external
+        payable
+        returns (uint256  tokens_bought);
+
+    function tokenToEthSwapInput(
+        uint256 tokens_sold,
+        uint256 min_eth,
+        uint256 deadline
+    )
+        external
+        returns (uint256  eth_bought);
 }
 
 
@@ -21,6 +48,7 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
     uint public constant DEFAULT_FEE_BPS = 25;
 
     UniswapFactory public uniswapFactory;
+    address public kyberNetwork;
 
     uint public feeBps = DEFAULT_FEE_BPS;
 
@@ -32,15 +60,23 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
     */
     function UniswapReserve(
         UniswapFactory _uniswapFactory,
-        address _admin
+        address _admin,
+        address _kyberNetwork
     )
         public
     {
         require(address(_uniswapFactory) != 0);
         require(_admin != 0);
+        require(_kyberNetwork != 0);
 
         uniswapFactory = _uniswapFactory;
         admin = _admin;
+        kyberNetwork = _kyberNetwork;
+    }
+
+    // TODO: test this
+    function() public payable {
+        // anyone can deposit ether
     }
 
     /**
@@ -76,12 +112,11 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
         uint convertedQuantity;
         if (src == ETH_TOKEN_ADDRESS) {
-            uint quantity = srcQty - srcQty * feeBps / 10000;
+            uint quantity = srcQty * (10000 - feeBps) / 10000;
             convertedQuantity = exchange.getEthToTokenInputPrice(quantity);
         } else {
             convertedQuantity = exchange.getTokenToEthInputPrice(srcQty);
-            convertedQuantity = convertedQuantity -
-                convertedQuantity * feeBps / 10000;
+            convertedQuantity = convertedQuantity * (10000 - feeBps) / 10000;
         }
 
         return calcRateFromQty(
@@ -92,6 +127,9 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         );
     }
 
+    /**
+      conversionRate: expected conversion rate should be >= this value.
+     */
     function trade(
         ERC20 srcToken,
         uint srcAmount,
@@ -104,12 +142,54 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         payable
         returns(bool)
     {
+        require(msg.sender == kyberNetwork);
+        require(isValidTokens(srcToken, destToken));
+
+        uint expectedConversionRate = getConversionRate(
+            srcToken,
+            destToken,
+            srcAmount,
+            0 /* blockNumber */
+        );
+        require (expectedConversionRate <= conversionRate);
+
+        uint amount;
+        UniswapExchange exchange;
+        if (srcToken == ETH_TOKEN_ADDRESS) {
+            require(srcAmount == msg.value);
+
+            // Fees in ETH
+            uint quantity = srcAmount * (10000 - feeBps) / 10000;
+            exchange = UniswapExchange(tokenExchange[destToken]);
+            amount = exchange.ethToTokenSwapInput.value(quantity)(
+                0,
+                2 ** 255 /* deadline */
+            );
+            require(destToken.transfer(destAddress, amount));
+        } else {
+            require(msg.value == 0);
+            require(srcToken.transferFrom(msg.sender, address(this), srcAmount));
+
+            exchange = UniswapExchange(tokenExchange[srcToken]);
+            amount = exchange.tokenToEthSwapInput(
+                srcAmount,
+                0,
+                2 ** 255 /* deadline */
+            );
+            // Fees in ETH
+            amount = amount * (10000 - feeBps) / 10000;
+            destAddress.transfer(amount);
+        }
+
+        return true;
     }
 
     function setFee(uint bps)
         public
         onlyAdmin
     {
+        require(bps <= 10000);
+
         feeBps = bps;
     }
 
@@ -123,11 +203,14 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         onlyAdmin
     {
         require(address(token) != 0);
+
         UniswapExchange uniswapExchange = UniswapExchange(
             uniswapFactory.getExchange(token)
         );
         tokenExchange[token] = uniswapExchange;
         setDecimals(token);
+
+        require(token.approve(uniswapExchange, 2**255));
 
         TokenListed(token, uniswapExchange);
     }
