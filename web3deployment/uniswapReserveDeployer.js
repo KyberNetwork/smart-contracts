@@ -147,7 +147,7 @@ const ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 const feeBurnerAddress = "0xd6703974Dc30155d768c058189A2936Cf7C62Da6"; // staging
 const uniswapFactoryAddress = "0xc0a47dFe034B400B47bDaD5FecDa2621de6c4d95";
 const adminAddress = "0x2259099897AfAf3813fef3284b91D2B227b66AD4";
-const kyberNetworkAddress = "0x706aBcE058DB29eB36578c463cf295F180a1Fe9C"; // staging
+const kyberNetworkAddress = "0x65897aDCBa42dcCA5DD162c647b1cC3E31238490"; // staging
 
 async function main() {
     nonce = await web3.eth.getTransactionCount(sender);

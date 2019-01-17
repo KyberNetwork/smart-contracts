@@ -6,20 +6,6 @@ import "../Utils2.sol";
 
 
 interface UniswapExchange {
-    function getEthToTokenInputPrice(
-        uint256 eth_sold
-    )
-        external
-        view
-        returns (uint256 tokens_bought);
-
-    function getTokenToEthInputPrice(
-        uint256 tokens_sold
-    )
-        external
-        view
-        returns (uint256 eth_bought);
-
     function ethToTokenSwapInput(
         uint256 min_tokens,
         uint256 deadline
@@ -35,6 +21,20 @@ interface UniswapExchange {
     )
         external
         returns (uint256  eth_bought);
+
+    function getEthToTokenInputPrice(
+        uint256 eth_sold
+    )
+        external
+        view
+        returns (uint256 tokens_bought);
+
+    function getTokenToEthInputPrice(
+        uint256 tokens_sold
+    )
+        external
+        view
+        returns (uint256 eth_bought);
 }
 
 
@@ -167,7 +167,7 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             srcAmount,
             0 /* blockNumber */
         );
-        require (expectedConversionRate <= conversionRate);
+        require(expectedConversionRate <= conversionRate);
 
         uint destAmount;
         UniswapExchange exchange;
@@ -198,11 +198,11 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         }
 
         TradeExecute(
-            msg.sender /* sender */,
-            srcToken /* src */,
-            srcAmount /* srcAmount */,
-            destToken /* destToken */,
-            destAmount /* destAmount */,
+            msg.sender, /* sender */
+            srcToken, /* src */
+            srcAmount, /* srcAmount */
+            destToken, /* destToken */
+            destAmount, /* destAmount */
             destAddress /* destAddress */
         );
         return true;
@@ -296,5 +296,20 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         tradeEnabled = false;
         TradeEnabled(false);
         return true;
+    }
+
+    event KyberNetworkSet(
+        address kyberNetwork
+    );
+
+    function setKyberNetwork(
+        address _kyberNetwork
+    )
+        public
+        onlyAdmin
+    {
+        require(_kyberNetwork != 0);
+        kyberNetwork = _kyberNetwork;
+        KyberNetworkSet(kyberNetwork);
     }
 }

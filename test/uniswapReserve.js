@@ -1086,6 +1086,33 @@ contract("UniswapReserve", async accounts => {
             });
         });
     });
+
+    describe("#setKyberNetwork", () => {
+        it("set new value by admin", async () => {
+            await reserve.setKyberNetwork(user, { from: admin });
+
+            const updatedKyberNetwork = await reserve.kyberNetwork();
+            updatedKyberNetwork.should.be.eq(user);
+        });
+
+        it("should reject address 0", async () => {
+            await truffleAssert.reverts(reserve.setKyberNetwork(0));
+        });
+
+        it("only admin can set values", async () => {
+            await truffleAssert.reverts(
+                reserve.setKyberNetwork(user, { from: user })
+            );
+        });
+
+        it("setting value emits an event", async () => {
+            const res = await reserve.setKyberNetwork(user, { from: admin });
+
+            await truffleAssert.eventEmitted(res, "KyberNetworkSet", ev => {
+                return ev.kyberNetwork === user;
+            });
+        });
+    });
 });
 
 async function dbg(...args) {
