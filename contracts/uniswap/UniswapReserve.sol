@@ -74,7 +74,6 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         kyberNetwork = _kyberNetwork;
     }
 
-    // TODO: test this
     function() public payable {
         // anyone can deposit ether
     }

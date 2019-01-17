@@ -154,6 +154,16 @@ contract("UniswapReserve", async accounts => {
         });
     });
 
+    describe("Misc", () => {
+        it("should be able to send ETH to reserve", async () => {
+            await helper.sendEtherWithPromise(
+                admin /* sender */,
+                reserve.address /* recv */,
+                1 /* amount */
+            );
+        });
+    });
+
     describe("Withdrawable", () => {
         it("should allow admin to withdraw tokens", async () => {
             const amount = web3.utils.toWei("1");
