@@ -15,7 +15,7 @@ const MockUniswapFactory = artifacts.require("MockUniswapFactory");
 const UniswapReserve = artifacts.require("TestingUniswapReserve");
 const TestToken = artifacts.require("TestToken");
 
-const ETH_TOKEN_ADDRESS = "0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+const ETH_TOKEN_ADDRESS = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
 let DEFAULT_FEE_BPS;
 
@@ -27,6 +27,7 @@ let reserve;
 let token;
 
 let admin;
+let alerter;
 let user;
 let kyberNetwork;
 
@@ -60,8 +61,9 @@ contract("UniswapReserve", async accounts => {
 
     before("setup", async () => {
         admin = accounts[0];
-        user = accounts[1];
-        kyberNetwork = accounts[2];
+        alerter = accounts[1];
+        user = accounts[2];
+        kyberNetwork = accounts[3];
 
         token = await deployToken();
 
@@ -80,10 +82,13 @@ contract("UniswapReserve", async accounts => {
 
         DEFAULT_FEE_BPS = await reserve.DEFAULT_FEE_BPS();
 
-        await reserve.listToken(token.address);
+        await reserve.listToken(token.address, { from: admin });
+
+        await reserve.addAlerter(alerter, { from: admin });
     });
 
     beforeEach("setup contract for each test", async () => {
+        await reserve.enableTrade({ from: admin });
         await reserve.setFee(DEFAULT_FEE_BPS);
         await uniswapFactoryMock.setRateEthToToken(0, 0);
         await uniswapFactoryMock.setRateTokenToEth(0, 0);
@@ -162,9 +167,7 @@ contract("UniswapReserve", async accounts => {
                 1 /* amount */
             );
         });
-    });
 
-    describe("Withdrawable", () => {
         it("should allow admin to withdraw tokens", async () => {
             const amount = web3.utils.toWei("1");
             const initialWethBalance = await token.balanceOf(admin);
@@ -371,6 +374,25 @@ contract("UniswapReserve", async accounts => {
                     .mul(0.95)
                     .div(2)
             );
+        });
+
+        it("returns 0 if trade is disabled", async () => {
+            await reserve.setFee(500, { from: admin });
+            await uniswapFactoryMock.setRateTokenToEth(
+                1 /* eth */,
+                2 /* token */
+            );
+
+            await reserve.disableTrade({ from: alerter });
+
+            const rate = await reserve.getConversionRate(
+                token.address /* src */,
+                ETH_TOKEN_ADDRESS /* dst */,
+                web3.utils.toWei("1") /* srcQty */,
+                0 /* blockNumber */
+            );
+
+            rate.should.be.bignumber.eq(0);
         });
     });
 
@@ -773,8 +795,75 @@ contract("UniswapReserve", async accounts => {
             );
         });
 
-        it("handle not enough liquidity on uniswap");
-        it("trade event emitted");
+        it("fail if trade is disabled", async () => {
+            await reserve.setFee(25, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                2 /* token */
+            );
+            await uniswapFactoryMock.setToken(token.address);
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BigNumber(10)
+                .pow(18)
+                .mul(2)
+                .mul(0.9975);
+            await reserve.disableTrade({ from: alerter });
+
+            await truffleAssert.reverts(
+                reserve.trade(
+                    ETH_TOKEN_ADDRESS /* srcToken */,
+                    amount /* srcAmount */,
+                    token.address /* destToken */,
+                    kyberNetwork /* destAddress */,
+                    conversionRate /* conversionRate */,
+                    true /* validate */,
+                    { from: kyberNetwork, value: amount }
+                )
+            );
+        });
+
+        it("trade event emitted", async () => {
+            await reserve.setFee(25, { from: admin });
+            await uniswapFactoryMock.setRateTokenToEth(
+                2 /* eth */,
+                1 /* token */
+            );
+            await uniswapFactoryMock.setToken(token.address);
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BigNumber(10)
+                .pow(18)
+                .mul(2)
+                .mul(0.9975);
+            await token.approve(reserve.address, amount, {
+                from: kyberNetwork
+            });
+
+            const res = await reserve.trade(
+                token.address /* srcToken */,
+                amount /* srcAmount */,
+                ETH_TOKEN_ADDRESS /* destToken */,
+                user /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork }
+            );
+
+            truffleAssert.eventEmitted(res, "TradeExecute", ev => {
+                return (
+                    ev.sender === kyberNetwork &&
+                    ev.src === token.address &&
+                    ev.srcAmount.eq(new BigNumber(amount)) &&
+                    ev.destToken === ETH_TOKEN_ADDRESS &&
+                    ev.destAmount.eq(
+                        new BigNumber(10)
+                            .pow(18)
+                            .mul(2)
+                            .mul(0.9975)
+                    ) &&
+                    ev.destAddress === user
+                );
+            });
+        });
     });
 
     describe("#setFee", () => {
@@ -809,7 +898,12 @@ contract("UniswapReserve", async accounts => {
             await truffleAssert.reverts(reserve.setFee(10001, { from: admin }));
         });
 
-        it("event sent on setFee");
+        it("event sent on setFee", async () => {
+            const res = await reserve.setFee(20, { from: admin });
+            truffleAssert.eventEmitted(res, "FeeUpdated", ev => {
+                return ev.bps.eq(20);
+            });
+        });
     });
 
     describe("#listToken", () => {
@@ -941,6 +1035,54 @@ contract("UniswapReserve", async accounts => {
 
             truffleAssert.eventEmitted(res, "TokenDelisted", ev => {
                 return ev.token === newToken.address;
+            });
+        });
+    });
+
+    describe("Responsible reserve", () => {
+        it("enableTrade() allowed for admin", async () => {
+            await reserve.disableTrade({ from: alerter });
+
+            const enabled = await reserve.enableTrade.call({ from: admin });
+            await reserve.enableTrade({ from: admin });
+
+            const actuallyEnabled = await reserve.tradeEnabled();
+            enabled.should.be.true;
+            actuallyEnabled.should.be.true;
+        });
+
+        it("enableTrade() fails if not admin", async () => {
+            await truffleAssert.reverts(reserve.enableTrade({ from: user }));
+        });
+
+        it("event emitted on enableTrade()", async () => {
+            const res = await reserve.enableTrade({ from: admin });
+
+            truffleAssert.eventEmitted(res, "TradeEnabled", ev => {
+                return ev.enable === true;
+            });
+        });
+
+        it("disableTrade() allowed for alerter", async () => {
+            await reserve.enableTrade({ from: admin });
+
+            const disabled = await reserve.disableTrade.call({ from: alerter });
+            await reserve.disableTrade({ from: alerter });
+
+            const tradeEnabled = await reserve.tradeEnabled();
+            disabled.should.be.true;
+            tradeEnabled.should.be.false;
+        });
+
+        it("disableTrade() fails if not alerter", async () => {
+            await truffleAssert.reverts(reserve.disableTrade({ from: user }));
+        });
+
+        it("event emitted on disableTrade()", async () => {
+            const res = await reserve.disableTrade({ from: alerter });
+
+            truffleAssert.eventEmitted(res, "TradeEnabled", ev => {
+                return ev.enable === false;
             });
         });
     });

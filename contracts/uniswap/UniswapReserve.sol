@@ -52,8 +52,11 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
     uint public feeBps = DEFAULT_FEE_BPS;
 
+    // Uniswap exchange contract for every listed token
     // token -> exchange
     mapping (address => address) public tokenExchange;
+
+    bool public tradeEnabled = true;
 
     /**
         Constructor
@@ -96,13 +99,16 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
         require(isValidTokens(src, dest));
 
+        if (!tradeEnabled) return 0;
+
         ERC20 token;
         if (src == ETH_TOKEN_ADDRESS) {
             token = dest;
         } else if (dest == ETH_TOKEN_ADDRESS) {
             token = src;
         } else {
-            return 0;
+            // Should never arrive here - isValidTokens requires one side to be ETH
+            revert;
         }
 
         UniswapExchange exchange = UniswapExchange(
@@ -126,6 +132,15 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         );
     }
 
+    event TradeExecute(
+        address indexed sender,
+        address src,
+        uint srcAmount,
+        address destToken,
+        uint destAmount,
+        address destAddress
+    );
+
     /**
       conversionRate: expected conversion rate should be >= this value.
      */
@@ -141,6 +156,7 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         payable
         returns(bool)
     {
+        require(tradeEnabled);
         require(msg.sender == kyberNetwork);
         require(isValidTokens(srcToken, destToken));
 
@@ -152,7 +168,7 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         );
         require (expectedConversionRate <= conversionRate);
 
-        uint amount;
+        uint destAmount;
         UniswapExchange exchange;
         if (srcToken == ETH_TOKEN_ADDRESS) {
             require(srcAmount == msg.value);
@@ -160,36 +176,52 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             // Fees in ETH
             uint quantity = srcAmount * (10000 - feeBps) / 10000;
             exchange = UniswapExchange(tokenExchange[destToken]);
-            amount = exchange.ethToTokenSwapInput.value(quantity)(
+            destAmount = exchange.ethToTokenSwapInput.value(quantity)(
                 0,
                 2 ** 255 /* deadline */
             );
-            require(destToken.transfer(destAddress, amount));
+            require(destToken.transfer(destAddress, destAmount));
         } else {
             require(msg.value == 0);
             require(srcToken.transferFrom(msg.sender, address(this), srcAmount));
 
             exchange = UniswapExchange(tokenExchange[srcToken]);
-            amount = exchange.tokenToEthSwapInput(
+            destAmount = exchange.tokenToEthSwapInput(
                 srcAmount,
                 0,
                 2 ** 255 /* deadline */
             );
             // Fees in ETH
-            amount = amount * (10000 - feeBps) / 10000;
-            destAddress.transfer(amount);
+            destAmount = destAmount * (10000 - feeBps) / 10000;
+            destAddress.transfer(destAmount);
         }
 
+        TradeExecute(
+            msg.sender /* sender */,
+            srcToken /* src */,
+            srcAmount /* srcAmount */,
+            destToken /* destToken */,
+            destAmount /* destAmount */,
+            destAddress /* destAddress */
+        );
         return true;
     }
 
-    function setFee(uint bps)
+    event FeeUpdated(
+        uint bps
+    );
+
+    function setFee(
+        uint bps
+    )
         public
         onlyAdmin
     {
         require(bps <= 10000);
 
         feeBps = bps;
+
+        FeeUpdated(bps);
     }
 
     event TokenListed(
@@ -239,5 +271,29 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             (src == ETH_TOKEN_ADDRESS && tokenExchange[dest] != 0) ||
             (tokenExchange[src] != 0 && dest == ETH_TOKEN_ADDRESS)
         );
+    }
+
+    event TradeEnabled(
+        bool enable
+    );
+
+    function enableTrade()
+        public
+        onlyAdmin
+        returns(bool)
+    {
+        tradeEnabled = true;
+        TradeEnabled(true);
+        return true;
+    }
+
+    function disableTrade()
+        public
+        onlyAlerter
+        returns(bool)
+    {
+        tradeEnabled = false;
+        TradeEnabled(false);
+        return true;
     }
 }
