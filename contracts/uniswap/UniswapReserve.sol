@@ -44,7 +44,7 @@ interface UniswapFactory {
 
 
 contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
-    // Parts per 1000
+    // Parts per 10000
     uint public constant DEFAULT_FEE_BPS = 25;
 
     UniswapFactory public uniswapFactory;
