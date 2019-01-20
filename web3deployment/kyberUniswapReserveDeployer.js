@@ -137,8 +137,8 @@ const input = {
         contractPath + "KyberReserveInterface.sol",
         "utf8"
     ),
-    "UniswapReserve.sol": fs.readFileSync(
-        uniswapContractPath + "UniswapReserve.sol",
+    "KyberUniswapReserve.sol": fs.readFileSync(
+        uniswapContractPath + "KyberUniswapReserve.sol",
         "utf8"
     )
 };
@@ -168,7 +168,7 @@ async function main() {
 
     const [reserveAddress, reserveContract] = await deployContract(
         output,
-        "UniswapReserve.sol:UniswapReserve",
+        "KyberUniswapReserve.sol:KyberUniswapReserve",
         [uniswapFactoryAddress, adminAddress, kyberNetworkAddress]
     );
 

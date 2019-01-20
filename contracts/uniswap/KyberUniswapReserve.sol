@@ -43,7 +43,7 @@ interface UniswapFactory {
 }
 
 
-contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
+contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
     // Parts per 10000
     uint public constant DEFAULT_FEE_BPS = 25;
 
@@ -61,7 +61,7 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
     /**
         Constructor
     */
-    function UniswapReserve(
+    function KyberUniswapReserve(
         UniswapFactory _uniswapFactory,
         address _admin,
         address _kyberNetwork
@@ -167,7 +167,7 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             srcAmount,
             0 /* blockNumber */
         );
-        require(expectedConversionRate <= conversionRate);
+        require(conversionRate <= expectedConversionRate);
 
         uint destAmount;
         UniswapExchange exchange;
@@ -178,7 +178,7 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             uint quantity = srcAmount * (10000 - feeBps) / 10000;
             exchange = UniswapExchange(tokenExchange[destToken]);
             destAmount = exchange.ethToTokenSwapInput.value(quantity)(
-                0,
+                1, /* min_tokens: uniswap requires it to be > 0 */
                 2 ** 255 /* deadline */
             );
             require(destToken.transfer(destAddress, destAmount));
@@ -189,7 +189,7 @@ contract UniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             exchange = UniswapExchange(tokenExchange[srcToken]);
             destAmount = exchange.tokenToEthSwapInput(
                 srcAmount,
-                0,
+                1, /* min_eth: uniswap requires it to be > 0 */
                 2 ** 255 /* deadline */
             );
             // Fees in ETH

@@ -12,7 +12,7 @@ const helper = require("./helper.js");
 const truffleAssert = require("truffle-assertions");
 
 const MockUniswapFactory = artifacts.require("MockUniswapFactory");
-const UniswapReserve = artifacts.require("TestingUniswapReserve");
+const KyberUniswapReserve = artifacts.require("TestingKyberUniswapReserve");
 const TestToken = artifacts.require("TestToken");
 
 const ETH_TOKEN_ADDRESS = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
@@ -31,7 +31,7 @@ let alerter;
 let user;
 let kyberNetwork;
 
-contract("UniswapReserve", async accounts => {
+contract("KyberUniswapReserve", async accounts => {
     const deployToken = async (decimals = 18) => {
         const token = await TestToken.new("Some Token", "KNC", decimals, {
             from: admin
@@ -73,12 +73,12 @@ contract("UniswapReserve", async accounts => {
         });
 
         uniswapFactoryMock = await prepareUniswapFactory(token);
-        reserve = await UniswapReserve.new(
+        reserve = await KyberUniswapReserve.new(
             uniswapFactoryMock.address /* uniswap */,
             admin /* admin */,
             kyberNetwork /* kyberNetwork */
         );
-        dbg(`UniswapReserve deployed to address ${reserve.address}`);
+        dbg(`KyberUniswapReserve deployed to address ${reserve.address}`);
 
         DEFAULT_FEE_BPS = await reserve.DEFAULT_FEE_BPS();
 
@@ -97,13 +97,17 @@ contract("UniswapReserve", async accounts => {
     describe("constructor params", () => {
         it("UniswapFactory must not be 0", async () => {
             await truffleAssert.reverts(
-                UniswapReserve.new(0 /* _uniswapFactory */, admin, kyberNetwork)
+                KyberUniswapReserve.new(
+                    0 /* _uniswapFactory */,
+                    admin,
+                    kyberNetwork
+                )
             );
         });
 
         it("admin must not be 0", async () => {
             await truffleAssert.reverts(
-                UniswapReserve.new(
+                KyberUniswapReserve.new(
                     uniswapFactoryMock.address,
                     0 /* _admin */,
                     kyberNetwork
@@ -113,7 +117,7 @@ contract("UniswapReserve", async accounts => {
 
         it("kyberNetwork must not be 0", async () => {
             await truffleAssert.reverts(
-                UniswapReserve.new(
+                KyberUniswapReserve.new(
                     uniswapFactoryMock.address,
                     admin /* _admin */,
                     0 /* kyberNetwork */
@@ -124,7 +128,7 @@ contract("UniswapReserve", async accounts => {
         it("UniswapFactory is saved", async () => {
             const uniswapFactoryAddress =
                 "0x0000000000000000000000000000000000000001";
-            const newReserve = await UniswapReserve.new(
+            const newReserve = await KyberUniswapReserve.new(
                 uniswapFactoryAddress,
                 admin,
                 kyberNetwork
@@ -136,7 +140,7 @@ contract("UniswapReserve", async accounts => {
 
         it("admin is saved", async () => {
             const admin = "0x0000000000000000000000000000000000000001";
-            const newReserve = await UniswapReserve.new(
+            const newReserve = await KyberUniswapReserve.new(
                 uniswapFactoryMock.address,
                 admin,
                 kyberNetwork
@@ -148,7 +152,7 @@ contract("UniswapReserve", async accounts => {
 
         it("kyberNetwork is saved", async () => {
             const kyberNetwork = "0x0000000000000000000000000000000000000001";
-            const newReserve = await UniswapReserve.new(
+            const newReserve = await KyberUniswapReserve.new(
                 uniswapFactoryMock.address,
                 admin,
                 kyberNetwork
@@ -868,7 +872,7 @@ contract("UniswapReserve", async accounts => {
 
     describe("#setFee", () => {
         it("default fee", async () => {
-            const newReserve = await UniswapReserve.new(
+            const newReserve = await KyberUniswapReserve.new(
                 1 /* uniswapFactory */,
                 admin,
                 kyberNetwork
