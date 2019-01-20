@@ -765,7 +765,7 @@ contract("KyberUniswapReserve", async accounts => {
                     amount /* srcAmount */,
                     ETH_TOKEN_ADDRESS /* destToken */,
                     user /* destAddress */,
-                    expectedConversionRate.sub(1) /* conversionRate */,
+                    expectedConversionRate.plus(1) /* conversionRate */,
                     true /* validate */,
                     { from: kyberNetwork }
                 )

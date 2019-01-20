@@ -167,7 +167,7 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             srcAmount,
             0 /* blockNumber */
         );
-        require(conversionRate <= expectedConversionRate);
+        require(expectedConversionRate >= conversionRate);
 
         uint destAmount;
         UniswapExchange exchange;
