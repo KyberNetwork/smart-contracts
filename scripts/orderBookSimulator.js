@@ -163,7 +163,7 @@ contract('OrderbookReserve simulator', async (accounts) => {
         await token.transfer(network, tokenWeiDepositAmount.mul(10));
         await token.approve(reserve.address, tokenWeiDepositAmount.mul(10), {from: network})
 
-        const numLoops = 1700;
+        const numLoops = 13000;
         let submitData;
         let tradeData;
         let isSameResult = true;
@@ -241,13 +241,19 @@ contract('OrderbookReserve simulator', async (accounts) => {
 
                 case 'submit':
                     let submit = OrderGenerator.getNextSubmit();
-                    log("***  submit EthtoTok: " + submit['isEthToToken'] + " maker: " + submit['maker'] + " src: " + submit['src'] + " dst: " + submit['dst']);
+                    if(submit['hint'] == -1) {
+                        log("getting prev ID, got: " + submit['hint']);
+                        submit['hint'] = ReserveSim.getPrevId(submit['isEthToToken'], submit['src'], submit['dst']);
+                    }
+
+                    log("***  submit EthtoTok: " + submit['isEthToToken'] + " maker: " + submit['maker'] + " src: " +
+                                submit['src'] + " dst: " + submit['dst'] + " hint " + submit['hint']);
 
                     try{
                         if(submit['isEthToToken']) {
-                            result = await doSubmitEthToToken(submit['src'], submit['dst'], {from: submit['maker']});
+                            result = await doSubmitEthToToken(submit['src'], submit['dst'], submit['hint'], {from: submit['maker']});
                         } else {
-                            result = await doSubmitTokenToEth(submit['src'], submit['dst'], {from: submit['maker']});
+                            result = await doSubmitTokenToEth(submit['src'], submit['dst'], submit['hint'], {from: submit['maker']});
                         }
 
                         if(result) numSubmitSuccess++;
@@ -286,14 +292,19 @@ contract('OrderbookReserve simulator', async (accounts) => {
 
                 case 'update':
                     let update = OrderGenerator.getNextUpdate();
+                    if(update['hint'] == -1) {
+                        log("getting prev ID, got: " + update['hint']);
+                        update['hint'] = ReserveSim.getPrevId(update['isEthToToken'], update['src'], update['dst']);
+                    }
+
                     log("********update EthtoTok: " + update['isEthToToken'] + " maker: " + update['maker'] + " orderId "
-                        + update['orderId'] + " src: " + update['src'] + " dst: " + update['dst']);
+                        + update['orderId'] + " src: " + update['src'] + " dst: " + update['dst'] + " hint " + update['hint']);
 
                     try{
                         if(update['isEthToToken']) {
-                            result = await doUpdateEthToToken(update['orderId'], update['src'], update['dst'], {from: update['maker']});
+                            result = await doUpdateEthToToken(update['orderId'], update['src'], update['dst'], update['hint'], {from: update['maker']});
                         } else {
-                            result = await doUpdateTokenToEth(update['orderId'], update['src'], update['dst'], {from: update['maker']});
+                            result = await doUpdateTokenToEth(update['orderId'], update['src'], update['dst'], update['hint'], {from: update['maker']});
                         }
 
                         if(result) numUpdateSuccess++;
@@ -346,7 +357,7 @@ contract('OrderbookReserve simulator', async (accounts) => {
         log("cancel summary. fails: " + numCancelFail + " success: " + numCancelSuccess);
         log("withdraw summary. fails: " + numWithdrawFail + " success: " + numWithdrawSuccess);
 
-        if(!isSameResult) assert(false);
+        if(!isSameResult) assert(false, lastException);
     })
 });
 
@@ -399,14 +410,14 @@ async function sim_withdraw(maker, fund, amount) {
         }
     } catch(e) {
         expectedSimResult = false;
-        log(exception);
+        lastException = e;
     }
 
     let simResult = ReserveSim.withdraw(maker, fund, amount);
 
     assert.equal(simResult, expectedSimResult, "Sim result: " + simResult + " not as expected. for withdraw " + fund +
                     " amount: " + amount);
-
+    log("withdraw " + fund + " amount " + amount + " as expected: " + expectedSimResult);
     return simResult
 }
 
@@ -414,60 +425,51 @@ async function updateTakerFunds(taker, ethWei, tokenTwei) {
     OrderGenerator.updateTakerFunds(taker, ethWei, tokenTwei);
 }
 
-async function doSubmitTokenToEth(srcTwei, dstWei, from) {
+async function doSubmitTokenToEth(srcTwei, dstWei, hint, from) {
     let expectedSimResult = true;
     let simResult;
     let exception;
     let result;
 
     try {
-        let result = await reserve.submitTokenToEthOrder(srcTwei, dstWei, from);
+        if (hint == 0) {
+            result = await reserve.submitTokenToEthOrder(srcTwei, dstWei, from);
+        } else {
+            result = await reserve.submitTokenToEthOrderWHint(srcTwei, dstWei, hint, from);
+        }
     } catch(e) {
         lastException = e;
         exception = e;
         expectedSimResult = false;
     }
 
-    simResult = ReserveSim.submitTokenToEth(from.from, srcTwei, dstWei);
+    simResult = ReserveSim.submitTokenToEth(from.from, srcTwei, dstWei, hint);
     assert.equal(simResult, expectedSimResult, "sim result: " + simResult + " not as expected***********************");
     return expectedSimResult;
 }
 
-async function doSubmitTokenToEthWHint(srcWei, dstTwei, hint, from) {
-    let result = await reserve.submitEthToTokenOrderWHint(srcWei, dstTwei, hint, from);
-
-    ReserveSim.submitTokenToEth(from.from, srcTwei, dstWei);
-
-    return result;
-}
-
-async function doSubmitEthToToken(srcWei, dstTwei, from) {
+async function doSubmitEthToToken(srcWei, dstTwei, hint, from) {
     let expectedSimResult = true;
     let simResult;
     let exception;
     let result;
 
     try {
-        result = await reserve.submitEthToTokenOrder(srcWei, dstTwei, from);
+        if (hint == 0) {
+            result = await reserve.submitEthToTokenOrder(srcWei, dstTwei, from);
+        } else {
+            result = await reserve.submitEthToTokenOrderWHint(srcWei, dstTwei, hint, from);
+        }
     } catch(e) {
         lastException = e;
         exception = e;
         expectedSimResult = false;
     }
 
-    simResult = ReserveSim.submitEthToToken(from.from, srcWei, dstTwei);
+    simResult = ReserveSim.submitEthToToken(from.from, srcWei, dstTwei, hint);
     assert.equal(simResult, expectedSimResult, "simResult: " + simResult + " submit sim result not as expected**************************");
     log("simulator result doSubmitEthToToken as expected:                        " + simResult);
     return expectedSimResult;
-}
-
-
-async function doSubmitEthToTokenWHint(srcWei, dstTwei, hint, from) {
-    let result = await reserve.submitEthToTokenOrder(srcWei, dstTwei, hint, from);
-
-    ReserveSim.submitEthToToken(from.from, srcWei, dstTwei);
-
-    return result;
 }
 
 async function reserveTrade(add1, payValue, add2, destAddress, expectedRate, validate, from) {
@@ -487,46 +489,54 @@ async function reserveTrade(add1, payValue, add2, destAddress, expectedRate, val
     }
 
     let isEthToToken = (add1 == ethAddress) ? true : false;
-    let simResult = ReserveSim.trade(isEthToToken, payValue, expectedRate);
+    simResult = ReserveSim.trade(isEthToToken, payValue, expectedRate);
     assert.equal(simResult, expectedSimResult, "sim result: " + simResult + " not as expected**********!!!!!!!!!!!!!!!!!!!!!!!!!111****************");
     log("simulator trade result as expected: ############       " + simResult);
     return expectedSimResult;
 }
 
-async function doUpdateEthToToken(orderId, srcWei, dstTwei, from){
+async function doUpdateEthToToken(orderId, srcWei, dstTwei, hint, from){
     let expectedSimResult = true;
     let simResult;
     let exception;
     let result;
 
     try {
-        result = await reserve.updateEthToTokenOrder(orderId, srcWei, dstTwei, from);
+        if (hint == 0) {
+            result = await reserve.updateEthToTokenOrder(orderId, srcWei, dstTwei, from);
+        } else {
+            result = await reserve.updateEthToTokenOrderWHint(orderId, srcWei, dstTwei, hint, from);
+        }
     } catch(e) {
         lastException = e;
         exception = e;
         expectedSimResult = false;
     }
 
-    simResult = ReserveSim.updateEthToToken(from.from, orderId, srcWei, dstTwei);
+    simResult = ReserveSim.updateEthToToken(from.from, orderId, srcWei, dstTwei, hint);
     assert.equal(simResult, expectedSimResult, "simResult: " + simResult + " updateEthToTok sim result not as expected**************************");
     return expectedSimResult;
 }
 
-async function doUpdateTokenToEth(orderId, srcTwei, dstWei, from){
+async function doUpdateTokenToEth(orderId, srcTwei, dstWei, hint, from){
     let expectedSimResult = true;
     let simResult;
     let exception;
     let result;
 
     try {
-        result = await reserve.updateTokenToEthOrder(orderId, srcTwei, dstWei, from);
+        if (hint == 0) {
+            result = await reserve.updateTokenToEthOrder(orderId, srcTwei, dstWei, from);
+        } else {
+            result = await reserve.updateTokenToEthOrderWHint(orderId, srcTwei, dstWei, hint, from);
+        }
     } catch(e) {
         lastException = e;
         exception = e;
         expectedSimResult = false;
     }
 
-    simResult = ReserveSim.updateTokenToEth(from.from, orderId, srcTwei, dstWei);
+    simResult = ReserveSim.updateTokenToEth(from.from, orderId, srcTwei, dstWei, hint);
     assert.equal(simResult, expectedSimResult, "simResult: " + simResult + " update simTokToEth result not as expected**************************");
     return expectedSimResult;
 }
@@ -655,12 +665,16 @@ async function makerCompareFunds(maker) {
     assert.equal(makerKncAmount.valueOf(), simFunds['knc'].valueOf(), "KNC funds mismatch. simfund : " +
         simFunds['knc'].valueOf() + " onchain: " + makerKncAmount.valueOf());
 
+    let makerUnlockedKnc = await reserve.makerUnlockedKnc(maker);
+    assert.equal(makerUnlockedKnc.valueOf(), simFunds['unlockedKnc'].valueOf(), "unlockedKnc funds mismatch. sim : " +
+        simFunds['unlockedKnc'].valueOf() + " onchain: " + makerUnlockedKnc.valueOf());
+
     let makerTotalWei = await reserve.makerTotalOrdersWei(maker);
     assert.equal(makerTotalWei.valueOf(), simFunds['totalWei'].valueOf(), "total orders wei mismatch. sim : " +
         simFunds['totalWei'].valueOf() + " onchain: " + makerTotalWei.valueOf());
 
     log("maker: " + maker + " eth: " + makerEth.valueOf() + " tokens: " + makerTokens.valueOf() + " knc: " +
-        makerKncAmount.valueOf() + " totalWei: " + makerTotalWei.valueOf());
+        makerKncAmount.valueOf() + " unlockedKnc " + makerUnlockedKnc.valueOf() + " totalWei: " + makerTotalWei.valueOf());
 }
 
 function calcRateFromQty(srcAmount, dstAmount, srcDecimals, dstDecimals) {

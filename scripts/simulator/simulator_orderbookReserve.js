@@ -156,6 +156,12 @@ module.exports.trade = function reserve_trade(isEthToToken, srcQty, expectedRate
     return true;
 }
 
+module.exports.getPrevId = function reserve_getPrevId(isEthToToken, srcAmount, dstAmount) {
+    let list = isEthToToken ? ethToTokenList : tokenToEthList;
+
+    return list_findPrevOrderId(list, srcAmount, dstAmount);
+}
+
 module.exports.showLists = function reserve_showLists() {
     if (ethToTokenList.length > 1) {
         log('')
@@ -359,7 +365,7 @@ function reserve_returnOrderId(isEthToToken, maker, orderId) {
 
 }
 
-module.exports.submitEthToToken = function reserve_submitEthToToken (maker, srcAmount, dstAmount) {
+module.exports.submitEthToToken = function reserve_submitEthToToken (maker, srcAmount, dstAmount, hint) {
     src = new BigNumber(srcAmount);
     dst = new BigNumber(dstAmount);
 
@@ -377,7 +383,18 @@ module.exports.submitEthToToken = function reserve_submitEthToToken (maker, srcA
     let orderId = reserve_makerGetNewOrderId(true, maker);
     if (orderId == 0) return false;
 
-    list_addOrder(ethToTokenList, orderId, maker, srcAmount, dstAmount);
+    let addedWithHint = false;
+
+    if (hint != 0) {
+        if (list_isCorrectHint(ethToTokenList, hint, srcAmount, dstAmount)) {
+            list_insertOrder(ethToTokenList, orderId, hint, maker, srcAmount, dstAmount);
+            addedWithHint == true;
+        }
+    }
+
+    if (!addedWithHint) {
+        list_addOrder(ethToTokenList, orderId, maker, srcAmount, dstAmount);
+    }
 
     utils_addStake(maker, src);
     makerFunds[maker]['ether'] = (makerFunds[maker]['ether']).sub(srcAmount);
@@ -385,7 +402,7 @@ module.exports.submitEthToToken = function reserve_submitEthToToken (maker, srcA
     return true;
 }
 
-module.exports.submitTokenToEth = function reserve_submitTokenToEth (maker, srcAmount, dstAmount) {
+module.exports.submitTokenToEth = function reserve_submitTokenToEth (maker, srcAmount, dstAmount, hint) {
     src = new BigNumber(srcAmount);
     dst = new BigNumber(dstAmount);
     if(dst.lt(minNewOrderWei)) return false;
@@ -401,7 +418,18 @@ module.exports.submitTokenToEth = function reserve_submitTokenToEth (maker, srcA
     let orderId = reserve_makerGetNewOrderId(false, maker);
     if (orderId == 0) {log("orderID: " + orderId); return false;}
 
-    list_addOrder(tokenToEthList, orderId, maker, srcAmount, dstAmount);
+    let addedWithHint = false;
+
+    if (hint != 0) {
+        if (list_isCorrectHint(tokenToEthList, hint, srcAmount, dstAmount)) {
+            list_insertOrder(tokenToEthList, orderId, hint, maker, srcAmount, dstAmount);
+            addedWithHint == true;
+        }
+    }
+
+    if (!addedWithHint) {
+        list_addOrder(tokenToEthList, orderId, maker, srcAmount, dstAmount);
+    }
 
     utils_addStake(maker, dst);
     makerFunds[maker]['token'] = (makerFunds[maker]['token']).sub(srcAmount);
@@ -409,7 +437,7 @@ module.exports.submitTokenToEth = function reserve_submitTokenToEth (maker, srcA
     return true;
 }
 
-module.exports.updateEthToToken = function reserve_updateEthToToken (maker, orderId, srcAmount, dstAmount) {
+module.exports.updateEthToToken = function reserve_updateEthToToken (maker, orderId, srcAmount, dstAmount, hint) {
     let newSrc = new BigNumber(srcAmount);
     let newDst = new BigNumber(dstAmount);
 
@@ -431,7 +459,21 @@ module.exports.updateEthToToken = function reserve_updateEthToToken (maker, orde
     if(!utils_isValidQtys(srcAmount, dstAmount)) {log("above max qty"); return false;}
 
     list_removeOrder(ethToTokenList, orderId);
-    list_addOrder(ethToTokenList, orderId, maker, srcAmount, dstAmount);
+
+    let addedWithHint = false;
+
+    if(hint == orderId) return false;
+
+    if (hint != 0) {
+        if (list_isCorrectHint(ethToTokenList, hint, srcAmount, dstAmount)) {
+            list_insertOrder(ethToTokenList, orderId, hint, maker, srcAmount, dstAmount);
+            addedWithHint == true;
+        }
+    }
+
+    if (!addedWithHint) {
+        list_addOrder(ethToTokenList, orderId, maker, srcAmount, dstAmount);
+    }
 
     let srcDiff = newSrc.sub(currentSrc);
     utils_addStake(maker, srcDiff);
@@ -440,7 +482,7 @@ module.exports.updateEthToToken = function reserve_updateEthToToken (maker, orde
     return true;
 }
 
-module.exports.updateTokenToEth = function reserve_updateTokenToEth (maker, orderId, srcAmount, dstAmount) {
+module.exports.updateTokenToEth = function reserve_updateTokenToEth (maker, orderId, srcAmount, dstAmount, hint) {
     let newSrc = new BigNumber(srcAmount);
     let newDst = new BigNumber(dstAmount);
 
@@ -464,19 +506,39 @@ module.exports.updateTokenToEth = function reserve_updateTokenToEth (maker, orde
     if(!utils_isValidRate(false, dstAmount, srcAmount)) {log("above max rate"); return false;}
     if(!utils_isValidQtys(srcAmount, dstAmount)) {log("above max qty"); return false;}
 
-    list_removeOrder(tokenToEthList, orderId)
-    list_addOrder(tokenToEthList, orderId, maker, srcAmount, dstAmount);
+    list_removeOrder(tokenToEthList, orderId);
+
+    let addedWithHint = false;
+    if(hint == orderId) return false;
+
+    if (hint != 0) {
+        if (list_isCorrectHint(tokenToEthList, hint, srcAmount, dstAmount)) {
+            list_insertOrder(tokenToEthList, orderId, hint, maker, srcAmount, dstAmount);
+            addedWithHint == true;
+        }
+    }
+
+    if (!addedWithHint) {
+        list_addOrder(tokenToEthList, orderId, maker, srcAmount, dstAmount);
+    }
 
     utils_addStake(maker, newDst.sub(currentDst));
-    log("update token to eth")
-    log("current token amount: " + makerFunds[maker]['token'].valueOf())
-    log("sub amount " + currentSrc.sub(newSrc).valueOf());
     makerFunds[maker]['token'] = (makerFunds[maker]['token']).add(currentSrc).sub(newSrc);
-    log(" new token amount " + makerFunds[maker]['token'].valueOf());
 
     return true;
 }
 
+function list_isCorrectHint(list, hintId, srcAmount, dstAmount) {
+    if (hintId == HEAD_ID || hintId == TAIL_ID) return false;
+    if (list[hintId] == undefined) return false;
+    if (list[hintId]['prev'] == undefined || list[hintId]['next'] == undefined) return false;
+
+    if (list_compareOrders(list, hintId, srcAmount, dstAmount) == 1) return false;
+    if (list[hintId]['next'] == TAIL_ID ||
+        list_compareOrders(list, list[hintId]['next'], srcAmount, dstAmount) > 0) {
+            return false;
+    }
+}
 
 module.exports.cancelEthToToken = function reserve_cancelEthToToken (maker, orderId) {
     if(ethToTokenList[orderId] == undefined) return false;
@@ -515,6 +577,7 @@ module.exports.cancelTokenToEth = function reserve_updateTokenToEth (maker, orde
 module.exports.getMakerFunds = function reserve_makerFunds(maker) {
     let funds = makerFunds[maker];
     funds['totalWei'] = makerTotalWeiInOrders[maker];
+    funds['unlockedKnc'] = utils_getUnlockedKnc(maker);
     return funds;
 }
 
@@ -532,8 +595,9 @@ module.exports.withdraw = function reserve_withdraw(maker, fund, amount) {
         case 'knc':
 
             let freeKnc = utils_getUnlockedKnc(maker);
+            amount = new BigNumber(amount);
 
-            if (makerFunds[maker]['knc'].lt(freeKnc)) return false;
+            if (amount.gt(freeKnc)) return false;
 
             makerFunds[maker]['knc'] = makerFunds[maker]['knc'].sub(amount);
 
@@ -669,11 +733,6 @@ function list_getOrder(list, orderId) {
 }
 
 function list_addOrder(list, newOrderId, maker, srcAmount, dstAmount) {
-    if(!isListInit) {
-        list_init(ethToTokenList);
-        list_init(tokenToEthList);
-        isListInit = true;
-    }
 
     if(newOrderId == TAIL_ID || newOrderId == HEAD_ID) {
         log("illegal order ID: " + newOrderId + " can't set as head ore tail: " + HEAD_ID + " " + TAIL_ID);
@@ -683,6 +742,11 @@ function list_addOrder(list, newOrderId, maker, srcAmount, dstAmount) {
     let prevId = list_findPrevOrderId(list, srcAmount, dstAmount);
 //    log("new orderId: " + newOrderId);
 //    log("prevId found: " + prevId + " next of prev: " + list[prevId]['next']);
+
+    list_insertOrder(list, newOrderId, prevId, maker, srcAmount, dstAmount);
+}
+
+function list_insertOrder(list, newOrderId, prevId, maker, srcAmount, dstAmount) {
 
     list[newOrderId] = {};
     list[newOrderId]['maker'] = maker;
@@ -709,18 +773,28 @@ function list_findPrevOrderId(list, srcAmount, dstAmount) {
             return thisOrderId;
         }
 
-        let checkSrc = list[checkOrderId]['srcQty'];
-        let checkDst = list[checkOrderId]['dstQty'];
-        let k1 = srcAmount.mul(checkDst);
-        let k2 = checkSrc.mul(dstAmount);
-
-//        if(srcAmount / dstAmount >= checkSrc / checkDst) {
-        if(k1.gt(k2)) {
+        if (list_compareOrders(list, checkOrderId, srcAmount, dstAmount) == 1) {
             return thisOrderId;
         }
 
         thisOrderId = checkOrderId;
     }
+}
+
+function list_compareOrders(list, checkOrderId, srcAmount, dstAmount) {
+    let checkSrc = list[checkOrderId]['srcQty'];
+    let checkDst = list[checkOrderId]['dstQty'];
+    let k1 = srcAmount.mul(checkDst);
+    let k2 = checkSrc.mul(dstAmount);
+
+    if(k1.gt(k2)) {
+        return 1;
+    }
+    if(k1.lt(k2)) {
+        return -1;
+    }
+
+    return 0; // equal
 }
 
 function list_updateOrder(list, orderId, maker, srcAmount, dstAmount) {
@@ -799,7 +873,9 @@ function list_printOrder(list, orderId) {
 function list_showList(list) {
     let orderId = list_getFirstOrderId(list);
 
-    while(orderId != TAIL_ID > 0) {
+    let blockRecursiveList = 60;
+
+    while((orderId != TAIL_ID > 0) && (blockRecursiveList-- > 0)) {
         list_printOrder(list, orderId)
         orderId = list_getNextOrderId(list, orderId);
     }

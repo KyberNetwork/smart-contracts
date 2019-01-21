@@ -28,7 +28,7 @@ module.exports.nextOperation = function gen_getNextOperation() {
 
     if (rand < 3) return WITHDRAW_ORDER;
     if (rand < 36) return SUBMIT_ORDER;
-    if (rand < 51) return UPDATE_ORDER;
+    if (rand < 53) return UPDATE_ORDER;
     if (rand < 63) return CANCEL_ORDER;
     return TRADE;
 }
@@ -99,6 +99,14 @@ module.exports.getNextSubmit = function gen_getNextSubmit() {
     submit['src'] = new BigNumber((rand % baseValSrc).toString());
     submit['dst'] = new BigNumber((rand % baseValDst).toString());
 
+    if(rand % 12 < 2) {
+        submit['hint'] = -1;
+    } else if(rand % 12 < 6) {
+        submit['hint'] = 0;
+    } else {
+        submit['hint'] = rand % nextFreeOrder;
+    }
+
     return submit;
 }
 
@@ -168,6 +176,13 @@ module.exports.getNextUpdate = function gen_getNextUpdate() {
     update['src'] = new BigNumber((rand % baseValSrc).toString());
     update['dst'] = new BigNumber((rand % baseValDst).toString());
 
+    if(rand % 12 < 2) {
+        update['hint'] = -1;
+    } else if(rand % 12 < 6) {
+        update['hint'] = 0;
+    } else {
+        update['hint'] = rand % nextFreeOrder;
+    }
     return update;
 }
 
