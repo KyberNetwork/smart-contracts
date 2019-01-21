@@ -1,170 +1,272 @@
+import sys
+import argparse
+import json
 import numpy as np
 
 
-class LiquidityParams:
+def print_initial_balances(
+    liquidity_rate,
+    initial_price,
+    min_supported_price_factor,
+    max_supported_price_factor
+):
 
-    def __init__(self,
-                 rate,
-                 P_0_tokens_to_eth,
-                 num_formula_precision_bits,
-                 max_cap_buy_eth,
-                 max_cap_sell_eth,
-                 fee_in_precents):
+    min_supported_price = min_supported_price_factor * initial_price
+    max_supported_price = max_supported_price_factor * initial_price
 
-        self.rate = rate 
-        self.P_0_tokens_to_eth = P_0_tokens_to_eth
-        self.num_formula_precision_bits = num_formula_precision_bits
-        self.max_cap_buy_eth= max_cap_buy_eth
-        self.max_cap_sell_eth = max_cap_sell_eth
-        self.fee_in_precents = fee_in_precents
+    initial_ether_amount = (1 / liquidity_rate) * np.log(initial_price / min_supported_price)
+    initial_token_amount = (1 / liquidity_rate) * (1 / initial_price - 1 / max_supported_price)
+    initial_token_amount_in_eth = initial_token_amount * initial_price
 
-    def calc_balances_based_on_pmin_pmax(self,
-                                         min_token_to_eth_rate,
-                                         max_token_to_eth_rate):
-
-        print("\ncalc_balances_based_on_pmin_pmax:")
-
-        E_0_ether = (1/self.rate) * np.log(self.P_0_tokens_to_eth / min_token_to_eth_rate)
-        print("E_0_ether: " + str(E_0_ether))
-
-        T_0_tokens = (1/self.rate) * (1/self.P_0_tokens_to_eth - 1/ max_token_to_eth_rate)
-        print("T_0_tokens: " + str(T_0_tokens))
-
-        T_0_tokens_in_eth = T_0_tokens * self.P_0_tokens_to_eth
-        print("T_0_tokens_in_eth: " + str(T_0_tokens_in_eth))
-
-        return E_0_ether, T_0_tokens
-
-    def calc_pmin_pmax_ratio_based_on_balances(self,
-                                               E_0_ether,
-                                               T_0_tokens):
-
-        print("\ncalc_pmin_pmax_ratio_based_on_balances:")
-
-        # auto calculated values in natural units (Eth, Tokens)
-        max_token_to_eth_rate = self.P_0_tokens_to_eth / (1 - self.rate * self.P_0_tokens_to_eth * T_0_tokens)
-        min_token_to_eth_rate = self.P_0_tokens_to_eth / np.exp(self.rate * E_0_ether)
-        pmin_ratio = min_token_to_eth_rate / self.P_0_tokens_to_eth
-        pmax_ratio = max_token_to_eth_rate / self.P_0_tokens_to_eth
-        print("minimal_pmin_ratio: " + str(pmin_ratio))
-        print("maximal_pmax_ratio: " + str(pmax_ratio))
-
-        return pmin_ratio, pmax_ratio
-
-    def calc_params_based_on_ratios(self,
-                                    pmin_ratio,
-                                    pmax_ratio):
-
-        print("\ncalc_params_based_on_ratios:")
-
-        print("params in human units: ")
-        # auto calculated values in natural units (Eth, Tokens)
-        max_token_to_eth_rate = pmax_ratio * self.P_0_tokens_to_eth
-        min_token_to_eth_rate = pmin_ratio * self.P_0_tokens_to_eth
-
-        print("P_0_tokens_to_eth:" + "%.20f" % self.P_0_tokens_to_eth)
-        print("num_formula_precision_bits:" + str(self.num_formula_precision_bits))
-        print("max_cap_buy_eth:" + str(self.max_cap_buy_eth))
-        print("max_cap_sell_eth:" + str(self.max_cap_sell_eth))
-        print("fee_in_precents:" + str(self.fee_in_precents))
-        print("max_token_to_eth_rate:" + "%.20f" % max_token_to_eth_rate)
-        print("min_token_to_eth_rate:" + "%.20f" % min_token_to_eth_rate)
-        print("pmin_ratio:" + str(pmin_ratio))
-        print("pmax_ratio:" + str(pmax_ratio))
-
-        print("\nparams to configure in contract units (Wei, Precision): ")
-        _rInFp = self.rate * (2**self.num_formula_precision_bits)
-        _pMinInFp = min_token_to_eth_rate * (2 ** self.num_formula_precision_bits)
-        _numFpBits = self.num_formula_precision_bits
-        _maxCapBuyInWei = self.max_cap_buy_eth * (10 ** 18)
-        _maxCapSellInWei = self.max_cap_sell_eth * (10 ** 18)
-        _feeInBps = self.fee_in_precents * 100
-        _maxTokenToEthRateInPrecision = max_token_to_eth_rate * (10 ** 18)
-        _minTokenToEthRateInPrecision = min_token_to_eth_rate * (10 ** 18)
-
-        print("_rInFp: " + str(_rInFp))
-        print("_pMinInFp: " + str(_pMinInFp))
-        print("_numFpBits: " + str(_numFpBits))
-        print("_maxCapBuyInWei: " + "%.20f" % _maxCapBuyInWei)
-        print("_maxCapSellInWei: " + "%.20f" % _maxCapSellInWei)
-        print("_feeInBps: " + str(_feeInBps))
-        print("_maxTokenToEthRateInPrecision: " + str(_maxTokenToEthRateInPrecision))
-        print("_minTokenToEthRateInPrecision: " + str(_minTokenToEthRateInPrecision))
+    print("initial_ether_amount: " + str(initial_ether_amount))
+    print("initial_token_amount: " + str(initial_token_amount))
+    print("initial_token_amount_in_eth: " + str(initial_token_amount_in_eth))
 
 
-knc_options = { "token": "knc",
-                "p0": 0.00229499,
-                "options": [{"rate": 0.01,
-                             "min_token_to_eth_ratio": 0.7,
-                             "max_token_to_eth_ratio": 1.3},
-                            {"rate": 0.01,
-                             "min_token_to_eth_ratio": 0.8,
-                             "max_token_to_eth_ratio": 1.2},
-                            {"rate": 0.01,
-                             "min_token_to_eth_ratio": 0.9,
-                             "max_token_to_eth_ratio": 1.1},
-                            {"rate": 0.005,
-                             "min_token_to_eth_ratio": 0.7,
-                             "max_token_to_eth_ratio": 1.3}]
-             }
+def calc_price_factors(
+        initial_price,
+        liquidity_rate,
+        initial_ether_amount,
+        initial_token_amount
+):
 
-dai_options = { "token": "dai",
-                "p0": 0.00209461,
-                "options": [{"rate": 0.01,
-                             "min_token_to_eth_ratio": 0.7,
-                             "max_token_to_eth_ratio": 1.3},
-                            {"rate": 0.01,
-                             "min_token_to_eth_ratio": 0.8,
-                             "max_token_to_eth_ratio": 1.2},
-                            {"rate": 0.01,
-                             "min_token_to_eth_ratio": 0.9,
-                             "max_token_to_eth_ratio": 1.1},
-                            {"rate": 0.0075,
-                             "min_token_to_eth_ratio": 0.8,
-                             "max_token_to_eth_ratio": 1.2}]
-             }
+    min_supported_price = initial_price / np.exp(liquidity_rate * initial_ether_amount)
+    min_supported_price_factor = min_supported_price / initial_price
 
-bbo_options = { "token": "bbo",
-                "p0": 0.00001077,
-                "options": [{"rate": 0.01,
-                             "min_token_to_eth_ratio": 0.5,
-                             "max_token_to_eth_ratio": 2.0}]
-             }
+    if liquidity_rate * initial_price * initial_token_amount < 1:
+        max_supported_price = \
+            initial_price / (1 - liquidity_rate * initial_price * initial_token_amount)
+        max_supported_price_factor = max_supported_price / initial_price
+    else:
+        #max_supported_price_factor can not be calculated 
+        max_supported_price_factor = 0
 
-midas_options = { "token": "midas",
-                  "p0": 0.0001, # 1m tokens = 100 eth
-                  "options": [{"rate": 0.01 * 0.693,
-                               "min_token_to_eth_ratio": 0.5,
-                               "max_token_to_eth_ratio": 2.0}]
-             }
-
-for token_options in [midas_options]:
-    print("*********************************************")
-
-    print("token: " + str(token_options["token"]))
-    print("current price: " + str(token_options["p0"]))
-
-    for option in token_options["options"]:
-        print("****\n" + str(option))
-
-        liq = LiquidityParams(rate=option["rate"],
-                              P_0_tokens_to_eth=token_options["p0"],
-                              num_formula_precision_bits=40,
-                              max_cap_buy_eth=3.0,
-                              max_cap_sell_eth=3.0,
-                              fee_in_precents=0.25)
+    return min_supported_price_factor, max_supported_price_factor
 
 
-        # calculate ptoential minimal and maximal ratios according to fix amounts the rm is willing to put (100 eth, 1M tokens).
-        (minimal_pmin_ratio, maximal_pmax_ratio) = liq.calc_pmin_pmax_ratio_based_on_balances(E_0_ether=100.0, T_0_tokens=1000000)
-        # actually use pmin and pmax as fixed 0.5 and 2.0
-        (pmin_ratio, pmax_ratio) = (0.5, 2.0)
-        liq.calc_params_based_on_ratios(pmin_ratio, pmax_ratio)
+def print_price_factors(
+        initial_price,
+        liquidity_rate,
+        initial_ether_amount,
+        initial_token_amount
+):
 
-        #E_0_ether, T_0_tokens = liq.calc_balances_based_on_pmin_pmax(
-        #    min_token_to_eth_rate=option["min_token_to_eth_ratio"] * token_options["p0"],
-        #    max_token_to_eth_rate=option["max_token_to_eth_ratio"] * token_options["p0"]
-        #)
+    (min_supported_price_factor, max_supported_price_factor) = calc_price_factors(
+        initial_price=initial_price,
+        liquidity_rate=liquidity_rate,
+        initial_ether_amount=initial_ether_amount,
+        initial_token_amount=initial_token_amount,
+    )
 
-        #liq.calc_params_based_on_ratios(option["min_token_to_eth_ratio"],
-        #                                option["max_token_to_eth_ratio"])
+    print("min_supported_price_factor: " + str(min_supported_price_factor))
+    if max_supported_price_factor != 0:
+        print("max_supported_price_factor: " + str(max_supported_price_factor))
+    else:
+        print(
+            "max_supported_price_factor is big and can not be calculated. " +
+            "initial_token_amount can be decreased to avoid this."
+        )
+
+
+def print_liquidity_rate(initial_ether_amount, initial_price, min_supported_price_factor):
+    min_supported_price = min_supported_price_factor * initial_price
+    liquidity_rate = (1 / initial_ether_amount) * np.log(initial_price / min_supported_price)
+    print("liquidity_rate: " + str(liquidity_rate))
+
+
+def get_diff_percent(first, second):
+    if first == second:
+        return 0
+    else:
+        return (abs(first - second) / first) * 100.0
+
+
+def validate_params(
+    initial_price,
+    liquidity_rate,
+    initial_ether_amount,
+    initial_token_amount,
+    min_supported_price_factor,
+    max_supported_price_factor
+):
+
+    (min_calculated_price_factor, max_calculated_price_factor) = \
+        calc_price_factors(
+            initial_price=d["initial_price"],
+            liquidity_rate=d["liquidity_rate"],
+            initial_ether_amount=d["initial_ether_amount"],
+            initial_token_amount=d["initial_token_amount"]
+    )
+
+    if min_calculated_price_factor > min_supported_price_factor:
+        print(
+            "Warning! " +
+            "min_calculated_price_factor " + str(min_calculated_price_factor) +
+            " > configured min_supported_price_factor " + str(d["min_supported_price_factor"])
+        )
+
+    if max_calculated_price_factor == 0:
+        print(
+            "Warning! max_calculated_price_factor is big and can not be calculated. " +
+            "initial_token_amount can be decreased to avoid this."
+        )
+    elif max_calculated_price_factor < max_supported_price_factor:
+        print(
+            "Warning! " +
+            "max_calculated_price_factor " + str(max_calculated_price_factor) +
+            " > configured max_supported_price_factor " + str(d["max_supported_price_factor"])
+        )
+
+    expected_initial_price = \
+        initial_price * min_supported_price_factor * np.exp(liquidity_rate * initial_ether_amount)
+    diff_percent = get_diff_percent(expected_initial_price, initial_price)
+    if diff_percent > 1.0:
+        print(
+            "Warning! " +
+            "expected_initial_price " + str(expected_initial_price) +
+            " different from initial_price " + str(d["initial_price"]) +
+            " by " +  str(diff_percent) + "%"
+        )
+
+def print_params(
+    liquidity_rate,
+    initial_price,
+    formula_precision_bits,
+    max_tx_buy_amount_eth,
+    max_tx_sell_amount_eth,
+    fee_percent,
+    min_supported_price_factor,
+    max_supported_price_factor
+):
+
+    max_supported_price = max_supported_price_factor * initial_price
+    min_supported_price = min_supported_price_factor * initial_price
+
+    _rInFp = liquidity_rate * (2 ** formula_precision_bits)
+    _pMinInFp = min_supported_price * (2 ** formula_precision_bits)
+    _numFpBits = formula_precision_bits
+    _maxCapBuyInWei = max_tx_buy_amount_eth * (10 ** 18)
+    _maxCapSellInWei = max_tx_sell_amount_eth * (10 ** 18)
+    _feeInBps = fee_percent * 100
+    _maxTokenToEthRateInPrecision = max_supported_price * (10 ** 18)
+    _minTokenToEthRateInPrecision = min_supported_price * (10 ** 18)
+
+    print("_rInFp: %d" % _rInFp)
+    print("_pMinInFp: %d" % _pMinInFp)
+    print("_numFpBits: %d" % _numFpBits)
+    print("_maxCapBuyInWei: %d" % _maxCapBuyInWei)
+    print("_maxCapSellInWei: %d" % _maxCapSellInWei)
+    print("_feeInBps: %d" % _feeInBps)
+    print("_maxTokenToEthRateInPrecision: %d" % _maxTokenToEthRateInPrecision)
+    print("_minTokenToEthRateInPrecision: %d" % _minTokenToEthRateInPrecision)
+
+
+def require_args(names, args):
+    if not set(names).issubset(args):
+        raise ValueError("following parameters are missing from input: " +
+                         str(set(names).difference(args)))
+
+
+parser = argparse.ArgumentParser(
+    description='Get automatic market making ("liquidity") parameters.'
+)
+parser.add_argument(
+    '--get',
+    choices=[
+        'params',
+        'initial_balances',
+        'supported_price_factors',
+        'liquidity_rate'
+    ],
+    help='Values to get'
+)
+parser.add_argument('--input')
+args = parser.parse_args()
+
+with open(args.input) as json_data:
+    d = json.load(json_data)
+
+    if args.get == 'params':
+        require_args([
+                "liquidity_rate",
+                "initial_price",
+                "formula_precision_bits",
+                "max_tx_buy_amount_eth",
+                "max_tx_sell_amount_eth",
+                "fee_percent",
+                "min_supported_price_factor",
+                "max_supported_price_factor",
+                "initial_ether_amount",
+                "initial_token_amount"
+            ],
+            d.keys()
+        )
+
+        validate_params(
+            liquidity_rate=d["liquidity_rate"],
+            initial_price=d["initial_price"],
+            initial_ether_amount=d["initial_ether_amount"],
+            initial_token_amount=d["initial_token_amount"],
+            min_supported_price_factor=d["min_supported_price_factor"],
+            max_supported_price_factor=d["max_supported_price_factor"]
+        )
+
+        print_params(
+            liquidity_rate=d["liquidity_rate"],
+            initial_price=d["initial_price"],
+            formula_precision_bits=d["formula_precision_bits"],
+            max_tx_buy_amount_eth=d["max_tx_buy_amount_eth"],
+            max_tx_sell_amount_eth=d["max_tx_sell_amount_eth"],
+            fee_percent=d["fee_percent"],
+            min_supported_price_factor=d["min_supported_price_factor"],
+            max_supported_price_factor=d["max_supported_price_factor"]
+        )
+
+    elif args.get == 'supported_price_factors':
+        require_args([
+                "initial_price",
+                "liquidity_rate",
+                "initial_ether_amount",
+                "initial_token_amount"
+            ],
+            d.keys()
+        )
+
+        print_price_factors(
+            initial_price=d["initial_price"],
+            liquidity_rate=d["liquidity_rate"],
+            initial_ether_amount=d["initial_ether_amount"],
+            initial_token_amount=d["initial_token_amount"],
+        )
+
+    elif args.get == 'initial_balances':
+        require_args([
+                "liquidity_rate",
+                "initial_price",
+                "min_supported_price_factor",
+                "max_supported_price_factor"
+            ],
+            d.keys()
+        )
+
+        print_initial_balances(
+            liquidity_rate=d["liquidity_rate"],
+            initial_price=d["initial_price"],
+            min_supported_price_factor=d["min_supported_price_factor"],
+            max_supported_price_factor=d["max_supported_price_factor"]
+        )
+
+    elif args.get == 'liquidity_rate':
+        require_args([
+                "initial_ether_amount",
+                "initial_price",
+                "min_supported_price_factor"
+            ],
+            d.keys()
+        )
+
+        print_liquidity_rate(
+            initial_ether_amount=d["initial_ether_amount"],
+            initial_price=d["initial_price"],
+            min_supported_price_factor=d["min_supported_price_factor"]
+        )

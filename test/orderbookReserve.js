@@ -2,7 +2,6 @@ const TestToken = artifacts.require("TestToken.sol");
 const NetworkProxy = artifacts.require("KyberNetworkProxy.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const FeeBurner = artifacts.require("FeeBurner.sol");
-const ExpectedRate = artifacts.require("ExpectedRate.sol");
 const OrderList = artifacts.require("OrderList.sol");
 const OrderListFactory = artifacts.require("OrderListFactory.sol");
 const OrderbookReserve = artifacts.require("OrderbookReserve.sol");
@@ -3194,6 +3193,60 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(orderList.length, 4);
         })
 
+        it("test can't 'revive' canceled (tok to eth) order by updating it", async() => {
+            const tokenWeiDepositAmount = new BigNumber(500 * 10 ** 18);
+            const kncTweiDepositAmount = 600 * 10 ** 18;
+            const ethWeiDepositAmount = 0;
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
+            let orderDstWei = new BigNumber(2 * 10 ** 18);
+
+            await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
+            let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(100), {from: maker1});
+            let id2ndOrder = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(200), {from: maker1});
+            await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(300), {from: maker1});
+
+            await reserve.cancelTokenToEthOrder(id2ndOrder, {from: maker1});
+
+            let list = await reserve.getTokenToEthOrderList();
+
+            try {
+                await reserve.updateTokenToEthOrder(id2ndOrder, orderSrcAmountTwei, orderDstWei.add(155), {from: maker1})
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            let listAfter = await reserve.getTokenToEthOrderList();
+            assert.equal(list.length, listAfter.length);
+        })
+
+        it("test can't cancel canceled (tok to eth) order", async() => {
+            const tokenWeiDepositAmount = new BigNumber(500 * 10 ** 18);
+            const kncTweiDepositAmount = 600 * 10 ** 18;
+            const ethWeiDepositAmount = new BigNumber(0);
+            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+            let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
+            let orderDstWei = new BigNumber(2 * 10 ** 18);
+
+            await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
+            let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(100), {from: maker1});
+            let id2ndOrder = rc.logs[0].args.orderId.valueOf();
+            rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(200), {from: maker1});
+
+            await reserve.cancelTokenToEthOrder(id2ndOrder, {from: maker1});
+
+            try {
+                await reserve.cancelTokenToEthOrder(id2ndOrder, {from: maker1});
+                assert(false, "throw was expected in line above.")
+            } catch(e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        })
+
         it("test can't 'revive' deleted (eth to tok) order by setting it as prev ID (in empty list)", async() => {
             let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
             let kncTweiDepositAmount = 600 * 10 ** 18;
@@ -3645,9 +3698,9 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("maker - make 5 buy orders and take in one trade. see gas for take.", async () => {
-            let tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
-            let kncTweiDepositAmount = 600 * 10 ** 18;
-            let ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
+            const tokenWeiDepositAmount = new BigNumber(0 * 10 ** 18);
+            const kncTweiDepositAmount = 600 * 10 ** 18;
+            const ethWeiDepositAmount = (new BigNumber(10 * 10 ** 18)).add(30000);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             orderSrc = new BigNumber(2 * 10 ** 18);
@@ -3673,8 +3726,8 @@ contract('OrderbookReserve', async (accounts) => {
             let rc = await reserve.trade(tokenAdd, totalPayValue, ethAddress, user1, rate, false, {from:network});
 
             log("take 5 orders gas: " + rc.receipt.gasUsed);
-            let maxExpectedGas = 330000;
-            assert(rc.receipt.gasUsed < maxExpectedGas, "used gas in take 5 orders trade should have been below " + maxExpectedGas);
+            let maxExpectedGas = 340000;
+            assert(rc.receipt.gasUsed < maxExpectedGas, "take 5 orders trade = " + rc.receipt.gasUsed + " > " + maxExpectedGas);
         });
 
         it("calc expected stake and calc burn amount. validate match", async () => {

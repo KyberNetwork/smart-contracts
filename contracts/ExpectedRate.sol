@@ -12,12 +12,16 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
     KyberNetwork public kyberNetwork;
     uint public quantityFactor = 2;
     uint public worstCaseRateFactorInBps = 50;
+    uint constant UNIT_QTY_FOR_FEE_BURNER = 10 ** 18;
+    ERC20 public knc;
 
-    function ExpectedRate(KyberNetwork _kyberNetwork, address _admin) public {
+    function ExpectedRate(KyberNetwork _kyberNetwork, ERC20 _knc, address _admin) public {
         require(_admin != address(0));
+        require(_knc != address(0));
         require(_kyberNetwork != address(0));
         kyberNetwork = _kyberNetwork;
         admin = _admin;
+        knc = _knc;
     }
 
     event QuantityFactorSet (uint newFactor, uint oldFactor, address sender);
@@ -56,14 +60,32 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
 
         if (usePermissionless) {
             (bestReserve, expectedRate) = kyberNetwork.findBestRate(src, dest, srcQty);
-            (bestReserve, slippageRate) = kyberNetwork.findBestRate(src, dest, (srcQty * quantityFactor));
+
+            if (quantityFactor != 1) {
+                (bestReserve, slippageRate) = kyberNetwork.findBestRate(src, dest, (srcQty * quantityFactor));
+            } else {
+                slippageRate = expectedRate;
+            }
         } else {
             (bestReserve, expectedRate) = kyberNetwork.findBestRateOnlyPermission(src, dest, srcQty);
-            (bestReserve, slippageRate) = kyberNetwork.findBestRateOnlyPermission(src, dest, (srcQty * quantityFactor));
+
+            if (quantityFactor != 1) {
+                (bestReserve, slippageRate) = kyberNetwork.findBestRateOnlyPermission(src, dest,
+                    (srcQty * quantityFactor));
+            } else {
+                slippageRate = expectedRate;
+            }
         }
 
         if (expectedRate == 0) {
             expectedRate = expectedRateSmallQty(src, dest, srcQty, usePermissionless);
+        }
+
+        if (src == knc &&
+            dest == ETH_TOKEN_ADDRESS &&
+            srcQty == UNIT_QTY_FOR_FEE_BURNER )
+        {
+            if (checkKncArbitrageRate(expectedRate)) expectedRate = 0;
         }
 
         require(expectedRate <= MAX_RATE);
@@ -74,6 +96,14 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
         }
 
         return (expectedRate, slippageRate);
+    }
+
+    function checkKncArbitrageRate(uint currentKncToEthRate) public view returns(bool) {
+        uint converseRate;
+        uint slippage;
+	(converseRate, slippage) = getExpectedRate(ETH_TOKEN_ADDRESS, knc, UNIT_QTY_FOR_FEE_BURNER, true);
+        require(converseRate <= MAX_RATE && currentKncToEthRate <= MAX_RATE);
+        return ((converseRate * currentKncToEthRate) > (PRECISION ** 2));
     }
 
     //@dev for small src quantities dest qty might be 0, then returned rate is zero.

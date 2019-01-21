@@ -8,7 +8,7 @@ const BigNumber = require('bignumber.js')
 
 process.on('unhandledRejection', console.error.bind(console))
 
-//current run command: node web3deployment/oasisReserveDeployer.js --gas-price-gwei 3 --rpc-url https://mainnet.infura.io 
+//current run command: node web3deployment/oasisReserveDeployer.js --gas-price-gwei 10 --rpc-url https://mainnet.infura.io 
 const { gasPriceGwei, printPrivateKey, rpcUrl, signedTxOutput, dontSendTx, chainId: chainIdInput } = require('yargs')
     .usage('Usage: $0 --gas-price-gwei [gwei] --print-private-key [bool] --rpc-url [url] --signed-tx-output [path] --dont-send-tx [bool] --chain-id')
     .demandOption(['gasPriceGwei', 'rpcUrl'])
@@ -118,10 +118,8 @@ const input = {
 const ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 const feeBurnerAddress = '0xd6703974Dc30155d768c058189A2936Cf7C62Da6'; //staging
 const kyberNetworkAddress = '0x706aBcE058DB29eB36578c463cf295F180a1Fe9C'; //staging
-const oasisDirectAddress = '0x793EbBe21607e4F04788F89c7a9b97320773Ec59';
-const otcAddress = '0x14FBCA95be7e99C15Cc2996c6C9d841e54B79425';
+const otcAddress = '0xB7ac09C2c0217B07d7c103029B4918a2C401eeCB';
 const wethTokenAddress = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
-const tradeTokenAddress = '0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359'; //dai
 const adminAddress = '0xF9eF59dB62f56aF114380A7496Fd51172dafD41d';
 const feeBps = 25;
 
@@ -139,13 +137,13 @@ async function main() {
 
     if (!dontSendTx) {
         // tmp:
-        //await waitForEth();
+        await waitForEth();
     }
 
     [kyberOasisReserveAddress, kyberOasisReserveContract] = await deployContract(
         output,
         "KyberOasisReserve.sol:KyberOasisReserve",
-        [kyberNetworkAddress, otcAddress, wethTokenAddress, tradeTokenAddress, adminAddress, feeBps]
+        [kyberNetworkAddress, otcAddress, wethTokenAddress, adminAddress, feeBps]
     );
 
     console.log("kyberOasisReserveAddress: " + kyberOasisReserveAddress)
