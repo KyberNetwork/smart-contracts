@@ -1,0 +1,147 @@
+pragma solidity 0.4.18;
+
+import "../../ERC20Interface.sol";
+
+
+interface MockUniswapExchange {
+    function getEthToTokenInputPrice(
+        uint256 eth_sold
+    )
+        public
+        view
+        returns (uint256 tokens_bought);
+
+    function getTokenToEthInputPrice(
+        uint256 tokens_sold
+    )
+        public
+        view
+        returns (uint256 eth_bought);
+
+    function ethToTokenSwapInput(
+        uint256 min_tokens,
+        uint256 deadline
+    )
+        external
+        payable
+        returns (uint256  tokens_bought);
+
+    function tokenToEthSwapInput(
+        uint256 tokens_sold,
+        uint256 min_eth,
+        uint256 deadline
+    )
+        external
+        returns (uint256  eth_bought);
+}
+
+
+contract MockUniswapFactory is MockUniswapExchange {
+    struct Factors {
+        uint eth;
+        uint token;
+    }
+
+    Factors public ethToToken;
+    Factors public tokenToEth;
+
+    ERC20 public token;
+
+    function() public payable {
+        // anyone can deposit ether
+    }
+
+    function getEthToTokenInputPrice(
+        uint256 ethWei
+    )
+        public
+        view
+        returns (uint256 tokens_bought)
+    {
+        return ethWei * ethToToken.token / ethToToken.eth;
+    }
+
+    function getTokenToEthInputPrice(
+        uint256 tokens_sold
+    )
+        public
+        view
+        returns (uint256 eth_bought)
+    {
+        return tokens_sold * tokenToEth.eth / tokenToEth.token;
+    }
+
+    function getExchange(
+        address token
+    )
+        external
+        view
+        returns (address exchange)
+    {
+        return address(this);
+    }
+
+    function createExchange(
+        address token
+    )
+        external
+        returns(address exchange)
+    {
+        return address(this);
+    }
+
+    function ethToTokenSwapInput(
+        uint256 min_tokens,
+        uint256 deadline
+    )
+        external
+        payable
+        returns (uint256  tokens_bought)
+    {
+        require(deadline > block.timestamp);
+
+        uint amount = getEthToTokenInputPrice(msg.value);
+        require(token.transfer(msg.sender, amount));
+        return amount;
+    }
+
+    function tokenToEthSwapInput(
+        uint256 tokens_sold,
+        uint256 min_eth,
+        uint256 deadline
+    )
+        external
+        returns (uint256  eth_bought)
+    {
+        require(deadline > block.timestamp);
+
+        require(token.transferFrom(msg.sender, address(this), tokens_sold));
+        uint amount = getTokenToEthInputPrice(tokens_sold);
+        msg.sender.transfer(amount);
+        return amount;
+    }
+
+    function setRateEthToToken(
+        uint eth,
+        uint token
+    )
+        public
+    {
+        ethToToken = Factors(eth, token);
+    }
+
+    function setRateTokenToEth(
+        uint eth,
+        uint token
+    )
+        public
+    {
+        tokenToEth = Factors(eth, token);
+    }
+
+    function setToken(ERC20 _token)
+        public
+    {
+        token = _token;
+    }
+}
