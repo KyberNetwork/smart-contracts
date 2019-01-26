@@ -88,7 +88,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
             if (checkKncArbitrageRate(expectedRate)) expectedRate = 0;
         }
 
-        require(expectedRate <= MAX_RATE);
+        if (expectedRate > MAX_RATE) return (0, 0);
 
         worstCaseSlippageRate = ((10000 - worstCaseRateFactorInBps) * expectedRate) / 10000;
         if (slippageRate >= worstCaseSlippageRate) {
