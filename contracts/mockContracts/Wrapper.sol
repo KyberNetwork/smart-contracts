@@ -118,30 +118,36 @@ contract Wrapper is Utils {
     }
 
     // iterate from startIndex to endIndex inclusive
-    function getListPermissionlessTokensAndDecimals(
+    function getListPermissionlessData(
       KyberNetworkProxy networkProxy,
       uint startIndex,
       uint endIndex
     )
       public
       view
-      returns (ERC20[] memory permissionlessTokens, uint[] memory decimals, bool isEnded)
+      returns (
+        KyberReserveInterface[] memory permissionlessReserves,
+        ERC20[] memory permissionlessTokens,
+        uint[] memory decimals,
+        bool isEnded
+      )
     {
         KyberNetwork network = KyberNetwork(networkProxy.kyberNetworkContract());
         uint numReserves = network.getNumReserves();
         if (startIndex >= numReserves || startIndex > endIndex) {
             // no need to iterate
+            permissionlessReserves = new KyberReserveInterface[](0);
             permissionlessTokens = new ERC20[](0);
             decimals = new uint[](0);
             isEnded = true;
-            return (permissionlessTokens, decimals, isEnded);
+            return (permissionlessReserves, permissionlessTokens, decimals, isEnded);
         }
         uint endIterator = numReserves <= endIndex ? numReserves - 1 : endIndex;
         uint numberTokens = 0;
         uint rID; // reserveID
         ERC20 token;
-        KyberReserveInterface reserve;
         // count number of tokens in unofficial reserves
+        KyberReserveInterface reserve;
         for(rID = startIndex; rID <= endIterator; rID++) {
             reserve = network.reserves(rID);
             if ( reserve != address(0)
@@ -152,6 +158,7 @@ contract Wrapper is Utils {
                 if (token != address(0)) { numberTokens += 1; }
             }
         }
+        permissionlessReserves = new KyberReserveInterface[](numberTokens);
         permissionlessTokens = new ERC20[](numberTokens);
         decimals = new uint[](numberTokens);
         numberTokens = 0;
@@ -164,6 +171,7 @@ contract Wrapper is Utils {
                 // permissionless reserve
                 (, token , , , ,) = OrderbookReserve(reserve).contracts();
                 if (token != address(0)) {
+                    permissionlessReserves[numberTokens] = reserve;
                     permissionlessTokens[numberTokens] = token;
                     decimals[numberTokens] = getDecimals(token);
                     numberTokens += 1;
@@ -171,6 +179,6 @@ contract Wrapper is Utils {
             }
         }
         isEnded = endIterator == numReserves - 1;
-        return (permissionlessTokens, decimals, isEnded);
+        return (permissionlessReserves, permissionlessTokens, decimals, isEnded);
     }
 }
