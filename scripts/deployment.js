@@ -36,10 +36,10 @@ const kgtDec = 0;
 var conversionRate = (((new BigNumber(10)).pow(18)).mul(2));
 var counterConversionRate = (((new BigNumber(10)).pow(18)).div(2));
 
-var expBlock = 10**10;
-var validBlockDuration = 256;
+const expBlock = 10**10;
+const validBlockDuration = 256;
 const maxGas = 4612388;
-
+const precisionUnits = new BigNumber(10 ** 18);
 var tokenOwner;
 
 var networkProxy;
@@ -81,17 +81,15 @@ var getNetwork = function(){
   var id = web3.version.network;
   if(id >= 1500000000000){
     return "testrpc";
-  }
-  else if( id == 17 || id == 4447) {
+  } else if(id == 5777) {
+    return "ganache";
+  } else if( id == 17 || id == 4447) {
     return "dev";
-  }
-  else if( id == 42 ) {
+  } else if( id == 42 ) {
     return "kovan";
-  }
-  else if( id == 3 ) {
+  } else if( id == 3 ) {
     return "ropsten";
-  }
-  else {
+  } else {
     return "unknown";
   }
 };
@@ -475,7 +473,7 @@ contract('Deployment', function(accounts) {
 
   it("check network", function() {
     var networkId = getNetwork();
-    if( networkId == "kovan" || networkId == "testrpc" || networkId == "dev" || networkId == "ropsten" ) {
+    if( networkId == "kovan" || networkId == "testrpc" || networkId == "dev" || networkId == "ropsten" || networkId == "ganache" ) {
       console.log("network", networkId);
     }
     else {
@@ -546,6 +544,7 @@ contract('Deployment', function(accounts) {
   it("create network", function() {
     this.timeout(31000000);
     networkOwner = accounts[0];
+    networkOperator = accounts[0];
     return Network.new(networkOwner,{gas:maxGas}).then(function(instance){
         network = instance;
     });
@@ -631,7 +630,8 @@ contract('Deployment', function(accounts) {
 
   it("create burning fees", function() {
     this.timeout(31000000);
-    return FeeBurner.new(accounts[0],kncInstance.address, network.address).then(function(instance){
+    initialKncRate = precisionUnits.mul(431);
+    return FeeBurner.new(accounts[0],kncInstance.address, network.address, initialKncRate).then(function(instance){
         feeBurner = instance;
         return feeBurner.addOperator(accounts[0],{from:accounts[0]});
     }).then(function(result){
@@ -651,7 +651,7 @@ contract('Deployment', function(accounts) {
 
   it("create expected rate", function() {
     this.timeout(31000000);
-    return ExpectedRate.new(network.address, accounts[0]).then(function(instance){
+    return ExpectedRate.new(network.address, kncInstance.address, accounts[0]).then(function(instance){
         expectedRate = instance;
     }).then(function(){
         return expectedRate.addOperator(accounts[0]);
@@ -680,6 +680,8 @@ contract('Deployment', function(accounts) {
         return network.setParams(50*10**9, 15); //50 gwei, 15 negligible diff
     }).then( function() {
         return network.setEnable(true);
+    }).then( function() {
+        return network.addOperator(networkOperator);
     });
   });
 
@@ -697,6 +699,8 @@ contract('Deployment', function(accounts) {
     this.timeout(31000000);
     var balance0;
     var balance1;
+    var allowance0;
+    var allowance1;
     return Wrapper.new().then(function(instance){
       wrapper = instance;
       return wrapper.getBalances( reserve.address, [tokenInstance[0].address,
@@ -710,6 +714,16 @@ contract('Deployment', function(accounts) {
       return tokenInstance[1].balanceOf(reserve.address);
     }).then(function(result){
       assert.equal(balance1.valueOf(), result.valueOf(), "unexpected balance 1");
+      return wrapper.getTokenAllowances(tokenOwner, networkProxy.address, [tokenInstance[0].address, tokenInstance[1].address]);
+    }).then(function(result){
+      allowance0 = result[0];
+      allowance1 = result[1];
+      return tokenInstance[0].allowance(tokenOwner, networkProxy.address);
+    }).then(function(result){
+      assert.equal(allowance0.valueOf(), result.valueOf(), "unexpected allowance 0");
+      return tokenInstance[1].allowance(tokenOwner, networkProxy.address);
+    }).then(function(result){
+      assert.equal(allowance1.valueOf(), result.valueOf(), "unexpected allowance 1");
       //return wrapper.getRates( reserve.address, [tokenInstance[0].address,
       //                          tokenInstance[1].address], [ethAddress, ethAddress]);
     }).then(function(result){
@@ -823,13 +837,14 @@ it("set eth to dgd rate", function() {
 
   it("do converse exchange", function() {
     this.timeout(31000000);
-    var dgdAddress = tokenInstance[1].address;
-    var dgdAmount = 10**tokenDecimals[1];//zelda
+    var tokenInd = 1;
+    var dgdAddress = tokenInstance[tokenInd].address;
+    var dgdAmount = 7**tokenDecimals[tokenInd];//zelda
     var rate = conversionRate;
     var destAddress = "0x001adbc838ede392b5b054a47f8b8c28f2fa9f3c";
 
-    return tokenInstance[1].approve(networkProxy.address,dgdAmount).then(function(){
-      return networkProxy.trade(dgdAddress,
+    return tokenInstance[tokenInd].approve(networkProxy.address,dgdAmount).then(function(){
+    return networkProxy.trade(dgdAddress,
                            dgdAmount,
                            ethAddress,
                            destAddress,

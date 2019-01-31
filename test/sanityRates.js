@@ -3,7 +3,7 @@ let SanityRates = artifacts.require("./SanityRates.sol")
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
 
-let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+let ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 let precision = new BigNumber(10).pow(18);
 let bps = 10000;
 let sanityRates;
