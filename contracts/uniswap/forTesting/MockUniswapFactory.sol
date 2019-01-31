@@ -4,20 +4,6 @@ import "../../ERC20Interface.sol";
 
 
 interface MockUniswapExchange {
-    function getEthToTokenInputPrice(
-        uint256 eth_sold
-    )
-        public
-        view
-        returns (uint256 tokens_bought);
-
-    function getTokenToEthInputPrice(
-        uint256 tokens_sold
-    )
-        public
-        view
-        returns (uint256 eth_bought);
-
     function ethToTokenSwapInput(
         uint256 min_tokens,
         uint256 deadline
@@ -33,6 +19,20 @@ interface MockUniswapExchange {
     )
         external
         returns (uint256  eth_bought);
+
+    function getEthToTokenInputPrice(
+        uint256 eth_sold
+    )
+        public
+        view
+        returns (uint256 tokens_bought);
+
+    function getTokenToEthInputPrice(
+        uint256 tokens_sold
+    )
+        public
+        view
+        returns (uint256 eth_bought);
 }
 
 
@@ -72,21 +72,26 @@ contract MockUniswapFactory is MockUniswapExchange {
     }
 
     function getExchange(
-        address token
+        address _token
     )
         external
         view
         returns (address exchange)
     {
+        _token;  // eliminating unused variable warning
+
         return address(this);
     }
 
     function createExchange(
-        address token
+        address _token
     )
         external
+        view
         returns(address exchange)
     {
+        _token;  // eliminating unused variable warning
+
         return address(this);
     }
 
@@ -98,6 +103,8 @@ contract MockUniswapFactory is MockUniswapExchange {
         payable
         returns (uint256  tokens_bought)
     {
+        min_tokens;  // eliminating unused variable warning
+
         require(deadline > block.timestamp);
 
         uint amount = getEthToTokenInputPrice(msg.value);
@@ -113,6 +120,8 @@ contract MockUniswapFactory is MockUniswapExchange {
         external
         returns (uint256  eth_bought)
     {
+        min_eth;  // eliminating unused variable warning
+
         require(deadline > block.timestamp);
 
         require(token.transferFrom(msg.sender, address(this), tokens_sold));
@@ -123,20 +132,20 @@ contract MockUniswapFactory is MockUniswapExchange {
 
     function setRateEthToToken(
         uint eth,
-        uint token
+        uint _token
     )
         public
     {
-        ethToToken = Factors(eth, token);
+        ethToToken = Factors(eth, _token);
     }
 
     function setRateTokenToEth(
         uint eth,
-        uint token
+        uint _token
     )
         public
     {
-        tokenToEth = Factors(eth, token);
+        tokenToEth = Factors(eth, _token);
     }
 
     function setToken(ERC20 _token)
