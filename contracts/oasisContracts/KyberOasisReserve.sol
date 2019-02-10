@@ -319,7 +319,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
         if (srcToken == ETH_TOKEN_ADDRESS) {
             if(!shouldUseInternalInventory(destToken,
                                            userExpectedDestAmount,
-                                           srcAmount,
+                                           0,
                                            true)) {
                 wethToken.deposit.value(msg.value)();
 
@@ -333,7 +333,7 @@ contract KyberOasisReserve is KyberReserveInterface, Withdrawable, Utils2 {
             require(srcToken.transferFrom(msg.sender, this, srcAmount));
 
             if(!shouldUseInternalInventory(srcToken,
-                                           srcAmount,
+                                           0,
                                            userExpectedDestAmount,
                                            false)) {
                 actualDestAmount = takeMatchingOffer(srcToken, wethToken, srcAmount);
