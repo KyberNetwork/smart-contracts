@@ -70,9 +70,8 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         kyberNetwork = _kyberNetwork;
         weth = _weth;
 
-        weth.approve(dutchX, 2 ** 255);
+        require(weth.approve(dutchX, 2 ** 255));
         setDecimals(ETH_TOKEN_ADDRESS);
-        listedTokens[ETH_TOKEN_ADDRESS] = true;
     }
 
     function() public payable {
@@ -102,7 +101,13 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
     {
         blockNumber;
         if (!tradeEnabled) return 0;
-        if (!listedTokens[src] || !listedTokens[dest]) return 0;
+        if (src == ETH_TOKEN_ADDRESS) {
+            if (!listedTokens[dest]) return 0;
+        } else if (dest == ETH_TOKEN_ADDRESS) {
+            if (!listedTokens[src]) return 0;
+        } else {
+            return 0;
+        }
 
         AuctionData memory auctionData;
         auctionData.srcToken = src == ETH_TOKEN_ADDRESS ? ERC20(weth) : src;
@@ -171,7 +176,7 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         auctionData.srcToken = srcToken == ETH_TOKEN_ADDRESS ? ERC20(weth) : srcToken;
         auctionData.dstToken = destToken == ETH_TOKEN_ADDRESS ? ERC20(weth) : destToken;
         auctionData.index = dutchX.getAuctionIndex(auctionData.dstToken, auctionData.srcToken);
-        if (auctionData.index == 0) revert();
+        require(auctionData.index != 0);
 
         uint actualSrcQty;
 
@@ -243,11 +248,8 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         require(address(token) != 0);
 
         listedTokens[token] = true;
-
         setDecimals(token);
-
         require(token.approve(dutchX, 2**255));
-
         TokenListed(token);
     }
 
@@ -257,8 +259,8 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         public
         onlyAdmin
     {
-        require(listedTokens[token] == true);
-        listedTokens[token] == false;
+        require(listedTokens[token]);
+        listedTokens[token] = false;
 
         TokenDelisted(token);
     }
@@ -273,8 +275,6 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         // can't use denominator 0 (EVM bad instruction)
         if (dutchXFeeDen == 0) {
             tradeEnabled = false;
-        } else {
-            tradeEnabled = true;
         }
 
         TradeEnabled(tradeEnabled);
@@ -286,7 +286,17 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         returns(bool)
     {
         tradeEnabled = false;
-        TradeEnabled(false);
+        TradeEnabled(tradeEnabled);
+        return true;
+    }
+
+    function enableTrade()
+        public
+        onlyAdmin
+        returns(bool)
+    {
+        tradeEnabled = true;
+        TradeEnabled(tradeEnabled);
         return true;
     }
 
@@ -305,21 +315,6 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         KyberNetworkSet(kyberNetwork);
     }
 
-    event DutchXSet(
-        DutchXExchange dutchX
-    );
-
-    function setDutchX(
-        DutchXExchange _dutchX
-    )
-        public
-        onlyAdmin
-    {
-        require(_dutchX != DutchXExchange(0));
-        dutchX = _dutchX;
-        DutchXSet(dutchX);
-    }
-
     event Execution(bool success, address caller, address destination, uint value, bytes data);
 
     function executeTransaction(address destination, uint value, bytes data)
@@ -330,6 +325,7 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
             Execution(true, msg.sender, destination, value, data);
         } else {
             Execution(false, msg.sender, destination, value, data);
+            revert();
         }
     }
 
