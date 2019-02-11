@@ -9,6 +9,7 @@ contract TestingKyberUniswapReserve is KyberUniswapReserve {
         address _admin,
         address _kyberNetwork
     )
+        public
         KyberUniswapReserve(_uniswapFactory, _admin, _kyberNetwork)
     {
     }
