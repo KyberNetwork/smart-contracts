@@ -102,6 +102,9 @@ contract("KyberDutchXReserve", async accounts => {
         await token1.approve(reserve.address, 10 ** 30, {From: admin});
         await token2.approve(reserve.address, 10 ** 30, {From: admin});
 
+        await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceNumerator, {from: admin})
+        await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceNumerator, {from: admin})
+
         await reserve.enableTrade({from: admin});
     });
 
@@ -286,13 +289,21 @@ contract("KyberDutchXReserve", async accounts => {
             await dutchX.setFee(0, 1);
             await reserve.setDutchXFee();
 
-            // maker rate 1:1
-            await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
+            const source = ETH_TOKEN_ADDRESS;
+            const src = wethContract.address;
+            const dst = token1.address;
 
+            // make rate 1:1
+            await dutchX.setNewAuctionNumerator(dst, src, priceDenominator);
+
+            let index = await dutchX.getAuctionIndex(dst, src);
+            let price = await dutchX.getCurrentAuctionPrice(dst, src, index);
+
+//            dbg(`price: ${price}`)
             const rate = await reserve.getConversionRate(
                 ETH_TOKEN_ADDRESS /* src */,
                 token1.address /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                1000 /* srcQty */,
                 0 /* blockNumber */
             );
 
@@ -357,7 +368,7 @@ contract("KyberDutchXReserve", async accounts => {
             let rate = await reserve.getConversionRate(
                 ETH_TOKEN_ADDRESS /* src */,
                 token1.address /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                1000 /* srcQty */,
                 0 /* blockNumber */
             )
 
@@ -368,7 +379,7 @@ contract("KyberDutchXReserve", async accounts => {
             rate = await reserve.getConversionRate(
                 ETH_TOKEN_ADDRESS /* src */,
                 token1.address /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                1000 /* srcQty */,
                 0 /* blockNumber */
             )
 
@@ -409,13 +420,38 @@ contract("KyberDutchXReserve", async accounts => {
             rate.should.be.bignumber.eq(0);
         });
 
+        it("returns 0 if auction not running == price value 0", async () => {
+            const dest = token1.address;
+            const source = wethContract.address;
+
+            let rate = await reserve.getConversionRate(
+                ETH_TOKEN_ADDRESS /* src */,
+                token1.address /* dst */,
+                1000 /* srcQty */,
+                0 /* blockNumber */
+            )
+
+            rate.should.be.bignumber.gt(0);
+
+            await dutchX.setNewAuctionNumerator(dest, source, 0);
+
+            rate = await reserve.getConversionRate(
+                ETH_TOKEN_ADDRESS /* src */,
+                token1.address /* dst */,
+                1000 /* srcQty */,
+                0 /* blockNumber */
+            )
+
+            rate.should.be.bignumber.eq(0);
+        });
+
     });
 
     describe("#trade", () => {
         it("can be called from KyberNetwork", async () => {
             await reserve.setFee(0, { from: admin });
 
-            const amount = (web3.utils.toWei("1"));
+            const amount = 5000;
             const conversionRate = 1000;
 
             await reserve.trade(
@@ -563,7 +599,7 @@ contract("KyberDutchXReserve", async accounts => {
             const amount = new BigNumber(10 ** 18);
             const tokenBalanceBefore = await token1.balanceOf(kyberNetwork);
 
-            // maker rate 1:1
+            // make rate 1:1
             await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
             await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
@@ -602,7 +638,7 @@ contract("KyberDutchXReserve", async accounts => {
             const conversionRate = new BigNumber(10).pow(18).mul(0.9975).mul(0.995);
             const tokenBalanceBefore = await token1.balanceOf(kyberNetwork);
 
-            // maker rate 1:1
+            // make rate 1:1
             await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
             await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
@@ -638,7 +674,7 @@ contract("KyberDutchXReserve", async accounts => {
             await dutchX.setFee(0, 200);
             await reserve.setDutchXFee();
 
-            // maker rate 1:1
+            // make rate 1:1
             await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
             await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
@@ -681,7 +717,7 @@ contract("KyberDutchXReserve", async accounts => {
             await dutchX.setFee(1, 200);
             await reserve.setDutchXFee();
 
-            // maker rate 1:1
+            // make rate 1:1
             await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
             await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
@@ -820,7 +856,7 @@ contract("KyberDutchXReserve", async accounts => {
             await dutchX.setFee(0, 1);
             await reserve.setDutchXFee();
 
-            // maker rate 1:1
+            // make rate 1:1
             await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
             await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
@@ -986,7 +1022,7 @@ contract("KyberDutchXReserve", async accounts => {
             await dutchX.setFee(0, 1);
             await reserve.setDutchXFee();
 
-            // maker rate 1:1
+            // make rate 1:1
             await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
             const amount = 5000;
