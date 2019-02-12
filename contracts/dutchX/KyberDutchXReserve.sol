@@ -121,6 +121,8 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
                 auctionData.index
             );
 
+        if (auctionData.priceNum == 0 || auctionData.priceDen == 0) return 0;
+
         if (!sufficientLiquidity(auctionData.srcToken, srcQty, auctionData.dstToken,
             auctionData.priceNum, auctionData.priceDen)) {
             return 0;
@@ -337,10 +339,9 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         uint sellVolume = dutchX.sellVolumesCurrent(dest, src);
 
         // 10^30 * 10^37 = 10^67
-        require(sellVolume * priceNum > sellVolume);
-        uint outstandingVolume = (sellVolume * priceNum) / priceDen - buyVolume;
-
-        if (outstandingVolume >= srcQty) return true;
+        if (sellVolume * priceNum < sellVolume) return false;
+        int outstandingVolume = int((sellVolume * priceNum) / priceDen) - int(buyVolume);
+        if (outstandingVolume >= int(srcQty)) return true;
 
         return false;
     }
