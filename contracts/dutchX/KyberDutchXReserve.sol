@@ -37,6 +37,7 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
     uint public constant BPS = 10000;
     uint public constant DEFAULT_KYBER_FEE_BPS = 25;
+
     uint public feeBps = DEFAULT_KYBER_FEE_BPS;
     uint public dutchXFeeNum;
     uint public dutchXFeeDen;
@@ -45,7 +46,7 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
     address public kyberNetwork;
     WETH9 public weth;
 
-    mapping(address => bool) listedTokens;
+    mapping(address => bool) public listedTokens;
 
     bool public tradeEnabled;
 
@@ -60,9 +61,9 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
     )
         public
     {
-        require(address(_dutchX) != 0);
-        require(_admin != 0);
-        require(_kyberNetwork != 0);
+        require(address(_dutchX) != address(0));
+        require(_admin != address(0));
+        require(_kyberNetwork != address(0));
         require(_weth != WETH9(0));
 
         dutchX = _dutchX;
@@ -83,8 +84,8 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         uint index;
         ERC20 srcToken;
         ERC20 dstToken;
-        uint num;
-        uint den;
+        uint priceNum; // numerator
+        uint priceDen; // denominator
     }
 
     /**
@@ -102,6 +103,7 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
     {
         blockNumber;
         if (!tradeEnabled) return 0;
+
         if (src == ETH_TOKEN_ADDRESS) {
             if (!listedTokens[dest]) return 0;
         } else if (dest == ETH_TOKEN_ADDRESS) {
@@ -110,32 +112,29 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
             return 0;
         }
 
-        AuctionData memory auctionData;
-        auctionData.srcToken = src == ETH_TOKEN_ADDRESS ? ERC20(weth) : src;
-        auctionData.dstToken = dest == ETH_TOKEN_ADDRESS ? ERC20(weth) : dest;
-        auctionData.index = dutchX.getAuctionIndex(auctionData.dstToken, auctionData.srcToken);
+        AuctionData memory auctionData = getAuctionData(src, dest);
         if (auctionData.index == 0) return 0;
 
-        (auctionData.num, auctionData.den) = dutchX.getCurrentAuctionPrice(
+        (auctionData.priceNum, auctionData.priceDen) = dutchX.getCurrentAuctionPrice(
                 auctionData.dstToken,
                 auctionData.srcToken,
                 auctionData.index
             );
 
         if (!sufficientLiquidity(auctionData.srcToken, srcQty, auctionData.dstToken,
-            auctionData.num, auctionData.den)) {
+            auctionData.priceNum, auctionData.priceDen)) {
             return 0;
         }
 
         // if source is Eth, reduce kyber fee from source.
         uint actualSrcQty = (src == ETH_TOKEN_ADDRESS) ? srcQty * (BPS - feeBps) / BPS : srcQty;
-        require(actualSrcQty * auctionData.den > actualSrcQty);
-        uint convertedQty = (actualSrcQty * auctionData.den) / auctionData.num;
+        require(actualSrcQty * auctionData.priceDen > actualSrcQty);
+        uint convertedQty = (actualSrcQty * auctionData.priceDen) / auctionData.priceNum;
         // reduce dutchX fees
         convertedQty = convertedQty * (dutchXFeeDen - dutchXFeeNum) / dutchXFeeDen;
 
         // if destination is Eth, reduce kyber fee from destination.
-        convertedQty = (src == ETH_TOKEN_ADDRESS) ? convertedQty : convertedQty * (BPS - feeBps) / BPS;
+        convertedQty = (dest == ETH_TOKEN_ADDRESS) ? convertedQty * (BPS - feeBps) / BPS : convertedQty;
 
         // here use original srcQty, which will give the real rate (as seen by internal kyberNetwork)
         return calcRateFromQty(
@@ -173,10 +172,7 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         require(tradeEnabled);
         require(msg.sender == kyberNetwork);
 
-        AuctionData memory auctionData;
-        auctionData.srcToken = srcToken == ETH_TOKEN_ADDRESS ? ERC20(weth) : srcToken;
-        auctionData.dstToken = destToken == ETH_TOKEN_ADDRESS ? ERC20(weth) : destToken;
-        auctionData.index = dutchX.getAuctionIndex(auctionData.dstToken, auctionData.srcToken);
+        AuctionData memory auctionData = getAuctionData(srcToken, destToken);
         require(auctionData.index != 0);
 
         uint actualSrcQty;
@@ -196,8 +192,13 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
         uint destAmount;
         uint frtsIssued;
-        (destAmount, frtsIssued) = dutchX.claimBuyerFunds(auctionData.dstToken, auctionData.srcToken, this,
-            auctionData.index);
+        (destAmount, frtsIssued) = dutchX.claimBuyerFunds(
+            auctionData.dstToken,
+            auctionData.srcToken,
+            this,
+            auctionData.index
+        );
+
         dutchX.withdraw(auctionData.dstToken, destAmount);
 
         if (destToken == ETH_TOKEN_ADDRESS) {
@@ -246,7 +247,7 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         public
         onlyAdmin
     {
-        require(address(token) != 0);
+        require(address(token) != address(0));
 
         listedTokens[token] = true;
         setDecimals(token);
@@ -311,7 +312,7 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         public
         onlyAdmin
     {
-        require(_kyberNetwork != 0);
+        require(_kyberNetwork != address(0));
         kyberNetwork = _kyberNetwork;
         KyberNetworkSet(kyberNetwork);
     }
@@ -330,17 +331,24 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         }
     }
 
-    function sufficientLiquidity(ERC20 src, uint srcQty, ERC20 dest, uint num, uint den) internal view returns(bool) {
-
+    function sufficientLiquidity(ERC20 src, uint srcQty, ERC20 dest, uint priceNum, uint priceDen)
+        internal view returns(bool)
+    {
         uint buyVolume = dutchX.buyVolumes(dest, src);
         uint sellVolume = dutchX.sellVolumesCurrent(dest, src);
 
         // 10^30 * 10^37 = 10^67
-        require(sellVolume * num > sellVolume);
-        uint outstandingVolume = (sellVolume * num) / den - buyVolume;
+        require(sellVolume * priceNum > sellVolume);
+        uint outstandingVolume = (sellVolume * priceNum) / priceDen - buyVolume;
 
         if (outstandingVolume >= srcQty) return true;
 
         return false;
+    }
+
+    function getAuctionData(ERC20 src, ERC20 dst) internal view returns (AuctionData data) {
+        data.srcToken = src == ETH_TOKEN_ADDRESS ? ERC20(weth) : src;
+        data.dstToken = dst == ETH_TOKEN_ADDRESS ? ERC20(weth) : dst;
+        data.index = dutchX.getAuctionIndex(data.dstToken, data.srcToken);
     }
 }
