@@ -70,6 +70,7 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         kyberNetwork = _kyberNetwork;
         weth = _weth;
 
+        setDutchXFee();
         require(weth.approve(dutchX, 2 ** 255));
         setDecimals(ETH_TOKEN_ADDRESS);
     }

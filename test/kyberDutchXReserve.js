@@ -17,9 +17,9 @@ const TestToken = artifacts.require("TestToken");
 
 const ETH_TOKEN_ADDRESS = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
-let DEFAULT_FEE_BPS;
+let DEFAULT_FEE_BPS = 25;
 
-let DEBUG = true;
+let DEBUG = false;
 
 let reserve;
 let wethContract;
@@ -56,14 +56,26 @@ contract("KyberDutchXReserve", async accounts => {
 
         token1 = await deployToken();
         token2 = await deployToken();
+        priceNumerator = 10 ** 21;
+
+        await token1.transfer(kyberNetwork, 10 ** 25);
 
         wethContract = await WETH9.new()
         dbg(`deployed weth to ${wethContract.address}`)
+
+        dutchX = await MockDutchX.new(wethContract.address);
+        await token1.approve(dutchX.address, 10 ** 22, {From: admin});
+        await token2.approve(dutchX.address, 10 ** 22, {From: admin});
+        await wethContract.deposit({value: 10 ** 20});
+        await wethContract.approve(dutchX.address, 10 ** 20);
+        await dutchX.startNewAuctionIndex(wethContract.address, token1.address);
+        await dutchX.startNewAuctionIndex(token1.address, wethContract.address);
+        await dutchX.addSellFundsToAuction(token1.address, wethContract.address, 10 ** 22, priceNumerator, {from: admin})
+        await dutchX.addSellFundsToAuction(wethContract.address, token1.address, 10 ** 20, priceNumerator, {from: admin})
     });
 
     beforeEach("setup contract for each test", async () => {
 
-        dutchX = await MockDutchX.new(wethContract.address);
         // 0.5% fee
         await dutchX.setFee(5, 1000);
 
@@ -79,30 +91,9 @@ contract("KyberDutchXReserve", async accounts => {
 //        dbg(`KyberDutchXReserve deployed to address ${reserve.address}`);
 
         await reserve.setDutchXFee();
-        DEFAULT_FEE_BPS = await reserve.DEFAULT_KYBER_FEE_BPS();
-
-        await dutchX.startNewAuctionIndex(wethContract.address, token1.address);
-        let auctionIndex = await dutchX.tokenAuctionIndex(wethContract.address, token1.address);
-//        dbg(`created new auction, number: ${auctionIndex}`);
-
-        await dutchX.startNewAuctionIndex(token1.address, wethContract.address);
-        auctionIndex = await dutchX.tokenAuctionIndex(token1.address, wethContract.address);
-//        dbg(`created new auction, number: ${auctionIndex}`);
 
         priceNumerator = 10 ** 21;
         priceDenominator = await dutchX.mutualDenominator();
-
-        await token1.approve(dutchX.address, 10 ** 22, {From: admin});
-        await token2.approve(dutchX.address, 10 ** 22, {From: admin});
-        await wethContract.deposit({value: 10 ** 20});
-        await wethContract.approve(dutchX.address, 10 ** 20);
-
-//        dbg(`approved funds two tokens`);
-
-        await dutchX.addSellFundsToAuction(token1.address, wethContract.address, 10 ** 22, priceNumerator, {from: admin})
-        await dutchX.addSellFundsToAuction(wethContract.address, token1.address, 10 ** 20, priceNumerator, {from: admin})
-
-//        dbg(`created new auction, added funds`);
 
         await reserve.listToken(token1.address, { from: admin });
 //        await reserve.listToken(token2.address, { from: admin });
@@ -111,7 +102,7 @@ contract("KyberDutchXReserve", async accounts => {
         await token1.approve(reserve.address, 10 ** 30, {From: admin});
         await token2.approve(reserve.address, 10 ** 30, {From: admin});
 
-        await reserve.setFee(DEFAULT_FEE_BPS);
+        await reserve.enableTrade({from: admin});
     });
 
     afterEach('withdraw ETH from contracts', async () => {
@@ -127,6 +118,35 @@ contract("KyberDutchXReserve", async accounts => {
                 1 /* amount */
             );
         });
+
+        it("verify dutchx auction data", async() => {
+            let dest = token1.address;
+            let src = wethContract.address;// ETH_TOKEN_ADDRESS;
+
+            let index = await dutchX.getAuctionIndex(dest, src);
+
+//            dbg(`auction index: ${index}`)
+            assert(index > 0);
+
+            let auctionPrice = await dutchX.getCurrentAuctionPrice(dest, src, index);
+            let num = auctionPrice[0];
+            let den = auctionPrice[1];
+
+            assert(num > 0);
+            assert(den > 0);
+//            dbg(`price num ${num} den ${den}`)
+
+            let buyVolume = await dutchX.buyVolumes(dest, src);
+            let sellVolume = await dutchX.sellVolumesCurrent(dest, src);
+
+            assert(sellVolume > 0);
+//            dbg(`buy buyVolume ${buyVolume}`);
+//            dbg(`buy sellVolume ${sellVolume}`);
+
+            let outstandingVolume = (sellVolume * num) / den - buyVolume;
+            assert(outstandingVolume > 0);
+//            dbg(`outstandingVolume ${outstandingVolume}`);
+        })
 
         it("should allow admin to withdraw tokens", async () => {
             const amount = web3.utils.toWei("1");
@@ -260,33 +280,6 @@ contract("KyberDutchXReserve", async accounts => {
     });
 
     describe("#getConversionRate", () => {
-        it("verify dutchx auction data", async() => {
-            let dest = token1.address;
-            let src = wethContract.address;// ETH_TOKEN_ADDRESS;
-
-//            let dest = ETH_TOKEN_ADDRESS;
-//            let src = token1.address;
-
-            let index = await dutchX.getAuctionIndex(dest, src);
-
-            dbg(`auction index: ${index}`)
-
-            let auctionPrice = await dutchX.getCurrentAuctionPrice(dest, src, index);
-            let num = auctionPrice[0];
-            let den = auctionPrice[1];
-
-            dbg(`price num ${num} den ${den}`)
-//            dbg(auctionPrice)
-
-            let buyVolume = await dutchX.buyVolumes(dest, src);
-            let sellVolume = await dutchX.sellVolumesCurrent(dest, src);
-
-            dbg(`buy buyVolume ${buyVolume}`);
-            dbg(`buy sellVolume ${sellVolume}`);
-
-            let outstandingVolume = (sellVolume * num) / den - buyVolume;
-            dbg(`outstandingVolume ${outstandingVolume}`);
-        })
 
         it("conversion rate 1:1", async () => {
             await reserve.setFee(0, { from: admin });
@@ -299,7 +292,6 @@ contract("KyberDutchXReserve", async accounts => {
             const rate = await reserve.getConversionRate(
                 ETH_TOKEN_ADDRESS /* src */,
                 token1.address /* dst */,
-//                10 ** 13 /* srcQty */,
                 web3.utils.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
@@ -307,78 +299,22 @@ contract("KyberDutchXReserve", async accounts => {
             rate.should.be.bignumber.eq(new BigNumber(10).pow(18));
         });
 
-        it("trade eth to token with conversion rate 1:1", async () => {
+        it("conversion rate 1:1", async () => {
             await reserve.setFee(0, { from: admin });
             await dutchX.setFee(0, 1);
             await reserve.setDutchXFee();
 
+            // make rate 1:1 - set numerator same as denominator
             await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
-            const tradeAmount = web3.utils.toWei("1");
-
             const rate = await reserve.getConversionRate(
-                            ETH_TOKEN_ADDRESS /* src */,
-                            token1.address /* dst */,
-                            tradeAmount /* srcQty */,
-                            0 /* blockNumber */
-                        );
-
-            dbg(`rate ${rate}`);
-
-            let userBalanceBefore = await token1.balanceOf(user);
-
-            await reserve.trade(
-                ETH_TOKEN_ADDRESS, //ERC20 srcToken,
-                tradeAmount,  // uint srcAmount,
-                token1.address,         //ERC20 destToken,
-                user,                   //address destAddress,
-                1, //uint conversionRate,
-                true, //                              bool validate
-                {from: kyberNetwork, value: tradeAmount}
+                ETH_TOKEN_ADDRESS /* src */,
+                token1.address /* dst */,
+                web3.utils.toWei("1") /* srcQty */,
+                0 /* blockNumber */
             );
 
-            let userBalanceAfter = await token1.balanceOf(user);
-            let expectedBalance = userBalanceBefore.add(tradeAmount);
-            userBalanceAfter.should.be.bignumber.eq(expectedBalance);
-        });
-
-        it("trade token to Eth with conversion rate 1:1", async () => {
-            await reserve.setFee(0, { from: admin });
-            await dutchX.setFee(0, 1);
-            await reserve.setDutchXFee();
-
-            //make rate 1:1
-            await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
-
-            const tradeAmount = web3.utils.toWei("1");
-
-            const rate = await reserve.getConversionRate(
-                            ETH_TOKEN_ADDRESS /* src */,
-                            token1.address /* dst */,
-                            tradeAmount /* srcQty */,
-                            0 /* blockNumber */
-                        );
-
-            dbg(`rate ${rate}`);
-
-            let userBalanceBefore = await helper.getBalancePromise(user);
-
-            await token1.transfer(kyberNetwork, tradeAmount, {from: admin});
-            await token1.approve(reserve.address, tradeAmount, {from: kyberNetwork});
-
-            await reserve.trade(
-                token1.address, //ERC20 srcToken,
-                tradeAmount,  // uint srcAmount,
-                ETH_TOKEN_ADDRESS,         //ERC20 destToken,
-                user,                   //address destAddress,
-                1, //uint conversionRate,
-                true, //                              bool validate
-                {from: kyberNetwork}
-            );
-
-            let userBalanceAfter = await helper.getBalancePromise(user);
-            let expectedBalance = userBalanceBefore.add(tradeAmount);
-            userBalanceAfter.should.be.bignumber.eq(expectedBalance);
+            rate.should.be.bignumber.eq(new BigNumber(10).pow(18));
         });
 
         it("rate 0 if both tokens are ETH", async () => {
@@ -439,24 +375,53 @@ contract("KyberDutchXReserve", async accounts => {
             rate.should.be.bignumber.eq(0);
         });
 
+        it("returns 0 if insufficient funds", async () => {
+            const dest = token1.address;
+            const source = wethContract.address;
+
+            const index = await dutchX.getAuctionIndex(dest, source);
+
+            auctionData = await dutchX.getCurrentAuctionPrice(dest, source, index);
+
+//            dbg(`auctionData: ${auctionData}`)
+            const buyVolume = await dutchX.buyVolumes(dest, source);
+            const sellVolume = await dutchX.sellVolumesCurrent(dest, source);
+
+            let outstandingVolume = (new BigNumber(sellVolume)).mul(auctionData[0].valueOf()).div(auctionData[1].valueOf()).sub(buyVolume);
+
+//            dbg(`outstandingVolume: ${outstandingVolume}`)
+            let rate = await reserve.getConversionRate(
+                ETH_TOKEN_ADDRESS /* src */,
+                token1.address /* dst */,
+                outstandingVolume /* srcQty */,
+                0 /* blockNumber */
+            )
+
+            rate.should.be.bignumber.gt(0);
+
+            rate = await reserve.getConversionRate(
+                ETH_TOKEN_ADDRESS /* src */,
+                token1.address /* dst */,
+                outstandingVolume.add(1) /* srcQty */,
+                0 /* blockNumber */
+            )
+
+            rate.should.be.bignumber.eq(0);
+        });
+
     });
 
     describe("#trade", () => {
         it("can be called from KyberNetwork", async () => {
             await reserve.setFee(0, { from: admin });
-            await uniswapFactoryMock.setToken(token.address);
-            await uniswapFactoryMock.setRateEthToToken(
-                1 /* eth */,
-                1 /* token */
-            );
-            const exchangeAddress = await reserve.tokenExchange(token.address);
-            const amount = web3.utils.toWei("1");
-            const conversionRate = new BigNumber(10).pow(18);
+
+            const amount = (web3.utils.toWei("1"));
+            const conversionRate = 1000;
 
             await reserve.trade(
                 ETH_TOKEN_ADDRESS /* srcToken */,
                 amount /* srcAmount */,
-                token.address /* dstToken */,
+                token1.address /* dstToken */,
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
@@ -466,20 +431,15 @@ contract("KyberDutchXReserve", async accounts => {
 
         it("can not be called by user other than KyberNetwork", async () => {
             await reserve.setFee(0, { from: admin });
-            await uniswapFactoryMock.setToken(token.address);
-            await uniswapFactoryMock.setRateEthToToken(
-                1 /* eth */,
-                1 /* token */
-            );
-            const exchangeAddress = await reserve.tokenExchange(token.address);
-            const amount = web3.utils.toWei("1");
-            const conversionRate = new BigNumber(10).pow(18);
+
+            const amount = (web3.utils.toWei("1"));
+            const conversionRate = 100;
 
             await truffleAssert.reverts(
                 reserve.trade(
                     ETH_TOKEN_ADDRESS /* srcToken */,
                     amount /* srcAmount */,
-                    token.address /* dstToken */,
+                    token1.address /* dstToken */,
                     user /* destAddress */,
                     conversionRate /* conversionRate */,
                     true /* validate */,
@@ -488,16 +448,79 @@ contract("KyberDutchXReserve", async accounts => {
             );
         });
 
-        it("fail if ETH in src and dest", async () => {
+        it("trade eth to token with conversion rate 1:1", async () => {
             await reserve.setFee(0, { from: admin });
-            await uniswapFactoryMock.setRateEthToToken(
-                1 /* eth */,
-                1 /* token */
+            await dutchX.setFee(0, 1);
+            await reserve.setDutchXFee();
+
+            await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
+
+            const tradeAmount = web3.utils.toWei("1");
+
+            const rate = await reserve.getConversionRate(
+                            ETH_TOKEN_ADDRESS /* src */,
+                            token1.address /* dst */,
+                            tradeAmount /* srcQty */,
+                            0 /* blockNumber */
+                        );
+
+            let userBalanceBefore = await token1.balanceOf(user);
+
+            await reserve.trade(
+                ETH_TOKEN_ADDRESS, //ERC20 srcToken,
+                tradeAmount,  // uint srcAmount,
+                token1.address,         //ERC20 destToken,
+                user,                   //address destAddress,
+                rate, //uint conversionRate,
+                true, //                              bool validate
+                {from: kyberNetwork, value: tradeAmount}
             );
-            await uniswapFactoryMock.setToken(token.address);
-            const amount = web3.utils.toWei("1");
-            const conversionRate = new BigNumber(10).pow(18);
-            const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
+
+            let userBalanceAfter = await token1.balanceOf(user);
+            let expectedBalance = userBalanceBefore.add(tradeAmount);
+            userBalanceAfter.should.be.bignumber.eq(expectedBalance);
+        });
+
+        it("trade token to Eth with conversion rate 1:1", async () => {
+            await reserve.setFee(0, { from: admin });
+            await dutchX.setFee(0, 1);
+            await reserve.setDutchXFee();
+
+            //make rate 1:1
+            await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
+
+            const tradeAmount = web3.utils.toWei("1");
+
+            const rate = await reserve.getConversionRate(
+                            ETH_TOKEN_ADDRESS /* src */,
+                            token1.address /* dst */,
+                            tradeAmount /* srcQty */,
+                            0 /* blockNumber */
+                        );
+
+            let userBalanceBefore = await helper.getBalancePromise(user);
+
+            await token1.transfer(kyberNetwork, tradeAmount, {from: admin});
+            await token1.approve(reserve.address, tradeAmount, {from: kyberNetwork});
+
+            await reserve.trade(
+                token1.address, //ERC20 srcToken,
+                tradeAmount,  // uint srcAmount,
+                ETH_TOKEN_ADDRESS,         //ERC20 destToken,
+                user,                   //address destAddress,
+                1, //uint conversionRate,
+                true, //                              bool validate
+                {from: kyberNetwork}
+            );
+
+            let userBalanceAfter = await helper.getBalancePromise(user);
+            let expectedBalance = userBalanceBefore.add(tradeAmount);
+            userBalanceAfter.should.be.bignumber.eq(expectedBalance);
+        });
+
+        it("fail if ETH in src and dest", async () => {
+            const amount = 10000;
+            const conversionRate = 1;
 
             await truffleAssert.reverts(
                 reserve.trade(
@@ -513,24 +536,17 @@ contract("KyberDutchXReserve", async accounts => {
         });
 
         it("fail if token in both src and dest", async () => {
-            await reserve.setFee(0, { from: admin });
-            await uniswapFactoryMock.setRateTokenToEth(
-                1 /* eth */,
-                1 /* token */
-            );
-            await uniswapFactoryMock.setToken(token.address);
-            const amount = web3.utils.toWei("1");
-            const conversionRate = new BigNumber(10).pow(18);
-            await token.approve(reserve.address, amount, {
-                from: kyberNetwork
-            });
-            const ethBalanceBefore = await helper.getBalancePromise(user);
+            const tradeAmount = web3.utils.toWei("1");
+            const conversionRate = 1;
+
+            await token1.transfer(kyberNetwork, tradeAmount, {from: admin});
+            await token1.approve(reserve.address, tradeAmount, {from: kyberNetwork});
 
             await truffleAssert.reverts(
                 reserve.trade(
-                    token.address /* srcToken */,
-                    amount /* srcAmount */,
-                    token.address /* destToken */,
+                    token1.address /* srcToken */,
+                    tradeAmount /* srcAmount */,
+                    token1.address /* destToken */,
                     user /* destAddress */,
                     conversionRate /* conversionRate */,
                     true /* validate */,
@@ -539,117 +555,79 @@ contract("KyberDutchXReserve", async accounts => {
             );
         });
 
-        it("simple trade eth -> token", async () => {
-            await reserve.setFee(0, { from: admin });
-            await uniswapFactoryMock.setRateEthToToken(
-                1 /* eth */,
-                1 /* token */
-            );
-            await uniswapFactoryMock.setToken(token.address);
-            const amount = web3.utils.toWei("1");
-            const conversionRate = new BigNumber(10).pow(18);
-            const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
-
-            const traded = await reserve.trade.call(
-                ETH_TOKEN_ADDRESS /* srcToken */,
-                amount /* srcAmount */,
-                token.address /* destToken */,
-                kyberNetwork /* destAddress */,
-                conversionRate /* conversionRate */,
-                true /* validate */,
-                { from: kyberNetwork, value: amount }
-            );
-            await reserve.trade(
-                ETH_TOKEN_ADDRESS /* srcToken */,
-                amount /* srcAmount */,
-                token.address /* destToken */,
-                kyberNetwork /* destAddress */,
-                conversionRate /* conversionRate */,
-                true /* validate */,
-                { from: kyberNetwork, value: amount }
-            );
-
-            const tokenBalanceAfter = await token.balanceOf(kyberNetwork);
-
-            traded.should.be.true;
-            tokenBalanceAfter.should.be.bignumber.eq(
-                tokenBalanceBefore.add(amount)
-            );
-        });
-
-        it("simple trade token -> ETH", async () => {
-            await reserve.setFee(0, { from: admin });
-            await uniswapFactoryMock.setRateTokenToEth(
-                1 /* eth */,
-                1 /* token */
-            );
-            await uniswapFactoryMock.setToken(token.address);
-            const amount = web3.utils.toWei("1");
-            const conversionRate = new BigNumber(10).pow(18);
-            await token.approve(reserve.address, amount, {
-                from: kyberNetwork
-            });
-            const ethBalanceBefore = await helper.getBalancePromise(user);
-
-            const traded = await reserve.trade.call(
-                token.address /* srcToken */,
-                amount /* srcAmount */,
-                ETH_TOKEN_ADDRESS /* destToken */,
-                user /* destAddress */,
-                conversionRate /* conversionRate */,
-                true /* validate */,
-                { from: kyberNetwork }
-            );
-            await reserve.trade(
-                token.address /* srcToken */,
-                amount /* srcAmount */,
-                ETH_TOKEN_ADDRESS /* destToken */,
-                user /* destAddress */,
-                conversionRate /* conversionRate */,
-                true /* validate */,
-                { from: kyberNetwork }
-            );
-
-            const ethBalanceAfter = await helper.getBalancePromise(user);
-
-            traded.should.be.true;
-            ethBalanceAfter.should.be.bignumber.eq(
-                ethBalanceBefore.add(amount)
-            );
-        });
-
         it("trade eth -> token with 0.25% fee", async () => {
             await reserve.setFee(25, { from: admin });
-            await uniswapFactoryMock.setRateEthToToken(
-                1 /* eth */,
-                1 /* token */
-            );
-            await uniswapFactoryMock.setToken(token.address);
-            const amount = web3.utils.toWei("1");
+            await dutchX.setFee(0, 1);
+            await reserve.setDutchXFee();
             const conversionRate = new BigNumber(10).pow(18).mul(0.9975);
-            const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
+            const amount = new BigNumber(10 ** 18);
+            const tokenBalanceBefore = await token1.balanceOf(kyberNetwork);
+
+            // maker rate 1:1
+            await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
+            await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
             const traded = await reserve.trade.call(
                 ETH_TOKEN_ADDRESS /* srcToken */,
                 amount /* srcAmount */,
-                token.address /* destToken */,
-                kyberNetwork /* destAddress */,
-                conversionRate /* conversionRate */,
-                true /* validate */,
-                { from: kyberNetwork, value: amount }
-            );
-            await reserve.trade(
-                ETH_TOKEN_ADDRESS /* srcToken */,
-                amount /* srcAmount */,
-                token.address /* destToken */,
+                token1.address /* destToken */,
                 kyberNetwork /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
                 { from: kyberNetwork, value: amount }
             );
 
-            const tokenBalanceAfter = await token.balanceOf(kyberNetwork);
-            const expectedBalance = tokenBalanceBefore.add(amount * 0.9975);
+            await reserve.trade(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                amount /* srcAmount */,
+                token1.address /* destToken */,
+                kyberNetwork /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork, value: amount }
+            );
+
+            const tokenBalanceAfter = await token1.balanceOf(kyberNetwork);
+            const expectedBalance = tokenBalanceBefore.add(amount.mul(0.9975));
+
+            traded.should.be.true;
+            tokenBalanceAfter.should.be.bignumber.eq(expectedBalance);
+        });
+
+        it("trade eth -> token with 0.25% fee kyber + 0.5% fee dutchx", async () => {
+            await reserve.setFee(25, { from: admin });
+            await dutchX.setFee(1, 200);
+            await reserve.setDutchXFee();
+            const amount = new BigNumber(10 ** 18);
+            const conversionRate = new BigNumber(10).pow(18).mul(0.9975).mul(0.995);
+            const tokenBalanceBefore = await token1.balanceOf(kyberNetwork);
+
+            // maker rate 1:1
+            await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
+            await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
+
+            const traded = await reserve.trade.call(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                amount /* srcAmount */,
+                token1.address /* destToken */,
+                kyberNetwork /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork, value: amount }
+            );
+
+            await reserve.trade(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                amount /* srcAmount */,
+                token1.address /* destToken */,
+                kyberNetwork /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork, value: amount }
+            );
+
+            const tokenBalanceAfter = await token1.balanceOf(kyberNetwork);
+            const expectedBalance = tokenBalanceBefore.add(amount.mul(0.9975).mul(0.995));
 
             traded.should.be.true;
             tokenBalanceAfter.should.be.bignumber.eq(expectedBalance);
@@ -657,20 +635,22 @@ contract("KyberDutchXReserve", async accounts => {
 
         it("trade token -> ETH with 0.25% fee", async () => {
             await reserve.setFee(25, { from: admin });
-            await uniswapFactoryMock.setRateTokenToEth(
-                1 /* eth */,
-                1 /* token */
-            );
-            await uniswapFactoryMock.setToken(token.address);
-            const amount = web3.utils.toWei("1");
+            await dutchX.setFee(0, 200);
+            await reserve.setDutchXFee();
+
+            // maker rate 1:1
+            await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
+            await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
+
+            const amount = new BigNumber(10 ** 18);
             const conversionRate = new BigNumber(10).pow(18).mul(0.9975);
-            await token.approve(reserve.address, amount, {
+            await token1.approve(reserve.address, amount, {
                 from: kyberNetwork
             });
             const ethBalanceBefore = await helper.getBalancePromise(user);
 
             const traded = await reserve.trade.call(
-                token.address /* srcToken */,
+                token1.address /* srcToken */,
                 amount /* srcAmount */,
                 ETH_TOKEN_ADDRESS /* destToken */,
                 user /* destAddress */,
@@ -679,7 +659,7 @@ contract("KyberDutchXReserve", async accounts => {
                 { from: kyberNetwork }
             );
             await reserve.trade(
-                token.address /* srcToken */,
+                token1.address /* srcToken */,
                 amount /* srcAmount */,
                 ETH_TOKEN_ADDRESS /* destToken */,
                 user /* destAddress */,
@@ -692,69 +672,28 @@ contract("KyberDutchXReserve", async accounts => {
 
             traded.should.be.true;
             ethBalanceAfter.should.be.bignumber.eq(
-                ethBalanceBefore.add(amount * 0.9975)
+                ethBalanceBefore.add(amount.mul(0.9975))
             );
         });
 
-        it("trade eth -> token with rate 1:2 and 0.25% fee", async () => {
+        it("trade token -> ETH with 0.25% fee kyber + 0.5% fee dutch", async () => {
             await reserve.setFee(25, { from: admin });
-            await uniswapFactoryMock.setRateEthToToken(
-                1 /* eth */,
-                2 /* token */
-            );
-            await uniswapFactoryMock.setToken(token.address);
-            const amount = web3.utils.toWei("1");
-            const conversionRate = new BigNumber(10)
-                .pow(18)
-                .mul(2)
-                .mul(0.9975);
-            const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
+            await dutchX.setFee(1, 200);
+            await reserve.setDutchXFee();
 
-            const traded = await reserve.trade.call(
-                ETH_TOKEN_ADDRESS /* srcToken */,
-                amount /* srcAmount */,
-                token.address /* destToken */,
-                kyberNetwork /* destAddress */,
-                conversionRate /* conversionRate */,
-                true /* validate */,
-                { from: kyberNetwork, value: amount }
-            );
-            await reserve.trade(
-                ETH_TOKEN_ADDRESS /* srcToken */,
-                amount /* srcAmount */,
-                token.address /* destToken */,
-                kyberNetwork /* destAddress */,
-                conversionRate /* conversionRate */,
-                true /* validate */,
-                { from: kyberNetwork, value: amount }
-            );
+            // maker rate 1:1
+            await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
+            await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
-            const tokenBalanceAfter = await token.balanceOf(kyberNetwork);
-            const expectedBalance = tokenBalanceBefore.add(amount * 2 * 0.9975);
-
-            traded.should.be.true;
-            tokenBalanceAfter.should.be.bignumber.eq(expectedBalance);
-        });
-
-        it("trade token -> ETH with rate 1:2 and 0.25% fee", async () => {
-            await reserve.setFee(25, { from: admin });
-            await uniswapFactoryMock.setRateTokenToEth(
-                2 /* eth */,
-                1 /* token */
-            );
-            await uniswapFactoryMock.setToken(token.address);
-            const amount = web3.utils.toWei("1");
-            const conversionRate = new BigNumber(10)
-                .pow(18)
-                .mul(2)
-                .mul(0.9975);
-            await token.approve(reserve.address, amount, {
+            const amount = new BigNumber(10 ** 18);
+            const conversionRate = new BigNumber(10).pow(18).mul(0.9975).mul(0.995);
+            await token1.approve(reserve.address, amount, {
                 from: kyberNetwork
             });
             const ethBalanceBefore = await helper.getBalancePromise(user);
 
             const traded = await reserve.trade.call(
-                token.address /* srcToken */,
+                token1.address /* srcToken */,
                 amount /* srcAmount */,
                 ETH_TOKEN_ADDRESS /* destToken */,
                 user /* destAddress */,
@@ -763,7 +702,7 @@ contract("KyberDutchXReserve", async accounts => {
                 { from: kyberNetwork }
             );
             await reserve.trade(
-                token.address /* srcToken */,
+                token1.address /* srcToken */,
                 amount /* srcAmount */,
                 ETH_TOKEN_ADDRESS /* destToken */,
                 user /* destAddress */,
@@ -776,152 +715,180 @@ contract("KyberDutchXReserve", async accounts => {
 
             traded.should.be.true;
             ethBalanceAfter.should.be.bignumber.eq(
-                ethBalanceBefore.add(amount * 2 * 0.9975)
+                ethBalanceBefore.add(amount.mul(0.9975).mul(0.995))
             );
         });
 
-        it("fail if actual trade rate < conversionRate param", async () => {
-            await reserve.setFee(25, { from: admin });
-            await uniswapFactoryMock.setRateTokenToEth(
-                2 /* eth */,
-                1 /* token */
-            );
-            await uniswapFactoryMock.setToken(token.address);
+        it("trade fail when actual conversion rate worse then requested", async () => {
+            await reserve.setFee(0, { from: admin });
+            await dutchX.setFee(0, 200);
+            await reserve.setDutchXFee();
+
             const amount = web3.utils.toWei("1");
-            await token.approve(reserve.address, amount, {
+            const conversionRate = new BigNumber(10).pow(18).add(100);
+            await token1.approve(reserve.address, amount, {
                 from: kyberNetwork
             });
             const ethBalanceBefore = await helper.getBalancePromise(user);
 
-            const expectedConversionRate = await reserve.getConversionRate(
-                token.address /* src */,
-                ETH_TOKEN_ADDRESS /* dest */,
-                amount /* srcQty */,
-                0 /* blockNumber */
-            );
-
-            await truffleAssert.reverts(
-                reserve.trade(
-                    token.address /* srcToken */,
+            await truffleAssert.reverts( reserve.trade(
+                    token1.address /* srcToken */,
                     amount /* srcAmount */,
                     ETH_TOKEN_ADDRESS /* destToken */,
                     user /* destAddress */,
-                    expectedConversionRate.plus(1) /* conversionRate */,
+                    conversionRate /* conversionRate */,
                     true /* validate */,
                     { from: kyberNetwork }
                 )
             );
+
+            const ethBalanceAfter = await helper.getBalancePromise(user);
+            ethBalanceAfter.should.be.bignumber.eq(ethBalanceBefore);
         });
 
         it("ETH -> token, fail if srcAmount != msg.value", async () => {
-            await reserve.setFee(25, { from: admin });
-            await uniswapFactoryMock.setRateEthToToken(
-                1 /* eth */,
-                2 /* token */
-            );
-            await uniswapFactoryMock.setToken(token.address);
-            const amount = new BigNumber(10).pow(18);
-            const conversionRate = new BigNumber(10)
-                .pow(18)
-                .mul(2)
-                .mul(0.9975);
-            const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
+            await reserve.setFee(0, { from: admin });
 
-            await truffleAssert.reverts(
-                reserve.trade(
+            const amount = (web3.utils.toWei("1"));
+            const conversionRate = 1000;
+
+            await truffleAssert.reverts( reserve.trade(
                     ETH_TOKEN_ADDRESS /* srcToken */,
                     amount /* srcAmount */,
-                    token.address /* destToken */,
-                    kyberNetwork /* destAddress */,
+                    token1.address /* dstToken */,
+                    user /* destAddress */,
                     conversionRate /* conversionRate */,
                     true /* validate */,
-                    { from: kyberNetwork, value: amount.sub(1) }
+                    { from: kyberNetwork, value: amount + 1 }
                 )
             );
         });
 
-        it("fail if trade is disabled", async () => {
-            await reserve.setFee(25, { from: admin });
-            await uniswapFactoryMock.setRateEthToToken(
-                1 /* eth */,
-                2 /* token */
-            );
-            await uniswapFactoryMock.setToken(token.address);
-            const amount = web3.utils.toWei("1");
-            const conversionRate = new BigNumber(10)
-                .pow(18)
-                .mul(2)
-                .mul(0.9975);
-            await reserve.disableTrade({ from: alerter });
+        it("token -> ETH, fail if 0 != msg.value", async () => {
+            await reserve.setFee(0, { from: admin });
 
-            await truffleAssert.reverts(
-                reserve.trade(
-                    ETH_TOKEN_ADDRESS /* srcToken */,
+            const amount = (web3.utils.toWei("1"));
+            const conversionRate = 1000;
+            await token1.approve(reserve.address, amount, {
+                from: kyberNetwork
+            });
+            const ethBalanceBefore = await helper.getBalancePromise(user);
+
+            await truffleAssert.reverts( reserve.trade(
+                    token1.address /* srcToken */,
                     amount /* srcAmount */,
-                    token.address /* destToken */,
-                    kyberNetwork /* destAddress */,
+                    ETH_TOKEN_ADDRESS /* destToken */,
+                    user /* destAddress */,
                     conversionRate /* conversionRate */,
                     true /* validate */,
-                    { from: kyberNetwork, value: amount }
+                    { from: kyberNetwork, value: 1 }
+                )
+            );
+
+            const ethBalanceAfter = await helper.getBalancePromise(user);
+
+            ethBalanceAfter.should.be.bignumber.eq(
+                ethBalanceBefore
+            );
+        });
+
+        it("fail if trade is disabled", async () => {
+            await reserve.disableTrade({ from: alerter });
+
+            await reserve.setFee(0, { from: admin });
+
+            const amount = (web3.utils.toWei("1"));
+            const conversionRate = 1000;
+
+            await truffleAssert.reverts( reserve.trade(
+                    ETH_TOKEN_ADDRESS /* srcToken */,
+                    amount /* srcAmount */,
+                    token1.address /* dstToken */,
+                    user /* destAddress */,
+                    conversionRate /* conversionRate */,
+                    true /* validate */,
+                    { from: kyberNetwork, value: amount + 1 }
                 )
             );
         });
 
         it("trade event emitted", async () => {
-            await reserve.setFee(25, { from: admin });
-            await uniswapFactoryMock.setRateTokenToEth(
-                2 /* eth */,
-                1 /* token */
-            );
-            await uniswapFactoryMock.setToken(token.address);
-            const amount = web3.utils.toWei("1");
-            const conversionRate = new BigNumber(10)
-                .pow(18)
-                .mul(2)
-                .mul(0.9975);
-            await token.approve(reserve.address, amount, {
-                from: kyberNetwork
-            });
+            const amount = (web3.utils.toWei("1"));
+            const conversionRate = 1000;
+
+            await reserve.setFee(0, { from: admin });
+            await dutchX.setFee(0, 1);
+            await reserve.setDutchXFee();
+
+            // maker rate 1:1
+            await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
+            await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
             const res = await reserve.trade(
-                token.address /* srcToken */,
+                ETH_TOKEN_ADDRESS /* srcToken */,
                 amount /* srcAmount */,
-                ETH_TOKEN_ADDRESS /* destToken */,
+                token1.address /* dstToken */,
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork }
-            );
+                { from: kyberNetwork, value: amount }
+            )
 
-            truffleAssert.eventEmitted(res, "TradeExecute", ev => {
-                return (
-                    ev.sender === kyberNetwork &&
-                    ev.src === token.address &&
-                    ev.srcAmount.eq(new BigNumber(amount)) &&
-                    ev.destToken === ETH_TOKEN_ADDRESS &&
-                    ev.destAmount.eq(
-                        new BigNumber(10)
-                            .pow(18)
-                            .mul(2)
-                            .mul(0.9975)
-                    ) &&
-                    ev.destAddress === user
-                );
-            });
+            const auctionIndex = await dutchX.getAuctionIndex(token1.address, wethContract.address);
+
+            assert(res.logs[0].event ==  "TradeExecute");
+            assert(res.logs[0].args.sender === kyberNetwork);
+            assert(res.logs[0].args.destToken === token1.address);
+            assert(res.logs[0].args.srcAmount.valueOf() == amount);
+            assert(res.logs[0].args.src === ETH_TOKEN_ADDRESS);
+            assert(res.logs[0].args.destAmount.valueOf() == amount);
+            assert(res.logs[0].args.destAddress === user);
+            assert(res.logs[0].args.auctionIndex.valueOf() == auctionIndex);
         });
     });
 
     describe("#setFee", () => {
         it("default fee", async () => {
-            const newReserve = await KyberUniswapReserve.new(
-                1 /* uniswapFactory */,
+            const newReserve = await KyberDutchXReserve.new(
+                dutchX.address,
                 admin,
-                kyberNetwork
+                kyberNetwork,
+                wethContract.address
             );
 
             const feeValue = await newReserve.feeBps();
 
             feeValue.should.be.bignumber.eq(DEFAULT_FEE_BPS);
+        });
+
+        it ("dutchX fee", async () => {
+            let newDutchX = await MockDutchX.new(wethContract.address);
+            await newDutchX.setFee(10, 30);
+
+            const newReserve = await KyberDutchXReserve.new(
+                newDutchX.address,
+                admin,
+                kyberNetwork,
+                wethContract.address
+            );
+
+            let feeNum = await newReserve.dutchXFeeNum();
+            let feeDen = await newReserve.dutchXFeeDen();
+
+            feeNum.should.be.bignumber.eq(10);
+            feeDen.should.be.bignumber.eq(30);
+
+            await newDutchX.setFee(1, 5);
+            feeNum = await newReserve.dutchXFeeNum();
+            feeDen = await newReserve.dutchXFeeDen();
+            feeNum.should.be.bignumber.eq(10);
+            feeDen.should.be.bignumber.eq(30);
+
+            await newReserve.setDutchXFee();
+            feeNum = await newReserve.dutchXFeeNum();
+            feeDen = await newReserve.dutchXFeeDen();
+            feeNum.should.be.bignumber.eq(1);
+            feeDen.should.be.bignumber.eq(5);
         });
 
         it("fee value saved", async () => {
@@ -949,9 +916,198 @@ contract("KyberDutchXReserve", async accounts => {
                 return ev.bps.eq(20);
             });
         });
+
     });
 
+    describe("#listToken", () => {
+        it("calling by admin allowed", async () => {
+            const newToken = await deployToken();
 
+            await reserve.listToken(newToken.address, { from: admin });
+        });
+
+        it("calling by non-admin reverts", async () => {
+            const newToken = await deployToken();
+
+            await truffleAssert.reverts(
+                reserve.listToken(newToken.address, { from: user })
+            );
+        });
+
+        it("fails for token with address 0", async () => {
+            await truffleAssert.reverts(reserve.listToken(0, { from: user }));
+        });
+
+        it("event sent on token listed", async () => {
+            const newToken = await deployToken();
+
+            const res = await reserve.listToken(newToken.address, {
+                from: admin
+            });
+
+            truffleAssert.eventEmitted(res, "TokenListed", ev => {
+                return (
+                    ev.token === newToken.address
+                );
+            });
+        });
+
+        it("listing token gives allowance to exchange", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            const amount = await newToken.allowance(
+                reserve.address,
+                dutchX.address
+            );
+            amount.should.be.bignumber.eq(new BigNumber(2).pow(255));
+        });
+    });
+
+    describe("#delistToken", () => {
+        it("calling by admin allowed", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            await reserve.delistToken(newToken.address, { from: admin });
+        });
+
+        it("calling by non-admin reverts", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            await truffleAssert.reverts(
+                reserve.delistToken(newToken.address, { from: user })
+            );
+        });
+
+        it("after calling token no longer supported", async () => {
+            await reserve.setFee(0, { from: admin });
+            await dutchX.setFee(0, 1);
+            await reserve.setDutchXFee();
+
+            // maker rate 1:1
+            await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
+
+            const amount = 5000;
+            const rate = await reserve.getConversionRate(
+                ETH_TOKEN_ADDRESS /* src */,
+                token1.address /* dst */,
+                amount /* srcQty */,
+                0 /* blockNumber */
+            );
+
+            rate.should.be.bignumber.eq(10**18);
+
+            await reserve.delistToken(token1.address);
+
+            const rate2 = await reserve.getConversionRate(
+                ETH_TOKEN_ADDRESS /* src */,
+                token1.address /* dst */,
+                amount /* srcQty */,
+                0 /* blockNumber */
+            );
+
+            rate2.should.be.bignumber.eq(0);
+        });
+
+        it("cannot delist unlisted tokens", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            await reserve.delistToken(newToken.address);
+
+            await truffleAssert.reverts(
+                reserve.delistToken(newToken.address, { from: admin })
+            );
+        });
+
+        it("event sent on token delisted", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            const res = await reserve.delistToken(newToken.address);
+
+            truffleAssert.eventEmitted(res, "TokenDelisted", ev => {
+                return ev.token === newToken.address;
+            });
+        });
+    });
+
+    describe("Responsible reserve", () => {
+        it("enableTrade() allowed for admin", async () => {
+            await reserve.disableTrade({ from: alerter });
+
+            const enabled = await reserve.enableTrade.call({ from: admin });
+            await reserve.enableTrade({ from: admin });
+
+            const actuallyEnabled = await reserve.tradeEnabled();
+            enabled.should.be.true;
+            actuallyEnabled.should.be.true;
+        });
+
+        it("enableTrade() fails if not admin", async () => {
+            await truffleAssert.reverts(reserve.enableTrade({ from: user }));
+        });
+
+        it("event emitted on enableTrade()", async () => {
+            const res = await reserve.enableTrade({ from: admin });
+
+            truffleAssert.eventEmitted(res, "TradeEnabled", ev => {
+                return ev.enable === true;
+            });
+        });
+
+        it("disableTrade() allowed for alerter", async () => {
+            await reserve.enableTrade({ from: admin });
+
+            const disabled = await reserve.disableTrade.call({ from: alerter });
+            await reserve.disableTrade({ from: alerter });
+
+            const tradeEnabled = await reserve.tradeEnabled();
+            disabled.should.be.true;
+            tradeEnabled.should.be.false;
+        });
+
+        it("disableTrade() fails if not alerter", async () => {
+            await truffleAssert.reverts(reserve.disableTrade({ from: user }));
+        });
+
+        it("event emitted on disableTrade()", async () => {
+            const res = await reserve.disableTrade({ from: alerter });
+
+            truffleAssert.eventEmitted(res, "TradeEnabled", ev => {
+                return ev.enable === false;
+            });
+        });
+    });
+
+    describe("#setKyberNetwork", () => {
+        it("set new value by admin", async () => {
+            await reserve.setKyberNetwork(user, { from: admin });
+
+            const updatedKyberNetwork = await reserve.kyberNetwork();
+            updatedKyberNetwork.should.be.eq(user);
+        });
+
+        it("should reject address 0", async () => {
+            await truffleAssert.reverts(reserve.setKyberNetwork(0));
+        });
+
+        it("only admin can set values", async () => {
+            await truffleAssert.reverts(
+                reserve.setKyberNetwork(user, { from: user })
+            );
+        });
+
+        it("setting value emits an event", async () => {
+            const res = await reserve.setKyberNetwork(user, { from: admin });
+
+            await truffleAssert.eventEmitted(res, "KyberNetworkSet", ev => {
+                return ev.kyberNetwork === user;
+            });
+        });
+    });
 });
 
 async function dbg(...args) {
