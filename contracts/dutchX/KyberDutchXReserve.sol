@@ -326,7 +326,6 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         if (destination.call.value(value)(data)) {
             Execution(true, msg.sender, destination, value, data);
         } else {
-            Execution(false, msg.sender, destination, value, data);
             revert();
         }
     }
