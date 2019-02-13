@@ -131,7 +131,7 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         // if source is Eth, reduce kyber fee from source.
         uint actualSrcQty = (src == ETH_TOKEN_ADDRESS) ? srcQty * (BPS - feeBps) / BPS : srcQty;
 
-        if (actualSrcQty * auctionData.priceDen < actualSrcQty) return 0;
+        if (actualSrcQty == 0 || actualSrcQty * auctionData.priceDen < actualSrcQty) return 0;
 
         uint convertedQty = (actualSrcQty * auctionData.priceDen) / auctionData.priceNum;
         // reduce dutchX fees
