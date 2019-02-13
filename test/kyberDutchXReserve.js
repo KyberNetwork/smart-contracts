@@ -328,6 +328,28 @@ contract("KyberDutchXReserve", async accounts => {
             rate.should.be.bignumber.eq(new BigNumber(10).pow(18));
         });
 
+        it("rate 0 for small qty Eth - > token", async () => {
+            let rate = await reserve.getConversionRate(
+                ETH_TOKEN_ADDRESS /* src */,
+                token1.address /* dst */,
+                1 /* srcQty */,
+                0 /* blockNumber */
+            )
+
+            rate.should.be.bignumber.eq(0);
+        });
+
+        it("rate 0 for small qty token -> Eth", async () => {
+            let rate = await reserve.getConversionRate(
+                ETH_TOKEN_ADDRESS /* src */,
+                token1.address /* dst */,
+                1 /* srcQty */,
+                0 /* blockNumber */
+            )
+
+            rate.should.be.bignumber.eq(0);
+        });
+
         it("rate 0 if both tokens are ETH", async () => {
             let rate = await reserve.getConversionRate(
                 ETH_TOKEN_ADDRESS /* src */,
