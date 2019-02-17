@@ -54,16 +54,16 @@ contract("KyberUniswapReserve", async accounts => {
         );
 
         // TODO: maybe do this after listing the token
-        token.transfer(uniswapFactory.address, bigAmount);
+        token.transfer(uniswapFactory.address, bigAmount, { from: admin });
 
         return uniswapFactory;
     };
 
     before("setup", async () => {
-        admin = accounts[0];
-        alerter = accounts[1];
-        user = accounts[2];
-        kyberNetwork = accounts[3];
+        admin = accounts[1];
+        alerter = accounts[2];
+        user = accounts[3];
+        kyberNetwork = accounts[4];
 
         token = await deployToken();
 
@@ -76,7 +76,8 @@ contract("KyberUniswapReserve", async accounts => {
         reserve = await KyberUniswapReserve.new(
             uniswapFactoryMock.address /* uniswap */,
             admin /* admin */,
-            kyberNetwork /* kyberNetwork */
+            kyberNetwork /* kyberNetwork */,
+            { from: admin }
         );
         dbg(`KyberUniswapReserve deployed to address ${reserve.address}`);
 
@@ -89,7 +90,7 @@ contract("KyberUniswapReserve", async accounts => {
 
     beforeEach("setup contract for each test", async () => {
         await reserve.enableTrade({ from: admin });
-        await reserve.setFee(DEFAULT_FEE_BPS);
+        await reserve.setFee(DEFAULT_FEE_BPS, { from: admin });
         await uniswapFactoryMock.setRateEthToToken(0, 0);
         await uniswapFactoryMock.setRateTokenToEth(0, 0);
     });
@@ -100,7 +101,10 @@ contract("KyberUniswapReserve", async accounts => {
                 KyberUniswapReserve.new(
                     0 /* _uniswapFactory */,
                     admin,
-                    kyberNetwork
+                    kyberNetwork,
+                    {
+                        from: admin
+                    }
                 )
             );
         });
@@ -110,7 +114,8 @@ contract("KyberUniswapReserve", async accounts => {
                 KyberUniswapReserve.new(
                     uniswapFactoryMock.address,
                     0 /* _admin */,
-                    kyberNetwork
+                    kyberNetwork,
+                    { from: admin }
                 )
             );
         });
@@ -120,7 +125,8 @@ contract("KyberUniswapReserve", async accounts => {
                 KyberUniswapReserve.new(
                     uniswapFactoryMock.address,
                     admin /* _admin */,
-                    0 /* kyberNetwork */
+                    0 /* kyberNetwork */,
+                    { from: admin }
                 )
             );
         });
@@ -131,7 +137,8 @@ contract("KyberUniswapReserve", async accounts => {
             const newReserve = await KyberUniswapReserve.new(
                 uniswapFactoryAddress,
                 admin,
-                kyberNetwork
+                kyberNetwork,
+                { from: admin }
             );
 
             const uniswapFactory = await newReserve.uniswapFactory();
@@ -139,15 +146,16 @@ contract("KyberUniswapReserve", async accounts => {
         });
 
         it("admin is saved", async () => {
-            const admin = "0x0000000000000000000000000000000000000001";
+            const otherAdmin = "0x0000000000000000000000000000000000000001";
             const newReserve = await KyberUniswapReserve.new(
                 uniswapFactoryMock.address,
-                admin,
-                kyberNetwork
+                otherAdmin,
+                kyberNetwork,
+                { from: admin }
             );
 
             const adminValue = await newReserve.admin();
-            adminValue.should.be.eq(admin);
+            adminValue.should.be.eq(otherAdmin);
         });
 
         it("kyberNetwork is saved", async () => {
@@ -155,7 +163,8 @@ contract("KyberUniswapReserve", async accounts => {
             const newReserve = await KyberUniswapReserve.new(
                 uniswapFactoryMock.address,
                 admin,
-                kyberNetwork
+                kyberNetwork,
+                { from: admin }
             );
 
             const kyberNetworkAddress = await newReserve.kyberNetwork();
@@ -1014,7 +1023,7 @@ contract("KyberUniswapReserve", async accounts => {
             const newToken = await deployToken();
             await reserve.listToken(newToken.address, { from: admin });
 
-            await reserve.delistToken(newToken.address);
+            await reserve.delistToken(newToken.address, { from: admin });
 
             const exchange = await reserve.tokenExchange(newToken.address);
             exchange.should.be.bignumber.eq(0);
@@ -1024,7 +1033,7 @@ contract("KyberUniswapReserve", async accounts => {
             const newToken = await deployToken();
             await reserve.listToken(newToken.address, { from: admin });
 
-            await reserve.delistToken(newToken.address);
+            await reserve.delistToken(newToken.address, { from: admin });
 
             await truffleAssert.reverts(
                 reserve.delistToken(newToken.address, { from: admin })
@@ -1035,7 +1044,9 @@ contract("KyberUniswapReserve", async accounts => {
             const newToken = await deployToken();
             await reserve.listToken(newToken.address, { from: admin });
 
-            const res = await reserve.delistToken(newToken.address);
+            const res = await reserve.delistToken(newToken.address, {
+                from: admin
+            });
 
             truffleAssert.eventEmitted(res, "TokenDelisted", ev => {
                 return ev.token === newToken.address;
