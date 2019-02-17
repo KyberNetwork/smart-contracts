@@ -27,6 +27,7 @@ let reserve;
 let token;
 
 let admin;
+let bank;
 let alerter;
 let user;
 let kyberNetwork;
@@ -34,7 +35,7 @@ let kyberNetwork;
 contract("KyberUniswapReserve", async accounts => {
     const deployToken = async (decimals = 18) => {
         const token = await TestToken.new("Some Token", "KNC", decimals, {
-            from: admin
+            from: bank
         });
         dbg(
             `Deployed test token with ${decimals} decimals at ${token.address}`
@@ -54,23 +55,19 @@ contract("KyberUniswapReserve", async accounts => {
         );
 
         // TODO: maybe do this after listing the token
-        token.transfer(uniswapFactory.address, bigAmount, { from: admin });
+        token.transfer(uniswapFactory.address, bigAmount, { from: bank });
 
         return uniswapFactory;
     };
 
     before("setup", async () => {
         admin = accounts[1];
-        alerter = accounts[2];
-        user = accounts[3];
-        kyberNetwork = accounts[4];
+        bank = accounts[2];
+        alerter = accounts[3];
+        user = accounts[4];
+        kyberNetwork = accounts[5];
 
         token = await deployToken();
-
-        // Fund KyberNetwork
-        await token.transfer(kyberNetwork, new BigNumber(10).pow(18).mul(100), {
-            from: admin
-        });
 
         uniswapFactoryMock = await prepareUniswapFactory(token);
         reserve = await KyberUniswapReserve.new(
@@ -80,6 +77,12 @@ contract("KyberUniswapReserve", async accounts => {
             { from: admin }
         );
         dbg(`KyberUniswapReserve deployed to address ${reserve.address}`);
+
+        // Fund KyberNetwork
+        await token.transfer(kyberNetwork, new BigNumber(10).pow(18).mul(100), {
+            from: bank
+        });
+        await token.approve(reserve.address, 2 ** 255, { from: kyberNetwork });
 
         DEFAULT_FEE_BPS = await reserve.DEFAULT_FEE_BPS();
 
@@ -185,7 +188,7 @@ contract("KyberUniswapReserve", async accounts => {
             const amount = web3.utils.toWei("1");
             const initialWethBalance = await token.balanceOf(admin);
 
-            await token.transfer(reserve.address, amount, { from: admin });
+            await token.transfer(reserve.address, amount, { from: bank });
             const res = await reserve.withdrawToken(
                 token.address,
                 amount,
@@ -196,7 +199,7 @@ contract("KyberUniswapReserve", async accounts => {
             );
 
             const balance = await token.balanceOf(admin);
-            balance.should.be.bignumber.eq(initialWethBalance);
+            balance.should.be.bignumber.eq(initialWethBalance.plus(amount));
 
             truffleAssert.eventEmitted(res, "TokenWithdraw", ev => {
                 return (
@@ -209,7 +212,7 @@ contract("KyberUniswapReserve", async accounts => {
 
         it("reject withdrawing tokens by non-admin users", async () => {
             const amount = web3.utils.toWei("1");
-            await token.transfer(reserve.address, amount, { from: admin });
+            await token.transfer(reserve.address, amount, { from: bank });
 
             await truffleAssert.reverts(
                 reserve.withdrawToken(token.address, amount, user, {
@@ -489,9 +492,6 @@ contract("KyberUniswapReserve", async accounts => {
             await uniswapFactoryMock.setToken(token.address);
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10).pow(18);
-            await token.approve(reserve.address, amount, {
-                from: kyberNetwork
-            });
             const ethBalanceBefore = await helper.getBalancePromise(user);
 
             await truffleAssert.reverts(
@@ -554,9 +554,6 @@ contract("KyberUniswapReserve", async accounts => {
             await uniswapFactoryMock.setToken(token.address);
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10).pow(18);
-            await token.approve(reserve.address, amount, {
-                from: kyberNetwork
-            });
             const ethBalanceBefore = await helper.getBalancePromise(user);
 
             const traded = await reserve.trade.call(
@@ -632,9 +629,6 @@ contract("KyberUniswapReserve", async accounts => {
             await uniswapFactoryMock.setToken(token.address);
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10).pow(18).mul(0.9975);
-            await token.approve(reserve.address, amount, {
-                from: kyberNetwork
-            });
             const ethBalanceBefore = await helper.getBalancePromise(user);
 
             const traded = await reserve.trade.call(
@@ -716,9 +710,6 @@ contract("KyberUniswapReserve", async accounts => {
                 .pow(18)
                 .mul(2)
                 .mul(0.9975);
-            await token.approve(reserve.address, amount, {
-                from: kyberNetwork
-            });
             const ethBalanceBefore = await helper.getBalancePromise(user);
 
             const traded = await reserve.trade.call(
@@ -756,9 +747,6 @@ contract("KyberUniswapReserve", async accounts => {
             );
             await uniswapFactoryMock.setToken(token.address);
             const amount = web3.utils.toWei("1");
-            await token.approve(reserve.address, amount, {
-                from: kyberNetwork
-            });
             const ethBalanceBefore = await helper.getBalancePromise(user);
 
             const expectedConversionRate = await reserve.getConversionRate(
@@ -847,9 +835,6 @@ contract("KyberUniswapReserve", async accounts => {
                 .pow(18)
                 .mul(2)
                 .mul(0.9975);
-            await token.approve(reserve.address, amount, {
-                from: kyberNetwork
-            });
 
             const res = await reserve.trade(
                 token.address /* srcToken */,
