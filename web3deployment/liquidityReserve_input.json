@@ -1,0 +1,33 @@
+{
+  "tokens": {
+    "OMG": {
+      "name": "OmiseGO",
+      "decimals": 18,
+      "address": "0x4BFBa4a8F28755Cb2061c413459EE562c6B9c51b"
+    },
+    "KNC": {
+      "name": "KyberNetwork",
+      "decimals": 18,
+      "address": "0x4E470dc7321E84CA96FcAEDD0C8aBCebbAEB68C6"
+    }
+  },
+  "exchanges": {
+    "binance" : {"ETH" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+                 "OMG" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+                 "KNC" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90" }
+  },
+
+  "permission" : {
+                   "KyberReserve" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+                                      "operator" : ["0x5bab5ef16cfac98e216a229db17913454b0f9365"],
+                                      "alerter" : []},
+                   "LiquidityConversionRates" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+                                         "operator" : ["0x8bc3da587def887b5c822105729ee1d6af05a5ca",
+                                                       "0x9224016462B204C57Eb70e1D69652f60bcAF53A8"],
+                                         "alerter" : []}
+		},
+
+  "valid duration block" : 60,
+
+  "output filename" : "liquidityReserve_deployment.json"
+}
