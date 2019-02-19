@@ -1,10 +1,5 @@
 {
   "tokens": {
-    "OMG": {
-      "name": "OmiseGO",
-      "decimals": 18,
-      "address": "0x4BFBa4a8F28755Cb2061c413459EE562c6B9c51b"
-    },
     "KNC": {
       "name": "KyberNetwork",
       "decimals": 18,
@@ -26,8 +21,6 @@
                                                        "0x9224016462B204C57Eb70e1D69652f60bcAF53A8"],
                                          "alerter" : []}
 		},
-
-  "valid duration block" : 60,
 
   "output filename" : "liquidityReserve_deployment.json"
 }
