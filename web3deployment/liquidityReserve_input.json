@@ -8,7 +8,6 @@
   },
   "exchanges": {
     "binance" : {"ETH" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-                 "OMG" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
                  "KNC" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90" }
   },
 
