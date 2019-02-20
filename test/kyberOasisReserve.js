@@ -1,3 +1,6 @@
+const Web3 = require('web3');
+const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
+
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 let WethToken = artifacts.require("./oasisContracts/mockContracts/WethToken.sol");
 let MockOtc = artifacts.require("./oasisContracts/mockContracts/MockOtc.sol");
@@ -50,6 +53,10 @@ function valueAfterAddingPremium(val, premiumPercent) {
     return (val.mul(100+premiumPercent)).div(100);
 }
 
+async function getGasCost(txInfo) {
+    let tx = await web3.eth.getTransaction(txInfo.tx);
+    return BigNumber(tx.gasPrice).mul(txInfo.receipt.gasUsed);
+}
 
 
 contract('KyberOasisReserve', function (accounts) {
@@ -121,8 +128,7 @@ contract('KyberOasisReserve', function (accounts) {
         let tweiBalanceBefore = await myDaiToken.balanceOf(admin);
 
         let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty});
-        let tx = await web3.eth.getTransaction(txInfo.tx);
-        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
+	let gasCost = await getGasCost(txInfo)
 
         let reserveTweiBalanceAfter = await myDaiToken.balanceOf(reserve.address);
         let balanceAfter = await Helper.getBalancePromise(admin);
@@ -154,8 +160,7 @@ contract('KyberOasisReserve', function (accounts) {
         let tweiBalanceBefore = await myMkrToken.balanceOf(admin);
 
         let txInfo = await reserve.trade(ethAddress, weiSrcQty, myMkrToken.address, admin, buyRate, true, {value: weiSrcQty});
-        let tx = await web3.eth.getTransaction(txInfo.tx);
-        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
+        let gasCost = await getGasCost(txInfo)
 
         let reserveTweiBalanceAfter = await myMkrToken.balanceOf(reserve.address);
         let balanceAfter = await Helper.getBalancePromise(admin);
@@ -186,8 +191,7 @@ contract('KyberOasisReserve', function (accounts) {
         let tweiBalanceBefore = await myMkrToken.balanceOf(admin);
 
         let txInfo = await reserve.trade(ethAddress, weiSrcQty, myMkrToken.address, admin, buyRate, true, {value: weiSrcQty});
-        let tx = await web3.eth.getTransaction(txInfo.tx);
-        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
+        let gasCost = await getGasCost(txInfo)
 
         let reserveTweiBalanceAfter = await myMkrToken.balanceOf(reserve.address);
         let balanceAfter = await Helper.getBalancePromise(admin);
@@ -218,8 +222,7 @@ contract('KyberOasisReserve', function (accounts) {
         let tweiBalanceBefore = await myMkrToken.balanceOf(admin);
 
         let txInfo = await reserve.trade(ethAddress, weiSrcQty, myMkrToken.address, admin, buyRate, true, {value: weiSrcQty});
-        let tx = await web3.eth.getTransaction(txInfo.tx);
-        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
+        let gasCost = await getGasCost(txInfo)
 
         let reserveTweiBalanceAfter = await myMkrToken.balanceOf(reserve.address);
         let balanceAfter = await Helper.getBalancePromise(admin);
@@ -270,8 +273,7 @@ contract('KyberOasisReserve', function (accounts) {
         let tweiBalanceBefore = await myDaiToken.balanceOf(admin);
 
         let txInfo = await reserve.trade(myDaiToken.address, tweiSrcQty, ethAddress, admin, sellRate, true);
-        let tx = await web3.eth.getTransaction(txInfo.tx);
-        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
+        let gasCost = await getGasCost(txInfo)
 
         let reserveBalanceAfter = await Helper.getBalancePromise(reserve.address);
         let balanceAfter = await Helper.getBalancePromise(admin);
@@ -303,8 +305,7 @@ contract('KyberOasisReserve', function (accounts) {
         let tweiBalanceBefore = await myMkrToken.balanceOf(admin);
 
         let txInfo = await reserve.trade(myMkrToken.address, tweiSrcQty, ethAddress, admin, sellRate, true);
-        let tx = await web3.eth.getTransaction(txInfo.tx);
-        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
+        let gasCost = await getGasCost(txInfo)
 
         let reserveBalanceAfter = await Helper.getBalancePromise(reserve.address);
         let balanceAfter = await Helper.getBalancePromise(admin);
@@ -336,8 +337,7 @@ contract('KyberOasisReserve', function (accounts) {
         let tweiBalanceBefore = await myMkrToken.balanceOf(admin);
 
         let txInfo = await reserve.trade(myMkrToken.address, tweiSrcQty, ethAddress, admin, sellRate, true);
-        let tx = await web3.eth.getTransaction(txInfo.tx);
-        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
+        let gasCost = await getGasCost(txInfo)
 
         let reserveBalanceAfter = await Helper.getBalancePromise(reserve.address);
         let balanceAfter = await Helper.getBalancePromise(admin);
@@ -369,8 +369,7 @@ contract('KyberOasisReserve', function (accounts) {
         let tweiBalanceBefore = await myMkrToken.balanceOf(admin);
 
         let txInfo = await reserve.trade(myMkrToken.address, tweiSrcQty, ethAddress, admin, sellRate, true);
-        let tx = await web3.eth.getTransaction(txInfo.tx);
-        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
+        let gasCost = await getGasCost(txInfo)
 
         let reserveBalanceAfter = await Helper.getBalancePromise(reserve.address);
         let balanceAfter = await Helper.getBalancePromise(admin);
@@ -462,8 +461,7 @@ contract('KyberOasisReserve', function (accounts) {
         let tweiBalanceBefore = await myDaiToken.balanceOf(admin);
 
         let txInfo = await reserve.trade(ethAddress, weiSrcQty, myDaiToken.address, admin, buyRate, true, {value: weiSrcQty});
-        let tx = await web3.eth.getTransaction(txInfo.tx);
-        let gasCost = tx.gasPrice.mul(txInfo.receipt.gasUsed);
+        let gasCost = await getGasCost(txInfo)
 
         let reserveTweiBalanceAfter = await myDaiToken.balanceOf(reserve.address);
         let balanceAfter = await Helper.getBalancePromise(admin);
