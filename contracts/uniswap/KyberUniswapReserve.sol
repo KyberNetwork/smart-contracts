@@ -110,8 +110,7 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         // This makes the UNUSED warning go away.
         blockNumber;
 
-        require(isValidTokens(src, dest));
-
+        if (!isValidTokens(src, dest)) return 0;
         if (!tradeEnabled) return 0;
 
         ERC20 token;

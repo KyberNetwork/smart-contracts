@@ -352,38 +352,38 @@ contract("KyberUniswapReserve", async accounts => {
         it("conversion between ETH and a non-18 decimals token");
 
         it("fail if both tokens are ETH", async () => {
-            await truffleAssert.reverts(
-                reserve.getConversionRate(
-                    ETH_TOKEN_ADDRESS /* src */,
-                    ETH_TOKEN_ADDRESS /* dst */,
-                    web3.utils.toWei("1") /* srcQty */,
-                    0 /* blockNumber */
-                )
+            const rate = await reserve.getConversionRate(
+                ETH_TOKEN_ADDRESS /* src */,
+                ETH_TOKEN_ADDRESS /* dst */,
+                web3.utils.toWei("1") /* srcQty */,
+                0 /* blockNumber */
             );
+
+            rate.should.be.bignumber.eq(0);
         });
 
         it("fail if both tokens are not ETH", async () => {
-            await truffleAssert.reverts(
-                reserve.getConversionRate(
-                    token.address /* src */,
-                    token.address /* dst */,
-                    web3.utils.toWei("1") /* srcQty */,
-                    0 /* blockNumber */
-                )
+            const rate = await reserve.getConversionRate(
+                token.address /* src */,
+                token.address /* dst */,
+                web3.utils.toWei("1") /* srcQty */,
+                0 /* blockNumber */
             );
+
+            rate.should.be.bignumber.eq(0);
         });
 
         it("fail for unsupported tokens", async () => {
             const newToken = await deployToken();
 
-            await truffleAssert.reverts(
-                reserve.getConversionRate(
-                    newToken.address /* src */,
-                    ETH_TOKEN_ADDRESS /* dst */,
-                    web3.utils.toWei("1") /* srcQty */,
-                    0 /* blockNumber */
-                )
+            const rate = await reserve.getConversionRate(
+                newToken.address /* src */,
+                ETH_TOKEN_ADDRESS /* dst */,
+                web3.utils.toWei("1") /* srcQty */,
+                0 /* blockNumber */
             );
+
+            rate.should.be.bignumber.eq(0);
         });
 
         it("conversion rate eth -> token of 1:2, with 1% fees", async () => {
