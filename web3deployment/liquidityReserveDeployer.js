@@ -99,26 +99,15 @@ const contractPath = path.join(__dirname, "../contracts/");
 
 const input = {
   "ConversionRatesInterface.sol" : fs.readFileSync(contractPath + 'ConversionRatesInterface.sol', 'utf8'),
-  "ConversionRates.sol" : fs.readFileSync(contractPath + 'ConversionRates.sol', 'utf8'),
   "PermissionGroups.sol" : fs.readFileSync(contractPath + 'PermissionGroups.sol', 'utf8'),
   "ERC20Interface.sol" : fs.readFileSync(contractPath + 'ERC20Interface.sol', 'utf8'),
   "SanityRatesInterface.sol" : fs.readFileSync(contractPath + 'SanityRatesInterface.sol', 'utf8'),
-  "ExpectedRateInterface.sol" : fs.readFileSync(contractPath + 'ExpectedRateInterface.sol', 'utf8'),
-  "SanityRates.sol" : fs.readFileSync(contractPath + 'SanityRates.sol', 'utf8'),
-  "ExpectedRate.sol" : fs.readFileSync(contractPath + 'ExpectedRate.sol', 'utf8'),
   "Utils.sol" : fs.readFileSync(contractPath + 'Utils.sol', 'utf8'),
-  "FeeBurnerInterface.sol" : fs.readFileSync(contractPath + 'FeeBurnerInterface.sol', 'utf8'),
-  "VolumeImbalanceRecorder.sol" : fs.readFileSync(contractPath + 'VolumeImbalanceRecorder.sol', 'utf8'),
-  "FeeBurner.sol" : fs.readFileSync(contractPath + 'FeeBurner.sol', 'utf8'),
-  "WhiteListInterface.sol" : fs.readFileSync(contractPath + 'WhiteListInterface.sol', 'utf8'),
-  "KyberNetwork.sol" : fs.readFileSync(contractPath + 'KyberNetwork.sol', 'utf8'),
-  "WhiteList.sol" : fs.readFileSync(contractPath + 'WhiteList.sol', 'utf8'),
   "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
   "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
   "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
   "LiquidityConversionRates.sol" : fs.readFileSync(contractPath + 'LiquidityConversionRates.sol', 'utf8'),
   "LiquidityFormula.sol" : fs.readFileSync(contractPath + 'LiquidityFormula.sol', 'utf8'),
-  "Wrapper.sol" : fs.readFileSync(contractPath + 'mockContracts/Wrapper.sol', 'utf8')
 };
 
 let reserveAddress;
@@ -138,7 +127,6 @@ let taxFeesBps = 1000;
 const ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
 const tokens = [];
-const tokenControlInfo = {};
 const tokenNameToAddress = { "ETH" : ethAddress };
 
 
@@ -154,12 +142,6 @@ function parseInput( jsonInput ) {
       tokenNameToAddress[symbol] = address;
 
       tokens.push(address);
-      const dict = {
-        minimalRecordResolution : web3.utils.toBN(val["minimalRecordResolution"]),
-        maxPerBlockImbalance : web3.utils.toBN(val["maxPerBlockImbalance"]),
-        maxTotalImbalance : web3.utils.toBN(val["maxTotalImbalance"])
-      };
-      tokenControlInfo[address] = dict;
     });
 
     // exchanges
@@ -174,7 +156,7 @@ function parseInput( jsonInput ) {
     });
 
     reservePermissions = jsonInput.permission["KyberReserve"];
-    conversionRatesPermissions = jsonInput.permission["ConversionRates"];
+    conversionRatesPermissions = jsonInput.permission["LiquidityConversionRates"];
 
     // output file name
     outputFileName = jsonInput["output filename"];
@@ -243,7 +225,7 @@ async function main() {
   console.log("conversion rate - setReserveAddress");
   await sendTx(conversionRatesContract.methods.setReserveAddress(reserveAddress));
 
-  
+
 
   await setPermissions(conversionRatesContract, conversionRatesPermissions);
 
@@ -254,6 +236,8 @@ async function main() {
   if (signedTxOutput) {
     fs.writeFileSync(signedTxOutput, signedTxsJson);
   }
+
+  console.log("Done");
 }
 
 function printParams(jsonInput) {
