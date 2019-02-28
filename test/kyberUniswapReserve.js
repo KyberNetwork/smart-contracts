@@ -16,10 +16,11 @@ const KyberUniswapReserve = artifacts.require("TestingKyberUniswapReserve");
 const TestToken = artifacts.require("TestToken");
 
 const ETH_TOKEN_ADDRESS = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+const KYBER_MAX_QTY = new BigNumber(10).pow(28); // 10B tokens
 
 let DEFAULT_FEE_BPS;
 
-let DEBUG = true;
+let DEBUG = false;
 
 let uniswapFactoryMock;
 let reserve;
@@ -27,14 +28,19 @@ let reserve;
 let token;
 
 let admin;
-let bank;
+let operator;
 let alerter;
+let bank;
 let user;
 let kyberNetwork;
 
 contract("KyberUniswapReserve", async accounts => {
-    const deployToken = async (decimals = 18) => {
-        const token = await TestToken.new("Some Token", "KNC", decimals, {
+    const deployToken = async (
+        name = "Some Token",
+        symbol = "KNC",
+        decimals = 18
+    ) => {
+        const token = await TestToken.new(name, symbol, decimals, {
             from: bank
         });
         dbg(
@@ -60,12 +66,23 @@ contract("KyberUniswapReserve", async accounts => {
         return uniswapFactory;
     };
 
+    const emptyReserveAccounts = async () => {
+        const ethBalance = await helper.getBalancePromise(reserve.address);
+        await reserve.withdrawEther(ethBalance, bank, { from: admin });
+
+        const tokenBalance = await token.balanceOf(reserve.address);
+        await reserve.withdrawToken(token.address, tokenBalance, bank, {
+            from: admin
+        });
+    };
+
     before("setup", async () => {
         admin = accounts[1];
-        bank = accounts[2];
+        operator = accounts[2];
         alerter = accounts[3];
-        user = accounts[4];
-        kyberNetwork = accounts[5];
+        bank = accounts[4];
+        user = accounts[5];
+        kyberNetwork = accounts[6];
 
         token = await deployToken();
 
@@ -77,6 +94,8 @@ contract("KyberUniswapReserve", async accounts => {
             { from: admin }
         );
         dbg(`KyberUniswapReserve deployed to address ${reserve.address}`);
+
+        reserve.addOperator(operator, { from: admin });
 
         // Fund KyberNetwork
         await token.transfer(kyberNetwork, new BigNumber(10).pow(18).mul(100), {
@@ -94,8 +113,28 @@ contract("KyberUniswapReserve", async accounts => {
     beforeEach("setup contract for each test", async () => {
         await reserve.enableTrade({ from: admin });
         await reserve.setFee(DEFAULT_FEE_BPS, { from: admin });
-        await uniswapFactoryMock.setRateEthToToken(0, 0);
-        await uniswapFactoryMock.setRateTokenToEth(0, 0);
+
+        // internal inventory disabled by default
+        await reserve.setInternalActivationConfig(
+            token.address /* token */,
+            0 /* minSpreadBps */,
+            0 /* premiumBps */,
+            { from: admin }
+        );
+
+        // internal inventory balance limits also disable it
+        await reserve.setInternalInventoryLimits(
+            token.address /* token */,
+            2 ** 255 /* minBalance */,
+            0 /* maxBalance */,
+            { from: operator }
+        );
+
+        await emptyReserveAccounts();
+
+        await uniswapFactoryMock.setToken(token.address);
+        await uniswapFactoryMock.setRateEthToToken(1, 1);
+        await uniswapFactoryMock.setRateTokenToEth(1, 1);
     });
 
     describe("constructor params", () => {
@@ -410,17 +449,111 @@ contract("KyberUniswapReserve", async accounts => {
 
             rate.should.be.bignumber.eq(0);
         });
+
+        it("internal inventory: ETH -> Token 1:2, with 1% fees, 100 premiumBps", async () => {
+            await reserve.setFee(100, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                10 /* eth */,
+                20 /* token */
+            );
+            await uniswapFactoryMock.setRateTokenToEth(
+                24 /* token */,
+                10 /* eth */
+            );
+
+            // minimum spread requirement
+            await reserve.setInternalActivationConfig(
+                token.address /* token */,
+                1000 /* minSpreadBps */,
+                100 /* premiumBps */,
+                { from: admin }
+            );
+
+            // disable internal inventory limits
+            await reserve.setInternalInventoryLimits(
+                token.address /* token */,
+                0 /* minBalance */,
+                2 ** 255 /* maxBalance */,
+                { from: operator }
+            );
+
+            await token.transfer(reserve.address, web3.utils.toWei("5"), {
+                from: bank
+            });
+
+            const rate = await reserve.getConversionRate(
+                ETH_TOKEN_ADDRESS /* src */,
+                token.address /* dst */,
+                web3.utils.toWei("1") /* srcQty */,
+                0 /* blockNumber */
+            );
+
+            // kyber rates are destQty / srcQty
+            rate.should.be.bignumber.eq(
+                new BigNumber(10)
+                    .pow(18)
+                    .mul(2) // rate
+                    .mul(0.99) // fee
+                    .mul(1.01) // premiumBps
+            );
+        });
+
+        it("internal inventory: Token -> ETH 2:1, with 5% fees, 100 premiumBps", async () => {
+            await reserve.setFee(500, { from: admin });
+            await uniswapFactoryMock.setRateTokenToEth(
+                10 /* eth */,
+                20 /* token */
+            );
+            await uniswapFactoryMock.setRateEthToToken(
+                24 /* token */,
+                10 /* eth */
+            );
+
+            // minimum spread requirement
+            await reserve.setInternalActivationConfig(
+                token.address /* token */,
+                1000 /* minSpreadBps */,
+                100 /* premiumBps */,
+                { from: admin }
+            );
+
+            // disable internal inventory limits
+            await reserve.setInternalInventoryLimits(
+                token.address /* token */,
+                0 /* minBalance */,
+                2 ** 255 /* maxBalance */,
+                { from: operator }
+            );
+            await helper.sendEtherWithPromise(
+                bank /* sender */,
+                reserve.address /* recv */,
+                web3.utils.toWei("5") /* amount */
+            );
+
+            const rate = await reserve.getConversionRate(
+                token.address /* src */,
+                ETH_TOKEN_ADDRESS /* dst */,
+                web3.utils.toWei("1") /* srcQty */,
+                0 /* blockNumber */
+            );
+
+            rate.should.be.bignumber.eq(
+                new BigNumber(10)
+                    .pow(18)
+                    .mul(0.5) // rate
+                    .mul(0.95) // fee
+                    .mul(1.01) // premiumBps
+            );
+        });
     });
 
     describe("#trade", () => {
         it("can be called from KyberNetwork", async () => {
             await reserve.setFee(0, { from: admin });
-            await uniswapFactoryMock.setToken(token.address);
             await uniswapFactoryMock.setRateEthToToken(
                 1 /* eth */,
                 1 /* token */
             );
-            const exchangeAddress = await reserve.tokenExchange(token.address);
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10).pow(18);
 
@@ -437,12 +570,10 @@ contract("KyberUniswapReserve", async accounts => {
 
         it("can not be called by user other than KyberNetwork", async () => {
             await reserve.setFee(0, { from: admin });
-            await uniswapFactoryMock.setToken(token.address);
             await uniswapFactoryMock.setRateEthToToken(
                 1 /* eth */,
                 1 /* token */
             );
-            const exchangeAddress = await reserve.tokenExchange(token.address);
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10).pow(18);
 
@@ -465,10 +596,8 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 1 /* token */
             );
-            await uniswapFactoryMock.setToken(token.address);
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10).pow(18);
-            const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
 
             await truffleAssert.reverts(
                 reserve.trade(
@@ -489,10 +618,8 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 1 /* token */
             );
-            await uniswapFactoryMock.setToken(token.address);
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10).pow(18);
-            const ethBalanceBefore = await helper.getBalancePromise(user);
 
             await truffleAssert.reverts(
                 reserve.trade(
@@ -513,7 +640,6 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 1 /* token */
             );
-            await uniswapFactoryMock.setToken(token.address);
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10).pow(18);
             const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
@@ -551,7 +677,6 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 1 /* token */
             );
-            await uniswapFactoryMock.setToken(token.address);
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10).pow(18);
             const ethBalanceBefore = await helper.getBalancePromise(user);
@@ -589,7 +714,6 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 1 /* token */
             );
-            await uniswapFactoryMock.setToken(token.address);
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10).pow(18).mul(0.9975);
             const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
@@ -626,7 +750,6 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 1 /* token */
             );
-            await uniswapFactoryMock.setToken(token.address);
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10).pow(18).mul(0.9975);
             const ethBalanceBefore = await helper.getBalancePromise(user);
@@ -664,7 +787,6 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 2 /* token */
             );
-            await uniswapFactoryMock.setToken(token.address);
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10)
                 .pow(18)
@@ -704,7 +826,6 @@ contract("KyberUniswapReserve", async accounts => {
                 2 /* eth */,
                 1 /* token */
             );
-            await uniswapFactoryMock.setToken(token.address);
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10)
                 .pow(18)
@@ -745,9 +866,7 @@ contract("KyberUniswapReserve", async accounts => {
                 2 /* eth */,
                 1 /* token */
             );
-            await uniswapFactoryMock.setToken(token.address);
             const amount = web3.utils.toWei("1");
-            const ethBalanceBefore = await helper.getBalancePromise(user);
 
             const expectedConversionRate = await reserve.getConversionRate(
                 token.address /* src */,
@@ -775,13 +894,11 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 2 /* token */
             );
-            await uniswapFactoryMock.setToken(token.address);
             const amount = new BigNumber(10).pow(18);
             const conversionRate = new BigNumber(10)
                 .pow(18)
                 .mul(2)
                 .mul(0.9975);
-            const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
 
             await truffleAssert.reverts(
                 reserve.trade(
@@ -796,13 +913,37 @@ contract("KyberUniswapReserve", async accounts => {
             );
         });
 
+        it("Token -> ETH, fail if msg.value != 0", async () => {
+            await reserve.setFee(25, { from: admin });
+            await uniswapFactoryMock.setRateTokenToEth(
+                2 /* token */,
+                1 /* eth */
+            );
+            const amount = new BigNumber(10).pow(18);
+            const conversionRate = new BigNumber(10)
+                .pow(18)
+                .mul(0.5)
+                .mul(0.9975);
+
+            await truffleAssert.reverts(
+                reserve.trade(
+                    token.address /* srcToken */,
+                    amount /* srcAmount */,
+                    ETH_TOKEN_ADDRESS /* destToken */,
+                    kyberNetwork /* destAddress */,
+                    conversionRate /* conversionRate */,
+                    true /* validate */,
+                    { from: kyberNetwork, value: 1 }
+                )
+            );
+        });
+
         it("fail if trade is disabled", async () => {
             await reserve.setFee(25, { from: admin });
             await uniswapFactoryMock.setRateEthToToken(
                 1 /* eth */,
                 2 /* token */
             );
-            await uniswapFactoryMock.setToken(token.address);
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10)
                 .pow(18)
@@ -829,7 +970,6 @@ contract("KyberUniswapReserve", async accounts => {
                 2 /* eth */,
                 1 /* token */
             );
-            await uniswapFactoryMock.setToken(token.address);
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10)
                 .pow(18)
@@ -858,7 +998,229 @@ contract("KyberUniswapReserve", async accounts => {
                             .mul(2)
                             .mul(0.9975)
                     ) &&
-                    ev.destAddress === user
+                    ev.destAddress === user &&
+                    ev.useInternalInventory === false
+                );
+            });
+        });
+
+        it("Token -> ETH using internal inventory", async () => {
+            await reserve.setFee(25, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                9 /* token */
+            );
+            await uniswapFactoryMock.setRateTokenToEth(
+                10 /* token */,
+                1 /* eth */
+            );
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BigNumber(10)
+                .pow(18)
+                .div(10)
+                .mul(0.9975);
+
+            // Prepare the reserve's internal inventory
+            // high minimum spread requirement
+            await reserve.setInternalActivationConfig(
+                token.address /* token */,
+                1000 /* minSpreadBps */,
+                0 /* premiumBps */,
+                { from: admin }
+            );
+
+            // set limits
+            await reserve.setInternalInventoryLimits(
+                token.address /* token */,
+                0 /* minBalance */,
+                2 ** 255 /* maxBalance */,
+                { from: operator }
+            );
+
+            await helper.sendEtherWithPromise(
+                bank /* sender */,
+                reserve.address /* recv */,
+                web3.utils.toWei("1") /* amount */
+            );
+
+            // Read balance before
+            const reserveEthBefore = await helper.getBalancePromise(
+                reserve.address
+            );
+            const reserveTokenBefore = await token.balanceOf(reserve.address);
+
+            const traded = await reserve.trade.call(
+                token.address /* srcToken */,
+                amount /* srcAmount */,
+                ETH_TOKEN_ADDRESS /* destToken */,
+                user /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork }
+            );
+            await reserve.trade(
+                token.address /* srcToken */,
+                amount /* srcAmount */,
+                ETH_TOKEN_ADDRESS /* destToken */,
+                user /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork }
+            );
+
+            const reserveEthAfter = await helper.getBalancePromise(
+                reserve.address
+            );
+            const reserveTokenAfter = await token.balanceOf(reserve.address);
+
+            traded.should.be.true;
+            reserveEthAfter.should.be.bignumber.eq(
+                reserveEthBefore.sub(new BigNumber(amount).div(10).mul(0.9975))
+            );
+            reserveTokenAfter.should.be.bignumber.eq(
+                reserveTokenBefore.add(amount)
+            );
+        });
+
+        it("ETH -> Token using internal inventory", async () => {
+            await reserve.setFee(25, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                9 /* token */
+            );
+            await uniswapFactoryMock.setRateTokenToEth(
+                10 /* token */,
+                1 /* eth */
+            );
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BigNumber(10)
+                .pow(18)
+                .mul(9)
+                .mul(0.9975);
+
+            // Prepare the reserve's internal inventory
+            // high minimum spread requirement
+            await reserve.setInternalActivationConfig(
+                token.address /* token */,
+                1000 /* minSpreadBps */,
+                0 /* premiumBps */,
+                { from: admin }
+            );
+
+            // set limits
+            await reserve.setInternalInventoryLimits(
+                token.address /* token */,
+                0 /* minBalance */,
+                2 ** 255 /* maxBalance */,
+                { from: operator }
+            );
+
+            await token.transfer(reserve.address, web3.utils.toWei("20"), {
+                from: bank
+            });
+
+            // Read balance before
+            const reserveEthBefore = await helper.getBalancePromise(
+                reserve.address
+            );
+            const reserveTokenBefore = await token.balanceOf(reserve.address);
+
+            const traded = await reserve.trade.call(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                amount /* srcAmount */,
+                token.address /* destToken */,
+                user /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork, value: amount }
+            );
+            await reserve.trade(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                amount /* srcAmount */,
+                token.address /* destToken */,
+                user /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork, value: amount }
+            );
+
+            const reserveEthAfter = await helper.getBalancePromise(
+                reserve.address
+            );
+            const reserveTokenAfter = await token.balanceOf(reserve.address);
+
+            traded.should.be.true;
+            reserveEthAfter.should.be.bignumber.eq(
+                reserveEthBefore.add(amount)
+            );
+            reserveTokenAfter.should.be.bignumber.eq(
+                reserveTokenBefore.sub(new BigNumber(amount).mul(9).mul(0.9975))
+            );
+        });
+
+        it("TradeExecute event indicates internal inventory used", async () => {
+            await reserve.setFee(25, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                9 /* token */
+            );
+            await uniswapFactoryMock.setRateTokenToEth(
+                10 /* token */,
+                1 /* eth */
+            );
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BigNumber(10)
+                .pow(18)
+                .div(10)
+                .mul(0.9975);
+
+            // Prepare the reserve's internal inventory
+            // high minimum spread requirement
+            await reserve.setInternalActivationConfig(
+                token.address /* token */,
+                1000 /* minSpreadBps */,
+                0 /* premiumBps */,
+                { from: admin }
+            );
+
+            // set limits
+            await reserve.setInternalInventoryLimits(
+                token.address /* token */,
+                0 /* minBalance */,
+                2 ** 255 /* maxBalance */,
+                { from: operator }
+            );
+
+            await helper.sendEtherWithPromise(
+                bank /* sender */,
+                reserve.address /* recv */,
+                web3.utils.toWei("1") /* amount */
+            );
+
+            const res = await reserve.trade(
+                token.address /* srcToken */,
+                amount /* srcAmount */,
+                ETH_TOKEN_ADDRESS /* destToken */,
+                user /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork }
+            );
+
+            truffleAssert.eventEmitted(res, "TradeExecute", ev => {
+                return (
+                    ev.sender === kyberNetwork &&
+                    ev.src === token.address &&
+                    ev.srcAmount.eq(new BigNumber(amount)) &&
+                    ev.destToken === ETH_TOKEN_ADDRESS &&
+                    ev.destAmount.eq(
+                        new BigNumber(10)
+                            .pow(18)
+                            .div(10)
+                            .mul(0.9975)
+                    ) &&
+                    ev.destAddress === user &&
+                    ev.useInternalInventory === true
                 );
             });
         });
@@ -929,7 +1291,11 @@ contract("KyberUniswapReserve", async accounts => {
         });
 
         it("listing a token saves its decimals", async () => {
-            const newToken = await deployToken(10);
+            const newToken = await deployToken(
+                "Other Token" /* name */,
+                "TKN" /* symbol */,
+                10 /* decimals */
+            );
 
             await reserve.listToken(newToken.address, { from: admin });
 
@@ -985,6 +1351,33 @@ contract("KyberUniswapReserve", async accounts => {
             );
             amount.should.be.bignumber.eq(new BigNumber(2).pow(255));
         });
+
+        it("should set initial internal inventory defaults", async () => {
+            const newToken = await deployToken();
+            const tokenExchange = await uniswapFactoryMock.createExchange.call(
+                newToken.address
+            );
+
+            await reserve.listToken(newToken.address, { from: admin });
+
+            const internalLimitMin = await reserve.internalInventoryMin(
+                newToken.address
+            );
+            const internalLimitMax = await reserve.internalInventoryMax(
+                newToken.address
+            );
+            const activationMinSpread = await reserve.internalActivationMinSpreadBps(
+                newToken.address
+            );
+            const internalPricePremiumBps = await reserve.internalPricePremiumBps(
+                newToken.address
+            );
+
+            internalLimitMin.should.be.bignumber.eq(new BigNumber(2).pow(255));
+            internalLimitMax.should.be.bignumber.eq(0);
+            activationMinSpread.should.be.bignumber.eq(0);
+            internalPricePremiumBps.should.be.bignumber.eq(0);
+        });
     });
 
     describe("#delistToken", () => {
@@ -1036,6 +1429,43 @@ contract("KyberUniswapReserve", async accounts => {
             truffleAssert.eventEmitted(res, "TokenDelisted", ev => {
                 return ev.token === newToken.address;
             });
+        });
+
+        it("calling deletes internal inventory settings", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+            await reserve.setInternalInventoryLimits(
+                newToken.address,
+                100 /* minBalance */,
+                500 /* maxBalance */,
+                { from: operator }
+            );
+            await reserve.setInternalActivationConfig(
+                newToken.address,
+                100 /* minSpreadBps */,
+                5 /* premiumBps */,
+                { from: admin }
+            );
+
+            await reserve.delistToken(newToken.address, { from: admin });
+
+            const internalLimitMin = await reserve.internalInventoryMin(
+                newToken.address
+            );
+            const internalLimitMax = await reserve.internalInventoryMax(
+                newToken.address
+            );
+            const activationMinSpread = await reserve.internalActivationMinSpreadBps(
+                newToken.address
+            );
+            const internalPricePremiumBps = await reserve.internalPricePremiumBps(
+                newToken.address
+            );
+
+            internalLimitMin.should.be.bignumber.eq(0);
+            internalLimitMax.should.be.bignumber.eq(0);
+            activationMinSpread.should.be.bignumber.eq(0);
+            internalPricePremiumBps.should.be.bignumber.eq(0);
         });
     });
 
@@ -1111,6 +1541,623 @@ contract("KyberUniswapReserve", async accounts => {
             await truffleAssert.eventEmitted(res, "KyberNetworkSet", ev => {
                 return ev.kyberNetwork === user;
             });
+        });
+    });
+
+    describe("#setInternalInventoryLimits", () => {
+        it("set new value by operator", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            await reserve.setInternalInventoryLimits(
+                newToken.address /* token */,
+                100 /* min */,
+                500 /* max */,
+                { from: operator }
+            );
+
+            const min = await reserve.internalInventoryMin(newToken.address);
+            const max = await reserve.internalInventoryMax(newToken.address);
+            min.should.be.bignumber.eq(100);
+            max.should.be.bignumber.eq(500);
+        });
+
+        it("reject if token is unlisted", async () => {
+            const newToken = await deployToken();
+
+            await truffleAssert.reverts(
+                reserve.setInternalInventoryLimits(
+                    newToken.address /* token */,
+                    100 /* min */,
+                    500 /* max */,
+                    { from: operator }
+                )
+            );
+        });
+
+        it("only operator can set values", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            await truffleAssert.reverts(
+                reserve.setInternalInventoryLimits(
+                    newToken.address /* token */,
+                    100 /* min */,
+                    500 /* max */,
+                    { from: user }
+                )
+            );
+        });
+
+        it("setting value emits an event", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            const res = await reserve.setInternalInventoryLimits(
+                newToken.address /* token */,
+                100 /* min */,
+                500 /* max */,
+                { from: operator }
+            );
+
+            await truffleAssert.eventEmitted(
+                res,
+                "InternalInventoryLimitsUpdated",
+                ev => {
+                    return (
+                        ev.token === newToken.address &&
+                        ev.minBalance.eq(100) &&
+                        ev.maxBalance.eq(500)
+                    );
+                }
+            );
+        });
+    });
+
+    describe("#setInternalActivationConfig", () => {
+        it("set new value by admin", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            await reserve.setInternalActivationConfig(
+                newToken.address /* token */,
+                100 /* minSpreadBps */,
+                5 /* premiumBps */,
+                { from: admin }
+            );
+
+            const min = await reserve.internalActivationMinSpreadBps(
+                newToken.address
+            );
+            const premium = await reserve.internalPricePremiumBps(
+                newToken.address
+            );
+            min.should.be.bignumber.eq(100);
+            premium.should.be.bignumber.eq(5);
+        });
+
+        it("reject if not admin", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            await truffleAssert.reverts(
+                reserve.setInternalActivationConfig(
+                    newToken.address /* token */,
+                    100 /* minSpreadBps */,
+                    5 /* premiumBps */,
+                    { from: user }
+                )
+            );
+        });
+
+        it("reject if token is unlisted", async () => {
+            const newToken = await deployToken();
+
+            await truffleAssert.reverts(
+                reserve.setInternalActivationConfig(
+                    newToken.address /* token */,
+                    100 /* minSpreadBps */,
+                    5 /* premiumBps */,
+                    { from: admin }
+                )
+            );
+        });
+
+        it("min spread <= 10%", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            await truffleAssert.reverts(
+                reserve.setInternalActivationConfig(
+                    newToken.address /* token */,
+                    11001 /* minSpreadBps */,
+                    5 /* premiumBps */,
+                    { from: admin }
+                )
+            );
+        });
+
+        it("premiumBps <= 5%", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            await truffleAssert.reverts(
+                reserve.setInternalActivationConfig(
+                    newToken.address /* token */,
+                    100 /* minSpreadBps */,
+                    501 /* premiumBps */,
+                    { from: admin }
+                )
+            );
+        });
+
+        it("setting value emits an event", async () => {
+            const newToken = await deployToken();
+            await reserve.listToken(newToken.address, { from: admin });
+
+            const res = await reserve.setInternalActivationConfig(
+                newToken.address /* token */,
+                100 /* minSpreadBps */,
+                5 /* premiumBps */,
+                { from: admin }
+            );
+
+            await truffleAssert.eventEmitted(
+                res,
+                "InternalActivationConfigUpdated",
+                ev => {
+                    return (
+                        ev.token === newToken.address &&
+                        ev.minSpreadBps.eq(100) &&
+                        ev.premiumBps.eq(5)
+                    );
+                }
+            );
+        });
+    });
+
+    describe("#shouldUseInternalInventory", () => {
+        const configureHighMinSpreadAndNoBalanceLimits = async () => {
+            // high minimum spread requirement
+            await reserve.setInternalActivationConfig(
+                token.address /* token */,
+                1000 /* minSpreadBps */,
+                0 /* premiumBps */,
+                { from: admin }
+            );
+            // disable internal inventory limits
+            await reserve.setInternalInventoryLimits(
+                token.address /* token */,
+                0 /* minBalance */,
+                2 ** 255 /* maxBalance */,
+                { from: operator }
+            );
+        };
+
+        it("spread above activation level - use internal inventory", async () => {
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                9 /* token */
+            );
+            await uniswapFactoryMock.setRateTokenToEth(
+                10 /* token */,
+                1 /* eth */
+            );
+            await reserve.setFee(0, { from: admin });
+
+            // high minimum spread requirement
+            await reserve.setInternalActivationConfig(
+                token.address /* token */,
+                1000 /* minSpreadBps */,
+                0 /* premiumBps */,
+                { from: admin }
+            );
+
+            // set limits
+            await reserve.setInternalInventoryLimits(
+                token.address /* token */,
+                web3.utils.toWei("1") /* minBalance */,
+                web3.utils.toWei("1000") /* maxBalance */,
+                { from: operator }
+            );
+
+            const tokenBalance = await token.balanceOf(reserve.address);
+            tokenBalance.should.be.bignumber.eq(0);
+            await token.transfer(
+                reserve.address /* to */,
+                web3.utils.toWei("500") /* value */,
+                { from: bank }
+            );
+
+            const useInternal = await reserve.shouldUseInternalInventory(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                web3.utils.toWei("3") /* srcAmount */,
+                token.address /* destToken */,
+                web3.utils.toWei("300") /* destAmount */
+            );
+
+            useInternal.should.be.true;
+        });
+
+        it("spread below activation level - do not use internal inventory", async () => {
+            // Spread of 2 BPS
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                9999 /* token */
+            );
+            await uniswapFactoryMock.setRateTokenToEth(
+                10001 /* token */,
+                1 /* eth */
+            );
+            await reserve.setFee(0, { from: admin });
+
+            // Minimum spread requirement: 10
+            await reserve.setInternalActivationConfig(
+                token.address /* token */,
+                // 10 [> minSpreadBps <],
+                5 /* minSpreadBps */,
+                0 /* premiumBps */,
+                { from: admin }
+            );
+
+            // set limits
+            await reserve.setInternalInventoryLimits(
+                token.address /* token */,
+                web3.utils.toWei("1") /* minBalance */,
+                web3.utils.toWei("10") /* maxBalance */,
+                { from: operator }
+            );
+
+            // Fund reserve with 5 ETH (so it will not be a limiting factor)
+            const ethBalance = await helper.getBalancePromise(reserve.address);
+            ethBalance.should.be.bignumber.eq(0);
+            await helper.sendEtherWithPromise(
+                bank /* sender */,
+                reserve.address /* recv */,
+                web3.utils.toWei("5") /* amount */
+            );
+
+            // Fund reserve with 5 Tokens
+            const tokenBalance = await token.balanceOf(reserve.address);
+            tokenBalance.should.be.bignumber.eq(0);
+            await token.transfer(
+                reserve.address /* to */,
+                web3.utils.toWei("5") /* value */,
+                { from: bank }
+            );
+
+            const useInternal = await reserve.shouldUseInternalInventory(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                web3.utils.toWei("3") /* srcAmount */,
+                token.address /* destToken */,
+                web3.utils.toWei("27") /* destAmount */
+            );
+            useInternal.should.be.false;
+        });
+
+        it("should use internal inventory with fees > 0", async () => {
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                9 /* token */
+            );
+            await uniswapFactoryMock.setRateTokenToEth(
+                10 /* token */,
+                1 /* eth */
+            );
+            await reserve.setFee(25, { from: admin });
+
+            // high minimum spread requirement
+            await reserve.setInternalActivationConfig(
+                token.address /* token */,
+                1000 /* minSpreadBps */,
+                0 /* premiumBps */,
+                { from: admin }
+            );
+
+            // set limits
+            await reserve.setInternalInventoryLimits(
+                token.address /* token */,
+                web3.utils.toWei("1") /* minBalance */,
+                web3.utils.toWei("1000") /* maxBalance */,
+                { from: operator }
+            );
+
+            const tokenBalance = await token.balanceOf(reserve.address);
+            tokenBalance.should.be.bignumber.eq(0);
+            await token.transfer(
+                reserve.address /* to */,
+                web3.utils.toWei("500") /* value */,
+                { from: bank }
+            );
+
+            const useInternal = await reserve.shouldUseInternalInventory(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                web3.utils.toWei("3") /* srcAmount */,
+                token.address /* destToken */,
+                web3.utils.toWei("27") /* destAmount */
+            );
+
+            useInternal.should.be.true;
+        });
+
+        it("fails if Token amount > MAX_QTY", async () => {
+            await uniswapFactoryMock.setRateEthToToken(
+                10 /* eth */,
+                21 /* token */
+            );
+            await uniswapFactoryMock.setRateTokenToEth(
+                20 /* token */,
+                9 /* eth */
+            );
+            await reserve.setFee(0, { from: admin });
+            await configureHighMinSpreadAndNoBalanceLimits();
+
+            await truffleAssert.reverts(
+                reserve.shouldUseInternalInventory(
+                    ETH_TOKEN_ADDRESS /* srcToken */,
+                    web3.utils.toWei("1") /* srcAmount */,
+                    token.address /* destToken */,
+                    KYBER_MAX_QTY /* destAmount */
+                )
+            );
+        });
+
+        it("fails if ETH amount > MAX_QTY", async () => {
+            await uniswapFactoryMock.setRateEthToToken(
+                10 /* eth */,
+                21 /* token */
+            );
+            await uniswapFactoryMock.setRateTokenToEth(
+                20 /* token */,
+                9 /* eth */
+            );
+            await reserve.setFee(0, { from: admin });
+            await configureHighMinSpreadAndNoBalanceLimits();
+
+            await truffleAssert.reverts(
+                reserve.shouldUseInternalInventory(
+                    ETH_TOKEN_ADDRESS /* srcToken */,
+                    KYBER_MAX_QTY /* srcAmount */,
+                    token.address /* destToken */,
+                    web3.utils.toWei("2") /* destAmount */
+                )
+            );
+        });
+
+        it("Token -> ETH: returns false if ETH balance too low", async () => {
+            await uniswapFactoryMock.setRateEthToToken(
+                10 /* eth */,
+                21 /* token */
+            );
+            await uniswapFactoryMock.setRateTokenToEth(
+                20 /* token */,
+                9 /* eth */
+            );
+            await reserve.setFee(0, { from: admin });
+
+            // high minimum spread requirement
+            await reserve.setInternalActivationConfig(
+                token.address /* token */,
+                1000 /* minSpreadBps */,
+                0 /* premiumBps */,
+                { from: admin }
+            );
+
+            // set limits
+            await reserve.setInternalInventoryLimits(
+                token.address /* token */,
+                web3.utils.toWei("1") /* minBalance */,
+                web3.utils.toWei("10") /* maxBalance */,
+                { from: operator }
+            );
+
+            // Fund reserve with 1 ETH
+            const ethBalance = await helper.getBalancePromise(reserve.address);
+            ethBalance.should.be.bignumber.eq(0);
+            await helper.sendEtherWithPromise(
+                bank /* sender */,
+                reserve.address /* recv */,
+                web3.utils.toWei("1") /* amount */
+            );
+
+            // Does not have enough ETH
+            const useInternal = await reserve.shouldUseInternalInventory(
+                token.address /* srcToken */,
+                web3.utils.toWei("4") /* srcAmount */,
+                ETH_TOKEN_ADDRESS /* destToken */,
+                web3.utils.toWei("2") /* destAmount */
+            );
+
+            useInternal.should.be.false;
+        });
+
+        it("Token -> ETH: returns false if token balance too high", async () => {
+            await uniswapFactoryMock.setRateEthToToken(
+                10 /* eth */,
+                21 /* token */
+            );
+            await uniswapFactoryMock.setRateTokenToEth(
+                20 /* token */,
+                9 /* eth */
+            );
+            await reserve.setFee(0, { from: admin });
+
+            // high minimum spread requirement
+            await reserve.setInternalActivationConfig(
+                token.address /* token */,
+                1000 /* minSpreadBps */,
+                0 /* premiumBps */,
+                { from: admin }
+            );
+
+            // set limits
+            await reserve.setInternalInventoryLimits(
+                token.address /* token */,
+                web3.utils.toWei("1") /* minBalance */,
+                web3.utils.toWei("10") /* maxBalance */,
+                { from: operator }
+            );
+
+            // Fund reserve with 5 ETH (so it will not be a limiting factor)
+            const ethBalance = await helper.getBalancePromise(reserve.address);
+            ethBalance.should.be.bignumber.eq(0);
+            await helper.sendEtherWithPromise(
+                bank /* sender */,
+                reserve.address /* recv */,
+                web3.utils.toWei("5") /* amount */
+            );
+
+            // Fund reserve with 5 Tokens
+            const tokenBalance = await token.balanceOf(reserve.address);
+            tokenBalance.should.be.bignumber.eq(0);
+            await token.transfer(
+                reserve.address /* to */,
+                web3.utils.toWei("5") /* value */,
+                { from: bank }
+            );
+
+            // Increasing ETH balance by 6 ETH takes it above maximum limit
+            const useInternal = await reserve.shouldUseInternalInventory(
+                token.address /* srcToken */,
+                web3.utils.toWei("6") /* srcAmount */,
+                ETH_TOKEN_ADDRESS /* destToken */,
+                web3.utils.toWei("3") /* destAmount */
+            );
+
+            useInternal.should.be.false;
+        });
+
+        it("ETH -> Token: returns false if token balance too low", async () => {
+            // TODO: here and in the other places, is this required?
+            await uniswapFactoryMock.setRateEthToToken(
+                10 /* eth */,
+                21 /* token */
+            );
+            await uniswapFactoryMock.setRateTokenToEth(
+                20 /* token */,
+                9 /* eth */
+            );
+            await reserve.setFee(0, { from: admin });
+
+            // high minimum spread requirement
+            await reserve.setInternalActivationConfig(
+                token.address /* token */,
+                1000 /* minSpreadBps */,
+                0 /* premiumBps */,
+                { from: admin }
+            );
+
+            // set limits
+            await reserve.setInternalInventoryLimits(
+                token.address /* token */,
+                web3.utils.toWei("1") /* minBalance */,
+                web3.utils.toWei("10") /* maxBalance */,
+                { from: operator }
+            );
+
+            // Fund reserve with 5 ETH (so it will not be a limiting factor)
+            const ethBalance = await helper.getBalancePromise(reserve.address);
+            ethBalance.should.be.bignumber.eq(0);
+            await helper.sendEtherWithPromise(
+                bank /* sender */,
+                reserve.address /* recv */,
+                web3.utils.toWei("5") /* amount */
+            );
+
+            // Fund reserve with 5 Tokens
+            const tokenBalance = await token.balanceOf(reserve.address);
+            tokenBalance.should.be.bignumber.eq(0);
+            await token.transfer(
+                reserve.address /* to */,
+                web3.utils.toWei("5") /* value */,
+                { from: bank }
+            );
+
+            // Reducing ETH balance by 4.5 ETH takes it below minimum limit
+            const useInternal = await reserve.shouldUseInternalInventory(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                web3.utils.toWei("3") /* srcAmount */,
+                token.address /* destToken */,
+                web3.utils.toWei("4.5") /* destAmount */
+            );
+
+            useInternal.should.be.false;
+        });
+
+        it("returns false if there is arbitrage", async () => {
+            // Arbitrage rates!
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                11 /* token */
+            );
+            await uniswapFactoryMock.setRateTokenToEth(
+                10 /* token */,
+                1 /* eth */
+            );
+            await reserve.setFee(0, { from: admin });
+
+            // high minimum spread requirement
+            await reserve.setInternalActivationConfig(
+                token.address /* token */,
+                1000 /* minSpreadBps */,
+                0 /* premiumBps */,
+                { from: admin }
+            );
+
+            // set limits
+            await reserve.setInternalInventoryLimits(
+                token.address /* token */,
+                web3.utils.toWei("1") /* minBalance */,
+                web3.utils.toWei("10") /* maxBalance */,
+                { from: operator }
+            );
+
+            // Fund reserve with 5 ETH (so it will not be a limiting factor)
+            const ethBalance = await helper.getBalancePromise(reserve.address);
+            ethBalance.should.be.bignumber.eq(0);
+            await helper.sendEtherWithPromise(
+                bank /* sender */,
+                reserve.address /* recv */,
+                web3.utils.toWei("5") /* amount */
+            );
+
+            // Fund reserve with 5 Tokens
+            const tokenBalance = await token.balanceOf(reserve.address);
+            tokenBalance.should.be.bignumber.eq(0);
+            await token.transfer(
+                reserve.address /* to */,
+                web3.utils.toWei("5") /* value */,
+                { from: bank }
+            );
+
+            const useInternal = await reserve.shouldUseInternalInventory(
+                ETH_TOKEN_ADDRESS /* srcToken */,
+                web3.utils.toWei("3") /* srcAmount */,
+                token.address /* destToken */,
+                web3.utils.toWei("4.5") /* destAmount */
+            );
+
+            useInternal.should.be.false;
+        });
+    });
+
+    describe("#calculateSpreadBps", () => {
+        it("zero spread", async () => {
+            const zeroSpread = await reserve.calculateSpreadBps(5, 5);
+
+            zeroSpread.should.be.bignumber.eq(0);
+        });
+
+        it("ask == bid: zero spread", async () => {
+            const zeroSpread = await reserve.calculateSpreadBps(5, 5);
+
+            zeroSpread.should.be.bignumber.eq(0);
+        });
+
+        it("2 BPS spread", async () => {
+            const spread = await reserve.calculateSpreadBps(9999, 10001);
+
+            spread.should.be.bignumber.eq(2);
         });
     });
 });
