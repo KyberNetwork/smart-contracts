@@ -457,8 +457,8 @@ contract("KyberUniswapReserve", async accounts => {
                 20 /* token */
             );
             await uniswapFactoryMock.setRateTokenToEth(
-                24 /* token */,
-                10 /* eth */
+                10 /* eth */,
+                24 /* token */
             );
 
             // minimum spread requirement
@@ -916,8 +916,8 @@ contract("KyberUniswapReserve", async accounts => {
         it("Token -> ETH, fail if msg.value != 0", async () => {
             await reserve.setFee(25, { from: admin });
             await uniswapFactoryMock.setRateTokenToEth(
-                2 /* token */,
-                1 /* eth */
+                1 /* eth */,
+                2 /* token */
             );
             const amount = new BigNumber(10).pow(18);
             const conversionRate = new BigNumber(10)
@@ -1011,8 +1011,8 @@ contract("KyberUniswapReserve", async accounts => {
                 9 /* token */
             );
             await uniswapFactoryMock.setRateTokenToEth(
-                10 /* token */,
-                1 /* eth */
+                1 /* eth */,
+                10 /* token */
             );
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10)
@@ -1037,6 +1037,7 @@ contract("KyberUniswapReserve", async accounts => {
                 { from: operator }
             );
 
+            // 1/10 ETH is actually required
             await helper.sendEtherWithPromise(
                 bank /* sender */,
                 reserve.address /* recv */,
@@ -1048,6 +1049,12 @@ contract("KyberUniswapReserve", async accounts => {
                 reserve.address
             );
             const reserveTokenBefore = await token.balanceOf(reserve.address);
+            const uniswapMockEthBefore = await helper.getBalancePromise(
+                uniswapFactoryMock.address
+            );
+            const uniswapMockTokenBefore = await token.balanceOf(
+                uniswapFactoryMock.address
+            );
 
             const traded = await reserve.trade.call(
                 token.address /* srcToken */,
@@ -1072,13 +1079,28 @@ contract("KyberUniswapReserve", async accounts => {
                 reserve.address
             );
             const reserveTokenAfter = await token.balanceOf(reserve.address);
+            const uniswapMockEthAfter = await helper.getBalancePromise(
+                uniswapFactoryMock.address
+            );
+            const uniswapMockTokenAfter = await token.balanceOf(
+                uniswapFactoryMock.address
+            );
 
             traded.should.be.true;
             reserveEthAfter.should.be.bignumber.eq(
-                reserveEthBefore.sub(new BigNumber(amount).div(10).mul(0.9975))
+                reserveEthBefore.sub(
+                    new BigNumber(10)
+                        .pow(18)
+                        .div(10)
+                        .mul(0.9975)
+                )
             );
             reserveTokenAfter.should.be.bignumber.eq(
-                reserveTokenBefore.add(amount)
+                reserveTokenBefore.add(new BigNumber(10).pow(18))
+            );
+            uniswapMockEthAfter.should.be.bignumber.eq(uniswapMockEthBefore);
+            uniswapMockTokenAfter.should.be.bignumber.eq(
+                uniswapMockTokenBefore
             );
         });
 
@@ -1089,8 +1111,8 @@ contract("KyberUniswapReserve", async accounts => {
                 9 /* token */
             );
             await uniswapFactoryMock.setRateTokenToEth(
-                10 /* token */,
-                1 /* eth */
+                1 /* eth */,
+                10 /* token */
             );
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10)
@@ -1165,8 +1187,8 @@ contract("KyberUniswapReserve", async accounts => {
                 9 /* token */
             );
             await uniswapFactoryMock.setRateTokenToEth(
-                10 /* token */,
-                1 /* eth */
+                1 /* eth */,
+                10 /* token */
             );
             const amount = web3.utils.toWei("1");
             const conversionRate = new BigNumber(10)
@@ -1735,16 +1757,6 @@ contract("KyberUniswapReserve", async accounts => {
         };
 
         it("spread above activation level - use internal inventory", async () => {
-            await uniswapFactoryMock.setRateEthToToken(
-                1 /* eth */,
-                9 /* token */
-            );
-            await uniswapFactoryMock.setRateTokenToEth(
-                10 /* token */,
-                1 /* eth */
-            );
-            await reserve.setFee(0, { from: admin });
-
             // high minimum spread requirement
             await reserve.setInternalActivationConfig(
                 token.address /* token */,
@@ -1769,32 +1781,24 @@ contract("KyberUniswapReserve", async accounts => {
                 { from: bank }
             );
 
+            // ETH -> Token: 1 -> 9
+            // Token -> ETH: 10 -> 1
             const useInternal = await reserve.shouldUseInternalInventory(
                 ETH_TOKEN_ADDRESS /* srcToken */,
                 web3.utils.toWei("3") /* srcAmount */,
                 token.address /* destToken */,
-                web3.utils.toWei("300") /* destAmount */
+                web3.utils.toWei("300") /* destAmount */,
+                new BigNumber(9).div(1) /* rateSrcDest */,
+                new BigNumber(10).div(1) /* rateDestSrc */
             );
 
             useInternal.should.be.true;
         });
 
         it("spread below activation level - do not use internal inventory", async () => {
-            // Spread of 2 BPS
-            await uniswapFactoryMock.setRateEthToToken(
-                1 /* eth */,
-                9999 /* token */
-            );
-            await uniswapFactoryMock.setRateTokenToEth(
-                10001 /* token */,
-                1 /* eth */
-            );
-            await reserve.setFee(0, { from: admin });
-
             // Minimum spread requirement: 10
             await reserve.setInternalActivationConfig(
                 token.address /* token */,
-                // 10 [> minSpreadBps <],
                 5 /* minSpreadBps */,
                 0 /* premiumBps */,
                 { from: admin }
@@ -1826,24 +1830,21 @@ contract("KyberUniswapReserve", async accounts => {
                 { from: bank }
             );
 
+            // Spread of 2 BPS
+            // ETH -> Token: 1 -> 9999
+            // Token -> ETH: 10001 -> 1
             const useInternal = await reserve.shouldUseInternalInventory(
                 ETH_TOKEN_ADDRESS /* srcToken */,
                 web3.utils.toWei("3") /* srcAmount */,
                 token.address /* destToken */,
-                web3.utils.toWei("27") /* destAmount */
+                web3.utils.toWei("27") /* destAmount */,
+                new BigNumber(9999).div(1) /* rateSrcDest */,
+                new BigNumber(10001).div(1) /* rateDestSrc */
             );
             useInternal.should.be.false;
         });
 
         it("should use internal inventory with fees > 0", async () => {
-            await uniswapFactoryMock.setRateEthToToken(
-                1 /* eth */,
-                9 /* token */
-            );
-            await uniswapFactoryMock.setRateTokenToEth(
-                10 /* token */,
-                1 /* eth */
-            );
             await reserve.setFee(25, { from: admin });
 
             // high minimum spread requirement
@@ -1870,71 +1871,55 @@ contract("KyberUniswapReserve", async accounts => {
                 { from: bank }
             );
 
+            // ETH -> Token: 1 -> 9
+            // Token -> ETH: 10 -> 1
             const useInternal = await reserve.shouldUseInternalInventory(
                 ETH_TOKEN_ADDRESS /* srcToken */,
                 web3.utils.toWei("3") /* srcAmount */,
                 token.address /* destToken */,
-                web3.utils.toWei("27") /* destAmount */
+                web3.utils.toWei("27") /* destAmount */,
+                new BigNumber(9).div(1).mul(0.9975) /* rateSrcDest */,
+                new BigNumber(10).div(1).mul(0.9975) /* rateDestSrc */
             );
 
             useInternal.should.be.true;
         });
 
         it("fails if Token amount > MAX_QTY", async () => {
-            await uniswapFactoryMock.setRateEthToToken(
-                10 /* eth */,
-                21 /* token */
-            );
-            await uniswapFactoryMock.setRateTokenToEth(
-                20 /* token */,
-                9 /* eth */
-            );
-            await reserve.setFee(0, { from: admin });
             await configureHighMinSpreadAndNoBalanceLimits();
 
+            // ETH -> Token: 1 -> 9
+            // Token -> ETH: 10 -> 1
             await truffleAssert.reverts(
                 reserve.shouldUseInternalInventory(
                     ETH_TOKEN_ADDRESS /* srcToken */,
                     web3.utils.toWei("1") /* srcAmount */,
                     token.address /* destToken */,
-                    KYBER_MAX_QTY /* destAmount */
+                    KYBER_MAX_QTY /* destAmount */,
+                    new BigNumber(9).div(1) /* rateSrcDest */,
+                    new BigNumber(10).div(1) /* rateDestSrc */
                 )
             );
         });
 
         it("fails if ETH amount > MAX_QTY", async () => {
-            await uniswapFactoryMock.setRateEthToToken(
-                10 /* eth */,
-                21 /* token */
-            );
-            await uniswapFactoryMock.setRateTokenToEth(
-                20 /* token */,
-                9 /* eth */
-            );
-            await reserve.setFee(0, { from: admin });
             await configureHighMinSpreadAndNoBalanceLimits();
 
+            // ETH -> Token: 10 -> 21
+            // Token -> ETH: 20 -> 9
             await truffleAssert.reverts(
                 reserve.shouldUseInternalInventory(
                     ETH_TOKEN_ADDRESS /* srcToken */,
                     KYBER_MAX_QTY /* srcAmount */,
                     token.address /* destToken */,
-                    web3.utils.toWei("2") /* destAmount */
+                    web3.utils.toWei("2") /* destAmount */,
+                    new BigNumber(21).div(9) /* rateSrcDest */,
+                    new BigNumber(20).div(9) /* rateDestSrc */
                 )
             );
         });
 
         it("Token -> ETH: returns false if ETH balance too low", async () => {
-            await uniswapFactoryMock.setRateEthToToken(
-                10 /* eth */,
-                21 /* token */
-            );
-            await uniswapFactoryMock.setRateTokenToEth(
-                20 /* token */,
-                9 /* eth */
-            );
-            await reserve.setFee(0, { from: admin });
-
             // high minimum spread requirement
             await reserve.setInternalActivationConfig(
                 token.address /* token */,
@@ -1961,27 +1946,21 @@ contract("KyberUniswapReserve", async accounts => {
             );
 
             // Does not have enough ETH
+            // ETH -> Token: 10 -> 21
+            // Token -> ETH: 20 -> 9
             const useInternal = await reserve.shouldUseInternalInventory(
                 token.address /* srcToken */,
                 web3.utils.toWei("4") /* srcAmount */,
                 ETH_TOKEN_ADDRESS /* destToken */,
-                web3.utils.toWei("2") /* destAmount */
+                web3.utils.toWei("2") /* destAmount */,
+                new BigNumber(21).div(10) /* rateSrcDest */,
+                new BigNumber(20).div(9) /* rateDestSrc */
             );
 
             useInternal.should.be.false;
         });
 
         it("Token -> ETH: returns false if token balance too high", async () => {
-            await uniswapFactoryMock.setRateEthToToken(
-                10 /* eth */,
-                21 /* token */
-            );
-            await uniswapFactoryMock.setRateTokenToEth(
-                20 /* token */,
-                9 /* eth */
-            );
-            await reserve.setFee(0, { from: admin });
-
             // high minimum spread requirement
             await reserve.setInternalActivationConfig(
                 token.address /* token */,
@@ -2017,28 +1996,21 @@ contract("KyberUniswapReserve", async accounts => {
             );
 
             // Increasing ETH balance by 6 ETH takes it above maximum limit
+            // ETH -> Token: 10 -> 21
+            // Token -> ETH: 20 -> 9
             const useInternal = await reserve.shouldUseInternalInventory(
                 token.address /* srcToken */,
                 web3.utils.toWei("6") /* srcAmount */,
                 ETH_TOKEN_ADDRESS /* destToken */,
-                web3.utils.toWei("3") /* destAmount */
+                web3.utils.toWei("3") /* destAmount */,
+                new BigNumber(21).div(10) /* rateSrcDest */,
+                new BigNumber(20).div(9) /* rateDestSrc */
             );
 
             useInternal.should.be.false;
         });
 
         it("ETH -> Token: returns false if token balance too low", async () => {
-            // TODO: here and in the other places, is this required?
-            await uniswapFactoryMock.setRateEthToToken(
-                10 /* eth */,
-                21 /* token */
-            );
-            await uniswapFactoryMock.setRateTokenToEth(
-                20 /* token */,
-                9 /* eth */
-            );
-            await reserve.setFee(0, { from: admin });
-
             // high minimum spread requirement
             await reserve.setInternalActivationConfig(
                 token.address /* token */,
@@ -2074,28 +2046,21 @@ contract("KyberUniswapReserve", async accounts => {
             );
 
             // Reducing ETH balance by 4.5 ETH takes it below minimum limit
+            // ETH -> Token: 10 -> 21
+            // Token -> ETH: 20 -> 9
             const useInternal = await reserve.shouldUseInternalInventory(
                 ETH_TOKEN_ADDRESS /* srcToken */,
                 web3.utils.toWei("3") /* srcAmount */,
                 token.address /* destToken */,
-                web3.utils.toWei("4.5") /* destAmount */
+                web3.utils.toWei("4.5") /* destAmount */,
+                new BigNumber(21).div(10) /* rateSrcDest */,
+                new BigNumber(20).div(9) /* rateDestSrc */
             );
 
             useInternal.should.be.false;
         });
 
         it("returns false if there is arbitrage", async () => {
-            // Arbitrage rates!
-            await uniswapFactoryMock.setRateEthToToken(
-                1 /* eth */,
-                11 /* token */
-            );
-            await uniswapFactoryMock.setRateTokenToEth(
-                10 /* token */,
-                1 /* eth */
-            );
-            await reserve.setFee(0, { from: admin });
-
             // high minimum spread requirement
             await reserve.setInternalActivationConfig(
                 token.address /* token */,
@@ -2130,11 +2095,16 @@ contract("KyberUniswapReserve", async accounts => {
                 { from: bank }
             );
 
+            // Arbitrage rates!
+            // ETH -> Token: 1 -> 11
+            // Token -> ETH: 10 -> 1
             const useInternal = await reserve.shouldUseInternalInventory(
                 ETH_TOKEN_ADDRESS /* srcToken */,
                 web3.utils.toWei("3") /* srcAmount */,
                 token.address /* destToken */,
-                web3.utils.toWei("4.5") /* destAmount */
+                web3.utils.toWei("4.5") /* destAmount */,
+                new BigNumber(11).div(1) /* rateSrcDest */,
+                new BigNumber(10).div(1) /* rateDestSrc */
             );
 
             useInternal.should.be.false;

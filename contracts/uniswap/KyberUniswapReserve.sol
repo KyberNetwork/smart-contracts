@@ -124,18 +124,21 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         }
 
         uint convertedQuantity;
-        uint rate;
-        (convertedQuantity, rate) = convertAndDeductFee(src, dest, srcQty);
+        uint rateSrcDest;
+        uint rateDestSrc;
+        (convertedQuantity, rateSrcDest) = calcUniswapConversion(src, dest, srcQty);
+        (, rateDestSrc) = calcUniswapConversion(dest, src, convertedQuantity);
 
         uint quantityWithPremium = addPremium(token, convertedQuantity);
-        bool usingInternalInventory = shouldUseInternalInventory(
+
+        if (shouldUseInternalInventory(
             src, /* srcToken */
             srcQty, /* srcAmount */
             dest, /* destToken */
-            quantityWithPremium /* destAmount */
-        );
-
-        if (usingInternalInventory) {
+            quantityWithPremium, /* destAmount */
+            rateSrcDest, /* rateSrcDest */
+            rateDestSrc /* rateDestSrc */
+        )) {
             // If using internal inventory add premium to converted quantity
             return calcRateFromQty(
                 srcQty, /* srcAmount */
@@ -145,7 +148,7 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             );
         } else {
             // Use rate calculated from uniswap quantities after fees
-            return rate;
+            return rateSrcDest;
         }
     }
 
@@ -186,6 +189,12 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
                 require(msg.value == 0);
         }
 
+        // Making sure srcAmount has been transfered to the reserve.
+        // If srcToken is ETH the value has already been transfered by calling
+        // the function.
+        if (srcToken != ETH_TOKEN_ADDRESS)
+            require(srcToken.transferFrom(msg.sender, address(this), srcAmount));
+
         uint expectedDestAmount = calcDestAmount(
             srcToken, /* src */
             destToken, /* dest */
@@ -193,18 +202,25 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             conversionRate /* rate */
         );
 
-        bool useInternalInventory = shouldUseInternalInventory(
-            srcToken,
-            srcAmount,
+        uint rateDestSrc;
+        (, rateDestSrc) = calcUniswapConversion(
             destToken,
+            srcToken,
             expectedDestAmount
+        );
+        bool useInternalInventory = shouldUseInternalInventory(
+            srcToken, /* srcToken */
+            0, /* srcAmount */
+            destToken, /* destToken */
+            expectedDestAmount, /* destAmount */
+            conversionRate, /* rateSrcDest */
+            rateDestSrc /* rateDestSrc */
         );
 
         uint destAmount;
         UniswapExchange exchange;
         if (srcToken == ETH_TOKEN_ADDRESS) {
             if (!useInternalInventory) {
-                // Convert with Uniswap
                 // Deduct fees (in ETH) before converting
                 uint quantity = deductFee(srcAmount);
                 exchange = UniswapExchange(tokenExchange[address(destToken)]);
@@ -218,10 +234,7 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             // Transfer user-expected dest amount
             require(destToken.transfer(destAddress, expectedDestAmount));
         } else {
-            require(srcToken.transferFrom(msg.sender, address(this), srcAmount));
-
             if (!useInternalInventory) {
-                // Convert with Uniswap
                 exchange = UniswapExchange(tokenExchange[address(srcToken)]);
                 destAmount = exchange.tokenToEthSwapInput(
                     srcAmount,
@@ -416,11 +429,20 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         KyberNetworkSet(kyberNetwork);
     }
 
+    /*
+     * Uses amounts and rates to check if the reserve's internal inventory can
+     * be used directly.
+     *
+     * rateEthToToken and rateTokenToEth are in kyber rate format meaning
+     * rate as numerator and 1e18 as denominator.
+     */
     function shouldUseInternalInventory(
         ERC20 srcToken,
         uint srcAmount,
         ERC20 destToken,
-        uint destAmount
+        uint destAmount,
+        uint rateSrcDest,
+        uint rateDestSrc
     )
         public
         view
@@ -431,49 +453,38 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
         // Check for internal inventory balance limitations
         ERC20 token;
-        uint tokenAmount;
-        uint ethAmount;
+        uint rateEthToToken;
+        uint rateTokenToEth;
         if (srcToken == ETH_TOKEN_ADDRESS) {
-            //  ETH -> Token
             token = destToken;
-            tokenAmount = destAmount;
-            ethAmount = srcAmount;
             uint tokenBalance = token.balanceOf(this);
             if (
-                tokenBalance < tokenAmount ||
-                tokenBalance - tokenAmount < internalInventoryMin[token]
+                tokenBalance < destAmount ||
+                tokenBalance - destAmount < internalInventoryMin[token]
             ) {
                 return false;
             }
+            rateEthToToken = rateSrcDest;
+            // Normalize rate direction to enable comparison for checking spread
+            // and arbitrage: from ETH / Token -> Token / ETH
+            rateTokenToEth = 10 ** 36 / rateDestSrc;
         } else {
-            //  Token -> ETH
             token = srcToken;
-            tokenAmount = srcAmount;
-            ethAmount = destAmount;
-            if (this.balance < ethAmount) return false;
-            if (token.balanceOf(this) + tokenAmount > internalInventoryMax[token]) {
+            if (this.balance < destAmount) return false;
+            if (token.balanceOf(this) + srcAmount > internalInventoryMax[token]) {
                 return false;
             }
+            rateEthToToken = rateDestSrc;
+            // Normalize rate direction to enable comparison for checking spread
+            // and arbitrage: from ETH / Token -> Token / ETH
+            rateTokenToEth = 10 ** 36 / rateSrcDest;
         }
-
-        uint rateEthToToken;
-        (, rateEthToToken) = convertAndDeductFee(
-            ETH_TOKEN_ADDRESS,
-            token,
-            ethAmount
-        );
-        uint rateTokenToEth;
-        (, rateTokenToEth) = convertAndDeductFee(
-            token,
-            ETH_TOKEN_ADDRESS,
-            tokenAmount
-        );
 
         // Check for arbitrage
         if (rateTokenToEth < rateEthToToken) return false;
 
         uint activationSpread = internalActivationMinSpreadBps[token];
-        return calculateSpreadBps(rateEthToToken, rateTokenToEth) > activationSpread;
+        return calculateSpreadBps(rateEthToToken, rateTokenToEth) >= activationSpread;
     }
 
     // Spread calculation is (ask - bid) / ((ask + bid) / 2).
@@ -512,33 +523,31 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         return amount * (10000 + internalPricePremiumBps[token]) / 10000;
     }
 
-    function convertAndDeductFee(
+    function calcUniswapConversion(
         ERC20 src,
         ERC20 dest,
         uint srcQty
     )
         internal
         view
-        returns(uint convertedQuantity, uint rate)
+        returns(uint destQty, uint rate)
     {
         UniswapExchange exchange;
         if (src == ETH_TOKEN_ADDRESS) {
-            // ETH -> Token
             exchange = UniswapExchange(tokenExchange[address(dest)]);
-            convertedQuantity = exchange.getEthToTokenInputPrice(
+            destQty = exchange.getEthToTokenInputPrice(
                 deductFee(srcQty)
             );
         } else {
-            // Token -> ETH
             exchange = UniswapExchange(tokenExchange[address(src)]);
-            convertedQuantity = deductFee(
+            destQty = deductFee(
                 exchange.getTokenToEthInputPrice(srcQty)
             );
         }
 
         rate = calcRateFromQty(
             srcQty, /* srcAmount */
-            convertedQuantity, /* destAmount */
+            destQty, /* destAmount */
             getDecimals(src), /* srcDecimals */
             getDecimals(dest) /* dstDecimals */
         );
