@@ -129,7 +129,6 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
         returns (bool didRevert, uint rate)
     {
         address addr = address(kyberNetwork);  // kyber address
-        uint num = msg.gas - 2100;
         uint success;
 
         assembly {
@@ -142,13 +141,12 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
 
             // input size = sig + ERC20 (address) + ERC20 + uint
             // = 4 + 32 + 32 + 32 = 100 = 0x64
-            success := call(
-                num,  // gas
+            success := staticcall(
+                gas,  // gas
                 addr, // Kyber addr
-                0,    // no wei value
                 x,    // Inputs at location x
                 0x64, // Inputs size bytes
-                add(x, 0x64) ,    // output storage after input
+                add(x, 0x64),    // output storage after input
                 0x40) // Output size are (uint, uint) = 64 bytes
 
             rate := mload(add(x,0x84))  //Assign 2nd output to rate, first output not used,

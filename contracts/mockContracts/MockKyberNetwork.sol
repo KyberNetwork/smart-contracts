@@ -60,6 +60,8 @@ contract MockKyberNetwork {
         public view
         returns(uint expectedRate, uint slippageRate)
     {
+        srcQty;
+
         expectedRate = pairRate[keccak256(src, dest)];
         slippageRate = expectedRate * 97 / 100;
     }
