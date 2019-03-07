@@ -43,6 +43,19 @@ interface UniswapFactory {
 }
 
 
+/*
+ * A reserve that connects to Uniswap.
+ *
+ * This reserve makes use of an internal inventory for locally filling orders
+ * using the reserve's inventory when certain conditions are met.
+ * Conditions are:
+ * - After trading the inventory will remain within defined limits.
+ * - Uniswap prices do not display internal arbitrage.
+ * - Uniswap ask and bid prices meet minimum spread requirements.
+ *
+ * An additional premium may be added to the converted price for optional
+ * promotions.
+ */
 contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
     // Parts per 10000
     uint public constant DEFAULT_FEE_BPS = 25;
@@ -112,6 +125,7 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
         if (!isValidTokens(src, dest)) return 0;
         if (!tradeEnabled) return 0;
+        if (srcQty == 0) return 0;
 
         ERC20 token;
         if (src == ETH_TOKEN_ADDRESS) {
@@ -484,21 +498,28 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         if (rateTokenToEth < rateEthToToken) return false;
 
         uint activationSpread = internalActivationMinSpreadBps[token];
-        return calculateSpreadBps(rateEthToToken, rateTokenToEth) >= activationSpread;
+        uint spread = uint(calculateSpreadBps(rateEthToToken, rateTokenToEth));
+        return spread >= activationSpread;
     }
 
-    // Spread calculation is (ask - bid) / ((ask + bid) / 2).
-    // We multiply by 10000 to get result in BPS.
+    /*
+     * Spread calculation is (ask - bid) / ((ask + bid) / 2).
+     * We multiply by 10000 to get result in BPS.
+     *
+     * Note: if askRate > bidRate result will be negative indicating
+     * internal arbitrage.
+     */
     function calculateSpreadBps(
-        uint rate1,
-        uint rate2
+        uint _askRate,
+        uint _bidRate
     )
         public
         pure
-        returns(uint)
+        returns(int)
     {
-        uint diff = rate1 > rate2 ? rate1 - rate2 : rate2 - rate1;
-        return 10000 * 2 * diff / (rate1 + rate2);
+        int askRate = int(_askRate);
+        int bidRate = int(_bidRate);
+        return 10000 * 2 * (askRate - bidRate) / (askRate + bidRate);
     }
 
     function deductFee(

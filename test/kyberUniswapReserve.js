@@ -545,6 +545,23 @@ contract("KyberUniswapReserve", async accounts => {
                     .mul(1.01) // premiumBps
             );
         });
+
+        it("srcQty 0 -> rate of 0", async () => {
+            await reserve.setFee(0, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                1 /* eth */,
+                1 /* token */
+            );
+
+            const rate = await reserve.getConversionRate(
+                ETH_TOKEN_ADDRESS /* src */,
+                token.address /* dst */,
+                0 /* srcQty */,
+                0 /* blockNumber */
+            );
+
+            rate.should.be.bignumber.eq(0);
+        });
     });
 
     describe("#trade", () => {
@@ -2125,9 +2142,18 @@ contract("KyberUniswapReserve", async accounts => {
         });
 
         it("2 BPS spread", async () => {
-            const spread = await reserve.calculateSpreadBps(9999, 10001);
+            const spread = await reserve.calculateSpreadBps(10001, 9999);
 
             spread.should.be.bignumber.eq(2);
+        });
+
+        it("-10 BPS spread (internal arb)", async () => {
+            const spread = await reserve.calculateSpreadBps(
+                9995 /* ask */,
+                10005 /* bid */
+            );
+
+            spread.should.be.bignumber.eq(-10);
         });
     });
 });
