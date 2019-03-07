@@ -6,6 +6,8 @@ import "../ERC20Interface.sol";
 
 /// this mock is used when only simple actions are required. no reserves are involved.
 contract MockKyberNetwork {
+    uint constant public REVERT_HINT = 123454321;
+
     mapping(bytes32=>uint) public pairRate; //rate in precision units. i.e. if rate is 10**18 its same as 1:1
     uint constant PRECISION = 10 ** 18;
     ERC20 constant internal ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
@@ -58,7 +60,8 @@ contract MockKyberNetwork {
         public view
         returns(uint expectedRate, uint slippageRate)
     {
-        srcQty;
+        if (srcQty == REVERT_HINT) revert();
+
         expectedRate = pairRate[keccak256(src, dest)];
         slippageRate = expectedRate * 97 / 100;
     }
@@ -69,4 +72,13 @@ contract MockKyberNetwork {
         return(0, rate);
     }
 
+    function searchBestRate(ERC20 src, ERC20 dest, uint srcAmount, bool usePermissionLess) public view
+        returns(uint obsolete, uint rate)
+    {
+        srcAmount;
+        usePermissionLess;
+
+        rate = pairRate[keccak256(src, dest)];
+        return(0, rate);
+    }
 }
