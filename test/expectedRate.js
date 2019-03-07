@@ -557,7 +557,7 @@ contract('ExpectedRate', function(accounts) {
         assert.equal(myRate4[0].valueOf(), kncToEthRatePrecision.valueOf() * 1, "expected rate in arbitrage");
     });
 
-    it("call getExpectedRate call to kyber reverts. getExpectedRate should return 0 and not revert.", async() => {
+    it("call getExpectedRate call to kyber reverts. getExpectedRate should return 0 and not revert. without permissionless", async() => {
         const mockNetwork = await MockNetwork.new();
         const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
         await tempExpectedRate.addOperator(operator);
@@ -581,23 +581,60 @@ contract('ExpectedRate', function(accounts) {
         // see REVERT_HINT causes revert on network level
         const REVERT_HINT = await mockNetwork.REVERT_HINT();
         try {
-            await mockNetwork.getExpectedRate(ethAddress, token.address, REVERT_HINT);
+            await mockNetwork.findBestRate(ethAddress, token.address, REVERT_HINT);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
-console.log("here3")
 
-        let rates = await mockNetwork.findBestRate(ethAddress, token.address, 4500);
-        log("rates")
-        log(rates)
+        // this returns good values - no revert
+        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, 5000, false);
 
-//        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, 100000, false);
-        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, 4500, false);
+        assert(rates[0].valueOf() > 0, "expected rate > 0");
+        assert(rates[1].valueOf() > 0, "expected rate > 0");
 
-log("rates")
-log(rates)
         rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, REVERT_HINT, false);
+        assert.equal(rates[0].valueOf(), 0, "unexpected rate");
+        assert.equal(rates[1].valueOf(), 0, "unexpected rate");
+    })
+
+    it("call getExpectedRate call to kyber reverts. getExpectedRate should return 0 and not revert. including permissionless", async() => {
+        const mockNetwork = await MockNetwork.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+
+        const token = await TestToken.new("someToke", "some", 16);
+
+        const rate = precisionUnits.mul(1.01);
+        await mockNetwork.setPairRate(ethAddress, token.address, rate);
+        await mockNetwork.setPairRate(token.address, ethAddress, rate);
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        await mockNetwork.getExpectedRate(ethAddress, token.address, 1000);
+
+        // see REVERT_HINT causes revert on network level
+        const REVERT_HINT = await mockNetwork.REVERT_HINT();
+        try {
+            await mockNetwork.findBestRate(ethAddress, token.address, REVERT_HINT);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // this returns good values - no revert
+        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, 5000, true);
+
+        assert(rates[0].valueOf() > 0, "expected rate > 0");
+        assert(rates[1].valueOf() > 0, "expected rate > 0");
+
+        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, REVERT_HINT, true);
         assert.equal(rates[0].valueOf(), 0, "unexpected rate");
         assert.equal(rates[1].valueOf(), 0, "unexpected rate");
     })

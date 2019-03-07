@@ -60,14 +60,24 @@ contract MockKyberNetwork {
         public view
         returns(uint expectedRate, uint slippageRate)
     {
-        if (srcQty == REVERT_HINT) revert();
-
         expectedRate = pairRate[keccak256(src, dest)];
         slippageRate = expectedRate * 97 / 100;
     }
 
     function findBestRate(ERC20 src, ERC20 dest, uint srcAmount) public view returns(uint obsolete, uint rate) {
         srcAmount;
+
+        require (srcAmount != REVERT_HINT);
+
+        rate = pairRate[keccak256(src, dest)];
+        return(0, rate);
+    }
+
+    function findBestRateOnlyPermission(ERC20 src, ERC20 dest, uint srcAmount) public view returns(uint obsolete, uint rate) {
+        srcAmount;
+
+        require (srcAmount != REVERT_HINT);
+
         rate = pairRate[keccak256(src, dest)];
         return(0, rate);
     }
