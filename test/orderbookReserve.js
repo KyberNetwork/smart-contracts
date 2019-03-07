@@ -2571,8 +2571,7 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(list[0].valueOf(), sellOrder1ID);
             assert.equal(list[1].valueOf(), sellOrder2ID);
 
-            let expectedGasDiff4BatchOrders = 100000;
-
+            let expectedGasDiff4BatchOrders = 65000;
             assert(updateBatchWithHintGas < (updateBatchNoHintGas - expectedGasDiff4BatchOrders), "batch with hint gas: " + updateBatchWithHintGas +
                 " updateBatchNoHintGas " + updateBatchNoHintGas + " expected diff: " + expectedGasDiff4BatchOrders);
         });
@@ -4760,6 +4759,25 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
         //see can take order
         let totalPayValue = orderDstWei;
         rc = await reserve.trade(ethAddress, totalPayValue, tokenAdd, user1, lowRate, false, {from:network, value: totalPayValue});
+    });
+
+    it("see when calling getConversionRate with srcQty 0 it returns 0", async() => {
+        let tokenWeiDepositAmount = new BigNumber(70 * 10 ** 18);
+        let kncTweiDepositAmount = 600 * 10 ** 18;
+        let ethWeiDepositAmount = (new BigNumber(0 * 10 ** 18));
+        await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+        let orderSrcAmountTwei = new BigNumber(6 * 10 ** 18);
+        let orderDstWei = new BigNumber(minNewOrderWei);
+
+        //add orders
+        //////////////
+        let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
+        let rate = await reserve.getConversionRate(ethAddress, tokenAdd, 10 ** 8, 522);
+        assert(rate.valueOf() > 0);
+
+        rate = await reserve.getConversionRate(ethAddress, tokenAdd, 0, 522);
+        assert.equal(rate.valueOf(), 0);
     });
 
     it("change knc rate so stake amount < burn amount, see get rate blocked == returns 0", async() => {
