@@ -498,7 +498,7 @@ contract('ExpectedRate', function(accounts) {
         assert.equal(rates[1].valueOf(), 0, "unexpected rate");
     });
 
-    it("should verify when rate received from kyber network is > MAX_RATE, get expected rate reverts.", async function() {
+    it("should verify when rate received from kyber network is > MAX_RATE, get expected rate return (0,0).", async function() {
         let mockNetwork = await MockNetwork.new();
         let tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
 
@@ -514,12 +514,9 @@ contract('ExpectedRate', function(accounts) {
         let rate = await mockNetwork.findBestRate(ethAddress, token.address, 1000);
         assert(rate[1].gt(MAX_RATE));
 
-        try {
-            await tempExpectedRate.getExpectedRate(ethAddress, token.address, 1000, true);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
+        const myRate = await tempExpectedRate.getExpectedRate(ethAddress, token.address, 1000, true);
+        assert.equal(myRate[0].valueOf(), 0, "expected rate should be 0");
+        assert.equal(myRate[1].valueOf(), 0, "expected rate should be 0");
     });
 
     it("should verify knc arbitrage.", async function() {
