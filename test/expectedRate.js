@@ -1,11 +1,11 @@
-const ConversionRates = artifacts.require("./ConversionRates.sol");
-const TestToken = artifacts.require("./mockContracts/TestToken.sol");
-const Reserve = artifacts.require("./KyberReserve.sol");
-const Network = artifacts.require("./KyberNetwork.sol");
-const MockNetwork = artifacts.require("./MockKyberNetwork.sol");
-const WhiteList = artifacts.require("./WhiteList.sol");
-const ExpectedRate = artifacts.require("./ExpectedRate.sol");
-const FeeBurner = artifacts.require("./FeeBurner.sol");
+const ConversionRates = artifacts.require("ConversionRates.sol");
+const TestToken = artifacts.require("mockContracts/TestToken.sol");
+const Reserve = artifacts.require("KyberReserve.sol");
+const Network = artifacts.require("KyberNetwork.sol");
+const MockNetwork = artifacts.require("MockKyberNetwork.sol");
+const WhiteList = artifacts.require("WhiteList.sol");
+const ExpectedRate = artifacts.require("ExpectedRate.sol");
+const FeeBurner = artifacts.require("FeeBurner.sol");
 const MockUtils = artifacts.require("MockUtils.sol");
 
 const Helper = require("./helper.js");
@@ -15,6 +15,7 @@ const BigNumber = require('bignumber.js');
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 const precisionUnits = (new BigNumber(10).pow(18));
 const ethToKncRatePrecision = precisionUnits.mul(550);
+const gasPrice = (new BigNumber(10).pow(9).mul(50));
 
 const bps = 10000;
 let minSlippageBps = 400;
@@ -44,13 +45,18 @@ let MAX_RATE;
 let kncAddress;
 
 contract('ExpectedRate', function(accounts) {
-    it("should init kyber network and all its components.", async function () {
+    before("init globals", async function() {
         const knc = await TestToken.new("kyber network crystal", "KNC", 18);
         kncAddress = knc.address;
 
+        // set account addresses
+        admin = accounts[0];
+        operator = accounts[1];
+        alerter = accounts[2];
 
-        let gasPrice = (new BigNumber(10).pow(9).mul(50));
+    })
 
+    it("should init kyber network and all its components.", async function () {
         //block data
         let priceUpdateBlock;
         let currentBlock;
@@ -82,11 +88,6 @@ contract('ExpectedRate', function(accounts) {
         let indices = [];
         let compactBuyArr = [];
         let compactSellArr = [];
-
-        // set account addresses
-        admin = accounts[0];
-        operator = accounts[1];
-        alerter = accounts[2];
 
         currentBlock = priceUpdateBlock = await Helper.getCurrentBlock();
 
@@ -525,8 +526,6 @@ contract('ExpectedRate', function(accounts) {
         const mockNetwork = await MockNetwork.new();
         const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
 
-        const token = await TestToken.new("someToke", "some", 16);
-
         aRate = 1.2345;
         const ethToKncRatePrecision = precisionUnits.mul(aRate * 1.01);
         const kncToEthRatePrecision = precisionUnits.div(aRate);
@@ -558,7 +557,87 @@ contract('ExpectedRate', function(accounts) {
         assert.equal(myRate4[0].valueOf(), kncToEthRatePrecision.valueOf() * 1, "expected rate in arbitrage");
     });
 
+    it("call getExpectedRate call to kyber reverts. getExpectedRate should return 0 and not revert. without permissionless", async() => {
+        const mockNetwork = await MockNetwork.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
 
+        const token = await TestToken.new("someToke", "some", 16);
+
+        const rate = precisionUnits.mul(1.01);
+        await mockNetwork.setPairRate(ethAddress, token.address, rate);
+        await mockNetwork.setPairRate(token.address, ethAddress, rate);
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        await mockNetwork.getExpectedRate(ethAddress, token.address, 1000);
+
+        // see REVERT_HINT causes revert on network level
+        const REVERT_HINT = await mockNetwork.REVERT_HINT();
+        try {
+            await mockNetwork.findBestRate(ethAddress, token.address, REVERT_HINT);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // this returns good values - no revert
+        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, 5000, false);
+
+        assert(rates[0].valueOf() > 0, "expected rate > 0");
+        assert(rates[1].valueOf() > 0, "expected rate > 0");
+
+        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, REVERT_HINT, false);
+        assert.equal(rates[0].valueOf(), 0, "unexpected rate");
+        assert.equal(rates[1].valueOf(), 0, "unexpected rate");
+    })
+
+    it("call getExpectedRate call to kyber reverts. getExpectedRate should return 0 and not revert. including permissionless", async() => {
+        const mockNetwork = await MockNetwork.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+
+        const token = await TestToken.new("someToke", "some", 16);
+
+        const rate = precisionUnits.mul(1.01);
+        await mockNetwork.setPairRate(ethAddress, token.address, rate);
+        await mockNetwork.setPairRate(token.address, ethAddress, rate);
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        await mockNetwork.getExpectedRate(ethAddress, token.address, 1000);
+
+        // see REVERT_HINT causes revert on network level
+        const REVERT_HINT = await mockNetwork.REVERT_HINT();
+        try {
+            await mockNetwork.findBestRate(ethAddress, token.address, REVERT_HINT);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // this returns good values - no revert
+        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, 5000, true);
+
+        assert(rates[0].valueOf() > 0, "expected rate > 0");
+        assert(rates[1].valueOf() > 0, "expected rate > 0");
+
+        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, REVERT_HINT, true);
+        assert.equal(rates[0].valueOf(), 0, "unexpected rate");
+        assert.equal(rates[1].valueOf(), 0, "unexpected rate");
+    })
 });
 
 
