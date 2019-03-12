@@ -505,8 +505,8 @@ contract("KyberUniswapReserve", async accounts => {
                 20 /* token */
             );
             await uniswapFactoryMock.setRateEthToToken(
-                24 /* token */,
-                10 /* eth */
+                10 /* eth */,
+                18 /* token */
             );
 
             // minimum spread requirement
@@ -1261,6 +1261,110 @@ contract("KyberUniswapReserve", async accounts => {
                     ev.destAddress === user &&
                     ev.useInternalInventory === true
                 );
+            });
+        });
+
+        it("Token -> ETH, low spread, not using internal inventory", async () => {
+            await reserve.setFee(25, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                26 /* eth */,
+                10 /* token */
+            );
+            await uniswapFactoryMock.setRateTokenToEth(
+                25 /* eth */,
+                10 /* token */
+            );
+            // const amountToken = web3.utils.toWei("0.000001");
+            const amountToken = web3.utils.toWei("0.1");
+            const conversionRate = new BigNumber(web3.utils.toWei("1"))
+                .div(10)
+                .mul(25)
+                .mul(0.9975);
+
+            // Prepare the reserve's internal inventory
+            // high minimum spread requirement
+            await reserve.setInternalActivationConfig(
+                token.address /* token */,
+                1000 /* minSpreadBps */,
+                0 /* premiumBps */,
+                { from: admin }
+            );
+
+            // set limits
+            await reserve.setInternalInventoryLimits(
+                token.address /* token */,
+                0 /* minBalance */,
+                2 ** 255 /* maxBalance */,
+                { from: operator }
+            );
+
+            // 1/10 ETH is actually required
+            await helper.sendEtherWithPromise(
+                bank /* sender */,
+                reserve.address /* recv */,
+                web3.utils.toWei("1") /* amount */
+            );
+
+            // Read balance before
+            const reserveEthBefore = await helper.getBalancePromise(
+                reserve.address
+            );
+            const uniswapMockTokenBefore = await token.balanceOf(
+                uniswapFactoryMock.address
+            );
+            const userEthBefore = await helper.getBalancePromise(user);
+
+            const traded = await reserve.trade.call(
+                token.address /* srcToken */,
+                amountToken /* srcAmount */,
+                ETH_TOKEN_ADDRESS /* destToken */,
+                user /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork }
+            );
+            const res = await reserve.trade(
+                token.address /* srcToken */,
+                amountToken /* srcAmount */,
+                ETH_TOKEN_ADDRESS /* destToken */,
+                user /* destAddress */,
+                conversionRate /* conversionRate */,
+                true /* validate */,
+                { from: kyberNetwork }
+            );
+
+            const reserveEthAfter = await helper.getBalancePromise(
+                reserve.address
+            );
+            const uniswapMockTokenAfter = await token.balanceOf(
+                uniswapFactoryMock.address
+            );
+            const userEthAfter = await helper.getBalancePromise(user);
+
+            traded.should.be.true;
+
+            const destAmountEth = new BigNumber(amountToken).mul(
+                conversionRate.div(new BigNumber(10).pow(18))
+            );
+
+            userEthAfter.should.be.bignumber.eq(
+                new BigNumber(userEthBefore).add(destAmountEth)
+            );
+
+            // Traded using uniswap and not internal inventory
+            uniswapMockTokenAfter.should.be.bignumber.eq(
+                new BigNumber(uniswapMockTokenBefore).add(amountToken)
+            );
+            // reserve got fees
+            reserveEthAfter.should.be.bignumber.eq(
+                new BigNumber(reserveEthBefore).add(
+                    destAmountEth.div(0.9975).mul(0.0025)
+                )
+            );
+
+            // Event shows did not use internal inventory
+            truffleAssert.eventEmitted(res, "TradeExecute", ev => {
+                return ev.useInternalInventory === false;
             });
         });
     });

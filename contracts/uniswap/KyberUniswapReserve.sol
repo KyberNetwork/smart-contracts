@@ -467,8 +467,6 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
         // Check for internal inventory balance limitations
         ERC20 token;
-        uint rateEthToToken;
-        uint rateTokenToEth;
         if (srcToken == ETH_TOKEN_ADDRESS) {
             token = destToken;
             uint tokenBalance = token.balanceOf(this);
@@ -478,27 +476,21 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             ) {
                 return false;
             }
-            rateEthToToken = rateSrcDest;
-            // Normalize rate direction to enable comparison for checking spread
-            // and arbitrage: from ETH / Token -> Token / ETH
-            rateTokenToEth = 10 ** 36 / rateDestSrc;
         } else {
             token = srcToken;
             if (this.balance < destAmount) return false;
             if (token.balanceOf(this) + srcAmount > internalInventoryMax[token]) {
                 return false;
             }
-            rateEthToToken = rateDestSrc;
-            // Normalize rate direction to enable comparison for checking spread
-            // and arbitrage: from ETH / Token -> Token / ETH
-            rateTokenToEth = 10 ** 36 / rateSrcDest;
         }
 
+        uint normalizedDestSrc = 10 ** 36 / rateDestSrc;
+
         // Check for arbitrage
-        if (rateTokenToEth < rateEthToToken) return false;
+        if (rateSrcDest > normalizedDestSrc) return false;
 
         uint activationSpread = internalActivationMinSpreadBps[token];
-        uint spread = uint(calculateSpreadBps(rateEthToToken, rateTokenToEth));
+        uint spread = uint(calculateSpreadBps(normalizedDestSrc, rateSrcDest));
         return spread >= activationSpread;
     }
 
