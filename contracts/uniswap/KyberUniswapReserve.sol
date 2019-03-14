@@ -109,6 +109,9 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
     /**
         Returns dest quantity / source quantity.
+        Last bit of the rate indicates whether to use internal inventory:
+          0 - use uniswap
+          1 - use internal inventory
     */
     function getConversionRate(
         ERC20 src,
@@ -122,7 +125,6 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
     {
         // This makes the UNUSED warning go away.
         blockNumber;
-
         if (!isValidTokens(src, dest)) return 0;
         if (!tradeEnabled) return 0;
         if (srcQty == 0) return 0;
@@ -145,16 +147,19 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
 
         uint quantityWithPremium = addPremium(token, convertedQuantity);
 
-        if (shouldUseInternalInventory(
+        bool useInternalInventory = shouldUseInternalInventory(
             src, /* srcToken */
             srcQty, /* srcAmount */
             dest, /* destToken */
             quantityWithPremium, /* destAmount */
             rateSrcDest, /* rateSrcDest */
             rateDestSrc /* rateDestSrc */
-        )) {
+        );
+
+        uint rate;
+        if (useInternalInventory) {
             // If using internal inventory add premium to converted quantity
-            return calcRateFromQty(
+            rate = calcRateFromQty(
                 srcQty, /* srcAmount */
                 quantityWithPremium, /* destAmount */
                 getDecimals(src), /* srcDecimals */
@@ -162,9 +167,24 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             );
         } else {
             // Use rate calculated from uniswap quantities after fees
-            return rateSrcDest;
+            rate = rateSrcDest;
         }
+        return applyInternalInventoryHintToRate(rate, useInternalInventory);
     }
+
+    function applyInternalInventoryHintToRate(
+        uint rate,
+        bool useInternalInventory
+    )
+        internal
+        pure
+        returns(uint)
+    {
+        return rate % 2 == (useInternalInventory ? 1 : 0)
+            ? rate
+            : rate - 1;
+    }
+
 
     event TradeExecute(
         address indexed sender,
@@ -216,20 +236,7 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
             conversionRate /* rate */
         );
 
-        uint rateDestSrc;
-        (, rateDestSrc) = calcUniswapConversion(
-            destToken,
-            srcToken,
-            expectedDestAmount
-        );
-        bool useInternalInventory = shouldUseInternalInventory(
-            srcToken, /* srcToken */
-            0, /* srcAmount */
-            destToken, /* destToken */
-            expectedDestAmount, /* destAmount */
-            conversionRate, /* rateSrcDest */
-            rateDestSrc /* rateDestSrc */
-        );
+        bool useInternalInventory = conversionRate % 2 == 1;
 
         uint destAmount;
         UniswapExchange exchange;
