@@ -7,8 +7,11 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "truffle test",
+    "testrpc": "./node_modules/.bin/ganache-cli -d --defaultBalanceEther 500000000",
+    "coverage": "./node_modules/.bin/solidity-coverage"
   },
+
   "repository": {
     "type": "git",
     "url": "git+https://github.com/KyberNetwork/smart-contracts.git"
@@ -25,7 +28,6 @@
     "eslint-config-prettier": "^2.9.0",
     "eslint-config-standard": "^11.0.0",
     "eslint-plugin-prettier": "^2.7.0",
-    "ganache-cli": "^6.4.3",
     "mathjs": "^4.3.0",
     "rlp": "^2.0.0",
     "solc": "^0.4.18",
@@ -49,6 +51,7 @@
     "eslint-plugin-node": "^8.0.1",
     "eslint-plugin-promise": "^4.0.1",
     "eslint-plugin-standard": "^4.0.0",
+    "ganache-cli": "^6.4.3",
     "prettier": "^1.15.3",
     "prettier-eslint-cli": "^4.7.1",
     "prettier-standard": "^8.0.1",
