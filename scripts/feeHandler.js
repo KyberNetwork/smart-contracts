@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const KNC_MINIMAL_TX_AMOUNT = 50
+const KNC_MINIMAL_TX_AMOUNT = 100
 const RETRIALS = 60
 
 const solc = require("solc")
