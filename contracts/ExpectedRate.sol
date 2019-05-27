@@ -85,6 +85,10 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
         uint converseRate;
         uint slippage;
     	(converseRate, slippage) = getExpectedRate(ETH_TOKEN_ADDRESS, knc, UNIT_QTY_FOR_FEE_BURNER, true);
+
+        // if returned rate is 0, can't trust this arb test. assume we have arb
+        if(converseRate == 0) return true;
+
         require(converseRate <= MAX_RATE && currentKncToEthRate <= MAX_RATE);
         return ((converseRate * currentKncToEthRate) > (PRECISION ** 2));
     }
