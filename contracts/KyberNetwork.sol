@@ -104,7 +104,7 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         returns(uint)
     {
         require(msg.sender == kyberNetworkProxyContract);
-        require((hint.length == 0) || (hint.length == 4));
+//        require((hint.length == 0) || (hint.length == 4) || (hint.length == 7));
 
         TradeInput memory tradeInput;
 
@@ -297,7 +297,9 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
             srcQty = srcQty & ~PERM_HINT_GET_RATE;
         }
 
-        return expectedRateContract.getExpectedRate(src, dest, srcQty, includePermissionless);
+        (expectedRate, slippageRate, , ) = expectedRateContract.getExpectedRate(src, dest, srcQty, includePermissionless);
+
+        return (expectedRate, slippageRate);
     }
 
     function getExpectedRateOnlyPermission(ERC20 src, ERC20 dest, uint srcQty)
@@ -305,7 +307,57 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         returns(uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
-        return expectedRateContract.getExpectedRate(src, dest, srcQty, false);
+        (expectedRate, slippageRate, , ) = expectedRateContract.getExpectedRate(src, dest, srcQty, false);
+
+        return (expectedRate, slippageRate);
+    }
+
+    function getExpectedRateWithHint(ERC20 src, ERC20 dest, uint srcQty)
+        public view
+        returns(uint expectedRate, uint slippageRate, bytes hint)
+    {
+        require(expectedRateContract != address(0));
+        bool includePermissionless = true;
+
+        if (srcQty & PERM_HINT_GET_RATE > 0) {
+            includePermissionless = false;
+            srcQty = srcQty & ~PERM_HINT_GET_RATE;
+        }
+
+        address reserve1;
+        address reserve2;
+
+        (expectedRate, slippageRate, reserve1, reserve2) =
+            expectedRateContract.getExpectedRate(src, dest, srcQty, includePermissionless);
+
+        uint hintLength = 4 + 1 + 2; // perm hint + num reserve + reserve index * 2
+
+        hint = new bytes(hintLength);
+
+        if(includePermissionless) {
+            hint[0] = PERM_HINT[0];
+            hint[1] = PERM_HINT[1];
+            hint[2] = PERM_HINT[2];
+            hint[3] = PERM_HINT[3];
+        }
+
+        hint[4] = byte(0xaa);
+
+        uint index;
+
+        for(index = 0; index < reserves.length; ++index) {
+            if (reserves[index] == reserve1) {
+                hint[5] = byte(uint8(index));
+                break;
+            }
+        }
+
+        for(index = 0; index < reserves.length; ++index) {
+            if (reserves[index] == reserve2) {
+                hint[6] = byte(uint8(index));
+                break;
+            }
+        }
     }
 
     function getUserCapInWei(address user) public view returns(uint) {
@@ -335,18 +387,20 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     /// @param src Src token
     /// @param dest Destination token
     /// @return obsolete - used to return best reserve index. not relevant anymore for this API.
-    function findBestRate(ERC20 src, ERC20 dest, uint srcAmount) public view returns(uint obsolete, uint rate) {
+    function findBestRate(ERC20 src, ERC20 dest, uint srcAmount) public view
+        returns(uint rate, address reserve1, address reserve2)
+    {
         BestRateResult memory result = findBestRateTokenToToken(src, dest, srcAmount, EMPTY_HINT);
-        return(0, result.rate);
+        return(result.rate, result.reserve1, result.reserve2);
     }
 
     function findBestRateOnlyPermission(ERC20 src, ERC20 dest, uint srcAmount)
         public
         view
-        returns(uint obsolete, uint rate)
+        returns(uint rate, address reserve1, address reserve2)
     {
         BestRateResult memory result = findBestRateTokenToToken(src, dest, srcAmount, PERM_HINT);
-        return(0, result.rate);
+        return(result.rate, result.reserve1, result.reserve2);
     }
 
     function enabled() public view returns(bool) {
@@ -369,10 +423,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         uint bestRate = 0;
         uint bestReserve = 0;
         uint numRelevantReserves = 0;
-
-        //return 1 for ether to ether
-        if (src == dest) return (reserves[bestReserve], PRECISION);
-
         address[] memory reserveArr;
 
         reserveArr = src == ETH_TOKEN_ADDRESS ? reservesPerTokenDest[dest] : reservesPerTokenSrc[src];
@@ -430,13 +480,31 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
             usePermissionless = false;
         }
 
-        (result.reserve1, result.rateSrcToEth) =
-            searchBestRate(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
+        if(src == ETH_TOKEN_ADDRESS) {
+            result.reserve1 = reserves[0];
+            result.rateSrcToEth = PRECISION;
+        } else if (hint.length > 4 && uint8(hint[4]) > 0) {
+            result.reserve1 = reserves[uint8(hint[5])];
+            result.rateSrcToEth =
+                (KyberReserveInterface(result.reserve1)).getConversionRate(src, ETH_TOKEN_ADDRESS, srcAmount, block.number);
+        } else {
+            (result.reserve1, result.rateSrcToEth) =
+                searchBestRate(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
+        }
 
         result.weiAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcAmount, result.rateSrcToEth);
 
-        (result.reserve2, result.rateEthToDest) =
-            searchBestRate(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
+        if (dest == ETH_TOKEN_ADDRESS) {
+            result.reserve2 = reserves[0];
+            result.rateEthToDest = PRECISION;
+        } else if (hint.length > 4 && uint8(hint[4]) > 0) {
+            result.reserve2 = reserves[uint8(hint[6])];
+            result.rateEthToDest =
+                (KyberReserveInterface(result.reserve2)).getConversionRate(ETH_TOKEN_ADDRESS, dest, result.weiAmount, block.number);
+        } else {
+            (result.reserve2, result.rateEthToDest) =
+                searchBestRate(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
+        }
 
         result.destAmount = calcDestAmount(ETH_TOKEN_ADDRESS, dest, result.weiAmount, result.rateEthToDest);
 
@@ -485,6 +553,37 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
         BestRateResult memory rateResult =
             findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount, tradeInput.hint);
+//
+//        if (tradeInput.hint.length > 4) {
+//            KyberTrade({
+//                trader: tradeInput.trader,
+//                src: tradeInput.src,
+//                dest: tradeInput.dest,
+//                srcAmount: tradeInput.minConversionRate,
+//                dstAmount: rateResult.rate,
+//                destAddress: tradeInput.destAddress,
+//                ethWeiValue: rateResult.weiAmount,
+//                reserve1: rateResult.reserve1,
+//                reserve2: rateResult.reserve2,
+//                hint: tradeInput.hint
+//                });
+//
+//            rateResult =
+//                findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount, EMPTY_HINT);
+//
+//            KyberTrade({
+//                trader: tradeInput.trader,
+//                src: tradeInput.src,
+//                dest: tradeInput.dest,
+//                srcAmount: tradeInput.minConversionRate,
+//                dstAmount: rateResult.rate,
+//                destAddress: tradeInput.destAddress,
+//                ethWeiValue: rateResult.weiAmount,
+//                reserve1: rateResult.reserve1,
+//                reserve2: rateResult.reserve2,
+//                hint: EMPTY_HINT
+//                });
+//        }
 
         require(rateResult.rate > 0);
         require(rateResult.rate < MAX_RATE);
@@ -494,6 +593,22 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         uint weiAmount;
         uint actualSrcAmount;
 
+//        if (tradeInput.srcAmount == 743) {
+//            KyberTrade({
+//                trader: tradeInput.trader,
+//                src: tradeInput.src,
+//                dest: tradeInput.dest,
+//                srcAmount: actualSrcAmount,
+//                dstAmount: actualDestAmount,
+//                destAddress: tradeInput.destAddress,
+//                ethWeiValue: weiAmount,
+//                reserve1: (tradeInput.src == ETH_TOKEN_ADDRESS) ? address(0) : rateResult.reserve1,
+//                reserve2:  (tradeInput.dest == ETH_TOKEN_ADDRESS) ? address(0) : rateResult.reserve2,
+//                hint: tradeInput.hint
+//                });
+//            return;
+//        }
+
         (actualSrcAmount, weiAmount, actualDestAmount) = calcActualAmounts(tradeInput.src,
             tradeInput.dest,
             tradeInput.srcAmount,
@@ -502,6 +617,22 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
         require(getUserCapInWei(tradeInput.trader) >= weiAmount);
         require(handleChange(tradeInput.src, tradeInput.srcAmount, actualSrcAmount, tradeInput.trader));
+//
+//        if (tradeInput.hint.length > 4) {
+//            KyberTrade({
+//                trader: tradeInput.trader,
+//                src: tradeInput.src,
+//                dest: tradeInput.dest,
+//                srcAmount: actualSrcAmount,
+//                dstAmount: actualDestAmount,
+//                destAddress: tradeInput.destAddress,
+//                ethWeiValue: weiAmount,
+//                reserve1: (tradeInput.src == ETH_TOKEN_ADDRESS) ? address(0) : rateResult.reserve1,
+//                reserve2:  (tradeInput.dest == ETH_TOKEN_ADDRESS) ? address(0) : rateResult.reserve2,
+//                hint: tradeInput.hint
+//                });
+//            return;
+//        }
 
         require(doReserveTrade(     //src to ETH
                 tradeInput.src,

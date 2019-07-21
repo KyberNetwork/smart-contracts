@@ -47,7 +47,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
     //@dev when srcQty too small (no actual dest qty) slippage rate will be 0.
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty, bool usePermissionless)
         public view
-        returns (uint expectedRate, uint slippageRate)
+        returns (uint expectedRate, uint slippageRate, address reserve1, address reserve2)
     {
         require(quantityFactor != 0);
         require(srcQty <= MAX_QTY);
@@ -57,8 +57,8 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
 
         bool didRevert = false;
 
-        (didRevert, expectedRate, slippageRate) = safeFindBestRate(src, dest, srcQty, usePermissionless);
-        if (didRevert) return (0, 0);
+        (didRevert, expectedRate, slippageRate, reserve1, reserve2) = safeFindBestRate(src, dest, srcQty, usePermissionless);
+        if (didRevert) return (0, 0, 0, 0);
 
         if (expectedRate == 0) {
             expectedRate = expectedRateSmallQty(src, dest, srcQty, usePermissionless);
@@ -71,20 +71,20 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
             if (checkKncArbitrageRate(expectedRate)) expectedRate = 0;
         }
 
-        if (expectedRate > MAX_RATE) return (0, 0);
+        if (expectedRate > MAX_RATE) return (0, 0, 0, 0);
 
         uint worstCaseSlippageRate = ((10000 - worstCaseRateFactorInBps) * expectedRate) / 10000;
         if (slippageRate >= worstCaseSlippageRate) {
             slippageRate = worstCaseSlippageRate;
         }
 
-        return (expectedRate, slippageRate);
+        return (expectedRate, slippageRate, reserve1, reserve2);
     }
 
     function checkKncArbitrageRate(uint currentKncToEthRate) public view returns(bool) {
         uint converseRate;
         uint slippage;
-    	(converseRate, slippage) = getExpectedRate(ETH_TOKEN_ADDRESS, knc, UNIT_QTY_FOR_FEE_BURNER, true);
+    	(converseRate, slippage, , ) = getExpectedRate(ETH_TOKEN_ADDRESS, knc, UNIT_QTY_FOR_FEE_BURNER, true);
 
         // if returned rate is 0, can't trust this arb test. assume we have arb
         if(converseRate == 0) return true;
@@ -111,18 +111,18 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
 
     function safeFindBestRate(ERC20 src, ERC20 dest, uint srcQty, bool usePermissionless)
         internal view
-        returns (bool didRevert, uint expectedRate, uint slippageRate)
+        returns (bool didRevert, uint expectedRate, uint slippageRate, address reserve1, address reserve2)
     {
         bytes4 sig = usePermissionless ?
             bytes4(keccak256("findBestRate(address,address,uint256)")) :
             bytes4(keccak256("findBestRateOnlyPermission(address,address,uint256)")); //Function signatures
 
-        (didRevert, expectedRate) = assemblyFindBestRate(src, dest, srcQty, sig);
+        (didRevert, expectedRate, reserve1, reserve2) = assemblyFindBestRate(src, dest, srcQty, sig);
 
-        if (didRevert) return (true, 0, 0);
+        if (didRevert) return (true, 0, 0, 0, 0);
 
         if (quantityFactor != 1) {
-            (didRevert, slippageRate) = assemblyFindBestRate(src, dest, (srcQty * quantityFactor), sig);
+            (didRevert, slippageRate, , ) = assemblyFindBestRate(src, dest, (srcQty * quantityFactor), sig);
         } else {
             slippageRate = expectedRate;
         }
@@ -130,7 +130,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
 
     function assemblyFindBestRate(ERC20 src, ERC20 dest, uint srcQty, bytes4 sig)
         internal view
-        returns (bool didRevert, uint rate)
+        returns (bool didRevert, uint rate, address reserve1, address reserve2)
     {
         address addr = address(kyberNetwork);  // kyber address
         uint success;
@@ -141,20 +141,22 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
             mstore(add(x,0x04),src)     // src address padded to 32 bytes
             mstore(add(x,0x24),dest)    // dest padded to 32 bytes
             mstore(add(x,0x44),srcQty)  // uint 32 bytes
-            mstore(0x40,add(x,0xa4))    // set free storage pointer to empty space after output
+            mstore(0x40,add(x,0xc4))    // set free storage pointer to empty space after output
 
-            // input size = sig + ERC20 (address) + ERC20 + uint
-            // = 4 + 32 + 32 + 32 = 100 = 0x64
+//            input size = sig + ERC20 (address) + ERC20 + uint
+//             = 4 + 32 + 32 + 32 = 100 = 0x64
             success := staticcall(
                 gas,  // gas
                 addr, // Kyber addr
                 x,    // Inputs at location x
                 0x64, // Inputs size bytes
                 add(x, 0x64),    // output storage after input
-                0x40) // Output size are (uint, uint) = 64 bytes
+                0x60) // Output size are (uint, address, address) =  96 bytes
 
-            rate := mload(add(x,0x84))  //Assign 2nd output to rate, first output not used,
-            mstore(0x40,x)    // Set empty storage pointer back to start position
+            rate := mload(add(x,0x64))  //Assign 1st output to rate,
+            reserve1 := mload(add(x,0x84))  //2nd output to reserve1 (padded to 32 bytes),
+            reserve2 := mload(add(x,0xa4))
+//            mstore(0x40,x)    // Set empty storage pointer back to start position
         }
 
         if (success != 1) didRevert = true;
