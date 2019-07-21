@@ -553,37 +553,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
         BestRateResult memory rateResult =
             findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount, tradeInput.hint);
-//
-//        if (tradeInput.hint.length > 4) {
-//            KyberTrade({
-//                trader: tradeInput.trader,
-//                src: tradeInput.src,
-//                dest: tradeInput.dest,
-//                srcAmount: tradeInput.minConversionRate,
-//                dstAmount: rateResult.rate,
-//                destAddress: tradeInput.destAddress,
-//                ethWeiValue: rateResult.weiAmount,
-//                reserve1: rateResult.reserve1,
-//                reserve2: rateResult.reserve2,
-//                hint: tradeInput.hint
-//                });
-//
-//            rateResult =
-//                findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount, EMPTY_HINT);
-//
-//            KyberTrade({
-//                trader: tradeInput.trader,
-//                src: tradeInput.src,
-//                dest: tradeInput.dest,
-//                srcAmount: tradeInput.minConversionRate,
-//                dstAmount: rateResult.rate,
-//                destAddress: tradeInput.destAddress,
-//                ethWeiValue: rateResult.weiAmount,
-//                reserve1: rateResult.reserve1,
-//                reserve2: rateResult.reserve2,
-//                hint: EMPTY_HINT
-//                });
-//        }
 
         require(rateResult.rate > 0);
         require(rateResult.rate < MAX_RATE);
@@ -593,22 +562,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         uint weiAmount;
         uint actualSrcAmount;
 
-//        if (tradeInput.srcAmount == 743) {
-//            KyberTrade({
-//                trader: tradeInput.trader,
-//                src: tradeInput.src,
-//                dest: tradeInput.dest,
-//                srcAmount: actualSrcAmount,
-//                dstAmount: actualDestAmount,
-//                destAddress: tradeInput.destAddress,
-//                ethWeiValue: weiAmount,
-//                reserve1: (tradeInput.src == ETH_TOKEN_ADDRESS) ? address(0) : rateResult.reserve1,
-//                reserve2:  (tradeInput.dest == ETH_TOKEN_ADDRESS) ? address(0) : rateResult.reserve2,
-//                hint: tradeInput.hint
-//                });
-//            return;
-//        }
-
         (actualSrcAmount, weiAmount, actualDestAmount) = calcActualAmounts(tradeInput.src,
             tradeInput.dest,
             tradeInput.srcAmount,
@@ -617,22 +570,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
 
         require(getUserCapInWei(tradeInput.trader) >= weiAmount);
         require(handleChange(tradeInput.src, tradeInput.srcAmount, actualSrcAmount, tradeInput.trader));
-//
-//        if (tradeInput.hint.length > 4) {
-//            KyberTrade({
-//                trader: tradeInput.trader,
-//                src: tradeInput.src,
-//                dest: tradeInput.dest,
-//                srcAmount: actualSrcAmount,
-//                dstAmount: actualDestAmount,
-//                destAddress: tradeInput.destAddress,
-//                ethWeiValue: weiAmount,
-//                reserve1: (tradeInput.src == ETH_TOKEN_ADDRESS) ? address(0) : rateResult.reserve1,
-//                reserve2:  (tradeInput.dest == ETH_TOKEN_ADDRESS) ? address(0) : rateResult.reserve2,
-//                hint: tradeInput.hint
-//                });
-//            return;
-//        }
 
         require(doReserveTrade(     //src to ETH
                 tradeInput.src,
