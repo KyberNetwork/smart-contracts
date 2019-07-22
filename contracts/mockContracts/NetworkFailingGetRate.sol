@@ -30,7 +30,7 @@ contract NetworkFailingGetRate {
     {
         srcQty;
 
-        return expectedRateContract.getExpectedRate(src, dest, srcQty, true);
+        (expectedRate, slippageRate, , ) = expectedRateContract.getExpectedRate(src, dest, srcQty, true);
     }
 
     function findBestRate(ERC20 src, ERC20 dest, uint srcAmount) public view returns(uint obsolete, uint rate) {
