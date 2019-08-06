@@ -367,25 +367,25 @@ contract ConversionRates2 is ConversionRatesInterface, VolumeImbalanceRecorder, 
             if (x > lastStepAmount) {
                 change += (x - lastStepAmount) * f.y[len - 1];
             }
-        } else {
-            // revert steps order for negative number
-            int lastStepBps = 0;
-            uint id;
-            for (ind = len; ind > 0; ind--) {
-                id = ind - 1;
-                if (f.x[id] >= 0) { continue; } // ignore non-negative steps
-                if (x >= f.x[id]) {
-                    change += (x - lastStepAmount) * lastStepBps;
-                    lastStepAmount = x;
-                    break;
-                }
-                change += (f.x[id] - lastStepAmount) * lastStepBps;
-                lastStepAmount = f.x[id];
-                lastStepBps = f.y[id];
-            }
-            if (x < lastStepAmount) {
+            return change / x;
+        }
+        // revert steps order for negative number
+        int lastStepBps = 0;
+        uint id;
+        for (ind = len; ind > 0; ind--) {
+            id = ind - 1;
+            if (f.x[id] >= 0) { continue; } // ignore non-negative steps
+            if (x >= f.x[id]) {
                 change += (x - lastStepAmount) * lastStepBps;
+                lastStepAmount = x;
+                break;
             }
+            change += (f.x[id] - lastStepAmount) * lastStepBps;
+            lastStepAmount = f.x[id];
+            lastStepBps = f.y[id];
+        }
+        if (x < lastStepAmount) {
+            change += (x - lastStepAmount) * lastStepBps;
         }
         return change / x;
     }
