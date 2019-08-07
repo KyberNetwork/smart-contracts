@@ -134,6 +134,14 @@ contract ConversionRates2 is ConversionRatesInterface, VolumeImbalanceRecorder, 
         require(xSell.length <= MAX_STEPS_IN_FUNCTION);
         require(tokenData[token].listed);
 
+        if (xBuy.length > 1) {
+            // verify qties are increasing
+            for(uint i = 0; i < xBuy.length - 1; i++) {
+                require(xBuy[i] < xBuy[i + 1]);
+                require(xSell[i] < xSell[i + 1]);
+            }
+        }
+
         tokenData[token].buyRateQtyStepFunction = StepFunction(xBuy, yBuy);
         tokenData[token].sellRateQtyStepFunction = StepFunction(xSell, ySell);
     }
@@ -153,6 +161,14 @@ contract ConversionRates2 is ConversionRatesInterface, VolumeImbalanceRecorder, 
         require(xBuy.length <= MAX_STEPS_IN_FUNCTION);
         require(xSell.length <= MAX_STEPS_IN_FUNCTION);
         require(tokenData[token].listed);
+
+        if (xBuy.length > 1) {
+            // verify qties are increasing
+            for(uint i = 0; i < xBuy.length - 1; i++) {
+                require(xBuy[i] < xBuy[i + 1]);
+                require(xSell[i] < xSell[i + 1]);
+            }
+        }
 
         tokenData[token].buyRateImbalanceStepFunction = StepFunction(xBuy, yBuy);
         tokenData[token].sellRateImbalanceStepFunction = StepFunction(xSell, ySell);
@@ -224,7 +240,7 @@ contract ConversionRates2 is ConversionRatesInterface, VolumeImbalanceRecorder, 
             rate = addBps(rate, extraBps);
 
             // compute token qty
-            qty = getTokenQty(token, rate, qty);
+            qty = getTokenQty(token, qty, rate);
             imbalanceQty = int(qty);
             totalImbalance += imbalanceQty;
 

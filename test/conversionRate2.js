@@ -1108,6 +1108,96 @@ contract('ConversionRates2', function(accounts) {
         }
     });
 
+    it("should verify set step functions for qty reverted when amounts are not increasing.", async function () {
+        let index = 1;
+
+        qtyBuyStepX = [15, 30, 100, 150];
+        qtyBuyStepY = [8, 30, 70, 100];
+        qtySellStepX = [15, 30, 70, 100];
+        qtySellStepY = [8, 30, 70, 100];
+
+        await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+        qtyBuyStepX = [15, 30, 150, 100];
+
+        try {
+            await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        qtyBuyStepX = [15, 30, 100, 100];
+        try {
+            await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        qtyBuyStepX = [15, 30, 100, 150];
+        qtySellStepX = [15, 30, 150, 100];
+
+        try {
+            await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        qtySellStepX = [15, 30, 100, 100];
+        try {
+            await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should verify set step functions for imbalance reverted when amounts are not increasing.", async function () {
+        let index = 1;
+
+        imbalanceBuyStepX = [15, 30, 70, 100, 200];
+        imbalanceBuyStepY = [8, 30, 70, 100, 120];
+        imbalanceSellStepX = [15, 30, 70, 100, 200];
+        imbalanceSellStepY = [8, 30, 70, 100, 120];
+
+        await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+
+        imbalanceBuyStepX = [15, 30, 70, 200, 100];
+        try {
+            await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        imbalanceBuyStepX = [15, 30, 70, 100, 100];
+        try {
+            await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        imbalanceBuyStepX = [15, 30, 70, 100, 200];
+        imbalanceSellStepX = [15, 30, 70, 200, 100];
+
+        try {
+            await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        imbalanceSellStepX = [15, 30, 70, 100, 100];
+        try {
+            await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
     it("should verify getCompactData reverted when token not listed.", async function () {
         let someToken = await TestToken.new("testing", "tst9", 15);
 
