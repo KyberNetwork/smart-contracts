@@ -1151,6 +1151,18 @@ contract('ConversionRates2', function(accounts) {
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
+
+        qtyBuyStepX = [15];
+        qtyBuyStepY = [8];
+        qtySellStepX = [15];
+        qtySellStepY = [8];
+        await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+
+        qtyBuyStepX = [];
+        qtyBuyStepY = [];
+        qtySellStepX = [];
+        qtySellStepY = [];
+        await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
     });
 
     it("should verify set step functions for imbalance reverted when amounts are not increasing.", async function () {
@@ -1196,6 +1208,18 @@ contract('ConversionRates2', function(accounts) {
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
+
+        imbalanceBuyStepX = [15];
+        imbalanceBuyStepY = [8];
+        imbalanceSellStepX = [15];
+        imbalanceSellStepY = [8];
+        await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+
+        imbalanceBuyStepX = [];
+        imbalanceBuyStepY = [];
+        imbalanceSellStepX = [];
+        imbalanceSellStepY = [];
+        await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
     });
 
     it("should verify getCompactData reverted when token not listed.", async function () {
