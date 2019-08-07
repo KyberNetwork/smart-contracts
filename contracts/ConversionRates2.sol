@@ -6,6 +6,9 @@ import "./VolumeImbalanceRecorder.sol";
 import "./Utils.sol";
 import "./ConversionRatesInterface.sol";
 
+/// @title ConversionRates2 contract - new ConversionRates contract with step function enhancement
+/// Also fixed issue: https://github.com/KyberNetwork/smart-contracts/issues/291
+
 contract ConversionRates2 is ConversionRatesInterface, VolumeImbalanceRecorder, Utils {
 
     // bps - basic rate steps. one step is 1 / 10000 of the rate.
@@ -135,11 +138,18 @@ contract ConversionRates2 is ConversionRatesInterface, VolumeImbalanceRecorder, 
         require(tokenData[token].listed);
 
         if (xBuy.length > 0) {
-            // verify qties are increasing
+            // verify qty are non-negative & increasing
             require(xBuy[0] >= 0);
-            require(xSell[0] >= 0);
+
             for(uint i = 0; i < xBuy.length - 1; i++) {
                 require(xBuy[i] < xBuy[i + 1]);
+            }
+        }
+
+        if (xSell.length > 0) {
+            // verify qty are non-negative & increasing
+            require(xSell[0] >= 0);
+            for(i = 0; i < xSell.length - 1; i++) {
                 require(xSell[i] < xSell[i + 1]);
             }
         }
@@ -165,9 +175,15 @@ contract ConversionRates2 is ConversionRatesInterface, VolumeImbalanceRecorder, 
         require(tokenData[token].listed);
 
         if (xBuy.length > 1) {
-            // verify qties are increasing
+            // verify qty are increasing
             for(uint i = 0; i < xBuy.length - 1; i++) {
                 require(xBuy[i] < xBuy[i + 1]);
+            }
+        }
+
+        if (xSell.length > 1) {
+            // verify qty are increasing
+            for(i = 0; i < xSell.length - 1; i++) {
                 require(xSell[i] < xSell[i + 1]);
             }
         }
@@ -367,44 +383,53 @@ contract ConversionRates2 is ConversionRatesInterface, VolumeImbalanceRecorder, 
 
     function executeStepFunction(StepFunction f, int x) internal pure returns(int) {
         if (x == 0) { return 0; }
+
         uint len = f.y.length;
         int lastStepAmount = 0; // amount from last step to compute amount to be applied bps for next step
         int change = 0; // amount change from initial amount when applying bps for each step
         uint ind;
+        int fx;
+
         if (x > 0) {
+            // handle positive qty
             for (ind = 0; ind < len; ind++) {
-                if (f.x[ind] <= 0) { continue; } // ignore non-positive steps
-                if (x <= f.x[ind]) {
+                fx = f.x[ind];
+                if (fx <= 0) { continue; } // ignore non-positive steps
+                if (x <= fx) {
                     change += (x - lastStepAmount) * f.y[ind];
                     lastStepAmount = x;
                     break;
                 }
-                change += (f.x[ind] - lastStepAmount) * f.y[ind];
-                lastStepAmount = f.x[ind];
+
+                change += (fx - lastStepAmount) * f.y[ind];
+                lastStepAmount = fx;
             }
             if (x > lastStepAmount) {
                 change += (x - lastStepAmount) * f.y[len - 1];
             }
             return change / x;
         }
-        // revert steps order for negative number
+
         int lastStepBps = 0;
-        uint id;
+        // reverse steps order for negative number
         for (ind = len; ind > 0; ind--) {
-            id = ind - 1;
-            if (f.x[id] >= 0) { continue; } // ignore non-negative steps
-            if (x >= f.x[id]) {
+            fx = f.x[ind - 1];
+            if (fx >= 0) { continue; } // ignore non-negative steps
+            if (x >= fx) {
                 change += (x - lastStepAmount) * lastStepBps;
                 lastStepAmount = x;
                 break;
             }
-            change += (f.x[id] - lastStepAmount) * lastStepBps;
-            lastStepAmount = f.x[id];
-            lastStepBps = f.y[id];
+
+            change += (fx - lastStepAmount) * lastStepBps;
+            lastStepAmount = fx;
+            lastStepBps = f.y[ind - 1];
         }
+
         if (x < lastStepAmount) {
             change += (x - lastStepAmount) * lastStepBps;
         }
+
         return change / x;
     }
 
