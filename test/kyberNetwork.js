@@ -2704,7 +2704,12 @@ function getExtraBpsForImbalanceSellQuantityNew(qty) {
 };
 
 function getExtraBpsForQuantity(qty, stepX, stepY) {
-    if (qty == 0) { return 0; }
+    if (qty == 0) {
+        for(let i = 0; i < stepX.length; i++) {
+            if (qty <= stepX[i]) { return stepY[i]; }
+        }
+        return stepY[stepY.length - 1];
+    }
     let change = 0;
     let lastStepAmount = 0;
     if (qty > 0) {

@@ -382,12 +382,18 @@ contract ConversionRates2 is ConversionRatesInterface, VolumeImbalanceRecorder, 
     }
 
     function executeStepFunction(StepFunction f, int x) internal pure returns(int) {
-        if (x == 0) { return 0; }
-
         uint len = f.y.length;
+        uint ind;
+        if (x == 0) {
+            // fallback to old logics
+            for(ind = 0; ind < len; ind++) {
+                if (x <= f.x[ind]) { return f.y[ind]; }
+            }
+            return f.x[len - 1];
+        }
+
         int lastStepAmount = 0; // amount from last step to compute amount to be applied bps for next step
         int change = 0; // amount change from initial amount when applying bps for each step
-        uint ind;
         int fx;
 
         if (x > 0) {
