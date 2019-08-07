@@ -205,7 +205,7 @@ contract ConversionRates2 is ConversionRates {
 
         if (len > 0) {
             fx = f.x[len - 1];
-            if (fx > fx) {
+            if (fx < 0) {
                 change += fx * f.y[len - 1];
             }
         }
