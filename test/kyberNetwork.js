@@ -2741,10 +2741,8 @@ function getExtraBpsForQuantity(qty, stepX, stepY) {
                 lastStepAmount = stepX[i];
             }
         }
-        if (len > 0) {
-            if (stepX[len - 1] < 0) {
-                change += stepX[len - 1] * stepY[len - 1];
-            }
+        if (lastStepAmount < 0) {
+            change += lastStepAmount * stepY[len - 1];
         }
     }
     return Math.floor(change / qty);

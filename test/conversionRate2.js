@@ -72,12 +72,18 @@ contract('ConversionRates2', function(accounts) {
         reserveAddress = accounts[3];
     })
 
-    it("shouild test getting step function as expected", async function () {
+    it("should test getting bps from executing step function as expected", async function () {
         let stepX = [-200, -100, -50];
         let stepY = [-20, -10, -5];
         let bps = getExtraBpsForQuantity(-300, stepX, stepY);
         // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * -5 = 3500
         assert.equal(Math.floor(3500 / -300), bps, "bad bps");
+
+        stepX = [-200, -100, -50];
+        stepY = [-20, -10, -5];
+        bps = getExtraBpsForQuantity(-25, stepX, stepY);
+        // (-25 - 0) * -5
+        assert.equal(-5, bps, "bad bps");
 
         stepX = [-200, -100, -50, 0];
         stepY = [-20, -10, -5, 1];
@@ -1443,10 +1449,8 @@ function getExtraBpsForQuantity(qty, stepX, stepY) {
                 lastStepAmount = stepX[i];
             }
         }
-        if (len > 0) {
-            if (stepX[len - 1] < 0) {
-                change += stepX[len - 1] * stepY[len - 1];
-            }
+        if (lastStepAmount < 0) {
+            change += lastStepAmount * stepY[len - 1];
         }
     }
     return Math.floor(change / qty);

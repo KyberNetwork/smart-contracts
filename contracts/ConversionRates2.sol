@@ -204,9 +204,8 @@ contract ConversionRates2 is ConversionRates {
             }
         }
 
-        fx = f.x[len - 1];
-        if (fx < 0) {
-            change += fx * f.y[len - 1];
+        if (lastStepAmount < 0) {
+            change += lastStepAmount * f.y[len - 1];
         }
 
         return change / x;
