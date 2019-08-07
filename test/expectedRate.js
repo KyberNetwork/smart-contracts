@@ -1,4 +1,5 @@
 let ConversionRates = artifacts.require("./ConversionRates.sol");
+let ConversionRates2 = artifacts.require("./ConversionRates2.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 let Reserve = artifacts.require("./KyberReserve.sol");
 let Network = artifacts.require("./KyberNetwork.sol");
@@ -82,9 +83,11 @@ contract('ExpectedRates', function(accounts) {
 
         //init contracts
         pricing1 = await ConversionRates.new(admin, {});
+        pricing2 = await ConversionRates2.new(admin, {});
 
         //set pricing general parameters
         await pricing1.setValidRateDurationInBlocks(validRateDurationInBlocks);
+        await pricing2.setValidRateDurationInBlocks(validRateDurationInBlocks);
 
         //create and add token addresses...
         for (let i = 0; i < numTokens; ++i) {
@@ -94,11 +97,15 @@ contract('ExpectedRates', function(accounts) {
             await pricing1.addToken(token.address);
             await pricing1.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
             await pricing1.enableTokenTrade(token.address);
+            await pricing2.addToken(token.address);
+            await pricing2.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
+            await pricing2.enableTokenTrade(token.address);
         }
 
         assert.equal(tokens.length, numTokens, "bad number tokens");
 
         let result = await pricing1.addOperator(operator);
+        await pricing2.addOperator(operator);
 
         //buy is ether to token rate. sale is token to ether rate. so sell == 1 / buy. assuming we have no spread.
         let tokensPerEther;
@@ -116,6 +123,7 @@ contract('ExpectedRates', function(accounts) {
         buys.length = sells.length = indices.length = 0;
 
         await pricing1.setBaseRate(tokenAdd, baseBuyRate1, baseSellRate1, buys, sells, currentBlock, indices, {from: operator});
+        await pricing2.setBaseRate(tokenAdd, baseBuyRate1, baseSellRate1, buys, sells, currentBlock, indices, {from: operator});
 
         //set compact data
         compactBuyArr = [0, 0, 0, 0, 0, 06, 07, 08, 09, 10, 11, 12, 13, 14];
@@ -132,27 +140,37 @@ contract('ExpectedRates', function(accounts) {
         assert.equal(indices.length, buys.length, "bad buys array size");
 
         await pricing1.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        await pricing2.setCompactData(buys, sells, currentBlock, indices, {from: operator});
 
         //all start with same step functions.
         for (let i = 0; i < numTokens; ++i) {
             await pricing1.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             await pricing1.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            await pricing2.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            await pricing2.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
         }
 
         network = await Network.new(admin);
         reserve1 = await Reserve.new(network.address, pricing1.address, admin);
+        reserve2 = await Reserve.new(network.address, pricing2.address, admin);
         await pricing1.setReserveAddress(reserve1.address);
+        await pricing2.setReserveAddress(reserve2.address);
         await reserve1.addAlerter(alerter);
+        await reserve2.addAlerter(alerter);
         for (i = 0; i < numTokens; ++i) {
             await reserve1.approveWithdrawAddress(tokenAdd[i],accounts[0],true);
+            await reserve2.approveWithdrawAddress(tokenAdd[i],accounts[0],true);
         }
 
         //set reserve balance. 10000 wei ether + per token 1000 wei ether value according to base rate.
         let reserveEtherInit = 5000 * 2;
         await Helper.sendEtherWithPromise(accounts[8], reserve1.address, reserveEtherInit);
+        await Helper.sendEtherWithPromise(accounts[8], reserve2.address, reserveEtherInit);
 
         let balance = await Helper.getBalancePromise(reserve1.address);
         expectedReserve1BalanceWei = balance.valueOf();
+        assert.equal(balance.valueOf(), reserveEtherInit, "wrong ether balance");
+        balance = await Helper.getBalancePromise(reserve2.address);
         assert.equal(balance.valueOf(), reserveEtherInit, "wrong ether balance");
 
         //transfer tokens to reserve. each token same wei balance
@@ -161,6 +179,9 @@ contract('ExpectedRates', function(accounts) {
             let amount1 = (new BigNumber(reserveEtherInit)).div(precisionUnits).mul(baseBuyRate1[i]).floor();
             await token.transfer(reserve1.address, amount1.valueOf());
             let balance = await token.balanceOf(reserve1.address);
+            assert.equal(amount1.valueOf(), balance.valueOf());
+            await token.transfer(reserve2.address, amount1.valueOf());
+            balance = await token.balanceOf(reserve2.address);
             assert.equal(amount1.valueOf(), balance.valueOf());
         }
 
@@ -466,6 +487,125 @@ contract('ExpectedRates', function(accounts) {
         let srcToEthRate = await network.searchBestRate(tokenAdd[tokenSrcInd], ethAddress, qty);
         srcToEthRate = new BigNumber(srcToEthRate[1].valueOf());
         let ethToDestRate = await network.searchBestRate(ethAddress, tokenAdd[tokenDestInd], qty);
+        ethToDestRate = new BigNumber(ethToDestRate[1].valueOf());
+
+        assert(rates[0].valueOf() != 0, "unexpected rate");
+        assert.equal(rates[0].valueOf(), srcToEthRate.mul(ethToDestRate).div(precisionUnits).floor(), "unexpected rate");
+        assert.equal(rates[1].valueOf(), 0, "unexpected rate");
+    });
+
+    it("should disable the first reserve and add the second one with new conversion rate", async function() {
+        await reserve1.disableTrade({from: alerter});
+        await network.addReserve(reserve2.address, true);
+
+        //list tokens per reserve2
+        for (let i = 0; i < numTokens; i++) {
+            await network.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true);
+        }
+    });
+
+    it("step function enhancement: should test eth to token. use qty slippage.", async function() {
+        let tokenInd = 2;
+        let qty = 9;
+        quantityFactor = 10;
+
+        await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
+        let myExpectedRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], qty);
+        let qtySlippageRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], (qty * quantityFactor));
+
+        let minSlippage =  ((10000 - minSlippageBps) * myExpectedRate[1].valueOf()) / 10000;
+
+        qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+        if (qtySlippageRate > minSlippage) {
+            qtySlippageRate = minSlippage;
+            assert(false, "expect qty slippage rate to be lower");
+        }
+
+        rates = await expectedRates.getExpectedRate(ethAddress, tokenAdd[tokenInd], qty);
+
+        assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
+        assert.equal(rates[1].valueOf(), qtySlippageRate, "unexpected rate");
+    });
+
+    it("step function enhancement: should test eth to token. use min slippage.", async function() {
+        let tokenInd = 2;
+        let qty = 9;
+        quantityFactor = 5;
+
+        await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
+        let myExpectedRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], qty);
+        let qtySlippageRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], (qty * quantityFactor));
+
+        let minSlippage =  ((10000 - minSlippageBps) * myExpectedRate[1].valueOf()) / 10000;
+
+        qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+        if (qtySlippageRate > minSlippage) {
+            qtySlippageRate = minSlippage;
+        } else {
+            assert(false, "expect min slippage rate to be lower");
+        }
+
+        rates = await expectedRates.getExpectedRate(ethAddress, tokenAdd[tokenInd], qty);
+
+        assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
+        assert.equal(rates[1].valueOf(), qtySlippageRate, "unexpected rate");
+    });
+
+    it("step function enhancement: should test token to eth. use qty slippage.", async function() {
+        let tokenInd = 2;
+        let qty = 300;
+
+        let myExpectedRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, qty);
+        let qtySlippageRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, (qty * quantityFactor));
+
+        let minSlippage = new BigNumber(10000 - minSlippageBps).mul(myExpectedRate[1]).div(10000).floor();
+
+        qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+        if (qtySlippageRate > minSlippage) {
+            qtySlippageRate = minSlippage;
+            assert(false, "expect qty slippage rate to be lower");
+        }
+
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+
+        assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
+        assert.equal(rates[1].valueOf(), qtySlippageRate.valueOf(), "unexpected rate");
+    });
+
+    it("step function enhancement: should test token to eth. use min quantity.", async function() {
+        let tokenInd = 2;
+        let qty = 110;
+        quantityFactor = 2;
+
+        await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
+        let myExpectedRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, qty);
+        let qtySlippageRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, (qty * quantityFactor));
+
+        let minSlippage = new BigNumber(10000 - minSlippageBps).mul(myExpectedRate[1]).div(10000).floor();
+
+        qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+        if (qtySlippageRate > minSlippage) {
+            qtySlippageRate = minSlippage;
+        } else {
+            assert(false, "expect min slippage rate to be lower");
+        }
+
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+
+        assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
+        assert.equal(rates[1].valueOf(), qtySlippageRate.valueOf(), "unexpected rate");
+    });
+
+    it("step function enhancement: should verify when qty 0, token to token rate as expected.", async function() {
+        let tokenSrcInd = 2;
+        let tokenDestInd = 1;
+        let qty = 0;
+
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], qty);
+        // if qty is 0, expected rate will set qty is 1
+        let srcToEthRate = await network.searchBestRate(tokenAdd[tokenSrcInd], ethAddress, 1);
+        srcToEthRate = new BigNumber(srcToEthRate[1].valueOf());
+        let ethToDestRate = await network.searchBestRate(ethAddress, tokenAdd[tokenDestInd], 1);
         ethToDestRate = new BigNumber(ethToDestRate[1].valueOf());
 
         assert(rates[0].valueOf() != 0, "unexpected rate");
