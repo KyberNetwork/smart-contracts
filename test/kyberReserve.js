@@ -1254,6 +1254,7 @@ function getExtraBpsForImbalanceSellQuantityNew(qty) {
 
 function getExtraBpsForQuantity(qty, stepX, stepY) {
     let len = stepX.length;
+    if (len == 0) { return 0; }
     if (qty == 0) {
         for(let i = 0; i < len; i++) {
             if (qty <= stepX[i]) { return stepY[i]; }

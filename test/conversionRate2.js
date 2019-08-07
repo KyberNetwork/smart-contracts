@@ -127,6 +127,12 @@ contract('ConversionRates2', function(accounts) {
         bps = getExtraBpsForQuantity(120, stepX, stepY);
         // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
         assert.equal(Math.floor(10200 / 120), bps, "bad bps for positive qty all steps");
+
+        stepX = [];
+        stepY = [];
+        bps = getExtraBpsForQuantity(120, stepX, stepY);
+        // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
+        assert.equal(0, bps, "bad bps: should be 0 when step is empty");
     });
     it("should init ConversionRates Inst and set general parameters.", async function () {
         //init contracts
@@ -1401,6 +1407,7 @@ function getExtraBpsForImbalanceSellQuantity(qty) {
 
 function getExtraBpsForQuantity(qty, stepX, stepY) {
     let len = stepX.length;
+    if (len == 0) { return 0; }
     if (qty == 0) {
         for(let i = 0; i < len; i++) {
             if (qty <= stepX[i]) { return stepY[i]; }

@@ -155,6 +155,7 @@ contract ConversionRates2 is ConversionRates {
 
     function executeStepFunction(StepFunction f, int x) internal pure returns(int) {
         uint len = f.y.length;
+        if (len == 0) { return 0; }
         uint ind;
         if (x == 0) {
             // fallback to old logics
@@ -203,11 +204,9 @@ contract ConversionRates2 is ConversionRates {
             }
         }
 
-        if (len > 0) {
-            fx = f.x[len - 1];
-            if (fx < 0) {
-                change += fx * f.y[len - 1];
-            }
+        fx = f.x[len - 1];
+        if (fx < 0) {
+            change += fx * f.y[len - 1];
         }
 
         return change / x;
