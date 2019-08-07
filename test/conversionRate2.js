@@ -71,20 +71,63 @@ contract('ConversionRates2', function(accounts) {
         operator = accounts[2];
         reserveAddress = accounts[3];
     })
-    it("should test bytes14.", async function () {
-        let arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
-        let hexArr = Helper.bytesToHex(arr);
-        let byte;
 
-        wrapper = await Wrapper.new();
+    it("shouild test getting step function as expected", async function () {
+        let stepX = [-200, -100, -50];
+        let stepY = [-20, -10, -5];
+        let bps = getExtraBpsForQuantity(-300, stepX, stepY);
+        // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * -5 = 3500
+        assert.equal(Math.floor(3500 / -300), bps, "bad bps");
 
-        for (let i = 0; i < 14; i++) {
-            byte = await wrapper.getInt8FromByte(hexArr, i);
-//            console.log("byte " + i + ": " + byte.valueOf());
-            assert.equal(byte.valueOf(), arr[i].valueOf(), "bad bytes 14. index: " + i);
-        }
+        stepX = [-200, -100, -50, 0];
+        stepY = [-20, -10, -5, 1];
+        // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * 1 = 3200
+        bps = getExtraBpsForQuantity(-300, stepX, stepY);
+        assert.equal(Math.floor(3200 / -300), bps, "bad bps");
+
+        stepX = [-200, -100, -50, 10];
+        stepY = [-20, -10, -5, 2];
+        // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * 2 = 3150
+        bps = getExtraBpsForQuantity(-300, stepX, stepY);
+        assert.equal(Math.floor(3150 / -300), bps, "bad bps");
+
+        // (-150 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * 2 = 650
+        bps = getExtraBpsForQuantity(-150, stepX, stepY);
+        assert.equal(Math.floor(650 / -150), bps, "bad bps");
+
+        stepX = [0, 10, 20, 30];
+        stepY = [0, 20, 50, 100];
+        bps = getExtraBpsForQuantity(-100, stepX, stepY);
+        assert.equal(0, bps, "bad bps for negative qty with all non-negative qty");
+
+        // calling qty 0
+        stepX = [10, 20, 30];
+        stepY = [20, 50, 100];
+        bps = getExtraBpsForQuantity(0, stepX, stepY);
+        assert.equal(20, bps, "bad bps for 0 qty");
+
+        stepX = [-100, -50, -30];
+        stepY = [20, 50, 100];
+        bps = getExtraBpsForQuantity(0, stepX, stepY);
+        assert.equal(100, bps, "bad bps for 0 qty");
+
+        stepX = [-100, -50, -30];
+        stepY = [20, 50, 100];
+        bps = getExtraBpsForQuantity(20, stepX, stepY);
+        assert.equal(100, bps, "bad bps for 0 qty");
+
+        stepX = [10, 30, 50];
+        stepY = [20, 50, 100];
+        bps = getExtraBpsForQuantity(40, stepX, stepY);
+        // (10 * 20 + 20 * 50 + 10 * 100) = 2200
+        assert.equal(Math.floor(2200 / 40), bps, "bad bps for positive qty not all steps");
+
+        stepX = [10, 30, 50];
+        stepY = [20, 50, 100];
+        bps = getExtraBpsForQuantity(120, stepX, stepY);
+        // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
+        assert.equal(Math.floor(10200 / 120), bps, "bad bps for positive qty all steps");
     });
-
     it("should init ConversionRates Inst and set general parameters.", async function () {
         //init contracts
         convRatesInst = await ConversionRates.new(admin);
@@ -1357,16 +1400,17 @@ function getExtraBpsForImbalanceSellQuantity(qty) {
 };
 
 function getExtraBpsForQuantity(qty, stepX, stepY) {
+    let len = stepX.length;
     if (qty == 0) {
-        for(let i = 0; i < stepX.length; i++) {
+        for(let i = 0; i < len; i++) {
             if (qty <= stepX[i]) { return stepY[i]; }
         }
-        return stepY[stepY.length - 1];
+        return stepY[len - 1];
     }
     let change = 0;
     let lastStepAmount = 0;
     if (qty > 0) {
-        for(let i = 0; i < stepX.length; i++) {
+        for(let i = 0; i < len; i++) {
             if (stepX[i] <= 0) { continue; }
             if (qty <= stepX[i]) {
                 change += (qty - lastStepAmount) * stepY[i];
@@ -1380,20 +1424,22 @@ function getExtraBpsForQuantity(qty, stepX, stepY) {
             change += (qty - lastStepAmount) * stepY[stepY.length - 1];
         }
     } else {
-        let lastStepBps = 0;
-        for(let i = stepX.length - 1; i >= 0; i--) {
-            if (stepX[i] >= 0) { continue; }
-            if (qty >= stepX[i]) {
-                change += (qty - lastStepAmount) * lastStepBps;
-                lastStepAmount = qty;
+        lastStepAmount = qty;
+        for(let i = 0; i < len; i++) {
+            if (stepX[i] >= 0) {
+                change += lastStepAmount * stepY[i];
+                lastStepAmount = 0;
                 break;
             }
-            change += (stepX[i] - lastStepAmount) * lastStepBps;
-            lastStepAmount = stepX[i];
-            lastStepBps = stepY[i];
+            if (lastStepAmount < stepX[i]) {
+                change += (lastStepAmount - stepX[i]) * stepY[i];
+                lastStepAmount = stepX[i];
+            }
         }
-        if (qty < lastStepAmount) {
-            change += (qty - lastStepAmount) * lastStepBps;
+        if (len > 0) {
+            if (stepX[len - 1] < 0) {
+                change += stepX[len - 1] * stepY[len - 1];
+            }
         }
     }
     return Math.floor(change / qty);

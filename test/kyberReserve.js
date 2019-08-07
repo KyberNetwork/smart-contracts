@@ -68,8 +68,8 @@ let baseBuyRate = [];
 let baseSellRate = [];
 
 //quantity buy steps
-let qtyBuyStepX = [-1400, -700, -150, 0, 150, 350, 700,  1400];
-let qtyBuyStepY = [ 1000,   75,   25, 0,  0, -70, -160, -3000];
+let qtyBuyStepX = [0, 150, 350, 700,  1400];
+let qtyBuyStepY = [0,  0, -70, -160, -3000];
 
 //imbalance buy steps
 let imbalanceBuyStepX = [-8500, -2800, -1500, 0, 1500, 2800,  4500];
@@ -77,8 +77,8 @@ let imbalanceBuyStepY = [ 1300,   130,    43, 0,   0, -110, -1600];
 
 //sell
 //sell price will be 1 / buy (assuming no spread) so sell is actually buy price in other direction
-let qtySellStepX = [-1400, -700, -150, 0, 150, 350, 700, 1400];
-let qtySellStepY = [-300,   -80,  -15, 0,   0, 120, 170, 3000];
+let qtySellStepX = [0, 150, 350, 700, 1400];
+let qtySellStepY = [0,   0, 120, 170, 3000];
 
 //sell imbalance step
 let imbalanceSellStepX = [-8500, -2800, -1500, 0, 1500, 2800,  4500];
@@ -1253,16 +1253,17 @@ function getExtraBpsForImbalanceSellQuantityNew(qty) {
 };
 
 function getExtraBpsForQuantity(qty, stepX, stepY) {
+    let len = stepX.length;
     if (qty == 0) {
-        for(let i = 0; i < stepX.length; i++) {
+        for(let i = 0; i < len; i++) {
             if (qty <= stepX[i]) { return stepY[i]; }
         }
-        return stepY[stepY.length - 1];
+        return stepY[len - 1];
     }
     let change = 0;
     let lastStepAmount = 0;
     if (qty > 0) {
-        for(let i = 0; i < stepX.length; i++) {
+        for(let i = 0; i < len; i++) {
             if (stepX[i] <= 0) { continue; }
             if (qty <= stepX[i]) {
                 change += (qty - lastStepAmount) * stepY[i];
@@ -1276,20 +1277,22 @@ function getExtraBpsForQuantity(qty, stepX, stepY) {
             change += (qty - lastStepAmount) * stepY[stepY.length - 1];
         }
     } else {
-        let lastStepBps = 0;
-        for(let i = stepX.length - 1; i >= 0; i--) {
-            if (stepX[i] >= 0) { continue; }
-            if (qty >= stepX[i]) {
-                change += (qty - lastStepAmount) * lastStepBps;
-                lastStepAmount = qty;
+        lastStepAmount = qty;
+        for(let i = 0; i < len; i++) {
+            if (stepX[i] >= 0) {
+                change += lastStepAmount * stepY[i];
+                lastStepAmount = 0;
                 break;
             }
-            change += (stepX[i] - lastStepAmount) * lastStepBps;
-            lastStepAmount = stepX[i];
-            lastStepBps = stepY[i];
+            if (lastStepAmount < stepX[i]) {
+                change += (lastStepAmount - stepX[i]) * stepY[i];
+                lastStepAmount = stepX[i];
+            }
         }
-        if (qty < lastStepAmount) {
-            change += (qty - lastStepAmount) * lastStepBps;
+        if (len > 0) {
+            if (stepX[len - 1] < 0) {
+                change += stepX[len - 1] * stepY[len - 1];
+            }
         }
     }
     return Math.floor(change / qty);

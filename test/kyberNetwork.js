@@ -2704,16 +2704,17 @@ function getExtraBpsForImbalanceSellQuantityNew(qty) {
 };
 
 function getExtraBpsForQuantity(qty, stepX, stepY) {
+    let len = stepX.length;
     if (qty == 0) {
-        for(let i = 0; i < stepX.length; i++) {
+        for(let i = 0; i < len; i++) {
             if (qty <= stepX[i]) { return stepY[i]; }
         }
-        return stepY[stepY.length - 1];
+        return stepY[len - 1];
     }
     let change = 0;
     let lastStepAmount = 0;
     if (qty > 0) {
-        for(let i = 0; i < stepX.length; i++) {
+        for(let i = 0; i < len; i++) {
             if (stepX[i] <= 0) { continue; }
             if (qty <= stepX[i]) {
                 change += (qty - lastStepAmount) * stepY[i];
@@ -2727,20 +2728,22 @@ function getExtraBpsForQuantity(qty, stepX, stepY) {
             change += (qty - lastStepAmount) * stepY[stepY.length - 1];
         }
     } else {
-        let lastStepBps = 0;
-        for(let i = stepX.length - 1; i >= 0; i--) {
-            if (stepX[i] >= 0) { continue; }
-            if (qty >= stepX[i]) {
-                change += (qty - lastStepAmount) * lastStepBps;
-                lastStepAmount = qty;
+        lastStepAmount = qty;
+        for(let i = 0; i < len; i++) {
+            if (stepX[i] >= 0) {
+                change += lastStepAmount * stepY[i];
+                lastStepAmount = 0;
                 break;
             }
-            change += (stepX[i] - lastStepAmount) * lastStepBps;
-            lastStepAmount = stepX[i];
-            lastStepBps = stepY[i];
+            if (lastStepAmount < stepX[i]) {
+                change += (lastStepAmount - stepX[i]) * stepY[i];
+                lastStepAmount = stepX[i];
+            }
         }
-        if (qty < lastStepAmount) {
-            change += (qty - lastStepAmount) * lastStepBps;
+        if (len > 0) {
+            if (stepX[len - 1] < 0) {
+                change += stepX[len - 1] * stepY[len - 1];
+            }
         }
     }
     return Math.floor(change / qty);
