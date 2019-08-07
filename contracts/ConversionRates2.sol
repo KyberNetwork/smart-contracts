@@ -134,8 +134,10 @@ contract ConversionRates2 is ConversionRatesInterface, VolumeImbalanceRecorder, 
         require(xSell.length <= MAX_STEPS_IN_FUNCTION);
         require(tokenData[token].listed);
 
-        if (xBuy.length > 1) {
+        if (xBuy.length > 0) {
             // verify qties are increasing
+            require(xBuy[0] >= 0);
+            require(xSell[0] >= 0);
             for(uint i = 0; i < xBuy.length - 1; i++) {
                 require(xBuy[i] < xBuy[i + 1]);
                 require(xSell[i] < xSell[i + 1]);

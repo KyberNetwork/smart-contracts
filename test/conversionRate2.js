@@ -1108,6 +1108,64 @@ contract('ConversionRates2', function(accounts) {
         }
     });
 
+    it("should verify set step functions for qty reverted when amounts are negative.", async function () {
+        let index = 1;
+
+        qtyBuyStepX = [15, 30, 100, 150];
+        qtyBuyStepY = [8, 30, 70, 100];
+        qtySellStepX = [15, 30, 70, 100];
+        qtySellStepY = [8, 30, 70, 100];
+
+        await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+
+        // bps can be negative
+        qtyBuyStepY = [-8, 30, 70, 100];
+        qtySellStepY = [-8, 30, 70, 100];
+        await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+
+        qtyBuyStepX = [-15, 30, 100, 150];
+
+        try {
+            await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // all non-negative, should pass
+        qtyBuyStepX = [0, 30, 100, 150];
+        await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+
+        qtyBuyStepX = [15, 30, 100, 150];
+        qtySellStepX = [-15, 30, 150, 100];
+        try {
+            await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        qtyBuyStepX = [-15];
+        qtyBuyStepY = [8];
+        qtySellStepX = [15];
+        qtySellStepY = [8];
+        try {
+            await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        qtyBuyStepX = [15];
+        qtySellStepX = [-15];
+        try {
+            await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
     it("should verify set step functions for qty reverted when amounts are not increasing.", async function () {
         let index = 1;
 
