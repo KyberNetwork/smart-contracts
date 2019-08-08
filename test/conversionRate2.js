@@ -14,10 +14,8 @@ let maxPerBlockImbalance = 4000;
 let maxTotalImbalance = maxPerBlockImbalance * 12;
 let admin;
 let alerter;
-let rateUpdateBlock;
 let currentBlock = 3000;
 let lastSetCompactBlock = currentBlock;
-let wrapper;
 let numTokens = 17;
 let tokens = [];
 let operator;
@@ -41,27 +39,6 @@ let compactBuyArr2 = [];
 let compactSellArr1 = [];
 let compactSellArr2 = [];
 
-// getStepFunctionData command IDs
-let comID_BuyRateStpQtyXLength = 0;
-let comID_BuyRateStpQtyParamX = 1;
-let comID_BuyRateStpQtyYLength = 2;
-let comID_BuyRateStpQtyParamY = 3;
-
-let comID_SellRateStpQtyXLength = 4;
-let comID_SellRateStpQtyParamX = 5;
-let comID_SellRateStpQtyYLength = 6;
-let comID_SellRateStpQtyParamY = 7;
-
-let comID_BuyRateStpImbalanceXLength = 8;
-let comID_BuyRateStpImbalanceParamX = 9;
-let comID_BuyRateStpImbalanceYLength = 10;
-let comID_BuyRateStpImbalanceParamY = 11;
-
-let comID_SellRateStpImbalanceXLength = 12;
-let comID_SellRateStpImbalanceParamX = 13;
-let comID_SellRateStpImbalanceYLength = 14;
-let comID_SellRateStpImbalanceParamY = 15;
-
 let convRatesInst;
 
 contract('ConversionRates2', function(accounts) {
@@ -73,40 +50,60 @@ contract('ConversionRates2', function(accounts) {
     })
 
     it("should test getting bps from executing step function as expected", async function () {
+
+        // Case1: qty negative, 0 < qty < all steps
         let stepX = [-200, -100, -50];
         let stepY = [-20, -10, -5];
         let bps = getExtraBpsForQuantity(-300, stepX, stepY);
         // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * -5 = 3500
         assert.equal(Math.floor(3500 / -300), bps, "bad bps");
 
+        // Case2: qty negative, all steps < qty < 0
         stepX = [-200, -100, -50];
         stepY = [-20, -10, -5];
         bps = getExtraBpsForQuantity(-25, stepX, stepY);
         // (-25 - 0) * -5
         assert.equal(-5, bps, "bad bps");
 
+        // Case2: qty negative, first step < qty < last step < 0
+        stepX = [-200, -100, -50];
+        stepY = [-20, -10, -5];
+        bps = getExtraBpsForQuantity(-75, stepX, stepY);
+        // (-75 - (-50)) * (-5) + (-50 - 0) * (-5)
+        assert.equal(-5, bps, "bad bps");
+
+        // Case3: qty negative, all steps negative except last one is 0
         stepX = [-200, -100, -50, 0];
         stepY = [-20, -10, -5, 1];
         // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * 1 = 3200
         bps = getExtraBpsForQuantity(-300, stepX, stepY);
         assert.equal(Math.floor(3200 / -300), bps, "bad bps");
 
+        // Case4: qty negative, all steps negative except last one is positive, qty < all steps
         stepX = [-200, -100, -50, 10];
         stepY = [-20, -10, -5, 2];
         // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * 2 = 3150
         bps = getExtraBpsForQuantity(-300, stepX, stepY);
         assert.equal(Math.floor(3150 / -300), bps, "bad bps");
 
+        // Case5: qty negative, all steps negative except last one is positive, first step < qty < last step
         // (-150 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * 2 = 650
         bps = getExtraBpsForQuantity(-150, stepX, stepY);
         assert.equal(Math.floor(650 / -150), bps, "bad bps");
 
+        // Case6: qty negative, all steps non-negative with first step is 0
         stepX = [0, 10, 20, 30];
         stepY = [0, 20, 50, 100];
         bps = getExtraBpsForQuantity(-100, stepX, stepY);
         assert.equal(0, bps, "bad bps for negative qty with all non-negative qty");
 
-        // calling qty 0
+        // Case7: qty negative, all steps non-negative with first step is 0
+        stepX = [10, 20, 30];
+        stepY = [20, 50, 100];
+        bps = getExtraBpsForQuantity(-100, stepX, stepY);
+        assert.equal(20, bps, "bad bps for negative qty with all non-negative qty");
+
+        // Case8: qty is 0, fallback to old logic
         stepX = [10, 20, 30];
         stepY = [20, 50, 100];
         bps = getExtraBpsForQuantity(0, stepX, stepY);
@@ -117,29 +114,41 @@ contract('ConversionRates2', function(accounts) {
         bps = getExtraBpsForQuantity(0, stepX, stepY);
         assert.equal(100, bps, "bad bps for 0 qty");
 
+        // Case9: qty is positive, all steps are negative
         stepX = [-100, -50, -30];
         stepY = [20, 50, 100];
         bps = getExtraBpsForQuantity(20, stepX, stepY);
         assert.equal(100, bps, "bad bps for 0 qty");
 
+        // Case10: qty is positive, 0 < first step < qty < last step
         stepX = [10, 30, 50];
         stepY = [20, 50, 100];
         bps = getExtraBpsForQuantity(40, stepX, stepY);
         // (10 * 20 + 20 * 50 + 10 * 100) = 2200
         assert.equal(Math.floor(2200 / 40), bps, "bad bps for positive qty not all steps");
 
+        // Case11: qty is positive, 0 < all steps < qty
         stepX = [10, 30, 50];
         stepY = [20, 50, 100];
         bps = getExtraBpsForQuantity(120, stepX, stepY);
         // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
         assert.equal(Math.floor(10200 / 120), bps, "bad bps for positive qty all steps");
 
+        // Case12: qty is positive, first step < 0 < qty < last step
+        stepX = [-100, -50, 10, 30, 150];
+        stepY = [-30, -15, 20, 50, 100];
+        bps = getExtraBpsForQuantity(120, stepX, stepY);
+        // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
+        assert.equal(Math.floor(10200 / 120), bps, "bad bps for positive qty all steps");
+
+        // Case13: qty is positive, step is empty
         stepX = [];
         stepY = [];
         bps = getExtraBpsForQuantity(120, stepX, stepY);
         // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
         assert.equal(0, bps, "bad bps: should be 0 when step is empty");
     });
+
     it("should init ConversionRates Inst and set general parameters.", async function () {
         //init contracts
         convRatesInst = await ConversionRates.new(admin);
@@ -162,7 +171,7 @@ contract('ConversionRates2', function(accounts) {
         await convRatesInst.addAlerter(alerter);
     });
 
-    it("should set base rates for all tokens then get and verify.", async function () {
+    it("should set base rates for all tokens.", async function () {
         // set base rate
 
         //buy is ether to token rate. sale is token to ether rate. so sell == 1 / buy. assuming we have no spread.
@@ -194,7 +203,7 @@ contract('ConversionRates2', function(accounts) {
         }
     });
 
-    it("should set compact data all tokens then get and verify.", async function () {
+    it("should set compact data all tokens.", async function () {
         //set compact data
         compactBuyArr1 = [1, 2, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14];
         compactBuyArr2 = [15, 16, 17, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14];
@@ -252,24 +261,6 @@ contract('ConversionRates2', function(accounts) {
         assert.equal(blockNum.valueOf(), currentBlock.valueOf(), "bad block number returned");
     });
 
-
-    it("should verify setCompactData reverted when block number out of range.", async function () {
-        let block = 0xffffffff1; //block number limited to size of int
-
-        try {
-            await convRatesInst.setCompactData(buys, sells, block, indices, {from: operator});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        //see success on legal block
-        let legalBlock = 0xffffffff - 1;
-        await convRatesInst.setCompactData(buys, sells, legalBlock, indices, {from: operator});
-        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
-    });
-
-
     it("should set step functions qty and imbalance.", async function () {
         qtyBuyStepX = [15, 30, 70];
         qtyBuyStepY = [8, 30, 70];
@@ -284,130 +275,6 @@ contract('ConversionRates2', function(accounts) {
             await convRatesInst.setQtyStepFunction(tokens[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             await convRatesInst.setImbalanceStepFunction(tokens[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
         }
-    });
-
-    it("should get qty buy step function and verify numbers.", async function () {
-        tokenId = 1; //
-
-        // x axis
-        let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpQtyXLength, 0); //get length
-        assert.equal(received.valueOf(), qtyBuyStepX.length, "length don't match");
-
-        // now y axis
-        received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpQtyYLength, 0); //get length
-        assert.equal(received.valueOf(), qtyBuyStepX.length, "length don't match"); //x and y must match.
-
-        //iterate x and y values and compare
-        for (let i = 0; i < qtyBuyStepX.length; ++i) {
-            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpQtyParamX, i); //get x value in cell i
-            assert.equal(received.valueOf(), qtyBuyStepX[i], "mismatch for x value in cell: " + i);
-            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpQtyParamY, i); //get x value in cell i
-            assert.equal(received.valueOf(), qtyBuyStepY[i], "mismatch for y value in cell: " + i);
-        }
-    });
-
-
-    it("should get qty sell step function and verify numbers.", async function () {
-        tokenId = 3; //
-
-        // x axis
-        let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpQtyXLength, 0); //get length
-        assert.equal(received.valueOf(), qtySellStepX.length, "length don't match");
-
-        // now y axis
-        received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpQtyYLength, 0); //get length
-        assert.equal(received.valueOf(), qtySellStepX.length, "length don't match"); //x and y must match.
-
-        //iterate x and y values and compare
-        for (let i = 0; i < qtySellStepX.length; ++i) {
-            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpQtyParamX, i); //get x value in cell i
-            assert.equal(received.valueOf(), qtySellStepX[i], "mismatch for x value in cell: " + i);
-            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpQtyParamY, i); //get x value in cell i
-            assert.equal(received.valueOf(), qtySellStepY[i], "mismatch for y value in cell: " + i);
-        }
-    });
-
-    it("should get imbalance buy step function and verify numbers.", async function () {
-        tokenId = 1; //
-
-        // x axis
-        let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceXLength, 0); //get length
-        assert.equal(received.valueOf(), imbalanceBuyStepX.length, "length don't match");
-
-        // now y axis
-        received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceYLength, 0); //get length
-        assert.equal(received.valueOf(), imbalanceBuyStepX.length, "length don't match"); //x and y must match.
-
-        //iterate x and y values and compare
-        for (let i = 0; i < imbalanceBuyStepX.length; ++i) {
-            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceParamX, i); //get x value in cell i
-            assert.equal(received.valueOf(), imbalanceBuyStepX[i], "mismatch for x value in cell: " + i);
-            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceParamY, i); //get x value in cell i
-            assert.equal(received.valueOf(), imbalanceBuyStepY[i], "mismatch for y value in cell: " + i);
-        }
-    });
-
-    it("should get imbalance sell step function and verify numbers.", async function () {
-        tokenId = 3; //
-
-        // x axis
-        let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceXLength, 0); //get length
-        assert.equal(received.valueOf(), imbalanceSellStepX.length, "length don't match");
-
-        // now y axis
-        received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceYLength, 0); //get length
-        assert.equal(received.valueOf(), imbalanceSellStepX.length, "length don't match"); //x and y must match.
-
-        //iterate x and y values and compare
-        for (let i = 0; i < imbalanceSellStepX.length; ++i) {
-            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceParamX, i); //get x value in cell i
-            assert.equal(received.valueOf(), imbalanceSellStepX[i], "mismatch for x value in cell: " + i);
-            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceParamY, i); //get x value in cell i
-            assert.equal(received.valueOf(), imbalanceSellStepY[i], "mismatch for y value in cell: " + i);
-        }
-    });
-
-    it("should get set function data reverts with illegal command ID.", async function () {
-        tokenId = 1; //
-
-        try {
-            let received = await convRatesInst.getStepFunctionData(tokens[tokenId], 19, 0); //get length
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-    });
-
-
-    it("should get and verify listed tokens.", async function () {
-        let rxTokens = await convRatesInst.getListedTokens();
-        assert.equal(rxTokens.length, tokens.length, "length don't match");
-
-        for (let i = 0; i < tokens.length; i++){
-            assert.equal(rxTokens[i].valueOf(), tokens[i], "address don't match");
-        }
-    });
-
-
-    it("should test get token basic data works properly.", async function () {
-        token = await TestToken.new("testt", "tst", 18);
-        //see token not listed
-        let basicData = await convRatesInst.getTokenBasicData(token.address);
-        assert.equal(basicData[0].valueOf(), 0, "token should not be listed");
-
-        //add token and see listed
-        await convRatesInst.addToken(token.address);
-        basicData = await convRatesInst.getTokenBasicData(token.address);
-        assert.equal(basicData[0].valueOf(), 1, "token should  be listed");
-
-        //see not enabled
-        assert.equal(basicData[1].valueOf(), 0, "token should not be enabled");
-
-        //enable token and see enabled
-        await convRatesInst.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
-        await convRatesInst.enableTokenTrade(token.address);
-        basicData = await convRatesInst.getTokenBasicData(token.address);
-        assert.equal(basicData[1].valueOf(), 1, "token should be enabled");
     });
 
     it("should get buy rate with update according to compact data update.", async function () {
@@ -604,7 +471,6 @@ contract('ConversionRates2', function(accounts) {
         let tokenInd = 16;
         let token = tokens[tokenInd]; //choose some token
         let baseSellRate = await convRatesInst.getBasicRate(token, false);
-        let acceptedDiff = 1;
 
         // get rate
         let sellQty = 500;
@@ -626,176 +492,8 @@ contract('ConversionRates2', function(accounts) {
         let receivedRate = await convRatesInst.getRate(token, currentBlock, false, sellQty);
 
         //round rates a bit
-
         compareRates(receivedRate, expectedRate);
     });
-
-    it("should verify addToken reverted when token already exists.", async function () {
-        let tokenInd = 16;
-        let token = tokens[tokenInd]; //choose some token
-
-        try {
-            await convRatesInst.addToken(token);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-    });
-
-    it("should verify set compact data reverted when input arrays length don't match.", async function () {
-        //set compact data
-        sells.length = buys.length = indices.length = 0;
-
-        compactBuyArr1 = [1, 2, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14];
-        compactBuyArr2 = [15, 16, 17, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14];
-        let compactBuyHex = Helper.bytesToHex(compactBuyArr1);
-        buys.push(compactBuyHex);
-        compactBuyHex = Helper.bytesToHex(compactBuyArr2);
-        buys.push(compactBuyHex);
-
-        compactSellArr1 = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34];
-        compactSellArr2 = [35, 36, 37, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34];
-        let compactSellHex = Helper.bytesToHex(compactSellArr1);
-        sells.push(compactSellHex);
-
-        indices[0] = 0;
-        indices[1] = 1;
-
-        //compact sell arr smaller (1)
-        try {
-            await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        //sells 2 buys 2. indices 3
-        compactSellHex = Helper.bytesToHex(compactSellArr2);
-        sells.push(compactSellHex);
-
-        indices[2] = 5;
-
-        try {
-            await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        //set indices to 2 and see success.
-        indices.length = 2;
-        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
-        lastSetCompactBlock = currentBlock;
-    });
-
-    it("should verify set compact data reverted when input arrays length don't match num set tokens.", async function () {
-        //set compact data
-        sells[2] = buys[2] = indices[2] = 5;
-
-        //length 3 but only two exist in contract
-        try {
-            await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        sells.length = buys.length = indices.length = 2;
-        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
-        lastSetCompactBlock = currentBlock;
-    });
-
-    it("should verify set base rate data reverted when input arrays length don't match each other.", async function () {
-        //sells different length
-        sells[2] = 5;
-
-        //length 3 for sells and buys. indices 2
-        try {
-            await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        sells.length = buys.length = indices.length = 2;
-        await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
-
-        //buys different length
-        buys[2] = 5;
-
-        //length 3 for sells and buys. indices 2
-        try {
-            await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        sells.length = buys.length = indices.length = 2;
-        await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
-
-        //indices different length
-        indices[2] = 5;
-
-        //length 3 for sells and buys. indices 2
-        try {
-            await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        sells.length = buys.length = indices.length = 2;
-        await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
-
-        //baseBuy different length
-        baseBuy.push(19);
-
-        //length 3 for sells and buys. indices 2
-        try {
-            await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        baseBuy.length = baseSell.length;
-        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
-        lastSetCompactBlock = currentBlock;
-
-        //baseSell different length
-        baseSell.push(19);
-
-        //length 3 for sells and buys. indices 2
-        try {
-            await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        baseSell.length = baseBuy.length;
-        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
-        lastSetCompactBlock = currentBlock;
-    });
-
-
-    it("should verify set base rate data reverted when setting to unlisted token.", async function () {
-        //sells different length
-        let tokenAdd5 = tokens[5];
-        tokens[5] = 19;
-
-        try {
-            await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        tokens[5] = tokenAdd5;
-        await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
-    });
-
 
     it("should verify set qty step reverted when input arrays lengths don't match.", async function () {
         //qty buy step x - change size. see set fails
@@ -855,15 +553,6 @@ contract('ConversionRates2', function(accounts) {
         await convRatesInst.setQtyStepFunction(tokens[4], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
     });
 
-    it("should verify set qty step reverted when token not listed.", async function () {
-        try {
-            await convRatesInst.setQtyStepFunction(35, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-    });
-
     it("should verify set imbalance step reverted when input arrays lengths don't match.", async function () {
         //imbalance buy step x - change size. see set fails
         imbalanceBuyStepX.push(17);
@@ -920,70 +609,6 @@ contract('ConversionRates2', function(accounts) {
         //set size back and see set success
         imbalanceSellStepY.length = imbalanceSellStepX.length;
         await convRatesInst.setImbalanceStepFunction(tokens[4], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
-    });
-
-    it("should verify set qty step reverted when token not listed.", async function () {
-        try {
-            await convRatesInst.setImbalanceStepFunction(35, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-    });
-
-    it("should verify enable token trade reverted if token not added(listed).", async function () {
-
-        let someToken = await TestToken.new("testinggg", "ts11", 15);
-
-        await convRatesInst.setTokenControlInfo(someToken.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
-
-        //try to enable token trade when not listed.
-        try {
-            await convRatesInst.enableTokenTrade(someToken.address);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        //add token and see enable success
-        await convRatesInst.addToken(someToken.address);
-        await convRatesInst.enableTokenTrade(someToken.address);
-    });
-
-    it("should verify enable token trade reverted if token control info not set.", async function () {
-
-        let someToken = await TestToken.new("testing", "tst9", 15);
-
-        await convRatesInst.addToken(someToken.address);
-
-        //try to enable token trade when not listed.
-        try {
-            await convRatesInst.enableTokenTrade(someToken.address);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        //add token and see enable success
-        await convRatesInst.setTokenControlInfo(someToken.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
-        await convRatesInst.enableTokenTrade(someToken.address);
-    });
-
-    it("should verify disable token trade reverted if token not listed.", async function () {
-
-        let someToken = await TestToken.new("testing", "tst9", 15);
-
-        //try to disable token trade when not listed.
-        try {
-            await convRatesInst.disableTokenTrade(someToken.address, {from: alerter});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        //add token and see enable success
-        await convRatesInst.addToken(someToken.address);
-        await convRatesInst.disableTokenTrade(someToken.address, {from: alerter});
     });
 
     it("should verify get rate returns 0 if token disabled.", async function () {
@@ -1072,20 +697,6 @@ contract('ConversionRates2', function(accounts) {
         rate = await convRatesInst.getRate(token, currentBlock, false, (qty + 1));
 
         assert.equal(rate.valueOf(), 0, "unexpected rate");
-    });
-
-
-    it("should verify record imbalance reverted when not from reserve address.", async function () {
-        //try record imbalance
-        try {
-            await convRatesInst.recordImbalance(tokens[5], 30, currentBlock, currentBlock, {from: alerter});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        //now the same from reserve address
-        await convRatesInst.recordImbalance(tokens[5], 30, currentBlock, currentBlock, {from: reserveAddress});
     });
 
     it("should verify set step functions for qty reverted when more them max steps (10).", async function () {
@@ -1333,58 +944,6 @@ contract('ConversionRates2', function(accounts) {
         imbalanceSellStepX = [];
         imbalanceSellStepY = [];
         await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
-    });
-
-    it("should verify getCompactData reverted when token not listed.", async function () {
-        let someToken = await TestToken.new("testing", "tst9", 15);
-
-        try {
-            let compactResArr = await convRatesInst.getCompactData(someToken.address);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        //add token and see enable success
-        await convRatesInst.addToken(someToken.address);
-        compactResArr = await convRatesInst.getCompactData(someToken.address);
-    });
-
-    it("should verify add bps reverts for illegal values", async function () {
-        let minLegalBps = -100 * 100;
-        let maxLegalBps = new BigNumber(10).pow(11);
-        let legalRate = new BigNumber(10).pow(24);
-        let illegalRate = legalRate.add(1);
-        let illegalBpsMinSide = minLegalBps - 1*1;
-        let illegalBpsMaxSide = maxLegalBps.add(1);
-
-        await convRatesInst.mockAddBps(legalRate, minLegalBps);
-        await convRatesInst.mockAddBps(legalRate, maxLegalBps);
-
-        //see fail with illegal rate
-        try {
-            await convRatesInst.mockAddBps(illegalRate, minLegalBps);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        //see fail with illegal bps (min side)
-        try {
-            await convRatesInst.mockAddBps(legalRate, illegalBpsMinSide);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        //see fail with illegal bps (max side)
-        try {
-            await convRatesInst.mockAddBps(legalRate, illegalBpsMaxSide);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
     });
 });
 
