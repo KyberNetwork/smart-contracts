@@ -1294,7 +1294,7 @@ function getExtraBpsForQuantity(qty, stepX, stepY) {
             change += lastStepAmount * stepY[len - 1];
         }
     }
-    return Math.floor(change / qty);
+    return divSolidity(change, qty);
 }
 
 function addBps (price, bps) {
@@ -1360,3 +1360,9 @@ function calcDstQty(srcQty, srcDecimals, dstDecimals, rate) {
     }
 }
 
+
+function divSolidity(a, b) {
+    let c = a / b;
+    if (c < 0) { return Math.ceil(c); }
+    return Math.floor(c);
+}

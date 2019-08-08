@@ -2745,7 +2745,7 @@ function getExtraBpsForQuantity(qty, stepX, stepY) {
             change += lastStepAmount * stepY[len - 1];
         }
     }
-    return Math.floor(change / qty);
+    return divSolidity(change, qty);
 }
 
 function calculateRateAmountNewConversionRate(isBuy, tokenInd, srcQty) {
@@ -2831,3 +2831,9 @@ function calcCombinedRate(srcQty, sellRate, buyRate, srcDecimals, dstDecimals, d
 function log (string) {
     console.log(string);
 };
+
+function divSolidity(a, b) {
+    let c = a / b;
+    if (c < 0) { return Math.ceil(c); }
+    return Math.floor(c);
+}

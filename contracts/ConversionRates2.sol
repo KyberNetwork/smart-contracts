@@ -162,7 +162,7 @@ contract ConversionRates2 is ConversionRates {
             for(ind = 0; ind < len; ind++) {
                 if (x <= f.x[ind]) { return f.y[ind]; }
             }
-            return f.x[len - 1];
+            return f.y[len - 1];
         }
 
         int lastStepAmount = 0; // amount from last step to compute amount to be applied bps for next step

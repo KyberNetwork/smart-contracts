@@ -49,106 +49,6 @@ contract('ConversionRates2', function(accounts) {
         reserveAddress = accounts[3];
     })
 
-    it("should test getting bps from executing step function as expected", async function () {
-
-        // Case1: qty negative, 0 < qty < all steps
-        let stepX = [-200, -100, -50];
-        let stepY = [-20, -10, -5];
-        let bps = getExtraBpsForQuantity(-300, stepX, stepY);
-        // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * -5 = 3500
-        assert.equal(Math.floor(3500 / -300), bps, "bad bps");
-
-        // Case2: qty negative, all steps < qty < 0
-        stepX = [-200, -100, -50];
-        stepY = [-20, -10, -5];
-        bps = getExtraBpsForQuantity(-25, stepX, stepY);
-        // (-25 - 0) * -5
-        assert.equal(-5, bps, "bad bps");
-
-        // Case2: qty negative, first step < qty < last step < 0
-        stepX = [-200, -100, -50];
-        stepY = [-20, -10, -5];
-        bps = getExtraBpsForQuantity(-75, stepX, stepY);
-        // (-75 - (-50)) * (-5) + (-50 - 0) * (-5)
-        assert.equal(-5, bps, "bad bps");
-
-        // Case3: qty negative, all steps negative except last one is 0
-        stepX = [-200, -100, -50, 0];
-        stepY = [-20, -10, -5, 1];
-        // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * 1 = 3200
-        bps = getExtraBpsForQuantity(-300, stepX, stepY);
-        assert.equal(Math.floor(3200 / -300), bps, "bad bps");
-
-        // Case4: qty negative, all steps negative except last one is positive, qty < all steps
-        stepX = [-200, -100, -50, 10];
-        stepY = [-20, -10, -5, 2];
-        // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * 2 = 3150
-        bps = getExtraBpsForQuantity(-300, stepX, stepY);
-        assert.equal(Math.floor(3150 / -300), bps, "bad bps");
-
-        // Case5: qty negative, all steps negative except last one is positive, first step < qty < last step
-        // (-150 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * 2 = 650
-        bps = getExtraBpsForQuantity(-150, stepX, stepY);
-        assert.equal(Math.floor(650 / -150), bps, "bad bps");
-
-        // Case6: qty negative, all steps non-negative with first step is 0
-        stepX = [0, 10, 20, 30];
-        stepY = [0, 20, 50, 100];
-        bps = getExtraBpsForQuantity(-100, stepX, stepY);
-        assert.equal(0, bps, "bad bps for negative qty with all non-negative qty");
-
-        // Case7: qty negative, all steps non-negative with first step is 0
-        stepX = [10, 20, 30];
-        stepY = [20, 50, 100];
-        bps = getExtraBpsForQuantity(-100, stepX, stepY);
-        assert.equal(20, bps, "bad bps for negative qty with all non-negative qty");
-
-        // Case8: qty is 0, fallback to old logic
-        stepX = [10, 20, 30];
-        stepY = [20, 50, 100];
-        bps = getExtraBpsForQuantity(0, stepX, stepY);
-        assert.equal(20, bps, "bad bps for 0 qty");
-
-        stepX = [-100, -50, -30];
-        stepY = [20, 50, 100];
-        bps = getExtraBpsForQuantity(0, stepX, stepY);
-        assert.equal(100, bps, "bad bps for 0 qty");
-
-        // Case9: qty is positive, all steps are negative
-        stepX = [-100, -50, -30];
-        stepY = [20, 50, 100];
-        bps = getExtraBpsForQuantity(20, stepX, stepY);
-        assert.equal(100, bps, "bad bps for 0 qty");
-
-        // Case10: qty is positive, 0 < first step < qty < last step
-        stepX = [10, 30, 50];
-        stepY = [20, 50, 100];
-        bps = getExtraBpsForQuantity(40, stepX, stepY);
-        // (10 * 20 + 20 * 50 + 10 * 100) = 2200
-        assert.equal(Math.floor(2200 / 40), bps, "bad bps for positive qty not all steps");
-
-        // Case11: qty is positive, 0 < all steps < qty
-        stepX = [10, 30, 50];
-        stepY = [20, 50, 100];
-        bps = getExtraBpsForQuantity(120, stepX, stepY);
-        // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
-        assert.equal(Math.floor(10200 / 120), bps, "bad bps for positive qty all steps");
-
-        // Case12: qty is positive, first step < 0 < qty < last step
-        stepX = [-100, -50, 10, 30, 150];
-        stepY = [-30, -15, 20, 50, 100];
-        bps = getExtraBpsForQuantity(120, stepX, stepY);
-        // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
-        assert.equal(Math.floor(10200 / 120), bps, "bad bps for positive qty all steps");
-
-        // Case13: qty is positive, step is empty
-        stepX = [];
-        stepY = [];
-        bps = getExtraBpsForQuantity(120, stepX, stepY);
-        // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
-        assert.equal(0, bps, "bad bps: should be 0 when step is empty");
-    });
-
     it("should init ConversionRates Inst and set general parameters.", async function () {
         //init contracts
         convRatesInst = await ConversionRates.new(admin);
@@ -945,6 +845,152 @@ contract('ConversionRates2', function(accounts) {
         imbalanceSellStepY = [];
         await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
     });
+
+    it("should test getting bps from executing step function as expected", async function () {
+        let tokenInd = 1;
+        let token = tokens[tokenInd];
+        // Case1: qty negative, 0 < qty < all steps
+        let stepX = [-200, -100, -50];
+        let stepY = [-20, -10, -5];
+        await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
+        let bps = getExtraBpsForQuantity(-300, stepX, stepY);
+        // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * -5 = 3500
+        assert.equal(divSolidity(3500, -300), bps, "bad bps");
+        let contractBps = await convRatesInst.mockExecuteStepFunction(token, -300);
+        assert.equal(contractBps.valueOf(), bps, "bad bps");
+
+        // Case2: qty negative, all steps < qty < 0
+        stepX = [-200, -100, -50];
+        stepY = [-20, -10, -5];
+        bps = getExtraBpsForQuantity(-25, stepX, stepY);
+        // (-25 - 0) * -5
+        assert.equal(-5, bps, "bad bps");
+        await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, -25);
+        assert.equal(contractBps.valueOf(), bps, "bad bps");
+
+        // Case2: qty negative, first step < qty < last step < 0
+        stepX = [-200, -100, -50];
+        stepY = [-20, -10, -5];
+        bps = getExtraBpsForQuantity(-75, stepX, stepY);
+        // (-75 - (-50)) * (-5) + (-50 - 0) * (-5)
+        assert.equal(-5, bps, "bad bps");
+        await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, -75);
+        assert.equal(contractBps.valueOf(), bps, "bad bps");
+
+        // Case3: qty negative, all steps negative except last one is 0
+        stepX = [-200, -100, -50, 0];
+        stepY = [-20, -10, -5, 1];
+        // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * 1 = 3200
+        bps = getExtraBpsForQuantity(-300, stepX, stepY);
+        assert.equal(divSolidity(3200, -300), bps, "bad bps");
+        await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, -300);
+        assert.equal(contractBps.valueOf(), bps, "bad bps");
+
+        // Case4: qty negative, all steps negative except last one is positive, qty < all steps
+        stepX = [-200, -100, -50, 10];
+        stepY = [-20, -10, -5, 2];
+        // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * 2 = 3150
+        bps = getExtraBpsForQuantity(-300, stepX, stepY);
+        assert.equal(divSolidity(3150, -300), bps, "bad bps");
+        await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, -300);
+        assert.equal(contractBps.valueOf(), bps, "bad bps");
+
+        // Case5: qty negative, all steps negative except last one is positive, first step < qty < last step
+        // (-150 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * 2 = 650
+        bps = getExtraBpsForQuantity(-150, stepX, stepY);
+        assert.equal(divSolidity(650, -150), bps, "bad bps");
+        await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, -150);
+        assert.equal(contractBps.valueOf(), bps, "bad bps");
+
+        // Case6: qty negative, all steps non-negative with first step is 0
+        stepX = [0, 10, 20, 30];
+        stepY = [0, 20, 50, 100];
+        bps = getExtraBpsForQuantity(-100, stepX, stepY);
+        assert.equal(0, bps, "bad bps for negative qty with all non-negative qty");
+        await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, -100);
+        assert.equal(contractBps.valueOf(), bps, "bad bps");
+
+        // Case7: qty negative, all steps non-negative with first step is 0
+        stepX = [10, 20, 30];
+        stepY = [20, 50, 100];
+        bps = getExtraBpsForQuantity(-100, stepX, stepY);
+        assert.equal(20, bps, "bad bps for negative qty with all non-negative qty");
+        await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, -100);
+        assert.equal(contractBps.valueOf(), bps, "bad bps");
+
+        // Case8: qty is 0, fallback to old logic
+        stepX = [10, 20, 30];
+        stepY = [20, 50, 100];
+        bps = getExtraBpsForQuantity(0, stepX, stepY);
+        assert.equal(20, bps, "bad bps for 0 qty");
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, 0);
+        await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
+        assert.equal(contractBps.valueOf(), bps, "bad bps");
+
+        stepX = [-100, -50, -30];
+        stepY = [20, 50, 100];
+        bps = getExtraBpsForQuantity(0, stepX, stepY);
+        assert.equal(100, bps, "bad bps for 0 qty");
+        await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, 0);
+        assert.equal(contractBps.valueOf(), bps, "bad bps");
+
+        // Case9: qty is positive, all steps are negative
+        stepX = [-100, -50, -30];
+        stepY = [20, 50, 100];
+        bps = getExtraBpsForQuantity(20, stepX, stepY);
+        assert.equal(100, bps, "bad bps for 0 qty");
+        await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, 20);
+        assert.equal(contractBps.valueOf(), bps, "bad bps");
+
+        // Case10: qty is positive, 0 < first step < qty < last step
+        stepX = [10, 30, 50];
+        stepY = [20, 50, 100];
+        bps = getExtraBpsForQuantity(40, stepX, stepY);
+        // (10 * 20 + 20 * 50 + 10 * 100) = 2200
+        assert.equal(divSolidity(2200, 40), bps, "bad bps for positive qty not all steps");
+        await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, 40);
+        assert.equal(contractBps.valueOf(), bps, "bad bps");
+
+        // Case11: qty is positive, 0 < all steps < qty
+        stepX = [10, 30, 50];
+        stepY = [20, 50, 100];
+        bps = getExtraBpsForQuantity(120, stepX, stepY);
+        // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
+        assert.equal(divSolidity(10200, 120), bps, "bad bps for positive qty all steps");
+        await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, 120);
+        assert.equal(contractBps.valueOf(), bps, "bad bps");
+
+        // Case12: qty is positive, first step < 0 < qty < last step
+        stepX = [-100, -50, 10, 30, 150];
+        stepY = [-30, -15, 20, 50, 100];
+        bps = getExtraBpsForQuantity(120, stepX, stepY);
+        // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
+        assert.equal(divSolidity(10200, 120), bps, "bad bps for positive qty all steps");
+        await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, 120);
+        assert.equal(contractBps.valueOf(), bps, "bad bps");
+
+        // Case13: qty is positive, step is empty
+        stepX = [];
+        stepY = [];
+        bps = getExtraBpsForQuantity(120, stepX, stepY);
+        // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
+        assert.equal(0, bps, "bad bps: should be 0 when step is empty");
+        await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, 120);
+        assert.equal(contractBps.valueOf(), bps, "bad bps");
+    });
 });
 
 function convertRateToPricingRate (baseRate) {
@@ -1012,7 +1058,7 @@ function getExtraBpsForQuantity(qty, stepX, stepY) {
             change += lastStepAmount * stepY[len - 1];
         }
     }
-    return Math.floor(change / qty);
+    return divSolidity(change, qty);
 }
 
 function addBps (rate, bps) {
@@ -1024,3 +1070,9 @@ function compareRates (receivedRate, expectedRate) {
     receivedRate = receivedRate - (receivedRate % 10);
     assert.deepEqual(expectedRate, receivedRate, "different rates");
 };
+
+function divSolidity(a, b) {
+    let c = a / b;
+    if (c < 0) { return Math.ceil(c); }
+    return Math.floor(c);
+}
