@@ -582,7 +582,7 @@ contract('ConversionRates2', function(accounts) {
         }
 
         qty = maxTotalImbalance + totalImbalance - 1;
-        let rximbalance = await convRatesInst.mockGetImbalance(token, lastSetCompactBlock, currentBlock);
+        let rximbalance = await convRatesInst.getImbalancePub(token, lastSetCompactBlock, currentBlock);
         assert.equal(rximbalance[0].valueOf(), totalImbalance, "bad imbalance");
 
         let maxTotal = await convRatesInst.mockGetMaxTotalImbalance(token);

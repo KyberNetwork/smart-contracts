@@ -4,15 +4,9 @@ pragma solidity ^0.4.18;
 import "../ConversionRates2.sol";
 
 contract MockConversionRate2 is ConversionRates2 {
+
     function MockConversionRate2(address admin) ConversionRates2(admin) public {
 
-    }
-
-    function mockGetImbalance(ERC20 token, uint rateUpdateBlock, uint currentBlock) public view
-        returns(int totalImbalance, int currentBlockImbalance)
-    {
-        (totalImbalance, currentBlockImbalance) = getImbalance(token, rateUpdateBlock, currentBlock);
-//        return(totalImbalance, currentBlockImbalance);
     }
 
     function mockGetMaxTotalImbalance(ERC20 token) public view returns(uint) {
