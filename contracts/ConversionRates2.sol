@@ -153,6 +153,13 @@ contract ConversionRates2 is ConversionRates {
         return rate;
     }
 
+    function getImbalancePub(ERC20 token, uint rateUpdateBlock, uint currentBlock)
+        public view
+        returns(int totalImbalance, int currentBlockImbalance)
+    {
+        return getImbalance(token, rateUpdateBlock, currentBlock);
+    }
+
     function executeStepFunction(StepFunction f, int x) internal pure returns(int) {
         uint len = f.y.length;
         if (len == 0) { return 0; }
