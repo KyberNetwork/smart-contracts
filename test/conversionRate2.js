@@ -1,5 +1,5 @@
 //let ConversionRates = artifacts.require("./ConversionRates.sol");
-let ConversionRates = artifacts.require("./mockContracts/MockConversionRate2.sol");
+let ConversionRates2 = artifacts.require("./mockContracts/MockConversionRate2.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 let Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
 
@@ -51,7 +51,7 @@ contract('ConversionRates2', function(accounts) {
 
     it("should init ConversionRates Inst and set general parameters.", async function () {
         //init contracts
-        convRatesInst = await ConversionRates.new(admin);
+        convRatesInst = await ConversionRates2.new(admin);
 
         //set pricing general parameters
         convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);
@@ -163,13 +163,13 @@ contract('ConversionRates2', function(accounts) {
 
     it("should set step functions qty and imbalance.", async function () {
         qtyBuyStepX = [15, 30, 70];
-        qtyBuyStepY = [8, 30, 70];
+        qtyBuyStepY = [8, 30, 70, 80];
         qtySellStepX = [155, 305, 705];
-        qtySellStepY = [10, 32, 78];
+        qtySellStepY = [10, 32, 78, 88];
         imbalanceBuyStepX = [180, 330, 900, 1500];
-        imbalanceBuyStepY = [35, 150, 310, 1100];
+        imbalanceBuyStepY = [35, 150, 310, 1100, 1500];
         imbalanceSellStepX = [1500, 3000, 7000, 30000];
-        imbalanceSellStepY = [45, 190, 360, 1800];
+        imbalanceSellStepY = [45, 190, 360, 1800, 2000];
         
         for (let i = 0; i < numTokens; ++i) {
             await convRatesInst.setQtyStepFunction(tokens[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
@@ -191,7 +191,7 @@ contract('ConversionRates2', function(accounts) {
         dstQty = dstQty.floor();
         extraBps = getExtraBpsForBuyQuantity(dstQty);
         expectedRate = addBps(expectedRate, extraBps);
-        extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
+        extraBps = getExtraBpsForImbalanceBuyQuantity(0, dstQty * 1);
         expectedRate = addBps(expectedRate, extraBps);
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
@@ -226,7 +226,7 @@ contract('ConversionRates2', function(accounts) {
         dstQty = dstQty.floor();
         extraBps = getExtraBpsForBuyQuantity(dstQty);
         expectedRate = addBps(expectedRate, extraBps);
-        extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
+        extraBps = getExtraBpsForImbalanceBuyQuantity(0, dstQty * 1);
         expectedRate = addBps(expectedRate, extraBps);
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
@@ -250,7 +250,7 @@ contract('ConversionRates2', function(accounts) {
         dstQty = dstQty.floor();
         extraBps = getExtraBpsForBuyQuantity(dstQty);
         expectedRate = addBps(expectedRate, extraBps);
-        extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
+        extraBps = getExtraBpsForImbalanceBuyQuantity(0, dstQty * 1);
         expectedRate = addBps(expectedRate, extraBps);
 
         receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
@@ -288,7 +288,7 @@ contract('ConversionRates2', function(accounts) {
         dstQty = dstQty.floor();
         extraBps = getExtraBpsForBuyQuantity(dstQty);
         expectedRate = addBps(expectedRate, extraBps);
-        extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
+        extraBps = getExtraBpsForImbalanceBuyQuantity(0, dstQty * 1);
         expectedRate = addBps(expectedRate, extraBps);
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
@@ -310,7 +310,7 @@ contract('ConversionRates2', function(accounts) {
         dstQty = dstQty.floor();
         extraBps = getExtraBpsForBuyQuantity(dstQty);
         expectedRate = addBps(expectedRate, extraBps);
-        extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
+        extraBps = getExtraBpsForImbalanceBuyQuantity(0, dstQty * 1);
         expectedRate = addBps(expectedRate, extraBps);
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
@@ -332,7 +332,7 @@ contract('ConversionRates2', function(accounts) {
         dstQty = dstQty.floor();
         extraBps = getExtraBpsForBuyQuantity(dstQty);
         expectedRate = addBps(expectedRate, extraBps);
-        extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
+        extraBps = getExtraBpsForImbalanceBuyQuantity(0, dstQty * 1);
         expectedRate = addBps(expectedRate, extraBps);
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
@@ -347,7 +347,7 @@ contract('ConversionRates2', function(accounts) {
 
         // get rate
         let buyQty = 15;
-        let imbalance = 95;
+        let imbalance = 96;
         let expectedRate = (new BigNumber(baseBuyRate));
         let extraBps = compactBuyArr1[tokenInd] * 10;
         expectedRate = addBps(expectedRate, extraBps);
@@ -357,12 +357,11 @@ contract('ConversionRates2', function(accounts) {
         extraBps = getExtraBpsForBuyQuantity(dstQty);
         expectedRate = addBps(expectedRate, extraBps);
         //imbalance bps
-        extraBps = getExtraBpsForImbalanceBuyQuantity(imbalance + (dstQty * 1));
+        extraBps = getExtraBpsForImbalanceBuyQuantity(imbalance, dstQty * 1);
         expectedRate = addBps(expectedRate, extraBps);
 
         //record imbalance
         await convRatesInst.recordImbalance(token, imbalance, currentBlock, currentBlock, {from: reserveAddress});
-
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, buyQty);
         assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
     });
@@ -383,7 +382,7 @@ contract('ConversionRates2', function(accounts) {
         extraBps = getExtraBpsForSellQuantity(sellQty);
         expectedRate = addBps(expectedRate, extraBps);
         //calc imbalance steps
-        extraBps = getExtraBpsForImbalanceSellQuantity(imbalance - (sellQty * 1));
+        extraBps = getExtraBpsForImbalanceSellQuantity(imbalance, sellQty * 1);
         expectedRate = addBps(expectedRate, extraBps);
 
         //record imbalance
@@ -407,7 +406,7 @@ contract('ConversionRates2', function(accounts) {
         }
 
         //set size back and see set success
-        qtyBuyStepX.length = qtyBuyStepY.length;
+        qtyBuyStepX.length = qtyBuyStepY.length - 1;
         await convRatesInst.setQtyStepFunction(tokens[4], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
 
         //qty buy step x - change size. see set fails
@@ -421,7 +420,7 @@ contract('ConversionRates2', function(accounts) {
         }
 
         //set size back and see set success
-        qtyBuyStepY.length = qtyBuyStepX.length;
+        qtyBuyStepY.length = qtyBuyStepX.length + 1;
         await convRatesInst.setQtyStepFunction(tokens[4], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
 
         //qty sell step x - change size. see set fails
@@ -435,7 +434,7 @@ contract('ConversionRates2', function(accounts) {
         }
 
         //set size back and see set success
-        qtySellStepX.length = qtySellStepY.length;
+        qtySellStepX.length = qtySellStepY.length - 1;
         await convRatesInst.setQtyStepFunction(tokens[4], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
 
         //qty sell step y - change size. see set fails
@@ -449,7 +448,7 @@ contract('ConversionRates2', function(accounts) {
         }
 
         //set size back and see set success
-        qtySellStepY.length = qtySellStepX.length;
+        qtySellStepY.length = qtySellStepX.length + 1;
         await convRatesInst.setQtyStepFunction(tokens[4], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
     });
 
@@ -465,7 +464,7 @@ contract('ConversionRates2', function(accounts) {
         }
 
         //set size back and see set success
-        imbalanceBuyStepX.length = imbalanceBuyStepY.length;
+        imbalanceBuyStepX.length = imbalanceBuyStepY.length - 1;
         await convRatesInst.setImbalanceStepFunction(tokens[4], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
 
         //imbalance buy step x - change size. see set fails
@@ -479,7 +478,7 @@ contract('ConversionRates2', function(accounts) {
         }
 
         //set size back and see set success
-        imbalanceBuyStepY.length = imbalanceBuyStepX.length;
+        imbalanceBuyStepY.length = imbalanceBuyStepX.length + 1;
         await convRatesInst.setImbalanceStepFunction(tokens[4], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
 
         //imbalance sell step x - change size. see set fails
@@ -493,7 +492,7 @@ contract('ConversionRates2', function(accounts) {
         }
 
         //set size back and see set success
-        imbalanceSellStepX.length = imbalanceSellStepY.length;
+        imbalanceSellStepX.length = imbalanceSellStepY.length - 1;
         await convRatesInst.setImbalanceStepFunction(tokens[4], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
 
         //imbalance sell step y - change size. see set fails
@@ -507,7 +506,7 @@ contract('ConversionRates2', function(accounts) {
         }
 
         //set size back and see set success
-        imbalanceSellStepY.length = imbalanceSellStepX.length;
+        imbalanceSellStepY.length = imbalanceSellStepX.length + 1;
         await convRatesInst.setImbalanceStepFunction(tokens[4], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
     });
 
@@ -603,15 +602,14 @@ contract('ConversionRates2', function(accounts) {
         let index = 1;
 
         qtyBuyStepX = [15, 30, 70, 100, 200, 500, 700, 900, 1100, 1500];
-        qtyBuyStepY = [8, 30, 70, 100, 120, 150, 170, 190, 210, 250];
+        qtyBuyStepY = [8, 30, 70, 100, 120, 150, 170, 190, 210, 250, 300];
         qtySellStepX = [15, 30, 70, 100, 200, 500, 700, 900, 1100, 1500];
-        qtySellStepY = [8, 30, 70, 100, 120, 150, 170, 190, 210, 250];
+        qtySellStepY = [8, 30, 70, 100, 120, 150, 170, 190, 210, 250, 300];
 
         await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
 
         //set illegal number of steps for buy
         qtyBuyStepX[10] = 1600;
-        qtyBuyStepY[10] = 350;
 
         try {
             await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
@@ -621,12 +619,12 @@ contract('ConversionRates2', function(accounts) {
         }
 
         //remove extra step and see success.
-        qtyBuyStepY.length = qtyBuyStepX.length = 10;
+        qtyBuyStepY.length = 11;
+        qtyBuyStepX.length = 10;
         await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
 
         //set illegal number of steps for sell
         qtySellStepX[10] = 1600;
-        qtySellStepY[10] = 350;
 
         try {
             await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
@@ -640,15 +638,14 @@ contract('ConversionRates2', function(accounts) {
         let index = 1;
 
         imbalanceBuyStepX = [15, 30, 70, 100, 200, 500, 700, 900, 1100, 1500];
-        imbalanceBuyStepY = [8, 30, 70, 100, 120, 150, 170, 190, 210, 250];
+        imbalanceBuyStepY = [8, 30, 70, 100, 120, 150, 170, 190, 210, 250, 300];
         imbalanceSellStepX = [15, 30, 70, 100, 200, 500, 700, 900, 1100, 1500];
-        imbalanceSellStepY = [8, 30, 70, 100, 120, 150, 170, 190, 210, 250];
+        imbalanceSellStepY = [8, 30, 70, 100, 120, 150, 170, 190, 210, 250, 300];
 
         await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
 
         //set illegal value for buy steps.
         imbalanceBuyStepX[10] = 1600;
-        imbalanceBuyStepY[10] = 350;
 
         try {
             await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
@@ -659,12 +656,12 @@ contract('ConversionRates2', function(accounts) {
 
 
         //remove extra step and see success again
-        imbalanceBuyStepX.length = imbalanceBuyStepY.length = 10;
+        imbalanceBuyStepX.length = 10;
+        imbalanceBuyStepY.length = 11;
         await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
 
         //set illegal value for sell steps.
         imbalanceSellStepX[10] = 1600;
-        imbalanceSellStepY[10] = 350;
 
         try {
             await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
@@ -678,15 +675,15 @@ contract('ConversionRates2', function(accounts) {
         let index = 1;
 
         qtyBuyStepX = [15, 30, 100, 150];
-        qtyBuyStepY = [8, 30, 70, 100];
+        qtyBuyStepY = [8, 30, 70, 100, 120];
         qtySellStepX = [15, 30, 70, 100];
-        qtySellStepY = [8, 30, 70, 100];
+        qtySellStepY = [8, 30, 70, 100, 120];
 
         await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
 
         // bps can be negative
-        qtyBuyStepY = [-8, 30, 70, 100];
-        qtySellStepY = [-8, 30, 70, 100];
+        qtyBuyStepY = [-8, 30, 70, 100, 120];
+        qtySellStepY = [-8, 30, 70, 100, 120];
         await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
 
         qtyBuyStepX = [-15, 30, 100, 150];
@@ -712,9 +709,9 @@ contract('ConversionRates2', function(accounts) {
         }
 
         qtyBuyStepX = [-15];
-        qtyBuyStepY = [8];
+        qtyBuyStepY = [8, 10];
         qtySellStepX = [15];
-        qtySellStepY = [8];
+        qtySellStepY = [8, 10];
         try {
             await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             assert(false, "throw was expected in line above.")
@@ -736,9 +733,9 @@ contract('ConversionRates2', function(accounts) {
         let index = 1;
 
         qtyBuyStepX = [15, 30, 100, 150];
-        qtyBuyStepY = [8, 30, 70, 100];
+        qtyBuyStepY = [8, 30, 70, 100, 120];
         qtySellStepX = [15, 30, 70, 100];
-        qtySellStepY = [8, 30, 70, 100];
+        qtySellStepY = [8, 30, 70, 100, 120];
 
         await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
         qtyBuyStepX = [15, 30, 150, 100];
@@ -777,15 +774,15 @@ contract('ConversionRates2', function(accounts) {
         }
 
         qtyBuyStepX = [15];
-        qtyBuyStepY = [8];
+        qtyBuyStepY = [8, 10];
         qtySellStepX = [15];
-        qtySellStepY = [8];
+        qtySellStepY = [8, 10];
         await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
 
         qtyBuyStepX = [];
-        qtyBuyStepY = [];
+        qtyBuyStepY = [2];
         qtySellStepX = [];
-        qtySellStepY = [];
+        qtySellStepY = [2];
         await convRatesInst.setQtyStepFunction(tokens[index], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
     });
 
@@ -793,9 +790,9 @@ contract('ConversionRates2', function(accounts) {
         let index = 1;
 
         imbalanceBuyStepX = [15, 30, 70, 100, 200];
-        imbalanceBuyStepY = [8, 30, 70, 100, 120];
+        imbalanceBuyStepY = [8, 30, 70, 100, 120, 150];
         imbalanceSellStepX = [15, 30, 70, 100, 200];
-        imbalanceSellStepY = [8, 30, 70, 100, 120];
+        imbalanceSellStepY = [8, 30, 70, 100, 120, 150];
 
         await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
 
@@ -834,15 +831,15 @@ contract('ConversionRates2', function(accounts) {
         }
 
         imbalanceBuyStepX = [15];
-        imbalanceBuyStepY = [8];
+        imbalanceBuyStepY = [8, 10];
         imbalanceSellStepX = [15];
-        imbalanceSellStepY = [8];
+        imbalanceSellStepY = [8, 10];
         await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
 
         imbalanceBuyStepX = [];
-        imbalanceBuyStepY = [];
+        imbalanceBuyStepY = [2];
         imbalanceSellStepX = [];
-        imbalanceSellStepY = [];
+        imbalanceSellStepY = [2];
         await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
     });
 
@@ -851,144 +848,143 @@ contract('ConversionRates2', function(accounts) {
         let token = tokens[tokenInd];
         // Case1: qty negative, 0 < qty < all steps
         let stepX = [-200, -100, -50];
-        let stepY = [-20, -10, -5];
+        let stepY = [-20, -10, -5, -2];
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
-        let bps = getExtraBpsForQuantity(-300, stepX, stepY);
-        // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * -5 = 3500
-        assert.equal(divSolidity(3500, -300), bps, "bad bps");
-        let contractBps = await convRatesInst.mockExecuteStepFunction(token, -300);
+        let bps = getExtraBpsForQuantity(-400, -300, stepX, stepY);
+        // 100 * -20
+        assert.equal(divSolidity(-2000, 100), bps, "bad bps");
+        let contractBps = await convRatesInst.mockExecuteStepFunction(token, -400, -300);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
         // Case2: qty negative, all steps < qty < 0
         stepX = [-200, -100, -50];
-        stepY = [-20, -10, -5];
-        bps = getExtraBpsForQuantity(-25, stepX, stepY);
-        // (-25 - 0) * -5
-        assert.equal(-5, bps, "bad bps");
+        stepY = [-20, -10, -5, -2];
+        bps = getExtraBpsForQuantity(-25, 0, stepX, stepY);
+        // 25 * -2
+        assert.equal(-2, bps, "bad bps");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
-        contractBps = await convRatesInst.mockExecuteStepFunction(token, -25);
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, -25, 0);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
         // Case2: qty negative, first step < qty < last step < 0
         stepX = [-200, -100, -50];
-        stepY = [-20, -10, -5];
-        bps = getExtraBpsForQuantity(-75, stepX, stepY);
-        // (-75 - (-50)) * (-5) + (-50 - 0) * (-5)
-        assert.equal(-5, bps, "bad bps");
+        stepY = [-20, -10, -5, -2];
+        bps = getExtraBpsForQuantity(-75, 10, stepX, stepY);
+        // 25 * (-5) + 60 * (-2)
+        assert.equal(divSolidity(-245, 85), bps, "bad bps");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
-        contractBps = await convRatesInst.mockExecuteStepFunction(token, -75);
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, -75, 10);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
         // Case3: qty negative, all steps negative except last one is 0
         stepX = [-200, -100, -50, 0];
-        stepY = [-20, -10, -5, 1];
-        // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * 1 = 3200
-        bps = getExtraBpsForQuantity(-300, stepX, stepY);
-        assert.equal(divSolidity(3200, -300), bps, "bad bps");
+        stepY = [-20, -10, -5, 1, 5];
+        // 100 * (-20) + 100 * (-10) + 50 * (-5) + 20 * 1 = -3230
+        bps = getExtraBpsForQuantity(-300, -25, stepX, stepY);
+        assert.equal(divSolidity(-3230, 275), bps, "bad bps 1");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
-        contractBps = await convRatesInst.mockExecuteStepFunction(token, -300);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, -300, -25);
+        assert.equal(contractBps.valueOf(), bps, "bad bps 2");
 
         // Case4: qty negative, all steps negative except last one is positive, qty < all steps
         stepX = [-200, -100, -50, 10];
-        stepY = [-20, -10, -5, 2];
-        // (-300 - (-200)) * (-20) + (-200 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * 2 = 3150
-        bps = getExtraBpsForQuantity(-300, stepX, stepY);
-        assert.equal(divSolidity(3150, -300), bps, "bad bps");
+        stepY = [-20, -10, -5, 2, 5];
+        // 100 * (-20) + 100 * (-10) + 50 * (-5) + 60 * 2 + 5 * 5 = -3105
+        bps = getExtraBpsForQuantity(-300, 15, stepX, stepY);
+        assert.equal(divSolidity(-3105, 315), bps, "bad bps 1");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
-        contractBps = await convRatesInst.mockExecuteStepFunction(token, -300);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, -300, 15);
+        assert.equal(contractBps.valueOf(), bps, "bad bps 2");
 
         // Case5: qty negative, all steps negative except last one is positive, first step < qty < last step
-        // (-150 - (-100)) * (-10) + (-100 - (-50)) * (-5) + (-50 - 0) * 2 = 650
-        bps = getExtraBpsForQuantity(-150, stepX, stepY);
-        assert.equal(divSolidity(650, -150), bps, "bad bps");
+        // 50 * (-10) + 50 * (-5) + 60 * 2  + 10 * 5 = -580
+        bps = getExtraBpsForQuantity(-150, 20, stepX, stepY);
+        assert.equal(divSolidity(-580, 170), bps, "bad bps");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
-        contractBps = await convRatesInst.mockExecuteStepFunction(token, -150);
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, -150, 20);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
         // Case6: qty negative, all steps non-negative with first step is 0
         stepX = [0, 10, 20, 30];
-        stepY = [0, 20, 50, 100];
-        bps = getExtraBpsForQuantity(-100, stepX, stepY);
+        stepY = [0, 20, 50, 100, 120];
+        bps = getExtraBpsForQuantity(-100, 0, stepX, stepY);
         assert.equal(0, bps, "bad bps for negative qty with all non-negative qty");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
-        contractBps = await convRatesInst.mockExecuteStepFunction(token, -100);
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, -100, 0);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
-        // Case7: qty negative, all steps non-negative with first step is 0
+        // Case7: qty negative, all steps non-negative
         stepX = [10, 20, 30];
-        stepY = [20, 50, 100];
-        bps = getExtraBpsForQuantity(-100, stepX, stepY);
+        stepY = [20, 50, 100, 120];
+        bps = getExtraBpsForQuantity(-100, 5, stepX, stepY);
         assert.equal(20, bps, "bad bps for negative qty with all non-negative qty");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
-        contractBps = await convRatesInst.mockExecuteStepFunction(token, -100);
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, -100, 5);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
         // Case8: qty is 0, fallback to old logic
         stepX = [10, 20, 30];
-        stepY = [20, 50, 100];
-        bps = getExtraBpsForQuantity(0, stepX, stepY);
+        stepY = [20, 50, 100, 120];
+        bps = getExtraBpsForQuantity(0, 0, stepX, stepY);
         assert.equal(20, bps, "bad bps for 0 qty");
-        contractBps = await convRatesInst.mockExecuteStepFunction(token, 0);
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 0);
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
         stepX = [-100, -50, -30];
-        stepY = [20, 50, 100];
-        bps = getExtraBpsForQuantity(0, stepX, stepY);
-        assert.equal(100, bps, "bad bps for 0 qty");
+        stepY = [20, 50, 100, 120];
+        bps = getExtraBpsForQuantity(0, 0, stepX, stepY);
+        assert.equal(120, bps, "bad bps for 0 qty");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
-        contractBps = await convRatesInst.mockExecuteStepFunction(token, 0);
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 0);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
         // Case9: qty is positive, all steps are negative
         stepX = [-100, -50, -30];
-        stepY = [20, 50, 100];
-        bps = getExtraBpsForQuantity(20, stepX, stepY);
-        assert.equal(100, bps, "bad bps for 0 qty");
+        stepY = [20, 50, 100, 120];
+        bps = getExtraBpsForQuantity(0, 20, stepX, stepY);
+        assert.equal(120, bps, "bad bps for 0 qty");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
-        contractBps = await convRatesInst.mockExecuteStepFunction(token, 20);
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 20);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
         // Case10: qty is positive, 0 < first step < qty < last step
         stepX = [10, 30, 50];
-        stepY = [20, 50, 100];
-        bps = getExtraBpsForQuantity(40, stepX, stepY);
+        stepY = [20, 50, 100, 120];
+        bps = getExtraBpsForQuantity(0, 40, stepX, stepY);
         // (10 * 20 + 20 * 50 + 10 * 100) = 2200
         assert.equal(divSolidity(2200, 40), bps, "bad bps for positive qty not all steps");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
-        contractBps = await convRatesInst.mockExecuteStepFunction(token, 40);
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 40);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
         // Case11: qty is positive, 0 < all steps < qty
         stepX = [10, 30, 50];
-        stepY = [20, 50, 100];
-        bps = getExtraBpsForQuantity(120, stepX, stepY);
-        // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
-        assert.equal(divSolidity(10200, 120), bps, "bad bps for positive qty all steps");
+        stepY = [20, 50, 100, 120];
+        bps = getExtraBpsForQuantity(0, 120, stepX, stepY);
+        // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 120) = 11600
+        assert.equal(divSolidity(11600, 120), bps, "bad bps for positive qty all steps");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
-        contractBps = await convRatesInst.mockExecuteStepFunction(token, 120);
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 120);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
         // Case12: qty is positive, first step < 0 < qty < last step
         stepX = [-100, -50, 10, 30, 150];
-        stepY = [-30, -15, 20, 50, 100];
-        bps = getExtraBpsForQuantity(120, stepX, stepY);
+        stepY = [-30, -15, 20, 50, 100, 120];
+        bps = getExtraBpsForQuantity(0, 120, stepX, stepY);
         // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
         assert.equal(divSolidity(10200, 120), bps, "bad bps for positive qty all steps");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
-        contractBps = await convRatesInst.mockExecuteStepFunction(token, 120);
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 120);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
         // Case13: qty is positive, step is empty
         stepX = [];
-        stepY = [];
-        bps = getExtraBpsForQuantity(120, stepX, stepY);
-        // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
-        assert.equal(0, bps, "bad bps: should be 0 when step is empty");
+        stepY = [2];
+        bps = getExtraBpsForQuantity(0, 120, stepX, stepY);
+        assert.equal(2, bps, "bad bps: should be 0 when step is empty");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
-        contractBps = await convRatesInst.mockExecuteStepFunction(token, 120);
+        contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 120);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
     });
 });
@@ -1001,64 +997,47 @@ function convertRateToPricingRate (baseRate) {
 };
 
 function getExtraBpsForBuyQuantity(qty) {
-    return getExtraBpsForQuantity(qty, qtyBuyStepX, qtyBuyStepY);
+    return getExtraBpsForQuantity(0, qty, qtyBuyStepX, qtyBuyStepY);
 };
 
 function getExtraBpsForSellQuantity(qty) {
-    return getExtraBpsForQuantity(qty, qtySellStepX, qtySellStepY);
+    return getExtraBpsForQuantity(0, qty, qtySellStepX, qtySellStepY);
 };
 
-function getExtraBpsForImbalanceBuyQuantity(qty) {
-    return getExtraBpsForQuantity(qty, imbalanceBuyStepX, imbalanceBuyStepY);
+function getExtraBpsForImbalanceBuyQuantity(current, qty) {
+    return getExtraBpsForQuantity(current, current + qty, imbalanceBuyStepX, imbalanceBuyStepY);
 };
 
-function getExtraBpsForImbalanceSellQuantity(qty) {
-    return getExtraBpsForQuantity(qty, imbalanceSellStepX, imbalanceSellStepY);
+function getExtraBpsForImbalanceSellQuantity(current, qty) {
+    return getExtraBpsForQuantity(current - qty, current, imbalanceSellStepX, imbalanceSellStepY);
 };
 
-function getExtraBpsForQuantity(qty, stepX, stepY) {
+function getExtraBpsForQuantity(from, to, stepX, stepY) {
+    if (stepY.length == 0) { return 0; }
     let len = stepX.length;
-    if (len == 0) { return 0; }
-    if (qty == 0) {
+    if (from >= to) {
         for(let i = 0; i < len; i++) {
-            if (qty <= stepX[i]) { return stepY[i]; }
+            if (from <= stepX[i]) { return stepY[i]; }
         }
-        return stepY[len - 1];
+        return stepY[len];
     }
     let change = 0;
-    let lastStepAmount = 0;
-    if (qty > 0) {
-        for(let i = 0; i < len; i++) {
-            if (stepX[i] <= 0) { continue; }
-            if (qty <= stepX[i]) {
-                change += (qty - lastStepAmount) * stepY[i];
-                lastStepAmount = qty;
-                break;
-            }
+    let lastStepAmount = from;
+    for(let i = 0; i < len; i++) {
+        if (stepX[i] <= lastStepAmount) { continue; }
+        if (stepX[i] >= to) {
+            change += (to - lastStepAmount) * stepY[i];
+            lastStepAmount = to;
+            break;
+        } else {
             change += (stepX[i] - lastStepAmount) * stepY[i];
             lastStepAmount = stepX[i];
         }
-        if (qty > lastStepAmount) {
-            change += (qty - lastStepAmount) * stepY[stepY.length - 1];
-        }
-    } else {
-        lastStepAmount = qty;
-        for(let i = 0; i < len; i++) {
-            if (stepX[i] >= 0) {
-                change += lastStepAmount * stepY[i];
-                lastStepAmount = 0;
-                break;
-            }
-            if (lastStepAmount < stepX[i]) {
-                change += (lastStepAmount - stepX[i]) * stepY[i];
-                lastStepAmount = stepX[i];
-            }
-        }
-        if (lastStepAmount < 0) {
-            change += lastStepAmount * stepY[len - 1];
-        }
     }
-    return divSolidity(change, qty);
+    if (lastStepAmount < to) {
+        change += (to - lastStepAmount) * stepY[len];
+    }
+    return divSolidity(change, to - from);
 }
 
 function addBps (rate, bps) {

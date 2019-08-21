@@ -94,21 +94,25 @@ let baseSellRate2 = [];
 let baseSellRate4 = [];
 
 //quantity buy steps
-let qtyBuyStepX = [0, 150, 350, 800, 1800];//[0, 150, 350, 700,  1400];
-let qtyBuyStepY = [0,  0, -70, -160, -1200];//[0,  0, -70, -160, -3000];
+let qtyBuyStepX = [0, 150, 350, 800, 1800];
+let qtyBuyStepY = [0,  0, -70, -160, -1200];
+let qtyBuyStepYNew = [0,  0, -70, -160, -330, -1200];
 
 //imbalance buy steps
-let imbalanceBuyStepX = [-1800, -800, -350, -150, 0, 150, 350, 800, 1800];//[-8500, -2800, -1500, 0, 1500, 2800,  4500];
-let imbalanceBuyStepY = [1000, 300,   130,    43, 0,   0, -110, -600, -1600];//[ 1300,   130,    43, 0,   0, -110, -1600];
+let imbalanceBuyStepX = [-1800, -800, -350, -150, 0, 150, 350, 800, 1800];
+let imbalanceBuyStepY = [1000, 300,   130,    43, 0,   0, -110, -600, -1600];
+let imbalanceBuyStepYNew = [1000, 300,   130,    43, 0,   0, -110, -600, -1300, -1600];
 
 //sell
 //sell price will be 1 / buy (assuming no spread) so sell is actually buy price in other direction
-let qtySellStepX = [0, 150, 350, 800, 1800];//[0, 150, 350, 700, 1400];
+let qtySellStepX = [0, 150, 350, 800, 1800];
 let qtySellStepY = [0, 0, 120, 170, 1200];
+let qtySellStepYNew = [0, 0, 120, 170, 250, 1200];
 
 //sell imbalance step
-let imbalanceSellStepX = [-1800, -800, -350, -150, 0, 150, 350, 800, 1800];
-let imbalanceSellStepY = [-1000, -300, -130, -43, 0, 0, 110, 600, 1600];
+let imbalanceSellStepX = [-1500, -600, -400, -350, -160, -100, 0, 150, 800, 1800];
+let imbalanceSellStepY = [-400, -100, -90, -80, -43, -12, 0, 0, 110, 1600];
+let imbalanceSellStepYNew = [-400, -100, -90, -80, -43, -12, 0, 0, 110, 600, 1600];
 
 
 //compact data.
@@ -252,10 +256,10 @@ contract('KyberNetwork', function(accounts) {
         for (let i = 0; i < numTokens; ++i) {
             await pricing1.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             await pricing2.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
-            await pricing4.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            await pricing4.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepYNew, qtySellStepX, qtySellStepYNew, {from:operator});
             await pricing1.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
             await pricing2.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
-            await pricing4.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            await pricing4.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepYNew, imbalanceSellStepX, imbalanceSellStepYNew, {from:operator});
         }
 
         await pricing3.setQtyStepFunction(uniqueToken.address, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
@@ -2469,7 +2473,11 @@ contract('KyberNetwork', function(accounts) {
                 //perform trade
                 let txData = await network.tradeWithHint(user, tokenAdd[tokenInd], amountTwei, ethAddress, user, 500000,
                                 rate[1].valueOf(), walletId, 0, {from:networkProxy});
-                console.log("Transaction gas used token to eth for " + (step + 1) + " steps: " + txData.receipt.gasUsed);
+                if (step < 3) {
+                    // only when step < 3, the number of steps for qty and imbalance are the same
+                    // when qty step is 4, or 5, the imbalance step is just 1 or 2
+                    console.log("Transaction gas used token to eth for " + (step + 1) + " sell steps: " + txData.receipt.gasUsed);
+                }
                 //check lower ether balance on reserve
                 expectedReserve4BalanceWei = expectedReserve4BalanceWei.sub(expectedAmountWei);
                 let balance = await Helper.getBalancePromise(reserve4.address);
@@ -2688,64 +2696,48 @@ function calculateRateAmount(isBuy, tokenInd, srcQty, reserveIndex, maxDestAmoun
 }
 
 function getExtraBpsForBuyQuantityNew(qty) {
-    return getExtraBpsForQuantity(qty, qtyBuyStepX, qtyBuyStepY);
+    return getExtraBpsForQuantity(0, qty, qtyBuyStepX, qtyBuyStepYNew);
 };
 
 function getExtraBpsForSellQuantityNew(qty) {
-    return getExtraBpsForQuantity(qty, qtySellStepX, qtySellStepY);
+    return getExtraBpsForQuantity(0, qty, qtySellStepX, qtySellStepYNew);
 };
 
-function getExtraBpsForImbalanceBuyQuantityNew(qty) {
-    return getExtraBpsForQuantity(qty, imbalanceBuyStepX, imbalanceBuyStepY);
+function getExtraBpsForImbalanceBuyQuantityNew(currentImbalance, qty) {
+    return getExtraBpsForQuantity(currentImbalance, currentImbalance + qty, imbalanceBuyStepX, imbalanceBuyStepYNew);
 };
 
-function getExtraBpsForImbalanceSellQuantityNew(qty) {
-    return getExtraBpsForQuantity(qty, imbalanceSellStepX, imbalanceSellStepY);
+function getExtraBpsForImbalanceSellQuantityNew(currentImbalance, qty) {
+    return getExtraBpsForQuantity(currentImbalance - qty, currentImbalance, imbalanceSellStepX, imbalanceSellStepYNew);
 };
 
-function getExtraBpsForQuantity(qty, stepX, stepY) {
+function getExtraBpsForQuantity(from, to, stepX, stepY) {
+    if (stepY.length == 0) { return 0; }
     let len = stepX.length;
-    if (len == 0) { return 0; }
-    if (qty == 0) {
+    if (from >= to) {
         for(let i = 0; i < len; i++) {
-            if (qty <= stepX[i]) { return stepY[i]; }
+            if (from <= stepX[i]) { return stepY[i]; }
         }
-        return stepY[len - 1];
+        return stepY[len];
     }
     let change = 0;
-    let lastStepAmount = 0;
-    if (qty > 0) {
-        for(let i = 0; i < len; i++) {
-            if (stepX[i] <= 0) { continue; }
-            if (qty <= stepX[i]) {
-                change += (qty - lastStepAmount) * stepY[i];
-                lastStepAmount = qty;
-                break;
-            }
+    let lastStepAmount = from;
+
+    for(let i = 0; i < len; i++) {
+        if (stepX[i] <= lastStepAmount) { continue; }
+        if (stepX[i] >= to) {
+            change += (to - lastStepAmount) * stepY[i];
+            lastStepAmount = to;
+            break;
+        } else {
             change += (stepX[i] - lastStepAmount) * stepY[i];
             lastStepAmount = stepX[i];
         }
-        if (qty > lastStepAmount) {
-            change += (qty - lastStepAmount) * stepY[stepY.length - 1];
-        }
-    } else {
-        lastStepAmount = qty;
-        for(let i = 0; i < len; i++) {
-            if (stepX[i] >= 0) {
-                change += lastStepAmount * stepY[i];
-                lastStepAmount = 0;
-                break;
-            }
-            if (lastStepAmount < stepX[i]) {
-                change += (lastStepAmount - stepX[i]) * stepY[i];
-                lastStepAmount = stepX[i];
-            }
-        }
-        if (lastStepAmount < 0) {
-            change += lastStepAmount * stepY[len - 1];
-        }
     }
-    return divSolidity(change, qty);
+    if (lastStepAmount < to) {
+        change += (to - lastStepAmount) * stepY[len];
+    }
+    return divSolidity(change, to - from);
 }
 
 function calculateRateAmountNewConversionRate(isBuy, tokenInd, srcQty) {
@@ -2758,16 +2750,14 @@ function calculateRateAmountNewConversionRate(isBuy, tokenInd, srcQty) {
         let dstQty = calcDstQty(srcQty, 18, tokenDecimals[tokenInd], expectedRate);
         let extraBps = getExtraBpsForBuyQuantityNew(dstQty);
         expectedRate = addBps(expectedRate, extraBps);
-        let relevantImbalance = reserve4TokenImbalance[tokenInd] * 1 + dstQty * 1;
-        extraBps = getExtraBpsForImbalanceBuyQuantityNew(relevantImbalance);
+        extraBps = getExtraBpsForImbalanceBuyQuantityNew(reserve4TokenImbalance[tokenInd] * 1, dstQty * 1);
         expectedRate = addBps(expectedRate, extraBps);
         expectedAmount = calcDstQty(srcQty, 18, tokenDecimals[tokenInd], expectedRate);
     } else {
         expectedRate = (new BigNumber(baseSellRate4[tokenInd]));
         let extraBps = getExtraBpsForSellQuantityNew(srcQty);
         expectedRate = addBps(expectedRate, extraBps);
-        let relevantImbalance = reserve4TokenImbalance[tokenInd] - srcQty;
-        extraBps = getExtraBpsForImbalanceSellQuantityNew(relevantImbalance.valueOf());
+        extraBps = getExtraBpsForImbalanceSellQuantityNew(reserve4TokenImbalance[tokenInd] * 1, srcQty * 1);
         expectedRate = addBps(expectedRate, extraBps);
         expectedAmount = calcDstQty(srcQty, tokenDecimals[tokenInd], 18, expectedRate);
     }
