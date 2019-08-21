@@ -21,8 +21,8 @@ contract ConversionRates2 is ConversionRates {
         public
         onlyOperator
     {
-        require(xBuy.length == yBuy.length);
-        require(xSell.length == ySell.length);
+        require(xBuy.length + 1 == yBuy.length);
+        require(xSell.length + 1 == ySell.length);
         require(xBuy.length <= MAX_STEPS_IN_FUNCTION);
         require(xSell.length <= MAX_STEPS_IN_FUNCTION);
         require(tokenData[token].listed);
@@ -58,8 +58,8 @@ contract ConversionRates2 is ConversionRates {
         public
         onlyOperator
     {
-        require(xBuy.length == yBuy.length);
-        require(xSell.length == ySell.length);
+        require(xBuy.length + 1 == yBuy.length);
+        require(xSell.length + 1 == ySell.length);
         require(xBuy.length <= MAX_STEPS_IN_FUNCTION);
         require(xSell.length <= MAX_STEPS_IN_FUNCTION);
         require(tokenData[token].listed);
@@ -116,15 +116,15 @@ contract ConversionRates2 is ConversionRates {
             // compute token qty
             qty = getTokenQty(token, qty, rate);
             imbalanceQty = int(qty);
-            totalImbalance += imbalanceQty;
 
             // add qty overhead
-            extraBps = executeStepFunction(tokenData[token].buyRateQtyStepFunction, int(qty));
+            extraBps = executeStepFunction(tokenData[token].buyRateQtyStepFunction, 0, int(qty));
             rate = addBps(rate, extraBps);
 
             // add imbalance overhead
-            extraBps = executeStepFunction(tokenData[token].buyRateImbalanceStepFunction, totalImbalance);
+            extraBps = executeStepFunction(tokenData[token].buyRateImbalanceStepFunction, totalImbalance, totalImbalance + imbalanceQty);
             rate = addBps(rate, extraBps);
+            totalImbalance += imbalanceQty;
         } else {
             // start with base rate
             rate = tokenData[token].baseSellRate;
@@ -136,15 +136,15 @@ contract ConversionRates2 is ConversionRates {
 
             // compute token qty
             imbalanceQty = -1 * int(qty);
-            totalImbalance += imbalanceQty;
 
             // add qty overhead
-            extraBps = executeStepFunction(tokenData[token].sellRateQtyStepFunction, int(qty));
+            extraBps = executeStepFunction(tokenData[token].sellRateQtyStepFunction, 0, int(qty));
             rate = addBps(rate, extraBps);
 
             // add imbalance overhead
-            extraBps = executeStepFunction(tokenData[token].sellRateImbalanceStepFunction, totalImbalance);
+            extraBps = executeStepFunction(tokenData[token].sellRateImbalanceStepFunction, totalImbalance + imbalanceQty, totalImbalance);
             rate = addBps(rate, extraBps);
+            totalImbalance += imbalanceQty;
         }
 
         if (abs(totalImbalance) >= getMaxTotalImbalance(token)) return 0;
@@ -153,61 +153,42 @@ contract ConversionRates2 is ConversionRates {
         return rate;
     }
 
-    function executeStepFunction(StepFunction f, int x) internal pure returns(int) {
-        uint len = f.y.length;
-        if (len == 0) { return 0; }
+    function executeStepFunction(StepFunction f, int from, int to) internal pure returns(int) {
+        if (f.y.length == 0) { return 0; }
+
+        uint len = f.x.length;
         uint ind;
-        if (x == 0) {
-            // fallback to old logics
+
+        if (from >= to) {
+            // fallback to old logics, should only happen when trade amount = 0, from == to
             for(ind = 0; ind < len; ind++) {
-                if (x <= f.x[ind]) { return f.y[ind]; }
+                if (from <= f.x[ind]) { return f.y[ind]; }
             }
-            return f.y[len - 1];
+            return f.y[len];
         }
 
-        int lastStepAmount = 0; // amount from last step to compute amount to be applied bps for next step
+        int lastStepAmount = from; // amount from last step to compute amount to be applied bps for next step
         int change = 0; // amount change from initial amount when applying bps for each step
         int fx;
 
-        if (x > 0) {
-            // handle positive qty
-            for (ind = 0; ind < len; ind++) {
-                fx = f.x[ind];
-                if (fx <= 0) { continue; } // ignore non-positive steps
-                if (x <= fx) {
-                    change += (x - lastStepAmount) * f.y[ind];
-                    lastStepAmount = x;
-                    break;
-                }
-
+        for(ind = 0; ind < len; ind++) {
+            fx = f.x[ind];
+            if (fx <= lastStepAmount) { continue; }
+            // lastStepAmount < fx
+            if (fx >= to) {
+                change += (to - lastStepAmount) * f.y[ind];
+                lastStepAmount = to;
+                break;
+            } else {
                 change += (fx - lastStepAmount) * f.y[ind];
                 lastStepAmount = fx;
             }
-            if (x > lastStepAmount) {
-                change += (x - lastStepAmount) * f.y[len - 1];
-            }
-            return change / x;
         }
 
-        // handling negative qty
-        lastStepAmount = x;
-        for(ind = 0; ind < len; ind++) {
-            fx = f.x[ind];
-            if (fx >= 0) {
-                change += lastStepAmount * f.y[ind];
-                lastStepAmount = 0;
-                break;
-            }
-            if (lastStepAmount < fx) {
-                change += (lastStepAmount - fx) * f.y[ind];
-                lastStepAmount = fx;
-            }
+        if (lastStepAmount < to) {
+            change += (to - lastStepAmount) * f.y[len];
         }
 
-        if (lastStepAmount < 0) {
-            change += lastStepAmount * f.y[len - 1];
-        }
-
-        return change / x;
+        return change / (to - from);
     }
 }

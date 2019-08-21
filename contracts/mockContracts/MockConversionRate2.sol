@@ -25,9 +25,15 @@ contract MockConversionRate2 is ConversionRates2 {
         updateRateBlock = getLast4Bytes(compactData);
     }
 
-    // this for testing execute step func, only use imbalance step as qty can be negative 
-    function mockExecuteStepFunction(ERC20 token, int qty) public view returns (int) {
-        return executeStepFunction(tokenData[token].buyRateImbalanceStepFunction, qty);
+    function mockGetRateByteFromCompact(ERC20 token, bool isBuy) public view returns (int rateCompact) {
+        bytes32 compactData = tokenRatesCompactData[tokenData[token].compactDataArrayIndex];
+        int8 rateUpdate = getRateByteFromCompactData(compactData, token, isBuy);
+        rateCompact = int(rateUpdate);
+        return rateCompact;
+    }
+
+    function mockExecuteStepFunction(ERC20 token, int from, int to) public view returns (int) {
+        return executeStepFunction(tokenData[token].buyRateImbalanceStepFunction, from, to);
     }
 
     function mockAddBps(uint rate, int bps) public pure returns(uint) {
