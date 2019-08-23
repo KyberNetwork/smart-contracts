@@ -1,5 +1,5 @@
 let ConversionRates = artifacts.require("./ConversionRates.sol");
-let ConversionRates2 = artifacts.require("./ConversionRates2.sol");
+let EnhancedStepFunctions = artifacts.require("./EnhancedStepFunctions.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 let Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
 let Reserve = artifacts.require("./KyberReserve");
@@ -116,7 +116,7 @@ contract('KyberReserve', function(accounts) {
 //        console.log("current block: " + currentBlock);
         //init contracts
         convRatesInst = await ConversionRates.new(admin, {});
-        convRatesInst2 = await ConversionRates2.new(admin, {});
+        convRatesInst2 = await EnhancedStepFunctions.new(admin, {});
 
         //set pricing general parameters
         await convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);
@@ -1259,29 +1259,26 @@ function getExtraBpsForImbalanceSellQuantityNew(imbalance, qty) {
 function getExtraBpsForQuantity(from, to, stepX, stepY) {
     if (stepY.length == 0) { return 0; }
     let len = stepX.length;
-    if (from >= to) {
-        for(let i = 0; i < len; i++) {
-            if (from <= stepX[i]) { return stepY[i]; }
-        }
-        return stepY[len];
+    if (from == to) {
+        return 0;
     }
     let change = 0;
-    let lastStepAmount = from;
+    let qty = to - from;
     for(let i = 0; i < len; i++) {
-        if (stepX[i] <= lastStepAmount) { continue; }
+        if (stepX[i] <= from) { continue; }
         if (stepX[i] >= to) {
-            change += (to - lastStepAmount) * stepY[i];
-            lastStepAmount = to;
+            change += (to - from) * stepY[i];
+            from = to;
             break;
         } else {
-            change += (stepX[i] - lastStepAmount) * stepY[i];
-            lastStepAmount = stepX[i];
+            change += (stepX[i] - from) * stepY[i];
+            from = stepX[i];
         }
     }
-    if (lastStepAmount < to) {
-        change += (to - lastStepAmount) * stepY[len];
+    if (from < to) {
+        change += (to - from) * stepY[len];
     }
-    return divSolidity(change, to - from);
+    return divSolidity(change, qty);
 }
 
 function addBps (price, bps) {

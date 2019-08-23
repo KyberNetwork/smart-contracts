@@ -1,5 +1,5 @@
 let ConversionRates = artifacts.require("./mockContracts/MockConversionRate.sol");
-let ConversionRates2 = artifacts.require("./mockContract/MockConversionRate2.sol");
+let EnhancedStepFunctions = artifacts.require("./mockContract/MockEnhancedStepFunctions.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 let Reserve = artifacts.require("./KyberReserve.sol");
 let Network = artifacts.require("./KyberNetwork.sol");
@@ -144,7 +144,7 @@ contract('KyberNetwork', function(accounts) {
         pricing1 = await ConversionRates.new(admin, {});
         pricing2 = await ConversionRates.new(admin, {});
         pricing3 = await ConversionRates.new(admin, {});
-        pricing4 = await ConversionRates2.new(admin, {});
+        pricing4 = await EnhancedStepFunctions.new(admin, {});
 
         //set pricing general parameters
         await pricing1.setValidRateDurationInBlocks(validRateDurationInBlocks);
@@ -2714,30 +2714,26 @@ function getExtraBpsForImbalanceSellQuantityNew(currentImbalance, qty) {
 function getExtraBpsForQuantity(from, to, stepX, stepY) {
     if (stepY.length == 0) { return 0; }
     let len = stepX.length;
-    if (from >= to) {
-        for(let i = 0; i < len; i++) {
-            if (from <= stepX[i]) { return stepY[i]; }
-        }
-        return stepY[len];
+    if (from == to) {
+        return 0;
     }
     let change = 0;
-    let lastStepAmount = from;
-
+    let qty = to - from;
     for(let i = 0; i < len; i++) {
-        if (stepX[i] <= lastStepAmount) { continue; }
+        if (stepX[i] <= from) { continue; }
         if (stepX[i] >= to) {
-            change += (to - lastStepAmount) * stepY[i];
-            lastStepAmount = to;
+            change += (to - from) * stepY[i];
+            from = to;
             break;
         } else {
-            change += (stepX[i] - lastStepAmount) * stepY[i];
-            lastStepAmount = stepX[i];
+            change += (stepX[i] - from) * stepY[i];
+            from = stepX[i];
         }
     }
-    if (lastStepAmount < to) {
-        change += (to - lastStepAmount) * stepY[len];
+    if (from < to) {
+        change += (to - from) * stepY[len];
     }
-    return divSolidity(change, to - from);
+    return divSolidity(change, qty);
 }
 
 function calculateRateAmountNewConversionRate(isBuy, tokenInd, srcQty) {

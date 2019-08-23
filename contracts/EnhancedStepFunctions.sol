@@ -3,12 +3,14 @@ pragma solidity 0.4.18;
 import "./ERC20Interface.sol";
 import "./ConversionRates.sol";
 
-/// @title ConversionRates2 contract - new ConversionRates contract with step function enhancement
+/// @title EnhancedStepFunctions contract - new ConversionRates contract with step function enhancement
 /// Also fixed issue: https://github.com/KyberNetwork/smart-contracts/issues/291
 
-contract ConversionRates2 is ConversionRates {
+contract EnhancedStepFunctions is ConversionRates {
 
-    function ConversionRates2(address _admin) public ConversionRates(_admin)
+    uint constant internal MAX_STEPS_IN_FUNCTION = 16;
+
+    function EnhancedStepFunctions(address _admin) public ConversionRates(_admin)
         { } // solhint-disable-line no-empty-blocks
 
     function setQtyStepFunction(
@@ -23,8 +25,8 @@ contract ConversionRates2 is ConversionRates {
     {
         require(xBuy.length + 1 == yBuy.length);
         require(xSell.length + 1 == ySell.length);
-        require(xBuy.length <= MAX_STEPS_IN_FUNCTION);
-        require(xSell.length <= MAX_STEPS_IN_FUNCTION);
+        require(yBuy.length <= MAX_STEPS_IN_FUNCTION);
+        require(ySell.length <= MAX_STEPS_IN_FUNCTION);
         require(tokenData[token].listed);
 
         if (xBuy.length > 0) {
@@ -60,8 +62,8 @@ contract ConversionRates2 is ConversionRates {
     {
         require(xBuy.length + 1 == yBuy.length);
         require(xSell.length + 1 == ySell.length);
-        require(xBuy.length <= MAX_STEPS_IN_FUNCTION);
-        require(xSell.length <= MAX_STEPS_IN_FUNCTION);
+        require(yBuy.length <= MAX_STEPS_IN_FUNCTION);
+        require(ySell.length <= MAX_STEPS_IN_FUNCTION);
         require(tokenData[token].listed);
 
         if (xBuy.length > 1) {
@@ -166,36 +168,34 @@ contract ConversionRates2 is ConversionRates {
         uint len = f.x.length;
         uint ind;
 
-        if (from >= to) {
-            // fallback to old logics, should only happen when trade amount = 0, from == to
-            for(ind = 0; ind < len; ind++) {
-                if (from <= f.x[ind]) { return f.y[ind]; }
-            }
-            return f.y[len];
+        if (from == to) {
+            // should only happen when trade amount = 0
+            return 0;
         }
 
-        int lastStepAmount = from; // amount from last step to compute amount to be applied bps for next step
+        int qty = to - from;
         int change = 0; // amount change from initial amount when applying bps for each step
-        int fx;
+        int stepXValue;
 
         for(ind = 0; ind < len; ind++) {
-            fx = f.x[ind];
-            if (fx <= lastStepAmount) { continue; }
-            // lastStepAmount < fx
-            if (fx >= to) {
-                change += (to - lastStepAmount) * f.y[ind];
-                lastStepAmount = to;
+            stepXValue = f.x[ind];
+            if (stepXValue <= from) { continue; }
+            // at here, lastStepAmount < stepXValue,
+            // bps for step range [lastStepAmount, stepXValue] will be f.y[ind]
+            if (stepXValue >= to) {
+                change += (to - from) * f.y[ind];
+                from = to;
                 break;
             } else {
-                change += (fx - lastStepAmount) * f.y[ind];
-                lastStepAmount = fx;
+                change += (stepXValue - from) * f.y[ind];
+                from = stepXValue;
             }
         }
 
-        if (lastStepAmount < to) {
-            change += (to - lastStepAmount) * f.y[len];
+        if (from < to) {
+            change += (to - from) * f.y[len];
         }
 
-        return change / (to - from);
+        return change / qty;
     }
 }

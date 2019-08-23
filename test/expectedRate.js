@@ -1,5 +1,5 @@
 let ConversionRates = artifacts.require("./ConversionRates.sol");
-let ConversionRates2 = artifacts.require("./ConversionRates2.sol");
+let EnhancedStepFunctions = artifacts.require("./EnhancedStepFunctions.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 let Reserve = artifacts.require("./KyberReserve.sol");
 let Network = artifacts.require("./KyberNetwork.sol");
@@ -87,7 +87,7 @@ contract('ExpectedRates', function(accounts) {
 
         //init contracts
         pricing1 = await ConversionRates.new(admin, {});
-        pricing2 = await ConversionRates2.new(admin, {});
+        pricing2 = await EnhancedStepFunctions.new(admin, {});
 
         //set pricing general parameters
         await pricing1.setValidRateDurationInBlocks(validRateDurationInBlocks);
