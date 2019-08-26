@@ -173,6 +173,7 @@ function parseInput( jsonInput ) {
 
     reservePermissions = jsonInput.permission["KyberReserve"];
     conversionRatesPermissions = jsonInput.permission["ConversionRates"];
+    validDurationBlock = jsonInput["valid duration block"];
 
     // output file name
     outputFileName = jsonInput["output filename"];
