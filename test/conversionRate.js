@@ -1,10 +1,9 @@
-//let ConversionRates = artifacts.require("./ConversionRates.sol");
-let ConversionRates = artifacts.require("./mockContracts/MockConversionRate.sol");
-let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
+const ConversionRates = artifacts.require("MockConversionRate.sol");
+const TestToken = artifacts.require("TestToken.sol");
+const Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
 
-let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+const Helper = require("./helper.js");
+const BigNumber = require('bignumber.js');
 
 //global variables
 let precisionUnits = (new BigNumber(10).pow(18));
@@ -42,25 +41,25 @@ let compactSellArr1 = [];
 let compactSellArr2 = [];
 
 // getStepFunctionData command IDs
-let comID_BuyRateStpQtyXLength = 0;
-let comID_BuyRateStpQtyParamX = 1;
-let comID_BuyRateStpQtyYLength = 2;
-let comID_BuyRateStpQtyParamY = 3;
+const comID_BuyRateStpQtyXLength = 0;
+const comID_BuyRateStpQtyParamX = 1;
+const comID_BuyRateStpQtyYLength = 2;
+const comID_BuyRateStpQtyParamY = 3;
 
-let comID_SellRateStpQtyXLength = 4;
-let comID_SellRateStpQtyParamX = 5;
-let comID_SellRateStpQtyYLength = 6;
-let comID_SellRateStpQtyParamY = 7;
+const comID_SellRateStpQtyXLength = 4;
+const comID_SellRateStpQtyParamX = 5;
+const comID_SellRateStpQtyYLength = 6;
+const comID_SellRateStpQtyParamY = 7;
 
-let comID_BuyRateStpImbalanceXLength = 8;
-let comID_BuyRateStpImbalanceParamX = 9;
-let comID_BuyRateStpImbalanceYLength = 10;
-let comID_BuyRateStpImbalanceParamY = 11;
+const comID_BuyRateStpImbalanceXLength = 8;
+const comID_BuyRateStpImbalanceParamX = 9;
+const comID_BuyRateStpImbalanceYLength = 10;
+const comID_BuyRateStpImbalanceParamY = 11;
 
-let comID_SellRateStpImbalanceXLength = 12;
-let comID_SellRateStpImbalanceParamX = 13;
-let comID_SellRateStpImbalanceYLength = 14;
-let comID_SellRateStpImbalanceParamY = 15;
+const comID_SellRateStpImbalanceXLength = 12;
+const comID_SellRateStpImbalanceParamX = 13;
+const comID_SellRateStpImbalanceYLength = 14;
+const comID_SellRateStpImbalanceParamY = 15;
 
 let convRatesInst;
 
@@ -88,7 +87,6 @@ contract('ConversionRates', function(accounts) {
     it("should init ConversionRates Inst and set general parameters.", async function () {
         //init contracts
         convRatesInst = await ConversionRates.new(admin);
-
         //set pricing general parameters
         convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);
 
@@ -216,6 +214,7 @@ contract('ConversionRates', function(accounts) {
 
 
     it("should set step functions qty and imbalance.", async function () {
+        this.timeout(20000);
         qtyBuyStepX = [15, 30, 70];
         qtyBuyStepY = [8, 30, 70];
         qtySellStepX = [155, 305, 705];
@@ -224,7 +223,7 @@ contract('ConversionRates', function(accounts) {
         imbalanceBuyStepY = [35, 150, 310, 1100];
         imbalanceSellStepX = [1500, 3000, 7000, 30000];
         imbalanceSellStepY = [45, 190, 360, 1800];
-        
+
         for (let i = 0; i < numTokens; ++i) {
             await convRatesInst.setQtyStepFunction(tokens[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             await convRatesInst.setImbalanceStepFunction(tokens[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
@@ -392,7 +391,7 @@ contract('ConversionRates', function(accounts) {
         sells.length = 0;
         compactHex = Helper.bytesToHex(compactSellArr1);
         sells.push(compactHex);
-        convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
         lastSetCompactBlock = currentBlock;
 
         // get rate with the updated compact data.
@@ -416,7 +415,7 @@ contract('ConversionRates', function(accounts) {
         compactHex = Helper.bytesToHex(compactBuyArr1);
         buys.length = 0;
         buys.push(compactHex);
-        convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
         lastSetCompactBlock = currentBlock;
 
         // get rate without activating quantity step function (small amount).
@@ -451,7 +450,7 @@ contract('ConversionRates', function(accounts) {
         sells.length = 0;
         compactHex = Helper.bytesToHex(compactSellArr2);
         sells.push(compactHex);
-        convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
         lastSetCompactBlock = currentBlock;
 
         // get rate without activating quantity step function (small amount).

@@ -10,7 +10,7 @@ var myToken;
 
 var myExchange;
 
-var ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+var ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
 contract('MockExchange', function (accounts) {
     it("should test withdraw successful with owner, for token", async function (){
@@ -28,7 +28,7 @@ contract('MockExchange', function (accounts) {
         await myExchange.addOwner(accounts[2]);
 
         let payable = await TestToken.new("dont use", "ban", 12);
-        
+
         await myExchange.addMockDepositAddress(myToken.address, {from:accounts[2]});
 
         //withdraw with owner
@@ -111,7 +111,7 @@ contract('MockExchange', function (accounts) {
 
     it("should test myExchange clear balance with token.", async function (){
         let myToken = await TestToken.new("another", "ant", 18);
-        myExchange.addMockDepositAddress(myToken.address);
+        await myExchange.addMockDepositAddress(myToken.address);
 
         //send myTokens to deposit address
         let mockAddress = await myExchange.tokenDepositAddresses(myToken.address);
@@ -133,7 +133,7 @@ contract('MockExchange', function (accounts) {
     });
 
     it("should test myExchange clear balance with Ether.", async function (){
-        myExchange.addMockDepositAddress(ethAddress);
+        await myExchange.addMockDepositAddress(ethAddress);
 
         //send ethers to deposit address
         let myEtherMockAddress = await myExchange.tokenDepositAddresses(ethAddress);

@@ -1,20 +1,24 @@
-let ConversionRates = artifacts.require("./ConversionRates.sol");
-let ConversionRates2 = artifacts.require("./ConversionRates2.sol");
-let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let Reserve = artifacts.require("./KyberReserve.sol");
-let Network = artifacts.require("./KyberNetwork.sol");
-let WhiteList = artifacts.require("./WhiteList.sol");
-let ExpectedRate = artifacts.require("./ExpectedRate.sol");
-let FeeBurner = artifacts.require("./FeeBurner.sol");
+const ConversionRates = artifacts.require("ConversionRates.sol");
+const TestToken = artifacts.require("mockContracts/TestToken.sol");
+const Reserve = artifacts.require("KyberReserve.sol");
+const Network = artifacts.require("KyberNetwork.sol");
+const MockNetwork = artifacts.require("MockKyberNetwork.sol");
+const NetworkFailingGetRate = artifacts.require("NetworkFailingGetRate.sol");
+const WhiteList = artifacts.require("WhiteList.sol");
+const ExpectedRate = artifacts.require("ExpectedRate.sol");
+const FeeBurner = artifacts.require("FeeBurner.sol");
+const MockUtils = artifacts.require("MockUtils.sol");
 
-let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+const Helper = require("./helper.js");
+const BigNumber = require('bignumber.js');
 
 
-let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-let precisionUnits = (new BigNumber(10).pow(18));
+const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+const precisionUnits = (new BigNumber(10).pow(18));
+const ethToKncRatePrecision = precisionUnits.mul(550);
+const gasPrice = (new BigNumber(10).pow(9).mul(50));
 
-let bps = 10000;
+const bps = 10000;
 let minSlippageBps = 400;
 let quantityFactor = 2;
 let expectedRates;
@@ -38,10 +42,22 @@ let minimalRecordResolution = 2; //low resolution so I don't lose too much data.
 let maxPerBlockImbalance = 4000;
 let maxTotalImbalance = maxPerBlockImbalance * 12;
 
-contract('ExpectedRates', function(accounts) {
-    it("should init kyber network and all its components.", async function () {
-        let gasPrice = (new BigNumber(10).pow(9).mul(50));
+let MAX_RATE;
+let kncAddress;
 
+contract('ExpectedRate', function(accounts) {
+    before("init globals", async function() {
+        const knc = await TestToken.new("kyber network crystal", "KNC", 18);
+        kncAddress = knc.address;
+
+        // set account addresses
+        admin = accounts[0];
+        operator = accounts[1];
+        alerter = accounts[2];
+
+    })
+
+    it("should init kyber network and all its components.", async function () {
         //block data
         let priceUpdateBlock;
         let currentBlock;
@@ -74,20 +90,13 @@ contract('ExpectedRates', function(accounts) {
         let compactBuyArr = [];
         let compactSellArr = [];
 
-        // set account addresses
-        admin = accounts[0];
-        operator = accounts[1];
-        alerter = accounts[2];
-
         currentBlock = priceUpdateBlock = await Helper.getCurrentBlock();
 
         //init contracts
         pricing1 = await ConversionRates.new(admin, {});
-        pricing2 = await ConversionRates2.new(admin, {});
 
         //set pricing general parameters
         await pricing1.setValidRateDurationInBlocks(validRateDurationInBlocks);
-        await pricing2.setValidRateDurationInBlocks(validRateDurationInBlocks);
 
         //create and add token addresses...
         for (let i = 0; i < numTokens; ++i) {
@@ -97,15 +106,11 @@ contract('ExpectedRates', function(accounts) {
             await pricing1.addToken(token.address);
             await pricing1.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
             await pricing1.enableTokenTrade(token.address);
-            await pricing2.addToken(token.address);
-            await pricing2.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
-            await pricing2.enableTokenTrade(token.address);
         }
 
         assert.equal(tokens.length, numTokens, "bad number tokens");
 
         let result = await pricing1.addOperator(operator);
-        await pricing2.addOperator(operator);
 
         //buy is ether to token rate. sale is token to ether rate. so sell == 1 / buy. assuming we have no spread.
         let tokensPerEther;
@@ -123,7 +128,6 @@ contract('ExpectedRates', function(accounts) {
         buys.length = sells.length = indices.length = 0;
 
         await pricing1.setBaseRate(tokenAdd, baseBuyRate1, baseSellRate1, buys, sells, currentBlock, indices, {from: operator});
-        await pricing2.setBaseRate(tokenAdd, baseBuyRate1, baseSellRate1, buys, sells, currentBlock, indices, {from: operator});
 
         //set compact data
         compactBuyArr = [0, 0, 0, 0, 0, 06, 07, 08, 09, 10, 11, 12, 13, 14];
@@ -140,37 +144,28 @@ contract('ExpectedRates', function(accounts) {
         assert.equal(indices.length, buys.length, "bad buys array size");
 
         await pricing1.setCompactData(buys, sells, currentBlock, indices, {from: operator});
-        await pricing2.setCompactData(buys, sells, currentBlock, indices, {from: operator});
 
         //all start with same step functions.
         for (let i = 0; i < numTokens; ++i) {
             await pricing1.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             await pricing1.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
-            await pricing2.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
-            await pricing2.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
         }
 
         network = await Network.new(admin);
+        await network.addOperator(operator);
         reserve1 = await Reserve.new(network.address, pricing1.address, admin);
-        reserve2 = await Reserve.new(network.address, pricing2.address, admin);
         await pricing1.setReserveAddress(reserve1.address);
-        await pricing2.setReserveAddress(reserve2.address);
         await reserve1.addAlerter(alerter);
-        await reserve2.addAlerter(alerter);
         for (i = 0; i < numTokens; ++i) {
             await reserve1.approveWithdrawAddress(tokenAdd[i],accounts[0],true);
-            await reserve2.approveWithdrawAddress(tokenAdd[i],accounts[0],true);
         }
 
         //set reserve balance. 10000 wei ether + per token 1000 wei ether value according to base rate.
         let reserveEtherInit = 5000 * 2;
         await Helper.sendEtherWithPromise(accounts[8], reserve1.address, reserveEtherInit);
-        await Helper.sendEtherWithPromise(accounts[8], reserve2.address, reserveEtherInit);
 
         let balance = await Helper.getBalancePromise(reserve1.address);
         expectedReserve1BalanceWei = balance.valueOf();
-        assert.equal(balance.valueOf(), reserveEtherInit, "wrong ether balance");
-        balance = await Helper.getBalancePromise(reserve2.address);
         assert.equal(balance.valueOf(), reserveEtherInit, "wrong ether balance");
 
         //transfer tokens to reserve. each token same wei balance
@@ -180,23 +175,22 @@ contract('ExpectedRates', function(accounts) {
             await token.transfer(reserve1.address, amount1.valueOf());
             let balance = await token.balanceOf(reserve1.address);
             assert.equal(amount1.valueOf(), balance.valueOf());
-            await token.transfer(reserve2.address, amount1.valueOf());
-            balance = await token.balanceOf(reserve2.address);
-            assert.equal(amount1.valueOf(), balance.valueOf());
         }
 
         // add reserves
-        await network.addReserve(reserve1.address, true);
+        await network.addReserve(reserve1.address, false, {from: operator});
 
         //set contracts
-        feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address);
+        feeBurner = await FeeBurner.new(admin, tokenAdd[0], network.address, ethToKncRatePrecision);
         let kgtToken = await TestToken.new("kyber genesis token", "KGT", 0);
         whiteList = await WhiteList.new(admin, kgtToken.address);
         await whiteList.addOperator(operator);
         await whiteList.setCategoryCap(0, 1000, {from:operator});
         await whiteList.setSgdToEthRate(30000, {from:operator});
 
-        expectedRates = await ExpectedRate.new(network.address, admin);
+        expectedRates = await ExpectedRate.new(network.address, kncAddress, admin);
+        await expectedRates.addOperator(operator);
+
         await network.setWhiteList(whiteList.address);
         await network.setExpectedRate(expectedRates.address);
         await network.setFeeBurner(feeBurner.address);
@@ -209,12 +203,14 @@ contract('ExpectedRates', function(accounts) {
 
         //list tokens per reserve
         for (let i = 0; i < numTokens; i++) {
-            await network.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true);
+            await network.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true, {from: operator});
         }
+
+        let mockUtils = await MockUtils.new();
+        MAX_RATE = await mockUtils.getMaxRate();
     });
 
-    it("should init expected rates.", async function () {
-        await expectedRates.addOperator(operator);
+    it("should init expected rate.", async function () {
         await expectedRates.setWorstCaseRateFactor(minSlippageBps, {from: operator});
     });
 
@@ -222,20 +218,20 @@ contract('ExpectedRates', function(accounts) {
         let expectedRateT;
 
         try {
-            expectedRateT =  await ExpectedRate.new(network.address, 0);
+            expectedRateT =  await ExpectedRate.new(network.address, kncAddress, 0);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            expectedRateT =  await ExpectedRate.new(0, admin);
+            expectedRateT =  await ExpectedRate.new(0, kncAddress, admin);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        expectedRateT =  await ExpectedRate.new(network.address, admin);
+        expectedRateT =  await ExpectedRate.new(network.address, kncAddress, admin);
     });
 
     it("should test eth to token. use qty slippage.", async function() {
@@ -255,7 +251,7 @@ contract('ExpectedRates', function(accounts) {
             assert(false, "expect qty slippage rate to be lower");
         }
 
-        rates = await expectedRates.getExpectedRate(ethAddress, tokenAdd[tokenInd], qty);
+        rates = await expectedRates.getExpectedRate(ethAddress, tokenAdd[tokenInd], qty, false);
 
         assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
         assert.equal(rates[1].valueOf(), qtySlippageRate, "unexpected rate");
@@ -279,7 +275,7 @@ contract('ExpectedRates', function(accounts) {
             assert(false, "expect min slippage rate to be lower");
         }
 
-        rates = await expectedRates.getExpectedRate(ethAddress, tokenAdd[tokenInd], qty);
+        rates = await expectedRates.getExpectedRate(ethAddress, tokenAdd[tokenInd], qty, false);
 
         assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
         assert.equal(rates[1].valueOf(), qtySlippageRate, "unexpected rate");
@@ -300,7 +296,7 @@ contract('ExpectedRates', function(accounts) {
             assert(false, "expect qty slippage rate to be lower");
         }
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty, false);
 
         assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
         assert.equal(rates[1].valueOf(), qtySlippageRate.valueOf(), "unexpected rate");
@@ -324,7 +320,7 @@ contract('ExpectedRates', function(accounts) {
             assert(false, "expect min slippage rate to be lower");
         }
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty, false);
 
         assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
         assert.equal(rates[1].valueOf(), qtySlippageRate.valueOf(), "unexpected rate");
@@ -332,19 +328,19 @@ contract('ExpectedRates', function(accounts) {
 
     it("should verify get expected rate reverted when quantity factor is 0.", async function() {
         let qty = 100;
-        rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty, false);
 
         await expectedRates.setQuantityFactor(0, {from: operator});
 
         try {
-            rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty);
+            rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty, false);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         await expectedRates.setQuantityFactor(2, {from: operator});
-        rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[1], ethAddress, qty, false);
     });
 
     it("should verify set quantity factor reverts when > 100.", async function() {
@@ -395,10 +391,10 @@ contract('ExpectedRates', function(accounts) {
 
         //with quantity factor 1
         await expectedRates.setQuantityFactor(1, {from: operator});
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, legalQty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, legalQty, false);
 
         try {
-            rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, illegalQty);
+            rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, illegalQty, false);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -412,11 +408,11 @@ contract('ExpectedRates', function(accounts) {
 
         //with quantity factor 2a
         await expectedRates.setQuantityFactor(2, {from: operator});
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, legalQty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, legalQty, false);
 
         illegalQty = legalQty.add(1);
         try {
-            rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, illegalQty);
+            rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, illegalQty, false);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -430,8 +426,8 @@ contract('ExpectedRates', function(accounts) {
 
         await expectedRates.setWorstCaseRateFactor(minSlippageBps, {from: operator});
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
-        let expectedRate = await network.searchBestRate(tokenAdd[tokenInd], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty, false);
+        let expectedRate = await network.searchBestRate(tokenAdd[tokenInd], ethAddress, qty, false);
 
         assert(rates[0].valueOf() != 0, "unexpected rate");
         assert.equal(rates[0].valueOf(), expectedRate[1].valueOf(), "unexpected rate");
@@ -442,8 +438,8 @@ contract('ExpectedRates', function(accounts) {
         let tokenInd = 2;
         let qty = 1;
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
-        let expectedRate = await network.searchBestRate(tokenAdd[tokenInd], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty, false);
+        let expectedRate = await network.searchBestRate(tokenAdd[tokenInd], ethAddress, qty, false);
         assert.equal(rates[0].valueOf(), expectedRate[1].valueOf(), "unexpected rate");
         assert(rates[1].valueOf() == 0, "unexpected rate");
     });
@@ -452,7 +448,7 @@ contract('ExpectedRates', function(accounts) {
         let tokenInd = 2;
         let qty = maxPerBlockImbalance;
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty, false);
         assert.equal(rates[0].valueOf(), 0)
         assert.equal(rates[1].valueOf(), 0)
     });
@@ -461,7 +457,7 @@ contract('ExpectedRates', function(accounts) {
         let tokenInd = 2;
         let qty = maxPerBlockImbalance - 1;
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty, false);
         assert(rates[0].valueOf() > 0)
         assert.equal(rates[1].valueOf(), 0)
     });
@@ -471,10 +467,19 @@ contract('ExpectedRates', function(accounts) {
         let qty = maxPerBlockImbalance - 1;
         await expectedRates.setQuantityFactor(1, {from: operator});
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        const myExpectedRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, qty);
+        const slippage = (new BigNumber(10000 - minSlippageBps).mul(new BigNumber(myExpectedRate[1]))).div(10000);
+
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty, false);
         assert(rates[0].valueOf() > 0)
         assert(rates[1].valueOf() > 0)
         assert(rates[0].valueOf() > rates[1].valueOf())
+        assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected expected rate")
+
+        // overcome rounding issues in big number
+        const rates1String = rates[1].toString(10);
+        const slippageString = slippage.toString(10);
+        assert.equal(rates1String, slippageString.substring(0, slippageString.indexOf('.')), "unexpected slippage rate")
         await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
     });
 
@@ -483,10 +488,10 @@ contract('ExpectedRates', function(accounts) {
         let tokenDestInd = 1;
         let qty = 0;
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], qty);
-        let srcToEthRate = await network.searchBestRate(tokenAdd[tokenSrcInd], ethAddress, qty);
+        rates = await expectedRates.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], qty, false);
+        let srcToEthRate = await network.searchBestRate(tokenAdd[tokenSrcInd], ethAddress, qty, false);
         srcToEthRate = new BigNumber(srcToEthRate[1].valueOf());
-        let ethToDestRate = await network.searchBestRate(ethAddress, tokenAdd[tokenDestInd], qty);
+        let ethToDestRate = await network.searchBestRate(ethAddress, tokenAdd[tokenDestInd], qty, false);
         ethToDestRate = new BigNumber(ethToDestRate[1].valueOf());
 
         assert(rates[0].valueOf() != 0, "unexpected rate");
@@ -494,124 +499,390 @@ contract('ExpectedRates', function(accounts) {
         assert.equal(rates[1].valueOf(), 0, "unexpected rate");
     });
 
-    it("should disable the first reserve and add the second one with new conversion rate", async function() {
-        await reserve1.disableTrade({from: alerter});
-        await network.addReserve(reserve2.address, true);
+    it("should verify when rate received from kyber network is > MAX_RATE, get expected rate return (0,0).", async function() {
+        let mockNetwork = await MockNetwork.new();
+        let tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
 
-        //list tokens per reserve2
-        for (let i = 0; i < numTokens; i++) {
-            await network.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true);
+        let token = await TestToken.new("someToke", "some", 16);
+
+        aRate = MAX_RATE.div(precisionUnits).add(100);
+        let ethToTokRatePrecision = precisionUnits.mul(aRate);
+        let tokToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, token.address, ethToTokRatePrecision);
+        await mockNetwork.setPairRate(token.address, ethAddress, tokToEthRatePrecision);
+
+        let rate = await mockNetwork.findBestRate(ethAddress, token.address, 1000);
+        assert(rate[1].gt(MAX_RATE));
+
+        const myRate = await tempExpectedRate.getExpectedRate(ethAddress, token.address, 1000, true);
+        assert.equal(myRate[0].valueOf(), 0, "expected rate should be 0");
+        assert.equal(myRate[1].valueOf(), 0, "expected rate should be 0");
+    });
+
+    it("should verify knc arbitrage.", async function() {
+        const mockNetwork = await MockNetwork.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate * 1.01);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        const feeBurnerQty = new BigNumber(10**18);
+
+        // check exact qty
+        const myRate1 = await tempExpectedRate.getExpectedRate(kncAddress,ethAddress,feeBurnerQty,true);
+        assert.equal(myRate1[0].valueOf(), 0, "expected 0 rate in arbitrage");
+        assert.equal(myRate1[1].valueOf(), 0, "expected 0 slippage rate in arbitrage");
+
+        // check different qty
+        const myRate2 = await tempExpectedRate.getExpectedRate(kncAddress,ethAddress,feeBurnerQty.plus(1),true);
+        assert.equal(myRate2[0].valueOf(), kncToEthRatePrecision.valueOf() * 1, "unexpected rate in arbitrage");
+
+        // check converse direction
+        const myRate3 = await tempExpectedRate.getExpectedRate(ethAddress,kncAddress,feeBurnerQty,true);
+        assert.equal(myRate3[0].valueOf(), ethToKncRatePrecision.valueOf() * 1, "expected 0 rate in arbitrage");
+
+        // set non arbitrage rates
+        const ethToKncRatePrecision2 = precisionUnits.mul(aRate);
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision2);
+
+        // check exact qty
+        const myRate4 = await tempExpectedRate.getExpectedRate(kncAddress,ethAddress,feeBurnerQty,true);
+        assert.equal(myRate4[0].valueOf(), kncToEthRatePrecision.valueOf() * 1, "expected rate in arbitrage");
+    });
+
+    it("should verify when knc arbitrage the check arbitrage function returns true. otherwise returns false.", async function() {
+        const mockNetwork = await MockNetwork.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate * 1.01);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        let hasArb =  await tempExpectedRate.checkKncArbitrageRate(kncToEthRatePrecision)
+
+        // check exact qty
+        assert.equal(hasArb, true, "Arbitrage should exist");
+
+        // set non arbitrage rates
+        const ethToKncRatePrecision2 = precisionUnits.mul(aRate - 0.0001);
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision2);
+
+        hasArb = await tempExpectedRate.checkKncArbitrageRate(kncToEthRatePrecision);
+
+        // check exact qty
+        assert.equal(hasArb, false, "Arbitrage shouldn't exist");
+    });
+
+    it("make sure call to find best rate will revert when less then 1 mil gas. in 'NetworkFailingGetRate'", async function() {
+        const network = await NetworkFailingGetRate.new();
+
+        const tempExpectedRate = await ExpectedRate.new(network.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+        await network.setExpectedRateContract(tempExpectedRate.address);
+
+        await network.setExpectedRateContract(tempExpectedRate.address);
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate - 0.01);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await network.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await network.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        let rxEthToKnc = await network.findBestRate(ethAddress, kncAddress, 345, {gas: 1200000});
+        assert.equal(rxEthToKnc[1].valueOf(), ethToKncRatePrecision.valueOf());
+
+        //call with less then 1 million gas reverts
+        try {
+            await network.findBestRate(ethAddress, kncAddress, 345, {gas: 999000});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     });
 
-    it("step function enhancement: should test eth to token. use qty slippage.", async function() {
-        let tokenInd = 2;
-        let qty = 9;
-        quantityFactor = 10;
+    it("should verify function 'getExpectedRate' with failing kyber network. returns 0 when 'findBestRate()' reverts.", async function() {
+        // find best rate is called with assembly code. thus could fail without reverting. but for check arbitrage. rate 0 response means check can't happen.
+        // when setting knc rate in fee burner. in underlying calls findBestRate is called 3 times. if 3rd one fails (Ex: out of gas) returned value
+        // would be 0, in this case there is the problem with arbitrage check.
+        const network = await NetworkFailingGetRate.new();
 
-        await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
-        let myExpectedRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], qty);
-        let qtySlippageRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], (qty * quantityFactor));
+        const tempExpectedRate = await ExpectedRate.new(network.address, kncAddress, admin);
+        const rxNetwork = await tempExpectedRate.kyberNetwork();
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
 
-        let minSlippage =  ((10000 - minSlippageBps) * myExpectedRate[1].valueOf()) / 10000;
+        await network.setExpectedRateContract(tempExpectedRate.address);
 
-        qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
-        if (qtySlippageRate > minSlippage) {
-            qtySlippageRate = minSlippage;
-            assert(false, "expect qty slippage rate to be lower");
-        }
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate - 0.01);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
 
-        rates = await expectedRates.getExpectedRate(ethAddress, tokenAdd[tokenInd], qty);
+        await network.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await network.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
 
-        assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
-        assert.equal(rates[1].valueOf(), qtySlippageRate, "unexpected rate");
+        let rxEthToKnc = await network.getExpectedRate(ethAddress, kncAddress, 345);
+        let rxKncToEth = await network.getExpectedRate(kncAddress, ethAddress, 345);
+
+        assert.equal(rxEthToKnc[0].valueOf(), ethToKncRatePrecision.floor().valueOf());
+        assert.equal(rxKncToEth[0].valueOf(), kncToEthRatePrecision.floor().valueOf());
+//        log("rxEthToKnc " + rxEthToKnc[0])
+//        log("rxKncToEth " + rxKncToEth[0])
+
+        let rxEthToKnc2 =  await tempExpectedRate.getExpectedRate(ethAddress, kncAddress, 345, true, {gas: 1200001});
+        assert.equal(rxEthToKnc2[0].valueOf(), rxEthToKnc[0].valueOf());
+
+        let rxKncToEth2 =  await tempExpectedRate.getExpectedRate(kncAddress, ethAddress, 345, true, {gas: 1200001});
+        assert.equal(rxKncToEth2[0].valueOf(), rxKncToEth[0].valueOf());
+
+        rxEthToKnc2 =  await tempExpectedRate.getExpectedRate(ethAddress, kncAddress, 345, true, {gas: 990000});
+        assert.equal(rxEthToKnc2[0].valueOf(), 0);
+
+        rxKncToEth2 =  await tempExpectedRate.getExpectedRate(kncAddress, ethAddress, 345, true, {gas: 990000});
+        assert.equal(rxKncToEth2[0].valueOf(), 0);
     });
 
-    it("step function enhancement: should test eth to token. use min slippage.", async function() {
-        let tokenInd = 2;
-        let qty = 9;
-        quantityFactor = 5;
+    it("should verify function 'checkKncArbitrage' will return true if get rate fails and reutrns zero rate to this function.", async function() {
+        // find best rate is called with assembly code. thus could fail without reverting. but for check arbitrage. rate 0 response means check can't happen.
+        // when setting knc rate in fee burner. in underlying calls findBestRate is called 3 times. if 3rd one fails (Ex: out of gas) returned value
+        // would be 0, in this case there is the problem with arbitrage check.
+        const network = await NetworkFailingGetRate.new();
 
-        await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
-        let myExpectedRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], qty);
-        let qtySlippageRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], (qty * quantityFactor));
+        const tempExpectedRate = await ExpectedRate.new(network.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+        await network.setExpectedRateContract(tempExpectedRate.address);
 
-        let minSlippage =  ((10000 - minSlippageBps) * myExpectedRate[1].valueOf()) / 10000;
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate - 0.01);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
 
-        qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
-        if (qtySlippageRate > minSlippage) {
-            qtySlippageRate = minSlippage;
-        } else {
-            assert(false, "expect min slippage rate to be lower");
-        }
+        await network.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await network.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
 
-        rates = await expectedRates.getExpectedRate(ethAddress, tokenAdd[tokenInd], qty);
+        let rxEthToKnc = await network.getExpectedRate(ethAddress, kncAddress, 345);
+        let rxKncToEth = await network.getExpectedRate(kncAddress, ethAddress, 345);
 
-        assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
-        assert.equal(rates[1].valueOf(), qtySlippageRate, "unexpected rate");
+        let hasArb =  await tempExpectedRate.checkKncArbitrageRate(kncToEthRatePrecision)
+        assert.equal(hasArb, false, "Arbitrage shouldn't exist");
+
+        hasArb =  await tempExpectedRate.checkKncArbitrageRate(kncToEthRatePrecision, {gas: 990000})
+        // here network should revert and get rate should avoid the revert and return 0
+        assert.equal(hasArb, true, "Arbitrage should exist");
     });
 
-    it("step function enhancement: should test token to eth. use qty slippage.", async function() {
-        let tokenInd = 2;
-        let qty = 300;
+    it("should verify when have knc arbitrage, set rate reverts.", async function() {
+        const mockNetwork = await NetworkFailingGetRate.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+        await mockNetwork.setExpectedRateContract(tempExpectedRate.address);
 
-        let myExpectedRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, qty);
-        let qtySlippageRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, (qty * quantityFactor));
+        const tempFeeBurner = await FeeBurner.new(admin, kncAddress, mockNetwork.address, 550 * 10 ** 18);
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate * 1.01);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
 
-        let minSlippage = new BigNumber(10000 - minSlippageBps).mul(myExpectedRate[1]).div(10000).floor();
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
 
-        qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
-        if (qtySlippageRate > minSlippage) {
-            qtySlippageRate = minSlippage;
-            assert(false, "expect qty slippage rate to be lower");
+        let rxEthToKnc = await mockNetwork.getExpectedRate(ethAddress, kncAddress, 10 ** 19);
+        let rxKncToEth = await mockNetwork.getExpectedRate(kncAddress, ethAddress, 10 ** 19);
+        assert.equal(rxEthToKnc[0].valueOf(), ethToKncRatePrecision.floor().valueOf())
+        assert.equal(rxKncToEth[0].valueOf(), kncToEthRatePrecision.floor().valueOf())
+
+        //when checking this qty and arb exists. will return 0
+        rxKncToEth = await mockNetwork.getExpectedRate(kncAddress, ethAddress, 10 ** 18);
+        assert.equal(rxKncToEth[0].valueOf(), 0)
+
+        let hasArb =  await tempExpectedRate.checkKncArbitrageRate(kncToEthRatePrecision)
+
+        assert.equal(hasArb, true, "Arbitrage should exist");
+
+        let burnerInitialkncRate = await tempFeeBurner.kncPerEthRatePrecision();
+//         has arb. get rate will return 0. should revert.
+        try {
+            let rxx = await tempFeeBurner.setKNCRate();
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        let burnerkncRateAfterSet = await tempFeeBurner.kncPerEthRatePrecision();
+        assert.equal(burnerkncRateAfterSet.valueOf(), burnerInitialkncRate.valueOf());
+      });
 
-        assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
-        assert.equal(rates[1].valueOf(), qtySlippageRate.valueOf(), "unexpected rate");
+      it("should verify when have no knc arbitrage, set rate success", async function() {
+        const mockNetwork = await NetworkFailingGetRate.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+        await mockNetwork.setExpectedRateContract(tempExpectedRate.address);
+
+        const tempFeeBurner = await FeeBurner.new(admin, kncAddress, mockNetwork.address, 550 * 10 ** 18);
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate * 1.01);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        let rxEthToKnc = await mockNetwork.getExpectedRate(ethAddress, kncAddress, 10 ** 19);
+        let rxKncToEth = await mockNetwork.getExpectedRate(kncAddress, ethAddress, 10 ** 19);
+        assert.equal(rxEthToKnc[0].valueOf(), ethToKncRatePrecision.floor().valueOf())
+        assert.equal(rxKncToEth[0].valueOf(), kncToEthRatePrecision.floor().valueOf())
+
+        // set non arbitrage rates
+        const ethToKncRatePrecision2 = precisionUnits.mul(aRate - 0.0001);
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision2);
+
+        hasArb = await tempExpectedRate.checkKncArbitrageRate(kncToEthRatePrecision);
+
+        // check exact qty
+        assert.equal(hasArb, false, "Arbitrage shouldn't exist");
+
+        rxEthToKnc = await mockNetwork.getExpectedRate(ethAddress, kncAddress, 10 ** 18);
+        rxKncToEth = await mockNetwork.getExpectedRate(kncAddress, ethAddress, 10 ** 18);
+
+        assert.equal(rxEthToKnc[0].valueOf(), ethToKncRatePrecision2.floor().valueOf())
+        assert.equal(rxKncToEth[0].valueOf(), kncToEthRatePrecision.floor().valueOf())
+
+        // no arb. set rate should not fail
+        let rx = await tempFeeBurner.setKNCRate();
+        burnerkncRateAfterSet = await tempFeeBurner.kncPerEthRatePrecision();
+        assert.equal(ethToKncRatePrecision2.valueOf(), burnerkncRateAfterSet.valueOf());
     });
 
-    it("step function enhancement: should test token to eth. use min quantity.", async function() {
-        let tokenInd = 2;
-        let qty = 110;
-        quantityFactor = 2;
+    it("should verify function 'setKncRate' will fail if last call to findBestRate fails.", async function() {
+        this.timeout(20000);
+        const mockNetwork = await NetworkFailingGetRate.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+        await mockNetwork.setExpectedRateContract(tempExpectedRate.address);
 
-        await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
-        let myExpectedRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, qty);
-        let qtySlippageRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, (qty * quantityFactor));
+        const tempFeeBurner = await FeeBurner.new(admin, kncAddress, mockNetwork.address, 550 * 10 ** 18);
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate - 0.001);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
 
-        let minSlippage = new BigNumber(10000 - minSlippageBps).mul(myExpectedRate[1]).div(10000).floor();
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
 
-        qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
-        if (qtySlippageRate > minSlippage) {
-            qtySlippageRate = minSlippage;
-        } else {
-            assert(false, "expect min slippage rate to be lower");
+        let hasArb =  await tempExpectedRate.checkKncArbitrageRate(kncToEthRatePrecision)
+
+        assert.equal(hasArb, false, "Arbitrage shouldn't exist");
+
+        let burnerInitialkncRate = await tempFeeBurner.kncPerEthRatePrecision();
+
+        ///set knc rate with less then 3 milion gas - should fail and revert
+        try {
+            let rxx = await tempFeeBurner.setKNCRate({gas: 2800000});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenInd], ethAddress, qty);
+        let burnerkncRateAfterSet = await tempFeeBurner.kncPerEthRatePrecision();
+        assert.equal(burnerkncRateAfterSet.valueOf(), burnerInitialkncRate.valueOf());
 
-        assert.equal(rates[0].valueOf(), myExpectedRate[1].valueOf(), "unexpected rate");
-        assert.equal(rates[1].valueOf(), qtySlippageRate.valueOf(), "unexpected rate");
+        await tempFeeBurner.setKNCRate({gas: 3500000});
+        burnerkncRateAfterSet = await tempFeeBurner.kncPerEthRatePrecision();
+        assert.equal(ethToKncRatePrecision.valueOf(), burnerkncRateAfterSet.valueOf());
     });
 
-    it("step function enhancement: should verify when qty 0, token to token rate as expected.", async function() {
-        let tokenSrcInd = 2;
-        let tokenDestInd = 1;
-        let qty = 0;
+    it("call getExpectedRate call to kyber reverts. getExpectedRate should return 0 and not revert. without permissionless", async() => {
+        const mockNetwork = await MockNetwork.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
 
-        rates = await expectedRates.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], qty);
-        // if qty is 0, expected rate will set qty is 1
-        let srcToEthRate = await network.searchBestRate(tokenAdd[tokenSrcInd], ethAddress, 1);
-        srcToEthRate = new BigNumber(srcToEthRate[1].valueOf());
-        let ethToDestRate = await network.searchBestRate(ethAddress, tokenAdd[tokenDestInd], 1);
-        ethToDestRate = new BigNumber(ethToDestRate[1].valueOf());
+        const token = await TestToken.new("someToke", "some", 16);
 
-        assert(rates[0].valueOf() != 0, "unexpected rate");
-        assert.equal(rates[0].valueOf(), srcToEthRate.mul(ethToDestRate).div(precisionUnits).floor(), "unexpected rate");
+        const rate = precisionUnits.mul(1.01);
+        await mockNetwork.setPairRate(ethAddress, token.address, rate);
+        await mockNetwork.setPairRate(token.address, ethAddress, rate);
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        await mockNetwork.getExpectedRate(ethAddress, token.address, 1000);
+
+        // see REVERT_HINT causes revert on network level
+        const REVERT_HINT = await mockNetwork.REVERT_HINT();
+        try {
+            await mockNetwork.findBestRate(ethAddress, token.address, REVERT_HINT);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // this returns good values - no revert
+        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, 5000, false);
+
+        assert(rates[0].valueOf() > 0, "expected rate > 0");
+        assert(rates[1].valueOf() > 0, "expected rate > 0");
+
+        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, REVERT_HINT, false);
+        assert.equal(rates[0].valueOf(), 0, "unexpected rate");
         assert.equal(rates[1].valueOf(), 0, "unexpected rate");
-    });
+    })
+
+    it("call getExpectedRate call to kyber reverts. getExpectedRate should return 0 and not revert. including permissionless", async() => {
+        const mockNetwork = await MockNetwork.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+
+        const token = await TestToken.new("someToke", "some", 16);
+
+        const rate = precisionUnits.mul(1.01);
+        await mockNetwork.setPairRate(ethAddress, token.address, rate);
+        await mockNetwork.setPairRate(token.address, ethAddress, rate);
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        await mockNetwork.getExpectedRate(ethAddress, token.address, 1000);
+
+        // see REVERT_HINT causes revert on network level
+        const REVERT_HINT = await mockNetwork.REVERT_HINT();
+        try {
+            await mockNetwork.findBestRate(ethAddress, token.address, REVERT_HINT);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // this returns good values - no revert
+        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, 5000, true);
+
+        assert(rates[0].valueOf() > 0, "expected rate > 0");
+        assert(rates[1].valueOf() > 0, "expected rate > 0");
+
+        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, REVERT_HINT, true);
+        assert.equal(rates[0].valueOf(), 0, "unexpected rate");
+        assert.equal(rates[1].valueOf(), 0, "unexpected rate");
+    })
 });
 
 
