@@ -682,7 +682,7 @@ contract('ExpectedRate', function(accounts) {
         assert.equal(hasArb, true, "Arbitrage should exist");
     });
 
-    it("should verify when no knc arbitrage set knc rate success. when have knc arb. set rate reverts.", async function() {
+    it("should verify when have knc arbitrage, set rate reverts.", async function() {
         const mockNetwork = await NetworkFailingGetRate.new();
         const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
         await tempExpectedRate.addOperator(operator);
@@ -721,6 +721,27 @@ contract('ExpectedRate', function(accounts) {
 
         let burnerkncRateAfterSet = await tempFeeBurner.kncPerEthRatePrecision();
         assert.equal(burnerkncRateAfterSet.valueOf(), burnerInitialkncRate.valueOf());
+      });
+
+      it("should verify when have no knc arbitrage, set rate success", async function() {
+        const mockNetwork = await NetworkFailingGetRate.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+        await mockNetwork.setExpectedRateContract(tempExpectedRate.address);
+
+        const tempFeeBurner = await FeeBurner.new(admin, kncAddress, mockNetwork.address, 550 * 10 ** 18);
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate * 1.01);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        let rxEthToKnc = await mockNetwork.getExpectedRate(ethAddress, kncAddress, 10 ** 19);
+        let rxKncToEth = await mockNetwork.getExpectedRate(kncAddress, ethAddress, 10 ** 19);
+        assert.equal(rxEthToKnc[0].valueOf(), ethToKncRatePrecision.floor().valueOf())
+        assert.equal(rxKncToEth[0].valueOf(), kncToEthRatePrecision.floor().valueOf())
 
         // set non arbitrage rates
         const ethToKncRatePrecision2 = precisionUnits.mul(aRate - 0.0001);
@@ -744,6 +765,7 @@ contract('ExpectedRate', function(accounts) {
     });
 
     it("should verify function 'setKncRate' will fail if last call to findBestRate fails.", async function() {
+        this.timeout(20000);
         const mockNetwork = await NetworkFailingGetRate.new();
         const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
         await tempExpectedRate.addOperator(operator);
@@ -820,7 +842,7 @@ contract('ExpectedRate', function(accounts) {
         assert.equal(rates[0].valueOf(), 0, "unexpected rate");
         assert.equal(rates[1].valueOf(), 0, "unexpected rate");
     })
-    
+
     it("call getExpectedRate call to kyber reverts. getExpectedRate should return 0 and not revert. including permissionless", async() => {
         const mockNetwork = await MockNetwork.new();
         const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);

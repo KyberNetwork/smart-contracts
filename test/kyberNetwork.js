@@ -2928,8 +2928,12 @@ contract('KyberNetwork', function(accounts) {
             //maker deposits tokens
             let amountKnc = 600 * 10 ** 18;
             let amountTokenWeiDeposit = (new BigNumber(30 * 10 ** 18)).add(600);
-            await makerDeposit(orderbookReserve, permissionlessTok, maker1, 0, amountTokenWeiDeposit, amountKnc);
+            // await KNC.transfer(maker1,amountKnc);
+            // console.log("KNC Deposited!")
+            // await permissionlessTok.transfer(maker1,amountTokenWeiDeposit);
+            // console.log("PERM token deposited!");
 
+            await makerDeposit(orderbookReserve, permissionlessTok, maker1, 0, amountTokenWeiDeposit, amountKnc);
             let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
             let orderDstWei = minNewOrderValue;
 
@@ -3652,11 +3656,10 @@ function log (string) {
 };
 
 async function makerDeposit(res, permTok, maker, ethWei, tokenTwei, kncTwei) {
-
-    await permTok.approve(res.address, tokenTwei);
-    await res.depositToken(maker, tokenTwei);
-    await KNC.approve(res.address, kncTwei);
-    await res.depositKncForFee(maker, kncTwei);
+    await permTok.approve(res.address, tokenTwei, {from: admin});
+    await res.depositToken(maker, tokenTwei, {from: admin});
+    await KNC.approve(res.address, kncTwei, {from: admin});
+    await res.depositKncForFee(maker, kncTwei, {from: admin});
     await res.depositEther(maker, {from: maker, value: ethWei});
 }
 
