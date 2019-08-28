@@ -204,8 +204,10 @@ contract('KyberReserve', function(accounts) {
         //verify base rate
         let buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
         let expectedRate = (new BigNumber(baseBuyRate[tokenInd]));
-        let destQty = (new BigNumber(amountWei).mul(baseBuyRate[tokenInd])).div(precisionUnits);
-        let extraBps = getExtraBpsForBuyQuantity(destQty);
+        let extraBps = compactBuyArr[tokenInd] * 10;
+        expectedRate = addBps(expectedRate, extraBps);
+        let destQty = (new BigNumber(amountWei).mul(expectedRate)).div(precisionUnits);
+        extraBps = getExtraBpsForBuyQuantity(destQty);
         expectedRate = addBps(expectedRate, extraBps);
 
         //check correct rate calculated
@@ -243,31 +245,31 @@ contract('KyberReserve', function(accounts) {
         let totalWei = 0;
         let totalExpectedTwei = 0;
 
-        for (let i = 0; i > 19; i++) {
-            amountWei = (7 * i) + 11 * 1;
+        for (let i = 0; i <= 19; i++) {
+            amountWei = (7 * i) + 1;
             let buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
 
-            //verify price/rate against set price
-            let expectedRate = (new BigNumber(baseBuyRate[tokenInd]));
-            //first calculate number of destination tokens according to basic rate
-//            console.log("expected1" + expectedRate)
+            //1) Get base rate
+            let expectedRate = (new BigNumber(baseBuyRate[tokenInd])).floor();
+            //2) Apply compact data
+            let extraBps = compactBuyArr[tokenInd] * 10;
+            expectedRate = addBps(expectedRate, extraBps);
+            //3) Apply imbalance and qty step functions
             let destQty = (new BigNumber(amountWei).mul(expectedRate)).div(precisionUnits);
-            let extraBps = getExtraBpsForBuyQuantity(destQty);
+            extraBps = getExtraBpsForBuyQuantity(destQty);
             expectedRate = addBps(expectedRate, extraBps);
-//            console.log("expected2" + expectedRate)
-            extraBps = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[tokenInd].valueOf());
+            extraBps = getExtraBpsForImbalanceBuyQuantity((reserveTokenImbalance[tokenInd].add(destQty)).valueOf());
             expectedRate = addBps(expectedRate, extraBps);
-//console.log("expected3" + expectedRate)
 
-            //function calculateRateAmount(isBuy, tokenInd, srcQty, maxDestAmount)
-//            let expected = calculateRateAmount(true, tokenInd, amountWei)
-//            console.log("expected from function" + expected);
+            //4) Verify calculated rate with obtained rate
             assert.equal(buyRate.valueOf(), expectedRate.valueOf(), "unexpected rate. loop: " + i);
 
-            let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits);
+            //5) Calculate expected token wei amount, and modify expected balances
+            let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits).floor();
             totalExpectedTwei += (1 * expectedTweiAmount);
-            reserveTokenBalance[tokenInd].sub(expectedTweiAmount);
-
+            reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].sub(expectedTweiAmount);
+            reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(expectedTweiAmount);
+            //6) Do actual trade
             await reserveInst.trade(ethAddress, amountWei, tokenAdd[tokenInd], user1, buyRate, true, {from : network, value:amountWei});
             totalWei += (1 * amountWei);
         };
@@ -305,24 +307,30 @@ contract('KyberReserve', function(accounts) {
         // set wallet address
         await reserveInst.setTokenWallet(token.address,walletForToken);
 
-        for (let i = 0; i > 19; i++) {
+        for (let i = 0; i <= 19; i++) {
             amountWei = (7 * i) + 1;
             let buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
 
-            //verify price/rate against set price
-            let expectedRate = (new BigNumber(baseBuyRate[tokenInd]));
-            //first calculate number of destination tokens according to basic rate
-            let destQty = (new BigNumber(amountWei).mul(baseBuyRate[tokenInd])).div(precisionUnits);
-            let extraBps = getExtraBpsForBuyQuantity(destQty);
+            //1) Get base rate
+            let expectedRate = (new BigNumber(baseBuyRate[tokenInd])).floor();
+            //2) Apply compact data
+            let extraBps = compactBuyArr[tokenInd] * 10;
             expectedRate = addBps(expectedRate, extraBps);
-            extraBps = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[token]);
+            //3) Apply imbalance and qty step functions
+            let destQty = (new BigNumber(amountWei).mul(expectedRate)).div(precisionUnits);
+            extraBps = getExtraBpsForBuyQuantity(destQty);
+            expectedRate = addBps(expectedRate, extraBps);
+            extraBps = getExtraBpsForImbalanceBuyQuantity((reserveTokenImbalance[tokenInd].add(destQty)).valueOf());
             expectedRate = addBps(expectedRate, extraBps);
 
-            assert.equal(buyRate.valueOf(), expectedRate.valueOf(0), "unexpected rate.");
+            //4) Verify calculated rate with obtained rate
+            assert.equal(buyRate.valueOf(), expectedRate.valueOf(), "unexpected rate. loop: " + i);
 
-            let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits);
+            //5) Calculate expected token wei amount, and modify expected balances
+            let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits).floor();
             totalExpectedTwei += (1 * expectedTweiAmount);
-            reserveTokenBalance[tokenInd].sub(expectedTweiAmount);
+            reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].sub(expectedTweiAmount);
+            reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(expectedTweiAmount);
 
             await reserveInst.trade(ethAddress, amountWei, tokenAdd[tokenInd], user1, buyRate, true, {from : network, value:amountWei});
             totalWei += (1 * amountWei);
@@ -358,10 +366,16 @@ contract('KyberReserve', function(accounts) {
         //verify sell rate
         let sellRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock);
 
-        let expectedRate = (new BigNumber(baseSellRate[tokenInd]));
-        let extraBps = getExtraBpsForSellQuantity(amountTwei);
+        //1) Get base rate
+        let expectedRate = (new BigNumber(baseSellRate[tokenInd])).floor();
+        //2) Apply compact data
+        let extraBps = compactSellArr[tokenInd] * 10;
         expectedRate = addBps(expectedRate, extraBps);
-        expectedRate.floor();
+        //3) Apply imbalance and qty step functions
+        let destQty = (new BigNumber(amountTwei).mul(expectedRate)).div(precisionUnits);
+        extraBps = getExtraBpsForSellQuantity(destQty);
+        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = expectedRate.floor()
 
         //check correct rate calculated
         assert.equal(sellRate.valueOf(), expectedRate.valueOf(), "unexpected rate.");
@@ -456,7 +470,11 @@ contract('KyberReserve', function(accounts) {
             let sellRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock);
 
             let expectedRate = (new BigNumber(baseSellRate[tokenInd])).floor();
-            let extraBps = getExtraBpsForSellQuantity(amountTwei);
+            //2) Apply compact data
+            let extraBps = compactSellArr[tokenInd] * 10;
+            expectedRate = addBps(expectedRate, extraBps);
+            //3) Apply imbalance and qty step functions
+            extraBps = getExtraBpsForSellQuantity(amountTwei);
             expectedRate = addBps(expectedRate, extraBps);
             extraBps = getExtraBpsForImbalanceSellQuantity((reserveTokenImbalance[tokenInd].sub(amountTwei)));
             expectedRate = addBps(expectedRate, extraBps);
@@ -1067,4 +1085,3 @@ function calcDstQty(srcQty, srcDecimals, dstDecimals, rate) {
         return (rate.mul(srcQty).div(decimalDiff.mul(precisionUnits))).floor();
     }
 }
-
