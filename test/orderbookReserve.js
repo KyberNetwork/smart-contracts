@@ -88,7 +88,7 @@ contract('OrderbookReserve', async (accounts) => {
         maker2 = accounts[4];
         maker3 = accounts[5];
         network = accounts[6];
-        
+
         token = await TestToken.new("the token", "TOK", tokenDecimals);
         tokenAdd = token.address;
 
@@ -238,7 +238,7 @@ contract('OrderbookReserve', async (accounts) => {
             await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 
             try {
-                await OrderbookReserve.new(0, tokenAdd, feeBurner.address, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+                await OrderbookReserve.new(0, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
                 assert(false, "throw was expected in line above.")
             } catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -627,7 +627,7 @@ contract('OrderbookReserve', async (accounts) => {
             await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from: network, value: payValueWei});
 
             let badMessageValue = 3001;
-            
+
             rate = await reserve.getConversionRate(ethAddress, tokenAdd, payValueWei, 0);
             try {
                 await reserve.trade(ethAddress, payValueWei, tokenAdd, user1, rate, false, {from: network, value: badMessageValue});
@@ -4672,7 +4672,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
 
         let freeKnc2 = await reserve.makerUnlockedKnc(maker1);
         assert.equal(freeKnc2.valueOf(), 0);
-        
+
         //see can't add orders
         try {
             await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(200), {from: maker1});
@@ -4995,4 +4995,3 @@ function calcSrcQty(dstQty, srcDecimals, dstDecimals, rate) {
     srcQty = (numerator.add(denominator.sub(1))).div(denominator).floor(); //avoid rounding down errors
     return srcQty;
 }
-

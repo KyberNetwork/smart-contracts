@@ -442,7 +442,7 @@ contract('KyberNetworkProxy', function(accounts) {
             assert.equal(txData.logs[0].args.actualSrcAmount.valueOf(), amountWei);
             assert.equal(txData.logs[0].args.dest, tokenAdd[tokenInd]);
             assert.equal(txData.logs[0].args.actualDestAmount.valueOf(), expectedTweiAmount.valueOf());
-     
+
             //check higher ether balance on reserve
             expectedReserve2BalanceWei = expectedReserve2BalanceWei.add(amountWei);
             let balance = await Helper.getBalancePromise(reserve2.address);
@@ -3464,13 +3464,13 @@ function log (string) {
 };
 
 async function makerDeposit(res, permTok, maker, ethWei, tokenTwei, kncTwei) {
-
-    await permTok.approve(res.address, tokenTwei);
-    await res.depositToken(maker, tokenTwei);
-    await KNC.approve(res.address, kncTwei);
-    await res.depositKncForFee(maker, kncTwei);
+    await permTok.approve(res.address, tokenTwei, {from: admin});
+    await res.depositToken(maker, tokenTwei, {from: admin});
+    await KNC.approve(res.address, kncTwei, {from: admin});
+    await res.depositKncForFee(maker, kncTwei, {from: admin});
     await res.depositEther(maker, {from: maker, value: ethWei});
 }
+
 
 function calcRateFromQty(srcAmount, dstAmount, srcDecimals, dstDecimals) {
     if (dstDecimals >= srcDecimals) {

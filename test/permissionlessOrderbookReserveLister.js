@@ -1021,9 +1021,9 @@ function log(str) {
 }
 
 async function makerDeposit(res, maker, ethWei, tokenTwei, kncTwei, kncToken) {
-    await token.approve(res.address, tokenTwei);
-    await res.depositToken(maker, tokenTwei);
-    await kncToken.approve(res.address, kncTwei);
-    await res.depositKncForFee(maker, kncTwei);
+    await token.approve(res.address, tokenTwei, {from: admin});
+    await res.depositToken(maker, tokenTwei, {from: admin});
+    await kncToken.approve(res.address, kncTwei, {from: admin});
+    await res.depositKncForFee(maker, kncTwei, {from: admin});
     await res.depositEther(maker, {from: maker, value: ethWei});
 }
