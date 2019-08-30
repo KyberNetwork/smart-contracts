@@ -222,29 +222,29 @@ contract EnhancedStepFunctions is ConversionRates {
 
         if (len == 0 || from == to) { return 0; }
 
-        int qty = to - from;
+        int fromVal = from; // avoid modifying function parameters
         int change = 0; // amount change from initial amount when applying bps for each step
         int stepXValue;
         int stepYValue;
 
         for(uint ind = 0; ind < len - 1; ind++) {
             (stepXValue, stepYValue) = decodeStepFunctionData(f.x[ind]);
-            if (stepXValue <= from) { continue; }
+            if (stepXValue <= fromVal) { continue; }
             // from here, from < stepXValue,
             // if from < to <= stepXValue, take [from, to] and return, else take [from, stepXValue]
             if (stepXValue >= to) {
-                change += (to - from) * stepYValue;
-                return change / qty;
+                change += (to - fromVal) * stepYValue;
+                return change / (to - from);
             } else {
-                change += (stepXValue - from) * stepYValue;
-                from = stepXValue;
+                change += (stepXValue - fromVal) * stepYValue;
+                fromVal = stepXValue;
             }
         }
 
         (stepXValue, stepYValue) = decodeStepFunctionData(f.x[len - 1]);
-        change += (to - from) * stepYValue;
+        change += (to - fromVal) * stepYValue;
 
-        return change / qty;
+        return change / (to - from);
     }
 
     // first 128 bits is value for x, next 128 bits is value for y

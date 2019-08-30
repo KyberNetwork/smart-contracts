@@ -2470,7 +2470,7 @@ contract('KyberNetwork', function(accounts) {
                 //perform trade
                 let txData = await network.tradeWithHint(user, tokenAdd[tokenInd], amountTwei, ethAddress, user, 500000,
                                 rate[1].valueOf(), walletId, 0, {from:networkProxy});
-                if (step < 3) {
+                if (step < 2) {
                     // only when step < 3, the number of steps for qty and imbalance are the same
                     // when qty step is 4, or 5, the imbalance step is just 1 or 2
                     console.log("Transaction gas used token to eth for " + (step + 1) + " sell steps: " + txData.receipt.gasUsed);
