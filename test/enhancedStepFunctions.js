@@ -689,7 +689,7 @@ contract('EnhancedStepFunctions', function(accounts) {
     it("should test getting bps from executing step function as expected", async function () {
         let tokenInd = 1;
         let token = tokens[tokenInd];
-        // Case1: qty negative, 0 < qty < all steps
+        // Case1: from < to < all step Xs
         let stepX = [-200, -100, -50];
         let stepY = [-20, -10, -5, -2];
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
@@ -709,7 +709,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -25, 0);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
-        // Case2: qty negative, first step < qty < last step < 0
+        // Case2: first step < from < last step < to
         stepX = [-200, -100, -50];
         stepY = [-20, -10, -5, -2];
         bps = getExtraBpsForQuantity(-75, 10, stepX, stepY);
@@ -719,7 +719,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -75, 10);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
-        // Case3: qty negative, all steps negative except last one is 0
+        // Case3: from < first step < second last step < to < last step
         stepX = [-200, -100, -50, 0];
         stepY = [-20, -10, -5, 1, 5];
         // 100 * (-20) + 100 * (-10) + 50 * (-5) + 20 * 1 = -3230
@@ -729,7 +729,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -300, -25);
         assert.equal(contractBps.valueOf(), bps, "bad bps 2");
 
-        // Case4: qty negative, all steps negative except last one is positive, qty < all steps
+        // Case4: from < first step < last step < to
         stepX = [-200, -100, -50, 10];
         stepY = [-20, -10, -5, 2, 5];
         // 100 * (-20) + 100 * (-10) + 50 * (-5) + 60 * 2 + 5 * 5 = -3105
@@ -739,7 +739,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -300, 15);
         assert.equal(contractBps.valueOf(), bps, "bad bps 2");
 
-        // Case5: qty negative, all steps negative except last one is positive, first step < qty < last step
+        // Case5: first step < from < last step < to
         // 50 * (-10) + 50 * (-5) + 60 * 2  + 10 * 5 = -580
         bps = getExtraBpsForQuantity(-150, 20, stepX, stepY);
         assert.equal(divSolidity(-580, 170), bps, "bad bps");
@@ -747,7 +747,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -150, 20);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
-        // Case6: qty negative, all steps non-negative with first step is 0
+        // Case6: from < 0 = first step = to
         stepX = [0, 10, 20, 30];
         stepY = [0, 20, 50, 100, 120];
         bps = getExtraBpsForQuantity(-100, 0, stepX, stepY);
@@ -756,7 +756,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -100, 0);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
-        // Case7: qty negative, all steps non-negative
+        // Case7: from < 0 < first step < to < last step
         stepX = [10, 20, 30];
         stepY = [20, 50, 100, 120];
         bps = getExtraBpsForQuantity(-100, 5, stepX, stepY);
@@ -765,7 +765,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -100, 5);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
-        // Case8: qty is 0, value is 0
+        // Case8: from = to
         stepX = [10, 20, 30];
         stepY = [20, 50, 100, 120];
         bps = getExtraBpsForQuantity(0, 0, stepX, stepY);
@@ -782,7 +782,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 120, 120);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
-        // Case9: qty is positive, all steps are negative
+        // Case9: last step < 0 < from < to
         stepX = [-100, -50, -30];
         stepY = [20, 50, 100, 120];
         bps = getExtraBpsForQuantity(0, 20, stepX, stepY);
@@ -791,7 +791,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 20);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
-        // Case10: qty is positive, 0 < first step < qty < last step
+        // Case10: from = 0 < first step < to < last step
         stepX = [10, 30, 50];
         stepY = [20, 50, 100, 120];
         bps = getExtraBpsForQuantity(0, 40, stepX, stepY);
@@ -801,7 +801,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 40);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
-        // Case11: qty is positive, 0 < all steps < qty
+        // Case11: from = 0 < all step < to
         stepX = [10, 30, 50];
         stepY = [20, 50, 100, 120];
         bps = getExtraBpsForQuantity(0, 120, stepX, stepY);
@@ -811,7 +811,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 120);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
-        // Case12: qty is positive, first step < 0 < qty < last step
+        // Case12: first step < 0 = from < to < last step
         stepX = [-100, -50, 10, 30, 150];
         stepY = [-30, -15, 20, 50, 100, 120];
         bps = getExtraBpsForQuantity(0, 120, stepX, stepY);
@@ -821,7 +821,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 120);
         assert.equal(contractBps.valueOf(), bps, "bad bps");
 
-        // Case13: qty is positive, step is empty
+        // Case13: X is empty
         stepX = [];
         stepY = [2];
         bps = getExtraBpsForQuantity(0, 120, stepX, stepY);
