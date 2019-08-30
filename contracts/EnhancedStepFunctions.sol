@@ -158,7 +158,11 @@ contract EnhancedStepFunctions is ConversionRates {
             imbalanceQty = int(qty);
 
             // add imbalance overhead
-            extraBps = executeStepFunction(tokenData[token].buyRateImbalanceStepFunction, totalImbalance, totalImbalance + imbalanceQty);
+            extraBps = executeStepFunction(
+                tokenData[token].buyRateImbalanceStepFunction, 
+                totalImbalance, 
+                totalImbalance + imbalanceQty
+            );
             rate = addBps(rate, extraBps);
             totalImbalance += imbalanceQty;
         } else {
@@ -174,7 +178,11 @@ contract EnhancedStepFunctions is ConversionRates {
             imbalanceQty = -1 * int(qty);
 
             // add imbalance overhead
-            extraBps = executeStepFunction(tokenData[token].sellRateImbalanceStepFunction, totalImbalance + imbalanceQty, totalImbalance);
+            extraBps = executeStepFunction(
+                tokenData[token].sellRateImbalanceStepFunction, 
+                totalImbalance + imbalanceQty, 
+                totalImbalance
+            );
             rate = addBps(rate, extraBps);
             totalImbalance += imbalanceQty;
         }
