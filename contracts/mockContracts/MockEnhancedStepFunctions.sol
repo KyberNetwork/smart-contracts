@@ -30,7 +30,19 @@ contract MockEnhancedStepFunctions is EnhancedStepFunctions {
         return executeStepFunction(tokenData[token].buyRateImbalanceStepFunction, from, to);
     }
 
+    function mockEncodeStepData(int120 x, int120 y) public pure returns (int) {
+        return encodeStepFunctionData(x, y);
+    }
+
+    function mockDecodeStepData(int val) public pure returns (int, int) {
+        return decodeStepFunctionData(val);
+    }
+
     function mockAddBps(uint rate, int bps) public pure returns(uint) {
         return addBps(rate, bps);
+    }
+
+    function mockCheckMultiOverflow(int x, int y) public pure returns (bool) {
+        return checkMultOverflow(x, y);
     }
 }

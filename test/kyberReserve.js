@@ -70,7 +70,6 @@ let baseSellRate = [];
 //quantity buy steps
 let qtyBuyStepX = [0, 150, 350, 700,  1400];
 let qtyBuyStepY = [0,  0, -70, -160, -3000];
-let qtyBuyStepYNew = [0,  0, -70, -160, -300, -3000];
 
 //imbalance buy steps
 let imbalanceBuyStepX = [-8500, -2800, -1500, 0, 1500, 2800,  4500];
@@ -81,7 +80,6 @@ let imbalanceBuyStepYNew = [ 1300,   130,    43, 0,   0, -110, -160, -1600];
 //sell price will be 1 / buy (assuming no spread) so sell is actually buy price in other direction
 let qtySellStepX = [0, 150, 350, 700, 1400];
 let qtySellStepY = [0,   0, 120, 170, 3000];
-let qtySellStepYNew = [0,   0, 120, 170, 300, 3000];
 
 //sell imbalance step
 let imbalanceSellStepX = [-8500, -2800, -1500, 0, 1500, 2800,  4500];
@@ -183,7 +181,6 @@ contract('KyberReserve', function(accounts) {
         for (let i = 0; i < numTokens; ++i) {
             await convRatesInst.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             await convRatesInst.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
-            await convRatesInst2.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepYNew, qtySellStepX, qtySellStepYNew, {from:operator});
             await convRatesInst2.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepYNew, imbalanceSellStepX, imbalanceSellStepYNew, {from:operator});
         }
     });
@@ -1020,9 +1017,6 @@ contract('KyberReserve', function(accounts) {
         //verify base rate
         let buyRate = await reserveInst2.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
         let expectedRate = (new BigNumber(baseBuyRate[tokenInd]));
-        let destQty = (new BigNumber(amountWei).mul(baseBuyRate[tokenInd])).div(precisionUnits);
-        let extraBps = getExtraBpsForBuyQuantityNew(destQty);
-        expectedRate = addBps(expectedRate, extraBps);
 
         //check correct rate calculated
         assert.equal(buyRate.valueOf(), expectedRate.valueOf(), "unexpected rate.");
@@ -1067,9 +1061,7 @@ contract('KyberReserve', function(accounts) {
             let expectedRate = (new BigNumber(baseBuyRate[tokenInd]));
             //first calculate number of destination tokens according to basic rate
             let destQty = (new BigNumber(amountWei).mul(expectedRate)).div(precisionUnits);
-            let extraBps = getExtraBpsForBuyQuantityNew(destQty);
-            expectedRate = addBps(expectedRate, extraBps);
-            extraBps = getExtraBpsForImbalanceBuyQuantityNew(reserveTokenImbalance2[tokenInd].valueOf(), destQty.valueOf());
+            let extraBps = getExtraBpsForImbalanceBuyQuantityNew(reserveTokenImbalance2[tokenInd].valueOf(), destQty.valueOf());
             expectedRate = addBps(expectedRate, extraBps);
 
             assert.equal(buyRate.valueOf(), expectedRate.valueOf(), "unexpected rate. loop: " + i);
@@ -1123,9 +1115,7 @@ contract('KyberReserve', function(accounts) {
             let expectedRate = (new BigNumber(baseBuyRate[tokenInd]));
             //first calculate number of destination tokens according to basic rate
             let destQty = (new BigNumber(amountWei).mul(baseBuyRate[tokenInd])).div(precisionUnits);
-            let extraBps = getExtraBpsForBuyQuantityNew(destQty);
-            expectedRate = addBps(expectedRate, extraBps);
-            extraBps = getExtraBpsForImbalanceBuyQuantityNew(reserveTokenImbalance2[token], destQty.valueOf());
+            let extraBps = getExtraBpsForImbalanceBuyQuantityNew(reserveTokenImbalance2[token], destQty.valueOf());
             expectedRate = addBps(expectedRate, extraBps);
 
             assert.equal(buyRate.valueOf(), expectedRate.valueOf(0), "unexpected rate.");
@@ -1169,8 +1159,6 @@ contract('KyberReserve', function(accounts) {
         let sellRate = await reserveInst2.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock);
 
         let expectedRate = (new BigNumber(baseSellRate[tokenInd]));
-        let extraBps = getExtraBpsForSellQuantityNew(amountTwei);
-        expectedRate = addBps(expectedRate, extraBps);
         expectedRate.floor();
 
         //check correct rate calculated
@@ -1238,14 +1226,6 @@ function getExtraBpsForImbalanceSellQuantity(qty) {
         if (qty <= imbalanceSellStepX[i]) return imbalanceSellStepY[i];
     }
     return (imbalanceSellStepY[imbalanceSellStepY.length - 1]);
-};
-
-function getExtraBpsForBuyQuantityNew(qty) {
-    return getExtraBpsForQuantity(0, qty, qtyBuyStepX, qtyBuyStepYNew);
-};
-
-function getExtraBpsForSellQuantityNew(qty) {
-    return getExtraBpsForQuantity(0, qty, qtySellStepX, qtySellStepYNew);
 };
 
 function getExtraBpsForImbalanceBuyQuantityNew(imbalance, qty) {

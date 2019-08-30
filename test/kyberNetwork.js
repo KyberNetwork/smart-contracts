@@ -96,7 +96,6 @@ let baseSellRate4 = [];
 //quantity buy steps
 let qtyBuyStepX = [0, 150, 350, 800, 1800];
 let qtyBuyStepY = [0,  0, -70, -160, -1200];
-let qtyBuyStepYNew = [0,  0, -70, -160, -330, -1200];
 
 //imbalance buy steps
 let imbalanceBuyStepX = [-1800, -800, -350, -150, 0, 150, 350, 800, 1800];
@@ -107,10 +106,9 @@ let imbalanceBuyStepYNew = [1000, 300,   130,    43, 0,   0, -110, -600, -1300, 
 //sell price will be 1 / buy (assuming no spread) so sell is actually buy price in other direction
 let qtySellStepX = [0, 150, 350, 800, 1800];
 let qtySellStepY = [0, 0, 120, 170, 1200];
-let qtySellStepYNew = [0, 0, 120, 170, 250, 1200];
 
 //sell imbalance step
-let imbalanceSellStepX = [-1500, -600, -400, -350, -160, -100, 0, 150, 800, 1800];
+let imbalanceSellStepX = [-1500, -1000, -600, -350, -160, -100, 0, 150, 800, 1800];
 let imbalanceSellStepY = [-400, -100, -90, -80, -43, -12, 0, 0, 110, 1600];
 let imbalanceSellStepYNew = [-400, -100, -90, -80, -43, -12, 0, 0, 110, 600, 1600];
 
@@ -256,7 +254,6 @@ contract('KyberNetwork', function(accounts) {
         for (let i = 0; i < numTokens; ++i) {
             await pricing1.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             await pricing2.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
-            await pricing4.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepYNew, qtySellStepX, qtySellStepYNew, {from:operator});
             await pricing1.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
             await pricing2.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
             await pricing4.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepYNew, imbalanceSellStepX, imbalanceSellStepYNew, {from:operator});
@@ -2695,14 +2692,6 @@ function calculateRateAmount(isBuy, tokenInd, srcQty, reserveIndex, maxDestAmoun
     return expected;
 }
 
-function getExtraBpsForBuyQuantityNew(qty) {
-    return getExtraBpsForQuantity(0, qty, qtyBuyStepX, qtyBuyStepYNew);
-};
-
-function getExtraBpsForSellQuantityNew(qty) {
-    return getExtraBpsForQuantity(0, qty, qtySellStepX, qtySellStepYNew);
-};
-
 function getExtraBpsForImbalanceBuyQuantityNew(currentImbalance, qty) {
     return getExtraBpsForQuantity(currentImbalance, currentImbalance + qty, imbalanceBuyStepX, imbalanceBuyStepYNew);
 };
@@ -2744,16 +2733,12 @@ function calculateRateAmountNewConversionRate(isBuy, tokenInd, srcQty) {
     if (isBuy) {
         expectedRate = (new BigNumber(baseBuyRate4[tokenInd]));
         let dstQty = calcDstQty(srcQty, 18, tokenDecimals[tokenInd], expectedRate);
-        let extraBps = getExtraBpsForBuyQuantityNew(dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
-        extraBps = getExtraBpsForImbalanceBuyQuantityNew(reserve4TokenImbalance[tokenInd] * 1, dstQty * 1);
+        let extraBps = getExtraBpsForImbalanceBuyQuantityNew(reserve4TokenImbalance[tokenInd] * 1, dstQty * 1);
         expectedRate = addBps(expectedRate, extraBps);
         expectedAmount = calcDstQty(srcQty, 18, tokenDecimals[tokenInd], expectedRate);
     } else {
         expectedRate = (new BigNumber(baseSellRate4[tokenInd]));
-        let extraBps = getExtraBpsForSellQuantityNew(srcQty);
-        expectedRate = addBps(expectedRate, extraBps);
-        extraBps = getExtraBpsForImbalanceSellQuantityNew(reserve4TokenImbalance[tokenInd] * 1, srcQty * 1);
+        let extraBps = getExtraBpsForImbalanceSellQuantityNew(reserve4TokenImbalance[tokenInd] * 1, srcQty * 1);
         expectedRate = addBps(expectedRate, extraBps);
         expectedAmount = calcDstQty(srcQty, tokenDecimals[tokenInd], 18, expectedRate);
     }

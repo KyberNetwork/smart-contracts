@@ -4,58 +4,27 @@ import "./ERC20Interface.sol";
 import "./ConversionRates.sol";
 
 /// @title EnhancedStepFunctions contract - new ConversionRates contract with step function enhancement
-/// Also fixed issue: https://github.com/KyberNetwork/smart-contracts/issues/291
+/// Removed qty step function overhead
+/// Also fixed following issues:
+/// https://github.com/KyberNetwork/smart-contracts/issues/291
+/// https://github.com/KyberNetwork/smart-contracts/issues/241
+/// https://github.com/KyberNetwork/smart-contracts/issues/243
+
 
 contract EnhancedStepFunctions is ConversionRates {
 
     uint constant internal MAX_STEPS_IN_FUNCTION = 16;
+    uint constant internal POW_2_128 = 2 ** 128;
 
     function EnhancedStepFunctions(address _admin) public ConversionRates(_admin)
         { } // solhint-disable-line no-empty-blocks
 
-    function setQtyStepFunction(
-        ERC20 token,
-        int[] xBuy,
-        int[] yBuy,
-        int[] xSell,
-        int[] ySell
-    )
-        public
-        onlyOperator
-    {
-        require(xBuy.length + 1 == yBuy.length);
-        require(xSell.length + 1 == ySell.length);
-        require(yBuy.length <= MAX_STEPS_IN_FUNCTION);
-        require(ySell.length <= MAX_STEPS_IN_FUNCTION);
-        require(tokenData[token].listed);
-
-        if (xBuy.length > 0) {
-            // verify qty are non-negative & increasing
-            require(xBuy[0] >= 0);
-
-            for(uint i = 0; i < xBuy.length - 1; i++) {
-                require(xBuy[i] < xBuy[i + 1]);
-            }
-        }
-
-        if (xSell.length > 0) {
-            // verify qty are non-negative & increasing
-            require(xSell[0] >= 0);
-            for(i = 0; i < xSell.length - 1; i++) {
-                require(xSell[i] < xSell[i + 1]);
-            }
-        }
-
-        tokenData[token].buyRateQtyStepFunction = StepFunction(xBuy, yBuy);
-        tokenData[token].sellRateQtyStepFunction = StepFunction(xSell, ySell);
-    }
-
     function setImbalanceStepFunction(
         ERC20 token,
-        int[] xBuy,
-        int[] yBuy,
-        int[] xSell,
-        int[] ySell
+        int128[] xBuy,
+        int128[] yBuy,
+        int128[] xSell,
+        int128[] ySell
     )
         public
         onlyOperator
@@ -80,8 +49,77 @@ contract EnhancedStepFunctions is ConversionRates {
             }
         }
 
-        tokenData[token].buyRateImbalanceStepFunction = StepFunction(xBuy, yBuy);
-        tokenData[token].sellRateImbalanceStepFunction = StepFunction(xSell, ySell);
+        int[] memory buyArray = new int[](yBuy.length);
+        for(i = 0; i < yBuy.length; i++) {
+            if (i == yBuy.length - 1) {
+                buyArray[i] = encodeStepFunctionData(0, yBuy[i]);
+            } else {
+                buyArray[i] = encodeStepFunctionData(xBuy[i], yBuy[i]);
+            }
+        }
+
+        int[] memory sellArray = new int[](ySell.length);
+        for(i = 0; i < ySell.length; i++) {
+            if (i == ySell.length - 1) {
+                sellArray[i] = encodeStepFunctionData(0, ySell[i]);
+            } else {
+                sellArray[i] = encodeStepFunctionData(xSell[i], ySell[i]);
+            }
+        }
+
+        int[] memory emptyArr = new int[](0);
+        tokenData[token].buyRateImbalanceStepFunction = StepFunction(buyArray, emptyArr);
+        tokenData[token].sellRateImbalanceStepFunction = StepFunction(sellArray, emptyArr);
+    }
+
+    function recordImbalance(
+        ERC20 token,
+        int buyAmount,
+        uint rateUpdateBlock,
+        uint currentBlock
+    )
+        public
+    {
+        require(msg.sender == reserveContract);
+
+        // avoid assigning to function parameters, issue #243
+        uint _rateUpdateBlock = rateUpdateBlock;
+        if (_rateUpdateBlock == 0) _rateUpdateBlock = getRateUpdateBlock(token);
+
+        return addImbalance(token, buyAmount, _rateUpdateBlock, currentBlock);
+    }
+
+    /* solhint-disable code-complexity */
+    function getStepFunctionData(ERC20 token, uint command, uint param) public view returns(int) {
+        if (command == 8) return int(tokenData[token].buyRateImbalanceStepFunction.x.length - 1);
+
+        int stepXValue;
+        int stepYValue;
+
+        if (command == 9) {
+            (stepXValue, stepYValue) = decodeStepFunctionData(tokenData[token].buyRateImbalanceStepFunction.x[param]);
+            return stepXValue;
+        }
+
+        if (command == 10) return int(tokenData[token].buyRateImbalanceStepFunction.x.length);
+        if (command == 11) {
+            (stepXValue, stepYValue) = decodeStepFunctionData(tokenData[token].buyRateImbalanceStepFunction.x[param]);
+            return stepYValue;
+        }
+
+        if (command == 12) return int(tokenData[token].sellRateImbalanceStepFunction.x.length - 1);
+        if (command == 13) {
+            (stepXValue, stepYValue) = decodeStepFunctionData(tokenData[token].sellRateImbalanceStepFunction.x[param]);
+            return stepXValue;
+        }
+
+        if (command == 14) return int(tokenData[token].sellRateImbalanceStepFunction.x.length);
+        if (command == 15) {
+            (stepXValue, stepYValue) = decodeStepFunctionData(tokenData[token].sellRateImbalanceStepFunction.x[param]);
+            return stepYValue;
+        }
+
+        revert();
     }
 
     /* solhint-disable function-max-lines */
@@ -119,10 +157,6 @@ contract EnhancedStepFunctions is ConversionRates {
             qty = getTokenQty(token, qty, rate);
             imbalanceQty = int(qty);
 
-            // add qty overhead
-            extraBps = executeStepFunction(tokenData[token].buyRateQtyStepFunction, 0, int(qty));
-            rate = addBps(rate, extraBps);
-
             // add imbalance overhead
             extraBps = executeStepFunction(tokenData[token].buyRateImbalanceStepFunction, totalImbalance, totalImbalance + imbalanceQty);
             rate = addBps(rate, extraBps);
@@ -139,10 +173,6 @@ contract EnhancedStepFunctions is ConversionRates {
             // compute token qty
             imbalanceQty = -1 * int(qty);
 
-            // add qty overhead
-            extraBps = executeStepFunction(tokenData[token].sellRateQtyStepFunction, 0, int(qty));
-            rate = addBps(rate, extraBps);
-
             // add imbalance overhead
             extraBps = executeStepFunction(tokenData[token].sellRateImbalanceStepFunction, totalImbalance + imbalanceQty, totalImbalance);
             rate = addBps(rate, extraBps);
@@ -155,47 +185,73 @@ contract EnhancedStepFunctions is ConversionRates {
         return rate;
     }
 
-    function getImbalancePub(ERC20 token, uint rateUpdateBlock, uint currentBlock)
+    // Override function getImbalance to fix https://github.com/KyberNetwork/smart-contracts/issues/240
+    function getImbalancePerToken(ERC20 token, uint rateUpdateBlock, uint currentBlock)
         public view
         returns(int totalImbalance, int currentBlockImbalance)
     {
-        return getImbalance(token, rateUpdateBlock, currentBlock);
+
+        int resolution = int(tokenControlInfo[token].minimalRecordResolution);
+
+        (totalImbalance, currentBlockImbalance) =
+            getImbalanceSinceRateUpdate(
+                token,
+                rateUpdateBlock,
+                currentBlock);
+
+        if (!checkMultOverflow(totalImbalance, resolution)) {
+            totalImbalance *= resolution;
+        }
+
+        if (!checkMultOverflow(currentBlockImbalance, resolution)) {
+            currentBlockImbalance *= resolution;
+        }
     }
 
-    function executeStepFunction(StepFunction f, int from, int to) internal pure returns(int) {
-        if (f.y.length == 0) { return 0; }
+    function executeStepFunction(StepFunction storage f, int from, int to) internal view returns(int) {
 
         uint len = f.x.length;
-        uint ind;
 
-        if (from == to) {
-            // should only happen when trade amount = 0
-            return 0;
-        }
+        if (len == 0 || from == to) { return 0; }
 
         int qty = to - from;
         int change = 0; // amount change from initial amount when applying bps for each step
         int stepXValue;
+        int stepYValue;
 
-        for(ind = 0; ind < len; ind++) {
-            stepXValue = f.x[ind];
+        for(uint ind = 0; ind < len - 1; ind++) {
+            (stepXValue, stepYValue) = decodeStepFunctionData(f.x[ind]);
             if (stepXValue <= from) { continue; }
-            // at here, lastStepAmount < stepXValue,
-            // bps for step range [lastStepAmount, stepXValue] will be f.y[ind]
+            // from here, from < stepXValue,
+            // if from < to <= stepXValue, take [from, to] and return, else take [from, stepXValue]
             if (stepXValue >= to) {
-                change += (to - from) * f.y[ind];
-                from = to;
-                break;
+                change += (to - from) * stepYValue;
+                return change / qty;
             } else {
-                change += (stepXValue - from) * f.y[ind];
+                change += (stepXValue - from) * stepYValue;
                 from = stepXValue;
             }
         }
 
-        if (from < to) {
-            change += (to - from) * f.y[len];
-        }
+        (stepXValue, stepYValue) = decodeStepFunctionData(f.x[len - 1]);
+        change += (to - from) * stepYValue;
 
         return change / qty;
+    }
+
+    // first 128 bits is value for x, next 128 bits is value for y
+    function encodeStepFunctionData(int128 x, int128 y) internal pure returns(int data) {
+        data = int(uint(y) & (POW_2_128 - 1));
+        data |= int((uint(x) & (POW_2_128 - 1)) * POW_2_128);
+    }
+
+    function decodeStepFunctionData(int val) internal pure returns (int x, int y) {
+        y = int(int128(uint(val) & (POW_2_128 - 1)));
+        x = int(int128((uint(val) / POW_2_128) & (POW_2_128 - 1)));
+    }
+
+    function checkMultOverflow(int x, int y) internal pure returns(bool) {
+        if (y == 0) return false;
+        return (((x*y) / y) != x);
     }
 }

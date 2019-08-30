@@ -54,22 +54,20 @@ contract('ExpectedRates', function(accounts) {
         //quantity buy steps
         let qtyBuyStepX = [0, 150, 350, 700,  1400];
         let qtyBuyStepY = [0,  0, -50, -160, -3000];
-        let qtyBuyStepYNew = [0,  0, -50, -160, -300, -3000];
 
         //imbalance buy steps
-        let imbalanceBuyStepX = [-8500, -2800, -1500, 0, 1500, 2800,  4500];
-        let imbalanceBuyStepY = [ 1300,   130,    43, 0,   0, -110, -1600];
-        let imbalanceBuyStepYNew = [ 1300,   130,    43, 0,   0, -110, -160, -1600];
+        let imbalanceBuyStepX = [-8500, -2800, -1000, 0, 1000, 2800,  4500];
+        let imbalanceBuyStepY = [ 2000,   1600,    200, 0,   0, -500, -1600];
+        let imbalanceBuyStepYNew = [ 2000,   1600,    200, 0,   0, -500, -1600, -2000];
 
         //sell price will be 1 / buy (assuming no spread) so sell is actually buy price in other direction
         let qtySellStepX = [ 0, 150, 350, 700, 1400];
         let qtySellStepY = [ 0,  0, -50, -160, -3000];
-        let qtySellStepYNew = [ 0,  0, -50, -160, -300, -3000];
 
         //sell imbalance step
-        let imbalanceSellStepX = [-8500, -2800, -1500, 0, 1500, 2800,  4500];
-        let imbalanceSellStepY = [ 1300,   130,    43, 0,   0, -110, -1600];
-        let imbalanceSellStepYNew = [ 1300,   130,    43, 0,   0, -110, -160, -1600];
+        let imbalanceSellStepX = [-8500, -2800, -750, 0, 750, 2800,  4500];
+        let imbalanceSellStepY = [ -2000,   -1600,    -400, 0,   0, -1600, -2000];
+        let imbalanceSellStepYNew = [ -2000,   -1600,    -400, 0,   0, -1600, -2000, -3000];
 
         //compact data.
         let sells = [];
@@ -150,7 +148,6 @@ contract('ExpectedRates', function(accounts) {
         for (let i = 0; i < numTokens; ++i) {
             await pricing1.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             await pricing1.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
-            await pricing2.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepYNew, qtySellStepX, qtySellStepYNew, {from:operator});
             await pricing2.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepYNew, imbalanceSellStepX, imbalanceSellStepYNew, {from:operator});
         }
 
@@ -254,6 +251,7 @@ contract('ExpectedRates', function(accounts) {
         let minSlippage =  ((10000 - minSlippageBps) * myExpectedRate[1].valueOf()) / 10000;
 
         qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+
         if (qtySlippageRate > minSlippage) {
             qtySlippageRate = minSlippage;
             assert(false, "expect qty slippage rate to be lower");
@@ -510,8 +508,8 @@ contract('ExpectedRates', function(accounts) {
 
     it("step function enhancement: should test eth to token. use qty slippage.", async function() {
         let tokenInd = 2;
-        let qty = 20;
-        quantityFactor = 10;
+        let qty = 25;
+        quantityFactor = 15;
 
         await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
         let myExpectedRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], qty);
@@ -520,6 +518,7 @@ contract('ExpectedRates', function(accounts) {
         let minSlippage =  ((10000 - minSlippageBps) * myExpectedRate[1].valueOf()) / 10000;
 
         qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+
         if (qtySlippageRate > minSlippage) {
             qtySlippageRate = minSlippage;
             assert(false, "expect qty slippage rate to be lower");
@@ -533,7 +532,7 @@ contract('ExpectedRates', function(accounts) {
 
     it("step function enhancement: should test eth to token. use min slippage.", async function() {
         let tokenInd = 2;
-        let qty = 9;
+        let qty = 60;
         quantityFactor = 5;
 
         await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
@@ -543,6 +542,7 @@ contract('ExpectedRates', function(accounts) {
         let minSlippage =  ((10000 - minSlippageBps) * myExpectedRate[1].valueOf()) / 10000;
 
         qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+
         if (qtySlippageRate > minSlippage) {
             qtySlippageRate = minSlippage;
         } else {
@@ -557,7 +557,7 @@ contract('ExpectedRates', function(accounts) {
 
     it("step function enhancement: should test token to eth. use qty slippage.", async function() {
         let tokenInd = 2;
-        let qty = 400;
+        let qty = 700;
 
         let myExpectedRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, qty);
         let qtySlippageRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, (qty * quantityFactor));
@@ -565,6 +565,7 @@ contract('ExpectedRates', function(accounts) {
         let minSlippage = new BigNumber(10000 - minSlippageBps).mul(myExpectedRate[1]).div(10000).floor();
 
         qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+
         if (qtySlippageRate > minSlippage) {
             qtySlippageRate = minSlippage;
             assert(false, "expect qty slippage rate to be lower");
