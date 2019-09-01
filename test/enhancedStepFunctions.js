@@ -35,6 +35,18 @@ let compactBuyArr2 = [];
 let compactSellArr1 = [];
 let compactSellArr2 = [];
 
+// getStepFunctionData command IDs
+
+let comID_BuyRateStpImbalanceXLength = 8;
+let comID_BuyRateStpImbalanceParamX = 9;
+let comID_BuyRateStpImbalanceYLength = 10;
+let comID_BuyRateStpImbalanceParamY = 11;
+
+let comID_SellRateStpImbalanceXLength = 12;
+let comID_SellRateStpImbalanceParamX = 13;
+let comID_SellRateStpImbalanceYLength = 14;
+let comID_SellRateStpImbalanceParamY = 15;
+
 let convRatesInst;
 
 contract('EnhancedStepFunctions', function(accounts) {
@@ -165,6 +177,65 @@ contract('EnhancedStepFunctions', function(accounts) {
         
         for (let i = 0; i < numTokens; ++i) {
             await convRatesInst.setImbalanceStepFunction(tokens[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+        }
+    });
+
+    it("should get imbalance buy step function and verify numbers.", async function () {
+        tokenId = 1; //
+
+        // x axis
+        let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceXLength, 0); //get length
+        assert.equal(received.valueOf(), imbalanceBuyStepX.length, "length don't match");
+
+        // now y axis
+        received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceYLength, 0); //get length
+        assert.equal(received.valueOf(), imbalanceBuyStepY.length, "length don't match"); //x and y must match.
+
+        //iterate x and y values and compare
+        for (let i = 0; i < imbalanceBuyStepX.length; ++i) {
+            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceParamX, i); //get x value in cell i
+            assert.equal(received.valueOf(), imbalanceBuyStepX[i], "mismatch for x value in cell: " + i);
+            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceParamY, i); //get x value in cell i
+            assert.equal(received.valueOf(), imbalanceBuyStepY[i], "mismatch for y value in cell: " + i);
+        }
+    });
+
+    it("should get imbalance sell step function and verify numbers.", async function () {
+        tokenId = 3; //
+
+        // x axis
+        let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceXLength, 0); //get length
+        assert.equal(received.valueOf(), imbalanceSellStepX.length, "length don't match");
+
+        // now y axis
+        received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceYLength, 0); //get length
+        assert.equal(received.valueOf(), imbalanceSellStepY.length, "length don't match"); //x and y must match.
+
+        //iterate x and y values and compare
+        for (let i = 0; i < imbalanceSellStepX.length; ++i) {
+            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceParamX, i); //get x value in cell i
+            assert.equal(received.valueOf(), imbalanceSellStepX[i], "mismatch for x value in cell: " + i);
+            received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceParamY, i); //get x value in cell i
+            assert.equal(received.valueOf(), imbalanceSellStepY[i], "mismatch for y value in cell: " + i);
+        }
+    });
+
+    it("should get set function data reverts with illegal command ID.", async function () {
+        tokenId = 1; //
+        try {
+            _ = await convRatesInst.getStepFunctionData(tokens[tokenId], 19, 0); //get length
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+        // first 8 commands for old qty step func which alr removed
+        for(let i = 0; i < 8; i++) {
+            try {
+                _ = await convRatesInst.getStepFunctionData(tokens[tokenId], i, 0);
+                assert(false, "throw was expected in line above.")
+            } catch(e){
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
         }
     });
 
@@ -684,6 +755,61 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         //now the same from reserve address
         await convRatesInst.recordImbalance(tokens[5], 30, currentBlock, currentBlock, {from: reserveAddress});
+    });
+
+    it("should verify getImbalancePerToken returns correct data as recorded or when overflow.", async function () {
+        let tokenInd = 5;
+
+        // Getting imbalance after add
+        let curImbalance = await convRatesInst.getImbalancePerToken(tokens[tokenInd], currentBlock, currentBlock);
+        //now the same from reserve address
+        await convRatesInst.recordImbalance(tokens[tokenInd], 30, currentBlock, currentBlock, {from: reserveAddress});
+        let newImbalance = await convRatesInst.getImbalancePerToken(tokens[tokenInd], currentBlock, currentBlock);
+        let expectedImbalance = curImbalance[0].add(30);
+        assert.equal(expectedImbalance.valueOf(), newImbalance[0].valueOf(), "total imbalance does not match");
+        let expectedBlockImbalance = curImbalance[1].add(30);
+        assert.equal(expectedBlockImbalance.valueOf(), newImbalance[1].valueOf(), "block imbalance does not match");
+
+        // Getting imbalance after sub
+        await convRatesInst.recordImbalance(tokens[tokenInd], -30, currentBlock, currentBlock, {from: reserveAddress});
+        newImbalance = await convRatesInst.getImbalancePerToken(tokens[tokenInd], currentBlock, currentBlock);
+        expectedImbalance = expectedImbalance.sub(30);
+        assert.equal(expectedImbalance.valueOf(), newImbalance[0].valueOf(), "total imbalance does not match");
+        expectedBlockImbalance = expectedBlockImbalance.sub(30);
+        assert.equal(expectedBlockImbalance.valueOf(), newImbalance[1].valueOf(), "block imbalance does not match");
+
+        // Getting imbalance + block imbal overflow
+        let bigNum = new BigNumber(2).pow(254);
+        let newAddImbalAmount = (new BigNumber(2).pow(10)).sub(expectedImbalance);
+        try {
+            await convRatesInst.recordImbalance(tokens[tokenInd], newAddImbalAmount, currentBlock, currentBlock, {from: reserveAddress});
+            expectedBlockImbalance = expectedBlockImbalance.add(newAddImbalAmount);
+            expectedBlockImbalance = expectedBlockImbalance.div(minimalRecordResolution);
+            expectedImbalance = expectedImbalance.add(newAddImbalAmount);
+            expectedImbalance = expectedImbalance.div(minimalRecordResolution);
+
+            // set big resolution so it will overflow
+            await convRatesInst.setTokenControlInfo(tokens[tokenInd], bigNum.valueOf(), maxPerBlockImbalance, maxTotalImbalance);
+            newImbalance = await convRatesInst.getImbalancePerToken(tokens[tokenInd], currentBlock, currentBlock);
+            assert.equal(expectedBlockImbalance.valueOf(), newImbalance[1].valueOf(), "block imbalance does not match");
+            assert.equal(expectedImbalance.valueOf(), newImbalance[0].valueOf(), "total imbalance does not match");
+
+            // set smaller resolution so it won't overflow
+            let newResolution = 10;
+            await convRatesInst.setTokenControlInfo(tokens[tokenInd], newResolution, maxPerBlockImbalance, maxTotalImbalance);
+            expectedBlockImbalance = expectedBlockImbalance.mul(newResolution);
+            expectedImbalance = expectedImbalance.mul(newResolution);
+            newImbalance = await convRatesInst.getImbalancePerToken(tokens[tokenInd], currentBlock, currentBlock);
+            assert.equal(expectedBlockImbalance.valueOf(), newImbalance[1].valueOf(), "block imbalance does not match");
+            assert.equal(expectedImbalance.valueOf(), newImbalance[0].valueOf(), "total imbalance does not match");
+
+            // fallback to default config
+            await convRatesInst.setTokenControlInfo(tokens[tokenInd], minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
+        } catch (e) {
+            console.log("Unexpected throw with error: " + e);
+            // fallback to default config
+            await convRatesInst.setTokenControlInfo(tokens[tokenInd], minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
+        }
     });
 
     it("should test getting bps from executing step function as expected", async function () {

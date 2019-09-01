@@ -82,7 +82,7 @@ let qtySellStepX = [0, 150, 350, 700, 1400];
 let qtySellStepY = [0,   0, 120, 170, 3000];
 
 //sell imbalance step
-let imbalanceSellStepX = [-8500, -2800, -1500, 0, 1500, 2800,  4500];
+let imbalanceSellStepX = [-8500, -2800, -1000, 0, 1000, 2800,  4500];
 let imbalanceSellStepY = [-1500,  -320,   -75, 0,    0,  110,   650];
 let imbalanceSellStepYNew = [-1500,  -320,   -75, 0,    0,  110,   350, 650];
 
@@ -106,8 +106,8 @@ contract('KyberReserve', function(accounts) {
         sanityRate = accounts[7];
         alerter = accounts[8];
         walletForToken = accounts[9];
-        user3 = accounts[10];
-        user4 = accounts[11];
+        user3 = accounts[8];
+        user4 = accounts[9];
 
         currentBlock = priceUpdateBlock = await Helper.getCurrentBlock();
 
@@ -1143,53 +1143,53 @@ contract('KyberReserve', function(accounts) {
         assert.equal(tokenTweiBalance.valueOf(), totalExpectedTwei.valueOf(), "bad token balance");
     });
 
-
-    it("enhance step func: should perform small sell and check: balances changed, rate is expected rate.", async function () {
-        let tokenInd = 3;
+    it("enhance step func: should perform a few sells with steps and check: correct balances change, rate is expected rate.", async function () {
+        let tokenInd = 2;
         let token = tokens[tokenInd]; //choose some token
-        let amountTwei = 25 * 1;
+        let amountTwei;
 
-        //no need to transfer initial balance to user
-        //in the full scenario. user approves network which collects the tokens and approves reserve
-        //which collects tokens from network.
-        //so here transfer tokens to network and approve allowance from network to reserve.
-        await token.transfer(network, amountTwei);
+        for (let i = 0; i > 19; i++) {
+            amountTwei = 50 + 30 * i;
 
-        //verify sell rate
-        let sellRate = await reserveInst2.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock);
+            await token.transfer(network, amountWei);
 
-        let expectedRate = (new BigNumber(baseSellRate[tokenInd]));
-        expectedRate.floor();
+            //verify sell rate
+            let sellRate = await reserveInst2.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock);
 
-        //check correct rate calculated
-        assert.equal(sellRate.valueOf(), expectedRate.valueOf(), "unexpected rate.");
+            let expectedRate = (new BigNumber(baseSellRate[tokenInd]));
+            expectedRate.floor();
 
-        //pre trade step, approve allowance from user to network.
-        await token.approve(reserveInst2.address, amountTwei, {from: network});
+            //check correct rate calculated
+            assert.equal(sellRate.valueOf(), expectedRate.valueOf(), "unexpected rate.");
 
-        //perform trade
-        await reserveInst2.trade(tokenAdd[tokenInd], amountTwei, ethAddress, user4, sellRate, true, {from:network});
+            //pre trade step, approve allowance from user to network.
+            await token.approve(reserveInst2.address, amountTwei, {from: network});
 
-        //check lower ether balance on reserve
-        let amountWei = (new BigNumber(amountTwei).mul(expectedRate)).div(precisionUnits).floor();
-        expectedReserveBalanceWei2 = (new BigNumber(expectedReserveBalanceWei2)).sub(amountWei).floor();
-        let balance = await Helper.getBalancePromise(reserveInst2.address);
-        assert.equal(balance.valueOf(), expectedReserveBalanceWei2.valueOf(), "bad reserve balance wei");
+            //perform trade
+            await reserveInst2.trade(tokenAdd[tokenInd], amountTwei, ethAddress, user4, sellRate, true, {from:network});
 
-        //check token balances
-        ///////////////////////
+            //check lower ether balance on reserve
+            let amountWei = (new BigNumber(amountTwei).mul(expectedRate)).div(precisionUnits).floor();
+            expectedReserveBalanceWei2 = (new BigNumber(expectedReserveBalanceWei2)).sub(amountWei).floor();
+            let balance = await Helper.getBalancePromise(reserveInst2.address);
+            assert.equal(balance.valueOf(), expectedReserveBalanceWei2.valueOf(), "bad reserve balance wei");
 
-        //check token balance on network zeroed
-        let tokenTweiBalance = await token.balanceOf(network);
+            //check token balances
+            ///////////////////////
 
-        assert.equal(tokenTweiBalance.valueOf(), 0, "bad token balance");
+            //check token balance on network zeroed
+            let tokenTweiBalance = await token.balanceOf(network);
 
-        //check token balance on reserve was updated (higher)
-        //below is true since all tokens and ether have same decimals (18)
-        reserveTokenBalance2[tokenInd] += (amountTwei * 1);
-        reserveTokenImbalance2[tokenInd] = reserveTokenImbalance2[tokenInd].sub(amountTwei); //imbalance represents how many missing tokens
-        let reportedBalance = await token.balanceOf(reserveInst2.address);
-        assert.equal(reportedBalance.valueOf(), reserveTokenBalance2[tokenInd].valueOf(), "bad token balance on reserve");
+            assert.equal(tokenTweiBalance.valueOf(), 0, "bad token balance");
+
+            //check token balance on reserve was updated (higher)
+            //below is true since all tokens and ether have same decimals (18)
+            reserveTokenBalance2[tokenInd] += (amountTwei * 1);
+            reserveTokenImbalance2[tokenInd] = reserveTokenImbalance2[tokenInd].sub(amountTwei); //imbalance represents how many missing tokens
+            let reportedBalance = await token.balanceOf(reserveInst2.address);
+            assert.equal(reportedBalance.valueOf(), reserveTokenBalance2[tokenInd].valueOf(), "bad token balance on reserve");
+        };
+
     });
 });
 

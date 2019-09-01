@@ -8,7 +8,7 @@ import "./ConversionRates.sol";
 /// Also fixed following issues:
 /// https://github.com/KyberNetwork/smart-contracts/issues/291
 /// https://github.com/KyberNetwork/smart-contracts/issues/241
-/// https://github.com/KyberNetwork/smart-contracts/issues/243
+/// https://github.com/KyberNetwork/smart-contracts/issues/240
 
 
 contract EnhancedStepFunctions is ConversionRates {
@@ -51,42 +51,19 @@ contract EnhancedStepFunctions is ConversionRates {
 
         int[] memory buyArray = new int[](yBuy.length);
         for(i = 0; i < yBuy.length; i++) {
-            if (i == yBuy.length - 1) {
-                buyArray[i] = encodeStepFunctionData(0, yBuy[i]);
-            } else {
-                buyArray[i] = encodeStepFunctionData(xBuy[i], yBuy[i]);
-            }
+            int128 xBuyVal = (i == yBuy.length - 1) ? 0 : xBuy[i];
+            buyArray[i] = encodeStepFunctionData(xBuyVal, yBuy[i]);
         }
 
         int[] memory sellArray = new int[](ySell.length);
         for(i = 0; i < ySell.length; i++) {
-            if (i == ySell.length - 1) {
-                sellArray[i] = encodeStepFunctionData(0, ySell[i]);
-            } else {
-                sellArray[i] = encodeStepFunctionData(xSell[i], ySell[i]);
-            }
+            int128 xSellVal = (i == ySell.length - 1) ? 0 : xSell[i];
+            sellArray[i] = encodeStepFunctionData(xSellVal, ySell[i]);
         }
 
         int[] memory emptyArr = new int[](0);
         tokenData[token].buyRateImbalanceStepFunction = StepFunction(buyArray, emptyArr);
         tokenData[token].sellRateImbalanceStepFunction = StepFunction(sellArray, emptyArr);
-    }
-
-    function recordImbalance(
-        ERC20 token,
-        int buyAmount,
-        uint rateUpdateBlock,
-        uint currentBlock
-    )
-        public
-    {
-        require(msg.sender == reserveContract);
-
-        // avoid assigning to function parameters, issue #243
-        uint _rateUpdateBlock = rateUpdateBlock;
-        if (_rateUpdateBlock == 0) _rateUpdateBlock = getRateUpdateBlock(token);
-
-        return addImbalance(token, buyAmount, _rateUpdateBlock, currentBlock);
     }
 
     /* solhint-disable code-complexity */
@@ -193,7 +170,7 @@ contract EnhancedStepFunctions is ConversionRates {
         return rate;
     }
 
-    // Override function getImbalance to fix https://github.com/KyberNetwork/smart-contracts/issues/240
+    // Override function getImbalance to fix #240
     function getImbalancePerToken(ERC20 token, uint rateUpdateBlock, uint currentBlock)
         public view
         returns(int totalImbalance, int currentBlockImbalance)
