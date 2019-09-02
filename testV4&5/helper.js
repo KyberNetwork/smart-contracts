@@ -1,7 +1,7 @@
 var secp256k1 = require("secp256k1");
 var ethUtils = require("ethereumjs-util");
 const BN = require('bignumber.js');
-const Sha3 = require('solidity-sha3').default;
+const Web3Utils = require('web3-utils');
 const EthereumTx = require('ethereumjs-tx').Transaction;
 
 module.exports.isRevertErrorMessage = function( error ) {
@@ -91,7 +91,7 @@ module.exports.privateKeyToAddress = function(key) {
 }
 
 function ecsign(msgHash, privateKey) {
-  msgHashWithPrefix = Sha3("\x19Ethereum Signed Message:\n32", msgHash);
+  msgHashWithPrefix = Web3Utils.soliditySha3("\x19Ethereum Signed Message:\n32", msgHash);
   msgHashWithPrefix = ethUtils.toBuffer(msgHashWithPrefix);
   const sig = secp256k1.sign(msgHashWithPrefix, ethUtils.toBuffer(privateKey));
   const ret = {};
@@ -103,7 +103,7 @@ function ecsign(msgHash, privateKey) {
 }
 
 function getLimitOrderSig(account,nonce,srcToken,srcQty,destToken,destAddress,minConversionRate,feeInPrecision) {
-  msgHash = Sha3(account.address,nonce,srcToken,srcQty,destToken,destAddress,minConversionRate,feeInPrecision);
+  msgHash = Web3Utils.soliditySha3(account.address,nonce,srcToken,srcQty,destToken,destAddress,minConversionRate,feeInPrecision);
   ret = ecsign(msgHash,account.privateKey);
   return ret;
 }

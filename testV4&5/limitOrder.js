@@ -14,8 +14,11 @@ const SafeERC20Wrapper = artifacts.require('SafeERC20WrapperV5.sol');
 /// Addresses ///
 /////////////////
 let user1PrivateKey = Helper.generatePrivateKey();
+let user2PrivateKey = Helper.generatePrivateKey();
 let user1Address = Helper.privateKeyToAddress(user1PrivateKey);
+let user2Address = Helper.privateKeyToAddress(user2PrivateKey);
 let user1Account = {'address': user1Address, 'privateKey': user1PrivateKey, 'nonce': 0};
+let user2Account = {'address': user2Address, 'privateKey': user2PrivateKey, 'nonce': 0};
 
 ///////////////////////////////
 /// Auto generated accounts ///
@@ -28,6 +31,7 @@ let testTradeUser;
 /// Contracts ///
 /////////////////
 let kncToken;
+let omgToken;
 let network;
 
 ////////////////////
@@ -72,6 +76,7 @@ contract('KyberSwapLimitOrder', function(accounts) {
 
   it("deploy contracts and initialise values", async function () {
     kncToken = await TestToken.new("KyberNetworkCrystal", "KNC" , tokenDecimals, {from: admin});
+    omgToken = await TestToken.new("OmiseGo", "OMG", tokenDecimals, {from: admin});
     network = await MockKyberNetwork.new({from: admin});
     limitOrder = await KyberSwapLimitOrder.new(admin, network.address, {from: admin});
     assert.equal(await limitOrder.kyberNetworkProxy(),network.address, {from: admin});
@@ -79,6 +84,10 @@ contract('KyberSwapLimitOrder', function(accounts) {
     //transfer 1M kncTokens to user1 and testTradeUser
     await kncToken.transfer(user1Address, userTokenQtyWei.toFixed(), {from: admin});
     await kncToken.transfer(testTradeUser, userTokenQtyWei.toFixed(), {from: admin});
+
+    //transfer 1M omgTokens to user1 and testTradeUser
+    await omgToken.transfer(user1Address, userTokenQtyWei.toFixed(), {from: admin});
+    await omgToken.transfer(testTradeUser, userTokenQtyWei.toFixed(), {from: admin});
 
     //transfer ETH to network contract
     let initialEther = (new BN(10)).pow(18).mul(50); //50 ether
@@ -89,6 +98,8 @@ contract('KyberSwapLimitOrder', function(accounts) {
     //needed for signing and broadcasting txs with web3 generated accounts
     kncTokenWeb3 = new web3.eth.contract(kncToken.abi);
     kncTokenWeb3 = kncTokenWeb3.at(kncToken.address);
+    omgTokenWeb3 = new web3.eth.contract(omgToken.abi);
+    omgTokenWeb3 = omgTokenWeb3.at(omgToken.address);
     limitOrderWeb3 = new web3.eth.contract(limitOrder.abi);
     limitOrderWeb3 = limitOrderWeb3.at(limitOrder.address);
   });
@@ -113,11 +124,16 @@ contract('KyberSwapLimitOrder', function(accounts) {
     //user1 give allowance to limit order contract for trades
     data = kncTokenWeb3.approve.getData(limitOrder.address,maxTokenAllowance.toFixed());
     await Helper.sendTx(user1Account,kncToken.address,data);
+    data = omgTokenWeb3.approve.getData(limitOrder.address,maxTokenAllowance.toFixed());
+    await Helper.sendTx(user1Account,omgToken.address,data);
 
     actualKncAllowance = await kncToken.allowance(user1Address,limitOrder.address);
     actualKncAllowance = new BN(actualKncAllowance);
+    actualOmgAllowance = await omgToken.allowance(user1Address,limitOrder.address);
+    actualOmgAllowance = new BN(actualOmgAllowance);
 
     assert.equal(maxTokenAllowance.valueOf(),actualKncAllowance.valueOf(),"actual KNC token allowance not equal to expected")
+    assert.equal(maxTokenAllowance.valueOf(),actualOmgAllowance.valueOf(),"actual OMG token allowance not equal to expected")
   });
 
   it("should initialise network, rate and test trade", async function () {
@@ -229,6 +245,42 @@ contract('KyberSwapLimitOrder', function(accounts) {
     actualConcatenatedAddresses = new BN(actualConcatenatedAddresses);
     assert.equal(expectedConcatenatedAddresses.valueOf(),actualConcatenatedAddresses.valueOf());
   });
+
+  it("should correctly validate a valid signature", async function () {
+    nonce = Helper.getNonce(limitOrder.address);
+    sig = Helper.getLimitOrderSignature(user1Account,nonce,kncToken.address,
+      limitOrderWei.valueOf(),ETH_ADDRESS,user1Address,0,feeAmountInPrecision.valueOf());
+    isValid = await limitOrder.verifySignature(sig.msgHash,sig.v,sig.r,sig.s,user1Address);
+    assert(isValid,"either generated signature is invalid, or signature check is incorrect");
+  });
+
+  it("return false for illegal signatures - replacing different signed values", async function () {
+      nonce = Helper.getNonce(limitOrder.address);
+      sigUser1 = Helper.getLimitOrderSignature(user1Account,nonce,kncToken.address,
+        limitOrderWei.valueOf(),ETH_ADDRESS,user1Address,0,feeAmountInPrecision.valueOf());
+      sigUser2 = Helper.getLimitOrderSignature(user2Account,nonce,kncToken.address,
+        limitOrderWei.valueOf(),ETH_ADDRESS,user2Address,0,feeAmountInPrecision.valueOf());
+
+      //wrong msgHash
+      isValid = await limitOrder.verifySignature.call(sigUser2.msgHash,sigUser1.v,sigUser1.r,sigUser1.s,user1Address);
+      assert.isFalse(isValid,"invalid signature was valid");
+
+      //wrong v
+      isValid = await limitOrder.verifySignature.call(sigUser1.msgHash,'0x1d',sigUser1.r,sigUser1.s,user1Address);
+      assert.isFalse(isValid,"invalid signature was valid");
+
+      //wrong r
+      isValid = await limitOrder.verifySignature.call(sigUser1.msgHash,sigUser1.v,sigUser2.r,sigUser1.s,user1Address);
+      assert.isFalse(isValid,"invalid signature was valid");
+
+      //wrong s
+      isValid = await limitOrder.verifySignature.call(sigUser1.msgHash,sigUser1.v,sigUser1.r,sigUser2.s,user1Address);
+      assert.isFalse(isValid,"invalid signature was valid");
+
+      //wrong user
+      isValid = await limitOrder.verifySignature.call(sigUser1.msgHash,sigUser1.v,sigUser1.r,sigUser2.s,user2Address);
+      assert.isFalse(isValid,"invalid signature was valid");
+    });
 
   it("should return true for valid nonce", async function () {
     expectedNonce = Helper.getNonce(limitOrder.address);
@@ -406,5 +458,76 @@ contract('KyberSwapLimitOrder', function(accounts) {
     } catch(e) {
       assert(Helper.isRevertErrorMessage(e),"expected throw but got: " + e);
     }
+  });
+
+  it("should update nonce upon successful execution of a limit order", async function () {
+    expectedNonce = Helper.getNonce(limitOrder.address);
+    expectedNonce = expectedNonce.toLowerCase()
+    sig = Helper.getLimitOrderSignature(user1Account,expectedNonce,kncToken.address,
+      limitOrderWei.toFixed(),ETH_ADDRESS,user1Address,0,feeAmountInPrecision.toFixed());
+
+    await limitOrder.executeLimitOrder(
+      user1Address,expectedNonce,kncToken.address,limitOrderWei.toFixed(),
+      ETH_ADDRESS,user1Address,0,feeAmountInPrecision.toFixed(),
+      sig.v,sig.r,sig.s,
+      {from: operator}
+    );
+
+    actualNonce = await limitOrder.nonces.call(user1Address,concatenatedAddresses.toFixed());
+    actualNonce = actualNonce.toString(16)
+    //handle edge case where concatenatedAddresses' first char is zero
+    if(actualNonce.length == 63) actualNonce = '0' + actualNonce;
+    actualNonce = '0x' + actualNonce;
+
+    assert.equal(expectedNonce,actualNonce,"actual nonce does not match expected nonce in contract");
+  });
+
+  it("should revert if same limit order is sent after successful execution", async function () {
+    //Successful limit order
+    nonce = Helper.getNonce(limitOrder.address);
+    sig = Helper.getLimitOrderSignature(user1Account,nonce,kncToken.address,
+      limitOrderWei.toFixed(),ETH_ADDRESS,user1Address,0,feeAmountInPrecision.toFixed());
+
+    await limitOrder.executeLimitOrder(
+      user1Address,nonce,kncToken.address,limitOrderWei.toFixed(),
+      ETH_ADDRESS,user1Address,0,feeAmountInPrecision.toFixed(),
+      sig.v,sig.r,sig.s,
+      {from: operator}
+    );
+
+    try {
+      //should fail because it's the same limit order
+      let result = await limitOrder.executeLimitOrder(
+        user1Address,nonce,kncToken.address,limitOrderWei.toFixed(),
+        ETH_ADDRESS,user1Address,0,feeAmountInPrecision.toFixed(),
+        sig.v,sig.r,sig.s,
+        {from: admin}
+      );
+      assert(false,"throw was expected in line above.");
+    } catch(e) {
+      assert(Helper.isRevertErrorMessage(e),"expected throw but got: " + e);
+    }
+  });
+
+  it("should revert order when user gives 0 allowance to limit order contract", async function () {
+      try {
+        //user1 gives zero allowance to limit order contract
+        data = kncTokenWeb3.approve.getData(limitOrder.address,0);
+        await Helper.sendTx(user1Account,kncToken.address,data);
+
+        nonce = Helper.getNonce(limitOrder.address);
+        sig = Helper.getLimitOrderSignature(user1Account,nonce,kncToken.address,
+          limitOrderWei.toFixed(),ETH_ADDRESS,user1Address,0,feeAmountInPrecision.toFixed());
+
+        await limitOrder.executeLimitOrder(
+          user1Address,nonce,kncToken.address,limitOrderWei.toFixed(),
+          ETH_ADDRESS,user1Address,0,feeAmountInPrecision.toFixed(),
+          sig.v,sig.r,sig.s,
+          {from: operator}
+        );
+        assert(false,"throw was expected in line above.");
+      } catch(e) {
+        assert(Helper.isRevertErrorMessage(e),"expected throw but got: " + e);
+      }
   });
 });

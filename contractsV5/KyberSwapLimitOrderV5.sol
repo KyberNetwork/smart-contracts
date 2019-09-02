@@ -144,15 +144,9 @@ contract KyberSwapLimitOrderV5 is WithdrawableV5 {
         //Eg. website that tries to trick users to sign an Ethereum message
         //https://ethereum.stackexchange.com/questions/15364/ecrecover-from-geth-and-web3-eth-sign
 
-        //bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-        //bytes32 prefixedHash = keccak256(abi.encodePacked(prefix, hash));
-        v;
-        r;
-        s;
-        hash;
-        user;
-        return true;
-        //return ecrecover(prefixedHash, v, r, s) == user;
+        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+        bytes32 prefixedHash = keccak256(abi.encodePacked(prefix, hash));
+        return ecrecover(prefixedHash, v, r, s) == user;
     }
 
     //used SafeMath lib
