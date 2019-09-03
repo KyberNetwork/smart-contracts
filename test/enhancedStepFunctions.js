@@ -170,10 +170,10 @@ contract('EnhancedStepFunctions', function(accounts) {
     });
 
     it("should set step functions imbalance.", async function () {
-        imbalanceBuyStepX = [180, 330, 900, 1500];
-        imbalanceBuyStepY = [35, 150, 310, 1100, 1500];
-        imbalanceSellStepX = [1500, 3000, 7000, 30000];
-        imbalanceSellStepY = [45, 190, 360, 1800, 2000];
+        imbalanceBuyStepX = [-100, 180, 330, 900, 1500];
+        imbalanceBuyStepY = [-10, 35, 150, 310, 1100, 1500];
+        imbalanceSellStepX = [-200, 1500, 3000, 7000, 30000];
+        imbalanceSellStepY = [-20, 45, 190, 360, 1800, 2000];
         
         for (let i = 0; i < numTokens; ++i) {
             await convRatesInst.setImbalanceStepFunction(tokens[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
@@ -782,17 +782,18 @@ contract('EnhancedStepFunctions', function(accounts) {
         let bigNum = new BigNumber(2).pow(254);
         let newAddImbalAmount = (new BigNumber(2).pow(10)).sub(expectedImbalance);
         try {
+            // set big resolution so it will overflow and return default max value
             await convRatesInst.recordImbalance(tokens[tokenInd], newAddImbalAmount, currentBlock, currentBlock, {from: reserveAddress});
+            let maxValue = new BigNumber(2).pow(64);
+            await convRatesInst.setTokenControlInfo(tokens[tokenInd], bigNum.valueOf(), maxPerBlockImbalance, maxTotalImbalance);
+            newImbalance = await convRatesInst.getImbalancePerToken(tokens[tokenInd], currentBlock, currentBlock);
+            assert.equal(maxValue.valueOf(), newImbalance[1].valueOf(), "block imbalance does not match");
+            assert.equal(maxValue.valueOf(), newImbalance[0].valueOf(), "total imbalance does not match");
+
             expectedBlockImbalance = expectedBlockImbalance.add(newAddImbalAmount);
             expectedBlockImbalance = expectedBlockImbalance.div(minimalRecordResolution);
             expectedImbalance = expectedImbalance.add(newAddImbalAmount);
             expectedImbalance = expectedImbalance.div(minimalRecordResolution);
-
-            // set big resolution so it will overflow
-            await convRatesInst.setTokenControlInfo(tokens[tokenInd], bigNum.valueOf(), maxPerBlockImbalance, maxTotalImbalance);
-            newImbalance = await convRatesInst.getImbalancePerToken(tokens[tokenInd], currentBlock, currentBlock);
-            assert.equal(expectedBlockImbalance.valueOf(), newImbalance[1].valueOf(), "block imbalance does not match");
-            assert.equal(expectedImbalance.valueOf(), newImbalance[0].valueOf(), "total imbalance does not match");
 
             // set smaller resolution so it won't overflow
             let newResolution = 10;

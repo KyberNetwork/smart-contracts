@@ -19,13 +19,6 @@ contract MockEnhancedStepFunctions is EnhancedStepFunctions {
         updateRateBlock = getLast4Bytes(compactData);
     }
 
-    function mockGetRateByteFromCompact(ERC20 token, bool isBuy) public view returns (int rateCompact) {
-        bytes32 compactData = tokenRatesCompactData[tokenData[token].compactDataArrayIndex];
-        int8 rateUpdate = getRateByteFromCompactData(compactData, token, isBuy);
-        rateCompact = int(rateUpdate);
-        return rateCompact;
-    }
-
     function mockExecuteStepFunction(ERC20 token, int from, int to) public view returns (int) {
         return executeStepFunction(tokenData[token].buyRateImbalanceStepFunction, from, to);
     }

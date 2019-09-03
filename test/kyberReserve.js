@@ -161,11 +161,11 @@ contract('KyberReserve', function(accounts) {
         await convRatesInst2.setBaseRate(tokenAdd, baseBuyRate, baseSellRate, buys, sells, currentBlock, indices, {from: operator});
 
         //set compact data
-        compactBuyArr = [0, 12, -5, 0, 0, 06, 07, 08, 09, 10, 11, 12, 13, 14];
+        compactBuyArr = [0, 0, 0, 0, 0, 06, 07, 08, 09, 1, 0, 11, 12, 13, 14];
         let compactBuyHex = Helper.bytesToHex(compactBuyArr);
         buys.push(compactBuyHex);
 
-        compactSellArr = [0, -50, 95, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34];
+        compactSellArr = [0, 0, 0, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34];
         let compactSellHex = Helper.bytesToHex(compactSellArr);
         sells.push(compactSellHex);
 
@@ -244,8 +244,10 @@ contract('KyberReserve', function(accounts) {
         //verify base rate
         let buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
         let expectedRate = (new BigNumber(baseBuyRate[tokenInd]));
-        let destQty = (new BigNumber(amountWei).mul(baseBuyRate[tokenInd])).div(precisionUnits);
+        let destQty = (new BigNumber(amountWei).mul(baseBuyRate[tokenInd])).div(precisionUnits).floor();
         let extraBps = getExtraBpsForBuyQuantity(destQty);
+        expectedRate = addBps(expectedRate, extraBps);
+        extraBps = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[tokenInd].add(destQty));
         expectedRate = addBps(expectedRate, extraBps);
 
         //check correct rate calculated
@@ -265,13 +267,14 @@ contract('KyberReserve', function(accounts) {
 
         //check token balance on user1
         let tokenTweiBalance = await token.balanceOf(user1);
-        let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits);
+        let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits).floor();
         assert.equal(tokenTweiBalance.valueOf(), expectedTweiAmount.valueOf(), "bad token balance");
 
         //check lower token balance on reserve
         //below is true since all tokens and ether have same decimals (18)
-        reserveTokenBalance[tokenInd] -= expectedTweiAmount;
-        reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(expectedTweiAmount); //imbalance represents how many missing tokens
+        reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].sub(expectedTweiAmount);
+        let recordImbal = expectedTweiAmount.div(minimalRecordResolution).floor().mul(minimalRecordResolution);
+        reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(recordImbal); //imbalance represents how many missing tokens
         let reportedBalance = await token.balanceOf(reserveInst.address);
         assert.equal(reportedBalance.valueOf(), reserveTokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
     });
@@ -283,7 +286,7 @@ contract('KyberReserve', function(accounts) {
         let totalWei = 0;
         let totalExpectedTwei = 0;
 
-        for (let i = 0; i > 19; i++) {
+        for (let i = 0; i < 19; i++) {
             amountWei = (7 * i) + 11 * 1;
             let buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
 
@@ -291,11 +294,11 @@ contract('KyberReserve', function(accounts) {
             let expectedRate = (new BigNumber(baseBuyRate[tokenInd]));
             //first calculate number of destination tokens according to basic rate
 //            console.log("expected1" + expectedRate)
-            let destQty = (new BigNumber(amountWei).mul(expectedRate)).div(precisionUnits);
+            let destQty = (new BigNumber(amountWei).mul(expectedRate)).div(precisionUnits).floor();
             let extraBps = getExtraBpsForBuyQuantity(destQty);
             expectedRate = addBps(expectedRate, extraBps);
 //            console.log("expected2" + expectedRate)
-            extraBps = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[tokenInd].valueOf());
+            extraBps = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[tokenInd].add(destQty));
             expectedRate = addBps(expectedRate, extraBps);
 //console.log("expected3" + expectedRate)
 
@@ -304,12 +307,17 @@ contract('KyberReserve', function(accounts) {
 //            console.log("expected from function" + expected);
             assert.equal(buyRate.valueOf(), expectedRate.valueOf(), "unexpected rate. loop: " + i);
 
-            let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits);
+            let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits).floor();
             totalExpectedTwei += (1 * expectedTweiAmount);
-            reserveTokenBalance[tokenInd].sub(expectedTweiAmount);
+            reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].sub(expectedTweiAmount);
 
+            let reportedBalance = await token.balanceOf(reserveInst.address);
             await reserveInst.trade(ethAddress, amountWei, tokenAdd[tokenInd], user1, buyRate, true, {from : network, value:amountWei});
+            let recordImbal = expectedTweiAmount.div(minimalRecordResolution).floor().mul(minimalRecordResolution);
+            reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(recordImbal); //imbalance represents how many missing tokens
             totalWei += (1 * amountWei);
+            reportedBalance = await token.balanceOf(reserveInst.address);
+            assert.equal(reportedBalance.valueOf(), reserveTokenBalance[tokenInd].valueOf(), "bad token balance on reserve. loop: " + i);
         };
 
         //check higher ether balance on reserve
@@ -345,27 +353,29 @@ contract('KyberReserve', function(accounts) {
         // set wallet address
         await reserveInst.setTokenWallet(token.address,walletForToken);
 
-        for (let i = 0; i > 19; i++) {
+        for (let i = 0; i < 19; i++) {
             amountWei = (7 * i) + 1;
             let buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
 
             //verify price/rate against set price
             let expectedRate = (new BigNumber(baseBuyRate[tokenInd]));
             //first calculate number of destination tokens according to basic rate
-            let destQty = (new BigNumber(amountWei).mul(baseBuyRate[tokenInd])).div(precisionUnits);
+            let destQty = (new BigNumber(amountWei).mul(baseBuyRate[tokenInd])).div(precisionUnits).floor();
             let extraBps = getExtraBpsForBuyQuantity(destQty);
             expectedRate = addBps(expectedRate, extraBps);
-            extraBps = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[token]);
+            extraBps = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[tokenInd].add(destQty));
             expectedRate = addBps(expectedRate, extraBps);
 
-            assert.equal(buyRate.valueOf(), expectedRate.valueOf(0), "unexpected rate.");
+            assert.equal(buyRate.valueOf(), expectedRate.valueOf(), "unexpected rate.");
 
-            let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits);
+            let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits).floor();
             totalExpectedTwei += (1 * expectedTweiAmount);
-            reserveTokenBalance[tokenInd].sub(expectedTweiAmount);
+            reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].sub(expectedTweiAmount);
 
             await reserveInst.trade(ethAddress, amountWei, tokenAdd[tokenInd], user1, buyRate, true, {from : network, value:amountWei});
             totalWei += (1 * amountWei);
+            let recordImbal = expectedTweiAmount.div(minimalRecordResolution).floor().mul(minimalRecordResolution);
+            reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(recordImbal)
         };
 
         //check higher ether balance on reserve
@@ -428,8 +438,9 @@ contract('KyberReserve', function(accounts) {
 
         //check token balance on reserve was updated (higher)
         //below is true since all tokens and ether have same decimals (18)
-        reserveTokenBalance[tokenInd] += (amountTwei * 1);
-        reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].sub(amountTwei); //imbalance represents how many missing tokens
+        reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].add(amountTwei);
+        let recordImbal = new BigNumber(divSolidity(-1 * amountTwei, minimalRecordResolution)).mul(minimalRecordResolution);
+        reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(recordImbal); //imbalance represents how many missing tokens
         let reportedBalance = await token.balanceOf(reserveInst.address);
         assert.equal(reportedBalance.valueOf(), reserveTokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
     });
@@ -471,7 +482,7 @@ contract('KyberReserve', function(accounts) {
 
         //check token balance on reserve was updated (higher)
         //below is true since all tokens and ether have same decimals (18)
-        reserveTokenBalance[tokenInd] += (amountTwei * 1);
+        reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].add(amountTwei);
         reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].sub(amountTwei); //imbalance represents how many missing tokens
         let reportedBalance = await token.balanceOf(reserveInst.address);
         assert.equal(reportedBalance.valueOf(), reserveTokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
@@ -527,7 +538,7 @@ contract('KyberReserve', function(accounts) {
 
             //check token balance on reserve was updated (higher)
             //below is true since all tokens and ether have same decimals (18)
-            reserveTokenBalance[tokenInd] += (amountTwei * 1);
+            reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].add(amountTwei);
             reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].sub(amountTwei); //imbalance represents how many missing tokens
             let reportedBalance = await token.balanceOf(reserveInst.address);
             assert.equal(reportedBalance.valueOf(), reserveTokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
@@ -1035,12 +1046,12 @@ contract('KyberReserve', function(accounts) {
 
         //check token balance on user3
         let tokenTweiBalance = await token.balanceOf(user3);
-        let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits);
+        let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits).floor();
         assert.equal(tokenTweiBalance.valueOf(), expectedTweiAmount.valueOf(), "bad token balance");
 
         //check lower token balance on reserve
         //below is true since all tokens and ether have same decimals (18)
-        reserveTokenBalance2[tokenInd] -= expectedTweiAmount;
+        reserveTokenBalance2[tokenInd] = reserveTokenBalance2[tokenInd].sub(expectedTweiAmount);
         reserveTokenImbalance2[tokenInd] = reserveTokenImbalance2[tokenInd].add(expectedTweiAmount); //imbalance represents how many missing tokens
         let reportedBalance = await token.balanceOf(reserveInst2.address);
         assert.equal(reportedBalance.valueOf(), reserveTokenBalance2[tokenInd].valueOf(), "bad token balance on reserve");
@@ -1053,29 +1064,32 @@ contract('KyberReserve', function(accounts) {
         let totalWei = 0;
         let totalExpectedTwei = 0;
 
-        for (let i = 0; i > 19; i++) {
+        for (let i = 0; i < 19; i++) {
             amountWei = (7 * i) + 11 * 1;
+            currentBlock = await Helper.getCurrentBlock();
             let buyRate = await reserveInst2.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
 
             //verify price/rate against set price
             let expectedRate = (new BigNumber(baseBuyRate[tokenInd]));
             //first calculate number of destination tokens according to basic rate
-            let destQty = (new BigNumber(amountWei).mul(expectedRate)).div(precisionUnits);
-            let extraBps = getExtraBpsForImbalanceBuyQuantityNew(reserveTokenImbalance2[tokenInd].valueOf(), destQty.valueOf());
+            let destQty = (new BigNumber(amountWei).mul(expectedRate)).div(precisionUnits).floor();
+            let extraBps = getExtraBpsForImbalanceBuyQuantityNew(reserveTokenImbalance2[tokenInd].valueOf(), destQty);
             expectedRate = addBps(expectedRate, extraBps);
 
             assert.equal(buyRate.valueOf(), expectedRate.valueOf(), "unexpected rate. loop: " + i);
 
-            let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits);
+            let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits).floor();
             totalExpectedTwei += (1 * expectedTweiAmount);
-            reserveTokenBalance2[tokenInd].sub(expectedTweiAmount);
+            reserveTokenBalance2[tokenInd] = reserveTokenBalance2[tokenInd].sub(expectedTweiAmount);
+            let recordedImbal = expectedTweiAmount.div(minimalRecordResolution).floor().mul(minimalRecordResolution);
+            reserveTokenImbalance2[tokenInd] = reserveTokenImbalance2[tokenInd].add(recordedImbal);
 
             await reserveInst2.trade(ethAddress, amountWei, tokenAdd[tokenInd], user3, buyRate, true, {from : network, value:amountWei});
             totalWei += (1 * amountWei);
         };
 
         //check higher ether balance on reserve
-        expectedReserveBalanceWei2 = (expectedReserveBalanceWei2 * 1) + totalWei;
+        expectedReserveBalanceWei2 = expectedReserveBalanceWei2 * 1 + totalWei;
         expectedReserveBalanceWei2 -= expectedReserveBalanceWei2 % 1;
         let balance = await Helper.getBalancePromise(reserveInst2.address);
         assert.equal(balance.valueOf(), expectedReserveBalanceWei2, "bad reserve balance");
@@ -1107,22 +1121,25 @@ contract('KyberReserve', function(accounts) {
         // set wallet address
         await reserveInst2.setTokenWallet(token.address,walletForToken);
 
-        for (let i = 0; i > 19; i++) {
-            amountWei = (7 * i) + 1;
-            let buyRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
+        for (let i = 0; i < 19; i++) {
+            amountWei = 12 * i + 2;
+            currentBlock = await Helper.getCurrentBlock();
+            let buyRate = await reserveInst2.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
 
             //verify price/rate against set price
             let expectedRate = (new BigNumber(baseBuyRate[tokenInd]));
             //first calculate number of destination tokens according to basic rate
-            let destQty = (new BigNumber(amountWei).mul(baseBuyRate[tokenInd])).div(precisionUnits);
-            let extraBps = getExtraBpsForImbalanceBuyQuantityNew(reserveTokenImbalance2[token], destQty.valueOf());
+            let destQty = (new BigNumber(amountWei).mul(expectedRate)).div(precisionUnits).floor();
+            let extraBps = getExtraBpsForImbalanceBuyQuantityNew(reserveTokenImbalance2[tokenInd].valueOf(), destQty);
             expectedRate = addBps(expectedRate, extraBps);
 
-            assert.equal(buyRate.valueOf(), expectedRate.valueOf(0), "unexpected rate.");
+            assert.equal(buyRate.valueOf(), expectedRate.valueOf(), "unexpected rate. loop: " + i);
 
-            let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits);
+            let expectedTweiAmount = expectedRate.mul(amountWei).div(precisionUnits).floor();
             totalExpectedTwei += (1 * expectedTweiAmount);
-            reserveTokenBalance2[tokenInd].sub(expectedTweiAmount);
+            reserveTokenBalance2[tokenInd] = reserveTokenBalance2[tokenInd].sub(expectedTweiAmount);
+            let recordedImbal = expectedTweiAmount.div(minimalRecordResolution).floor().mul(minimalRecordResolution);
+            reserveTokenImbalance2[tokenInd] = reserveTokenImbalance2[tokenInd].add(recordedImbal);
 
             await reserveInst2.trade(ethAddress, amountWei, tokenAdd[tokenInd], user3, buyRate, true, {from : network, value:amountWei});
             totalWei += (1 * amountWei);
@@ -1148,19 +1165,21 @@ contract('KyberReserve', function(accounts) {
         let token = tokens[tokenInd]; //choose some token
         let amountTwei;
 
-        for (let i = 0; i > 19; i++) {
-            amountTwei = 50 + 30 * i;
+        for (let i = 0; i < 19; i++) {
+            amountTwei = 50 + 32 * i;
 
-            await token.transfer(network, amountWei);
+            await token.transfer(network, amountTwei);
 
+            currentBlock = await Helper.getCurrentBlock();
             //verify sell rate
             let sellRate = await reserveInst2.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock);
 
             let expectedRate = (new BigNumber(baseSellRate[tokenInd]));
-            expectedRate.floor();
+            let extraBps = getExtraBpsForImbalanceSellQuantityNew(reserveTokenImbalance2[tokenInd].valueOf(), amountTwei);
+            expectedRate = addBps(expectedRate, extraBps);
 
             //check correct rate calculated
-            assert.equal(sellRate.valueOf(), expectedRate.valueOf(), "unexpected rate.");
+            assert.equal(sellRate.valueOf(), expectedRate.valueOf(), "unexpected rate. loop: " + i);
 
             //pre trade step, approve allowance from user to network.
             await token.approve(reserveInst2.address, amountTwei, {from: network});
@@ -1170,7 +1189,8 @@ contract('KyberReserve', function(accounts) {
 
             //check lower ether balance on reserve
             let amountWei = (new BigNumber(amountTwei).mul(expectedRate)).div(precisionUnits).floor();
-            expectedReserveBalanceWei2 = (new BigNumber(expectedReserveBalanceWei2)).sub(amountWei).floor();
+            expectedReserveBalanceWei2 = expectedReserveBalanceWei2 * 1 - amountWei * 1;
+            expectedReserveBalanceWei2 -= expectedReserveBalanceWei2 % 1;
             let balance = await Helper.getBalancePromise(reserveInst2.address);
             assert.equal(balance.valueOf(), expectedReserveBalanceWei2.valueOf(), "bad reserve balance wei");
 
@@ -1184,8 +1204,9 @@ contract('KyberReserve', function(accounts) {
 
             //check token balance on reserve was updated (higher)
             //below is true since all tokens and ether have same decimals (18)
-            reserveTokenBalance2[tokenInd] += (amountTwei * 1);
-            reserveTokenImbalance2[tokenInd] = reserveTokenImbalance2[tokenInd].sub(amountTwei); //imbalance represents how many missing tokens
+            reserveTokenBalance2[tokenInd] = reserveTokenBalance2[tokenInd].add(amountTwei);
+            let recordImbal = (new BigNumber(divSolidity(-1 * amountTwei, minimalRecordResolution))).mul(minimalRecordResolution);
+            reserveTokenImbalance2[tokenInd] = reserveTokenImbalance2[tokenInd].add(recordImbal); //imbalance represents how many missing tokens
             let reportedBalance = await token.balanceOf(reserveInst2.address);
             assert.equal(reportedBalance.valueOf(), reserveTokenBalance2[tokenInd].valueOf(), "bad token balance on reserve");
         };
@@ -1229,11 +1250,11 @@ function getExtraBpsForImbalanceSellQuantity(qty) {
 };
 
 function getExtraBpsForImbalanceBuyQuantityNew(imbalance, qty) {
-    return getExtraBpsForQuantity(imbalance, imbalance+qty, imbalanceBuyStepX, imbalanceBuyStepYNew);
+    return getExtraBpsForQuantity(imbalance, imbalance * 1 + qty * 1, imbalanceBuyStepX, imbalanceBuyStepYNew);
 };
 
 function getExtraBpsForImbalanceSellQuantityNew(imbalance, qty) {
-    return getExtraBpsForQuantity(imbalance-qty, imbalance, imbalanceSellStepX, imbalanceSellStepYNew);
+    return getExtraBpsForQuantity(imbalance * 1 - qty * 1, imbalance, imbalanceSellStepX, imbalanceSellStepYNew);
 };
 
 function getExtraBpsForQuantity(from, to, stepX, stepY) {
@@ -1262,7 +1283,7 @@ function getExtraBpsForQuantity(from, to, stepX, stepY) {
 }
 
 function addBps (price, bps) {
-    return (price.mul(10000 + bps).div(10000));
+    return (price.mul(10000 + bps).div(10000)).floor();
 };
 
 function compareRates (receivedRate, expectedRate) {

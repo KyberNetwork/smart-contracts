@@ -14,6 +14,7 @@ import "./ConversionRates.sol";
 contract EnhancedStepFunctions is ConversionRates {
 
     uint constant internal MAX_STEPS_IN_FUNCTION = 16;
+    int constant internal MAX_IMBALANCE = 2 ** 64;
     uint constant internal POW_2_128 = 2 ** 128;
 
     function EnhancedStepFunctions(address _admin) public ConversionRates(_admin)
@@ -171,11 +172,10 @@ contract EnhancedStepFunctions is ConversionRates {
     }
 
     // Override function getImbalance to fix #240
-    function getImbalancePerToken(ERC20 token, uint rateUpdateBlock, uint currentBlock)
-        public view
+    function getImbalance(ERC20 token, uint rateUpdateBlock, uint currentBlock)
+        internal view
         returns(int totalImbalance, int currentBlockImbalance)
     {
-
         int resolution = int(tokenControlInfo[token].minimalRecordResolution);
 
         (totalImbalance, currentBlockImbalance) =
@@ -186,11 +186,22 @@ contract EnhancedStepFunctions is ConversionRates {
 
         if (!checkMultOverflow(totalImbalance, resolution)) {
             totalImbalance *= resolution;
+        } else {
+            totalImbalance = MAX_IMBALANCE;
         }
 
         if (!checkMultOverflow(currentBlockImbalance, resolution)) {
             currentBlockImbalance *= resolution;
+        } else {
+            currentBlockImbalance = MAX_IMBALANCE;
         }
+    }
+
+    function getImbalancePerToken(ERC20 token, uint rateUpdateBlock, uint currentBlock)
+        public view
+        returns(int totalImbalance, int currentBlockImbalance)
+    {
+        return getImbalance(token, rateUpdateBlock, currentBlock);
     }
 
     function executeStepFunction(StepFunction storage f, int from, int to) internal view returns(int) {
