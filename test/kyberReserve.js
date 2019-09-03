@@ -483,7 +483,8 @@ contract('KyberReserve', function(accounts) {
         //check token balance on reserve was updated (higher)
         //below is true since all tokens and ether have same decimals (18)
         reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].add(amountTwei);
-        reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].sub(amountTwei); //imbalance represents how many missing tokens
+        let recordImbal = (new BigNumber(divSolidity(-1 * amountTwei, minimalRecordResolution))).mul(minimalRecordResolution);
+        reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(recordImbal); //imbalance represents how many missing tokens
         let reportedBalance = await token.balanceOf(reserveInst.address);
         assert.equal(reportedBalance.valueOf(), reserveTokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
     });
@@ -539,7 +540,8 @@ contract('KyberReserve', function(accounts) {
             //check token balance on reserve was updated (higher)
             //below is true since all tokens and ether have same decimals (18)
             reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].add(amountTwei);
-            reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].sub(amountTwei); //imbalance represents how many missing tokens
+            let recordImbal = (new BigNumber(divSolidity(-1 * amountTwei, minimalRecordResolution))).mul(minimalRecordResolution);
+            reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(recordImbal); //imbalance represents how many missing tokens
             let reportedBalance = await token.balanceOf(reserveInst.address);
             assert.equal(reportedBalance.valueOf(), reserveTokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
         }
@@ -633,7 +635,8 @@ contract('KyberReserve', function(accounts) {
 
         await reserveInst.trade(tokenAdd[tokenInd], amountHigh, ethAddress, user2, sellRate, true, {from:network});
         reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd]*1 + amountHigh*1;
-        reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].sub(amountHigh);
+        let recordImbal = (new BigNumber(divSolidity(-1 * amountHigh, minimalRecordResolution))).mul(minimalRecordResolution);
+        reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(recordImbal);
     });
 
     it("should test buy trade reverted when not sending correct ether value.", async function () {
