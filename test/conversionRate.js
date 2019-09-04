@@ -392,7 +392,7 @@ contract('ConversionRates', function(accounts) {
         sells.length = 0;
         compactHex = Helper.bytesToHex(compactSellArr1);
         sells.push(compactHex);
-        convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
         lastSetCompactBlock = currentBlock;
 
         // get rate with the updated compact data.
@@ -416,7 +416,7 @@ contract('ConversionRates', function(accounts) {
         compactHex = Helper.bytesToHex(compactBuyArr1);
         buys.length = 0;
         buys.push(compactHex);
-        convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
         lastSetCompactBlock = currentBlock;
 
         // get rate without activating quantity step function (small amount).

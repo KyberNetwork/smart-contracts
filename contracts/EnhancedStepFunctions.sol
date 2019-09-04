@@ -14,7 +14,7 @@ import "./ConversionRates.sol";
 contract EnhancedStepFunctions is ConversionRates {
 
     uint constant internal MAX_STEPS_IN_FUNCTION = 16;
-    int constant internal MAX_IMBALANCE = 2 ** 64;
+    int constant internal MAX_IMBALANCE = 2 ** 254;
     uint constant internal POW_2_128 = 2 ** 128;
 
     function EnhancedStepFunctions(address _admin) public ConversionRates(_admin)

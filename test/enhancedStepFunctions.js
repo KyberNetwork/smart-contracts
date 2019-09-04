@@ -338,7 +338,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         sells.length = 0;
         compactHex = Helper.bytesToHex(compactSellArr1);
         sells.push(compactHex);
-        convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
         lastSetCompactBlock = currentBlock;
 
         // get rate with the updated compact data.
@@ -360,7 +360,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         compactHex = Helper.bytesToHex(compactBuyArr1);
         buys.length = 0;
         buys.push(compactHex);
-        convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
         lastSetCompactBlock = currentBlock;
 
         // get rate without activating quantity step function (small amount).
@@ -394,7 +394,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         sells.length = 0;
         compactHex = Helper.bytesToHex(compactSellArr2);
         sells.push(compactHex);
-        convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
         lastSetCompactBlock = currentBlock;
 
         // get rate without activating quantity step function (small amount).
@@ -779,16 +779,16 @@ contract('EnhancedStepFunctions', function(accounts) {
         assert.equal(expectedBlockImbalance.valueOf(), newImbalance[1].valueOf(), "block imbalance does not match");
 
         // Getting imbalance + block imbal overflow
-        let bigNum = new BigNumber(2).pow(254);
+        let maxValue = (new BigNumber(2)).pow(255).sub(1); // 2^255 - 1
         let newAddImbalAmount = (new BigNumber(2).pow(10)).sub(expectedImbalance);
         try {
             // set big resolution so it will overflow and return default max value
             await convRatesInst.recordImbalance(tokens[tokenInd], newAddImbalAmount, currentBlock, currentBlock, {from: reserveAddress});
-            let maxValue = new BigNumber(2).pow(64);
-            await convRatesInst.setTokenControlInfo(tokens[tokenInd], bigNum.valueOf(), maxPerBlockImbalance, maxTotalImbalance);
+            await convRatesInst.setTokenControlInfo(tokens[tokenInd], maxValue.valueOf(), maxPerBlockImbalance, maxTotalImbalance);
             newImbalance = await convRatesInst.getImbalancePerToken(tokens[tokenInd], currentBlock, currentBlock);
-            assert.equal(maxValue.valueOf(), newImbalance[1].valueOf(), "block imbalance does not match");
-            assert.equal(maxValue.valueOf(), newImbalance[0].valueOf(), "total imbalance does not match");
+            let imbalanceMax = await convRatesInst.mockGetImbalanceMax();
+            assert.equal(imbalanceMax.valueOf(), newImbalance[1].valueOf(), "block imbalance does not match");
+            assert.equal(imbalanceMax.valueOf(), newImbalance[0].valueOf(), "total imbalance does not match");
 
             expectedBlockImbalance = expectedBlockImbalance.add(newAddImbalAmount);
             expectedBlockImbalance = expectedBlockImbalance.div(minimalRecordResolution);
@@ -807,9 +807,9 @@ contract('EnhancedStepFunctions', function(accounts) {
             // fallback to default config
             await convRatesInst.setTokenControlInfo(tokens[tokenInd], minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
         } catch (e) {
-            console.log("Unexpected throw with error: " + e);
             // fallback to default config
             await convRatesInst.setTokenControlInfo(tokens[tokenInd], minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
+            assert(false, "Unexpected throw with error: " + e);
         }
     });
 

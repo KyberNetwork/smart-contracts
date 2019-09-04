@@ -23,6 +23,10 @@ contract MockEnhancedStepFunctions is EnhancedStepFunctions {
         return executeStepFunction(tokenData[token].buyRateImbalanceStepFunction, from, to);
     }
 
+    function mockGetImbalanceMax() public pure returns (int) {
+        return MAX_IMBALANCE;
+    }
+
     function mockEncodeStepData(int120 x, int120 y) public pure returns (int) {
         return encodeStepFunctionData(x, y);
     }
