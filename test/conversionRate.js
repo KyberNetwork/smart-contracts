@@ -224,7 +224,7 @@ contract('ConversionRates', function(accounts) {
         imbalanceBuyStepY = [35, 150, 310, 1100];
         imbalanceSellStepX = [1500, 3000, 7000, 30000];
         imbalanceSellStepY = [45, 190, 360, 1800];
-        
+
         for (let i = 0; i < numTokens; ++i) {
             await convRatesInst.setQtyStepFunction(tokens[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             await convRatesInst.setImbalanceStepFunction(tokens[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
@@ -451,7 +451,7 @@ contract('ConversionRates', function(accounts) {
         sells.length = 0;
         compactHex = Helper.bytesToHex(compactSellArr2);
         sells.push(compactHex);
-        convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
         lastSetCompactBlock = currentBlock;
 
         // get rate without activating quantity step function (small amount).
