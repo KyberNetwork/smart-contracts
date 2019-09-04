@@ -170,6 +170,22 @@ contract('EnhancedStepFunctions', function(accounts) {
         assert.equal(blockNum.valueOf(), currentBlock.valueOf(), "bad block number returned");
     });
 
+    it("should revert when setting qty step functions.", async function () {
+        let qtyBuyStepX = [0, 180, 330, 900, 1500];
+        let qtyBuyStepY = [-10, 35, 150, 310, 1100, 1500];
+        let qtySellStepX = [0, 1500, 3000, 7000, 30000];
+        let qtySellStepY = [-20, 45, 190, 360, 1800, 2000];
+        
+        for (let i = 0; i < numTokens; ++i) {
+            try {
+                await convRatesInst.setQtyStepFunction(tokens[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        }
+    });
+
     it("should set step functions imbalance.", async function () {
         imbalanceBuyStepX = [-100, 180, 330, 900, 1500];
         imbalanceBuyStepY = [-10, 35, 150, 310, 1100, 1500];

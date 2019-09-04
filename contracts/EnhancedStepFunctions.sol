@@ -20,6 +20,20 @@ contract EnhancedStepFunctions is ConversionRates {
     function EnhancedStepFunctions(address _admin) public ConversionRates(_admin)
         { } // solhint-disable-line no-empty-blocks
 
+    // Blocking set qty step func as we won't use
+    function setQtyStepFunction(
+        ERC20 token,
+        int[] xBuy,
+        int[] yBuy,
+        int[] xSell,
+        int[] ySell
+    )
+        public
+        onlyOperator
+    {
+        revert();
+    }
+
     function setImbalanceStepFunction(
         ERC20 token,
         int128[] xBuy,
