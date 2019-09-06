@@ -95,7 +95,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
         require(kyberEthKncRate <= MAX_RATE && kyberKncEthRate <= MAX_RATE);
 
         //check for arbitrage
-        require(kyberEthKncRate * kyberKncEthRate < PRECISION ** 2);
+        require(kyberEthKncRate * kyberKncEthRate <= PRECISION ** 2);
         //check "reasonable" spread == diff not too big. rate wasn't tampered.
         require(kyberEthKncRate * kyberKncEthRate > PRECISION ** 2 / 2);
 
