@@ -22,11 +22,11 @@ contract EnhancedStepFunctions is ConversionRates {
 
     // Blocking set qty step func as we won't use
     function setQtyStepFunction(
-        ERC20 token,
-        int[] xBuy,
-        int[] yBuy,
-        int[] xSell,
-        int[] ySell
+        ERC20,
+        int[],
+        int[],
+        int[],
+        int[]
     )
         public
         onlyOperator
@@ -50,11 +50,18 @@ contract EnhancedStepFunctions is ConversionRates {
         require(ySell.length <= MAX_STEPS_IN_FUNCTION);
         require(tokenData[token].listed);
 
+        uint i;
+
         if (xBuy.length > 1) {
             // verify qty are increasing
-            for(uint i = 0; i < xBuy.length - 1; i++) {
+            for(i = 0; i < xBuy.length - 1; i++) {
                 require(xBuy[i] < xBuy[i + 1]);
             }
+        }
+
+        // verify yBuy
+        for(i = 0; i < yBuy.length; i++) {
+            require(yBuy[i] >= MIN_BPS_ADJUSTMENT);
         }
 
         if (xSell.length > 1) {
@@ -62,6 +69,11 @@ contract EnhancedStepFunctions is ConversionRates {
             for(i = 0; i < xSell.length - 1; i++) {
                 require(xSell[i] < xSell[i + 1]);
             }
+        }
+
+        // verify ySell
+        for(i = 0; i < ySell.length; i++) {
+            require(ySell[i] >= MIN_BPS_ADJUSTMENT);
         }
 
         int[] memory buyArray = new int[](yBuy.length);
@@ -211,11 +223,14 @@ contract EnhancedStepFunctions is ConversionRates {
         }
     }
 
-    function getImbalancePerToken(ERC20 token, uint rateUpdateBlock, uint currentBlock)
+    function getImbalancePerToken(ERC20 token, uint whichBlock)
         public view
         returns(int totalImbalance, int currentBlockImbalance)
     {
-        return getImbalance(token, rateUpdateBlock, currentBlock);
+        uint rateUpdateBlock = getRateUpdateBlock(token);
+        // if whichBlock = 0, use latest block, otherwise use whichBlock
+        uint usedBlock = whichBlock == 0 ? block.number : whichBlock;
+        return getImbalance(token, rateUpdateBlock, usedBlock);
     }
 
     function executeStepFunction(StepFunction storage f, int from, int to) internal view returns(int) {
@@ -232,6 +247,7 @@ contract EnhancedStepFunctions is ConversionRates {
         for(uint ind = 0; ind < len - 1; ind++) {
             (stepXValue, stepYValue) = decodeStepFunctionData(f.x[ind]);
             if (stepXValue <= fromVal) { continue; }
+            if (stepYValue == MIN_BPS_ADJUSTMENT) { return MIN_BPS_ADJUSTMENT; } // if it falls into step with y <= -10000, rate must be 0
             // from here, from < stepXValue,
             // if from < to <= stepXValue, take [from, to] and return, else take [from, stepXValue]
             if (stepXValue >= to) {
@@ -244,6 +260,7 @@ contract EnhancedStepFunctions is ConversionRates {
         }
 
         (stepXValue, stepYValue) = decodeStepFunctionData(f.x[len - 1]);
+        if (stepYValue == MIN_BPS_ADJUSTMENT) { return MIN_BPS_ADJUSTMENT; }
         change += (to - fromVal) * stepYValue;
 
         return change / (to - from);

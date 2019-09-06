@@ -1270,6 +1270,7 @@ function getExtraBpsForQuantity(from, to, stepX, stepY) {
     let qty = to - from;
     for(let i = 0; i < len; i++) {
         if (stepX[i] <= from) { continue; }
+        if (stepY[i] == -10000) { return -10000; }
         if (stepX[i] >= to) {
             change += (to - from) * stepY[i];
             from = to;
@@ -1280,6 +1281,7 @@ function getExtraBpsForQuantity(from, to, stepX, stepY) {
         }
     }
     if (from < to) {
+        if (stepY[len] == -10000) { return -10000; }
         change += (to - from) * stepY[len];
     }
     return divSolidity(change, qty);
