@@ -1,14 +1,15 @@
-const BN = require('bignumber.js');
-const truffleAssert = require("truffle-assertions");
+const BN = require("bignumber.js");
 const Helper = require("./helper.js");
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-const MockKyberNetwork = artifacts.require('MockKyberNetwork.sol');
-const KyberSwapLimitOrder = artifacts.require('KyberSwapLimitOrderV5.sol');
-const TestToken = artifacts.require('TestTokenV5.sol');
-const SafeERC20Wrapper = artifacts.require('SafeERC20WrapperV5.sol');
+const MockKyberNetwork = artifacts.require("MockKyberNetwork.sol");
+const KyberSwapLimitOrder = artifacts.require("KyberSwapLimitOrderV5.sol");
+const TestToken = artifacts.require("TestTokenV5.sol");
+const ERC20ReturnFalseMock = artifacts.require("ERC20ReturnFalseMock");
+const ERC20NoReturnMock = artifacts.require("ERC20NoReturnMock");
+const SafeERC20Wrapper = artifacts.require("SafeERC20WrapperV5");
 
 /////////////////
 /// Addresses ///
@@ -199,6 +200,26 @@ contract('KyberSwapLimitOrder', function(accounts) {
       assert(Helper.isRevertErrorMessage(e),"expected throw but got: " + e);
     }
   });
+
+  it("should revert listing token that returns false on approve", async function() {
+      wrapperToken = await SafeERC20Wrapper.new((await ERC20ReturnFalseMock.new()).address);
+      try {
+        await limitOrder.listToken(wrapperToken.address, {from: admin});
+        assert(false, "throw was expected in line above.")
+      } catch(e){
+        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+      }
+    });
+
+    it("should list token that returns no boolean values", async function() {
+      wrapperToken = await SafeERC20Wrapper.new((await ERC20NoReturnMock.new()).address);
+      try {
+        await limitOrder.listToken(wrapperToken.address, {from: admin});
+        assert(false, "throw was expected in line above.")
+      } catch(e){
+        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+      }
+    });
 
   it("should not have trades enabled by non-admin", async function() {
     try {

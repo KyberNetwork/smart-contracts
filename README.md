@@ -14,7 +14,7 @@ For more details, please visit our [developer portal](https://developer.kyber.ne
 ## Example of V4 & V5 contracts in test
 1. If contracts have not been compiled, run `bash compilation.sh`. This step can be skipped subsequently.
 2. Run `ganache-cli -e 1000` in another terminal
-3. `npx buidler test --no-compile --config buidlerConfigV4.js ./testV4&5/limitOrder.js`
+3. `npx buidler test --no-compile --config buidlerConfigV4.js ./testV4\&5/limitOrder.js`
 
 ### Explanation
 - Mock Kyber Network contract written and compiled with 0.4.18
