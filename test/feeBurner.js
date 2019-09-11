@@ -713,10 +713,11 @@ contract('FeeBurner', function(accounts) {
 
         let burnerInitialkncRate = await feeBurnerInst.kncPerEthRatePrecision();
 
-        ///set knc rate with less then 3 milion gas - should fail and revert
+        ///set knc rate with less then 2 milion gas - should fail and revert
         try {
-            let rxx = await feeBurnerInst.setKNCRate({gas: 2800000});
-            assert(false, "set KNC rate passed with less than 2.8M gas.")
+            let rxx = await feeBurnerInst.setKNCRate({gas: 2050000});
+            console.log(`gasUsed: ${rxx.receipt.gasUsed}`)
+            assert(false, "set KNC rate passed with less than 1.8M gas.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
@@ -724,7 +725,7 @@ contract('FeeBurner', function(accounts) {
         let burnerkncRateAfterSet = await feeBurnerInst.kncPerEthRatePrecision();
         assert.equal(burnerkncRateAfterSet.valueOf(), burnerInitialkncRate.valueOf());
 
-        await feeBurnerInst.setKNCRate({gas: 3500000});
+        await feeBurnerInst.setKNCRate({gas: 2500000});
         burnerkncRateAfterSet = await feeBurnerInst.kncPerEthRatePrecision();
         assert.equal(ethToKncRatePrecision.valueOf(), burnerkncRateAfterSet.valueOf());
     });
