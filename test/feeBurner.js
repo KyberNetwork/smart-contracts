@@ -695,40 +695,6 @@ contract('FeeBurner', function(accounts) {
         burnerkncRateAfterSet = await feeBurnerInst.kncPerEthRatePrecision();
         assert.equal(ethToKncRatePrecision2.valueOf(), burnerkncRateAfterSet.valueOf());
     });
-
-    it("should verify function 'setKncRate' will fail if last call to findBestRate fails.", async function() {
-        mockKyberNetwork = await NetworkFailingGetRate.new();
-        const tempExpectedRate = await ExpectedRate.new(mockKyberNetwork.address, kncToken.address, admin);
-        await tempExpectedRate.addOperator(operator);
-        await tempExpectedRate.setQuantityFactor(1, {from: operator});
-        await mockKyberNetwork.setExpectedRateContract(tempExpectedRate.address);
-
-        feeBurnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork.address, 550 * 10 ** 18);
-        aRate = 1.2345;
-        const ethToKncRatePrecision = precisionUnits.mul(aRate - 0.001);
-        const kncToEthRatePrecision = precisionUnits.div(aRate);
-
-        await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, ethToKncRatePrecision);
-        await mockKyberNetwork.setPairRate(kncToken.address, ethAddress, kncToEthRatePrecision);
-
-        let burnerInitialkncRate = await feeBurnerInst.kncPerEthRatePrecision();
-
-        ///set knc rate with less then 2 milion gas - should fail and revert
-        try {
-            let rxx = await feeBurnerInst.setKNCRate({gas: 2050000});
-            console.log(`gasUsed: ${rxx.receipt.gasUsed}`)
-            assert(false, "set KNC rate passed with less than 1.8M gas.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        let burnerkncRateAfterSet = await feeBurnerInst.kncPerEthRatePrecision();
-        assert.equal(burnerkncRateAfterSet.valueOf(), burnerInitialkncRate.valueOf());
-
-        await feeBurnerInst.setKNCRate({gas: 2500000});
-        burnerkncRateAfterSet = await feeBurnerInst.kncPerEthRatePrecision();
-        assert.equal(ethToKncRatePrecision.valueOf(), burnerkncRateAfterSet.valueOf());
-    });
 });
 
 function log(str) {

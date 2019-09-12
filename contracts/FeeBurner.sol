@@ -91,10 +91,9 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
         (kyberKncEthRate, ) = kyberNetwork.getExpectedRate(ERC20(knc), ETH_TOKEN_ADDRESS, (10 ** 18));
 
         // if returned rate is 0, can't trust this arb test. assume we have arb
-        require(kyberEthKncRate > 0);
         require(kyberEthKncRate <= MAX_RATE && kyberKncEthRate <= MAX_RATE);
 
-        //check for arbitrage
+        //check for internal arbitrage
         require(kyberEthKncRate * kyberKncEthRate <= PRECISION ** 2);
         //check "reasonable" spread == diff not too big. rate wasn't tampered.
         require(kyberEthKncRate * kyberKncEthRate > PRECISION ** 2 / 2);
