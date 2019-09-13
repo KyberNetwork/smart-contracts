@@ -259,7 +259,7 @@ contract EnhancedStepFunctions is ConversionRates {
             }
         }
 
-        (stepXValue, stepYValue) = decodeStepFunctionData(f.x[len - 1]);
+        (, stepYValue) = decodeStepFunctionData(f.x[len - 1]);
         if (stepYValue == MIN_BPS_ADJUSTMENT) { return MIN_BPS_ADJUSTMENT; }
         change += (to - fromVal) * stepYValue;
 
