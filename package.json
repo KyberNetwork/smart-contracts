@@ -20,7 +20,6 @@
   },
   "homepage": "https://github.com/KyberNetwork/smart-contracts#readme",
   "dependencies": {
-    "@nomiclabs/buidler": "^1.0.0-beta.9",
     "@nomiclabs/buidler-truffle4": "^1.0.0-beta.9",
     "@nomiclabs/buidler-web3-legacy": "^1.0.0-beta.9",
     "bignumber.js": "^5.0.0",
@@ -39,5 +38,8 @@
     "web3": "^0.20.7",
     "web3-utils": "^1.2.1",
     "yargs": "^11.0.0"
+  },
+  "devDependencies": {
+    "@nomiclabs/buidler": "^1.0.0-beta.10"
   }
 }

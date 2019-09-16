@@ -8,7 +8,7 @@ module.exports = {
   },
 
   solc: {
-    version: "0.5.9",
+    version: "0.5.11",
     optimizer: {
       enabled: true,
       runs: 200
@@ -19,7 +19,7 @@ module.exports = {
     sources: "./contractsV5",
     tests: "./testV5"
   },
-  
+
   mocha: {
     enableTimeouts: false
   }
