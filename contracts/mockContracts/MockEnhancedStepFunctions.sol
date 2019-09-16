@@ -27,7 +27,7 @@ contract MockEnhancedStepFunctions is EnhancedStepFunctions {
         return MAX_IMBALANCE;
     }
 
-    function mockEncodeStepData(int120 x, int120 y) public pure returns (int) {
+    function mockEncodeStepData(int128 x, int128 y) public pure returns (int) {
         return encodeStepFunctionData(x, y);
     }
 

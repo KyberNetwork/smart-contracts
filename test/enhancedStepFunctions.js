@@ -293,6 +293,21 @@ contract('EnhancedStepFunctions', function(accounts) {
         decode = await convRatesInst.mockDecodeStepData(val);
         assert.equal(decode[0].valueOf(), x, "decode x wrong value");
         assert.equal(decode[1].valueOf(), y, "decode y wrong value");
+        // checking for overflow
+        x = (new BigNumber(2)).pow(127);
+        try {
+            _ = await convRatesInst.mockEncodeStepData(x.valueOf(), y);
+            assert(false, "Should revert at line above")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+        x = (new BigNumber(2)).pow(127).add(1).mul(-1);
+        try {
+            _ = await convRatesInst.mockEncodeStepData(x.valueOf(), y);
+            assert(false, "Should revert at line above")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
     });
 
     it("check checkMultOverflow", async function () {

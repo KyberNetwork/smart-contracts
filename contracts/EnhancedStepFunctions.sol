@@ -16,6 +16,8 @@ contract EnhancedStepFunctions is ConversionRates {
     uint constant internal MAX_STEPS_IN_FUNCTION = 16;
     int constant internal MAX_IMBALANCE = 2 ** 254;
     uint constant internal POW_2_128 = 2 ** 128;
+    int128 constant internal MAX_STEP_VALUE = 2 ** 127 - 1;
+    int128 constant internal MIN_STEP_VALUE = -1 * 2 ** 127;
 
     function EnhancedStepFunctions(address _admin) public ConversionRates(_admin)
         { } // solhint-disable-line no-empty-blocks
@@ -78,13 +80,13 @@ contract EnhancedStepFunctions is ConversionRates {
 
         int[] memory buyArray = new int[](yBuy.length);
         for(i = 0; i < yBuy.length; i++) {
-            int128 xBuyVal = (i == yBuy.length - 1) ? 0 : xBuy[i];
+            int128 xBuyVal = (i == yBuy.length - 1) ? MAX_STEP_VALUE : xBuy[i];
             buyArray[i] = encodeStepFunctionData(xBuyVal, yBuy[i]);
         }
 
         int[] memory sellArray = new int[](ySell.length);
         for(i = 0; i < ySell.length; i++) {
-            int128 xSellVal = (i == ySell.length - 1) ? 0 : xSell[i];
+            int128 xSellVal = (i == ySell.length - 1) ? MAX_STEP_VALUE : xSell[i];
             sellArray[i] = encodeStepFunctionData(xSellVal, ySell[i]);
         }
 
@@ -244,7 +246,7 @@ contract EnhancedStepFunctions is ConversionRates {
         int stepXValue;
         int stepYValue;
 
-        for(uint ind = 0; ind < len - 1; ind++) {
+        for(uint ind = 0; ind < len; ind++) {
             (stepXValue, stepYValue) = decodeStepFunctionData(f.x[ind]);
             if (stepXValue <= fromVal) { continue; }
             if (stepYValue == MIN_BPS_ADJUSTMENT) { return MIN_BPS_ADJUSTMENT; } // if it falls into step with y <= -10000, rate must be 0
@@ -259,15 +261,13 @@ contract EnhancedStepFunctions is ConversionRates {
             }
         }
 
-        (, stepYValue) = decodeStepFunctionData(f.x[len - 1]);
-        if (stepYValue == MIN_BPS_ADJUSTMENT) { return MIN_BPS_ADJUSTMENT; }
-        change += (to - fromVal) * stepYValue;
-
         return change / (to - from);
     }
 
     // first 128 bits is value for x, next 128 bits is value for y
     function encodeStepFunctionData(int128 x, int128 y) internal pure returns(int data) {
+        require(x <= MAX_STEP_VALUE && x >= MIN_STEP_VALUE);
+        require(y <= MAX_STEP_VALUE && y >= MIN_STEP_VALUE);
         data = int(uint(y) & (POW_2_128 - 1));
         data |= int((uint(x) & (POW_2_128 - 1)) * POW_2_128);
     }
@@ -275,6 +275,8 @@ contract EnhancedStepFunctions is ConversionRates {
     function decodeStepFunctionData(int val) internal pure returns (int x, int y) {
         y = int(int128(uint(val) & (POW_2_128 - 1)));
         x = int(int128((uint(val) / POW_2_128) & (POW_2_128 - 1)));
+        // default to be max value
+        if (x == int(MAX_STEP_VALUE)) { x = 2 ** 255 - 1; }
     }
 
     function checkMultOverflow(int x, int y) internal pure returns(bool) {

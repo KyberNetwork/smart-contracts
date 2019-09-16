@@ -1282,7 +1282,7 @@ contract('KyberNetwork', function(accounts) {
         await listedToken.transferFrom(user1, network.address, amount, {from:networkProxy});
         await network.tradeWithHint(user1, listedToken.address, amount, uniqueToken.address, user2, maxDestAmount,
                 0 ,walletId, 0, {from:networkProxy});
-        uniqueToken.transferFrom(user1, network.address, amount, {from:networkProxy});
+        await uniqueToken.transferFrom(user1, network.address, amount, {from:networkProxy});
         await network.tradeWithHint(user1, uniqueToken.address, amount, listedToken.address, user2, maxDestAmount,
                 0 ,walletId, 0, {from:networkProxy});
 
