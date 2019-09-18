@@ -293,8 +293,29 @@ contract('EnhancedStepFunctions', function(accounts) {
         decode = await convRatesInst.mockDecodeStepData(val);
         assert.equal(decode[0].valueOf(), x, "decode x wrong value");
         assert.equal(decode[1].valueOf(), y, "decode y wrong value");
+    });
+
+    it("should return MAX value for X with special value of step X", async function() {
         // checking for overflow
-        x = (new BigNumber(2)).pow(127);
+        let x = (new BigNumber(2)).pow(127).sub(1);
+        let y = 0;
+        let val = await convRatesInst.mockEncodeStepData(x.valueOf(), y);
+        let decode = await convRatesInst.mockDecodeStepData(val);
+        x = await convRatesInst.mockGetImbalanceMax();
+        assert.equal(decode[0].valueOf(), x.valueOf(), "decode x1 wrong value");
+        assert.equal(decode[1].valueOf(), y, "decode y wrong value");
+
+        x = (new BigNumber(2)).pow(127).sub(2);
+        val = await convRatesInst.mockEncodeStepData(x.valueOf(), y);
+        decode = await convRatesInst.mockDecodeStepData(val);
+        assert.equal(decode[0].valueOf(), x.valueOf(), "decode x2 wrong value");
+    });
+
+
+    it("should revert encode data when x is overflow", async function() {
+        // checking for overflow
+        let x = (new BigNumber(2)).pow(127);
+        let y = 0;
         try {
             _ = await convRatesInst.mockEncodeStepData(x.valueOf(), y);
             assert(false, "Should revert at line above")
@@ -304,6 +325,25 @@ contract('EnhancedStepFunctions', function(accounts) {
         x = (new BigNumber(2)).pow(127).add(1).mul(-1);
         try {
             _ = await convRatesInst.mockEncodeStepData(x.valueOf(), y);
+            assert(false, "Should revert at line above")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should revert encode data when y is overflow", async function() {
+        // checking for overflow
+        let x = 0;
+        let y = (new BigNumber(2)).pow(127);
+        try {
+            _ = await convRatesInst.mockEncodeStepData(x, y.valueOf());
+            assert(false, "Should revert at line above")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+        y = (new BigNumber(2)).pow(127).add(1).mul(-1);
+        try {
+            _ = await convRatesInst.mockEncodeStepData(x, y.valueOf());
             assert(false, "Should revert at line above")
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -848,6 +888,38 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         imbalanceBuyStepY = [-10000, 30, 70, 100, 120, 150];
         imbalanceSellStepY = [8, 30, 70, 100, 120, 150];
+        await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+    });
+
+    it("should verify set step functions for imbalance reverted when step x is max value (2**127-1)", async function () {
+        let index = 1;
+
+        imbalanceBuyStepX = [15, 30, 70, 100, 200];
+        imbalanceBuyStepY = [8, 30, 70, 100, 120, 150];
+        imbalanceSellStepX = [15, 30, 70, 100, 200];
+        imbalanceSellStepY = [8, 30, 70, 100, 120, 150];
+
+        await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+
+        imbalanceBuyStepX = [15, 30, 70, 100, (new BigNumber(2)).pow(127).sub(1).valueOf()];
+        try {
+            await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        imbalanceBuyStepX = [15, 30, 70, 100, 200];
+        imbalanceSellStepX = [15, 30, 70, 100, (new BigNumber(2)).pow(127).sub(1).valueOf()];
+        try {
+            await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        imbalanceSellStepX = [15, 30, 70, 100, (new BigNumber(2)).pow(127).sub(2).valueOf()];
+        imbalanceBuyStepX = [15, 30, 70, 100, (new BigNumber(2)).pow(127).sub(2).valueOf()];
         await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
     });
 

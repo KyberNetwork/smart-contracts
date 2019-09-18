@@ -14,7 +14,7 @@ import "./ConversionRates.sol";
 contract EnhancedStepFunctions is ConversionRates {
 
     uint constant internal MAX_STEPS_IN_FUNCTION = 16;
-    int constant internal MAX_IMBALANCE = 2 ** 254;
+    int constant internal MAX_IMBALANCE = 2 ** 255 - 1;
     uint constant internal POW_2_128 = 2 ** 128;
     int128 constant internal MAX_STEP_VALUE = 2 ** 127 - 1;
     int128 constant internal MIN_STEP_VALUE = -1 * 2 ** 127;
@@ -60,6 +60,8 @@ contract EnhancedStepFunctions is ConversionRates {
                 require(xBuy[i] < xBuy[i + 1]);
             }
         }
+        // only need to check last value as it's sorted array
+        require(xBuy.length == 0 || xBuy[xBuy.length - 1] < MAX_STEP_VALUE);
 
         // verify yBuy
         for(i = 0; i < yBuy.length; i++) {
@@ -72,6 +74,8 @@ contract EnhancedStepFunctions is ConversionRates {
                 require(xSell[i] < xSell[i + 1]);
             }
         }
+        // only need to check last value as it's sorted array
+        require(xSell.length == 0 || xSell[xSell.length - 1] < MAX_STEP_VALUE);
 
         // verify ySell
         for(i = 0; i < ySell.length; i++) {
@@ -276,7 +280,7 @@ contract EnhancedStepFunctions is ConversionRates {
         y = int(int128(uint(val) & (POW_2_128 - 1)));
         x = int(int128((uint(val) / POW_2_128) & (POW_2_128 - 1)));
         // default to be max value
-        if (x == int(MAX_STEP_VALUE)) { x = 2 ** 255 - 1; }
+        if (x == int(MAX_STEP_VALUE)) { x = MAX_IMBALANCE; }
     }
 
     function checkMultOverflow(int x, int y) internal pure returns(bool) {
