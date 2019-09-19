@@ -312,7 +312,7 @@ contract('EnhancedStepFunctions', function(accounts) {
     });
 
 
-    it("should revert encode data when x is overflow", async function() {
+    it("should revert encode data when x overflows", async function() {
         // checking for overflow
         let x = (new BigNumber(2)).pow(127);
         let y = 0;
@@ -331,7 +331,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         }
     });
 
-    it("should revert encode data when y is overflow", async function() {
+    it("should revert encode data when y overflows", async function() {
         // checking for overflow
         let x = 0;
         let y = (new BigNumber(2)).pow(127);
@@ -376,6 +376,17 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         overflow = await convRatesInst.mockCheckMultiOverflow(big, 0);
         assert( !overflow, "big * 0 should not overflow");
+    });
+
+    it("check value of MAX_IMBALANCE is correct", async function () {
+        let value = new BigNumber(2).pow(255).sub(1);
+
+        let isEqual = await convRatesInst.mockCheckValueMaxImbalance(value);
+        assert( isEqual, "value of max imbalance should be correct");
+
+        value = value.sub(1);
+        isEqual = await convRatesInst.mockCheckValueMaxImbalance(value);
+        assert( !isEqual, "value of max imbalance should be correct");
     });
 
     it("should get buy rate with update according to compact data update.", async function () {
@@ -887,6 +898,41 @@ contract('EnhancedStepFunctions', function(accounts) {
         await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
 
         imbalanceBuyStepY = [-10000, 30, 70, 100, 120, 150];
+        imbalanceSellStepY = [8, 30, 70, 100, 120, 150];
+        await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+    });
+
+    it("should verify set step functions for imbalance reverted when step Y greater than max bps adjustment", async function () {
+        let index = 1;
+
+        imbalanceBuyStepX = [15, 30, 70, 100, 200];
+        imbalanceBuyStepY = [8, 30, 70, 100, 120, 10000];
+        imbalanceSellStepX = [15, 30, 70, 100, 200];
+        imbalanceSellStepY = [8, 30, 70, 100, 120, 150];
+
+        await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+
+        imbalanceBuyStepY = [15, 30, 70, 100, 120, 10001];
+        try {
+            await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        imbalanceBuyStepY = [8, 30, 70, 100, 120, 150];
+        imbalanceSellStepY = [0, 30, 70, 100, 120, 10001];
+        try {
+            await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        imbalanceSellStepY = [0, 30, 70, 100, 120, 10000];
+        await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+
+        imbalanceBuyStepY = [0, 30, 70, 100, 120, 10000];
         imbalanceSellStepY = [8, 30, 70, 100, 120, 150];
         await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
     });

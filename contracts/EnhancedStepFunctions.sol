@@ -18,6 +18,7 @@ contract EnhancedStepFunctions is ConversionRates {
     uint constant internal POW_2_128 = 2 ** 128;
     int128 constant internal MAX_STEP_VALUE = 2 ** 127 - 1;
     int128 constant internal MIN_STEP_VALUE = -1 * 2 ** 127;
+    int constant internal MAX_BPS_ADJUSTMENT = 100 * 100;
 
     function EnhancedStepFunctions(address _admin) public ConversionRates(_admin)
         { } // solhint-disable-line no-empty-blocks
@@ -66,6 +67,7 @@ contract EnhancedStepFunctions is ConversionRates {
         // verify yBuy
         for(i = 0; i < yBuy.length; i++) {
             require(yBuy[i] >= MIN_BPS_ADJUSTMENT);
+            require(yBuy[i] <= MAX_BPS_ADJUSTMENT);
         }
 
         if (xSell.length > 1) {
@@ -80,6 +82,7 @@ contract EnhancedStepFunctions is ConversionRates {
         // verify ySell
         for(i = 0; i < ySell.length; i++) {
             require(ySell[i] >= MIN_BPS_ADJUSTMENT);
+            require(ySell[i] <= MAX_BPS_ADJUSTMENT);
         }
 
         int[] memory buyArray = new int[](yBuy.length);
@@ -253,7 +256,8 @@ contract EnhancedStepFunctions is ConversionRates {
         for(uint ind = 0; ind < len; ind++) {
             (stepXValue, stepYValue) = decodeStepFunctionData(f.x[ind]);
             if (stepXValue <= fromVal) { continue; }
-            if (stepYValue == MIN_BPS_ADJUSTMENT) { return MIN_BPS_ADJUSTMENT; } // if it falls into step with y <= -10000, rate must be 0
+            // if it falls into step with y <= -10000, rate must be 0
+            if (stepYValue == MIN_BPS_ADJUSTMENT) { return MIN_BPS_ADJUSTMENT; }
             // from here, from < stepXValue,
             // if from < to <= stepXValue, take [from, to] and return, else take [from, stepXValue]
             if (stepXValue >= to) {

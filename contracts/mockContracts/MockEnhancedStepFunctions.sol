@@ -35,6 +35,10 @@ contract MockEnhancedStepFunctions is EnhancedStepFunctions {
         return decodeStepFunctionData(val);
     }
 
+    function mockCheckValueMaxImbalance(uint maxVal) public pure returns(bool) {
+        return int(maxVal) == MAX_IMBALANCE;
+    }
+
     function mockAddBps(uint rate, int bps) public pure returns(uint) {
         return addBps(rate, bps);
     }
