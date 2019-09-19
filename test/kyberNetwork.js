@@ -2769,14 +2769,13 @@ contract('KyberNetwork', function(accounts) {
             let srcAmountTwei = 136;
             let maxDestAmount = (new BigNumber(10)).pow(18);
 
-            rate = await network.getExpectedRate(tokenSrc.address, tokenDest.address, srcAmountTwei.valueOf());
+            buyRate = await network.getExpectedRate(tokenSrc.address, tokenDest.address, srcAmountTwei.valueOf());
+            assert.equal(buyRate[0].valueOf(), 0, "Rate returned is not zero for same src & dst token");
 
             let ethBalance = await Helper.getBalancePromise(reserve1.address);
             ethBalance = await Helper.getBalancePromise(reserve2.address);
             let destTokBalance = await tokenDest.balanceOf(reserve1.address)
             destTokBalance = await tokenDest.balanceOf(reserve2.address)
-
-            let expectedDestAmount = calcDstQty(srcAmountTwei, tokenDecimals[tokenSrcInd], tokenDecimals[tokenDestInd], rate[0]);
 
             await tokenSrc.transfer(user1, srcAmountTwei);
             await tokenSrc.approve(networkProxy, srcAmountTwei, {from:user1})
