@@ -1,5 +1,5 @@
 let ConversionRates = artifacts.require("./ConversionRates.sol");
-let ConversionRates2 = artifacts.require("./ConversionRates2.sol");
+let EnhancedStepFunctions = artifacts.require("./EnhancedStepFunctions.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 let Reserve = artifacts.require("./KyberReserve.sol");
 let Network = artifacts.require("./KyberNetwork.sol");
@@ -52,20 +52,22 @@ contract('ExpectedRates', function(accounts) {
         let baseSellRate1 = [];
 
         //quantity buy steps
-        let qtyBuyStepX = [-1400, -700, -150, 0, 150, 350, 700,  1400];
-        let qtyBuyStepY = [ 1000,   75,   25, 0,  0, -50, -160, -3000];
+        let qtyBuyStepX = [0, 150, 350, 700,  1400];
+        let qtyBuyStepY = [0,  0, -50, -160, -3000];
 
         //imbalance buy steps
-        let imbalanceBuyStepX = [-8500, -2800, -1500, 0, 1500, 2800,  4500];
-        let imbalanceBuyStepY = [ 1300,   130,    43, 0,   0, -110, -1600];
+        let imbalanceBuyStepX = [-8500, -2800, -1000, 0, 1000, 2800,  4500];
+        let imbalanceBuyStepY = [ 2000,   1600,    200, 0,   0, -500, -1600];
+        let imbalanceBuyStepYNew = [ 2000,   1600,    200, 0,   0, -500, -1600, -2000];
 
         //sell price will be 1 / buy (assuming no spread) so sell is actually buy price in other direction
-        let qtySellStepX = [-1400, -700, -150, 0, 150, 350, 700, 1400];
-        let qtySellStepY = [ 1000,   75,   25, 0,  0, -50, -160, -3000];
+        let qtySellStepX = [ 0, 150, 350, 700, 1400];
+        let qtySellStepY = [ 0,  0, -50, -160, -3000];
 
         //sell imbalance step
-        let imbalanceSellStepX = [-8500, -2800, -1500, 0, 1500, 2800,  4500];
-        let imbalanceSellStepY = [ 1300,   130,    43, 0,   0, -110, -1600];
+        let imbalanceSellStepX = [-8500, -2800, -750, 0, 750, 2800,  4500];
+        let imbalanceSellStepY = [ -2000,   -1600,    -400, 0,   0, -1600, -2000];
+        let imbalanceSellStepYNew = [ -2000,   -1600,    -400, 0,   0, -1600, -2000, -3000];
 
         //compact data.
         let sells = [];
@@ -83,7 +85,7 @@ contract('ExpectedRates', function(accounts) {
 
         //init contracts
         pricing1 = await ConversionRates.new(admin, {});
-        pricing2 = await ConversionRates2.new(admin, {});
+        pricing2 = await EnhancedStepFunctions.new(admin, {});
 
         //set pricing general parameters
         await pricing1.setValidRateDurationInBlocks(validRateDurationInBlocks);
@@ -146,8 +148,7 @@ contract('ExpectedRates', function(accounts) {
         for (let i = 0; i < numTokens; ++i) {
             await pricing1.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             await pricing1.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
-            await pricing2.setQtyStepFunction(tokenAdd[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
-            await pricing2.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            await pricing2.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepYNew, imbalanceSellStepX, imbalanceSellStepYNew, {from:operator});
         }
 
         network = await Network.new(admin);
@@ -250,6 +251,7 @@ contract('ExpectedRates', function(accounts) {
         let minSlippage =  ((10000 - minSlippageBps) * myExpectedRate[1].valueOf()) / 10000;
 
         qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+
         if (qtySlippageRate > minSlippage) {
             qtySlippageRate = minSlippage;
             assert(false, "expect qty slippage rate to be lower");
@@ -506,8 +508,8 @@ contract('ExpectedRates', function(accounts) {
 
     it("step function enhancement: should test eth to token. use qty slippage.", async function() {
         let tokenInd = 2;
-        let qty = 9;
-        quantityFactor = 10;
+        let qty = 25;
+        quantityFactor = 15;
 
         await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
         let myExpectedRate = await network.findBestRate(ethAddress, tokenAdd[tokenInd], qty);
@@ -516,6 +518,7 @@ contract('ExpectedRates', function(accounts) {
         let minSlippage =  ((10000 - minSlippageBps) * myExpectedRate[1].valueOf()) / 10000;
 
         qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+
         if (qtySlippageRate > minSlippage) {
             qtySlippageRate = minSlippage;
             assert(false, "expect qty slippage rate to be lower");
@@ -529,7 +532,7 @@ contract('ExpectedRates', function(accounts) {
 
     it("step function enhancement: should test eth to token. use min slippage.", async function() {
         let tokenInd = 2;
-        let qty = 9;
+        let qty = 60;
         quantityFactor = 5;
 
         await expectedRates.setQuantityFactor(quantityFactor, {from: operator});
@@ -539,6 +542,7 @@ contract('ExpectedRates', function(accounts) {
         let minSlippage =  ((10000 - minSlippageBps) * myExpectedRate[1].valueOf()) / 10000;
 
         qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+
         if (qtySlippageRate > minSlippage) {
             qtySlippageRate = minSlippage;
         } else {
@@ -553,7 +557,7 @@ contract('ExpectedRates', function(accounts) {
 
     it("step function enhancement: should test token to eth. use qty slippage.", async function() {
         let tokenInd = 2;
-        let qty = 300;
+        let qty = 700;
 
         let myExpectedRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, qty);
         let qtySlippageRate = await network.findBestRate(tokenAdd[tokenInd], ethAddress, (qty * quantityFactor));
@@ -561,6 +565,7 @@ contract('ExpectedRates', function(accounts) {
         let minSlippage = new BigNumber(10000 - minSlippageBps).mul(myExpectedRate[1]).div(10000).floor();
 
         qtySlippageRate = qtySlippageRate[1].valueOf() * 1;
+
         if (qtySlippageRate > minSlippage) {
             qtySlippageRate = minSlippage;
             assert(false, "expect qty slippage rate to be lower");
