@@ -44,7 +44,7 @@
     "yargs": "^11.0.0"
   },
   "devDependencies": {
-    "@nomiclabs/buidler": "^1.0.0-beta.10",
+    "@nomiclabs/buidler": "^1.0.1",
     "chai": "^4.1.2",
     "eslint": "^5.12.0",
     "eslint-config-prettier": "^3.3.0",
