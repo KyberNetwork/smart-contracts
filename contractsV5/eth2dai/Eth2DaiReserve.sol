@@ -1,9 +1,16 @@
+
 pragma solidity 0.5.11;
 
-import "./ERC20Interface.sol";
-import "./KyberReserveInterface.sol";
-import "./Utils.sol";
-import "./Withdrawable.sol";
+interface ERC20 {
+    function totalSupply() external view returns (uint supply);
+    function balanceOf(address _owner) external view returns (uint balance);
+    function transfer(address _to, uint _value) external returns (bool success);
+    function transferFrom(address _from, address _to, uint _value) external returns (bool success);
+    function approve(address _spender, uint _value) external returns (bool success);
+    function allowance(address _owner, address _spender) external view returns (uint remaining);
+    function decimals() external view returns(uint digits);
+    event Approval(address indexed _owner, address indexed _spender, uint _value);
+}
 
 contract OtcInterface {
     function getOffer(uint id) external view returns (uint, ERC20, uint, ERC20);
@@ -15,6 +22,171 @@ contract OtcInterface {
 contract WethInterface is ERC20 {
     function deposit() public payable;
     function withdraw(uint) public;
+}
+
+/// @title Kyber Reserve contract
+interface KyberReserveInterface {
+
+    function trade(
+        ERC20 srcToken,
+        uint srcAmount,
+        ERC20 destToken,
+        address payable destAddress,
+        uint conversionRate,
+        bool validate
+    )
+        external
+        payable
+        returns(bool);
+
+    function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) external view returns(uint);
+}
+
+contract PermissionGroups {
+
+    address public admin;
+    address public pendingAdmin;
+    mapping(address=>bool) internal operators;
+    mapping(address=>bool) internal alerters;
+    address[] internal operatorsGroup;
+    address[] internal alertersGroup;
+    uint constant internal MAX_GROUP_SIZE = 50;
+
+    constructor() public {
+        admin = msg.sender;
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == admin);
+        _;
+    }
+
+    modifier onlyOperator() {
+        require(operators[msg.sender]);
+        _;
+    }
+
+    modifier onlyAlerter() {
+        require(alerters[msg.sender]);
+        _;
+    }
+
+    function getOperators () external view returns(address[] memory) {
+        return operatorsGroup;
+    }
+
+    function getAlerters () external view returns(address[] memory) {
+        return alertersGroup;
+    }
+
+    event TransferAdminPending(address pendingAdmin);
+
+    /**
+     * @dev Allows the current admin to set the pendingAdmin address.
+     * @param newAdmin The address to transfer ownership to.
+     */
+    function transferAdmin(address newAdmin) public onlyAdmin {
+        require(newAdmin != address(0));
+        emit TransferAdminPending(pendingAdmin);
+        pendingAdmin = newAdmin;
+    }
+
+    /**
+     * @dev Allows the current admin to set the admin in one tx. Useful initial deployment.
+     * @param newAdmin The address to transfer ownership to.
+     */
+    function transferAdminQuickly(address newAdmin) public onlyAdmin {
+        require(newAdmin != address(0));
+        emit TransferAdminPending(newAdmin);
+        emit AdminClaimed(newAdmin, admin);
+        admin = newAdmin;
+    }
+
+    event AdminClaimed( address newAdmin, address previousAdmin);
+
+    /**
+     * @dev Allows the pendingAdmin address to finalize the change admin process.
+     */
+    function claimAdmin() public {
+        require(pendingAdmin == msg.sender);
+        emit AdminClaimed(pendingAdmin, admin);
+        admin = pendingAdmin;
+        pendingAdmin = address(0);
+    }
+
+    event AlerterAdded (address newAlerter, bool isAdd);
+
+    function addAlerter(address newAlerter) public onlyAdmin {
+        require(!alerters[newAlerter]); // prevent duplicates.
+        require(alertersGroup.length < MAX_GROUP_SIZE);
+
+        emit AlerterAdded(newAlerter, true);
+        alerters[newAlerter] = true;
+        alertersGroup.push(newAlerter);
+    }
+
+    function removeAlerter (address alerter) public onlyAdmin {
+        require(alerters[alerter]);
+        alerters[alerter] = false;
+
+        for (uint i = 0; i < alertersGroup.length; ++i) {
+            if (alertersGroup[i] == alerter) {
+                alertersGroup[i] = alertersGroup[alertersGroup.length - 1];
+                alertersGroup.length--;
+                emit AlerterAdded(alerter, false);
+                break;
+            }
+        }
+    }
+
+    event OperatorAdded(address newOperator, bool isAdd);
+
+    function addOperator(address newOperator) public onlyAdmin {
+        require(!operators[newOperator]); // prevent duplicates.
+        require(operatorsGroup.length < MAX_GROUP_SIZE);
+
+        emit OperatorAdded(newOperator, true);
+        operators[newOperator] = true;
+        operatorsGroup.push(newOperator);
+    }
+
+    function removeOperator (address operator) public onlyAdmin {
+        require(operators[operator]);
+        operators[operator] = false;
+
+        for (uint i = 0; i < operatorsGroup.length; ++i) {
+            if (operatorsGroup[i] == operator) {
+                operatorsGroup[i] = operatorsGroup[operatorsGroup.length - 1];
+                operatorsGroup.length -= 1;
+                emit OperatorAdded(operator, false);
+                break;
+            }
+        }
+    }
+}
+
+contract Withdrawable is PermissionGroups {
+
+    event TokenWithdraw(ERC20 token, uint amount, address sendTo);
+
+    /**
+     * @dev Withdraw all ERC20 compatible tokens
+     * @param token ERC20 The address of the token contract
+     */
+    function withdrawToken(ERC20 token, uint amount, address sendTo) external onlyAdmin {
+        require(token.transfer(sendTo, amount));
+        emit TokenWithdraw(token, amount, sendTo);
+    }
+
+    event EtherWithdraw(uint amount, address sendTo);
+
+    /**
+     * @dev Withdraw Ethers
+     */
+    function withdrawEther(uint amount, address payable sendTo) external onlyAdmin {
+        sendTo.transfer(amount);
+        emit EtherWithdraw(amount, sendTo);
+    }
 }
 
 contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
@@ -36,9 +208,8 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
     bool public tradeEnabled;
     uint public feeBps;
 
-    OtcInterface public otc = OtcInterface(0x39755357759cE0d7f32dC8dC45414CCa409AE24e);
-    WethInterface public wethToken = WethInterface(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    ERC20 public DAIToken = ERC20(0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359);
+    OtcInterface public otc;// = OtcInterface(0x39755357759cE0d7f32dC8dC45414CCa409AE24e);
+    WethInterface public wethToken;// = WethInterface(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     mapping(address => bool) public isTokenListed;
     // 96 bits: min token, 96 bits: max token, 32 bits: premiumBps, 32 bits: minSpreadBps;
@@ -78,15 +249,20 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
         uint id;
     }
 
-    constructor(address _kyberNetwork, uint _feeBps, address _admin) public {
+    constructor(address _kyberNetwork, uint _feeBps, address _otc, address _weth, address _admin) public {
         require(_kyberNetwork != address(0), "constructor: kyberNetwork's address is missing");
+        require(_otc != address(0), "constructor: otc's address is missing");
+        require(_weth != address(0), "constructor: weth's address is missing");
         require(_feeBps < 10000, "constructor: fee >= 10000");
         require(_admin != address(0), "constructor: admin is missing");
+
+        wethToken = WethInterface(_weth);
         require(getDecimals(wethToken) == COMMON_DECIMALS, "constructor: wethToken's decimals is not COMMON_DECIMALS");
-        require(wethToken.approve(address(otc), 2**255), "constructor: failed to approve otc (wethToken)");
+        require(wethToken.approve(_otc, 2**255), "constructor: failed to approve otc (wethToken)");
     
         kyberNetwork = _kyberNetwork;
-        feeBps = _feeBps;
+        otc = OtcInterface(_otc);
+        feeBps = 25;
         admin = _admin;
         tradeEnabled = true;
     }
@@ -309,8 +485,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
                                         bool ethToToken,
                                         OfferData memory bid,
                                         OfferData memory ask)
-        internal
-        view
+        internal view
         returns(bool shouldUse, uint premiumBps)
     {
         require(tokenVal <= MAX_QTY, "shouldUseInternalInventory: tokenVal > MAX_QTY");
@@ -341,8 +516,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
         uint rate,
         bool useInternalInventory
     )
-        internal
-        pure
+        internal pure
         returns(uint)
     {
         return rate % 2 == (useInternalInventory ? 1 : 0)
@@ -404,13 +578,16 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
         return true;
     }
 
-    event KyberNetworkSet(address kyberNetwork);
+    event SetContracts(address kyberNetwork, address otc);
 
-    function setKyberNetwork(address _kyberNetwork) public onlyAdmin {
-        require(_kyberNetwork != address(0), "setKyberNetwork: kyberNetwork's address is missing");
+    function setContracts(address _kyberNetwork, address _otc) public onlyAdmin {
+        require(_kyberNetwork != address(0), "setContracts: kyberNetwork's address is missing");
+        require(_otc != address(0), "setContracts: otc's address is missing");
 
         kyberNetwork = _kyberNetwork;
-        emit KyberNetworkSet(kyberNetwork);
+        otc = OtcInterface(_otc);
+
+        emit SetContracts(_kyberNetwork, _otc);
     }
 
     event InternalInventoryDataSet(uint minToken, uint maxToken, uint pricePremiumBps, uint minSpreadBps);
@@ -665,7 +842,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
     }
 
     function getFirstOffer(ERC20 offerSellGem, ERC20 offerBuyGem)
-        public view
+        internal view
         returns(uint offerId, uint offerPayAmount, uint offerBuyAmount)
     {
         offerId = otc.getBestOffer(offerSellGem, offerBuyGem);
@@ -676,10 +853,8 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
         ERC20 offerSellGem,
         ERC20 offerBuyGem,
         uint payAmount,
-        uint prevOfferId
-    )
-        public
-        view
+        uint prevOfferId)
+        public view
         returns(
             uint offerId,
             uint offerPayAmount,
@@ -705,72 +880,6 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
             (offerBuyAmount, ,offerPayAmount, ) = otc.getOffer(offerId);
         }
     }
-    
-    function getEthToDaiOrders(uint numOrders) public view
-        returns(uint [] memory ethPayAmtTokens, uint [] memory daiBuyAmtTokens, uint [] memory rateDaiDivEthx10, uint [] memory Ids,
-        uint totalBuyAmountDAIToken, uint totalPayAmountEthers, uint totalRateDaiDivEthx10) 
-    {
-        uint offerId = INVALID_ID;
-        ethPayAmtTokens = new uint[](numOrders);
-        daiBuyAmtTokens = new uint[](numOrders);    
-        rateDaiDivEthx10 = new uint[](numOrders);
-        Ids = new uint[](numOrders);
-        
-        uint offerBuyAmt;
-        uint offerPayAmt;
-        
-        for (uint i = 0; i < numOrders; i++) {
-            
-            (offerId, offerPayAmt, offerBuyAmt) = getNextBestOffer(DAIToken, wethToken, 1, offerId);
-            
-            totalBuyAmountDAIToken += offerBuyAmt;
-            totalPayAmountEthers += offerPayAmt;
-            
-            ethPayAmtTokens[i] = offerPayAmt / 10 ** 18;
-            daiBuyAmtTokens[i] = offerBuyAmt / 10 ** 18;
-            rateDaiDivEthx10[i] = (offerBuyAmt * 10) / offerPayAmt;
-            Ids[i] = offerId;
-            
-            if(offerId == 0) break;
-        }
-        
-        totalRateDaiDivEthx10 = totalBuyAmountDAIToken * 10 / totalPayAmountEthers;
-        totalBuyAmountDAIToken /= 10 ** 18;
-        totalPayAmountEthers /= 10 ** 18;
-    }
-    
-    function getDaiToEthOrders(uint numOrders) public view
-        returns(uint [] memory daiPayAmtTokens, uint [] memory ethBuyAmtTokens, uint [] memory rateDaiDivEthx10, uint [] memory Ids,
-        uint totalPayAmountDAIToken, uint totalBuyAmountEthers, uint totalRateDaiDivEthx10)
-    {
-        uint offerId = INVALID_ID;
-        daiPayAmtTokens = new uint[](numOrders);
-        ethBuyAmtTokens = new uint[](numOrders);
-        rateDaiDivEthx10 = new uint[](numOrders);
-        Ids = new uint[](numOrders);
-        
-        uint offerBuyAmt;
-        uint offerPayAmt;
-
-        for (uint i = 0; i < numOrders; i++) {
-
-            (offerId, offerPayAmt, offerBuyAmt) = getNextBestOffer(wethToken, DAIToken, 1, offerId);
-            
-            totalPayAmountDAIToken += offerPayAmt;
-            totalBuyAmountEthers += offerBuyAmt;
-            
-            daiPayAmtTokens[i] = offerPayAmt / 10 ** 18;
-            ethBuyAmtTokens[i] = offerBuyAmt / 10 ** 18;
-            rateDaiDivEthx10[i] = (offerPayAmt * 10) / offerBuyAmt;
-            Ids[i] = offerId;
-            
-            if (offerId == 0) break;
-        }
-        
-        totalRateDaiDivEthx10 = totalPayAmountDAIToken * 10 / totalBuyAmountEthers;
-        totalPayAmountDAIToken /= 10 ** 18;
-        totalBuyAmountEthers /= 10 ** 18;
-    }
 
     function getFirstBidAndAskOrdersPub(ERC20 token)
         public view
@@ -792,18 +901,9 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
         // getting first ask offer (sell WETH)
         (ask.id, ask.payAmount, ask.buyAmount) = getFirstOffer(wethToken, token);
     }
-
-    // for testing only
-    function checkValidSpreadPub(ERC20 token, uint minSpreadBps) public view returns(bool) {
-        OfferData memory bid;
-        OfferData memory ask;
-        (bid, ask) = getFirstBidAndAskOrders(token);
-        return checkValidSpread(bid, ask, true, minSpreadBps);
-    }
     
     function checkValidSpread(OfferData memory bid, OfferData memory ask, bool isCheckingMinSpread, uint minSpreadBps)
-        internal
-        pure
+        internal pure
         returns(bool)
     {
         // if no bid or ask order, consider as invalid spread?
@@ -880,10 +980,13 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
     }
 
     function encodeInternalInventoryData(uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps)
-        public
-        pure
+        internal pure
         returns(uint data)
     {
+        require(minSpreadBps < POW_2_32, "encodeInternalInventoryData: minSpreadBps is too big");
+        require(premiumBps < POW_2_32, "encodeInternalInventoryData: premiumBps is too big");
+        require(maxTokenBal < POW_2_96, "encodeInternalInventoryData: maxTokenBal is too big");
+        require(minTokenBal < POW_2_96, "encodeInternalInventoryData: minTokenBal is too big");
         data = minSpreadBps & (POW_2_32 - 1);
         data |= (premiumBps & (POW_2_32 - 1)) * POW_2_32;
         data |= (maxTokenBal & (POW_2_96 - 1)) * POW_2_32 * POW_2_32;
@@ -891,8 +994,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
     }
 
     function decodeInternalInventoryData(uint data)
-        public
-        pure
+        internal pure
         returns(uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps)
     {
         minSpreadBps = data & (POW_2_32 - 1);
@@ -902,18 +1004,19 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
     }
 
     function encodeTokenBasicData(uint ethSize, uint maxTraverse, uint maxTakes) 
-        public
-        pure
+        internal pure
         returns(uint data)
     {
+        require(maxTakes < POW_2_32, "encodeTokenBasicData: maxTakes is too big");
+        require(maxTraverse < POW_2_32, "encodeTokenBasicData: maxTraverse is too big");
+        require(ethSize < POW_2_96, "encodeTokenBasicData: ethSize is too big");
         data = maxTakes & (POW_2_32 - 1);
         data |= (maxTraverse & (POW_2_32 - 1)) * POW_2_32;
         data |= (ethSize & (POW_2_96 * POW_2_96 - 1)) * POW_2_32 * POW_2_32;
     }
 
     function decodeTokenBasicData(uint data) 
-        public
-        pure
+        internal pure
         returns(uint ethSize, uint maxTraverse, uint maxTakes)
     {
         maxTakes = data & (POW_2_32 - 1);
@@ -922,10 +1025,15 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
     }
 
     function encodeFactorData(uint traverseX, uint traverseY, uint takeX, uint takeY, uint minSizeX, uint minSizeY)
-        public
-        pure
+        internal pure
         returns(uint data)
     {
+        require(minSizeY < POW_2_32, "encodeFactorData: minSizeY is too big");
+        require(minSizeX < POW_2_32, "encodeFactorData: minSizeX is too big");
+        require(takeY < POW_2_32, "encodeFactorData: takeY is too big");
+        require(takeX < POW_2_32, "encodeFactorData: takeX is too big");
+        require(traverseY < POW_2_32, "encodeFactorData: traverseY is too big");
+        require(traverseX < POW_2_32, "encodeFactorData: traverseX is too big");
         data = (minSizeY & (POW_2_32 - 1));
         data |= (minSizeX & (POW_2_32 - 1)) * POW_2_32;
         data |= (takeY & (POW_2_32 - 1)) * POW_2_32 * POW_2_32;
@@ -935,8 +1043,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
     }
 
     function decodeFactorData(uint data)
-        public
-        pure
+        internal pure
         returns(uint traverseX, uint traverseY, uint takeX, uint takeY, uint minSizeX, uint minSizeY)
     {
         minSizeY = data & (POW_2_32 - 1);
@@ -952,7 +1059,8 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable {
     }
 
     function calcRateFromQty(uint srcAmount, uint destAmount, uint srcDecimals, uint dstDecimals)
-        internal pure returns(uint)
+        internal pure
+        returns(uint)
     {
         require(srcAmount <= MAX_QTY, "calcRateFromQty: srcAmount is bigger than MAX_QTY");
         require(destAmount <= MAX_QTY, "calcRateFromQty: destAmount is bigger than MAX_QTY");
