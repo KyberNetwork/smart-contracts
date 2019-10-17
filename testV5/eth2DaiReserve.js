@@ -44,19 +44,37 @@ let myWethToken;
 let myDaiToken;
 
 contract('Eth2DaiReserve', function(accounts) {
-    before("setup", async() => {
-      //admin account for deployment of contracts
-      admin = accounts[0];
-      network = accounts[0];
-      alerter = accounts[0];
-      operator = accounts[0];
-      user = accounts[1];
-    });
+    before("one time init", async() => {
+        admin = accounts[0];
+        network = accounts[0];
+        alerter = accounts[0];
+        operator = accounts[0];
+        user = accounts[1];
 
-    it("Should deploy tokens, otc and reserve contracts", async function() {
         myWethToken = await WethToken.new("my weth token", "weth", 18);
         myDaiToken = await TestToken.new("my dai token", "dai", 18);
         otc = await MockOtcOrderbook.new(myWethToken.address, myDaiToken.address);
+        reserve = await Eth2DaiReserve.new(network, feeBps.valueOf(), otc.address, myWethToken.address, admin);
+
+        await reserve.listToken(myDaiToken.address);
+        await reserve.setTokenConfigData(
+            myDaiToken.address,
+            maxTraverse, maxTraverseX, maxTraverseY,
+            maxTake, maxTakeX, maxTakeY,
+            minSupportX, minSupportY, minSupport
+        )
+        reserve.addAlerter(alerter);
+        reserve.addOperator(operator);
+
+        await myDaiToken.approve(reserve.address, (new BigNumber(2)).pow(255), {from: network});
+    });
+
+    beforeEach("running before each test", async() => {
+        // reset otc data
+        await otc.resetOffersData();
+    });
+
+    it("Test transfer tokens to otc, reserve and user", async function() {
         // transfer weth and dai to contracts
         await myWethToken.transfer(otc.address, initOTCWethBalance);
         let balance;
@@ -65,25 +83,12 @@ contract('Eth2DaiReserve', function(accounts) {
         await myDaiToken.transfer(otc.address, initOTCDaiBalance);
         balance = await myDaiToken.balanceOf(otc.address);
         assert.equal(balance.valueOf(), initOTCDaiBalance.valueOf(), "init balance weth is not correct");
-        reserve = await Eth2DaiReserve.new(network, feeBps.valueOf(), otc.address, myWethToken.address, admin);
-        reserve.addAlerter(alerter);
-        reserve.addOperator(operator);
 
         // transfer 1000k DAI to users
         await myDaiToken.transfer(user, (new BigNumber(10)).pow(18).mul(1000000));
-
-        // approve network and reserve
-        await myDaiToken.approve(reserve.address, (new BigNumber(2)).pow(255), {from: network});
     });
   
-    it("Should list DAI token, set token config data and check correct values", async function() {
-        await reserve.listToken(myDaiToken.address);
-        await reserve.setTokenConfigData(
-            myDaiToken.address,
-            maxTraverse, maxTraverseX, maxTraverseY,
-            maxTake, maxTakeX, maxTakeY,
-            minSupportX, minSupportY, minSupport
-        )
+    it("Should check correct token data", async function() {
         let a;
         // min eth support, max traverse, max take
         a = await reserve.getTokenBasicDataPub(myDaiToken.address);
@@ -113,8 +118,6 @@ contract('Eth2DaiReserve', function(accounts) {
 
         result = await reserve.getConversionRate(ethAddress, myDaiToken.address, 1 * precision, 0);
         assert.notEqual(result.valueOf(), 0, "should have rate as token is listed");
-
-        await otc.resetOffersData();
     });
 
     it("Should test getConversionRate returns 0 trade not enable", async function() {
@@ -133,8 +136,6 @@ contract('Eth2DaiReserve', function(accounts) {
         await reserve.enableTrade({from: admin});
         result = await reserve.getConversionRate(ethAddress, myDaiToken.address, 1 * precision, 0);
         assert.notEqual(result.valueOf(), 0, "should have rate as trade is enable");
-        
-        await otc.resetOffersData();
     });
 
     it("Should test getConversionRate returns 0 amount is smaller than min support eth (eth -> dai)", async function() {
@@ -149,8 +150,6 @@ contract('Eth2DaiReserve', function(accounts) {
 
         result = await reserve.getConversionRate(ethAddress, myDaiToken.address, minSupport.sub(1), 0);
         assert.equal(result.valueOf(), 0, "rate should be 0");
-        
-        await otc.resetOffersData();
     });
 
     it("Should test getConversionRate returns correct rate with apply fee without internal inventory (eth -> dai)", async function() {
@@ -210,12 +209,10 @@ contract('Eth2DaiReserve', function(accounts) {
 
         } catch (e) {
             await reserve.setFeeBps(feeBps);
-            await otc.resetOffersData();
             assert(false, "shouldn't fail or revert");
         }
 
         await reserve.setFeeBps(feeBps);
-        await otc.resetOffersData();
     });
 
     it("Should test getConversionRate still returns rate even slippage is not ok with no internal inventory (eth -> dai)", async function() {
@@ -253,8 +250,6 @@ contract('Eth2DaiReserve', function(accounts) {
 
         result = await reserve.getConversionRate(ethAddress, myDaiToken.address, 6 * precision, 0);
         assert.equal(result.valueOf(), 0, "rate should be 0 as not enough offers to take, maxTraverse reached");
-        
-        await otc.resetOffersData();
     });
 
     it("Should test getConversionRate returns 0 when slippage is not ok with no internal inventory (dai -> eth)", async function() {
@@ -279,7 +274,6 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setBuyOffer(2, myDaiToken.address, 5 * 210 * precision, myWethToken.address, 5 * precision); // rate: 210
         result = await reserve.getConversionRate(myDaiToken.address, ethAddress, 200 * precision, 0);
         assert.equal(result.valueOf(), 0, "should have no rate");
-        await otc.resetOffersData();
     });
 
     it("Should test getConversionRate returns correct rate with apply fee without internal inventory (dai -> eth)", async function() {
@@ -330,7 +324,6 @@ contract('Eth2DaiReserve', function(accounts) {
         assert.equal(result.valueOf(), newExpectedRate.valueOf(), "rate is not correct");
 
         await reserve.setFeeBps(feeBps);
-        await otc.resetOffersData();
     });
 
     it("Should test getConversionRate returns 0 can not take any offers or not enough to take (dai -> eth)", async function() {
@@ -352,8 +345,6 @@ contract('Eth2DaiReserve', function(accounts) {
 
         result = await reserve.getConversionRate(ethAddress, myDaiToken.address, 6 * precision, 0);
         assert.equal(result.valueOf(), 0, "rate should be 0 as not enough offers to take, maxTraverse reached");
-        
-        await otc.resetOffersData();
     });
 
     it("Should test getConversionRate returns 0 amount is smaller than min support eth (dai -> eth)", async function() {
@@ -369,8 +360,6 @@ contract('Eth2DaiReserve', function(accounts) {
 
         result = await reserve.getConversionRate(myDaiToken.address, ethAddress, minSupport.mul(200), 0);
         assert.notEqual(result.valueOf(), 0, "should have rate");
-        
-        await otc.resetOffersData();
     });
 
     it("Should test showBestOffers takes only first offer (eth -> dai)", async function() {
@@ -378,24 +367,17 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setBuyOffer(2, myDaiToken.address, 20250 * precision, myWethToken.address, 101 * precision);
         await otc.setBuyOffer(3, myDaiToken.address, 20000 * precision, myWethToken.address, 100 * precision);
 
-        try {
-            let result = await reserve.showBestOffers(myDaiToken.address, true, 5);
-            assert.equal(result[0].valueOf(), 1500 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 1500, "dest amount should be 1500");
-            assert.equal(result[2].length, 1, "Should take only 1 offer");
-            assert.equal(result[2][0].valueOf(), 1, "offer id should be 1");
+        let result = await reserve.showBestOffers(myDaiToken.address, true, 5);
+        assert.equal(result[0].valueOf(), 1500 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 1500, "dest amount should be 1500");
+        assert.equal(result[2].length, 1, "Should take only 1 offer");
+        assert.equal(result[2][0].valueOf(), 1, "offer id should be 1");
 
-            result = await reserve.showBestOffers(myDaiToken.address, true, 10);
-            assert.equal(result[0].valueOf(), 3000 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 3000, "dest amount should be correct");
-            assert.equal(result[2].length, 1, "Should take only 1 offer");
-            assert.equal(result[2][0].valueOf(), 1, "offer id should be correct");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        result = await reserve.showBestOffers(myDaiToken.address, true, 10);
+        assert.equal(result[0].valueOf(), 3000 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 3000, "dest amount should be correct");
+        assert.equal(result[2].length, 1, "Should take only 1 offer");
+        assert.equal(result[2][0].valueOf(), 1, "offer id should be correct");
     });
 
     it("Should test showBestOffers takes only last traverse offer (eth -> dai)", async function() {
@@ -405,24 +387,17 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setBuyOffer(4, myDaiToken.address, 539 * precision, myWethToken.address, 2.2 * precision);
         await otc.setBuyOffer(5, myDaiToken.address, 2400 * precision, myWethToken.address, 10 * precision);
 
-        try {
-            let result = await reserve.showBestOffers(myDaiToken.address, true, 5);
-            assert.equal(result[0].valueOf(), 240 * 5 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 240 * 5, "dest amount should be correct");
-            assert.equal(result[2].length, 1, "Should take only 1 offer");
-            assert.equal(result[2][0].valueOf(), 5, "offer id should be correct");
+        let result = await reserve.showBestOffers(myDaiToken.address, true, 5);
+        assert.equal(result[0].valueOf(), 240 * 5 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 240 * 5, "dest amount should be correct");
+        assert.equal(result[2].length, 1, "Should take only 1 offer");
+        assert.equal(result[2][0].valueOf(), 5, "offer id should be correct");
 
-            result = await reserve.showBestOffers(myDaiToken.address, true, 10);
-            assert.equal(result[0].valueOf(), 2400 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 2400, "dest amount should be correct");
-            assert.equal(result[2].length, 1, "Should take only 1 offer");
-            assert.equal(result[2][0].valueOf(), 5, "offer id should be correct");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        result = await reserve.showBestOffers(myDaiToken.address, true, 10);
+        assert.equal(result[0].valueOf(), 2400 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 2400, "dest amount should be correct");
+        assert.equal(result[2].length, 1, "Should take only 1 offer");
+        assert.equal(result[2][0].valueOf(), 5, "offer id should be correct");
     });
 
     it("Should test showBestOffers takes 2 offers (eth -> dai)", async function() {
@@ -432,28 +407,21 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setBuyOffer(4, myDaiToken.address, 3 * 245 * precision, myWethToken.address, 3 * precision); // rate: 245
         await otc.setBuyOffer(5, myDaiToken.address, 2400 * precision, myWethToken.address, 10 * precision); // rate: 240
 
-        try {
-            let result = await reserve.showBestOffers(myDaiToken.address, true, 10);
-            // take 3 eth from offer 4 and 7 eth from offer 5
-            assert.equal(result[0].valueOf(), (3 * 245 + 240 * 7) * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), (3 * 245 + 240 * 7), "dest amount should be correct");
-            assert.equal(result[2].length, 2, "Should take only 2 offers");
-            assert.equal(result[2][0].valueOf(), 4, "offer id should be correct");
-            assert.equal(result[2][1].valueOf(), 5, "offer id should be correct");
+        let result = await reserve.showBestOffers(myDaiToken.address, true, 10);
+        // take 3 eth from offer 4 and 7 eth from offer 5
+        assert.equal(result[0].valueOf(), (3 * 245 + 240 * 7) * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), (3 * 245 + 240 * 7), "dest amount should be correct");
+        assert.equal(result[2].length, 2, "Should take only 2 offers");
+        assert.equal(result[2][0].valueOf(), 4, "offer id should be correct");
+        assert.equal(result[2][1].valueOf(), 5, "offer id should be correct");
 
-            result = await reserve.showBestOffers(myDaiToken.address, true, 5);
-            // take 2.5 eth from offer 3 and 2.5 eth from offer 4
-            assert.equal(result[0].valueOf(), 1237.5 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 1237, "dest amount should be correct");
-            assert.equal(result[2].length, 2, "Should take 2 offers");
-            assert.equal(result[2][0].valueOf(), 3, "offer id should be correct");
-            assert.equal(result[2][1].valueOf(), 4, "offer id should be correct");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        result = await reserve.showBestOffers(myDaiToken.address, true, 5);
+        // take 2.5 eth from offer 3 and 2.5 eth from offer 4
+        assert.equal(result[0].valueOf(), 1237.5 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 1237, "dest amount should be correct");
+        assert.equal(result[2].length, 2, "Should take 2 offers");
+        assert.equal(result[2][0].valueOf(), 3, "offer id should be correct");
+        assert.equal(result[2][1].valueOf(), 4, "offer id should be correct");
     });
 
     it("Should test showBestOffers takes offers with biggest previous skip (eth -> dai)", async function() {
@@ -463,30 +431,23 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setBuyOffer(4, myDaiToken.address, 3 * 245 * precision, myWethToken.address, 3 * precision); // rate: 245
         await otc.setBuyOffer(5, myDaiToken.address, 2400 * precision, myWethToken.address, 10 * precision); // rate: 240
 
-        try {
-            let result = await reserve.showBestOffers(myDaiToken.address, true, 10);
-            // take 8.5 eth from offer 3 and 1.5 eth from offer 2
-            assert.equal(result[0].valueOf(), (8.5 * 250 + 1.5 * 270) * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), (8.5 * 250 + 1.5 * 270), "dest amount should be correct");
-            assert.equal(result[2].length, 2, "Should take only 2 offers");
-            assert.equal(result[2][0].valueOf(), 3, "offer id should be correct");
-            assert.equal(result[2][1].valueOf(), 2, "offer id should be correct");
+        let result = await reserve.showBestOffers(myDaiToken.address, true, 10);
+        // take 8.5 eth from offer 3 and 1.5 eth from offer 2
+        assert.equal(result[0].valueOf(), (8.5 * 250 + 1.5 * 270) * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), (8.5 * 250 + 1.5 * 270), "dest amount should be correct");
+        assert.equal(result[2].length, 2, "Should take only 2 offers");
+        assert.equal(result[2][0].valueOf(), 3, "offer id should be correct");
+        assert.equal(result[2][1].valueOf(), 2, "offer id should be correct");
 
-            // taking biggest skip but not optimal one
-            // taking offer 1 and 3 should be better than taking offer 2 and 3
-            result = await reserve.showBestOffers(myDaiToken.address, true, 9);
-            // take 8.5 eth from offer 3 and 0.5 eth from offer 2
-            assert.equal(result[0].valueOf(), (8.5 * 250 + 0.5 * 270) * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), (8.5 * 250 + 0.5 * 270), "dest amount should be correct");
-            assert.equal(result[2].length, 2, "Should take only 2 offers");
-            assert.equal(result[2][0].valueOf(), 3, "offer id should be correct");
-            assert.equal(result[2][1].valueOf(), 2, "offer id should be correct");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        // taking biggest skip but not optimal one
+        // taking offer 1 and 3 should be better than taking offer 2 and 3
+        result = await reserve.showBestOffers(myDaiToken.address, true, 9);
+        // take 8.5 eth from offer 3 and 0.5 eth from offer 2
+        assert.equal(result[0].valueOf(), (8.5 * 250 + 0.5 * 270) * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), (8.5 * 250 + 0.5 * 270), "dest amount should be correct");
+        assert.equal(result[2].length, 2, "Should take only 2 offers");
+        assert.equal(result[2][0].valueOf(), 3, "offer id should be correct");
+        assert.equal(result[2][1].valueOf(), 2, "offer id should be correct");
     });
 
     it("Should test showBestOffers not enough to take (maxTraverse reached) (eth -> dai)", async function() {
@@ -496,17 +457,10 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setBuyOffer(4, myDaiToken.address, 3 * 245 * precision, myWethToken.address, 3 * precision); // rate: 245
         await otc.setBuyOffer(5, myDaiToken.address, 10 * 240 * precision, myWethToken.address, 10 * precision); // rate: 240
 
-        try {
-            let result = await reserve.showBestOffers(myDaiToken.address, true, 20);
-            assert.equal(result[0].valueOf(), 0, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
-            assert.equal(result[2].length, 0, "not take any offer");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        let result = await reserve.showBestOffers(myDaiToken.address, true, 20);
+        assert.equal(result[0].valueOf(), 0, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
+        assert.equal(result[2].length, 0, "not take any offer");
     });
 
     it("Should test showBestOffers takes maxTake offers (not enough + enough src amount) (eth -> dai)", async function() {
@@ -516,25 +470,18 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setBuyOffer(4, myDaiToken.address, 4 * 245 * precision, myWethToken.address, 4 * precision); // rate: 245
         await otc.setBuyOffer(5, myDaiToken.address, 10 * 240 * precision, myWethToken.address, 10 * precision); // rate: 240
 
-        try {
-            let result = await reserve.showBestOffers(myDaiToken.address, true, 18);
-            assert.equal(result[0].valueOf(), 0, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
-            assert.equal(result[2].length, 0, "Not take any offer");
+        let result = await reserve.showBestOffers(myDaiToken.address, true, 18);
+        assert.equal(result[0].valueOf(), 0, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
+        assert.equal(result[2].length, 0, "Not take any offer");
 
-            result = await reserve.showBestOffers(myDaiToken.address, true, 16);
-            assert.equal(result[0].valueOf(), (3.5 * 250 + 4 * 245 + 8.5 * 240) * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 3.5 * 250 + 4 * 245 + 8.5 * 240, "dest amount should be correct");
-            assert.equal(result[2].length, 3, "Still can take offers");
-            assert.equal(result[2][0].valueOf(), 3, "offer id should be correct");
-            assert.equal(result[2][1].valueOf(), 4, "offer id should be correct");
-            assert.equal(result[2][2].valueOf(), 5, "offer id should be correct");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        result = await reserve.showBestOffers(myDaiToken.address, true, 16);
+        assert.equal(result[0].valueOf(), (3.5 * 250 + 4 * 245 + 8.5 * 240) * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 3.5 * 250 + 4 * 245 + 8.5 * 240, "dest amount should be correct");
+        assert.equal(result[2].length, 3, "Still can take offers");
+        assert.equal(result[2][0].valueOf(), 3, "offer id should be correct");
+        assert.equal(result[2][1].valueOf(), 4, "offer id should be correct");
+        assert.equal(result[2][2].valueOf(), 5, "offer id should be correct");
     });
 
     it("Should test showBestOffers takes all offers read (eth -> dai)", async function() {
@@ -542,34 +489,27 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setBuyOffer(4, myDaiToken.address, 4 * 245 * precision, myWethToken.address, 4 * precision); // rate: 245
         await otc.setBuyOffer(5, myDaiToken.address, 10 * 240 * precision, myWethToken.address, 10 * precision); // rate: 240
 
-        try {
-            let result = await reserve.showBestOffers(myDaiToken.address, true, 19);
-            assert.equal(result[0].valueOf(), (5 * 250 + 4 * 245 + 10 * 240) * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 5 * 250 + 4 * 245 + 10 * 240, "dest amount should be correct");
-            assert.equal(result[2].length, 3, "Still can take offers");
-            assert.equal(result[2][0].valueOf(), 3, "offer id should be correct");
-            assert.equal(result[2][1].valueOf(), 4, "offer id should be correct");
-            assert.equal(result[2][2].valueOf(), 5, "offer id should be correct");
+        let result = await reserve.showBestOffers(myDaiToken.address, true, 19);
+        assert.equal(result[0].valueOf(), (5 * 250 + 4 * 245 + 10 * 240) * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 5 * 250 + 4 * 245 + 10 * 240, "dest amount should be correct");
+        assert.equal(result[2].length, 3, "Still can take offers");
+        assert.equal(result[2][0].valueOf(), 3, "offer id should be correct");
+        assert.equal(result[2][1].valueOf(), 4, "offer id should be correct");
+        assert.equal(result[2][2].valueOf(), 5, "offer id should be correct");
 
-            result = await reserve.showBestOffers(myDaiToken.address, true, 9);
-            assert.equal(result[0].valueOf(), (5 * 250 + 4 * 245) * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 5 * 250 + 4 * 245, "dest amount should be correct");
-            assert.equal(result[2].length, 2, "Still can take offers");
-            assert.equal(result[2][0].valueOf(), 3, "offer id should be correct");
-            assert.equal(result[2][1].valueOf(), 4, "offer id should be correct");
+        result = await reserve.showBestOffers(myDaiToken.address, true, 9);
+        assert.equal(result[0].valueOf(), (5 * 250 + 4 * 245) * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 5 * 250 + 4 * 245, "dest amount should be correct");
+        assert.equal(result[2].length, 2, "Still can take offers");
+        assert.equal(result[2][0].valueOf(), 3, "offer id should be correct");
+        assert.equal(result[2][1].valueOf(), 4, "offer id should be correct");
 
-            result = await reserve.showBestOffers(myDaiToken.address, true, 8);
-            assert.equal(result[0].valueOf(), (5 * 250 + 3 * 245) * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 5 * 250 + 3 * 245, "dest amount should be correct");
-            assert.equal(result[2].length, 2, "Still can take offers");
-            assert.equal(result[2][0].valueOf(), 3, "offer id should be correct");
-            assert.equal(result[2][1].valueOf(), 4, "offer id should be correct");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        result = await reserve.showBestOffers(myDaiToken.address, true, 8);
+        assert.equal(result[0].valueOf(), (5 * 250 + 3 * 245) * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 5 * 250 + 3 * 245, "dest amount should be correct");
+        assert.equal(result[2].length, 2, "Still can take offers");
+        assert.equal(result[2][0].valueOf(), 3, "offer id should be correct");
+        assert.equal(result[2][1].valueOf(), 4, "offer id should be correct");
     });
 
     it("Should test showBestOffers not take any offers as amount is lower than minOrderSize (eth -> dai)", async function() {
@@ -580,17 +520,10 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setBuyOffer(6, myDaiToken.address, 2.5 * 240 * precision, myWethToken.address, 2.5 * precision); // rate: 240
         await otc.setBuyOffer(7, myDaiToken.address, 2.6 * 240 * precision, myWethToken.address, 2.6 * precision); // rate: 240
 
-        try {
-            let result = await reserve.showBestOffers(myDaiToken.address, true, 10);
-            assert.equal(result[0].valueOf(), 0, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
-            assert.equal(result[2].length, 0, "shouldn't take any offer");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        let result = await reserve.showBestOffers(myDaiToken.address, true, 10);
+        assert.equal(result[0].valueOf(), 0, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
+        assert.equal(result[2].length, 0, "shouldn't take any offer");
     });
 
     it("Should test showBestOffers takes only maxTakes (eth -> dai)", async function() {
@@ -614,30 +547,23 @@ contract('Eth2DaiReserve', function(accounts) {
     });
 
     it("Should test showBestOffers returns 0 when no sell or buy orders (dai -> eth)", async function() {
-        try {
-            let result = await reserve.showBestOffers(myDaiToken.address, false, 400);
-            assert.equal(result[0].valueOf(), 0 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
-            assert.equal(result[2].length, 0, "Should not take any offers");
+        let result = await reserve.showBestOffers(myDaiToken.address, false, 400);
+        assert.equal(result[0].valueOf(), 0 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
+        assert.equal(result[2].length, 0, "Should not take any offers");
 
-            await otc.setBuyOffer(1, myDaiToken.address, 5 * 200 * precision, myWethToken.address, 5 * precision); // rate: 200
-            result = await reserve.showBestOffers(myDaiToken.address, false, 400);
-            assert.equal(result[0].valueOf(), 0 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
-            assert.equal(result[2].length, 0, "Should not take any offers");
-
-            await otc.resetOffersData();
-            await otc.setSellOffer(2, myWethToken.address, 10 * precision, myDaiToken.address, 201 * 10 * precision); // rate: 201
-            result = await reserve.showBestOffers(myDaiToken.address, false, 400);
-            assert.equal(result[0].valueOf(), 0 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
-            assert.equal(result[2].length, 0, "Should not take any offers");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
+        await otc.setBuyOffer(1, myDaiToken.address, 5 * 200 * precision, myWethToken.address, 5 * precision); // rate: 200
+        result = await reserve.showBestOffers(myDaiToken.address, false, 400);
+        assert.equal(result[0].valueOf(), 0 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
+        assert.equal(result[2].length, 0, "Should not take any offers");
 
         await otc.resetOffersData();
+        await otc.setSellOffer(2, myWethToken.address, 10 * precision, myDaiToken.address, 201 * 10 * precision); // rate: 201
+        result = await reserve.showBestOffers(myDaiToken.address, false, 400);
+        assert.equal(result[0].valueOf(), 0 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
+        assert.equal(result[2].length, 0, "Should not take any offers");
     });
 
     it("Should test showBestOffers takes only first offer (dai -> eth)", async function() {
@@ -647,19 +573,12 @@ contract('Eth2DaiReserve', function(accounts) {
 
         await otc.setSellOffer(3, myWethToken.address, 2 * precision, myDaiToken.address, 220 * 2 * precision); // rate: 220
 
-        try {
-            let result;
-            result = await reserve.showBestOffers(myDaiToken.address, false, 210 * 2);
-            assert.equal(result[0].valueOf(), 2 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 2, "dest amount should be correct");
-            assert.equal(result[2].length, 1, "Should take 1 offer");
-            assert.equal(result[2][0].valueOf(), 2, "Should take correct offer's id");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        let result;
+        result = await reserve.showBestOffers(myDaiToken.address, false, 210 * 2);
+        assert.equal(result[0].valueOf(), 2 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 2, "dest amount should be correct");
+        assert.equal(result[2].length, 1, "Should take 1 offer");
+        assert.equal(result[2][0].valueOf(), 2, "Should take correct offer's id");
     });
 
     it("Should test showBestOffers takes only last traverse offer (dai -> eth)", async function() {
@@ -669,19 +588,12 @@ contract('Eth2DaiReserve', function(accounts) {
 
         await otc.setSellOffer(3, myWethToken.address, 3 * precision, myDaiToken.address, 220 * 3 * precision); // rate: 220
 
-        try {
-            let result;
-            result = await reserve.showBestOffers(myDaiToken.address, false, 2.4 * 220);
-            assert.equal(result[0].valueOf(), 2.4 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 2, "dest amount should be correct"); // rounded down
-            assert.equal(result[2].length, 1, "Should take 1 offer");
-            assert.equal(result[2][0].valueOf(), 3, "Should take correct offer's id");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        let result;
+        result = await reserve.showBestOffers(myDaiToken.address, false, 2.4 * 220);
+        assert.equal(result[0].valueOf(), 2.4 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 2, "dest amount should be correct"); // rounded down
+        assert.equal(result[2].length, 1, "Should take 1 offer");
+        assert.equal(result[2][0].valueOf(), 3, "Should take correct offer's id");
     });
 
     it("Should test showBestOffers takes 2 offers (dai -> eth)", async function() {
@@ -692,21 +604,14 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setSellOffer(3, myWethToken.address, 3 * precision, myDaiToken.address, 215 * 3 * precision); // rate: 215
         await otc.setSellOffer(4, myWethToken.address, 4 * precision, myDaiToken.address, 220 * 4 * precision); // rate: 220
 
-        try {
-            let result;
-            result = await reserve.showBestOffers(myDaiToken.address, false, 3 * 215 + 2 * 220);
-            // 3 eth from order 3 and 2 eth from order 4
-            assert.equal(result[0].valueOf(), 5 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 5, "dest amount should be correct"); // rounded down
-            assert.equal(result[2].length, 2, "Should take first offer");
-            assert.equal(result[2][0].valueOf(), 3, "Should take correct offer's id");
-            assert.equal(result[2][1].valueOf(), 4, "Should take correct offer's id");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        let result;
+        result = await reserve.showBestOffers(myDaiToken.address, false, 3 * 215 + 2 * 220);
+        // 3 eth from order 3 and 2 eth from order 4
+        assert.equal(result[0].valueOf(), 5 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 5, "dest amount should be correct"); // rounded down
+        assert.equal(result[2].length, 2, "Should take first offer");
+        assert.equal(result[2][0].valueOf(), 3, "Should take correct offer's id");
+        assert.equal(result[2][1].valueOf(), 4, "Should take correct offer's id");
     });
 
     it("Should test showBestOffers takes biggest skip offer (dai -> eth)", async function() {
@@ -718,31 +623,24 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setSellOffer(4, myWethToken.address, 3 * precision, myDaiToken.address, 216 * 3 * precision); // rate: 216
         await otc.setSellOffer(5, myWethToken.address, 4 * precision, myDaiToken.address, 220 * 4 * precision); // rate: 220
 
-        try {
-            let result;
-            result = await reserve.showBestOffers(myDaiToken.address, false, 3 * 216 + 1.5 * 212);
-            // 3 eth from order 4 and 1.5 eth from order 2
-            assert.equal(result[0].valueOf(), 4.5 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 4, "dest amount should be correct"); // rounded down
-            assert.equal(result[2].length, 2, "Should take first offer");
-            assert.equal(result[2][0].valueOf(), 4, "Should take correct offer's id");
-            assert.equal(result[2][1].valueOf(), 3, "Should take correct offer's id");
+        let result;
+        result = await reserve.showBestOffers(myDaiToken.address, false, 3 * 216 + 1.5 * 212);
+        // 3 eth from order 4 and 1.5 eth from order 2
+        assert.equal(result[0].valueOf(), 4.5 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 4, "dest amount should be correct"); // rounded down
+        assert.equal(result[2].length, 2, "Should take first offer");
+        assert.equal(result[2][0].valueOf(), 4, "Should take correct offer's id");
+        assert.equal(result[2][1].valueOf(), 3, "Should take correct offer's id");
 
-            // taking biggest skip but not optimal
-            result = await reserve.showBestOffers(myDaiToken.address, false, 3 * 216 + 1 * 212);
-            // 3 eth from order 4 and 1 eth from order 2
-            // actually should take 3 eth from order 4 and 212/210 eth from order 1
-            assert.equal(result[0].valueOf(), 4 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 4, "dest amount should be correct"); // rounded down
-            assert.equal(result[2].length, 2, "Should take first offer");
-            assert.equal(result[2][0].valueOf(), 4, "Should take correct offer's id");
-            assert.equal(result[2][1].valueOf(), 3, "Should take correct offer's id");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        // taking biggest skip but not optimal
+        result = await reserve.showBestOffers(myDaiToken.address, false, 3 * 216 + 1 * 212);
+        // 3 eth from order 4 and 1 eth from order 2
+        // actually should take 3 eth from order 4 and 212/210 eth from order 1
+        assert.equal(result[0].valueOf(), 4 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 4, "dest amount should be correct"); // rounded down
+        assert.equal(result[2].length, 2, "Should take first offer");
+        assert.equal(result[2][0].valueOf(), 4, "Should take correct offer's id");
+        assert.equal(result[2][1].valueOf(), 3, "Should take correct offer's id");
     });
 
     it("Should test showBestOffers not enough to take (maxTraverse reached) (dai -> eth)", async function() {
@@ -754,18 +652,11 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setSellOffer(4, myWethToken.address, 10 * precision, myDaiToken.address, 216 * 10 * precision); // rate: 216
         await otc.setSellOffer(5, myWethToken.address, 1 * precision, myDaiToken.address, 220 * 1 * precision); // rate: 220
 
-        try {
-            let result;
-            result = await reserve.showBestOffers(myDaiToken.address, false, 20 * 200);
-            assert.equal(result[0].valueOf(), 0, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
-            assert.equal(result[2].length, 0, "Shouldn't take any offers");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        let result;
+        result = await reserve.showBestOffers(myDaiToken.address, false, 20 * 200);
+        assert.equal(result[0].valueOf(), 0, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
+        assert.equal(result[2].length, 0, "Shouldn't take any offers");
     });
 
     it("Should test showBestOffers takes maxTakes (not enough and enough src amount) (dai -> eth)", async function() {
@@ -777,27 +668,20 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setSellOffer(4, myWethToken.address, 4 * precision, myDaiToken.address, 216 * 4 * precision); // rate: 216
         await otc.setSellOffer(5, myWethToken.address, 1 * precision, myDaiToken.address, 220 * 1 * precision); // rate: 220
 
-        try {
-            let result;
-            // not enough src amount to take
-            result = await reserve.showBestOffers(myDaiToken.address, false, 10 * 200);
-            assert.equal(result[0].valueOf(), 0, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 0, "dest amount should be correct"); 
-            assert.equal(result[2].length, 0, "Shouldn't take first offer");
+        let result;
+        // not enough src amount to take
+        result = await reserve.showBestOffers(myDaiToken.address, false, 10 * 200);
+        assert.equal(result[0].valueOf(), 0, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
+        assert.equal(result[2].length, 0, "Shouldn't take first offer");
 
-            // enough src amount to take
-            result = await reserve.showBestOffers(myDaiToken.address, false, 4 * 212 + 3 * 216);
-            assert.equal(result[0].valueOf(), 7 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 7, "dest amount should be correct"); 
-            assert.equal(result[2].length, 2, "Should take 2 offers");
-            assert.equal(result[2][0].valueOf(), 3, "Should take correct offer's id");
-            assert.equal(result[2][1].valueOf(), 4, "Should take correct offer's id");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        // enough src amount to take
+        result = await reserve.showBestOffers(myDaiToken.address, false, 4 * 212 + 3 * 216);
+        assert.equal(result[0].valueOf(), 7 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 7, "dest amount should be correct"); 
+        assert.equal(result[2].length, 2, "Should take 2 offers");
+        assert.equal(result[2][0].valueOf(), 3, "Should take correct offer's id");
+        assert.equal(result[2][1].valueOf(), 4, "Should take correct offer's id");
     });
 
     it("Should test showBestOffers takes all offers read (dai -> eth)", async function() {
@@ -809,28 +693,21 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setSellOffer(4, myWethToken.address, 10 * precision, myDaiToken.address, 216 * 10 * precision); // rate: 216
         await otc.setSellOffer(5, myWethToken.address, 4 * precision, myDaiToken.address, 220 * 4 * precision); // rate: 220
 
-        try {
-            let result;
-            result = await reserve.showBestOffers(myDaiToken.address, false, 7 * 210 + 4 * 212);
-            assert.equal(result[0].valueOf(), 11 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 11, "dest amount should be correct"); 
-            assert.equal(result[2].length, 2, "Should take 2 offers");
-            assert.equal(result[2][0].valueOf(), 2, "Should take correct offer's id");
-            assert.equal(result[2][1].valueOf(), 3, "Should take correct offer's id");
+        let result;
+        result = await reserve.showBestOffers(myDaiToken.address, false, 7 * 210 + 4 * 212);
+        assert.equal(result[0].valueOf(), 11 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 11, "dest amount should be correct");
+        assert.equal(result[2].length, 2, "Should take 2 offers");
+        assert.equal(result[2][0].valueOf(), 2, "Should take correct offer's id");
+        assert.equal(result[2][1].valueOf(), 3, "Should take correct offer's id");
 
-            result = await reserve.showBestOffers(myDaiToken.address, false, 7 * 210 + 6 * 212 + 10 * 216);
-            assert.equal(result[0].valueOf(), 23 * precision, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 23, "dest amount should be correct"); 
-            assert.equal(result[2].length, 3, "Should take 3 offers");
-            assert.equal(result[2][0].valueOf(), 2, "Should take correct offer's id");
-            assert.equal(result[2][1].valueOf(), 3, "Should take correct offer's id");
-            assert.equal(result[2][2].valueOf(), 4, "Should take correct offer's id");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        result = await reserve.showBestOffers(myDaiToken.address, false, 7 * 210 + 6 * 212 + 10 * 216);
+        assert.equal(result[0].valueOf(), 23 * precision, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 23, "dest amount should be correct");
+        assert.equal(result[2].length, 3, "Should take 3 offers");
+        assert.equal(result[2][0].valueOf(), 2, "Should take correct offer's id");
+        assert.equal(result[2][1].valueOf(), 3, "Should take correct offer's id");
+        assert.equal(result[2][2].valueOf(), 4, "Should take correct offer's id");
     });
 
     it("Should test showBestOffers not take any offers as amount is lower than minOrderSize (dai -> eth)", async function() {
@@ -844,19 +721,12 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setSellOffer(6, myWethToken.address, 2.6 * precision, myDaiToken.address, 225 * 2.6 * precision); // rate: 225
         await otc.setSellOffer(7, myWethToken.address, 10 * precision, myDaiToken.address, 230 * 10 * precision); // rate: 230
 
-        try {
-            let result;
-            // equivalent eth: 10, min order size: 2.6375, max traverse: 5
-            result = await reserve.showBestOffers(myDaiToken.address, false, 10 * 200);
-            assert.equal(result[0].valueOf(), 0, "dest amount should be correct");
-            assert.equal(result[1].valueOf(), 0, "dest amount should be correct"); 
-            assert.equal(result[2].length, 0, "Shouldn't take any offers");
-        } catch (e) {
-            await otc.resetOffersData();
-            assert(false, "shouldn't fail or revert");
-        }
-
-        await otc.resetOffersData();
+        let result;
+        // equivalent eth: 10, min order size: 2.6375, max traverse: 5
+        result = await reserve.showBestOffers(myDaiToken.address, false, 10 * 200);
+        assert.equal(result[0].valueOf(), 0, "dest amount should be correct");
+        assert.equal(result[1].valueOf(), 0, "dest amount should be correct");
+        assert.equal(result[2].length, 0, "Shouldn't take any offers");
     });
 
     it("Should test showBestOffers traverse only maxTraverse offer (dai -> eth)", async function() {
@@ -883,8 +753,6 @@ contract('Eth2DaiReserve', function(accounts) {
         assert.equal(result[1].valueOf(), 400, "dest amount should be correct");
         assert.equal(result[2].length, 1, "Should take last offer");
         assert.equal(result[2][0], maxTraverse + 1, "Should take last offer");
-
-        await otc.resetOffersData();
     });
 
     it("Should test showBestOffers takes only maxTakes offers (dai -> eth)", async function() {
@@ -1283,11 +1151,12 @@ contract('Eth2DaiReserve', function(accounts) {
     });
 
     it("Should test trade with trade is not enable", async function() {
-        let amountEth = (new BigNumber(10)).pow(18);
-        let amountDai = (new BigNumber(10)).pow(18).mul(200);
         // making median rate is 200
         await otc.setBuyOffer(1, myDaiToken.address, 20 * 190 * precision, myWethToken.address, 20 * precision); // rate: 190
         await otc.setSellOffer(2, myWethToken.address, 20 * precision, myDaiToken.address, 210 * 20 * precision); // rate: 210
+
+        let amountEth = (new BigNumber(10)).pow(18);
+        let amountDai = (new BigNumber(10)).pow(18).mul(200);
         let eth2daiRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, amountEth, 0);
         let dai2ethRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, amountDai, 0);
 
@@ -1313,6 +1182,10 @@ contract('Eth2DaiReserve', function(accounts) {
     });
 
     it("Should test trade msg sender is not network", async function() {
+        // making median rate is 200
+        await otc.setBuyOffer(1, myDaiToken.address, 20 * 190 * precision, myWethToken.address, 20 * precision); // rate: 190
+        await otc.setSellOffer(2, myWethToken.address, 20 * precision, myDaiToken.address, 210 * 20 * precision); // rate: 210
+
         let amountEth = (new BigNumber(10)).pow(18);
         let amountDai = (new BigNumber(10)).pow(18).mul(200);
         let eth2daiRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, amountEth, 0);
@@ -1334,6 +1207,10 @@ contract('Eth2DaiReserve', function(accounts) {
     });
 
     it("Should test trade token is invalid (src & dest are not ETH or token is not listed)", async function() {
+        // making median rate is 200
+        await otc.setBuyOffer(1, myDaiToken.address, 20 * 190 * precision, myWethToken.address, 20 * precision); // rate: 190
+        await otc.setSellOffer(2, myWethToken.address, 20 * precision, myDaiToken.address, 210 * 20 * precision); // rate: 210
+
         let amountEth = (new BigNumber(10)).pow(18);
         let amountDai = (new BigNumber(10)).pow(18).mul(200);
 
@@ -1372,6 +1249,10 @@ contract('Eth2DaiReserve', function(accounts) {
     });
 
     it("Should test trade msg value and src amount are not correct", async function() {
+        // making median rate is 200
+        await otc.setBuyOffer(1, myDaiToken.address, 20 * 190 * precision, myWethToken.address, 20 * precision); // rate: 190
+        await otc.setSellOffer(2, myWethToken.address, 20 * precision, myDaiToken.address, 210 * 20 * precision); // rate: 210
+
         let amountEth = (new BigNumber(10)).pow(18);
         let amountDai = (new BigNumber(10)).pow(18).mul(200);
         let eth2daiRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, amountEth, 0);
@@ -1400,6 +1281,10 @@ contract('Eth2DaiReserve', function(accounts) {
     });
 
     it("Should test trade conversion rate is 0", async function() {
+        // making median rate is 200
+        await otc.setBuyOffer(1, myDaiToken.address, 20 * 190 * precision, myWethToken.address, 20 * precision); // rate: 190
+        await otc.setSellOffer(2, myWethToken.address, 20 * precision, myDaiToken.address, 210 * 20 * precision); // rate: 210
+
         let amountEth = (new BigNumber(10)).pow(18);
         let amountDai = (new BigNumber(10)).pow(18).mul(200);
 
@@ -1435,6 +1320,10 @@ contract('Eth2DaiReserve', function(accounts) {
     });
 
     it("Should test trade is reverted when conversion rate is higher than actual rate", async function() {
+        // making median rate is 200
+        await otc.setBuyOffer(1, myDaiToken.address, 20 * 190 * precision, myWethToken.address, 20 * precision); // rate: 190
+        await otc.setSellOffer(2, myWethToken.address, 20 * precision, myDaiToken.address, 210 * 20 * precision); // rate: 210
+
         let amountEth = (new BigNumber(1)).mul(precision);
         let amountDai = (new BigNumber(200)).mul(precision);
 
@@ -1463,6 +1352,10 @@ contract('Eth2DaiReserve', function(accounts) {
     });
 
     it("Should test trade is reverted conversion rate enables internal inventory but not have enough balances for internal inventory", async function() {
+        // making median rate is 200
+        await otc.setBuyOffer(1, myDaiToken.address, 20 * 190 * precision, myWethToken.address, 20 * precision); // rate: 190
+        await otc.setSellOffer(2, myWethToken.address, 20 * precision, myDaiToken.address, 210 * 20 * precision); // rate: 210
+
         let amountEth = (new BigNumber(1)).mul(precision);
         let amountDai = (new BigNumber(200)).mul(precision);
 
@@ -1552,6 +1445,10 @@ contract('Eth2DaiReserve', function(accounts) {
     });
 
     it("Should test buy and sell with correct balance", async function() {
+        // making median rate is 200
+        await otc.setBuyOffer(1, myDaiToken.address, 20 * 190 * precision, myWethToken.address, 20 * precision); // rate: 190
+        await otc.setSellOffer(2, myWethToken.address, 20 * precision, myDaiToken.address, 210 * 20 * precision); // rate: 210
+
         let amountEth = (new BigNumber(1)).mul(precision);
         let amountDai = (new BigNumber(200)).mul(precision);
 
