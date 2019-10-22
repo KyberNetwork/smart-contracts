@@ -87,6 +87,7 @@ contract('ConversionRates', function(accounts) {
     it("should init ConversionRates Inst and set general parameters.", async function () {
         //init contracts
         convRatesInst = await ConversionRates.new(admin);
+
         //set pricing general parameters
         convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);
 
@@ -214,7 +215,6 @@ contract('ConversionRates', function(accounts) {
 
 
     it("should set step functions qty and imbalance.", async function () {
-        this.timeout(20000);
         qtyBuyStepX = [15, 30, 70];
         qtyBuyStepY = [8, 30, 70];
         qtySellStepX = [155, 305, 705];
@@ -223,7 +223,7 @@ contract('ConversionRates', function(accounts) {
         imbalanceBuyStepY = [35, 150, 310, 1100];
         imbalanceSellStepX = [1500, 3000, 7000, 30000];
         imbalanceSellStepY = [45, 190, 360, 1800];
-
+        
         for (let i = 0; i < numTokens; ++i) {
             await convRatesInst.setQtyStepFunction(tokens[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             await convRatesInst.setImbalanceStepFunction(tokens[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
