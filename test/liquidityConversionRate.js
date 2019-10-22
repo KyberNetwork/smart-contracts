@@ -49,7 +49,7 @@ const testing = "bbo";
 /****** for BBO init: *******/
 // for BBO we decided on a fixed pmin, pmax (0.5,2) and r (0.01).
 // than we deposited the exact e0 and t0 to support it.
-// so minPmin and maxPmax are exactly same as pMin and pMax 
+// so minPmin and maxPmax are exactly same as pMin and pMax
 /***************************/
 
 /****** for Midas init: *******/
@@ -880,7 +880,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
                         }
                     }
                 }
-            }
+            }  
         }
     });
 });

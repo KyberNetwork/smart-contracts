@@ -4672,7 +4672,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
 
         let freeKnc2 = await reserve.makerUnlockedKnc(maker1);
         assert.equal(freeKnc2.valueOf(), 0);
-
+        
         //see can't add orders
         try {
             await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(200), {from: maker1});
