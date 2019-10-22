@@ -2,6 +2,7 @@ pragma solidity 0.5.11;
 
 import "./ERC20InterfaceV5.sol";
 
+
 /// @title Kyber Reserve contract
 interface KyberReserveInterface {
 

@@ -777,46 +777,6 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.resetOffersData();
     });
 
-    it("Should test set some offers to otc contract and get first bid & ask order", async function() {
-        let result;
-        result = await reserve.getFirstBidAndAskOrdersPub(myDaiToken.address);
-        assert.equal(result[0].valueOf(), 0, "first bid pay amount should be 0");
-        assert.equal(result[1].valueOf(), 0, "first bid buy amount should be 0");
-        assert.equal(result[2].valueOf(), 0, "first ask pay amount should be 0");
-        assert.equal(result[3].valueOf(), 0, "first ask buy amount should be 0");
-
-        // Note: Bid is buy weth, Ask is sell weth
-        // sell offer is sell weth, buy offer is buy weth
-        await otc.setSellOffer(1, myWethToken.address, 100, myDaiToken.address, 20000);
-
-        result = await reserve.getFirstBidAndAskOrdersPub(myDaiToken.address);
-        assert.equal(result[0].valueOf(), 0, "first bid pay amount should be 0");
-        assert.equal(result[1].valueOf(), 0, "first bid buy amount should be 0");
-        assert.equal(result[2].valueOf(), 20000, "first ask pay amount is not correct");
-        assert.equal(result[3].valueOf(), 100, "first ask buy amount is not correct");
-
-        await otc.setBuyOffer(2, myDaiToken.address, 20010, myWethToken.address, 99);
-        result = await reserve.getFirstBidAndAskOrdersPub(myDaiToken.address);
-        assert.equal(result[0].valueOf(), 99, "first bid pay amount is not correct");
-        assert.equal(result[1].valueOf(), 20010, "first bid buy amount is not correct");
-        assert.equal(result[2].valueOf(), 20000, "first ask pay amount is not correct");
-        assert.equal(result[3].valueOf(), 100, "first ask buy amount is not correct");
-
-        await otc.setBuyOffer(3, myDaiToken.address, 20020, myWethToken.address, 98);
-        result = await reserve.getFirstBidAndAskOrdersPub(myDaiToken.address);
-        assert.equal(result[0].valueOf(), 99, "first bid pay amount is not correct");
-        assert.equal(result[1].valueOf(), 20010, "first bid buy amount is not correct");
-        assert.equal(result[2].valueOf(), 20000, "first ask pay amount is not correct");
-        assert.equal(result[3].valueOf(), 100, "first ask buy amount is not correct");
-
-        await otc.resetOffersData();
-        result = await reserve.getFirstBidAndAskOrdersPub(myDaiToken.address);
-        assert.equal(result[0].valueOf(), 0, "first bid pay amount should be 0");
-        assert.equal(result[1].valueOf(), 0, "first bid buy amount should be 0");
-        assert.equal(result[2].valueOf(), 0, "first ask pay amount should be 0");
-        assert.equal(result[3].valueOf(), 0, "first ask buy amount should be 0");
-    });
-
     it("Should test get next best offer from dai to weth returns correct data", async function() {
         let result;
         result = await reserve.getNextBestOffer(myDaiToken.address, myWethToken.address, 0, -1)

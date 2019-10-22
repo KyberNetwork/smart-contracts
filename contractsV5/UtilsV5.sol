@@ -2,24 +2,34 @@ pragma solidity 0.5.11;
 
 import "./ERC20InterfaceV5.sol";
 
-/// @title Kyber constants contract
+
+/// @title Kyber utils and utils2 contracts
 contract Utils {
 
-    ERC20 constant internal ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
+    ERC20 constant internal ETH_TOKEN_ADDRESS = ERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
     uint  constant internal PRECISION = (10**18);
     uint  constant internal MAX_QTY   = (10**28); // 10B tokens
     uint  constant internal MAX_RATE  = (PRECISION * 10**6); // up to 1M tokens per ETH
     uint  constant internal MAX_DECIMALS = 18;
     uint  constant internal ETH_DECIMALS = 18;
-    uint  constant internal POW_2_32 = 2 ** 32;
-    uint  constant internal POW_2_96 = 2 ** 96;
-    uint  constant internal BASIC_FACTOR_STEP = 100000;
 
     mapping(address=>uint) internal decimals;
 
+    /// @dev get the balance of a user.
+    /// @param token The token type
+    /// @return The balance
+    function getBalance(ERC20 token, address user) public view returns(uint) {
+        if (token == ETH_TOKEN_ADDRESS)
+            return user.balance;
+        else
+            return token.balanceOf(user);
+    }
+
     function setDecimals(ERC20 token) internal {
-        if (token == ETH_TOKEN_ADDRESS) decimals[address(token)] = ETH_DECIMALS;
-        else decimals[address(token)] = token.decimals();
+        if (token == ETH_TOKEN_ADDRESS)
+            decimals[address(token)] = ETH_DECIMALS;
+        else
+            decimals[address(token)] = token.decimals();
     }
 
     function getDecimals(ERC20 token) internal view returns(uint) {
@@ -27,7 +37,7 @@ contract Utils {
         uint tokenDecimals = decimals[address(token)];
         // moreover, very possible that old tokens have decimals 0
         // these tokens will just have higher gas fees.
-        if(tokenDecimals == 0) return token.decimals();
+        if (tokenDecimals == 0) return token.decimals();
 
         return tokenDecimals;
     }
@@ -62,25 +72,6 @@ contract Utils {
             denominator = (rate * (10**(dstDecimals - srcDecimals)));
         }
         return (numerator + denominator - 1) / denominator; //avoid rounding down errors
-    }
-
-    /// @dev get the balance of a user.
-    /// @param token The token type
-    /// @return The balance
-    function getBalance(ERC20 token, address user) public view returns(uint) {
-        if (token == ETH_TOKEN_ADDRESS)
-            return user.balance;
-        else
-            return token.balanceOf(user);
-    }
-
-    function getDecimalsSafe(ERC20 token) internal returns(uint) {
-
-        if (decimals[address(token)] == 0) {
-            setDecimals(token);
-        }
-
-        return decimals[address(token)];
     }
 
     function calcDestAmount(ERC20 src, ERC20 dest, uint srcAmount, uint rate) internal view returns(uint) {

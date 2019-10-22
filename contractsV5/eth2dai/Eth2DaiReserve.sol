@@ -1,4 +1,3 @@
-
 pragma solidity 0.5.11;
 
 import "../ERC20InterfaceV5.sol";
@@ -7,16 +6,21 @@ import "../WithdrawableV5.sol";
 import "../UtilsV5.sol";
 import "./OtcInterfaceV5.sol";
 
+
 contract WethInterface is ERC20 {
     function deposit() public payable;
     function withdraw(uint) public;
 }
 
+
 contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
 
     // constants
     uint constant internal INVALID_ID = uint(-1);
-    uint constant internal COMMON_DECIMALS = 18;
+    uint constant internal POW_2_32 = 2 ** 32;
+    uint constant internal POW_2_96 = 2 ** 96;
+    // basic factor step for token factor data
+    uint  constant internal BPS = 100000;
 
     // values
     address public kyberNetwork;
@@ -28,13 +32,13 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
 
     mapping(address => bool) public isTokenListed;
     // 96 bits: min token, 96 bits: max token, 32 bits: premiumBps, 32 bits: minSpreadBps;
-    mapping(address => uint) internalInventoryData;
+    mapping(address => uint) internal  internalInventoryData;
     // basicData contains compact data of min eth support, max traverse and max takes
     // min eth support (first 192 bits) + max traverse (32 bits) + max takes (32 bits) = 256 bits
-    mapping(address => uint) tokenBasicData;
+    mapping(address => uint) internal tokenBasicData;
     // factorData contains compact data of factors to compute max traverse, max takes, and min take order size
     // 6 params, each 32 bits (6 * 32 = 192 bits)
-    mapping(address => uint) tokenFactorData;
+    mapping(address => uint) internal tokenFactorData;
 
     struct BasicDataConfig {
         uint minETHSupport;
@@ -72,7 +76,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         require(_admin != address(0), "constructor: admin is missing");
 
         wethToken = WethInterface(_weth);
-        require(getDecimals(wethToken) == COMMON_DECIMALS, "constructor: wethToken's decimals is not COMMON_DECIMALS");
+        require(getDecimals(wethToken) == MAX_DECIMALS, "constructor: wethToken's decimals is not MAX_DECIMALS");
         require(wethToken.approve(_otc, 2**255), "constructor: failed to approve otc (wethToken)");
     
         kyberNetwork = _kyberNetwork;
@@ -82,8 +86,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         tradeEnabled = true;
     }
 
-    function() external payable {
-    }
+    function() external payable {} // solhint-disable-line no-empty-blocks
 
     /**
         Returns conversion rate of given pair and srcQty, use 1 as srcQty if srcQty = 0
@@ -120,7 +123,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
 
         if (offers.length == 0 || destAmount == 0) { return 0; } // no offer or destAmount == 0, return 0 for rate
 
-        uint rate = calcRateFromQty(srcAmount, destAmount, COMMON_DECIMALS, COMMON_DECIMALS);
+        uint rate = calcRateFromQty(srcAmount, destAmount, MAX_DECIMALS, MAX_DECIMALS);
 
         bool useInternalInventory;
         uint premiumBps;
@@ -184,6 +187,212 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         return true;
     }
 
+    event TokenConfigDataSet(
+        ERC20 token, uint maxTraverse, uint traveseFactorX, uint traveseFactorY,
+        uint maxTake, uint takeFactorX, uint takeFactorY,
+        uint minSizeFactorX, uint minSizeFactorY, uint minETHSupport
+    );
+
+    function setTokenConfigData(
+        ERC20 token, uint maxTraverse, uint traveseFactorX, uint traveseFactorY,
+        uint maxTake, uint takeFactorX, uint takeFactorY,
+        uint minSizeFactorX, uint minSizeFactorY, uint minETHSupport
+    )
+        public onlyAdmin
+    {
+        address tokenAddr = address(token);
+        require(isTokenListed[tokenAddr]);
+        tokenBasicData[tokenAddr] = encodeTokenBasicData(minETHSupport, maxTraverse, maxTake);
+        tokenFactorData[tokenAddr] = encodeFactorData(
+            traveseFactorX,
+            traveseFactorY,
+            takeFactorX,
+            takeFactorY,
+            minSizeFactorX,
+            minSizeFactorY
+        );
+        emit TokenConfigDataSet(
+            token, maxTraverse, traveseFactorX, takeFactorY,
+            maxTake, takeFactorX, takeFactorY,
+            minSizeFactorX, minSizeFactorY, minETHSupport
+        );
+    }
+
+    event TradeEnabled(bool enable);
+
+    function enableTrade() public onlyAdmin returns(bool) {
+        tradeEnabled = true;
+        emit TradeEnabled(true);
+
+        return true;
+    }
+
+    function disableTrade() public onlyAlerter returns(bool) {
+        tradeEnabled = false;
+        emit TradeEnabled(false);
+
+        return true;
+    }
+
+    event ContractsSet(address kyberNetwork, address otc);
+
+    function setContracts(address _kyberNetwork, address _otc) public onlyAdmin {
+        require(_kyberNetwork != address(0), "setContracts: kyberNetwork's address is missing");
+        require(_otc != address(0), "setContracts: otc's address is missing");
+
+        kyberNetwork = _kyberNetwork;
+        otc = OtcInterface(_otc);
+
+        emit ContractsSet(_kyberNetwork, _otc);
+    }
+
+    event InternalInventoryDataSet(uint minToken, uint maxToken, uint pricePremiumBps, uint minSpreadBps);
+
+    function setInternalInventoryData(
+        ERC20 token,
+        uint minToken,
+        uint maxToken,
+        uint pricePremiumBps,
+        uint minSpreadBps
+    )
+        public onlyAdmin 
+    {
+        require(isTokenListed[address(token)], "setInternalInventoryData: token is not listed");
+        require(minToken < POW_2_96, "setInternalInventoryData: minToken > 2**96");
+        require(maxToken < POW_2_96, "setInternalInventoryData: maxToken > 2**96");
+        require(pricePremiumBps < POW_2_32, "setInternalInventoryData: pricePremiumBps > 2**32");
+        require(minSpreadBps < POW_2_32, "setInternalInventoryData: minSpreadBps > 2**32");
+        // blocking too small minSpreadBps
+        require(2 * minSpreadBps >= (feeBps + pricePremiumBps), "setInternalInventoryData: minSpreadBps should be >= (feeBps + pricePremiumBps)/2");
+
+        internalInventoryData[address(token)] = encodeInternalInventoryData(minToken, maxToken, pricePremiumBps, minSpreadBps);
+
+        emit InternalInventoryDataSet(minToken, maxToken, pricePremiumBps, minSpreadBps);
+    }
+
+    event TokenListed(ERC20 token);
+
+    function listToken(ERC20 token) public onlyAdmin {
+        address tokenAddr = address(token);
+
+        require(tokenAddr != address(0), "listToken: token's address is missing");
+        require(!isTokenListed[tokenAddr], "listToken: token's alr listed");
+        require(getDecimals(token) == MAX_DECIMALS, "listToken: token's decimals is not MAX_DECIMALS");
+        require(token.approve(address(otc), 2**255), "listToken: approve token otc failed");
+
+        isTokenListed[tokenAddr] = true;
+
+        emit TokenListed(token);
+    }
+
+    event TokenDelisted(ERC20 token);
+
+    function delistToken(ERC20 token) public onlyAdmin {
+        address tokenAddr = address(token);
+
+        require(isTokenListed[tokenAddr], "delistToken: token is not listed");
+        require(token.approve(address(otc), 0), "delistToken: reset approve token failed");
+
+        delete isTokenListed[tokenAddr];
+        delete internalInventoryData[tokenAddr];
+        delete tokenFactorData[tokenAddr];
+        delete tokenBasicData[tokenAddr];
+
+        emit TokenDelisted(token);
+    }
+
+    event FeeBpsSet(uint feeBps);
+
+    function setFeeBps(uint _feeBps) public onlyAdmin {
+        require(_feeBps < 10000, "setFeeBps: feeBps >= 10000");
+
+        feeBps = _feeBps;
+        emit FeeBpsSet(feeBps);
+    }
+
+    function showBestOffers(ERC20 token, bool isEthToToken, uint srcAmountToken)
+        public view
+        returns(uint destAmount, uint destAmountToken, uint[] memory offerIds) 
+    {
+        OfferData[] memory offers;
+        ERC20 dstToken = isEthToToken ? token : wethToken;
+        ERC20 srcToken = isEthToToken ? wethToken : token;
+
+        OfferData memory bid;
+        OfferData memory ask;
+        (bid, ask) = getFirstBidAndAskOrders(token);
+
+        (destAmount, offers) = findBestOffers(dstToken, srcToken, (srcAmountToken * 10 ** 18), bid, ask);
+        
+        destAmountToken = destAmount / 10 ** 18;
+        
+        uint i;
+        for (i; i < offers.length; i++) {
+            if (offers[i].id == 0) {
+                break;
+            }
+        }
+    
+        offerIds = new uint[](i);
+        for (i = 0; i < offerIds.length; i++) {
+            offerIds[i] = offers[i].id;
+        }
+    }
+
+    function getNextBestOffer(
+        ERC20 offerSellGem,
+        ERC20 offerBuyGem,
+        uint payAmount,
+        uint prevOfferId
+    )
+        public view
+        returns(
+            uint offerId,
+            uint offerPayAmount,
+            uint offerBuyAmount
+        )
+    {
+        if (prevOfferId == INVALID_ID) {
+            offerId = otc.getBestOffer(offerSellGem, offerBuyGem);
+        } else {
+            offerId = otc.getWorseOffer(prevOfferId);
+        }
+
+        (offerBuyAmount, , offerPayAmount, ) = otc.getOffer(offerId);
+
+        while (payAmount > offerPayAmount) {
+            offerId = otc.getWorseOffer(offerId); // next best offer
+            if (offerId == 0) {
+                offerId = 0;
+                offerPayAmount = 0;
+                offerBuyAmount = 0;
+                break;
+            }
+            (offerBuyAmount, , offerPayAmount, ) = otc.getOffer(offerId);
+        }
+    }
+
+    function getTokenBasicDataPub(ERC20 token)
+        public view
+        returns (uint minETHSupport, uint maxTraverse, uint maxTakes)
+    {
+        (minETHSupport, maxTraverse, maxTakes) = decodeTokenBasicData(tokenBasicData[address(token)]);
+    }
+
+    function getFactorDataPub(ERC20 token)
+        public view
+        returns (uint maxTraverseX, uint maxTraverseY, uint maxTakeX, uint maxTakeY, uint minOrderSizeX, uint minOrderSizeY)
+    {
+        (maxTraverseX, maxTraverseY, maxTakeX, maxTakeY, minOrderSizeX, minOrderSizeY) = decodeFactorData(tokenFactorData[address(token)]);
+    }
+
+    function getInternalInventoryDataPub(ERC20 token)
+        public view
+        returns(uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps)
+    {
+        (minTokenBal, maxTokenBal, premiumBps, minSpreadBps) = decodeInternalInventoryData(internalInventoryData[address(token)]);
+    }
+
     /// @dev do a trade
     /// @param srcToken Src token
     /// @param srcAmount Amount of src token
@@ -210,7 +419,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
                 require(msg.value == 0, "doTrade: msg.value must be 0");
         }
 
-        uint userExpectedDestAmount = calcDstQty(srcAmount, COMMON_DECIMALS, COMMON_DECIMALS, conversionRate);
+        uint userExpectedDestAmount = calcDstQty(srcAmount, MAX_DECIMALS, MAX_DECIMALS, conversionRate);
         require(userExpectedDestAmount > 0, "doTrade: userExpectedDestAmount == 0"); // sanity check
 
         uint actualDestAmount;
@@ -239,14 +448,14 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         (bid, ask) = getFirstBidAndAskOrders(srcToken == ETH_TOKEN_ADDRESS ? destToken : srcToken);
 
         // get offers to take
-        OfferData [] memory offers;
+        OfferData[] memory offers;
         if (srcToken == ETH_TOKEN_ADDRESS) {
             (actualDestAmount, offers) = findBestOffers(destToken, wethToken, srcAmount, bid, ask);   
         } else {
             (actualDestAmount, offers) = findBestOffers(wethToken, srcToken, srcAmount, bid, ask);
         }
 
-        require(actualDestAmount >= userExpectedDestAmount , "doTrade: actualDestAmount is less than userExpectedDestAmount");
+        require(actualDestAmount >= userExpectedDestAmount, "doTrade: actualDestAmount is less than userExpectedDestAmount");
 
         if (srcToken == ETH_TOKEN_ADDRESS) {
             wethToken.deposit.value(msg.value)();
@@ -268,13 +477,16 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         return true;
     }
 
-    function takeMatchingOrders(ERC20 destToken, uint srcAmount, OfferData[] memory offers) internal returns(uint actualDestAmount) {
+    function takeMatchingOrders(ERC20 destToken, uint srcAmount, OfferData[] memory offers)
+        internal
+        returns(uint actualDestAmount)
+    {
         require(destToken != ETH_TOKEN_ADDRESS, "takeMatchingOrders: destToken is ETH");
 
         uint lastReserveBalance = destToken.balanceOf(address(this));
         uint remainingSrcAmount = srcAmount;
 
-        for(uint i = 0; i < offers.length; i++) {
+        for (uint i = 0; i < offers.length; i++) {
             if (offers[i].id == 0 || remainingSrcAmount == 0) { break; }
 
             uint payAmount = minOf(remainingSrcAmount, offers[i].payAmount);
@@ -294,12 +506,14 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         actualDestAmount = newReserveBalance - lastReserveBalance;
     }
 
-    function shouldUseInternalInventory(ERC20 token,
-                                        uint tokenVal,
-                                        uint ethVal,
-                                        bool ethToToken,
-                                        OfferData memory bid,
-                                        OfferData memory ask)
+    function shouldUseInternalInventory(
+        ERC20 token,
+        uint tokenVal,
+        uint ethVal,
+        bool ethToToken,
+        OfferData memory bid,
+        OfferData memory ask
+    )
         internal view
         returns(bool shouldUse, uint premiumBps)
     {
@@ -339,159 +553,25 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
             : rate - 1;
     }
 
-    function valueAfterReducingFee(uint val) public view returns(uint) {
+    function valueAfterReducingFee(uint val) internal view returns(uint) {
         require(val <= MAX_QTY, "valueAfterReducingFee: val > MAX_QTY");
         return ((10000 - feeBps) * val) / 10000;
     }
 
-    function valueAfterAddingPremium(uint val, uint premium) public pure returns(uint) {
+    function valueAfterAddingPremium(uint val, uint premium) internal pure returns(uint) {
         require(val <= MAX_QTY, "valueAfterAddingPremium: val > MAX_QTY");
         return val * (10000 + premium) / 10000;
     }
 
-    event TokenConfigDataSet(
-        ERC20 token, uint maxTraverse, uint traveseFactorX, uint traveseFactorY,
-        uint maxTake, uint takeFactorX, uint takeFactorY,
-        uint minSizeFactorX, uint minSizeFactorY, uint minETHSupport
-    );
-
-    function setTokenConfigData(
-        ERC20 token, uint maxTraverse, uint traveseFactorX, uint traveseFactorY,
-        uint maxTake, uint takeFactorX, uint takeFactorY,
-        uint minSizeFactorX, uint minSizeFactorY, uint minETHSupport) public {
-        address tokenAddr = address(token);
-        require(isTokenListed[tokenAddr]);
-        tokenBasicData[tokenAddr] = encodeTokenBasicData(minETHSupport, maxTraverse, maxTake);
-        tokenFactorData[tokenAddr] = encodeFactorData(
-            traveseFactorX,
-            traveseFactorY,
-            takeFactorX,
-            takeFactorY,
-            minSizeFactorX,
-            minSizeFactorY
-        );
-        emit TokenConfigDataSet(
-            token, maxTraverse, traveseFactorX, takeFactorY,
-            maxTake, takeFactorX, takeFactorY,
-            minSizeFactorX, minSizeFactorY, minETHSupport
-        );
-    }
-
-    event TradeEnabled(bool enable);
-
-    function enableTrade() public onlyAdmin returns(bool) {
-        tradeEnabled = true;
-        emit TradeEnabled(true);
-
-        return true;
-    }
-
-    function disableTrade() public onlyAlerter returns(bool) {
-        tradeEnabled = false;
-        emit TradeEnabled(false);
-
-        return true;
-    }
-
-    event SetContracts(address kyberNetwork, address otc);
-
-    function setContracts(address _kyberNetwork, address _otc) public onlyAdmin {
-        require(_kyberNetwork != address(0), "setContracts: kyberNetwork's address is missing");
-        require(_otc != address(0), "setContracts: otc's address is missing");
-
-        kyberNetwork = _kyberNetwork;
-        otc = OtcInterface(_otc);
-
-        emit SetContracts(_kyberNetwork, _otc);
-    }
-
-    event InternalInventoryDataSet(uint minToken, uint maxToken, uint pricePremiumBps, uint minSpreadBps);
-
-    function setInternalInventoryData(ERC20 token, uint minToken, uint maxToken, uint pricePremiumBps, uint minSpreadBps) public onlyAdmin {
-        require(isTokenListed[address(token)], "setInternalInventoryData: token is not listed");
-        require(minToken < POW_2_96, "setInternalInventoryData: minToken > 2**96");
-        require(maxToken < POW_2_96, "setInternalInventoryData: maxToken > 2**96");
-        require(pricePremiumBps < POW_2_32, "setInternalInventoryData: pricePremiumBps > 2**32");
-        require(minSpreadBps < POW_2_32, "setInternalInventoryData: minSpreadBps > 2**32");
-        // blocking too small minSpreadBps
-        require(2 * minSpreadBps >= (feeBps + pricePremiumBps), "setInternalInventoryData: minSpreadBps should be >= (feeBps + pricePremiumBps)/2");
-
-        internalInventoryData[address(token)] = encodeInternalInventoryData(minToken, maxToken, pricePremiumBps, minSpreadBps);
-
-        emit InternalInventoryDataSet(minToken, maxToken, pricePremiumBps, minSpreadBps);
-    }
-
-    event TokenListed(ERC20 token);
-
-    function listToken(ERC20 token) public onlyAdmin {
-        address tokenAddr = address(token);
-
-        require(tokenAddr != address(0), "listToken: token's address is missing");
-        require(!isTokenListed[tokenAddr], "listToken: token's alr listed");
-        require(getDecimals(token) == COMMON_DECIMALS, "listToken: token's decimals is not COMMON_DECIMALS");
-        require(token.approve(address(otc), 2**255), "listToken: approve token otc failed");
-
-        isTokenListed[tokenAddr] = true;
-
-        emit TokenListed(token);
-    }
-
-    event TokenDelisted(ERC20 token);
-
-    function delistToken(ERC20 token) public onlyAdmin {
-        address tokenAddr = address(token);
-
-        require(isTokenListed[tokenAddr], "delistToken: token is not listed");
-        require(token.approve(address(otc), 0), "delistToken: reset approve token failed");
-
-        delete isTokenListed[tokenAddr];
-        delete internalInventoryData[tokenAddr];
-        delete tokenFactorData[tokenAddr];
-        delete tokenBasicData[tokenAddr];
-
-        emit TokenDelisted(token);
-    }
-
-    event FeeBpsSet(uint feeBps);
-
-    function setFeeBps(uint _feeBps) public onlyAdmin {
-        require(_feeBps < 10000, "setFeeBps: feeBps >= 10000");
-
-        feeBps = _feeBps;
-        emit FeeBpsSet(feeBps);
-    }
-
-    function showBestOffers(ERC20 token, bool isEthToToken, uint srcAmountToken) public view
-        returns(uint destAmount, uint destAmountToken, uint [] memory offerIds) 
-    {
-        OfferData [] memory offers;
-        ERC20 dstToken = isEthToToken ? token : wethToken;
-        ERC20 srcToken = isEthToToken ? wethToken : token;
-
-        OfferData memory bid;
-        OfferData memory ask;
-        (bid, ask) = getFirstBidAndAskOrders(token);
-
-        (destAmount, offers) = findBestOffers(dstToken, srcToken, (srcAmountToken * 10 ** 18), bid, ask);
-        
-        destAmountToken = destAmount / 10 ** 18;
-        
-        uint i;
-        for (i; i < offers.length; i++) {
-            if (offers[i].id == 0) {
-                break;
-            }
-        }
-    
-        offerIds = new uint[](i);
-        for (i = 0; i < offerIds.length; i++) {
-            offerIds[i] = offers[i].id;
-        }
-    }    
-    
-    function findBestOffers(ERC20 dstToken, ERC20 srcToken, uint srcAmount, OfferData memory bid, OfferData memory ask)
+    function findBestOffers(
+        ERC20 dstToken,
+        ERC20 srcToken,
+        uint srcAmount,
+        OfferData memory bid,
+        OfferData memory ask
+    )
         internal view
-        returns(uint totalDestAmount, OfferData [] memory offers)
+        returns(uint totalDestAmount, OfferData[] memory offers)
     {
         uint remainingSrcAmount = srcAmount;
         uint maxOrdersToTake;
@@ -533,7 +613,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
 
         OfferData memory biggestSkippedOffer = OfferData(0, 0, 0);
 
-        for ( ;maxTraversedOrders > 0 ; --maxTraversedOrders) {
+        for (; maxTraversedOrders > 0; --maxTraversedOrders) {
             thisOffer = numTakenOffer;
 
             // in case both biggestSkippedOffer & current offer have amount >= remainingSrcAmount
@@ -572,39 +652,13 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         if (totalDestAmount == 0) offers = new OfferData[](0);
     }
 
-    // just use for testing, give src/dest amount to compute rate should be a sell offer data
-    function calcOfferLimitsFromFactorDataPub(ERC20 token, bool isEthToToken, uint sellTokenSrcAmt, uint sellTokenDstAmt, uint srcAmount)
-        public view
-        returns(uint maxTakes, uint maxTraverse, uint minPayAmount)
-    {
-        (maxTakes, maxTraverse, minPayAmount) = calcOfferLimitsFromFactorData(
-            token,
-            isEthToToken,
-            OfferData(0, sellTokenDstAmt, sellTokenSrcAmt),
-            OfferData(0, sellTokenSrcAmt, sellTokenDstAmt),
-            srcAmount
-        );
-    }
-
-    // just use for testing, but with real data
-    function calcOfferLimitsFromFactorDataPub2(ERC20 token, bool isEthToToken, uint srcAmount)
-        public view
-        returns(uint maxTakes, uint maxTraverse, uint minPayAmount)
-    {
-        OfferData memory bid;
-        OfferData memory ask;
-        (bid, ask) = getFirstBidAndAskOrders(token);
-        (maxTakes, maxTraverse, minPayAmount) = calcOfferLimitsFromFactorData(
-            token,
-            isEthToToken,
-            bid,
-            ask,
-            srcAmount
-        );
-    }
-
     // returns max takes, max traveser, min order size to take using config factor data
-    function calcOfferLimitsFromFactorData(ERC20 token, bool isEthToToken, OfferData memory bid, OfferData memory ask, uint srcAmount)
+    function calcOfferLimitsFromFactorData(
+        ERC20 token,
+        bool isEthToToken,
+        OfferData memory bid,
+        OfferData memory ask, uint srcAmount
+    )
         internal view
         returns(uint maxTakes, uint maxTraverse, uint minPayAmount)
     {
@@ -644,16 +698,27 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
 
         FactorDataConfig memory factorData = getFactorData(token);
 
-        maxTraverse = (factorData.maxTraverseX * ethOrderSize / PRECISION + factorData.maxTraverseY) / BASIC_FACTOR_STEP;
+        maxTraverse = (factorData.maxTraverseX * ethOrderSize / PRECISION + factorData.maxTraverseY) / BPS;
         maxTraverse = minOf(maxTraverse, basicData.maxTraverse);
 
-        maxTakes = (factorData.maxTakeX * ethOrderSize / PRECISION + factorData.maxTakeY) / BASIC_FACTOR_STEP;
+        maxTakes = (factorData.maxTakeX * ethOrderSize / PRECISION + factorData.maxTakeY) / BPS;
         maxTakes = minOf(maxTakes, basicData.maxTakes);
 
-        uint minETHAmount = (factorData.minOrderSizeX * ethOrderSize + factorData.minOrderSizeY * PRECISION) / BASIC_FACTOR_STEP;
+        uint minETHAmount = (factorData.minOrderSizeX * ethOrderSize + factorData.minOrderSizeY * PRECISION) / BPS;
 
         // translate min amount to pay token
         minPayAmount = isEthToToken ? minETHAmount : minETHAmount * order0Pay / order0Buy;
+    }
+
+    // bid: buy WETH, ask: sell WETH (their base token is DAI)
+    function getFirstBidAndAskOrders(ERC20 token)
+        internal view
+        returns(OfferData memory bid, OfferData memory ask)
+    {
+        // getting first bid offer (buy WETH)
+        (bid.id, bid.payAmount, bid.buyAmount) = getFirstOffer(token, wethToken);
+        // getting first ask offer (sell WETH)
+        (ask.id, ask.payAmount, ask.buyAmount) = getFirstOffer(wethToken, token);
     }
 
     function getFirstOffer(ERC20 offerSellGem, ERC20 offerBuyGem)
@@ -661,62 +726,9 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         returns(uint offerId, uint offerPayAmount, uint offerBuyAmount)
     {
         offerId = otc.getBestOffer(offerSellGem, offerBuyGem);
-        (offerBuyAmount, ,offerPayAmount, ) = otc.getOffer(offerId);
+        (offerBuyAmount, , offerPayAmount, ) = otc.getOffer(offerId);
     }
 
-    function getNextBestOffer(
-        ERC20 offerSellGem,
-        ERC20 offerBuyGem,
-        uint payAmount,
-        uint prevOfferId)
-        public view
-        returns(
-            uint offerId,
-            uint offerPayAmount,
-            uint offerBuyAmount
-        )
-    {
-        if (prevOfferId == INVALID_ID) {
-            offerId = otc.getBestOffer(offerSellGem, offerBuyGem);
-        } else {
-            offerId = otc.getWorseOffer(prevOfferId);
-        }
-
-        (offerBuyAmount, ,offerPayAmount, ) = otc.getOffer(offerId);
-
-        while (payAmount > offerPayAmount) {
-            offerId = otc.getWorseOffer(offerId); // next best offer
-            if (offerId == 0) {
-                offerId = 0;
-                offerPayAmount = 0;
-                offerBuyAmount = 0;
-                break;
-            }
-            (offerBuyAmount, ,offerPayAmount, ) = otc.getOffer(offerId);
-        }
-    }
-
-    function getFirstBidAndAskOrdersPub(ERC20 token)
-        public view
-        returns(uint bidPayAmt, uint bidBuyAmt, uint askPayAmt, uint askBuyAmt)
-    {
-        OfferData memory bid;
-        OfferData memory ask;
-        (bid, ask) = getFirstBidAndAskOrders(token);
-        bidPayAmt = bid.payAmount;
-        bidBuyAmt = bid.buyAmount;
-        askPayAmt = ask.payAmount;
-        askBuyAmt = ask.buyAmount;
-    }
-
-    // bid: buy WETH, ask: sell WETH (their base token is DAI)
-    function getFirstBidAndAskOrders(ERC20 token) internal view returns(OfferData memory bid, OfferData memory ask) {
-        // getting first bid offer (buy WETH)
-        (bid.id, bid.payAmount, bid.buyAmount) = getFirstOffer(token, wethToken);
-        // getting first ask offer (sell WETH)
-        (ask.id, ask.payAmount, ask.buyAmount) = getFirstOffer(wethToken, token);
-    }
-    
     function checkValidSpread(OfferData memory bid, OfferData memory ask, bool isCheckingMinSpread, uint minSpreadBps)
         internal pure
         returns(bool)
@@ -748,13 +760,6 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         return true;
     }
 
-    function getTokenBasicDataPub(ERC20 token)
-        public view
-        returns (uint minETHSupport, uint maxTraverse, uint maxTakes)
-    {
-        (minETHSupport, maxTraverse, maxTakes) = decodeTokenBasicData(tokenBasicData[address(token)]);
-    }
-
     function getTokenBasicData(ERC20 token) 
         internal view 
         returns(BasicDataConfig memory data)
@@ -762,25 +767,11 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         (data.minETHSupport, data.maxTraverse, data.maxTakes) = decodeTokenBasicData(tokenBasicData[address(token)]);
     }
 
-    function getFactorDataPub(ERC20 token)
-        public view
-        returns (uint maxTraverseX, uint maxTraverseY, uint maxTakeX, uint maxTakeY, uint minOrderSizeX, uint minOrderSizeY)
-    {
-        (maxTraverseX, maxTraverseY, maxTakeX, maxTakeY, minOrderSizeX, minOrderSizeY) = decodeFactorData(tokenFactorData[address(token)]);
-    }
-
     function getFactorData(ERC20 token) 
         internal view 
         returns(FactorDataConfig memory data)
     {
         (data.maxTraverseX, data.maxTraverseY, data.maxTakeX, data.maxTakeY, data.minOrderSizeX, data.minOrderSizeY) = decodeFactorData(tokenFactorData[address(token)]);
-    }
-
-    function getInternalInventoryDataPub(ERC20 token)
-        public view
-        returns(uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps)
-    {
-        (minTokenBal, maxTokenBal, premiumBps, minSpreadBps) = decodeInternalInventoryData(internalInventoryData[address(token)]);
     }
 
     function getInternalInventoryData(ERC20 token)
