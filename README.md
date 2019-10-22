@@ -11,9 +11,9 @@ For more details, please visit our [developer portal](https://developer.kyber.ne
 
 ## Testing full contract suite with Buidler
 1. If contracts have not been compiled, run `./compilation.sh`. This step can be skipped subsequently.
-2. Run `./test.sh`
+2. Run `./tst.sh`
 3. Use `-f` for running a specific test file.
 
 ### Example Commands
-`./test.sh -f "./test/kyberReserve.js"`
-`./test.sh -f "./testV5/v5Example.js"`
+`./tst.sh -f "./test/kyberReserve.js"`
+`./tst.sh -f "./testV5/v5Example.js"`
