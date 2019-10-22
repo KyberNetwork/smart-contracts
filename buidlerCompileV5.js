@@ -1,10 +1,12 @@
+usePlugin("@nomiclabs/buidler-truffle4");
+usePlugin("@nomiclabs/buidler-web3-legacy");
+
 module.exports = {
   defaultNetwork: "develop",
 
   networks: {
     develop: {
       url: "http://127.0.0.1:8545",
-      gas: 6000000,
       timeout: 20000
     }
   },
@@ -19,7 +21,7 @@ module.exports = {
 
   paths: {
     sources: "./contractsV5",
-    tests: "./testV5"
+    tests: "./testV5",
   },
 
   mocha: {

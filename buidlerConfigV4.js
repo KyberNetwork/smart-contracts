@@ -7,7 +7,6 @@ module.exports = {
   networks: {
     develop: {
       url: "http://127.0.0.1:8545",
-      gas: 6000000,
       timeout: 20000
     }
   },
@@ -22,9 +21,7 @@ module.exports = {
 
   paths: {
     sources: "./contracts",
-    tests: "./test",
-    cache: "./cache",
-    artifacts: "./artifacts"
+    tests: "./test"
   },
 
   mocha: {
