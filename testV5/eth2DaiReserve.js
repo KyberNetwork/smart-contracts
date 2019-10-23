@@ -1028,6 +1028,40 @@ contract('Eth2DaiReserve', function(accounts) {
         await reserve.setContracts(network, otc.address);
     });
 
+    it("Should test set internal inventory enable", async function() {
+        let token = await TestToken.new("test token", "tst", 18);
+
+        // failed token is not listed
+        try {
+            await reserve.setInternalInventoryEnable(token.address, true, {from: admin});
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // failed alread disabled
+        try {
+            await reserve.setInternalInventoryEnable(myDaiToken.address, false, {from: admin});
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // success enable
+        await reserve.setInternalInventoryEnable(myDaiToken.address, true, {from: admin});
+
+        // failed to enable again
+        try {
+            await reserve.setInternalInventoryEnable(myDaiToken.address, true, {from: admin});
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // success disable
+        await reserve.setInternalInventoryEnable(myDaiToken.address, false, {from: admin});
+    });
+
     it("Should test trade with trade is not enable", async function() {
         // making median rate is 200
         await otc.setBuyOffer(1, myDaiToken.address, 20 * 190 * precision, myWethToken.address, 20 * precision); // rate: 190
