@@ -32,7 +32,9 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
 
     mapping(address => bool) public isTokenListed;
     // 96 bits: min token, 96 bits: max token, 32 bits: premiumBps, 32 bits: minSpreadBps;
-    mapping(address => uint) internal  internalInventoryData;
+    mapping(address => uint) internal internalInventoryData;
+    // some tokens won't enable using internal inventory
+    mapping(address => bool) public isInternalInventoryEnabled;
     // basicData contains compact data of min eth support, max traverse and max takes
     // min eth support (first 192 bits) + max traverse (32 bits) + max takes (32 bits) = 256 bits
     mapping(address => uint) internal tokenBasicData;
@@ -81,7 +83,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
     
         kyberNetwork = _kyberNetwork;
         otc = OtcInterface(_otc);
-        feeBps = 25;
+        feeBps = _feeBps;
         admin = _admin;
         tradeEnabled = true;
     }
@@ -246,6 +248,17 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         emit ContractsSet(_kyberNetwork, _otc);
     }
 
+    event InternalInventoryEnableSet(ERC20 token, bool isEnabled);
+
+    function setInternalInventoryEnable(ERC20 token, bool isEnabled) public onlyAdmin {
+        require(isTokenListed[address(token)], "setInternalInventoryEnable: token is not listed");
+        require(isInternalInventoryEnabled[address(token)] != isEnabled, "setInternalInventoryEnable: duplicated enable/disable");
+
+        isInternalInventoryEnabled[address(token)] = isEnabled;
+
+        emit InternalInventoryEnableSet(token, isEnabled);
+    }
+
     event InternalInventoryDataSet(uint minToken, uint maxToken, uint pricePremiumBps, uint minSpreadBps);
 
     function setInternalInventoryData(
@@ -295,6 +308,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
 
         delete isTokenListed[tokenAddr];
         delete internalInventoryData[tokenAddr];
+        delete isInternalInventoryEnabled[tokenAddr];
         delete tokenFactorData[tokenAddr];
         delete tokenBasicData[tokenAddr];
 
@@ -336,39 +350,6 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         offerIds = new uint[](i);
         for (i = 0; i < offerIds.length; i++) {
             offerIds[i] = offers[i].id;
-        }
-    }
-
-    function getNextBestOffer(
-        ERC20 offerSellGem,
-        ERC20 offerBuyGem,
-        uint payAmount,
-        uint prevOfferId
-    )
-        public view
-        returns(
-            uint offerId,
-            uint offerPayAmount,
-            uint offerBuyAmount
-        )
-    {
-        if (prevOfferId == INVALID_ID) {
-            offerId = otc.getBestOffer(offerSellGem, offerBuyGem);
-        } else {
-            offerId = otc.getWorseOffer(prevOfferId);
-        }
-
-        (offerBuyAmount, , offerPayAmount, ) = otc.getOffer(offerId);
-
-        while (payAmount > offerPayAmount) {
-            offerId = otc.getWorseOffer(offerId); // next best offer
-            if (offerId == 0) {
-                offerId = 0;
-                offerPayAmount = 0;
-                offerBuyAmount = 0;
-                break;
-            }
-            (offerBuyAmount, , offerPayAmount, ) = otc.getOffer(offerId);
         }
     }
 
@@ -517,18 +498,21 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         internal view
         returns(bool shouldUse, uint premiumBps)
     {
-        require(tokenVal <= MAX_QTY, "shouldUseInternalInventory: tokenVal > MAX_QTY");
+        shouldUse = false;
+        premiumBps = 0;
+
+        if (!isInternalInventoryEnabled[address(token)]) { return (shouldUse, premiumBps); }
+
+        if (tokenVal <= MAX_QTY) { return (shouldUse, premiumBps); }
 
         InternalInventoryData memory inventoryData = getInternalInventoryData(token);
-
-        shouldUse = false;
         premiumBps = inventoryData.premiumBps;
 
         uint tokenBalance = token.balanceOf(address(this));
 
         if (ethToToken) {
             if (tokenBalance < tokenVal) { return (shouldUse, premiumBps); }
-            if (tokenVal - tokenVal < inventoryData.minTokenBal) { return (shouldUse, premiumBps); }
+            if (tokenBalance - tokenVal < inventoryData.minTokenBal) { return (shouldUse, premiumBps); }
         } else {
             if (address(this).balance < ethVal) { return (shouldUse, premiumBps); }
             if (tokenBalance + tokenVal > inventoryData.maxTokenBal) { return (shouldUse, premiumBps); }
@@ -597,7 +581,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         }
 
         // otc's terminology is of offer maker, so their sellGem is our (the taker's) dest token.
-        // if we don't have first offer, try to get it
+        // if we don't have best offers, get them.
         if ((srcToken == wethToken && bid.id == 0) || (dstToken == wethToken && ask.id == 0)) {
             offers[0].id = otc.getBestOffer(dstToken, srcToken);
             // assuming pay amount is taker pay amount. (in otc it is used differently)
