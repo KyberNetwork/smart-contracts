@@ -15,6 +15,7 @@ contract WrapConversionRate is WrapperBase {
         WrapperBase(PermissionGroups(address(_conversionRates)), _admin, 0)
     {
         conversionRates = _conversionRates;
+        addOperator(admin);
     }
 
     // add token functions

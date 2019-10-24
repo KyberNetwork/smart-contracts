@@ -59,9 +59,9 @@ contract('WrapConversionRates', function(accounts) {
         wrapConvRateInst = await WrapConversionRate.new(convRatesInst.address, admin);
 
         //transfer admin to wrapper
-        await wrapConvRateInst.addOperator(operator, {from: admin});
+//        await wrapConvRateInst.addOperator(operator, {from: admin});
         await convRatesInst.transferAdmin(wrapConvRateInst.address);
-        await wrapConvRateInst.claimWrappedContractAdmin({from: operator});
+        await wrapConvRateInst.claimWrappedContractAdmin({from: admin});
     });
 
     it("should test add token using wrapper. and verify data with get data", async function () {
@@ -115,7 +115,7 @@ contract('WrapConversionRates', function(accounts) {
 
         //transfer admin to wrapper
         await convRatesInst.transferAdmin(wrapConvRateInst.address);
-        await wrapConvRateInst.claimWrappedContractAdmin({from: operator});
+        await wrapConvRateInst.claimWrappedContractAdmin({from: admin});
 
         ratesAdmin = await convRatesInst.admin();
         assert.equal(wrapConvRateInst.address, ratesAdmin.valueOf());
@@ -133,7 +133,7 @@ contract('WrapConversionRates', function(accounts) {
 
         //transfer admin to wrapper
         await convRatesInst.transferAdmin(wrapConvRateInst.address);
-        await wrapConvRateInst.claimWrappedContractAdmin({from: operator});
+        await wrapConvRateInst.claimWrappedContractAdmin({from: admin});
 
         ratesAdmin = await convRatesInst.admin();
         assert.equal(wrapConvRateInst.address, ratesAdmin.valueOf());
@@ -141,8 +141,10 @@ contract('WrapConversionRates', function(accounts) {
 
     it("should test only admin can call functions.", async function() {
         //add token data
+        let token1 = await TestToken.new("test6", "tst6", 18);
+
         try {
-            await wrapConvRateInst.addToken(token.address, minRecordResWrap, maxPerBlockImbWrap, maxTotalImbWrap, {from: operator});
+            await wrapConvRateInst.addToken(token1.address, minRecordResWrap, maxPerBlockImbWrap, maxTotalImbWrap, {from: accounts[7]});
             assert(false, "throw was expected in line above.")
         }
         catch(e){
@@ -154,7 +156,7 @@ contract('WrapConversionRates', function(accounts) {
         let maxTotalList = [maxTotalImbWrap, maxTotalImbWrap];
 
         try {
-            await wrapConvRateInst.setTokenControlData(tokens, maxPerBlockList, maxTotalList, {from: operator});
+            await wrapConvRateInst.setTokenControlData(tokens, maxPerBlockList, maxTotalList, {from: accounts[7]});
             assert(false, "throw was expected in line above.")
         }
         catch(e){
@@ -163,12 +165,12 @@ contract('WrapConversionRates', function(accounts) {
 
         //valid duration
         try {
-            await wrapConvRateInst.setValidDurationData(validDurationNonce, {from:operator});
+            await wrapConvRateInst.setValidDurationData(validDurationNonce, {from: accounts[7]});
             assert(false, "throw was expected in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
+        }   
     });
 
     it("test can't init wrapper with contract with address 0.", async function() {
