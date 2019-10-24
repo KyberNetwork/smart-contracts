@@ -1,7 +1,7 @@
 pragma solidity 0.4.18;
 
 
-import "../KyberReserve.sol";
+import "../kyberReserves/KyberReserve.sol";
 import "../KyberNetworkProxyInterface.sol";
 
 contract MaliciousReserve is KyberReserve {

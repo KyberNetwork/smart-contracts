@@ -1,7 +1,7 @@
 pragma solidity 0.4.18;
 
 
-import "../ConversionRates.sol";
+import "../kyberReserves/fprConversionRate/ConversionRates.sol";
 import "../ERC20Interface.sol";
 
 

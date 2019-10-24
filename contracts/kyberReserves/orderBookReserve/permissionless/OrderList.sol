@@ -1,7 +1,7 @@
 pragma solidity 0.4.18;
 
 
-import "../PermissionGroups.sol";
+import "../../../PermissionGroups.sol";
 import "./OrderListInterface.sol";
 
 

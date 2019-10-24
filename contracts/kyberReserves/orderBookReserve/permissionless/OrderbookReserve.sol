@@ -4,8 +4,8 @@ pragma solidity 0.4.18;
 import "./OrderListInterface.sol";
 import "./OrderIdManager.sol";
 import "./OrderbookReserveInterface.sol";
-import "../Utils2.sol";
-import "../KyberReserveInterface.sol";
+import "../../../Utils2.sol";
+import "../../../KyberReserveInterface.sol";
 
 
 contract FeeBurnerRateInterface {

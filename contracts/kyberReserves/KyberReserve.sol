@@ -1,12 +1,12 @@
 pragma solidity 0.4.18;
 
 
-import "./ERC20Interface.sol";
-import "./Utils.sol";
-import "./Withdrawable.sol";
-import "./ConversionRatesInterface.sol";
-import "./SanityRatesInterface.sol";
-import "./KyberReserveInterface.sol";
+import "../ERC20Interface.sol";
+import "../Utils.sol";
+import "../Withdrawable.sol";
+import "../ConversionRatesInterface.sol";
+import "../SanityRatesInterface.sol";
+import "../KyberReserveInterface.sol";
 
 
 /// @title Kyber Reserve contract
