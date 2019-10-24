@@ -765,7 +765,6 @@ contract('ExpectedRate', function(accounts) {
     });
 
     it("should verify function 'setKncRate' will fail if last call to findBestRate fails.", async function() {
-        this.timeout(20000);
         const mockNetwork = await NetworkFailingGetRate.new();
         const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
         await tempExpectedRate.addOperator(operator);
@@ -842,7 +841,7 @@ contract('ExpectedRate', function(accounts) {
         assert.equal(rates[0].valueOf(), 0, "unexpected rate");
         assert.equal(rates[1].valueOf(), 0, "unexpected rate");
     })
-
+    
     it("call getExpectedRate call to kyber reverts. getExpectedRate should return 0 and not revert. including permissionless", async() => {
         const mockNetwork = await MockNetwork.new();
         const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);

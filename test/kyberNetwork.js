@@ -251,6 +251,7 @@ contract('KyberNetwork', function(accounts) {
         assert.equal(baseSellRate1.length, tokens.length);
         assert.equal(baseSellRate2.length, tokens.length);
         assert.equal(baseSellRate4.length, tokens.length);
+        
         buys.length = sells.length = indices.length = 0;
 
         await pricing1.setBaseRate(tokenAdd, baseBuyRate1, baseSellRate1, buys, sells, currentBlock, indices, {from: operator});
@@ -591,7 +592,7 @@ contract('KyberNetwork', function(accounts) {
             assert.equal(reportedBalance.valueOf(), reserve2TokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
             //enable reserve trade
             await reserve1.enableTrade({from:admin});
-        } catch(e) {
+        } catch (e) {
             //enable reserve trade
             await reserve1.enableTrade({from:admin});
             console.log("oooops " + e);
@@ -659,7 +660,7 @@ contract('KyberNetwork', function(accounts) {
             assert.equal(reportedBalance.valueOf(), reserve2TokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
             //enable reserve trade
             await reserve1.enableTrade({from:admin});
-        } catch(e) {
+        } catch (e) {
             //enable reserve trade
             await reserve1.enableTrade({from:admin});
             console.log("oooops " + e);
@@ -831,7 +832,7 @@ contract('KyberNetwork', function(accounts) {
             await network.tradeWithHint(user1, failingTransferToken.address, amountTwei, ethAddress, user2, maxDestAmount,
                 1, walletId, 0, {from:networkProxy});
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     });
@@ -846,7 +847,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, ethAddress, amountWei, token.address, user2, 10 ** 21,
                 minConversionRate, walletId, 0, {from:networkProxy, value:amountWei});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
         await network.removeReserve(reserve3.address, 2, {from: operator});
@@ -1009,7 +1010,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, ethAddress, 0, tokenAdd[tokenInd], user2, 10 ** 21,
                 minConversionRate, walletId, 0, {from:networkProxy, value:0});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     });
@@ -1028,7 +1029,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 2000,
                 minConversionRate, walletId, 0, {from:networkProxy, value:amountWei});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1054,7 +1055,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 10 * 21,
                 minConversionRate, walletId, 0, {from:networkProxy, value:amountWei});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1064,7 +1065,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, ethAddress, user2, 10 ** 21,
                 minConversionRate, walletId, 0, {from:networkProxy});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1072,7 +1073,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, tokenAdd[1], user2, 10 ** 21,
                 minConversionRate, walletId, 0, {from:networkProxy});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1095,7 +1096,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 10 * 21,
                 minConversionRate, walletId, 0, {from:networkProxy, value:amountWei});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1105,7 +1106,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, ethAddress, user2, 10 ** 21,
                 minConversionRate, walletId, 0, {from:networkProxy});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1113,7 +1114,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, tokenAdd[1], user2, 10 ** 21,
                 minConversionRate, walletId, 0, {from:networkProxy});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1135,7 +1136,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 10 * 21,
                 minConversionRate, walletId, hintBytes32, {from:networkProxy, value:amountWei});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     })
@@ -1155,7 +1156,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 10 ** 21,
                 minConversionRate, walletId, 0, {from:networkProxy, value:amountWei});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1165,7 +1166,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, ethAddress, user2, 10 ** 21,
                 minConversionRate, walletId, 0, {from:networkProxy});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1173,7 +1174,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, tokenAdd[1], user2, 10 ** 21,
                 minConversionRate, walletId, 0, {from:networkProxy});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1198,7 +1199,7 @@ contract('KyberNetwork', function(accounts) {
             await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 10 ** 21,
                minConversionRate, walletId, 0, {from:networkProxy, value:amountWei});
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1208,7 +1209,7 @@ contract('KyberNetwork', function(accounts) {
             await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, ethAddress, user2, 10 ** 21,
                minConversionRate, walletId, 0, {from:networkProxy});
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1216,7 +1217,7 @@ contract('KyberNetwork', function(accounts) {
             await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTwei, tokenAdd[1], user2, 10 ** 21,
                minConversionRate, walletId, 0, {from:networkProxy});
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1237,7 +1238,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 2000,
                 minConversionRate, walletId, 0, {from:user1, value:amountWei});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1257,7 +1258,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 2000,
                 minConversionRate, walletId, 0, {from:networkProxy, value:amountWei*1-1});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1277,7 +1278,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTWei.valueOf(), ethAddress, user2, 50000, 0, walletId, 0, {from:networkProxy});
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1330,7 +1331,8 @@ contract('KyberNetwork', function(accounts) {
             await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTweiLow, ethAddress, user2, 3000, minRate,
                     walletId, 0, {from:networkProxy});
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } 
+        catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1401,7 +1403,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             await network.getUserCapInTokenWei(user1, tokens[0].address);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        }         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     })
@@ -1427,7 +1429,8 @@ contract('KyberNetwork', function(accounts) {
         try {
             reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        }
+        catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1437,7 +1440,8 @@ contract('KyberNetwork', function(accounts) {
         try {
             reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } 
+        catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1448,7 +1452,8 @@ contract('KyberNetwork', function(accounts) {
         try {
             reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } 
+        catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1459,7 +1464,8 @@ contract('KyberNetwork', function(accounts) {
         try {
             reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } 
+        catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1471,7 +1477,8 @@ contract('KyberNetwork', function(accounts) {
         try {
             reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } 
+        catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1481,7 +1488,8 @@ contract('KyberNetwork', function(accounts) {
         try {
             reserveGet = await network.reservesPerTokenSrc(tokenAddress, 1);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } 
+        catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1493,7 +1501,8 @@ contract('KyberNetwork', function(accounts) {
         try {
             reserveGet = await network.reservesPerTokenDest(tokenAddress, 1);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } 
+        catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1505,7 +1514,8 @@ contract('KyberNetwork', function(accounts) {
         try {
             reserveGet = await network.reservesPerTokenSrc(tokenAddress, 2);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } 
+        catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1519,7 +1529,8 @@ contract('KyberNetwork', function(accounts) {
         try {
             reserveGet = await network.reservesPerTokenSrc(tokenAddress, 2);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } 
+        catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1531,7 +1542,8 @@ contract('KyberNetwork', function(accounts) {
         try {
             reserveGet = await network.reservesPerTokenSrc(tokenAddress, 2);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } 
+        catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     });
@@ -1541,7 +1553,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             await network.listPairForReserve(reserve3.address, uniqueToken.address, true, true, true, {from: operator});
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1559,7 +1571,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             await network.listPairForReserve(reserve3.address, failingToken.address, true, true, true, {from: operator});
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1567,7 +1579,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             await network.listPairForReserve(reserve3.address, failingToken.address, false, true, false, {from: operator});
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     });
@@ -1657,14 +1669,14 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, listedToken.address, amount, uniqueToken.address, user2, maxDestAmount,
                 0 ,walletId, 0, {from:networkProxy});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
         try {
              await network.tradeWithHint(user1, uniqueToken.address, amount, listedToken.address, user2, maxDestAmount,
                 0 ,walletId, 0, {from:networkProxy});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1696,7 +1708,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, uniqueToken.address, amount, listedToken.address, user2, maxDestAmount,
                 0 ,walletId, 0, {from:networkProxy});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1756,7 +1768,7 @@ contract('KyberNetwork', function(accounts) {
             await network.tradeWithHint(user1, listedToken.address, amount, uniqueToken.address, user2, maxDestAmount,
                 0 ,walletId, 0, {from:networkProxy});
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1786,14 +1798,14 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, listedToken.address, amount, uniqueToken.address, user2, maxDestAmount,
                 0 ,walletId, 0, {from:networkProxy});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
         try {
              await network.tradeWithHint(user1, uniqueToken.address, amount, listedToken.address, user2, maxDestAmount,
                 0 ,walletId, 0, {from:networkProxy});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1823,7 +1835,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 2000,
                 minConversionRate, walletId, 0, {from:networkProxy, value:amountWei});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1855,7 +1867,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTWei, ethAddress, user2, maxDestAmount,
                 minConversionRate, walletId, 0, {from:networkProxy});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1880,7 +1892,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], user2, 2000,
                 minConversionRate, walletId, 0, {from:networkProxy, value:amountWei, gasPrice: highGas});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1907,7 +1919,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user2, ethAddress, amountWei, tokenAdd[tokenInd], user2, 2000,
                 minConversionRate, walletId, 0, {from:networkProxy, value:amountWei});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1952,7 +1964,7 @@ contract('KyberNetwork', function(accounts) {
             await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTWei.valueOf(), ethAddress, user2, amountTWei.valueOf(),
                 0, walletId, 0, {from:networkProxy});
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -1981,7 +1993,7 @@ contract('KyberNetwork', function(accounts) {
             await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTWei.valueOf(), ethAddress, user2, amountTWei.valueOf(),
                         minSetRate, walletId, 0, {from:networkProxy});
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -2010,7 +2022,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             await network.tradeWithHint(user1, tokenAdd[tokenInd], amountTWei, ethAddress, user2, 5000, 0, walletId, 0, {from:networkProxy});
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -2040,7 +2052,7 @@ contract('KyberNetwork', function(accounts) {
              await network.tradeWithHint(user1, ethAddress, amountWei, tokenAdd[tokenInd], 0, 2000, minConversionRate,
                 walletId, 0, {from:networkProxy, value:amountWei});
              assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -2068,7 +2080,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             await network.addReserve(reserve1.address, false, {from: operator});
             assert(false, "throw was expected in line above.");
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -2106,7 +2118,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             await network.removeReserve(reserve1.address, 1, {from: operator});
             assert(false, "throw was expected in line above.");
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -2116,7 +2128,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             await network.removeReserve(reserve1.address, 0, {from: operator});
             assert(false, "throw was expected in line above.");
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -2129,7 +2141,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             networkTemp = await Network.new(0);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -2142,21 +2154,21 @@ contract('KyberNetwork', function(accounts) {
         try {
             await networkTemp.setExpectedRate(0);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
             await networkTemp.setFeeBurner(0);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
             await networkTemp.setKyberProxy(0);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     });
@@ -2168,7 +2180,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             await networkTemp.setEnable(true);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -2176,7 +2188,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             await networkTemp.setEnable(true);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -2184,7 +2196,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             await networkTemp.setEnable(true);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -2192,7 +2204,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             await networkTemp.setEnable(true);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -2208,7 +2220,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             await network.setParams(gasPrice.valueOf(), illegalNegRateDiff);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -2228,7 +2240,7 @@ contract('KyberNetwork', function(accounts) {
         try {
             await networkTemp.getExpectedRate(tokenAdd[2], ethAddress, amountTwei);
             assert(false, "throw was expected in line above.")
-        } catch(e) {
+        } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -2958,6 +2970,7 @@ contract('KyberNetwork', function(accounts) {
             let amountKnc = 600 * 10 ** 18;
             let amountTokenWeiDeposit = (new BigNumber(30 * 10 ** 18)).add(600);
             await makerDeposit(orderbookReserve, permissionlessTok, maker1, 0, amountTokenWeiDeposit, amountKnc);
+
             let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
             let orderDstWei = minNewOrderValue;
 
@@ -2994,7 +3007,7 @@ contract('KyberNetwork', function(accounts) {
             try {
                 await tempNetwork.getExpectedRateOnlyPermission(ethAddress, permissionlessTok.address, 10 ** 18);
                 assert(false, "throw was expected in line above.")
-            } catch(e) {
+            } catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
             }
         });
@@ -3746,7 +3759,7 @@ function convertRateToConversionRatesRate (baseRate) {
 // rate 1 to 50 is 50 * 10 ** 18
 // rate 50 to 1 is 1 / 50 * 10 ** 18 = 10 ** 18 / 50a
     return ((new BigNumber(10).pow(18)).mul(baseRate).floor());
-};
+}
 
 function getExtraBpsForBuyQuantity(qty) {
     for (let i = 0; i < qtyBuyStepX.length; i++) {
@@ -3917,7 +3930,7 @@ function calcDstQty(srcQty, srcDecimals, dstDecimals, rate) {
         let decimalDiff = (new BigNumber(10)).pow(srcDecimals - dstDecimals);
         return (rate.mul(srcQty).div(decimalDiff.mul(precisionUnits))).floor();
     }
-};
+}
 
 function calcSrcQty(dstQty, srcDecimals, dstDecimals, rate) {
     //source quantity is rounded up. to avoid dest quantity being too low.
@@ -3933,7 +3946,7 @@ function calcSrcQty(dstQty, srcDecimals, dstDecimals, rate) {
     }
     srcQty = (numerator.add(denominator.sub(1))).div(denominator).floor(); //avoid rounding down errors
     return srcQty;
-};
+}
 
 function calcCombinedRate(srcQty, sellRate, buyRate, srcDecimals, dstDecimals, destQty) {
     // calculates rate from src and expected dest amount.
@@ -3945,7 +3958,7 @@ function calcCombinedRate(srcQty, sellRate, buyRate, srcDecimals, dstDecimals, d
         rate = (precisionUnits.mul(destQty).mul((new BigNumber(10)).pow(srcDecimals - dstDecimals))).div(srcQty);
     }
     return rate.floor();
-};
+}
 
 function log (string) {
     console.log(string);
@@ -3957,7 +3970,7 @@ async function makerDeposit(res, permTok, maker, ethWei, tokenTwei, kncTwei) {
     await KNC.approve(res.address, kncTwei, {from: admin});
     await res.depositKncForFee(maker, kncTwei, {from: admin});
     await res.depositEther(maker, {from: maker, value: ethWei});
-};
+}
 
 
 function calcRateFromQty(srcAmount, dstAmount, srcDecimals, dstDecimals) {
@@ -3968,7 +3981,7 @@ function calcRateFromQty(srcAmount, dstAmount, srcDecimals, dstDecimals) {
         let decimals = new BigNumber(10 ** (srcDecimals - dstDecimals));
         return ((precisionUnits.mul(dstAmount).mul(decimals)).div(srcAmount)).floor();
     }
-};
+}
 
 function divSolidity(a, b) {
     let c = a / b;

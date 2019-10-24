@@ -49,7 +49,7 @@ const testing = "bbo";
 /****** for BBO init: *******/
 // for BBO we decided on a fixed pmin, pmax (0.5,2) and r (0.01).
 // than we deposited the exact e0 and t0 to support it.
-// so minPmin and maxPmax are exactly same as pMin and pMax
+// so minPmin and maxPmax are exactly same as pMin and pMax 
 /***************************/
 
 /****** for Midas init: *******/
@@ -111,18 +111,18 @@ const minBuyRateInPrecision = (BigNumber(1).div(pMax)).mul(precision)
 const maxSellRateInPrecision = BigNumber(pMax).mul(precision);
 const minSellRateInPrecision = BigNumber(pMin).mul(precision);
 
-function pOfE(r, pMin, curE) {
+function pOfE(r, pMin, curE) { 
     return Helper.exp(e, BigNumber(r).mul(curE)).mul(pMin);
 }
 
-function buyPriceForZeroQuant(r, pMin, curE) {
+function buyPriceForZeroQuant(r, pMin, curE) { 
     let pOfERes = pOfE(r, pMin, curE);
     let buyPrice = BigNumber(1).div(pOfERes);
     let buyPriceAfterFeesReduction = buyPrice.mul((100-feePercent)/100)
     return buyPriceAfterFeesReduction;
 }
 
-function sellPriceForZeroQuant(r, pMin, curE) {
+function sellPriceForZeroQuant(r, pMin, curE) { 
     let sellPrice = pOfE(r, pMin, curE);
     let sellPriceAfterFeeReduction = sellPrice.mul((100-feePercent)/100)
     return sellPriceAfterFeeReduction;
@@ -142,7 +142,7 @@ function calcDeltaE(r, pMin, deltaT, curE) {
     return lnOnePlusrPdeltaT.mul(-1).div(r)
 }
 
-function priceForDeltaE(feePercent, r, pMin, deltaE, curE) {
+function priceForDeltaE(feePercent, r, pMin, deltaE, curE) { 
     let deltaT = calcDeltaT(r, pMin, deltaE, curE).abs();
     let factor = (100-feePercent)/100
     let deltaTAfterReducedFee = deltaT.mul(factor.toString())
@@ -168,13 +168,13 @@ function eForCurPWithoutFees(r, curSellPrice) {
 }
 
 async function sellRateForZeroQuantInPrecision(eInEth) {
-    let eFp = eInEth.mul(formulaPrecision);
+    let eFp = eInEth.mul(formulaPrecision); 
     let rateInPrecision = await liqConvRatesInst.sellRateZeroQuantity(eFp)
     return rateInPrecision;
 }
 
 async function buyRateForZeroQuantInPrecision(eInEth) {
-    let eFp = eInEth.mul(formulaPrecision);
+    let eFp = eInEth.mul(formulaPrecision); 
     let rateInPrecision = await liqConvRatesInst.buyRateZeroQuantity(eFp)
     return rateInPrecision;
 }
@@ -246,7 +246,7 @@ contract('LiquidityConversionRates', function(accounts) {
         console.log("maxSellRateInPrecision: " + maxSellRateInPrecision.toString())
         console.log("minSellRateInPrecision: " + minSellRateInPrecision.toString())
          */
-        await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision)
+        await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision) 
     });
 
     it("should test calculation of collected fee for buy case.", async function () {
@@ -280,14 +280,14 @@ contract('LiquidityConversionRates', function(accounts) {
 
     it("should test converting from wei to formula formulaPrecision.", async function () {
         let input = BigNumber(7).mul(precision)
-        let expectedResult = input.mul(formulaPrecision).div(precision)
+        let expectedResult = input.mul(formulaPrecision).div(precision) 
         let result =  await liqConvRatesInst.fromWeiToFp(input);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test converting from token wei to formula formulaPrecision.", async function () {
         let input = BigNumber(10).pow(tokenDecimals).mul(17);
-        let expectedResult = input.mul(formulaPrecision).div(tokenPrecision)
+        let expectedResult = input.mul(formulaPrecision).div(tokenPrecision) 
         let result =  await liqConvRatesInst.fromTweiToFp(input);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
@@ -416,7 +416,7 @@ contract('LiquidityConversionRates', function(accounts) {
 
         currentFeeInBps = 10001
         try {
-            await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision, {from: operator})
+            await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision, {from: operator}) 
             assert(false, "expected to throw error in line above.")
         }
         catch(e){
@@ -431,7 +431,7 @@ contract('LiquidityConversionRates', function(accounts) {
 
         currentFeeInBps = 10001
         try {
-            await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, currentFeeInBps, maxSellRateInPrecision, minSellRateInPrecision)
+            await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, currentFeeInBps, maxSellRateInPrecision, minSellRateInPrecision) 
             assert(false, "expected to throw error in line above.")
         }
         catch(e){
@@ -503,7 +503,7 @@ contract('LiquidityConversionRates', function(accounts) {
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
+        }    
     });
 });
 
@@ -531,19 +531,19 @@ contract('kyberReserve for Liquidity', function(accounts) {
                 feeInBps,
                 maxSellRateInPrecision,
                 minSellRateInPrecision
-            )
+            ) 
     });
 
     it("should init reserve and set all reserve data including balances", async function () {
         reserveInst = await Reserve.new(network, liqConvRatesInst.address, admin);
         await reserveInst.setContracts(network, liqConvRatesInst.address, 0);
 
-        await liqConvRatesInst.setReserveAddress(reserveInst.address, {from: admin});
+        await liqConvRatesInst.setReserveAddress(reserveInst.address);
 
         //set reserve balance.
         let reserveEtherInit = (BigNumber(10).pow(18)).mul(e0);
         await Helper.sendEtherWithPromise(accounts[9], reserveInst.address, reserveEtherInit);
-
+        
         let balance = await Helper.getBalancePromise(reserveInst.address);
         expectedReserveBalanceWei = balance.valueOf();
 
@@ -611,7 +611,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
             expectedRate = priceForDeltaE(feePercent, r, pMin, amountEth, balancesBefore["EInEth"]).mul(precision)
             buyRate = await reserveInst.getConversionRate(ethAddress, token.address, amountWei, currentBlock);
 
-            // make sure buys are only ended when we are around 1/Pmax
+            // make sure buys are only ended when we are around 1/Pmax 
             if (buyRate == 0) {
                 let rateFor0 = await buyRateForZeroQuantInPrecision((balancesBefore["EInEth"]));
                 let expectedMinRate = (BigNumber(1).div(pMax)).mul(precision);
@@ -647,7 +647,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
             expectedReserveBalanceWei = balancesBefore["EInWei"].add(amountWei);
             assert.equal(balancesAfter["EInWei"].valueOf(), expectedReserveBalanceWei.valueOf(), "bad reserve balance wei");
 
-            // check token balance on user1 after the trade (got more tokens) is as expected.
+            // check token balance on user1 after the trade (got more tokens) is as expected. 
             tradeExpectedTweiAmount = expectedRate.mul(amountWei).div(precision)
             expectedUser1TweiAmount = balancesBefore["User1Twei"].plus(tradeExpectedTweiAmount);
             Helper.assertAbsDiff(balancesAfter["User1Twei"], expectedUser1TweiAmount, expectedDiffInPct);
@@ -741,7 +741,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
             expectedReserveBalanceWei = balancesBefore["EInWei"].minus(tradeExpectedWeiAmount);
             Helper.assertAbsDiff(balancesAfter["EInWei"], expectedReserveBalanceWei, expectedDiffInPct);
 
-            //check token balance on network after the trade (lost some tokens) is as expected.
+            //check token balance on network after the trade (lost some tokens) is as expected. 
             expectedTweiAmount = balancesBefore["networkTwei"].minus(amountTwei);
             Helper.assertAbsDiff(balancesAfter["networkTwei"], expectedTweiAmount, expectedDiffInPct);
 
@@ -776,7 +776,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
 
         // calculate new pmin and pmax to match the current price with existing inventory
         let newPmin = BigNumber(newP0).div((Helper.exp(e, BigNumber(r).mul(sameE0))))
-        let newpMax = BigNumber((newP0 / (1 - r * newP0 * sameT0)).toString())
+        let newpMax = BigNumber((newP0 / (1 - r * newP0 * sameT0)).toString()) 
 
         // set new params in contract units
         let newEInFp = BigNumber(sameE0).mul(formulaPrecision);
@@ -793,7 +793,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
                 maxCapSellInWei,
                 feeInBps,
                 newMaxSellRateInPrecision,
-                newMinSellRateInPrecision)
+                newMinSellRateInPrecision) 
 
         // check price is as expected
         let deltaE = 1.2
@@ -834,10 +834,10 @@ contract('kyberReserve for Liquidity', function(accounts) {
                             let randMaxCapBuyInEth = 11.0
                             let randMaxCapSellInEth = 11.0
                             let randFeePercent = feePercent
-
+    
                             let randPmin = BigNumber(randP0).div((Helper.exp(e, BigNumber(randR).mul(randE0))))
-                            let randPmax = BigNumber((randP0 / (1 - randR * randP0 * randT0)).toString())
-
+                            let randPmax = BigNumber((randP0 / (1 - randR * randP0 * randT0)).toString()) 
+    
                             let randDeltaEInFp = BigNumber(randDeltaE).mul(formulaPrecision);
                             let randEInFp = BigNumber(randE0).mul(randFormulaPrecision);
                             let randRInFp = BigNumber(randR).mul(randFormulaPrecision);

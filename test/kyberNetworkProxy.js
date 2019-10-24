@@ -442,7 +442,7 @@ contract('KyberNetworkProxy', function(accounts) {
             assert.equal(txData.logs[0].args.actualSrcAmount.valueOf(), amountWei);
             assert.equal(txData.logs[0].args.dest, tokenAdd[tokenInd]);
             assert.equal(txData.logs[0].args.actualDestAmount.valueOf(), expectedTweiAmount.valueOf());
-
+     
             //check higher ether balance on reserve
             expectedReserve2BalanceWei = expectedReserve2BalanceWei.add(amountWei);
             let balance = await Helper.getBalancePromise(reserve2.address);

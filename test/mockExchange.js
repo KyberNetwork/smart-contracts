@@ -28,7 +28,7 @@ contract('MockExchange', function (accounts) {
         await myExchange.addOwner(accounts[2]);
 
         let payable = await TestToken.new("dont use", "ban", 12);
-
+        
         await myExchange.addMockDepositAddress(myToken.address, {from:accounts[2]});
 
         //withdraw with owner
