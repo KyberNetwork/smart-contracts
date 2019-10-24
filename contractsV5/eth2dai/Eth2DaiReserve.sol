@@ -19,8 +19,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
     uint constant internal INVALID_ID = uint(-1);
     uint constant internal POW_2_32 = 2 ** 32;
     uint constant internal POW_2_96 = 2 ** 96;
-    // basic factor step for token factor data
-    uint  constant internal BPS = 100000;
+    uint constant internal BPS = 10000; // 10^4
 
     // values
     address public kyberNetwork;
@@ -31,10 +30,8 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
     WethInterface public wethToken;// = WethInterface(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     mapping(address => bool) public isTokenListed;
-    // 96 bits: min token, 96 bits: max token, 32 bits: premiumBps, 32 bits: minSpreadBps;
+    // 1 bit: isInternalInventoryEnabled, 95 bits: min token, 96 bits: max token, 32 bits: premiumBps, 32 bits: minSpreadBps;
     mapping(address => uint) internal internalInventoryData;
-    // some tokens won't enable using internal inventory
-    mapping(address => bool) public isInternalInventoryEnabled;
     // basicData contains compact data of min eth support, max traverse and max takes
     // min eth support (first 192 bits) + max traverse (32 bits) + max takes (32 bits) = 256 bits
     mapping(address => uint) internal tokenBasicData;
@@ -58,6 +55,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
     }
 
     struct InternalInventoryData {
+        bool isEnabled;
         uint minTokenBal;
         uint maxTokenBal;
         uint premiumBps;
@@ -74,7 +72,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         require(_kyberNetwork != address(0), "constructor: kyberNetwork's address is missing");
         require(_otc != address(0), "constructor: otc's address is missing");
         require(_weth != address(0), "constructor: weth's address is missing");
-        require(_feeBps < 10000, "constructor: fee >= 10000");
+        require(_feeBps < BPS, "constructor: fee >= bps");
         require(_admin != address(0), "constructor: admin is missing");
 
         wethToken = WethInterface(_weth);
@@ -100,6 +98,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
     */
     function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint) public view returns(uint) {
         if (!tradeEnabled) { return 0; }
+        if (srcQty == 0) { return 0; }
         // check if token's listed
         ERC20 token = src == ETH_TOKEN_ADDRESS ? dest : src;
         if (!isTokenListed[address(token)]) { return 0; }
@@ -111,37 +110,34 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         // if token is src, need to check for valid spread, 
         if (token == src && !checkValidSpread(bid, ask, false, 0)) { return 0; }
 
-        uint destAmount;
+        uint destQty;
         OfferData[] memory offers;
 
-        // using 1 as default value if srcQty is 0
-        uint srcAmount = srcQty == 0 ? 1 : srcQty;
-
         if (src == ETH_TOKEN_ADDRESS) {
-            (destAmount, offers) = findBestOffers(dest, wethToken, srcAmount, bid, ask);
+            (destQty, offers) = findBestOffers(dest, wethToken, srcQty, bid, ask);
         } else {
-            (destAmount, offers) = findBestOffers(wethToken, src, srcAmount, bid, ask);
+            (destQty, offers) = findBestOffers(wethToken, src, srcQty, bid, ask);
         }
 
-        if (offers.length == 0 || destAmount == 0) { return 0; } // no offer or destAmount == 0, return 0 for rate
+        if (offers.length == 0 || destQty == 0) { return 0; } // no offer or destQty == 0, return 0 for rate
 
-        uint rate = calcRateFromQty(srcAmount, destAmount, MAX_DECIMALS, MAX_DECIMALS);
+        uint rate = calcRateFromQty(srcQty, destQty, MAX_DECIMALS, MAX_DECIMALS);
 
         bool useInternalInventory;
         uint premiumBps;
 
         if (src == ETH_TOKEN_ADDRESS) {
             (useInternalInventory, premiumBps) = shouldUseInternalInventory(dest,
-                                                                            destAmount,
-                                                                            srcAmount,
+                                                                            destQty,
+                                                                            srcQty,
                                                                             true,
                                                                             bid,
                                                                             ask
                                                                             );
         } else {
             (useInternalInventory, premiumBps) = shouldUseInternalInventory(src,
-                                                                            srcAmount,
-                                                                            destAmount,
+                                                                            srcQty,
+                                                                            destQty,
                                                                             false,
                                                                             bid,
                                                                             ask
@@ -248,21 +244,11 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         emit ContractsSet(_kyberNetwork, _otc);
     }
 
-    event InternalInventoryEnableSet(ERC20 token, bool isEnabled);
-
-    function setInternalInventoryEnable(ERC20 token, bool isEnabled) public onlyAdmin {
-        require(isTokenListed[address(token)], "setInternalInventoryEnable: token is not listed");
-        require(isInternalInventoryEnabled[address(token)] != isEnabled, "setInternalInventoryEnable: duplicated enable/disable");
-
-        isInternalInventoryEnabled[address(token)] = isEnabled;
-
-        emit InternalInventoryEnableSet(token, isEnabled);
-    }
-
     event InternalInventoryDataSet(uint minToken, uint maxToken, uint pricePremiumBps, uint minSpreadBps);
 
     function setInternalInventoryData(
         ERC20 token,
+        bool isEnabled,
         uint minToken,
         uint maxToken,
         uint pricePremiumBps,
@@ -271,14 +257,12 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         public onlyAdmin 
     {
         require(isTokenListed[address(token)], "setInternalInventoryData: token is not listed");
-        require(minToken < POW_2_96, "setInternalInventoryData: minToken > 2**96");
+        require(minToken < POW_2_96/2, "setInternalInventoryData: minToken > 2**95");
         require(maxToken < POW_2_96, "setInternalInventoryData: maxToken > 2**96");
         require(pricePremiumBps < POW_2_32, "setInternalInventoryData: pricePremiumBps > 2**32");
         require(minSpreadBps < POW_2_32, "setInternalInventoryData: minSpreadBps > 2**32");
-        // blocking too small minSpreadBps
-        require(2 * minSpreadBps >= (feeBps + pricePremiumBps), "setInternalInventoryData: minSpreadBps should be >= (feeBps + pricePremiumBps)/2");
 
-        internalInventoryData[address(token)] = encodeInternalInventoryData(minToken, maxToken, pricePremiumBps, minSpreadBps);
+        internalInventoryData[address(token)] = encodeInternalInventoryData(isEnabled, minToken, maxToken, pricePremiumBps, minSpreadBps);
 
         emit InternalInventoryDataSet(minToken, maxToken, pricePremiumBps, minSpreadBps);
     }
@@ -308,7 +292,6 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
 
         delete isTokenListed[tokenAddr];
         delete internalInventoryData[tokenAddr];
-        delete isInternalInventoryEnabled[tokenAddr];
         delete tokenFactorData[tokenAddr];
         delete tokenBasicData[tokenAddr];
 
@@ -318,7 +301,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
     event FeeBpsSet(uint feeBps);
 
     function setFeeBps(uint _feeBps) public onlyAdmin {
-        require(_feeBps < 10000, "setFeeBps: feeBps >= 10000");
+        require(_feeBps < BPS, "setFeeBps: feeBps >= bps");
 
         feeBps = _feeBps;
         emit FeeBpsSet(feeBps);
@@ -328,6 +311,14 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         public view
         returns(uint destAmount, uint destAmountToken, uint[] memory offerIds) 
     {
+        if (srcAmountToken == 0) {
+            // return 0
+            destAmount = 0;
+            destAmountToken = 0;
+            offerIds = new uint[](0);
+            return (destAmount, destAmountToken, offerIds);
+        }
+
         OfferData[] memory offers;
         ERC20 dstToken = isEthToToken ? token : wethToken;
         ERC20 srcToken = isEthToToken ? wethToken : token;
@@ -369,9 +360,9 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
 
     function getInternalInventoryDataPub(ERC20 token)
         public view
-        returns(uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps)
+        returns(bool isEnabled, uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps)
     {
-        (minTokenBal, maxTokenBal, premiumBps, minSpreadBps) = decodeInternalInventoryData(internalInventoryData[address(token)]);
+        (isEnabled, minTokenBal, maxTokenBal, premiumBps, minSpreadBps) = decodeInternalInventoryData(internalInventoryData[address(token)]);
     }
 
     /// @dev do a trade
@@ -501,11 +492,11 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         shouldUse = false;
         premiumBps = 0;
 
-        if (!isInternalInventoryEnabled[address(token)]) { return (shouldUse, premiumBps); }
-
         if (tokenVal <= MAX_QTY) { return (shouldUse, premiumBps); }
 
         InternalInventoryData memory inventoryData = getInternalInventoryData(token);
+        if (!inventoryData.isEnabled) { return (shouldUse, premiumBps); }
+
         premiumBps = inventoryData.premiumBps;
 
         uint tokenBalance = token.balanceOf(address(this));
@@ -539,12 +530,12 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
 
     function valueAfterReducingFee(uint val) internal view returns(uint) {
         require(val <= MAX_QTY, "valueAfterReducingFee: val > MAX_QTY");
-        return ((10000 - feeBps) * val) / 10000;
+        return ((BPS - feeBps) * val) / BPS;
     }
 
     function valueAfterAddingPremium(uint val, uint premium) internal pure returns(uint) {
         require(val <= MAX_QTY, "valueAfterAddingPremium: val > MAX_QTY");
-        return val * (10000 + premium) / 10000;
+        return val * (BPS + premium) / BPS;
     }
 
     function findBestOffers(
@@ -590,9 +581,6 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
             offers[0] = srcToken == wethToken ? bid : ask;
         }
 
-        // putting here so if src amount is 0, we won't revert and still consider the first order as rate
-        if (remainingSrcAmount == 0) { return (totalDestAmount, offers); }
-
         uint thisOffer;
 
         OfferData memory biggestSkippedOffer = OfferData(0, 0, 0);
@@ -636,7 +624,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         if (totalDestAmount == 0) offers = new OfferData[](0);
     }
 
-    // returns max takes, max traveser, min order size to take using config factor data
+    // returns max takes, max traverse, min order size to take using config factor data
     function calcOfferLimitsFromFactorData(
         ERC20 token,
         bool isEthToToken,
@@ -682,13 +670,15 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
 
         FactorDataConfig memory factorData = getFactorData(token);
 
-        maxTraverse = (factorData.maxTraverseX * ethOrderSize / PRECISION + factorData.maxTraverseY) / BPS;
+        uint tokenFactorBPS = 100000; // 10^5
+
+        maxTraverse = (factorData.maxTraverseX * ethOrderSize / PRECISION + factorData.maxTraverseY) / tokenFactorBPS;
         maxTraverse = minOf(maxTraverse, basicData.maxTraverse);
 
-        maxTakes = (factorData.maxTakeX * ethOrderSize / PRECISION + factorData.maxTakeY) / BPS;
+        maxTakes = (factorData.maxTakeX * ethOrderSize / PRECISION + factorData.maxTakeY) / tokenFactorBPS;
         maxTakes = minOf(maxTakes, basicData.maxTakes);
 
-        uint minETHAmount = (factorData.minOrderSizeX * ethOrderSize + factorData.minOrderSizeY * PRECISION) / BPS;
+        uint minETHAmount = (factorData.minOrderSizeX * ethOrderSize + factorData.minOrderSizeY * PRECISION) / tokenFactorBPS;
 
         // translate min amount to pay token
         minPayAmount = isEthToToken ? minETHAmount : minETHAmount * order0Pay / order0Buy;
@@ -739,7 +729,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         if (!isCheckingMinSpread) { return true; }
 
         // spread should be bigger than minSpreadBps
-        if (10000 * (x1 - x2) <= x2 * minSpreadBps) { return false; }
+        if (BPS * (x1 - x2) <= x2 * minSpreadBps) { return false; }
 
         return true;
     }
@@ -762,14 +752,15 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         internal view
         returns(InternalInventoryData memory data)
     {
-        (uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps) = decodeInternalInventoryData(internalInventoryData[address(token)]);
+        (bool isEnabled, uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps) = decodeInternalInventoryData(internalInventoryData[address(token)]);
+        data.isEnabled = isEnabled;
         data.minTokenBal = minTokenBal;
         data.maxTokenBal = maxTokenBal;
         data.premiumBps = premiumBps;
         data.minSpreadBps = minSpreadBps;
     }
 
-    function encodeInternalInventoryData(uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps)
+    function encodeInternalInventoryData(bool isEnabled, uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps)
         internal pure
         returns(uint data)
     {
@@ -780,17 +771,19 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         data = minSpreadBps & (POW_2_32 - 1);
         data |= (premiumBps & (POW_2_32 - 1)) * POW_2_32;
         data |= (maxTokenBal & (POW_2_96 - 1)) * POW_2_32 * POW_2_32;
-        data |= (minTokenBal & (POW_2_96 - 1)) * POW_2_96 * POW_2_32 * POW_2_32;
+        data |= (minTokenBal & (POW_2_96 / 2 - 1)) * POW_2_96 * POW_2_32 * POW_2_32;
+        data |= (isEnabled ? 1 : 0) * (POW_2_96 / 2) * POW_2_96 * POW_2_32 * POW_2_32;
     }
 
     function decodeInternalInventoryData(uint data)
         internal pure
-        returns(uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps)
+        returns(bool isEnabled, uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps)
     {
         minSpreadBps = data & (POW_2_32 - 1);
         premiumBps = (data / POW_2_32) & (POW_2_32 - 1);
         maxTokenBal = (data / (POW_2_32 * POW_2_32)) & (POW_2_96 - 1);
-        minTokenBal = (data / (POW_2_96 * POW_2_32 * POW_2_32)) & (POW_2_96 - 1);
+        minTokenBal = (data / (POW_2_96 * POW_2_32 * POW_2_32)) & (POW_2_96 / 2 - 1);
+        isEnabled = (data / ((POW_2_96 / 2) * POW_2_96 * POW_2_32 * POW_2_32)) % 2 == 0 ? false : true;
     }
 
     function encodeTokenBasicData(uint ethSize, uint maxTraverse, uint maxTakes) 
