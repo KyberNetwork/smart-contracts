@@ -16,4 +16,3 @@ For more details, please visit our [developer portal](https://developer.kyber.ne
 
 ### Example Commands
 `./tst.sh -f "./test/kyberReserve.js"`
-`./tst.sh -f "./testV5/v5Example.js"`
