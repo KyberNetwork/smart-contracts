@@ -2,6 +2,7 @@ const Helper = require("./helper.js");
 const V5Example = artifacts.require("V5Example.sol");
 
 let admin;
+let v5Example;
 
 contract('V5Example', function(accounts) {
     before("setup", async() => {
@@ -10,7 +11,7 @@ contract('V5Example', function(accounts) {
     });
 
     it("should deploy the V5 contract", async function () {
-        let v5Example = await V5Example.new({from: admin});
+        v5Example = await V5Example.new({from: admin});
     });
 
     it("should be able to get variable value from the contract", async function () {
