@@ -11,4 +11,8 @@ contract V5Example {
     function setVariable(uint number) public {
         myVariable = number;
     }
+
+    function variableMustBeFive() public view {
+        require(myVariable == 5, "variable not equal to 5");
+    }
 }

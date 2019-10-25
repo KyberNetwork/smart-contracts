@@ -10,31 +10,31 @@ contract('V5Example', function(accounts) {
     });
 
     it("should deploy the V5 contract", async function () {
-      v5Example = await V5Example.new({from: admin});
+        let v5Example = await V5Example.new({from: admin});
     });
 
     it("should be able to get variable value from the contract", async function () {
-        result = await v5Example.myVariable.call();
-        assert.equal(result,5,"variable value not as expected");
+        let result = await v5Example.myVariable.call();
+        assert.equal(result, 5, "variable value not as expected");
     });
 
-  it("should set variable value correctly", async function () {
-    await v5Example.setVariable(10);
-    result = await v5Example.myVariable.call();
-    assert.equal(result,10,"set variable value not as expected");
-  });
-
-  describe("Tests fail to showcase stack traces", async function () {
-    it("calling non-payable function with ETH", async function () {
-    await v5Example.setVariable(10, {value: 123});
+    it("should set variable value correctly", async function () {
+        await v5Example.setVariable(10);
+        let result = await v5Example.myVariable.call();
+        assert.equal(result, 10, "set variable value not as expected");
     });
 
-    it("sends ETH to contract without payable fallback function", async function () {
-      await Helper.sendEtherWithPromise(accounts[8], v5Example.address, 1234);
-    });
+    describe("Tests fail to showcase stack traces", async function () {
+        it("calling non-payable function with ETH", async function () {
+            await v5Example.setVariable(10, {value: 123});
+        });
 
-    it("shows revert message", async function () {
-      await v5Example.variableMustBeFive();
+        it("sends ETH to contract without payable fallback function", async function () {
+            await Helper.sendEtherWithPromise(accounts[8], v5Example.address, 1234);
+        });
+
+        it("shows revert message", async function () {
+            await v5Example.variableMustBeFive();
+        });
     });
-  });
 });
