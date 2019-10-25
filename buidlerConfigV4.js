@@ -1,16 +1,5 @@
-usePlugin("@nomiclabs/buidler-truffle4");
-usePlugin("@nomiclabs/buidler-web3-legacy");
-
 module.exports = {
-  defaultNetwork: "develop",
-
-  networks: {
-    develop: {
-      url: "http://127.0.0.1:8545",
-      timeout: 20000
-    }
-  },
-
+  defaultNetwork: "buidlerevm",
   solc: {
     version: "0.4.18",
     optimizer: {
@@ -21,10 +10,5 @@ module.exports = {
 
   paths: {
     sources: "./contracts",
-    tests: "./test"
-  },
-
-  mocha: {
-    enableTimeouts: false
   }
 };
