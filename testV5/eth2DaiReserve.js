@@ -942,7 +942,7 @@ contract('Eth2DaiReserve', function(accounts) {
         }
     });
 
-    it("Should test can not set token info with amount overflows", async function() {
+    it("Should test can not set token info with amount is out of range", async function() {
         let bigNumber32 = (new BigNumber(2)).pow(32);
         let bigNumber96 = (new BigNumber(2)).pow(96);
         try {
@@ -1472,12 +1472,12 @@ contract('Eth2DaiReserve', function(accounts) {
         }
     });
 
-    it("Should test set internal inventory failed data overflows", async function() {
+    it("Should test set internal inventory failed data is out of range", async function() {
         let power32 = (new BigNumber(2)).pow(32);
         let power95 = (new BigNumber(2)).pow(95);
         let power96 = power95.mul(2);
 
-        // min spread overflows
+        // min spread is out of range
         try {
             await reserve.setInternalInventoryData(
                 myDaiToken.address,
@@ -1493,7 +1493,7 @@ contract('Eth2DaiReserve', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        // price premium bps overflows
+        // price premium bps is out of range
         try {
             await reserve.setInternalInventoryData(
                 myDaiToken.address,
@@ -1509,7 +1509,7 @@ contract('Eth2DaiReserve', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        // max dail bal overflows
+        // max dail bal is out of range
         try {
             await reserve.setInternalInventoryData(
                 myDaiToken.address,
@@ -1525,7 +1525,7 @@ contract('Eth2DaiReserve', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        // min dail bal overflows
+        // min dail bal is out of range
         try {
             await reserve.setInternalInventoryData(
                 myDaiToken.address,
