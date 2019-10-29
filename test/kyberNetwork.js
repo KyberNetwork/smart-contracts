@@ -2770,7 +2770,7 @@ contract('KyberNetwork', function(accounts) {
             let maxDestAmount = (new BigNumber(10)).pow(18);
 
             buyRate = await network.getExpectedRate(tokenSrc.address, tokenDest.address, srcAmountTwei.valueOf());
-            //assert.equal(buyRate[0].valueOf(), 0, "Rate returned is not zero for same src & dst token");
+            assert.equal(buyRate[0].valueOf(), 0, "Rate returned is not zero for same src & dst token");
 
             let ethBalance = await Helper.getBalancePromise(reserve1.address);
             ethBalance = await Helper.getBalancePromise(reserve2.address);
