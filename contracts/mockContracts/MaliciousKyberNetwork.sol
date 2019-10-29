@@ -1,12 +1,6 @@
 pragma solidity 0.4.18;
 
-
-import "../ERC20Interface.sol";
-import "../KyberReserveInterface.sol";
 import "../KyberNetwork.sol";
-import "../Withdrawable.sol";
-import "../Utils2.sol";
-import "../PermissionGroups.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -27,7 +21,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
         require(tx.gasprice <= maxGasPriceValue);
 
         BestRateResult memory rateResult =
-        findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount);
+        findBestRateTokenToToken(tradeInput.src, tradeInput.dest, tradeInput.srcAmount, EMPTY_HINT);
 
         require(rateResult.rate > 0);
         require(rateResult.rate < MAX_RATE);

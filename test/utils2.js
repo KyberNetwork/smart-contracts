@@ -5,7 +5,7 @@ const TestToken = artifacts.require("./mockContracts/TestToken.sol");
 const Helper = require("./helper.js");
 const BigNumber = require('bignumber.js');
 
-const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 const PRECISION = new BigNumber(10).pow(18);
 const MAX_QTY = new BigNumber(10).pow(28);
 const MAX_RATE = new BigNumber(10).pow(24);

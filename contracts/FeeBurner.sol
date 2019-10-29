@@ -3,7 +3,8 @@ pragma solidity 0.4.18;
 
 import "./FeeBurnerInterface.sol";
 import "./Withdrawable.sol";
-import "./Utils.sol";
+import "./Utils2.sol";
+import "./KyberNetworkInterface.sol";
 
 
 interface BurnableToken {
@@ -12,7 +13,7 @@ interface BurnableToken {
 }
 
 
-contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
+contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
 
     mapping(address=>uint) public reserveFeesInBps;
     mapping(address=>address) public reserveKNCWallet; //wallet holding knc per reserve. from here burn and send fees.
@@ -24,20 +25,31 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
     uint public taxFeeBps = 0; // burned fees are taxed. % out of burned fees.
 
     BurnableToken public knc;
-    address public kyberNetwork;
-    uint public kncPerETHRate = 300;
+    KyberNetworkInterface public kyberNetwork;
+    uint public kncPerEthRatePrecision = 600 * PRECISION; //--> 1 ether = 600 knc tokens
 
-    function FeeBurner(address _admin, BurnableToken kncToken, address _kyberNetwork) public {
+    function FeeBurner(
+        address _admin,
+        BurnableToken _kncToken,
+        KyberNetworkInterface _kyberNetwork,
+        uint _initialKncToEthRatePrecision
+    )
+        public
+    {
         require(_admin != address(0));
-        require(kncToken != address(0));
+        require(_kncToken != address(0));
         require(_kyberNetwork != address(0));
+        require(_initialKncToEthRatePrecision != 0);
+
         kyberNetwork = _kyberNetwork;
         admin = _admin;
-        knc = kncToken;
+        knc = _kncToken;
+        kncPerEthRatePrecision = _initialKncToEthRatePrecision;
     }
 
     event ReserveDataSet(address reserve, uint feeInBps, address kncWallet);
-    function setReserveData(address reserve, uint feesInBps, address kncWallet) public onlyAdmin {
+
+    function setReserveData(address reserve, uint feesInBps, address kncWallet) public onlyOperator {
         require(feesInBps < 100); // make sure it is always < 1%
         require(kncWallet != address(0));
         reserveFeesInBps[reserve] = feesInBps;
@@ -46,6 +58,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
     }
 
     event WalletFeesSet(address wallet, uint feesInBps);
+
     function setWalletFees(address wallet, uint feesInBps) public onlyAdmin {
         require(feesInBps < 10000); // under 100%
         walletFeesInBps[wallet] = feesInBps;
@@ -53,6 +66,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
     }
 
     event TaxFeesSet(uint feesInBps);
+
     function setTaxInBps(uint _taxFeeBps) public onlyAdmin {
         require(_taxFeeBps < 10000); // under 100%
         taxFeeBps = _taxFeeBps;
@@ -60,26 +74,42 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils {
     }
 
     event TaxWalletSet(address taxWallet);
+
     function setTaxWallet(address _taxWallet) public onlyAdmin {
         require(_taxWallet != address(0));
         taxWallet = _taxWallet;
         TaxWalletSet(_taxWallet);
     }
 
-    function setKNCRate(uint rate) public onlyAdmin {
-        require(rate <= MAX_RATE);
-        kncPerETHRate = rate;
+    event KNCRateSet(uint ethToKncRatePrecision, uint kyberEthKnc, uint kyberKncEth, address updater);
+
+    function setKNCRate() public {
+        //query kyber for knc rate sell and buy
+        uint kyberEthKncRate;
+        uint kyberKncEthRate;
+        (kyberEthKncRate, ) = kyberNetwork.getExpectedRate(ETH_TOKEN_ADDRESS, ERC20(knc), (10 ** 18));
+        (kyberKncEthRate, ) = kyberNetwork.getExpectedRate(ERC20(knc), ETH_TOKEN_ADDRESS, (10 ** 18));
+
+        // if returned rate is 0, can't trust this arb test. assume we have arb
+        require(kyberEthKncRate <= MAX_RATE && kyberKncEthRate <= MAX_RATE);
+
+        //check for internal arbitrage
+        require(kyberEthKncRate * kyberKncEthRate <= PRECISION ** 2);
+        //check "reasonable" spread == diff not too big. rate wasn't tampered.
+        require(kyberEthKncRate * kyberKncEthRate > PRECISION ** 2 / 2);
+
+        kncPerEthRatePrecision = kyberEthKncRate;
+        KNCRateSet(kncPerEthRatePrecision, kyberEthKncRate, kyberKncEthRate, msg.sender);
     }
 
     event AssignFeeToWallet(address reserve, address wallet, uint walletFee);
     event AssignBurnFees(address reserve, uint burnFee);
 
     function handleFees(uint tradeWeiAmount, address reserve, address wallet) public returns(bool) {
-        require(msg.sender == kyberNetwork);
+        require(msg.sender == address(kyberNetwork));
         require(tradeWeiAmount <= MAX_QTY);
-        require(kncPerETHRate <= MAX_RATE);
 
-        uint kncAmount = tradeWeiAmount * kncPerETHRate;
+        uint kncAmount = calcDestAmount(ETH_TOKEN_ADDRESS, ERC20(knc), tradeWeiAmount, kncPerEthRatePrecision);
         uint fee = kncAmount * reserveFeesInBps[reserve] / 10000;
 
         uint walletFee = fee * walletFeesInBps[wallet] / 10000;

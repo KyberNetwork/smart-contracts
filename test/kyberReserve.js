@@ -1,18 +1,17 @@
-let ConversionRates = artifacts.require("./ConversionRates.sol");
-let EnhancedStepFunctions = artifacts.require("./EnhancedStepFunctions.sol");
-let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
-let Reserve = artifacts.require("./KyberReserve");
-let SanityRates = artifacts.require("./SanityRates");
+const ConversionRates = artifacts.require("./ConversionRates.sol");
+const EnhancedStepFunctions = artifacts.require("./mockContract/MockEnhancedStepFunctions.sol");
+const TestToken = artifacts.require("./mockContracts/TestToken.sol");
+const Reserve = artifacts.require("./KyberReserve");
+const SanityRates = artifacts.require("./SanityRates");
 
-let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+const Helper = require("./helper.js");
+const BigNumber = require('bignumber.js');
 
 //global variables
 //////////////////
-let precisionUnits = (new BigNumber(10).pow(18));
-let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-let precision = new BigNumber(10).pow(18);
+const precisionUnits = (new BigNumber(10).pow(18));
+const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const precision = new BigNumber(10).pow(18);
 
 //balances
 let expectedReserveBalanceWei = 0;

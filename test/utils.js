@@ -3,7 +3,7 @@ let MockUtils = artifacts.require("./mockContracts/MockUtils.sol")
 let Helper = require("./helper.js");
 let BigNumber = require('bignumber.js');
 
-let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+let ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 let PRECISION = new BigNumber(10).pow(18);
 const MAX_QTY = new BigNumber(10).pow(28);
 const MAX_RATE = new BigNumber(10).pow(24);
