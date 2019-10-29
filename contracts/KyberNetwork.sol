@@ -65,7 +65,12 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
     }
 
     event EtherReceival(address indexed sender, uint amount);
+
+    /* solhint-disable no-complex-fallback */
+    // To avoid users trying to swap tokens using default payable function. We added this short code
+    //  to verify Ethers will be received only from reserves if transferred without a specific function call.
     function() public payable {
+        require(reserveType[msg.sender] != ReserveType.NONE);
         EtherReceival(msg.sender, msg.value);
     }
     /* solhint-enable no-complex-fallback */
@@ -285,7 +290,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         returns(uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
-        if (src == dest) return (0,0);
         bool includePermissionless = true;
 
         if (srcQty & PERM_HINT_GET_RATE > 0) {
@@ -301,7 +305,6 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
         returns(uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
-        if (src == dest) return (0,0);
         return expectedRateContract.getExpectedRate(src, dest, srcQty, false);
     }
 
@@ -431,20 +434,13 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
             searchBestRate(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
 
         result.weiAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcAmount, result.rateSrcToEth);
-        //returned weiAmount cannot be zero as it can cause a revert
-        if (result.weiAmount == 0) {
-            result.reserve2 = address(0);
-            result.rateEthToDest = 0;
-            result.destAmount = 0;
-            result.rate = 0;
-        } else {
-            (result.reserve2, result.rateEthToDest) =
-                searchBestRate(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
 
-            result.destAmount = calcDestAmount(ETH_TOKEN_ADDRESS, dest, result.weiAmount, result.rateEthToDest);
+        (result.reserve2, result.rateEthToDest) =
+            searchBestRate(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
 
-            result.rate = calcRateFromQty(srcAmount, result.destAmount, getDecimals(src), getDecimals(dest));
-        }
+        result.destAmount = calcDestAmount(ETH_TOKEN_ADDRESS, dest, result.weiAmount, result.rateEthToDest);
+
+        result.rate = calcRateFromQty(srcAmount, result.destAmount, getDecimals(src), getDecimals(dest));
     }
 
     function listPairs(address reserve, ERC20 token, bool isTokenToEth, bool add) internal {

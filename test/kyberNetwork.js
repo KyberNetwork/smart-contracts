@@ -2788,7 +2788,7 @@ contract('KyberNetwork', function(accounts) {
             //see trade reverts
             try {
                 let result = await network.tradeWithHint(user1, tokenSrc.address, srcAmountTwei.valueOf(), tokenDest.address, user2, maxDestAmount.valueOf(),
-                                buyRate[1].valueOf(), walletId, 0, {from:networkProxy});
+                                rate[1].valueOf(), walletId, 0, {from:networkProxy});
                 assert(false, "throw was expected in line above.")
             } catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
@@ -2873,121 +2873,6 @@ contract('KyberNetwork', function(accounts) {
             let avgGas = cumulativeGas.div(numTrades);
             log("average gas usage " + numTrades + " buys. token to token: " + avgGas.floor().valueOf());
         });
-
-        it("should revert if token A -> ETH has no rate (resulting wei amount is zero), but has ETH -> token B rates", async function () {
-            let tokenSrcInd = 1;
-            let tokenDestInd = 2;
-            let tokenSrc = tokens[tokenSrcInd];
-            let tokenDest = tokens[tokenDestInd];
-            let srcAmount = 100;
-            let maxDestAmount = (new BigNumber(10)).pow(18);
-
-            //check that there is token A -> token B rate
-            rate = await network.getExpectedRate(tokenSrc.address, tokenDest.address, srcAmount);
-            assert(rate[0].valueOf() > 0, "token A -> token B rate is zero from the beginning");
-
-            //unlist ETH <> token A pair
-            let reservesToUnlistAndRelist = [];
-            reserveAddress = await network.reservesPerTokenSrc(tokenSrc.address, 0);
-            while (reserveAddress) {
-              reservesToUnlistAndRelist.push(reserveAddress);
-              await network.listPairForReserve(reserveAddress, tokenSrc.address, true, true, false, {from: operator});
-              try {
-                reserveAddress = await network.reservesPerTokenSrc(tokenSrc.address, 0);
-              } catch (e) {
-                break;
-              }
-            }
-
-            //check that there token A -> ETH rate is zero
-            rate = await network.getExpectedRate(tokenSrc.address, ethAddress, srcAmount);
-            assert.equal(rate[0].valueOf(), 0, "token A -> ETH rate not zero");
-            //check that there is ETH -> token B rate
-            rate = await network.getExpectedRate(ethAddress, tokenDest.address, srcAmount);
-            assert(rate[0].valueOf() > 0, "ETH -> token B rate is zero");
-
-            //token A -> token B rate should be zero
-            rate = await network.getExpectedRate(tokenSrc.address, tokenDest.address, srcAmount);
-            assert.equal(rate[0].valueOf(), 0, "token A -> token B rate not zero");
-
-            //try performing trade, should revert
-            try {
-                await network.tradeWithHint(user1, tokenSrc.address, srcAmount, tokenDest.address, user1, maxDestAmount.valueOf(),
-                            0, 0, 0, {from:networkProxy});
-                assert(false, "throw was expected in line above.")
-              } catch(e) {
-                assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
-              }
-
-            //relist ETH <> token A pairs
-            for (var i=0; i < reservesToUnlistAndRelist.length; i++) {
-              reserveAddress = reservesToUnlistAndRelist[i];
-              await network.listPairForReserve(reserveAddress, tokenSrc.address, true, true, true, {from: operator});
-            }
-
-            //check that there is token A -> token B rate
-            rate = await network.getExpectedRate(tokenSrc.address, tokenDest.address, srcAmount);
-            assert(rate[0].valueOf() > 0, "token A -> token B rate is zero after reset");
-
-        });
-
-        it("should revert if token A -> ETH has rates, but ETH -> token B has no rate", async function () {
-            let tokenSrcInd = 1;
-            let tokenDestInd = 2;
-            let tokenSrc = tokens[tokenSrcInd];
-            let tokenDest = tokens[tokenDestInd];
-            let srcAmount = 100;
-            let maxDestAmount = (new BigNumber(10)).pow(18);
-
-            //check that there is token A -> token B rate
-            let rate = await network.getExpectedRate(tokenSrc.address, tokenDest.address, srcAmount);
-            assert(rate[0].valueOf() > 0, "token A -> token B rate is zero from the beginning");
-
-            //unlist ETH <> token B pair
-            let reservesToUnlistAndRelist = [];
-            reserveAddress = await network.reservesPerTokenDest(tokenDest.address, 0);
-            while (reserveAddress) {
-              reservesToUnlistAndRelist.push(reserveAddress);
-              await network.listPairForReserve(reserveAddress, tokenDest.address, true, true, false, {from: operator});
-              try {
-                reserveAddress = await network.reservesPerTokenDest(tokenDest.address, 0);
-              } catch (e) {
-                break;
-              }
-            }
-
-            //check that there is token A -> ETH rate
-            rate = await network.getExpectedRate(tokenSrc.address, ethAddress, srcAmount);
-            assert(rate[0].valueOf() > 0, "token A -> ETH rate is zero");
-
-            //check that ETH -> token B rate is zero
-            rate = await network.getExpectedRate(ethAddress, tokenDest.address, srcAmount);
-            assert.equal(rate[0].valueOf(), 0, "ETH -> token B rate not zero");
-
-            //token A -> token B rate should be zero
-            rate = await network.getExpectedRate(tokenSrc.address, tokenDest.address, srcAmount);
-            assert.equal(rate[0].valueOf(), 0, "token A -> token B rate not zero");
-
-            //try performing trade, should revert
-            try {
-                await network.tradeWithHint(user1, tokenSrc.address, srcAmount, tokenDest.address, user1, maxDestAmount.valueOf(),
-                              0, 0, 0, {from:networkProxy});
-
-                assert(false, "throw was expected in line above.")
-            } catch(e) {
-                assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
-            }
-
-            //relist ETH <> token B pairs
-            for (var i=0; i < reservesToUnlistAndRelist.length; i++) {
-              reserveAddress = reservesToUnlistAndRelist[i];
-              await network.listPairForReserve(reserveAddress, tokenDest.address, true, true, true, {from: operator});
-            }
-
-            //check that there is token A -> token B rate
-            rate = await network.getExpectedRate(tokenSrc.address, tokenDest.address, srcAmount);
-            assert(rate[0].valueOf() > 0, "token A -> token B rate is zero after reset");
-        });
     });
 
     describe("permissionless order book reserve", function() {
@@ -3043,6 +2928,7 @@ contract('KyberNetwork', function(accounts) {
             let amountKnc = 600 * 10 ** 18;
             let amountTokenWeiDeposit = (new BigNumber(30 * 10 ** 18)).add(600);
             await makerDeposit(orderbookReserve, permissionlessTok, maker1, 0, amountTokenWeiDeposit, amountKnc);
+
             let orderSrcAmountTwei = new BigNumber(9 * 10 ** 18);
             let orderDstWei = minNewOrderValue;
 
@@ -3765,10 +3651,11 @@ function log (string) {
 };
 
 async function makerDeposit(res, permTok, maker, ethWei, tokenTwei, kncTwei) {
-    await permTok.approve(res.address, tokenTwei, {from: admin});
-    await res.depositToken(maker, tokenTwei.valueOf(), {from: admin});
-    await KNC.approve(res.address, kncTwei, {from: admin});
-    await res.depositKncForFee(maker, kncTwei, {from: admin});
+
+    await permTok.approve(res.address, tokenTwei);
+    await res.depositToken(maker, tokenTwei);
+    await KNC.approve(res.address, kncTwei);
+    await res.depositKncForFee(maker, kncTwei);
     await res.depositEther(maker, {from: maker, value: ethWei});
 }
 
