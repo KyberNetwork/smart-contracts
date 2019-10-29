@@ -56,6 +56,46 @@ contract MockKyberNetwork {
         return destAmount;
     }
 
+    // @dev trade function with same prototype as KyberNetwork
+    // will be used only to trade token to Ether,
+    // will work only when set pair worked.
+    function tradeWithHint(
+        ERC20 src,
+        uint srcAmount,
+        ERC20 dest,
+        address destAddress,
+        uint maxDestAmount,
+        uint minConversionRate,
+        address walletId,
+        bytes hint
+    )
+        public
+        payable
+        returns(uint)
+    {
+        uint rate = pairRate[keccak256(src, dest)];
+
+        walletId;
+        hint;
+        
+        require(rate > 0);
+        require(rate > minConversionRate);
+        require(dest == ETH_TOKEN_ADDRESS);
+
+        uint destAmount = srcAmount * rate / PRECISION;
+        uint actualSrcAmount = srcAmount;
+
+        if (destAmount > maxDestAmount) {
+            destAmount = maxDestAmount;
+            actualSrcAmount = maxDestAmount * PRECISION / rate;
+        }
+
+        require(src.transferFrom(msg.sender, this, actualSrcAmount));
+        destAddress.transfer(destAmount);
+
+        return destAmount;
+    }
+
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
         public view
         returns(uint expectedRate, uint slippageRate)

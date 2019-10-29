@@ -238,7 +238,7 @@ contract('OrderbookReserve', async (accounts) => {
             await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 
             try {
-                await OrderbookReserve.new(0, tokenAdd, feeBurner.address, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+                await OrderbookReserve.new(0, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
                 assert(false, "throw was expected in line above.")
             } catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);

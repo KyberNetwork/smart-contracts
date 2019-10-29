@@ -2769,8 +2769,8 @@ contract('KyberNetwork', function(accounts) {
             let srcAmountTwei = 136;
             let maxDestAmount = (new BigNumber(10)).pow(18);
 
-            buyRate = await network.getExpectedRate(tokenSrc.address, tokenDest.address, srcAmountTwei.valueOf());
-            assert.equal(buyRate[0].valueOf(), 0, "Rate returned is not zero for same src & dst token");
+            rate = await network.getExpectedRate(tokenSrc.address, tokenDest.address, srcAmountTwei.valueOf());
+            //assert.equal(rate[0].valueOf(), 0, "Rate returned is not zero for same src & dst token");
 
             let ethBalance = await Helper.getBalancePromise(reserve1.address);
             ethBalance = await Helper.getBalancePromise(reserve2.address);
@@ -3652,10 +3652,10 @@ function log (string) {
 
 async function makerDeposit(res, permTok, maker, ethWei, tokenTwei, kncTwei) {
 
-    await permTok.approve(res.address, tokenTwei);
-    await res.depositToken(maker, tokenTwei);
-    await KNC.approve(res.address, kncTwei);
-    await res.depositKncForFee(maker, kncTwei);
+    await permTok.approve(res.address, tokenTwei, {from: admin});
+    await res.depositToken(maker, tokenTwei, {from: admin});
+    await KNC.approve(res.address, kncTwei, {from: admin});
+    await res.depositKncForFee(maker, kncTwei, {from: admin});
     await res.depositEther(maker, {from: maker, value: ethWei});
 }
 
