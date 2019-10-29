@@ -19,8 +19,8 @@ const initOTCWethBalance = new BigNumber(1000).mul(BigNumber(10).pow(18));
 const minDaiBal  = (new BigNumber(1000)).mul(BigNumber(10).pow(18))
 const maxDaiBal  = (new BigNumber(10000)).mul(BigNumber(10).pow(18))
 const initDaiBal = (new BigNumber(5000)).mul(BigNumber(10).pow(18))
-const minSpreadInBps = 70;
-const permiumBps     = 10;
+const minSpreadInBps = 20;
+const pricePremiumBps = 10;
 
 const maxTraverse = 20;
 const maxTraverseX = 4160;
@@ -1435,6 +1435,555 @@ contract('Eth2DaiReserve', function(accounts) {
             assert.equal(expectedUserDaiBal.valueOf(), newUserDaiBal.valueOf(), "dai balance should be correct after traded, loop: " + i);
             assert.equal(expectedUserETHBal.valueOf(), newUserEthBal.valueOf(), "eth balance should be correct after traded, loop: " + i);
         }
+    });
+
+    it("Should test set internal inventory failed sender is not admin", async function() {
+        try {
+            await reserve.setInternalInventoryData(
+                myDaiToken.address,
+                true,
+                0,
+                0,
+                0,
+                0,
+                {from: operator}
+            )
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("Should test set internal inventory failed token is not listed", async function() {
+        let token = await TestToken.new("test token", "tst", 18);
+        try {
+            await reserve.setInternalInventoryData(
+                token.address,
+                true,
+                0,
+                0,
+                0,
+                0,
+                {from: admin}
+            )
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("Should test set internal inventory failed data overflows", async function() {
+        let power32 = (new BigNumber(2)).pow(32);
+        let power95 = (new BigNumber(2)).pow(95);
+        let power96 = power95.mul(2);
+
+        // min spread overflows
+        try {
+            await reserve.setInternalInventoryData(
+                myDaiToken.address,
+                true,
+                minDaiBal,
+                maxDaiBal,
+                pricePremiumBps,
+                power32,
+                {from: admin}
+            )
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // price premium bps overflows
+        try {
+            await reserve.setInternalInventoryData(
+                myDaiToken.address,
+                true,
+                minDaiBal,
+                maxDaiBal,
+                power32,
+                minSpreadInBps,
+                {from: admin}
+            )
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // max dail bal overflows
+        try {
+            await reserve.setInternalInventoryData(
+                myDaiToken.address,
+                true,
+                minDaiBal,
+                power96,
+                pricePremiumBps,
+                minSpreadInBps,
+                {from: admin}
+            )
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // min dail bal overflows
+        try {
+            await reserve.setInternalInventoryData(
+                myDaiToken.address,
+                true,
+                power95,
+                maxDaiBal,
+                pricePremiumBps,
+                minSpreadInBps,
+                {from: admin}
+            )
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // all overflow
+        try {
+            await reserve.setInternalInventoryData(
+                myDaiToken.address,
+                true,
+                power95,
+                power96,
+                power32,
+                power32,
+                {from: admin}
+            )
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("Should test set internal inventory successfully and correct data set", async function() {
+        await reserve.setInternalInventoryData(
+            myDaiToken.address,
+            true,
+            minDaiBal,
+            maxDaiBal,
+            pricePremiumBps,
+            minSpreadInBps,
+            {from: admin}
+        )
+
+        let data = await reserve.getInternalInventoryDataPub(myDaiToken.address);
+        assert.equal(data[0].valueOf(), true, "internal inventory should be enabled");
+        assert.equal(data[1].valueOf(), minDaiBal.valueOf(), "min dai bal should be correct");
+        assert.equal(data[2].valueOf(), maxDaiBal.valueOf(), "max dai bal should be correct");
+        assert.equal(data[3].valueOf(), pricePremiumBps.valueOf(), "price premiums should be correct");
+        assert.equal(data[4].valueOf(), minSpreadInBps.valueOf(), "internal inventory should be correct");
+
+        await reserve.setInternalInventoryData(
+            myDaiToken.address,
+            false,
+            minDaiBal,
+            maxDaiBal,
+            pricePremiumBps,
+            minSpreadInBps,
+            {from: admin}
+        )
+
+        data = await reserve.getInternalInventoryDataPub(myDaiToken.address);
+        assert.equal(data[0].valueOf(), false, "internal inventory should be disabled");
+        assert.equal(data[1].valueOf(), minDaiBal.valueOf(), "min dai bal should be correct");
+        assert.equal(data[2].valueOf(), maxDaiBal.valueOf(), "max dai bal should be correct");
+        assert.equal(data[3].valueOf(), pricePremiumBps.valueOf(), "price premiums should be correct");
+        assert.equal(data[4].valueOf(), minSpreadInBps.valueOf(), "internal inventory should be correct");
+    });
+
+    it("Should test disable internal inventory and get rate as expected", async function() {
+        await reserve.setInternalInventoryData(
+            myDaiToken.address,
+            false,
+            minDaiBal,
+            maxDaiBal,
+            pricePremiumBps,
+            minSpreadInBps,
+            {from: admin}
+        )
+
+        await reserve.setFeeBps(feeBps, {from: admin});
+
+        await otc.setBuyOffer(1, myDaiToken.address, 5 * 190 * precision, myWethToken.address, 5 * precision); // rate: 190
+        await otc.setSellOffer(2, myWethToken.address, 5 * precision, myDaiToken.address, 210 * 5 * precision); // rate: 210
+
+        let expectedEth2DaiRate = (new BigNumber(190)).mul(precision);
+        expectedEth2DaiRate = addBps(expectedEth2DaiRate, -1 * feeBps);
+        expectedEth2DaiRate = applyInternalInventory(expectedEth2DaiRate, false);
+
+        let expectedDai2EthRate = precision.div(210).floor();
+        expectedDai2EthRate = addBps(expectedDai2EthRate, -1 * feeBps);
+        expectedDai2EthRate = applyInternalInventory(expectedDai2EthRate, false);
+
+        let eth2DaiRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, 1 * precision, 0);
+        let dai2EthRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, 100 * precision, 0);
+
+        assert.equal(expectedEth2DaiRate.valueOf(), eth2DaiRate.valueOf(), "rate eth -> dai is not correct");
+        assert.equal(expectedDai2EthRate.valueOf(), dai2EthRate.valueOf(), "rate dai -> eth is not correct");
+    });
+
+    it("Should test not use internal inventory when not enough eth & token ", async function() {
+        await reserve.setInternalInventoryData(
+            myDaiToken.address,
+            true,
+            minDaiBal,
+            maxDaiBal,
+            pricePremiumBps,
+            minSpreadInBps,
+            {from: admin}
+        )
+
+        await reserve.setFeeBps(feeBps, {from: admin});
+
+        await otc.setBuyOffer(1, myDaiToken.address, 5 * 190 * precision, myWethToken.address, 5 * precision); // rate: 190
+        await otc.setSellOffer(2, myWethToken.address, 5 * precision, myDaiToken.address, 210 * 5 * precision); // rate: 210
+
+        let expectedEth2DaiRate = (new BigNumber(190)).mul(precision);
+        expectedEth2DaiRate = addBps(expectedEth2DaiRate, -1 * feeBps);
+        expectedEth2DaiRate = applyInternalInventory(expectedEth2DaiRate, false);
+
+        let expectedDai2EthRate = precision.div(210).floor();
+        expectedDai2EthRate = addBps(expectedDai2EthRate, -1 * feeBps);
+        expectedDai2EthRate = applyInternalInventory(expectedDai2EthRate, false);
+
+        let balance = await Helper.getBalancePromise(reserve.address);
+        let tokenBal = await myDaiToken.balanceOf(reserve.address);
+
+        // withdraw all ETH and token
+        await reserve.withdrawEther(balance, user, {from: admin});
+        await reserve.withdrawToken(myDaiToken.address, tokenBal, user, {from: admin});
+
+        balance = precision.sub(1);
+        tokenBal = precision.mul(190).sub(1);
+        await Helper.sendEtherWithPromise(user, reserve.address, balance);
+        await myDaiToken.transfer(reserve.address, tokenBal);
+
+        // sell 1 eth for 190 dai, but not enough 190 dai in the reserve
+        let eth2DaiRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, 1 * precision, 0);
+        // sell 210 dai for 1 eth, but not enough 1 eth in the reserve
+        let dai2EthRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, 210 * precision, 0);
+
+        assert.equal(expectedEth2DaiRate.valueOf(), eth2DaiRate.valueOf(), "rate eth -> dai is not correct");
+        assert.equal(expectedDai2EthRate.valueOf(), dai2EthRate.valueOf(), "rate dai -> eth is not correct");
+    });
+
+    it("Should test not use internal inventory when after trade token balance will be lower than min token bal", async function() {
+        await reserve.setInternalInventoryData(
+            myDaiToken.address,
+            true,
+            minDaiBal,
+            maxDaiBal,
+            pricePremiumBps,
+            minSpreadInBps,
+            {from: admin}
+        )
+
+        await reserve.setFeeBps(feeBps, {from: admin});
+
+        await otc.setBuyOffer(1, myDaiToken.address, 5 * 190 * precision, myWethToken.address, 5 * precision); // rate: 190
+        await otc.setSellOffer(2, myWethToken.address, 5 * precision, myDaiToken.address, 210 * 5 * precision); // rate: 210
+
+        let expectedEth2DaiRate = (new BigNumber(190)).mul(precision);
+        expectedEth2DaiRate = addBps(expectedEth2DaiRate, -1 * feeBps);
+        expectedEth2DaiRate = applyInternalInventory(expectedEth2DaiRate, false);
+
+        let tokenBal = await myDaiToken.balanceOf(reserve.address);
+
+        await reserve.withdrawToken(myDaiToken.address, tokenBal, user, {from: admin});
+
+        tokenBal = precision.mul(190).add(minDaiBal).sub(1);
+        await myDaiToken.transfer(reserve.address, tokenBal);
+
+        let eth2DaiRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, 1 * precision, 0);
+
+        assert.equal(expectedEth2DaiRate.valueOf(), eth2DaiRate.valueOf(), "rate eth -> dai is not correct");
+    });
+
+    it("Should test not use internal inventory when after trade token balance will be higher than max token bal", async function() {
+        await reserve.setInternalInventoryData(
+            myDaiToken.address,
+            true,
+            minDaiBal,
+            maxDaiBal,
+            pricePremiumBps,
+            minSpreadInBps,
+            {from: admin}
+        )
+
+        await reserve.setFeeBps(feeBps, {from: admin});
+
+        await otc.setBuyOffer(1, myDaiToken.address, 5 * 190 * precision, myWethToken.address, 5 * precision); // rate: 190
+        await otc.setSellOffer(2, myWethToken.address, 5 * precision, myDaiToken.address, 210 * 5 * precision); // rate: 210
+
+        let expectedDai2EthRate = precision.div(210).floor();
+        expectedDai2EthRate = addBps(expectedDai2EthRate, -1 * feeBps);
+        expectedDai2EthRate = applyInternalInventory(expectedDai2EthRate, false);
+
+        let ethBal = await Helper.getBalancePromise(reserve.address);
+        let tokenBal = await myDaiToken.balanceOf(reserve.address);
+
+        // withdraw all ETH and token
+        await reserve.withdrawEther(ethBal, user, {from: admin});
+        await reserve.withdrawToken(myDaiToken.address, tokenBal, user, {from: admin});
+
+        ethBal = precision.mul(2);
+        tokenBal = maxDaiBal.sub(precision.mul(190)).add(1);
+        await Helper.sendEtherWithPromise(user, reserve.address, ethBal);
+        await myDaiToken.transfer(reserve.address, tokenBal);
+
+        let dai2EthRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, 210 * precision, 0);
+
+        assert.equal(expectedDai2EthRate.valueOf(), dai2EthRate.valueOf(), "rate dai -> eth is not correct");
+    });
+
+    it("Should test not use internal inventory spread is not ok", async function() {
+        await reserve.setInternalInventoryData(
+            myDaiToken.address,
+            true,
+            minDaiBal,
+            maxDaiBal,
+            pricePremiumBps,
+            minSpreadInBps,
+            {from: admin}
+        )
+
+        await reserve.setFeeBps(feeBps, {from: admin});
+
+        await otc.setBuyOffer(1, myDaiToken.address, 5 * 210 * precision, myWethToken.address, 5 * precision); // rate: 210
+        await otc.setSellOffer(2, myWethToken.address, 5 * precision, myDaiToken.address, 190 * 5 * precision); // rate: 190
+
+        let expectedEth2DaiRate = precision.mul(210);
+        expectedEth2DaiRate = addBps(expectedEth2DaiRate, -1 * feeBps);
+        expectedEth2DaiRate = applyInternalInventory(expectedEth2DaiRate, false);
+
+        let ethBal = await Helper.getBalancePromise(reserve.address);
+        let tokenBal = await myDaiToken.balanceOf(reserve.address);
+
+        // withdraw all ETH and token
+        await reserve.withdrawEther(ethBal, user, {from: admin});
+        await reserve.withdrawToken(myDaiToken.address, tokenBal, user, {from: admin});
+
+        ethBal = precision.mul(2);
+        tokenBal = minDaiBal.add(precision.mul(190).mul(2));
+
+        await Helper.sendEtherWithPromise(user, reserve.address, ethBal);
+        await myDaiToken.transfer(reserve.address, tokenBal);
+
+        let eth2DaiRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, 1 * precision, 0);
+
+        assert.equal(expectedEth2DaiRate.valueOf(), eth2DaiRate.valueOf(), "rate eth -> dai is not correct");
+    });
+
+    it("Should test not use internal inventory spread is lower than minSpreadBps", async function() {
+
+        await reserve.setFeeBps(feeBps, {from: admin});
+
+        await otc.setBuyOffer(1, myDaiToken.address, 5 * 190 * precision, myWethToken.address, 5 * precision);
+        await otc.setSellOffer(2, myWethToken.address, 5 * precision, myDaiToken.address, 210 * 5 * precision);
+
+        // spread: 20 / 190 = ~1052 (bps)
+        await reserve.setInternalInventoryData(
+            myDaiToken.address,
+            true,
+            minDaiBal,
+            maxDaiBal,
+            pricePremiumBps,
+            1053, // higher than orderbook's spread
+            {from: admin}
+        )
+
+        let expectedEth2DaiRate = precision.mul(190);
+        expectedEth2DaiRate = addBps(expectedEth2DaiRate, -1 * feeBps);
+        expectedEth2DaiRate = applyInternalInventory(expectedEth2DaiRate, false);
+
+        let ethBal = await Helper.getBalancePromise(reserve.address);
+        let tokenBal = await myDaiToken.balanceOf(reserve.address);
+
+        // withdraw all ETH and token
+        await reserve.withdrawEther(ethBal, user, {from: admin});
+        await reserve.withdrawToken(myDaiToken.address, tokenBal, user, {from: admin});
+
+        ethBal = precision.mul(2);
+        tokenBal = minDaiBal.add(precision.mul(190).mul(2));
+        await Helper.sendEtherWithPromise(user, reserve.address, ethBal);
+        await myDaiToken.transfer(reserve.address, tokenBal);
+
+        let eth2DaiRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, 1 * precision, 0);
+
+        assert.equal(expectedEth2DaiRate.valueOf(), eth2DaiRate.valueOf(), "rate eth -> dai is not correct");
+    });
+
+    it("Should test using internal inventory rate as expected for eth -> dai", async function() {
+        await reserve.setFeeBps(feeBps, {from: admin});
+
+        await otc.setBuyOffer(1, myDaiToken.address, 5 * 190 * precision, myWethToken.address, 5 * precision);
+        await otc.setSellOffer(2, myWethToken.address, 5 * precision, myDaiToken.address, 210 * 5 * precision);
+
+        await reserve.setInternalInventoryData(
+            myDaiToken.address,
+            true,
+            minDaiBal,
+            maxDaiBal,
+            pricePremiumBps,
+            minSpreadInBps,
+            {from: admin}
+        )
+
+        let expectedEth2DaiRate = precision.mul(190);
+        expectedEth2DaiRate = addBps(expectedEth2DaiRate, pricePremiumBps);
+        expectedEth2DaiRate = applyInternalInventory(expectedEth2DaiRate, true);
+
+        let ethBal = await Helper.getBalancePromise(reserve.address);
+        let tokenBal = await myDaiToken.balanceOf(reserve.address);
+
+        // withdraw all ETH and token
+        await reserve.withdrawEther(ethBal, user, {from: admin});
+        await reserve.withdrawToken(myDaiToken.address, tokenBal, user, {from: admin});
+
+        ethBal = precision.mul(2);
+        tokenBal = minDaiBal.add(precision.mul(2000));
+
+        await Helper.sendEtherWithPromise(user, reserve.address, ethBal);
+        await myDaiToken.transfer(reserve.address, tokenBal);
+
+        let eth2DaiRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, precision, 0);
+
+        assert.equal(expectedEth2DaiRate.valueOf(), eth2DaiRate.valueOf(), "rate eth -> dai is not correct");
+    });
+
+    it("Should test using internal inventory balances are correct after trade eth -> dai", async function() {
+        await reserve.setFeeBps(feeBps, {from: admin});
+
+        await otc.setBuyOffer(1, myDaiToken.address, 5 * 190 * precision, myWethToken.address, 5 * precision);
+        await otc.setSellOffer(2, myWethToken.address, 5 * precision, myDaiToken.address, 210 * 5 * precision);
+
+        await reserve.setInternalInventoryData(
+            myDaiToken.address,
+            true,
+            minDaiBal,
+            maxDaiBal,
+            pricePremiumBps,
+            minSpreadInBps,
+            {from: admin}
+        )
+
+        let expectedEth2DaiRate = precision.mul(190);
+        expectedEth2DaiRate = addBps(expectedEth2DaiRate, pricePremiumBps);
+        expectedEth2DaiRate = applyInternalInventory(expectedEth2DaiRate, true);
+
+        let ethBal = await Helper.getBalancePromise(reserve.address);
+        let tokenBal = await myDaiToken.balanceOf(reserve.address);
+
+        // withdraw all ETH and token
+        await reserve.withdrawEther(ethBal, user, {from: admin});
+        await reserve.withdrawToken(myDaiToken.address, tokenBal, user, {from: admin});
+
+        ethBal = precision.mul(2);
+        tokenBal = minDaiBal.add(precision.mul(2000));
+
+        await Helper.sendEtherWithPromise(user, reserve.address, ethBal);
+        await myDaiToken.transfer(reserve.address, tokenBal);
+
+        let expectedDaiBalAfter = tokenBal.sub(expectedEth2DaiRate);
+        let expectedEthBalAfter = ethBal.add(precision);
+
+        await reserve.trade(ethAddress, precision, myDaiToken.address, user, expectedEth2DaiRate, false, {from: network, value: precision});
+
+        ethBal = await Helper.getBalancePromise(reserve.address);
+        tokenBal = await myDaiToken.balanceOf(reserve.address);
+
+        assert.equal(expectedEthBalAfter.valueOf(), ethBal.valueOf(), "eth balance is not correct after trade");
+        assert.equal(expectedDaiBalAfter.valueOf(), tokenBal.valueOf(), "dai balance is not correct after trade");
+    });
+
+    it("Should test using internal inventory rate as expected for dai -> eth", async function() {
+        await reserve.setFeeBps(feeBps, {from: admin});
+
+        await otc.setBuyOffer(1, myDaiToken.address, 5 * 190 * precision, myWethToken.address, 5 * precision);
+        await otc.setSellOffer(2, myWethToken.address, 5 * precision, myDaiToken.address, 210 * 5 * precision);
+
+        await reserve.setInternalInventoryData(
+            myDaiToken.address,
+            true,
+            minDaiBal,
+            maxDaiBal,
+            pricePremiumBps,
+            minSpreadInBps,
+            {from: admin}
+        )
+
+        let expectedDai2EthRate = precision.div(210).floor();
+        expectedDai2EthRate = addBps(expectedDai2EthRate, pricePremiumBps);
+        expectedDai2EthRate = applyInternalInventory(expectedDai2EthRate, true);
+
+        let ethBal = await Helper.getBalancePromise(reserve.address);
+        let tokenBal = await myDaiToken.balanceOf(reserve.address);
+
+        // withdraw all ETH and token
+        await reserve.withdrawEther(ethBal, user, {from: admin});
+        await reserve.withdrawToken(myDaiToken.address, tokenBal, user, {from: admin});
+
+        ethBal = precision.mul(2);
+        tokenBal = minDaiBal.add(precision.mul(2000));
+
+        await Helper.sendEtherWithPromise(user, reserve.address, ethBal);
+        await myDaiToken.transfer(reserve.address, tokenBal);
+
+        let dai2EthRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, 200 * precision, 0);
+
+        assert.equal(expectedDai2EthRate.valueOf(), dai2EthRate.valueOf(), "rate eth -> dai is not correct");
+    });
+
+    it("Should test using internal inventory balances are correct after trade dai -> eth", async function() {
+        await reserve.setFeeBps(feeBps, {from: admin});
+
+        await otc.setBuyOffer(1, myDaiToken.address, 5 * 190 * precision, myWethToken.address, 5 * precision);
+        await otc.setSellOffer(2, myWethToken.address, 5 * precision, myDaiToken.address, 210 * 5 * precision);
+
+        await reserve.setInternalInventoryData(
+            myDaiToken.address,
+            true,
+            minDaiBal,
+            maxDaiBal,
+            pricePremiumBps,
+            minSpreadInBps,
+            {from: admin}
+        )
+
+        let expectedDai2EthRate = precision.div(210).floor();
+        expectedDai2EthRate = addBps(expectedDai2EthRate, pricePremiumBps);
+        expectedDai2EthRate = applyInternalInventory(expectedDai2EthRate, true);
+
+        let ethBal = await Helper.getBalancePromise(reserve.address);
+        let tokenBal = await myDaiToken.balanceOf(reserve.address);
+
+        // withdraw all ETH and token
+        await reserve.withdrawEther(ethBal, user, {from: admin});
+        await reserve.withdrawToken(myDaiToken.address, tokenBal, user, {from: admin});
+
+        ethBal = precision.mul(5);
+        tokenBal = minDaiBal.add(precision.mul(2000));
+        await Helper.sendEtherWithPromise(user, reserve.address, ethBal);
+        await myDaiToken.transfer(reserve.address, tokenBal);
+
+        let tradeAmount = precision.mul(200);
+        let ethAmount = expectedDai2EthRate.mul(tradeAmount).div(precision).floor();
+
+        let expectedDaiBalAfter = tokenBal.add(tradeAmount);
+        let expectedEthBalAfter = ethBal.sub(ethAmount);
+
+        // trade 200 dai
+        await myDaiToken.transfer(network, tradeAmount);
+        await reserve.trade(myDaiToken.address, tradeAmount, ethAddress, user, expectedDai2EthRate, false, {from: network});
+
+        ethBal = await Helper.getBalancePromise(reserve.address);
+        tokenBal = await myDaiToken.balanceOf(reserve.address);
+
+        assert.equal(expectedEthBalAfter.valueOf(), ethBal.valueOf(), "eth balance is not correct after trade");
+        assert.equal(expectedDaiBalAfter.valueOf(), tokenBal.valueOf(), "dai balance is not correct after trade");
     });
   });
   

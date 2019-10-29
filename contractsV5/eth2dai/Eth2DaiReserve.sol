@@ -492,7 +492,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         shouldUse = false;
         premiumBps = 0;
 
-        if (tokenVal <= MAX_QTY) { return (shouldUse, premiumBps); }
+        if (tokenVal > MAX_QTY) { return (shouldUse, premiumBps); }
 
         InternalInventoryData memory inventoryData = getInternalInventoryData(token);
         if (!inventoryData.isEnabled) { return (shouldUse, premiumBps); }
