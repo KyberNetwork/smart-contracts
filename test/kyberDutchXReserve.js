@@ -1,4 +1,5 @@
-const web3 = require("web3");
+const Web3 = require('web3');
+const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
 const BigNumber = require("bignumber.js");
 
 require("chai")
@@ -152,7 +153,7 @@ contract("KyberDutchXReserve", async accounts => {
         })
 
         it("should allow admin to withdraw tokens", async () => {
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const initialBalance = await token1.balanceOf(admin);
 
             await token1.transfer(reserve.address, amount, { from: admin });
@@ -178,7 +179,7 @@ contract("KyberDutchXReserve", async accounts => {
         });
 
         it("reject withdrawing tokens by non-admin users", async () => {
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             await token1.transfer(reserve.address, amount, { from: admin });
 
             await truffleAssert.reverts(
@@ -321,7 +322,7 @@ contract("KyberDutchXReserve", async accounts => {
             const rate = await reserve.getConversionRate(
                 ETH_TOKEN_ADDRESS /* src */,
                 token1.address /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
@@ -354,7 +355,7 @@ contract("KyberDutchXReserve", async accounts => {
             let rate = await reserve.getConversionRate(
                 ETH_TOKEN_ADDRESS /* src */,
                 ETH_TOKEN_ADDRESS /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             )
 
@@ -365,7 +366,7 @@ contract("KyberDutchXReserve", async accounts => {
             let rate = await reserve.getConversionRate(
                 token1.address /* src */,
                 token2.address /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             )
 
@@ -378,7 +379,7 @@ contract("KyberDutchXReserve", async accounts => {
             let rate = await reserve.getConversionRate(
                 ETH_TOKEN_ADDRESS /* src */,
                 newToken.address /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             )
 
@@ -490,7 +491,7 @@ contract("KyberDutchXReserve", async accounts => {
         it("can not be called by user other than KyberNetwork", async () => {
             await reserve.setFee(0, { from: admin });
 
-            const amount = (web3.utils.toWei("1"));
+            const amount = (web3.toWei("1"));
             const conversionRate = 100;
 
             await truffleAssert.reverts(
@@ -513,7 +514,7 @@ contract("KyberDutchXReserve", async accounts => {
 
             await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
-            const tradeAmount = web3.utils.toWei("1");
+            const tradeAmount = web3.toWei("1");
 
             const rate = await reserve.getConversionRate(
                             ETH_TOKEN_ADDRESS /* src */,
@@ -547,7 +548,7 @@ contract("KyberDutchXReserve", async accounts => {
             //make rate 1:1
             await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
 
-            const tradeAmount = web3.utils.toWei("1");
+            const tradeAmount = web3.toWei("1");
 
             const rate = await reserve.getConversionRate(
                             ETH_TOKEN_ADDRESS /* src */,
@@ -594,7 +595,7 @@ contract("KyberDutchXReserve", async accounts => {
         });
 
         it("fail if token in both src and dest", async () => {
-            const tradeAmount = web3.utils.toWei("1");
+            const tradeAmount = web3.toWei("1");
             const conversionRate = 1;
 
             await token1.transfer(kyberNetwork, tradeAmount, {from: admin});
@@ -782,7 +783,7 @@ contract("KyberDutchXReserve", async accounts => {
             await dutchX.setFee(0, 200);
             await reserve.setDutchXFee();
 
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = new BigNumber(10).pow(18).add(100);
             await token1.approve(reserve.address, amount, {
                 from: kyberNetwork
@@ -807,7 +808,7 @@ contract("KyberDutchXReserve", async accounts => {
         it("ETH -> token, fail if srcAmount != msg.value", async () => {
             await reserve.setFee(0, { from: admin });
 
-            const amount = (web3.utils.toWei("1"));
+            const amount = (web3.toWei("1"));
             const conversionRate = 1000;
 
             await truffleAssert.reverts( reserve.trade(
@@ -825,7 +826,7 @@ contract("KyberDutchXReserve", async accounts => {
         it("token -> ETH, fail if 0 != msg.value", async () => {
             await reserve.setFee(0, { from: admin });
 
-            const amount = (web3.utils.toWei("1"));
+            const amount = (web3.toWei("1"));
             const conversionRate = 1000;
             await token1.approve(reserve.address, amount, {
                 from: kyberNetwork
@@ -855,7 +856,7 @@ contract("KyberDutchXReserve", async accounts => {
 
             await reserve.setFee(0, { from: admin });
 
-            const amount = (web3.utils.toWei("1"));
+            const amount = (web3.toWei("1"));
             const conversionRate = 1000;
 
             await truffleAssert.reverts( reserve.trade(
@@ -871,7 +872,7 @@ contract("KyberDutchXReserve", async accounts => {
         });
 
         it("trade event emitted", async () => {
-            const amount = (web3.utils.toWei("1"));
+            const amount = (web3.toWei("1"));
             const conversionRate = 1000;
 
             await reserve.setFee(0, { from: admin });
