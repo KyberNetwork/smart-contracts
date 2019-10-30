@@ -1,9 +1,9 @@
 pragma solidity 0.4.18;
 
 
-import "../Withdrawable.sol";
-import "../KyberReserveInterface.sol";
-import "../Utils2.sol";
+import "../../../Withdrawable.sol";
+import "../../../KyberReserveInterface.sol";
+import "../../../Utils2.sol";
 
 
 interface WETH9 {

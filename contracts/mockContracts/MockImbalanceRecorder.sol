@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
 
-import "../VolumeImbalanceRecorder.sol";
+import "../kyberReserves/VolumeImbalanceRecorder.sol";
 
 
 contract MockImbalanceRecorder is VolumeImbalanceRecorder {

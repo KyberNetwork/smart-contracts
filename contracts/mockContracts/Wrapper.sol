@@ -1,12 +1,11 @@
 pragma solidity ^0.4.18;
 
 import "../ERC20Interface.sol";
-import "../KyberReserve.sol";
 import "../KyberNetwork.sol";
 import "../Utils.sol";
-import "../ConversionRates.sol";
+import "../kyberReserves/fprConversionRate/ConversionRates.sol";
 import "../KyberNetworkProxy.sol";
-import "../permissionless/OrderbookReserve.sol";
+import "../kyberReserves/orderBookReserve/permissionless/OrderbookReserve.sol";
 
 contract Wrapper is Utils {
 

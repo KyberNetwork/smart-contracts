@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
 
-import "../ConversionRates.sol";
+import "../kyberReserves/fprConversionRate/ConversionRates.sol";
 
 contract MockConversionRate is ConversionRates {
     function MockConversionRate(address admin) ConversionRates(admin) public {
