@@ -1,4 +1,3 @@
-
 //let ConversionRates = artifacts.require("./ConversionRates.sol");
 let MockEnhancedStepFunctions = artifacts.require("./mockContracts/MockEnhancedStepFunctions.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
@@ -177,7 +176,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         let qtyBuyStepY = [-10, 35, 150, 310, 1100, 1500];
         let qtySellStepX = [0, 1500, 3000, 7000, 30000];
         let qtySellStepY = [-20, 45, 190, 360, 1800, 2000];
-        
+
         for (let i = 0; i < numTokens; ++i) {
             try {
                 await convRatesInst.setQtyStepFunction(tokens[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
@@ -193,7 +192,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         imbalanceBuyStepY = [-10, 35, 150, 310, 1100, 1500];
         imbalanceSellStepX = [-200, 1500, 3000, 7000, 30000];
         imbalanceSellStepY = [-20, 45, 190, 360, 1800, 2000];
-        
+
         for (let i = 0; i < numTokens; ++i) {
             await convRatesInst.setImbalanceStepFunction(tokens[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
         }

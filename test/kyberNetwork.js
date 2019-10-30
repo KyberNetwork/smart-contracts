@@ -2828,7 +2828,7 @@ contract('KyberNetwork', function(accounts) {
             //see trade reverts
             try {
                 let result = await network.tradeWithHint(user1, tokenSrc.address, srcAmountTwei.valueOf(), tokenDest.address, user2, maxDestAmount.valueOf(),
-                                rate[1].valueOf(), walletId, 0, {from:networkProxy});
+                                buyRate[1].valueOf(), walletId, 0, {from:networkProxy});
                 assert(false, "throw was expected in line above.")
             } catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
@@ -3548,26 +3548,167 @@ contract('KyberNetwork', function(accounts) {
         });
     });
 
-    it("enhance step func: setup reserve for enhance step function", async function () {
-        //disable reserve 1 & 2, add new reserve to network
-        await reserve1.disableTrade({from:alerter});
-        await reserve2.disableTrade({from:alerter});
-        await network.addReserve(reserve4.address, true);
-        for (let i = 0; i < numTokens; i++) {
-            // unlist token for reserve 1 and 2
-            await network.listPairForReserve(reserve1.address, tokenAdd[i], true, true, false);
-            await network.listPairForReserve(reserve2.address, tokenAdd[i], true, true, false);
-            await network.listPairForReserve(reserve4.address, tokenAdd[i], true, true, true);
-        }
-        network.addReserve(reserve1.address, false);
-        network.addReserve(reserve2.address, false);
-    });
+    describe("enhanced step functions", function() {
+        it("enhance step func: setup reserve for enhance step function", async function () {
+            //disable reserve 1 & 2, add new reserve to network
+            await reserve1.disableTrade({from:alerter});
+            await reserve2.disableTrade({from:alerter});
+            await network.addReserve(reserve4.address, false, {from: operator});
+            for (let i = 0; i < numTokens; i++) {
+                // unlist token for reserve 1 and 2
+                await network.listPairForReserve(reserve1.address, tokenAdd[i], true, true, false, {from: operator});
+                await network.listPairForReserve(reserve2.address, tokenAdd[i], true, true, false, {from: operator});
+                await network.listPairForReserve(reserve4.address, tokenAdd[i], true, true, true, {from: operator});
+            }
+        });
 
-    it("enhance step func: should test token to eth with few steps function", async function () {
-        for(let step = 0; step < 5; step++) {
+        it("should test token to eth with few steps function", async function () {
+            for(let step = 0; step < 5; step++) {
+                let tokenInd = 2;
+                let token = tokens[tokenInd]; //choose some token
+                let amountTwei = 100 * step + 20;
+                let user = accounts[9];
+                try {
+                    //verify base rate
+                    let rate = await network.getExpectedRate(tokenAdd[tokenInd], ethAddress, amountTwei);
+                    let expected = calculateRateAmountNewConversionRate(false, tokenInd, amountTwei);
+                    let expectedRate = expected[0].valueOf();
+                    let expectedAmountWei = expected[1].valueOf();
+                    expectedRate = calcCombinedRate(amountTwei, expectedRate, precisionUnits, tokenDecimals[tokenInd], 18, expectedAmountWei);
+                    //check correct rate calculated
+                    assert.equal(rate[0].valueOf(), expectedRate.valueOf(), "unexpected rate.");
+
+                    await token.transfer(network.address, amountTwei);
+
+                    //perform trade
+                    let txData = await network.tradeWithHint(user, tokenAdd[tokenInd], amountTwei, ethAddress, user, 500000,
+                                    rate[1].valueOf(), walletId, 0, {from:networkProxy});
+                    if (step < 2) {
+                        console.log("Transaction gas used token to eth for " + (step + 1) + " sell steps: " + txData.receipt.gasUsed);
+                    }
+                    //check lower ether balance on reserve
+                    expectedReserve4BalanceWei = expectedReserve4BalanceWei.sub(expectedAmountWei);
+                    let balance = await Helper.getBalancePromise(reserve4.address);
+                    assert.equal(balance.valueOf(), expectedReserve4BalanceWei.valueOf(), "bad reserve balance wei");
+
+                    //check token balances
+                    ///////////////////////
+                    //check token balance on user
+                    let tokenTweiBalance = await token.balanceOf(user);
+                    let expectedTweiAmount = 0;
+                    assert.equal(tokenTweiBalance.valueOf(), expectedTweiAmount.valueOf(), "bad token balance");
+
+                    //check higher token balance on reserve
+                    reserve4TokenBalance[tokenInd] = reserve4TokenBalance[tokenInd] * 1 + amountTwei * 1;
+                    reserve4TokenImbalance[tokenInd] -= (amountTwei * 1); //imbalance represents how many missing tokens
+                    let reportedBalance = await token.balanceOf(reserve4.address);
+                    assert.equal(reportedBalance.valueOf(), reserve4TokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
+                } catch (e) {
+                    console.log("oooops " + e);
+                    throw e;
+                }
+            }
+        });
+
+        it("should test few trades eth to token", async function () {
+            let numTrades = 10;
+            let gasUsed = 0;
+            for(let i = 0; i < numTrades; i++) {
+                let tokenInd = 2;
+                let token = tokens[tokenInd]; //choose some token
+                let amountTwei = 15 * i + 100;
+                let user = accounts[9];
+                try {
+                    //verify base rate
+                    let rate = await network.getExpectedRate(ethAddress, tokenAdd[tokenInd], amountTwei);
+                    //check correct rate calculated
+
+                    assert.notEqual(rate[0].valueOf(), 0, "rate should be not zero.");
+
+                    let userTokenBalanceBefore = await token.balanceOf(user);
+                    //perform trade
+                    let txData = await network.tradeWithHint(user, ethAddress, amountTwei, tokenAdd[tokenInd], user, 500000,
+                                    rate[1].valueOf(), walletId, 0, {from:networkProxy, value: amountTwei});
+                    gasUsed += txData.receipt.gasUsed;
+                    let expectedAmountWei = txData.logs[0].args.dstAmount.valueOf();
+                    //check higher ether balance on reserve
+                    expectedReserve4BalanceWei = expectedReserve4BalanceWei.add(amountTwei);
+                    let balance = await Helper.getBalancePromise(reserve4.address);
+                    assert.equal(balance.valueOf(), expectedReserve4BalanceWei.valueOf(), "bad reserve balance wei");
+
+                    //check token balances
+                    ///////////////////////
+                    //check token balance on user
+                    let tokenTweiBalance = await token.balanceOf(user);
+                    let expectedTweiAmount = userTokenBalanceBefore.add(expectedAmountWei);
+                    assert.equal(tokenTweiBalance.valueOf(), expectedTweiAmount.valueOf(), "bad token balance");
+
+                    //check lower token balance on reserve
+                    reserve4TokenBalance[tokenInd] = reserve4TokenBalance[tokenInd] * 1 - expectedAmountWei * 1;
+                    reserve4TokenImbalance[tokenInd] += (expectedAmountWei * 1); //imbalance represents how many missing tokens
+                    let reportedBalance = await token.balanceOf(reserve4.address);
+                    assert.equal(reportedBalance.valueOf(), reserve4TokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
+                } catch (e) {
+                    console.log("oooops " + e);
+                    throw e;
+                }
+            }
+            console.log("Average gas used for " + numTrades + " eth to token trades: " + gasUsed / numTrades);
+        });
+
+        it("should only enable new reserve. perform buy and check: balances changed as expected.", async function () {
+            let tokenInd = 1;
+            let token = tokens[tokenInd]; //choose some token
+            let amountWei = 330 * 1;
+            let user = accounts[9];
+            try {
+                //verify base rate
+                let buyRate = await network.getExpectedRate(ethAddress, tokenAdd[tokenInd], amountWei);
+                let expected = calculateRateAmountNewConversionRate(true, tokenInd, amountWei);
+                let expectedRate = expected[0];
+                let expectedTweiAmount = expected[1];
+                let oldUserTokenBal = await token.balanceOf(user);
+
+                expectedRate = calcCombinedRate(amountWei, precisionUnits, expectedRate, 18, tokenDecimals[tokenInd], expectedTweiAmount);
+
+                //check correct rate calculated
+                assert.equal(buyRate[0].valueOf(), expectedRate.valueOf(), "unexpected rate.");
+
+                //perform trade
+                let txData = await network.tradeWithHint(user, ethAddress, amountWei, tokenAdd[tokenInd], user, 50000,
+                    buyRate[1].valueOf(), walletId, 0, {from:networkProxy, value:amountWei});
+                console.log("Transaction gas used: " + txData.receipt.gasUsed);
+
+                assert.equal(txData.logs[0].args.srcAmount.valueOf(), amountWei);
+                assert.equal(txData.logs[0].args.dstAmount.valueOf(), expectedTweiAmount.valueOf());
+
+                //check higher ether balance on reserve
+                expectedReserve4BalanceWei = expectedReserve4BalanceWei.add(amountWei);
+                let balance = await Helper.getBalancePromise(reserve4.address);
+                assert.equal(balance.valueOf(), expectedReserve4BalanceWei.valueOf(), "bad reserve balance wei");
+
+                //check token balances
+                ///////////////////////
+
+                //check token balance on user
+                let tokenTweiBalance = await token.balanceOf(user);
+                assert.equal(tokenTweiBalance.valueOf(), oldUserTokenBal.add(expectedTweiAmount).valueOf(), "bad token balance");
+
+                //check lower token balance on reserve
+                reserve4TokenBalance[tokenInd] -= expectedTweiAmount;
+                reserve4TokenImbalance[tokenInd] += (expectedTweiAmount * 1); //imbalance represents how many missing tokens
+                let reportedBalance = await token.balanceOf(reserve4.address);
+                assert.equal(reportedBalance.valueOf(), reserve4TokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
+            } catch (e) {
+                console.log("oooops " + e);
+                throw e;
+            }
+        });
+
+        it("should only enable new reserve perform sell and check: balances changed as expected.", async function () {
             let tokenInd = 2;
             let token = tokens[tokenInd]; //choose some token
-            let amountTwei = 100 * step + 20;
+            let amountTwei = 1030 * 1;
             let user = accounts[9];
             try {
                 //verify base rate
@@ -3579,14 +3720,13 @@ contract('KyberNetwork', function(accounts) {
                 //check correct rate calculated
                 assert.equal(rate[0].valueOf(), expectedRate.valueOf(), "unexpected rate.");
 
+                let userTokenBalBefore = await token.balanceOf(user);
                 await token.transfer(network.address, amountTwei);
 
                 //perform trade
                 let txData = await network.tradeWithHint(user, tokenAdd[tokenInd], amountTwei, ethAddress, user, 500000,
                                 rate[1].valueOf(), walletId, 0, {from:networkProxy});
-                if (step < 2) {
-                    console.log("Transaction gas used token to eth for " + (step + 1) + " sell steps: " + txData.receipt.gasUsed);
-                }
+                console.log("Transaction gas used: " + txData.receipt.gasUsed);
                 //check lower ether balance on reserve
                 expectedReserve4BalanceWei = expectedReserve4BalanceWei.sub(expectedAmountWei);
                 let balance = await Helper.getBalancePromise(reserve4.address);
@@ -3594,10 +3734,10 @@ contract('KyberNetwork', function(accounts) {
 
                 //check token balances
                 ///////////////////////
+
                 //check token balance on user
                 let tokenTweiBalance = await token.balanceOf(user);
-                let expectedTweiAmount = 0;
-                assert.equal(tokenTweiBalance.valueOf(), expectedTweiAmount.valueOf(), "bad token balance");
+                assert.equal(tokenTweiBalance.valueOf(), userTokenBalBefore.valueOf(), "bad token balance");
 
                 //check higher token balance on reserve
                 reserve4TokenBalance[tokenInd] = reserve4TokenBalance[tokenInd] * 1 + amountTwei * 1;
@@ -3608,147 +3748,7 @@ contract('KyberNetwork', function(accounts) {
                 console.log("oooops " + e);
                 throw e;
             }
-        }
-    });
-
-    it("enhance step func: should test few trades eth to token", async function () {
-        let numTrades = 10;
-        let gasUsed = 0;
-        for(let i = 0; i < numTrades; i++) {
-            let tokenInd = 2;
-            let token = tokens[tokenInd]; //choose some token
-            let amountTwei = 15 * i + 100;
-            let user = accounts[9];
-            try {
-                //verify base rate
-                let rate = await network.getExpectedRate(ethAddress, tokenAdd[tokenInd], amountTwei);
-                //check correct rate calculated
-
-                assert.notEqual(rate[0].valueOf(), 0, "rate should be not zero.");
-
-                let userTokenBalanceBefore = await token.balanceOf(user);
-                //perform trade
-                let txData = await network.tradeWithHint(user, ethAddress, amountTwei, tokenAdd[tokenInd], user, 500000,
-                                rate[1].valueOf(), walletId, 0, {from:networkProxy, value: amountTwei});
-                gasUsed += txData.receipt.gasUsed;
-                let expectedAmountWei = txData.logs[0].args.destAmount.valueOf();
-                //check higher ether balance on reserve
-                expectedReserve4BalanceWei = expectedReserve4BalanceWei.add(amountTwei);
-                let balance = await Helper.getBalancePromise(reserve4.address);
-                assert.equal(balance.valueOf(), expectedReserve4BalanceWei.valueOf(), "bad reserve balance wei");
-
-                //check token balances
-                ///////////////////////
-                //check token balance on user
-                let tokenTweiBalance = await token.balanceOf(user);
-                let expectedTweiAmount = userTokenBalanceBefore.add(expectedAmountWei);
-                assert.equal(tokenTweiBalance.valueOf(), expectedTweiAmount.valueOf(), "bad token balance");
-
-                //check lower token balance on reserve
-                reserve4TokenBalance[tokenInd] = reserve4TokenBalance[tokenInd] * 1 - expectedAmountWei * 1;
-                reserve4TokenImbalance[tokenInd] += (expectedAmountWei * 1); //imbalance represents how many missing tokens
-                let reportedBalance = await token.balanceOf(reserve4.address);
-                assert.equal(reportedBalance.valueOf(), reserve4TokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
-            } catch (e) {
-                console.log("oooops " + e);
-                throw e;
-            }
-        }
-        console.log("Average gas used for " + numTrades + " eth to token trades: " + gasUsed / numTrades);
-    });
-
-    it("enhance step func: should only enable new reserve. perform buy and check: balances changed as expected.", async function () {
-        let tokenInd = 1;
-        let token = tokens[tokenInd]; //choose some token
-        let amountWei = 330 * 1;
-        let user = accounts[9];
-        try {
-            //verify base rate
-            let buyRate = await network.getExpectedRate(ethAddress, tokenAdd[tokenInd], amountWei);
-            let expected = calculateRateAmountNewConversionRate(true, tokenInd, amountWei);
-            let expectedRate = expected[0];
-            let expectedTweiAmount = expected[1];
-            let oldUserTokenBal = await token.balanceOf(user);
-
-            expectedRate = calcCombinedRate(amountWei, precisionUnits, expectedRate, 18, tokenDecimals[tokenInd], expectedTweiAmount);
-
-            //check correct rate calculated
-            assert.equal(buyRate[0].valueOf(), expectedRate.valueOf(), "unexpected rate.");
-
-            //perform trade
-            let txData = await network.tradeWithHint(user, ethAddress, amountWei, tokenAdd[tokenInd], user, 50000,
-                buyRate[1].valueOf(), walletId, 0, {from:networkProxy, value:amountWei});
-            console.log("Transaction gas used: " + txData.receipt.gasUsed);
-
-            assert.equal(txData.logs[0].args.srcAmount.valueOf(), amountWei);
-            assert.equal(txData.logs[0].args.destAmount.valueOf(), expectedTweiAmount.valueOf());
-
-            //check higher ether balance on reserve
-            expectedReserve4BalanceWei = expectedReserve4BalanceWei.add(amountWei);
-            let balance = await Helper.getBalancePromise(reserve4.address);
-            assert.equal(balance.valueOf(), expectedReserve4BalanceWei.valueOf(), "bad reserve balance wei");
-
-            //check token balances
-            ///////////////////////
-
-            //check token balance on user
-            let tokenTweiBalance = await token.balanceOf(user);
-            assert.equal(tokenTweiBalance.valueOf(), oldUserTokenBal.add(expectedTweiAmount).valueOf(), "bad token balance");
-
-            //check lower token balance on reserve
-            reserve4TokenBalance[tokenInd] -= expectedTweiAmount;
-            reserve4TokenImbalance[tokenInd] += (expectedTweiAmount * 1); //imbalance represents how many missing tokens
-            let reportedBalance = await token.balanceOf(reserve4.address);
-            assert.equal(reportedBalance.valueOf(), reserve4TokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
-        } catch (e) {
-            console.log("oooops " + e);
-            throw e;
-        }
-    });
-
-    it("enhance step func: should only enable new reserve perform sell and check: balances changed as expected.", async function () {
-        let tokenInd = 2;
-        let token = tokens[tokenInd]; //choose some token
-        let amountTwei = 1030 * 1;
-        let user = accounts[9];
-        try {
-            //verify base rate
-            let rate = await network.getExpectedRate(tokenAdd[tokenInd], ethAddress, amountTwei);
-            let expected = calculateRateAmountNewConversionRate(false, tokenInd, amountTwei);
-            let expectedRate = expected[0].valueOf();
-            let expectedAmountWei = expected[1].valueOf();
-            expectedRate = calcCombinedRate(amountTwei, expectedRate, precisionUnits, tokenDecimals[tokenInd], 18, expectedAmountWei);
-            //check correct rate calculated
-            assert.equal(rate[0].valueOf(), expectedRate.valueOf(), "unexpected rate.");
-
-            let userTokenBalBefore = await token.balanceOf(user);
-            await token.transfer(network.address, amountTwei);
-
-            //perform trade
-            let txData = await network.tradeWithHint(user, tokenAdd[tokenInd], amountTwei, ethAddress, user, 500000,
-                            rate[1].valueOf(), walletId, 0, {from:networkProxy});
-            console.log("Transaction gas used: " + txData.receipt.gasUsed);
-            //check lower ether balance on reserve
-            expectedReserve4BalanceWei = expectedReserve4BalanceWei.sub(expectedAmountWei);
-            let balance = await Helper.getBalancePromise(reserve4.address);
-            assert.equal(balance.valueOf(), expectedReserve4BalanceWei.valueOf(), "bad reserve balance wei");
-
-            //check token balances
-            ///////////////////////
-
-            //check token balance on user
-            let tokenTweiBalance = await token.balanceOf(user);
-            assert.equal(tokenTweiBalance.valueOf(), userTokenBalBefore.valueOf(), "bad token balance");
-
-            //check higher token balance on reserve
-            reserve4TokenBalance[tokenInd] = reserve4TokenBalance[tokenInd] * 1 + amountTwei * 1;
-            reserve4TokenImbalance[tokenInd] -= (amountTwei * 1); //imbalance represents how many missing tokens
-            let reportedBalance = await token.balanceOf(reserve4.address);
-            assert.equal(reportedBalance.valueOf(), reserve4TokenBalance[tokenInd].valueOf(), "bad token balance on reserve");
-        } catch (e) {
-            console.log("oooops " + e);
-            throw e;
-        }
+        });
     });
 });
 
