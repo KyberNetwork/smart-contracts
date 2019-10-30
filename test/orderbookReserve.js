@@ -4625,7 +4625,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
 
         ethKncRate = initialEthKncRate * 2;
         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-        let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+        let kncToEthRatePrecision = precisionUnits.div(ethKncRate * 1.01);
 
         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
@@ -4634,7 +4634,8 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
 //        log(rate[0].valueOf())
         assert.equal(ethToKncRatePrecision.valueOf(), rate[0].valueOf());
         rate = await mockNetwork.getExpectedRate(kncAddress, ethAddress, (10 ** 18));
-        assert.equal(kncToEthRatePrecision.add(1).floor().valueOf(), rate[0].valueOf());
+//        log(rate[0].valueOf())
+        assert.equal(kncToEthRatePrecision.floor().valueOf(), rate[0].valueOf());
 
         await feeBurner.setKNCRate();
         let freeKnc2 = await reserve.makerUnlockedKnc(maker1);
@@ -4683,7 +4684,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
 
         ethKncRate = initialEthKncRate * 2;
         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-        let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+        let kncToEthRatePrecision = precisionUnits.div(ethKncRate * 1.01);
 
         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
@@ -4691,7 +4692,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
         let rate = await mockNetwork.getExpectedRate(ethAddress, kncAddress, (10 ** 18));
         assert.equal(ethToKncRatePrecision.valueOf(), rate[0].valueOf());
         rate = await mockNetwork.getExpectedRate(kncAddress, ethAddress, (10 ** 18));
-        assert.equal(kncToEthRatePrecision.add(1).floor().valueOf(), rate[0].valueOf());
+        assert.equal(kncToEthRatePrecision.floor().valueOf(), rate[0].valueOf());
 
         await feeBurner.setKNCRate();
         freeKnc2 = await reserve.makerUnlockedKnc(maker1);
@@ -4834,7 +4835,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
         // set higher Eth to KNC rate (less knc per eth)
         ethKncRate = initialEthKncRate / 2;
         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-        let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+        let kncToEthRatePrecision = precisionUnits.div(ethKncRate * 1.01);
 
         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
@@ -4885,7 +4886,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
         // set higher Eth to KNC rate (less knc per eth)
         ethKncRate = initialEthKncRate / 2;
         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-        let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+        let kncToEthRatePrecision = precisionUnits.div(ethKncRate * 1.01);
 
         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
@@ -4925,7 +4926,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
 
         let ethKncRate = initialEthKncRate * (burnToStakeFactor * 1 + 1 * 1);
         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-        let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+        let kncToEthRatePrecision = precisionUnits.div(ethKncRate * 1.01);
 
         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
@@ -4954,10 +4955,10 @@ function log(str) {
 
 async function makerDeposit(maker, ethWei, tokenTwei, kncTwei) {
 
-    await token.approve(reserve.address, tokenTwei);
-    await reserve.depositToken(maker, tokenTwei);
-    await KNCToken.approve(reserve.address, kncTwei);
-    await reserve.depositKncForFee(maker, kncTwei);
+    await token.approve(reserve.address, tokenTwei, {from: admin});
+    await reserve.depositToken(maker, tokenTwei, {from: admin});
+    await KNCToken.approve(reserve.address, kncTwei, {from: admin});
+    await reserve.depositKncForFee(maker, kncTwei, {from: admin});
     await reserve.depositEther(maker, {from: maker, value: ethWei});
 }
 
