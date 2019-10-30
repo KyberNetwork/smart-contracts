@@ -521,8 +521,8 @@ contract('kyberReserve for Liquidity', function(accounts) {
         token = await TestToken.new("test", "tst", 18);
         tokenAdd = token.address;
 
-        liquidityConvRatesInst = await LiquidityConversionRates.new(admin, token.address);
-        await liquidityConvRatesInst.setLiquidityParams(
+        liqConvRatesInst = await LiquidityConversionRates.new(admin, token.address);
+        await liqConvRatesInst.setLiquidityParams(
                 rInFp,
                 pMinInFp,
                 formulaPrecisionBits,
@@ -535,10 +535,10 @@ contract('kyberReserve for Liquidity', function(accounts) {
     });
 
     it("should init reserve and set all reserve data including balances", async function () {
-        reserveInst = await Reserve.new(network, liquidityConvRatesInst.address, admin);
-        await reserveInst.setContracts(network, liquidityConvRatesInst.address, 0);
+        reserveInst = await Reserve.new(network, liqConvRatesInst.address, admin);
+        await reserveInst.setContracts(network, liqConvRatesInst.address, 0);
 
-        await liquidityConvRatesInst.setReserveAddress(reserveInst.address);
+        await liqConvRatesInst.setReserveAddress(reserveInst.address);
 
         //set reserve balance.
         let reserveEtherInit = (BigNumber(10).pow(18)).mul(e0);
