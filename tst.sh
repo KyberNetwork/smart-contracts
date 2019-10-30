@@ -5,7 +5,7 @@ while getopts "f:" arg; do
   esac
 done
 
-ganache-cli -e 1000 -q & 2> /dev/null
+npx ganache-cli -e 1000 -q & 2> /dev/null
 pid=$!
 sleep 3
 if [ -n "$FILE" ]
