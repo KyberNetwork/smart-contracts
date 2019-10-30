@@ -1,9 +1,10 @@
 pragma solidity 0.4.18;
 
-import "./ConversionRatesInterface.sol";
+
+import "../../ConversionRatesInterface.sol";
+import "../../Withdrawable.sol";
+import "../../Utils.sol";
 import "./LiquidityFormula.sol";
-import "./Withdrawable.sol";
-import "./Utils.sol";
 
 
 contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula, Withdrawable, Utils {

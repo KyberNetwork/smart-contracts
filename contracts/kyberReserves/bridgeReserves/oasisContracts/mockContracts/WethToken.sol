@@ -1,7 +1,7 @@
 pragma solidity 0.4.18;
 
 
-import "../../mockContracts/TestToken.sol";
+import "../../../../mockContracts/TestToken.sol";
 
 
 /*

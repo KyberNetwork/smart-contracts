@@ -1,8 +1,8 @@
 pragma solidity 0.4.18;
 
 
-import "./ERC20Interface.sol";
-import "./Withdrawable.sol";
+import "../ERC20Interface.sol";
+import "../Withdrawable.sol";
 
 
 contract VolumeImbalanceRecorder is Withdrawable {
