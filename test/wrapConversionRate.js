@@ -38,6 +38,7 @@ contract('WrapConversionRates', function(accounts) {
 
         //init contracts
         convRatesInst = await ConversionRates.new(admin);
+        await convRatesInst.addAlerter(alerter);
 
         //set pricing general parameters
         convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);
@@ -84,6 +85,32 @@ contract('WrapConversionRates', function(accounts) {
         rxValidDuration = await convRatesInst.validRateDurationInBlocks();
 
         assert.equal(rxValidDuration.valueOf(), validRateDurationInBlocks);
+    });
+
+    it("should test enabling token trade using wrapper", async function () {
+        let enabled = await convRatesInst.mockIsTokenTradeEnabled(token.address);
+        assert.equal(enabled, true, "trade should be enabled");
+
+        await convRatesInst.disableTokenTrade(token.address, {from: alerter});
+        enabled = await convRatesInst.mockIsTokenTradeEnabled(token.address);
+        assert.equal(enabled, false, "trade should be disabled");
+
+        await wrapConvRateInst.enableTokenTrade(token.address, {from: admin});
+        enabled = await convRatesInst.mockIsTokenTradeEnabled(token.address);
+        assert.equal(enabled, true, "trade should be enabled");
+    });
+
+    it("should test setting reserve address using wrapper", async function () {
+        let resAdd = await convRatesInst.reserveContract();
+        assert.equal(resAdd, reserveAddress)
+
+        await wrapConvRateInst.setReserveAddress(accounts[3], {from: admin});
+        resAdd = await convRatesInst.reserveContract();
+        assert.equal(resAdd, accounts[3]);
+
+        await wrapConvRateInst.setReserveAddress(reserveAddress, {from: admin});
+        resAdd = await convRatesInst.reserveContract();
+        assert.equal(resAdd, reserveAddress);
     });
 
     it("should test update token control info using wrapper. And getting info before update", async function () {
@@ -170,7 +197,25 @@ contract('WrapConversionRates', function(accounts) {
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }   
+        }
+
+         //valid duration
+        try {
+            await wrapConvRateInst.enableTokenTrade(token.address, {from: accounts[7]});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+         //valid duration
+        try {
+            await wrapConvRateInst.setReserveAddress(accounts[6], {from: accounts[7]});
+            assert(false, "throw was expected in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
     });
 
     it("test can't init wrapper with contract with address 0.", async function() {

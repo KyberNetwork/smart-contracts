@@ -56,6 +56,18 @@ contract WrapConversionRate is WrapperBase {
         conversionRates.removeOperator(this);
     }
 
+    // enable trade per token
+    //////////////////////
+    function enableTokenTrade(ERC20 token) public onlyAdmin {
+        conversionRates.enableTokenTrade(token);
+    }
+
+    // set conversion rates reserve address
+    //////////////////////
+    function setReserveAddress(address reserve) public onlyAdmin {
+        conversionRates.setReserveAddress(reserve);
+    }
+
     //set token control info
     ////////////////////////
     function setTokenControlData(ERC20[] tokens, uint[] maxPerBlockImbalanceValues, uint[] maxTotalImbalanceValues)
