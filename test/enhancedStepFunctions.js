@@ -1,3 +1,4 @@
+
 //let ConversionRates = artifacts.require("./ConversionRates.sol");
 let MockEnhancedStepFunctions = artifacts.require("./mockContracts/MockEnhancedStepFunctions.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
@@ -1303,3 +1304,4 @@ function divSolidity(a, b) {
     if (c < 0) { return Math.ceil(c); }
     return Math.floor(c);
 }
+

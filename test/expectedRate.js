@@ -525,7 +525,7 @@ contract('ExpectedRate', function(accounts) {
     it("should disable the first reserve and add the second one with new conversion rate", async function() {
         await reserve1.disableTrade({from: alerter});
         await network.addReserve(reserve2.address, false, {from: operator});
-    
+
         //list tokens per reserve2
         for (let i = 0; i < numTokens; i++) {
             await network.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true, {from: operator});
