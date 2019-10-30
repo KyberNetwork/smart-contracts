@@ -1304,4 +1304,3 @@ function divSolidity(a, b) {
     if (c < 0) { return Math.ceil(c); }
     return Math.floor(c);
 }
-
