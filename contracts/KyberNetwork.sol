@@ -325,13 +325,16 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface {
     function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcAmount) internal view
         returns(BestRateResult result)
     {
+        uint srcDecimals = getDecimals(src);
+        uint destDecimals = getDecimals(dest);
+
         (result.reserve1, result.rateSrcToEth) = searchBestRate(src, ETH_TOKEN_ADDRESS, srcAmount);
-        result.weiAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcAmount, result.rateSrcToEth);
+        result.weiAmount = calcDestAmount(srcDecimals, ETH_DECIMALS, srcAmount, result.rateSrcToEth);
 
         (result.reserve2, result.rateEthToDest) = searchBestRate(ETH_TOKEN_ADDRESS, dest, result.weiAmount);
-        result.destAmount = calcDestAmount(ETH_TOKEN_ADDRESS, dest, result.weiAmount, result.rateEthToDest);
+        result.destAmount = calcDestAmount(ETH_DECIMALS, destDecimals, result.weiAmount, result.rateEthToDest);
 
-        result.rate = calcRateFromQty(srcAmount, result.destAmount, getDecimals(src), getDecimals(dest));
+        result.rate = calcRateFromQty(srcAmount, result.destAmount, srcDecimals, destDecimals);
     }
 
     function listPairs(address reserve, ERC20 token, bool isTokenToEth, bool add) internal {

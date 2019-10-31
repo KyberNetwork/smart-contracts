@@ -79,7 +79,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
         uint rateEthToDest;
         (reserve, rateSrcToEth) = kyberNetwork.searchBestRate(src, ETH_TOKEN_ADDRESS, srcQty);
 
-        uint ethQty = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcQty, rateSrcToEth);
+        uint ethQty = calcDestAmount(getDecimals(src), ETH_DECIMALS, srcQty, rateSrcToEth);
 
         (reserve, rateEthToDest) = kyberNetwork.searchBestRate(ETH_TOKEN_ADDRESS, dest, ethQty);
         return rateSrcToEth * rateEthToDest / PRECISION;

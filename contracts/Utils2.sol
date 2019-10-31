@@ -25,8 +25,8 @@ contract Utils2 is Utils {
         return decimals[token];
     }
 
-    function calcDestAmount(ERC20 src, ERC20 dest, uint srcAmount, uint rate) internal view returns(uint) {
-        return calcDstQty(srcAmount, getDecimals(src), getDecimals(dest), rate);
+    function calcDestAmount(uint srcDecimals, uint destDecimals, uint srcAmount, uint rate) internal pure returns(uint) {
+        return calcDstQty(srcAmount, srcDecimals, destDecimals, rate);
     }
 
     function calcSrcAmount(ERC20 src, ERC20 dest, uint destAmount, uint rate) internal view returns(uint) {
