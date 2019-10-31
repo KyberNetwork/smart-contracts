@@ -11,8 +11,8 @@ contract WrapConversionRate is WrapperBase {
     ConversionRates internal conversionRates;
 
     //general functions
-    function WrapConversionRate(ConversionRates _conversionRates, address _admin) public
-        WrapperBase(PermissionGroups(address(_conversionRates)), _admin, 0)
+    function WrapConversionRate(ConversionRates _conversionRates) public
+        WrapperBase(PermissionGroups(address(_conversionRates)), msg.sender, 0)
     {
         conversionRates = _conversionRates;
         addOperator(admin);
