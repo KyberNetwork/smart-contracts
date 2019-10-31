@@ -3,7 +3,7 @@ pragma solidity 0.4.18;
 
 import "../ERC20Interface.sol";
 import "./WrapperBase.sol";
-import "../kyberReserves/fprConversionRate/ConversionRates.sol";
+import "../reserves/fprConversionRate/ConversionRates.sol";
 
 
 contract WrapConversionRate is WrapperBase {

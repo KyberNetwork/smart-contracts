@@ -1,6 +1,6 @@
 pragma solidity ^0.4.18;
 
-import "../kyberReserves/fprConversionRate/ConversionRates.sol";
+import "../reserves/fprConversionRate/ConversionRates.sol";
 
 
 contract MockConversionRate is ConversionRates {
