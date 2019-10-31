@@ -199,7 +199,7 @@ contract('WrapConversionRates', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-         //valid duration
+         //enable token trade
         try {
             await wrapConvRateInst.enableTokenTrade(token.address, {from: accounts[7]});
             assert(false, "throw was expected in line above.")
@@ -208,7 +208,7 @@ contract('WrapConversionRates', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-         //valid duration
+         //ser reserve address
         try {
             await wrapConvRateInst.setReserveAddress(accounts[6], {from: accounts[7]});
             assert(false, "throw was expected in line above.")
