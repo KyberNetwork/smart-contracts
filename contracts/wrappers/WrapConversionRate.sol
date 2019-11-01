@@ -3,7 +3,7 @@ pragma solidity 0.4.18;
 
 import "../ERC20Interface.sol";
 import "./WrapperBase.sol";
-import "../kyberReserves/fprConversionRate/ConversionRates.sol";
+import "../reserves/fprConversionRate/ConversionRates.sol";
 
 
 contract WrapConversionRate is WrapperBase {
@@ -11,8 +11,8 @@ contract WrapConversionRate is WrapperBase {
     ConversionRates internal conversionRates;
 
     //general functions
-    function WrapConversionRate(ConversionRates _conversionRates, address _admin) public
-        WrapperBase(PermissionGroups(address(_conversionRates)), _admin, 0)
+    function WrapConversionRate(ConversionRates _conversionRates) public
+        WrapperBase(PermissionGroups(address(_conversionRates)), msg.sender, 0)
     {
         conversionRates = _conversionRates;
         addOperator(admin);
@@ -54,6 +54,18 @@ contract WrapConversionRate is WrapperBase {
         conversionRates.enableTokenTrade(token);
 
         conversionRates.removeOperator(this);
+    }
+
+    // enable trade per token
+    //////////////////////
+    function enableTokenTrade(ERC20 token) public onlyAdmin {
+        conversionRates.enableTokenTrade(token);
+    }
+
+    // set conversion rates reserve address
+    //////////////////////
+    function setReserveAddress(address reserve) public onlyAdmin {
+        conversionRates.setReserveAddress(reserve);
     }
 
     //set token control info
