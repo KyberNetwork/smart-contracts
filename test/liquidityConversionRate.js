@@ -454,6 +454,21 @@ contract('LiquidityConversionRates', function(accounts) {
         }
     });
 
+    it("should test can't set minSellRateInPrecision = 0 .", async function () {
+        //try once to see it's working
+        await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision, {from: admin})
+
+        let wrong_minSellRateInPrecision = 0;
+
+        try {
+            await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, wrong_minSellRateInPrecision, {from: admin})
+            assert(false, "expected to throw error in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
     it("should test can't set pMin = 0 .", async function () {
         //try once to see it's working
         await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision, {from: admin})

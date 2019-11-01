@@ -159,7 +159,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
 
         require(qtyInSrcWei <= MAX_QTY);
         require(eInFp <= maxQtyInFp);
-        if (conversionToken != token || qtyInSrcWei == 0) return 0;
+        if (conversionToken != token) return 0;
 
         if (buy) {
             // ETH goes in, token goes out
