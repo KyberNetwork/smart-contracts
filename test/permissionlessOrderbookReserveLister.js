@@ -762,7 +762,7 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
         ethKncRate = ethKncRate * (stakeFactor * 1 + 1 * 1);
 
         ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-        kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+        kncToEthRatePrecision = precisionUnits.div(ethKncRate * 1.01);
 
         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
@@ -844,7 +844,7 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
         ethKncRate = ethKncRate * (stakeFactor * 1 + 1 * 1);
 
         ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-        kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+        kncToEthRatePrecision = precisionUnits.div(ethKncRate * 1.01);
 
         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
@@ -974,7 +974,7 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
         ethKncRate = ethKncRate * (stakeFactor * 1 + 1 * 1);
 
         ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-        kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+        kncToEthRatePrecision = precisionUnits.div(ethKncRate * 1.01);
 
         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);

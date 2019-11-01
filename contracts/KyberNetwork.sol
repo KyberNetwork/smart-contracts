@@ -5,7 +5,7 @@ import "./ERC20Interface.sol";
 import "./KyberReserveInterface.sol";
 import "./KyberNetworkInterface.sol";
 import "./Withdrawable.sol";
-import "./Utils2.sol";
+import "./Utils3.sol";
 import "./WhiteListInterface.sol";
 import "./ExpectedRateInterface.sol";
 import "./FeeBurnerInterface.sol";
@@ -37,7 +37,7 @@ contract ReentrancyGuard {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
-contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, ReentrancyGuard {
+contract KyberNetwork is Withdrawable, Utils3, KyberNetworkInterface, ReentrancyGuard {
 
     bytes public constant PERM_HINT = "PERM";
     uint  public constant PERM_HINT_GET_RATE = 1 << 255; // for get rate. bit mask hint.
@@ -430,17 +430,20 @@ contract KyberNetwork is Withdrawable, Utils2, KyberNetworkInterface, Reentrancy
             usePermissionless = false;
         }
 
+        uint srcDecimals = getDecimals(src);
+        uint destDecimals = getDecimals(dest);
+
         (result.reserve1, result.rateSrcToEth) =
             searchBestRate(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
 
-        result.weiAmount = calcDestAmount(src, ETH_TOKEN_ADDRESS, srcAmount, result.rateSrcToEth);
+        result.weiAmount = calcDestAmountWithDecimals(srcDecimals, ETH_DECIMALS, srcAmount, result.rateSrcToEth);
 
         (result.reserve2, result.rateEthToDest) =
             searchBestRate(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
 
-        result.destAmount = calcDestAmount(ETH_TOKEN_ADDRESS, dest, result.weiAmount, result.rateEthToDest);
+        result.destAmount = calcDestAmountWithDecimals(ETH_DECIMALS, destDecimals, result.weiAmount, result.rateEthToDest);
 
-        result.rate = calcRateFromQty(srcAmount, result.destAmount, getDecimals(src), getDecimals(dest));
+        result.rate = calcRateFromQty(srcAmount, result.destAmount, srcDecimals, destDecimals);
     }
 
     function listPairs(address reserve, ERC20 token, bool isTokenToEth, bool add) internal {

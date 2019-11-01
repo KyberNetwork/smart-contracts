@@ -3,7 +3,7 @@ pragma solidity 0.4.18;
 
 import "./FeeBurnerInterface.sol";
 import "./Withdrawable.sol";
-import "./Utils2.sol";
+import "./Utils3.sol";
 import "./KyberNetworkInterface.sol";
 
 
@@ -13,7 +13,7 @@ interface BurnableToken {
 }
 
 
-contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
+contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils3 {
 
     mapping(address=>uint) public reserveFeesInBps;
     mapping(address=>address) public reserveKNCWallet; //wallet holding knc per reserve. from here burn and send fees.
@@ -109,7 +109,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
         require(msg.sender == address(kyberNetwork));
         require(tradeWeiAmount <= MAX_QTY);
 
-        uint kncAmount = calcDestAmount(ETH_TOKEN_ADDRESS, ERC20(knc), tradeWeiAmount, kncPerEthRatePrecision);
+        uint kncAmount = calcDestAmountWithDecimals(ETH_DECIMALS, MAX_DECIMALS, tradeWeiAmount, kncPerEthRatePrecision);
         uint fee = kncAmount * reserveFeesInBps[reserve] / 10000;
 
         uint walletFee = fee * walletFeesInBps[wallet] / 10000;

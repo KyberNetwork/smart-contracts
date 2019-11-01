@@ -155,9 +155,9 @@ contract('MockExchange', function (accounts) {
     });
 
     it("should test myExchange clear balance with Ether and token on same array.", async function (){
-        myExchange.addMockDepositAddress(ethAddress);
+        await myExchange.addMockDepositAddress(ethAddress);
         let myToken = await TestToken.new("another", "ant", 18);
-        myExchange.addMockDepositAddress(myToken.address);
+        await myExchange.addMockDepositAddress(myToken.address);
 
         //send ethers to deposit address
         let myEtherMockAddress = await myExchange.tokenDepositAddresses(ethAddress);
