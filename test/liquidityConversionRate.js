@@ -424,6 +424,51 @@ contract('LiquidityConversionRates', function(accounts) {
         }
     });
 
+    it("should test setting formula precisioin bits != 40 .", async function () {
+        //try once to see it's working
+        await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision, {from: admin})
+
+        let wrong_formulaPrecisionBits = 41;
+
+        try {
+            await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, wrong_formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision, {from: admin})
+            assert(false, "expected to throw error in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should test can't set r = 0 .", async function () {
+        //try once to see it's working
+        await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision, {from: admin})
+
+        let wrong_rInFp = 0;
+
+        try {
+            await liqConvRatesInst.setLiquidityParams(wrong_rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision, {from: admin})
+            assert(false, "expected to throw error in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should test can't set pMin = 0 .", async function () {
+        //try once to see it's working
+        await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision, {from: admin})
+
+        let wrong_pMinInFp = 0;
+
+        try {
+            await liqConvRatesInst.setLiquidityParams(rInFp, wrong_pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision, {from: admin})
+            assert(false, "expected to throw error in line above.")
+        }
+        catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
     it("should test set liquidity params with illegal fee in BPS configuration.", async function () {
         //try once to see it's working
         let currentFeeInBps = feeInBps
