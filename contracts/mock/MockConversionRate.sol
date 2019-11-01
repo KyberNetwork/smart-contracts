@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
+import "../reserves/fprConversionRate/ConversionRates.sol";
 
-import "../kyberReserves/fprConversionRate/ConversionRates.sol";
 
 contract MockConversionRate is ConversionRates {
     function MockConversionRate(address admin) ConversionRates(admin) public {
@@ -27,5 +27,9 @@ contract MockConversionRate is ConversionRates {
 
     function mockAddBps(uint rate, int bps) public pure returns(uint) {
         return addBps(rate, bps);
+    }
+
+    function mockIsTokenTradeEnabled(address token) public view returns (bool) {
+        return tokenData[token].enabled;
     }
 }

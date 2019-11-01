@@ -57,7 +57,7 @@ contract('WrapConversionRates', function(accounts) {
     });
 
     it("should init ConversionRates wrapper and set as conversion rate admin.", async function () {
-        wrapConvRateInst = await WrapConversionRate.new(convRatesInst.address, admin);
+        wrapConvRateInst = await WrapConversionRate.new(convRatesInst.address, {from: admin});
 
         //transfer admin to wrapper
 //        await wrapConvRateInst.addOperator(operator, {from: admin});
@@ -199,7 +199,7 @@ contract('WrapConversionRates', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-         //valid duration
+         //enable token trade
         try {
             await wrapConvRateInst.enableTokenTrade(token.address, {from: accounts[7]});
             assert(false, "throw was expected in line above.")
@@ -208,7 +208,7 @@ contract('WrapConversionRates', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-         //valid duration
+         //ser reserve address
         try {
             await wrapConvRateInst.setReserveAddress(accounts[6], {from: accounts[7]});
             assert(false, "throw was expected in line above.")
@@ -222,21 +222,14 @@ contract('WrapConversionRates', function(accounts) {
         let wrapper;
 
         try {
-            wrapper = await WrapConversionRate.new(0, admin);
+            wrapper = await WrapConversionRate.new(0, {from: admin});
             assert(false, "throw was expected in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        try {
-            wrapper = await WrapConversionRate.new(convRatesInst.address, 0);
-            assert(false, "throw was expected in line above.")
-        }
-        catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-        wrapper = await WrapConversionRate.new(convRatesInst.address, admin);
+        wrapper = await WrapConversionRate.new(convRatesInst.address, {from: admin});
     });
 
 
@@ -324,28 +317,4 @@ contract('WrapConversionRates', function(accounts) {
         await wrapConvRateInst.setTokenControlData(tokens, maxPerBlockList, maxTotalList, {from: admin});
         tokenInfoNonce++;
     });
-
-    it("init wrapper with illegal values.", async function() {
-        let wrapper;
-
-        try {
-            wrapper = await WrapConversionRate.new(0, admin);
-            assert(false, "throw was expected in line above.")
-        }
-        catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-
-        try {
-            wrapper = await WrapConversionRate.new(convRatesInst.address, 0);
-            assert(false, "throw was expected in line above.")
-        }
-        catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        wrapper = await WrapConversionRate.new(convRatesInst.address, admin);
-    });
-
 });
