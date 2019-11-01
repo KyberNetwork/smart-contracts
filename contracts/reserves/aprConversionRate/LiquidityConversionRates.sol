@@ -59,16 +59,15 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
     );
 
     function setLiquidityParams(
-            uint _rInFp,
-            uint _pMinInFp,
-            uint _numFpBits,
-            uint _maxCapBuyInWei,
-            uint _maxCapSellInWei,
-            uint _feeInBps,
-            uint _maxTokenToEthRateInPrecision,
-            uint _minTokenToEthRateInPrecision
-        ) public onlyAdmin
-    {
+        uint _rInFp,
+        uint _pMinInFp,
+        uint _numFpBits,
+        uint _maxCapBuyInWei,
+        uint _maxCapSellInWei,
+        uint _feeInBps,
+        uint _maxTokenToEthRateInPrecision,
+        uint _minTokenToEthRateInPrecision
+    ) public onlyAdmin {
         require(_numFpBits == 40); // at the moment other config isn't required. parameter will remain part of API
         formulaPrecision = uint(1)<<_numFpBits; // require(formulaPrecision <= MAX_QTY)
         require(_feeInBps < 10000);
