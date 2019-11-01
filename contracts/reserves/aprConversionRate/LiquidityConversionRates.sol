@@ -72,6 +72,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         formulaPrecision = uint(1)<<_numFpBits; // require(formulaPrecision <= MAX_QTY)
         require(_feeInBps < 10000);
         require(_minTokenToEthRateInPrecision < _maxTokenToEthRateInPrecision);
+        require(_minTokenToEthRateInPrecision > 0);
         require(_rInFp > 0);
         require(_pMinInFp > 0);
 
@@ -158,7 +159,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
 
         require(qtyInSrcWei <= MAX_QTY);
         require(eInFp <= maxQtyInFp);
-        if (conversionToken != token) return 0;
+        if (conversionToken != token || qtyInSrcWei == 0) return 0;
 
         if (buy) {
             // ETH goes in, token goes out
@@ -262,5 +263,4 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
             return uint(val);
         }
     }
-
 }
