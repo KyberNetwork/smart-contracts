@@ -1,6 +1,5 @@
 pragma solidity 0.4.18;
 
-import "./ERC20Interface.sol";
 import "./ConversionRates.sol";
 
 /// @title EnhancedStepFunctions contract - new ConversionRates contract with step function enhancement

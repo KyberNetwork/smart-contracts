@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
+import "../reserves/fprConversionRate/EnhancedStepFunctions.sol";
 
-import "../EnhancedStepFunctions.sol";
 
 contract MockEnhancedStepFunctions is EnhancedStepFunctions {
 
