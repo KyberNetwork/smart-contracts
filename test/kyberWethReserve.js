@@ -1,3 +1,5 @@
+const Web3 = require('web3');
+const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
 const BigNumber = web3.BigNumber
 
 require("chai")
@@ -11,7 +13,7 @@ const TestToken = artifacts.require("./mockContracts/TestToken.sol");
 
 const Helper = require("./helper.js");
 
-const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 const precision = new BigNumber(10).pow(18);
 
 contract('KyberWethReserve', function (accounts) {
