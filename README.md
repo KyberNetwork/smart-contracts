@@ -19,7 +19,5 @@ For more details, please visit our [developer portal](https://developer.kyber.ne
 `./tst.sh -f "./test/kyberReserve.js"`
 `./tst.sh -f "./test/kyberReserve.js" -k istanbul`
 
-## Testing with Istanbul Hardfork
-
 ### Example
 `npx buidler test --no-compile ./test/kyberNetwork.js`
