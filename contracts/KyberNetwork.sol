@@ -437,13 +437,20 @@ contract KyberNetwork is Withdrawable, Utils3, KyberNetworkInterface, Reentrancy
             searchBestRate(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
 
         result.weiAmount = calcDestAmountWithDecimals(srcDecimals, ETH_DECIMALS, srcAmount, result.rateSrcToEth);
+        //if weiAmount is zero, return zero rate
+        if (result.weiAmount == 0) {
+            result.reserve2 = address(0);
+            result.rateEthToDest = 0;
+            result.destAmount = 0;
+            result.rate = 0;
+        } else {
+            (result.reserve2, result.rateEthToDest) =
+                searchBestRate(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
 
-        (result.reserve2, result.rateEthToDest) =
-            searchBestRate(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
+                result.destAmount = calcDestAmountWithDecimals(ETH_DECIMALS, destDecimals, result.weiAmount, result.rateEthToDest);
 
-        result.destAmount = calcDestAmountWithDecimals(ETH_DECIMALS, destDecimals, result.weiAmount, result.rateEthToDest);
-
-        result.rate = calcRateFromQty(srcAmount, result.destAmount, srcDecimals, destDecimals);
+                result.rate = calcRateFromQty(srcAmount, result.destAmount, srcDecimals, destDecimals);
+        }
     }
 
     function listPairs(address reserve, ERC20 token, bool isTokenToEth, bool add) internal {
