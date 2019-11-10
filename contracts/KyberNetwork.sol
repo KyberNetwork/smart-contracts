@@ -287,6 +287,7 @@ contract KyberNetwork is Withdrawable, Utils3, KyberNetworkInterface, Reentrancy
         returns(uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
+        if (src == dest) return (0,0);
         bool includePermissionless = true;
 
         if (srcQty & PERM_HINT_GET_RATE > 0) {
@@ -302,6 +303,7 @@ contract KyberNetwork is Withdrawable, Utils3, KyberNetworkInterface, Reentrancy
         returns(uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
+        if (src == dest) return (0,0);
         return expectedRateContract.getExpectedRate(src, dest, srcQty, false);
     }
 
