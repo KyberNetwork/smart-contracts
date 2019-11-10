@@ -1,0 +1,53 @@
+{
+  "tokens": {
+    "OMG": {
+      "name": "OmiseGO",
+      "decimals": 18,
+      "address": "0x4BFBa4a8F28755Cb2061c413459EE562c6B9c51b",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "775091297865175138304",
+      "maxTotalImbalance": "1096640332676811325440"
+    },
+    "KNC": {
+      "name": "KyberNetwork",
+      "decimals": 18,
+      "address": "0x4E470dc7321E84CA96FcAEDD0C8aBCebbAEB68C6",
+      "minimalRecordResolution": "1000000000000000",
+      "maxPerBlockImbalance": "2711997842670896021504",
+      "maxTotalImbalance": "3833713935933528080384"
+    },
+    "ETH": {
+      "name": "Ethereum",
+      "decimals": 18,
+      "address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  },
+  "exchanges": {
+    "binance": {
+      "ETH": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "OMG": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
+      "KNC": "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"
+    }
+  },
+  "permission": {
+    "KyberReserve": {
+      "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "operator": [
+        "0x5bab5ef16cfac98e216a229db17913454b0f9365"
+      ],
+      "alerter": []
+    },
+    "ConversionRates": {
+      "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "operator": [
+        "0x8bc3da587def887b5c822105729ee1d6af05a5ca",
+        "0x9224016462B204C57Eb70e1D69652f60bcAF53A8"
+      ],
+      "alerter": []
+    }
+  },
+  "valid duration block": 60,
+  "reserve": "0x65e37074Af5B132954E265f6265d45809731cd1f",
+  "pricing": "0x3e91D0825e443A2E33281dc8Ed1fbBcd616FBD7C",
+  "network": "0xD19559B3121c1b071481d8813d5dBcDC5869e2e8"
+}

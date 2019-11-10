@@ -3,7 +3,7 @@ pragma solidity 0.4.18;
 
 import "./FeeBurnerInterface.sol";
 import "./Withdrawable.sol";
-import "./Utils2.sol";
+import "./Utils3.sol";
 import "./KyberNetworkInterface.sol";
 
 
@@ -13,7 +13,7 @@ interface BurnableToken {
 }
 
 
-contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
+contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils3 {
 
     mapping(address=>uint) public reserveFeesInBps;
     mapping(address=>address) public reserveKNCWallet; //wallet holding knc per reserve. from here burn and send fees.
@@ -90,11 +90,14 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
         (kyberEthKncRate, ) = kyberNetwork.getExpectedRate(ETH_TOKEN_ADDRESS, ERC20(knc), (10 ** 18));
         (kyberKncEthRate, ) = kyberNetwork.getExpectedRate(ERC20(knc), ETH_TOKEN_ADDRESS, (10 ** 18));
 
+        // if returned rate is 0, can't trust this arb test. assume we have arb
+        require(kyberEthKncRate <= MAX_RATE && kyberKncEthRate <= MAX_RATE);
+
+        //check for internal arbitrage
+        require(kyberEthKncRate * kyberKncEthRate <= PRECISION ** 2);
         //check "reasonable" spread == diff not too big. rate wasn't tampered.
-        require(kyberEthKncRate * kyberKncEthRate < PRECISION ** 2 * 2);
         require(kyberEthKncRate * kyberKncEthRate > PRECISION ** 2 / 2);
 
-        require(kyberEthKncRate <= MAX_RATE);
         kncPerEthRatePrecision = kyberEthKncRate;
         KNCRateSet(kncPerEthRatePrecision, kyberEthKncRate, kyberKncEthRate, msg.sender);
     }
@@ -106,7 +109,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils2 {
         require(msg.sender == address(kyberNetwork));
         require(tradeWeiAmount <= MAX_QTY);
 
-        uint kncAmount = calcDestAmount(ETH_TOKEN_ADDRESS, ERC20(knc), tradeWeiAmount, kncPerEthRatePrecision);
+        uint kncAmount = calcDestAmountWithDecimals(ETH_DECIMALS, MAX_DECIMALS, tradeWeiAmount, kncPerEthRatePrecision);
         uint fee = kncAmount * reserveFeesInBps[reserve] / 10000;
 
         uint walletFee = fee * walletFeesInBps[wallet] / 10000;
