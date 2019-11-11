@@ -1,19 +1,11 @@
 #!/bin/sh
-while getopts "f:k:" arg; do
+while getopts "f:" arg; do
   case $arg in
     f) FILE=$OPTARG;;
-    k) FORK=$OPTARG;;
   esac
 done
 
-if [ -n "$FORK" ] 
-then
-  echo "Running fork: $FORK"
-  npx ganache-cli -e 1000 -k $FORK -q & 2> /dev/null
-else
-  npx ganache-cli -e 1000 -q & 2> /dev/null
-fi
-
+npx ganache-cli -e 1000 -q & 2> /dev/null
 pid=$!
 sleep 3
 if [ -n "$FILE" ]
