@@ -6,11 +6,12 @@ while getopts "f:k:" arg; do
   esac
 done
 
-if [ -n "$FORK" ]
+if [ -n "$FORK" ] 
 then
-  npx ganache-cli -e 1000 -q & 2> /dev/null
-else
+  echo "Running fork: $FORK"
   npx ganache-cli -e 1000 -k $FORK -q & 2> /dev/null
+else
+  npx ganache-cli -e 1000 -q & 2> /dev/null
 fi
 
 pid=$!
