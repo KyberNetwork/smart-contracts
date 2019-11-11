@@ -67,10 +67,7 @@ contract KyberNetwork is Withdrawable, Utils3, KyberNetworkInterface, Reentrancy
     event EtherReceival(address indexed sender, uint amount);
 
     /* solhint-disable no-complex-fallback */
-    // To avoid users trying to swap tokens using default payable function. We added this short code
-    //  to verify Ethers will be received only from reserves if transferred without a specific function call.
     function() public payable {
-        require(reserveType[msg.sender] != ReserveType.NONE);
         EtherReceival(msg.sender, msg.value);
     }
     /* solhint-enable no-complex-fallback */
@@ -290,6 +287,7 @@ contract KyberNetwork is Withdrawable, Utils3, KyberNetworkInterface, Reentrancy
         returns(uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
+        if (src == dest) return (0,0);
         bool includePermissionless = true;
 
         if (srcQty & PERM_HINT_GET_RATE > 0) {
@@ -305,6 +303,7 @@ contract KyberNetwork is Withdrawable, Utils3, KyberNetworkInterface, Reentrancy
         returns(uint expectedRate, uint slippageRate)
     {
         require(expectedRateContract != address(0));
+        if (src == dest) return (0,0);
         return expectedRateContract.getExpectedRate(src, dest, srcQty, false);
     }
 
