@@ -1,4 +1,8 @@
 #!/bin/sh
+mag=$'\e[1;35m'
+cyn=$'\e[1;36m'
+end=$'\e[0m'
+
 while getopts "f:k:" arg; do
   case $arg in
     f) FILE=$OPTARG;;
@@ -8,7 +12,7 @@ done
 
 if [ -n "$FORK" ] 
 then
-  echo "Running fork: $FORK"
+  printf "%s\n\n" "${mag} Running fork:${end} ${cyn}$FORK${end}"
   npx ganache-cli -e 1000 -k $FORK -q & 2> /dev/null
 else
   npx ganache-cli -e 1000 -q & 2> /dev/null
