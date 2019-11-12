@@ -20,7 +20,6 @@
   },
   "homepage": "https://github.com/KyberNetwork/smart-contracts#readme",
   "dependencies": {
-    "ajv": "^5.5.2",
     "bignumber.js": "^5.0.0",
     "compare-versions": "^3.1.0",
     "mathjs": "^4.3.0",
@@ -38,5 +37,9 @@
     "chai-as-promised": "^7.1.1",
     "chai-bignumber": "^2.0.2",
     "solidity-coverage": "^0.6.7"
+  },
+  "engines": {
+    "node": ">=12.13.0",
+    "npm": ">=6.12.0"
   }
 }
