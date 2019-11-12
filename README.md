@@ -4,7 +4,7 @@ For more details, please visit our [developer portal](https://developer.kyber.ne
 
 ## Setup
 1. Clone this repo
-2. `npm i`
+2. `npm ci`
 
 ## Compilation with Buidler
 `./compilation.sh`
