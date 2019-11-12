@@ -2571,7 +2571,8 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(list[0].valueOf(), sellOrder1ID);
             assert.equal(list[1].valueOf(), sellOrder2ID);
 
-            let expectedGasDiff4BatchOrders = 65000;
+            let expectedGasDiff4BatchOrders = 100000;
+            
             assert(updateBatchWithHintGas < (updateBatchNoHintGas - expectedGasDiff4BatchOrders), "batch with hint gas: " + updateBatchWithHintGas +
                 " updateBatchNoHintGas " + updateBatchNoHintGas + " expected diff: " + expectedGasDiff4BatchOrders);
         });
