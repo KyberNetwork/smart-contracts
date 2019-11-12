@@ -73,5 +73,36 @@ contract MaliciousReserve is KyberReserve {
     function setNumRecursive(uint num)  public {
         numRecursive = num;
     }
+
+    function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
+        //reverts if srcAmount is zero
+        require(srcQty > 0);
+        ERC20 token;
+        bool  isBuy;
+
+        if (!tradeEnabled) return 0;
+
+        if (ETH_TOKEN_ADDRESS == src) {
+            isBuy = true;
+            token = dest;
+        } else if (ETH_TOKEN_ADDRESS == dest) {
+            isBuy = false;
+            token = src;
+        } else {
+            return 0; // pair is not listed
+        }
+
+        uint rate = conversionRatesContract.getRate(token, blockNumber, isBuy, srcQty);
+        uint destQty = getDestQty(src, dest, srcQty, rate);
+
+        if (getBalance(dest) < destQty) return 0;
+
+        if (sanityRatesContract != address(0)) {
+            uint sanityRate = sanityRatesContract.getSanityRate(src, dest);
+            if (rate > sanityRate) return 0;
+        }
+
+        return rate;
+    }
 }
 
