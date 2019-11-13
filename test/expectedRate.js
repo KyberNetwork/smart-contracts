@@ -527,7 +527,7 @@ contract('ExpectedRate', function(accounts) {
         let tokenDestInd = 1;
         let qty = 0;
 
-        //create malicious reserve
+        //create bad reserve that reverts for zero src qty rate queries
         let badReserve = await MaliciousReserve.new(network.address, pricing1.address, admin);
 
         //try to get rate with zero src qty, should revert
