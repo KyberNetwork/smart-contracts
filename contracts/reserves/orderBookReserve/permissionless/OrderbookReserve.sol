@@ -143,7 +143,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         require((src == contracts.token) || (dst == contracts.token));
         require(srcQty <= MAX_QTY);
 
-        if (kncRateBlocksTrade()) return 0;
+        if (kncRateBlocksTrade() || (srcQty == 0)) return 0;
 
         blockNumber; // in this reserve no order expiry == no use for blockNumber. here to avoid compiler warning.
 
