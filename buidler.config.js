@@ -7,7 +7,7 @@ module.exports = {
   networks: {
     develop: {
       url: "http://127.0.0.1:8545",
-      gas: 6000000,
+      gas: 7500000,
       timeout: 20000
     }
   },

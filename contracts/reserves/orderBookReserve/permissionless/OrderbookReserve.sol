@@ -660,6 +660,15 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return getList(list);
     }
 
+    // return true if both sell and buy orders are empty
+    function isOrderbookEmpty() public view returns(bool) {
+        bool isEmpty;
+        (, isEmpty) = tokenToEthList.getFirstOrder();
+        if (!isEmpty) { return false; }
+        (, isEmpty) = ethToTokenList.getFirstOrder();
+        return isEmpty;
+    }
+
     event NewLimitOrder(
         address indexed maker,
         uint32 orderId,
