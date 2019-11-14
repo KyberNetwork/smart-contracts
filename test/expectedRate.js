@@ -522,7 +522,7 @@ contract('ExpectedRate', function(accounts) {
         assert.equal(rates[1].valueOf(), 0, "unexpected rate");
     });
 
-    it("should verify when src qty 0, network.findBestRate and network.findBestRateOnlyPermission don't revert", async function() {
+    it("should verify when src qty 0, findBestRate, findBestRateOnlyPermission and getExpectedRate don't revert", async function() {
         let tokenSrcInd = 2;
         let tokenDestInd = 1;
         let qty = 0;
@@ -548,6 +548,9 @@ contract('ExpectedRate', function(accounts) {
         
         rate = await network.findBestRateOnlyPermission(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], qty);
         assert.equal(rate[1].valueOf(), 0, "did not return zero rate");
+
+        rate = await network.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], qty);
+        assert(rate[0].valueOf() > 0, "unexpected rate");
 
         //unlist and remove bad reserve
         await network.listPairForReserve(badReserve.address, tokenAdd[tokenDestInd], true, true, false, {from: operator});    
