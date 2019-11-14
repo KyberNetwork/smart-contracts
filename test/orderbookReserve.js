@@ -3773,7 +3773,7 @@ contract('OrderbookReserve', async (accounts) => {
             rc = await reserve.trade(tokenAdd, orderDstTwei, ethAddress, user1, rate, false, {from:network});
 
             log("take single order gas: " + rc.receipt.gasUsed);
-            let maxExpectedGas = 130000;
+            let maxExpectedGas = 140000;
             assert(rc.receipt.gasUsed < maxExpectedGas, "Gas for single trade should have been below: " + maxExpectedGas);
 
             list = await reserve.getEthToTokenOrderList();
