@@ -269,141 +269,17 @@ async function main() {
     await waitForEth();
   }
 
-  console.log("deploying kyber network");
-  [networkAddress,networkContract] = await deployContract(output, "KyberNetwork.sol:KyberNetwork", [sender]);
-  console.log("deploying fee burner");
-  [feeBurnerAddress, feeBurnerContract] = await deployContract(output, "FeeBurner.sol:FeeBurner", [sender,kncTokenAddress,networkAddress, initialKncToEthRatePrecision]);
-  console.log("deploying expected rates");
-  [expectedRateAddress, expectedRateContract] = await deployContract(output, "ExpectedRate.sol:ExpectedRate", [networkAddress,kncTokenAddress,sender]);
-  console.log("deploying permissionless lister");
-  [permissionlessOrderbookReserveListerAddress, permissionlessOrderbookReserveListerContract] = await deployContract(
-      output, "PermissionlessOrderbookReserveLister.sol:PermissionlessOrderbookReserveLister",
-      [
-        networkAddress,
-        factoryAddress,
-        medianizerAddress,
-        kncTokenAddress,
-        [dgxTokenAddress, wethTokenAddress],
-        maxOrdersPerTrade,
-        minOrderValueUsd
-      ]
-  );
-  console.log("deploying wrap fee burner");
-  [wrapFeeBurnerAddress, wrapFeeBurnerContract] = await deployContract(output, "WrapFeeBurner.sol:WrapFeeBurner", [feeBurnerAddress, sender]);
-
-  console.log("deploying kyber register wallet");
-  [kyberRegisterWalletAddress, kyberRegisterWalletContract] = await deployContract(output, 
-    "KyberRegisterWallet.sol:KyberRegisterWallet", [feeBurnerWrapperProxyAddress]
-    );
-
-  console.log("network", networkAddress);
-  console.log("fee burner", feeBurnerAddress);
-  console.log("expected rate", expectedRateAddress);
-  console.log("permissionless orderbook lister", permissionlessOrderbookReserveListerAddress);
-  console.log("wrap fee burner", wrapFeeBurnerAddress);
-  console.log("kyber register wallet", kyberRegisterWalletAddress);
-
-  // set proxy of network
-  console.log("set proxy of network");
-  await sendTx(networkContract.methods.setKyberProxy(proxyAddress));
-
-  // set whitelist
-  console.log("set whitelist address");
-  await sendTx(networkContract.methods.setWhiteList(whitelistAddress));
-
-  // set expected rate contract
-  console.log("set expected rate address");
-  await sendTx(networkContract.methods.setExpectedRate(expectedRateAddress));
-
-  // set fee burner contract
-  console.log("set fee burner contract");
-  await sendTx(networkContract.methods.setFeeBurner(feeBurnerAddress));
-
-  // add operator to network
-  console.log("network - set temp operator");
-  await sendTx(networkContract.methods.addOperator(sender));
-  console.log("fee burner - set temp operator");
-  await sendTx(feeBurnerContract.methods.addOperator(sender));
-  console.log("expected rate - set temp operator");
-  await sendTx(expectedRateContract.methods.addOperator(sender));
-
-  // set permissionless orderbook lister as network operator
-  console.log("network - set permissionless lister");
-  await sendTx(networkContract.methods.addOperator(permissionlessOrderbookReserveListerAddress));
-
-  // add reserve to network
-  console.log("Add reserves to network");
-  for(let i = 0 ; i < reserveDataArray.length ; i++) {
-    const reserve = reserveDataArray[i];
-    console.log(`Adding reserve ${reserve.address}`);
-    await sendTx(networkContract.methods.addReserve(reserve.address,false));
-    const tokens = reserve.tokens;
-    console.log("list reserve tokens");
-    for(let j = 0 ; j < tokens.length ; j++) {
-      token = tokens[j];
-      await sendTx(networkContract.methods.listPairForReserve(reserve.address,token.address,token.ethToToken,token.tokenToEth,true));
-    }
-    console.log("set reserve fees");
-    await sendTx(feeBurnerContract.methods.setReserveData(reserve.address,
-                                                          reserve.fees,
-                                                          reserve.wallet));
-  }
-
-  // set params
-  console.log("network set params");
-  await sendTx(networkContract.methods.setParams(maxGasPrice,
-                                                 negDiffInBps));
-
-  console.log("network enable");
-  await sendTx(networkContract.methods.setEnable(true));
-  
-  console.log("network - remove temp operator");
-  await sendTx(networkContract.methods.removeOperator(sender));
-  await setPermissions(networkContract, networkPermissions);
-
-  // burn fee
-  console.log("set KNC to ETH rate");
-  await sendTx(feeBurnerContract.methods.setKNCRate());
-  console.log("set tax fees bps");
-  await sendTx(feeBurnerContract.methods.setTaxInBps(taxFeesBps));
-  if(taxWalletAddress != '' && taxWalletAddress != 0) {
-    console.log("set tax wallet address");
-    await sendTx(feeBurnerContract.methods.setTaxWallet(taxWalletAddress));
-  }
-
-  //set wallet fees for non-standard fees
-  for(let i = 0 ; i < walletDataArray.length; i++) {
-    const wallet = walletDataArray[i];
-    if (wallet.fees != defaultWalletFeesBps) {
-      console.log(`Setting wallet fee of ${wallet.fees} bps for ${wallet.id}`);
-      await sendTx(feeBurnerContract.methods.setWalletFees(wallet.id, wallet.fees));
-    }    
-  }
-
-  console.log("fee burner - remove temp operator");
-  await sendTx(feeBurnerContract.methods.removeOperator(sender));
-  console.log("fee burner - set fee burner admin to be deployed wrapper fee burner");
-  feeBurnerPermissions.admin = wrapFeeBurnerAddress;
-  await setPermissions(feeBurnerContract, feeBurnerPermissions);
-  await setPermissions(wrapFeeBurnerContract, wrapFeeBurnerPermissions);
-
-  console.log("set wallet fees using wrapper fee burner for standard fees");
-  for(let i = 0 ; i < walletDataArray.length ; i++) {
-    const wallet = walletDataArray[i];
-    if (wallet.fees == defaultWalletFeesBps) {
-      console.log(`Setting wallet fee for ${wallet.id}`);
-      await sendTx(wrapFeeBurnerContract.methods.registerWalletForFeeSharing(wallet.id));
-    }
-  }
-
-  // expected rates
-  console.log("expected rate - set slippage to 3%");
-  await sendTx(expectedRateContract.methods.setWorstCaseRateFactor(minExpectedRateSlippage));
-  console.log("expected rate - set qty factor to 1");
-  await sendTx(expectedRateContract.methods.setQuantityFactor(1));
-  console.log("expected rate - remove temp operator");
-  await sendTx(expectedRateContract.methods.removeOperator(sender));
-  await setPermissions(expectedRateContract, expectedRatePermissions);  
+  await deployAllContacts();
+  await setNetworkAddresses();
+  await setTempOperatorToContracts();
+  await addPermissionlessListerToNetwork();
+  await addReservesToNetwork();
+  await configureAndEnableNetwork();
+  await configureFeeBurner();
+  await setNonDefaultWalletFees();
+  await handoverFeeBurnerToWrapper();
+  await setDefaultWalletFees();
+  await configureExpectedRate();
 
   console.log("last nonce is", nonce);
 
@@ -453,6 +329,166 @@ async function waitForEth() {
   }
 }
 
+async function deployAllContacts() {
+  console.log("deploying kyber network");
+  [networkAddress,networkContract] = await deployContract(output, "KyberNetwork.sol:KyberNetwork", [sender]);
+  console.log("network", networkAddress);
+
+  console.log("deploying fee burner");
+  [feeBurnerAddress, feeBurnerContract] = await deployContract(output, "FeeBurner.sol:FeeBurner", [sender,kncTokenAddress,networkAddress, initialKncToEthRatePrecision]);
+  console.log("fee burner", feeBurnerAddress);
+
+  console.log("deploying expected rates");
+  [expectedRateAddress, expectedRateContract] = await deployContract(output, "ExpectedRate.sol:ExpectedRate", [networkAddress,kncTokenAddress,sender]);
+  console.log("expected rate", expectedRateAddress);
+
+  console.log("deploying permissionless lister");
+  [permissionlessOrderbookReserveListerAddress, permissionlessOrderbookReserveListerContract] = await deployContract(
+      output, "PermissionlessOrderbookReserveLister.sol:PermissionlessOrderbookReserveLister",
+      [
+        networkAddress,
+        factoryAddress,
+        medianizerAddress,
+        kncTokenAddress,
+        [dgxTokenAddress, wethTokenAddress],
+        maxOrdersPerTrade,
+        minOrderValueUsd
+      ]
+  );
+  console.log("permissionless orderbook lister", permissionlessOrderbookReserveListerAddress);
+
+  console.log("deploying wrap fee burner");
+  [wrapFeeBurnerAddress, wrapFeeBurnerContract] = await deployContract(output, "WrapFeeBurner.sol:WrapFeeBurner", [feeBurnerAddress, sender]);
+  console.log("wrap fee burner", wrapFeeBurnerAddress);
+
+  console.log("deploying kyber register wallet");
+  [kyberRegisterWalletAddress, kyberRegisterWalletContract] = await deployContract(output,
+    "KyberRegisterWallet.sol:KyberRegisterWallet", [feeBurnerWrapperProxyAddress]
+    );
+  console.log("kyber register wallet", kyberRegisterWalletAddress);
+}
+
+async function setNetworkAddresses() {
+  // set proxy of network
+  console.log("set proxy of network");
+  await sendTx(networkContract.methods.setKyberProxy(proxyAddress));
+
+  // set whitelist
+  console.log("set whitelist address");
+  await sendTx(networkContract.methods.setWhiteList(whitelistAddress));
+
+  // set expected rate contract
+  console.log("set expected rate address");
+  await sendTx(networkContract.methods.setExpectedRate(expectedRateAddress));
+
+  // set fee burner contract
+  console.log("set fee burner contract");
+  await sendTx(networkContract.methods.setFeeBurner(feeBurnerAddress));
+}
+
+async function addPermissionlessListerToNetwork() {
+  // set permissionless orderbook lister as network operator
+  console.log("network - set permissionless lister");
+  await sendTx(networkContract.methods.addOperator(permissionlessOrderbookReserveListerAddress));
+}
+
+async function setTempOperatorToContracts() {
+  // add operator to network
+  console.log("network - set temp operator");
+  await sendTx(networkContract.methods.addOperator(sender));
+  console.log("fee burner - set temp operator");
+  await sendTx(feeBurnerContract.methods.addOperator(sender));
+  console.log("expected rate - set temp operator");
+  await sendTx(expectedRateContract.methods.addOperator(sender));
+}
+
+async function addReservesToNetwork() {
+  // add reserve to network
+  console.log("Add reserves to network");
+  for(let i = 0 ; i < reserveDataArray.length ; i++) {
+    const reserve = reserveDataArray[i];
+    console.log(`Adding reserve ${reserve.address}`);
+    await sendTx(networkContract.methods.addReserve(reserve.address,false));
+    const tokens = reserve.tokens;
+    console.log("list reserve tokens");
+    for(let j = 0 ; j < tokens.length ; j++) {
+      token = tokens[j];
+      await sendTx(networkContract.methods.listPairForReserve(reserve.address,token.address,token.ethToToken,token.tokenToEth,true));
+    }
+    console.log("set reserve fees");
+    await sendTx(feeBurnerContract.methods.setReserveData(reserve.address,
+                                                          reserve.fees,
+                                                          reserve.wallet));
+  }
+}
+
+async function configureAndEnableNetwork() {
+  // set params
+  console.log("network set params");
+  await sendTx(networkContract.methods.setParams(maxGasPrice,
+                                                 negDiffInBps));
+
+  console.log("network enable");
+  await sendTx(networkContract.methods.setEnable(true));
+
+  console.log("network - remove temp operator");
+  await sendTx(networkContract.methods.removeOperator(sender));
+  await setPermissions(networkContract, networkPermissions);
+}
+
+async function configureFeeBurner() {
+  // burn fee
+  console.log("set KNC to ETH rate");
+  await sendTx(feeBurnerContract.methods.setKNCRate());
+  console.log("set tax fees bps");
+  await sendTx(feeBurnerContract.methods.setTaxInBps(taxFeesBps));
+  if(taxWalletAddress != '' && taxWalletAddress != 0) {
+    console.log("set tax wallet address");
+    await sendTx(feeBurnerContract.methods.setTaxWallet(taxWalletAddress));
+  }
+}
+
+async function setNonDefaultWalletFees() {
+  //set wallet fees for non-standard fees
+  for(let i = 0 ; i < walletDataArray.length; i++) {
+    const wallet = walletDataArray[i];
+    if (wallet.fees != defaultWalletFeesBps) {
+      console.log(`Setting wallet fee of ${wallet.fees} bps for ${wallet.id}`);
+      await sendTx(feeBurnerContract.methods.setWalletFees(wallet.id, wallet.fees));
+    }
+  }
+}
+
+async function handoverFeeBurnerToWrapper() {
+  console.log("fee burner - remove temp operator");
+  await sendTx(feeBurnerContract.methods.removeOperator(sender));
+  console.log("fee burner - set fee burner admin to be deployed wrapper fee burner");
+  feeBurnerPermissions.admin = wrapFeeBurnerAddress;
+  await setPermissions(feeBurnerContract, feeBurnerPermissions);
+  await setPermissions(wrapFeeBurnerContract, wrapFeeBurnerPermissions);
+}
+
+async function setDefaultWalletFees() {
+  console.log("set wallet fees using wrapper fee burner for standard fees");
+  for(let i = 0 ; i < walletDataArray.length ; i++) {
+    const wallet = walletDataArray[i];
+    if (wallet.fees == defaultWalletFeesBps) {
+      console.log(`Setting wallet fee for ${wallet.id}`);
+      await sendTx(wrapFeeBurnerContract.methods.registerWalletForFeeSharing(wallet.id));
+    }
+  }
+}
+
+async function configureExpectedRate() {
+  // expected rates
+  console.log("expected rate - set slippage to 3%");
+  await sendTx(expectedRateContract.methods.setWorstCaseRateFactor(minExpectedRateSlippage));
+  console.log("expected rate - set qty factor to 1");
+  await sendTx(expectedRateContract.methods.setQuantityFactor(1));
+  console.log("expected rate - remove temp operator");
+  await sendTx(expectedRateContract.methods.removeOperator(sender));
+  await setPermissions(expectedRateContract, expectedRatePermissions);
+}
 
 let filename;
 let content;
