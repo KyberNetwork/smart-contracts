@@ -109,6 +109,7 @@ contract FeeBurner is Withdrawable, FeeBurnerInterface, Utils3 {
         require(msg.sender == address(kyberNetwork));
         require(tradeWeiAmount <= MAX_QTY);
 
+        // MAX_DECIMALS = 18 = KNC_DECIMALS, use this value instead of calling getDecimals() to save gas
         uint kncAmount = calcDestAmountWithDecimals(ETH_DECIMALS, MAX_DECIMALS, tradeWeiAmount, kncPerEthRatePrecision);
         uint fee = kncAmount * reserveFeesInBps[reserve] / 10000;
 
