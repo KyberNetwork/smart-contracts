@@ -743,6 +743,33 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
             await lister.reserves(token.address)
         );
 
+        // add at least one order
+        let rxLimits = await reserve.limits();
+        minNewOrderWei = rxLimits[2].valueOf();
+
+        let amountTokenInWei = new BigNumber(0 * 10 ** 18);
+        let amountKncInWei = new BigNumber(600 * 10 ** 18);
+        let amountEthInWei = new BigNumber(minNewOrderWei);
+
+        await makerDeposit(
+            reserve,
+            maker,
+            amountEthInWei /* ethWei */,
+            amountTokenInWei /* tokenTwei */,
+            amountKncInWei /* kncTwei */,
+            kncToken
+        );
+
+        const srcAmount = new BigNumber(minNewOrderWei);
+        const destAmount = new BigNumber(12 * 10 ** 18);
+        
+        let rc = await reserve.submitEthToTokenOrder(
+            srcAmount /* srcAmount */,
+            destAmount /* dstAmount */,
+            {from: maker}
+        );
+        let makerOrderId = rc.logs[0].args.orderId.valueOf();
+
         let baseKncEthRate = await reserve.kncPerEthBaseRatePrecision();
 
         let reserveIndex = 0;
@@ -778,6 +805,130 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
 
         let listing = await lister.getOrderbookListingStage(token.address);
         assert.equal(listing[1].valueOf(), LISTING_NONE);
+
+        await reserve.cancelEthToTokenOrder(makerOrderId, {from: maker});
+    });
+
+    it("list order book reserve. see can't unlist if orderbook is not empty. can unlist when orderbook is empty", async() => {
+        // prepare kyber network
+        const kyberNetwork = await KyberNetwork.new(admin);
+        const mockNetwork = await MockKyberNetwork.new(admin);
+
+        let ethKncRate = 100;
+        let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
+
+        const feeBurner = await FeeBurner.new(
+            admin,
+            kncToken.address,
+            mockNetwork.address,
+            ethToKncRatePrecision
+        );
+
+        ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
+        let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        await feeBurner.setKNCRate();
+
+        const lister = await PermissionlessOrderbookReserveLister.new(
+            kyberNetwork.address,
+            orderFactory.address,
+            medianizer.address,
+            kncAddress,
+            unsupportedTokens,
+            maxOrdersPerTrade,
+            minNewOrderValueUsd
+        );
+
+        // configure feeburner
+        await feeBurner.addOperator(lister.address, {from: admin});
+
+        // configure kyber network
+        await kyberNetwork.setFeeBurner(feeBurner.address);
+        await kyberNetwork.addOperator(lister.address);
+
+        // list an order book reserve
+        await lister.addOrderbookContract(token.address);
+        await lister.initOrderbookContract(token.address);
+        await lister.listOrderbookContract(token.address);
+
+        // add orders
+        const reserve = await OrderbookReserve.at(
+            await lister.reserves(token.address)
+        );
+
+        // add at least one order
+        let rxLimits = await reserve.limits();
+        minNewOrderWei = rxLimits[2].valueOf();
+
+        let amountTokenInWei = new BigNumber(0 * 10 ** 18);
+        let amountKncInWei = new BigNumber(600 * 10 ** 18);
+        let amountEthInWei = new BigNumber(minNewOrderWei);
+
+        await makerDeposit(
+            reserve,
+            maker,
+            amountEthInWei /* ethWei */,
+            amountTokenInWei /* tokenTwei */,
+            amountKncInWei /* kncTwei */,
+            kncToken
+        );
+
+        const srcAmount = new BigNumber(minNewOrderWei);
+        const destAmount = new BigNumber(12 * 10 ** 18);
+
+        let rc = await reserve.submitEthToTokenOrder(
+            srcAmount,
+            destAmount,
+            {from: maker}
+        );
+        let makerOrderId = rc.logs[0].args.orderId.valueOf();
+
+        let reserveIndex = 0;
+        let address = await kyberNetwork.reserves(reserveIndex);
+        assert.equal(address.valueOf(), reserve.address);
+
+        // see unlist fails
+        try {
+            await lister.unlistOrderbookContract(token.address, reserveIndex);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        await reserve.cancelEthToTokenOrder(makerOrderId, {from: maker});
+
+        amountTokenInWei = new BigNumber(20 * 10 ** 18);
+        amountEthInWei = new BigNumber(0);
+
+        await makerDeposit(
+            reserve,
+            maker,
+            amountEthInWei /* ethWei */,
+            amountTokenInWei /* tokenTwei */,
+            amountKncInWei /* kncTwei */,
+            kncToken
+        );
+        rc = await reserve.submitTokenToEthOrder(
+            srcAmount,
+            destAmount,
+            {from: maker}
+        );
+        makerOrderId = rc.logs[0].args.orderId.valueOf();
+
+         // see unlist fails
+         try {
+            await lister.unlistOrderbookContract(token.address, reserveIndex);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+        await reserve.cancelTokenToEthOrder(makerOrderId, {from: maker});
+
+        // orderbook is empty, can unlist
+        await lister.unlistOrderbookContract(token.address, reserveIndex);
     })
 
     it("lister. see list and unlist fail when lister not operator in network", async() => {
