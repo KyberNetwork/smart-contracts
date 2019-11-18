@@ -2,9 +2,9 @@ const ConversionRates = artifacts.require("ConversionRates.sol");
 const EnhancedStepFunctions = artifacts.require("./EnhancedStepFunctions.sol");
 const TestToken = artifacts.require("mockContracts/TestToken.sol");
 const Reserve = artifacts.require("KyberReserve.sol");
+const MaliciousReserve = artifacts.require("MaliciousReserve.sol");
 const Network = artifacts.require("KyberNetwork.sol");
 const MockNetwork = artifacts.require("MockKyberNetwork.sol");
-const NetworkFailingGetRate = artifacts.require("NetworkFailingGetRate.sol");
 const WhiteList = artifacts.require("WhiteList.sol");
 const ExpectedRate = artifacts.require("ExpectedRate.sol");
 const FeeBurner = artifacts.require("FeeBurner.sol");
@@ -520,6 +520,40 @@ contract('ExpectedRate', function(accounts) {
         assert(rates[0].valueOf() != 0, "unexpected rate");
         assert.equal(rates[0].valueOf(), srcToEthRate.mul(ethToDestRate).div(precisionUnits).floor(), "unexpected rate");
         assert.equal(rates[1].valueOf(), 0, "unexpected rate");
+    });
+
+    it("should verify when src qty 0, findBestRate, findBestRateOnlyPermission and getExpectedRate don't revert", async function() {
+        let tokenSrcInd = 2;
+        let tokenDestInd = 1;
+        let qty = 0;
+
+        //create bad reserve that reverts for zero src qty rate queries
+        let badReserve = await MaliciousReserve.new(network.address, pricing1.address, admin);
+
+        //try to get rate with zero src qty, should revert
+        try {
+            await badReserve.getConversionRate(tokenAdd[tokenSrcInd],tokenAdd[tokenDestInd],qty,0);
+            assert(false, "throw was expected in line above.")
+        } catch(e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //add malicious reserve to network for ETH -> tokenDest
+        await network.addReserve(badReserve.address, false, {from: operator});
+        await network.listPairForReserve(badReserve.address, tokenAdd[tokenDestInd], true, true, true, {from: operator});
+        
+        //try to get rate
+        rate = await network.findBestRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], qty);
+        assert.equal(rate[1].valueOf(), 0, "did not return zero rate");
+        
+        rate = await network.findBestRateOnlyPermission(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], qty);
+        assert.equal(rate[1].valueOf(), 0, "did not return zero rate");
+
+        rate = await network.getExpectedRate(tokenAdd[tokenSrcInd], tokenAdd[tokenDestInd], qty);
+        assert(rate[0].valueOf() > 0, "unexpected rate");
+
+        //unlist and remove bad reserve
+        await network.listPairForReserve(badReserve.address, tokenAdd[tokenDestInd], true, true, false, {from: operator});    
     });
 
     it("should disable the first reserve and add the second one with new conversion rate", async function() {

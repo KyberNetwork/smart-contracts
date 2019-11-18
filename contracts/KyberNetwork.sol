@@ -436,7 +436,12 @@ contract KyberNetwork is Withdrawable, Utils3, KyberNetworkInterface, Reentrancy
             searchBestRate(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
 
         result.weiAmount = calcDestAmountWithDecimals(srcDecimals, ETH_DECIMALS, srcAmount, result.rateSrcToEth);
-
+        //if weiAmount is zero, return zero rate to avoid revert in ETH -> token call
+        if (result.weiAmount == 0) {
+            result.rate = 0;
+            return;
+        }
+        
         (result.reserve2, result.rateEthToDest) =
             searchBestRate(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
 
