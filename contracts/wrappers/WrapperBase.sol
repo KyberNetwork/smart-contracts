@@ -1,7 +1,5 @@
 pragma solidity 0.4.18;
 
-
-
 import "../Withdrawable.sol";
 import "../PermissionGroups.sol";
 
@@ -34,6 +32,16 @@ contract WrapperBase is Withdrawable {
 
     function transferWrappedContractAdmin (address newAdmin) public onlyAdmin {
         wrappedContract.transferAdmin(newAdmin);
+    }
+
+    function addAlerterWrappedContract (address _alerter) public onlyAdmin {
+        require(_alerter != address(0));
+        wrappedContract.addAlerter(_alerter);
+    }
+
+    function addOperatorWrappedContract (address _operator) public onlyAdmin {
+        require(_operator != address(0));
+        wrappedContract.addOperator()(_operator);
     }
 
     function addDataInstance() internal {
