@@ -7,4 +7,5 @@ import "./OrderListFactoryInterface.sol";
 interface OrderbookReserveInterface {
     function init() public returns(bool);
     function kncRateBlocksTrade() public view returns(bool);
+    function isOrderbookEmpty() public view returns(bool);
 }
