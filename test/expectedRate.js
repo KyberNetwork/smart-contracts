@@ -698,6 +698,348 @@ contract('ExpectedRate', function(accounts) {
         assert.equal(myRate[0].valueOf(), 0, "expected rate should be 0");
         assert.equal(myRate[1].valueOf(), 0, "expected rate should be 0");
     });
+
+    it("should verify knc arbitrage.", async function() {
+        const mockNetwork = await MockNetwork.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate * 1.01);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        const feeBurnerQty = new BigNumber(10**18);
+
+        // check exact qty
+        const myRate1 = await tempExpectedRate.getExpectedRate(kncAddress,ethAddress,feeBurnerQty,true);
+        assert.equal(myRate1[0].valueOf(), 0, "expected 0 rate in arbitrage");
+        assert.equal(myRate1[1].valueOf(), 0, "expected 0 slippage rate in arbitrage");
+
+        // check different qty
+        const myRate2 = await tempExpectedRate.getExpectedRate(kncAddress,ethAddress,feeBurnerQty.plus(1),true);
+        assert.equal(myRate2[0].valueOf(), kncToEthRatePrecision.valueOf() * 1, "unexpected rate in arbitrage");
+
+        // check converse direction
+        const myRate3 = await tempExpectedRate.getExpectedRate(ethAddress,kncAddress,feeBurnerQty,true);
+        assert.equal(myRate3[0].valueOf(), ethToKncRatePrecision.valueOf() * 1, "expected 0 rate in arbitrage");
+
+        // set non arbitrage rates
+        const ethToKncRatePrecision2 = precisionUnits.mul(aRate);
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision2);
+
+        // check exact qty
+        const myRate4 = await tempExpectedRate.getExpectedRate(kncAddress,ethAddress,feeBurnerQty,true);
+        assert.equal(myRate4[0].valueOf(), kncToEthRatePrecision.valueOf() * 1, "expected rate in arbitrage");
+    });
+
+    it("should verify when knc arbitrage the check arbitrage function returns true. otherwise returns false.", async function() {
+        const mockNetwork = await MockNetwork.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate * 1.01);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        let hasArb =  await tempExpectedRate.checkKncArbitrageRate(kncToEthRatePrecision)
+
+        // check exact qty
+        assert.equal(hasArb, true, "Arbitrage should exist");
+
+        // set non arbitrage rates
+        const ethToKncRatePrecision2 = precisionUnits.mul(aRate - 0.0001);
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision2);
+
+        hasArb = await tempExpectedRate.checkKncArbitrageRate(kncToEthRatePrecision);
+
+        // check exact qty
+        assert.equal(hasArb, false, "Arbitrage shouldn't exist");
+    });
+
+    it("make sure call to find best rate will revert when less then 1 mil gas. in 'NetworkFailingGetRate'", async function() {
+        const network = await NetworkFailingGetRate.new();
+
+        const tempExpectedRate = await ExpectedRate.new(network.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+        await network.setExpectedRateContract(tempExpectedRate.address);
+
+        await network.setExpectedRateContract(tempExpectedRate.address);
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate - 0.01);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await network.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await network.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        let rxEthToKnc = await network.findBestRate(ethAddress, kncAddress, 345, {gas: 1200000});
+        assert.equal(rxEthToKnc[1].valueOf(), ethToKncRatePrecision.valueOf());
+
+        //call with less then 1 million gas reverts
+        try {
+            await network.findBestRate(ethAddress, kncAddress, 345, {gas: 999000});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("should verify function 'getExpectedRate' with failing kyber network. returns 0 when 'findBestRate()' reverts.", async function() {
+        // find best rate is called with assembly code. thus could fail without reverting. but for check arbitrage. rate 0 response means check can't happen.
+        // when setting knc rate in fee burner. in underlying calls findBestRate is called 3 times. if 3rd one fails (Ex: out of gas) returned value
+        // would be 0, in this case there is the problem with arbitrage check.
+        const network = await NetworkFailingGetRate.new();
+
+        const tempExpectedRate = await ExpectedRate.new(network.address, kncAddress, admin);
+        const rxNetwork = await tempExpectedRate.kyberNetwork();
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+
+        await network.setExpectedRateContract(tempExpectedRate.address);
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate - 0.01);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await network.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await network.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        let rxEthToKnc = await network.getExpectedRate(ethAddress, kncAddress, 345);
+        let rxKncToEth = await network.getExpectedRate(kncAddress, ethAddress, 345);
+
+        assert.equal(rxEthToKnc[0].valueOf(), ethToKncRatePrecision.floor().valueOf());
+        assert.equal(rxKncToEth[0].valueOf(), kncToEthRatePrecision.floor().valueOf());
+//        log("rxEthToKnc " + rxEthToKnc[0])
+//        log("rxKncToEth " + rxKncToEth[0])
+
+        let rxEthToKnc2 =  await tempExpectedRate.getExpectedRate(ethAddress, kncAddress, 345, true, {gas: 1200001});
+        assert.equal(rxEthToKnc2[0].valueOf(), rxEthToKnc[0].valueOf());
+
+        let rxKncToEth2 =  await tempExpectedRate.getExpectedRate(kncAddress, ethAddress, 345, true, {gas: 1200001});
+        assert.equal(rxKncToEth2[0].valueOf(), rxKncToEth[0].valueOf());
+
+        rxEthToKnc2 =  await tempExpectedRate.getExpectedRate(ethAddress, kncAddress, 345, true, {gas: 990000});
+        assert.equal(rxEthToKnc2[0].valueOf(), 0);
+
+        rxKncToEth2 =  await tempExpectedRate.getExpectedRate(kncAddress, ethAddress, 345, true, {gas: 990000});
+        assert.equal(rxKncToEth2[0].valueOf(), 0);
+    });
+
+    it("should verify function 'checkKncArbitrage' will return true if get rate fails and reutrns zero rate to this function.", async function() {
+        // find best rate is called with assembly code. thus could fail without reverting. but for check arbitrage. rate 0 response means check can't happen.
+        // when setting knc rate in fee burner. in underlying calls findBestRate is called 3 times. if 3rd one fails (Ex: out of gas) returned value
+        // would be 0, in this case there is the problem with arbitrage check.
+        const network = await NetworkFailingGetRate.new();
+
+        const tempExpectedRate = await ExpectedRate.new(network.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+        await network.setExpectedRateContract(tempExpectedRate.address);
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate - 0.01);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await network.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await network.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        let rxEthToKnc = await network.getExpectedRate(ethAddress, kncAddress, 345);
+        let rxKncToEth = await network.getExpectedRate(kncAddress, ethAddress, 345);
+
+        let hasArb =  await tempExpectedRate.checkKncArbitrageRate(kncToEthRatePrecision)
+        assert.equal(hasArb, false, "Arbitrage shouldn't exist");
+
+        hasArb =  await tempExpectedRate.checkKncArbitrageRate(kncToEthRatePrecision, {gas: 990000})
+        // here network should revert and get rate should avoid the revert and return 0
+        assert.equal(hasArb, true, "Arbitrage should exist");
+    });
+
+    it("should verify when no knc arbitrage set knc rate success. when have knc arb. set rate reverts.", async function() {
+        const mockNetwork = await NetworkFailingGetRate.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+        await mockNetwork.setExpectedRateContract(tempExpectedRate.address);
+
+        const tempFeeBurner = await FeeBurner.new(admin, kncAddress, mockNetwork.address, 550 * 10 ** 18);
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate * 1.01);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        let rxEthToKnc = await mockNetwork.getExpectedRate(ethAddress, kncAddress, 10 ** 19);
+        let rxKncToEth = await mockNetwork.getExpectedRate(kncAddress, ethAddress, 10 ** 19);
+        assert.equal(rxEthToKnc[0].valueOf(), ethToKncRatePrecision.floor().valueOf())
+        assert.equal(rxKncToEth[0].valueOf(), kncToEthRatePrecision.floor().valueOf())
+
+        //when checking this qty and arb exists. will return 0
+        rxKncToEth = await mockNetwork.getExpectedRate(kncAddress, ethAddress, 10 ** 18);
+        assert.equal(rxKncToEth[0].valueOf(), 0)
+
+        let hasArb =  await tempExpectedRate.checkKncArbitrageRate(kncToEthRatePrecision)
+
+        assert.equal(hasArb, true, "Arbitrage should exist");
+
+        let burnerInitialkncRate = await tempFeeBurner.kncPerEthRatePrecision();
+//         has arb. get rate will return 0. should revert.
+        try {
+            let rxx = await tempFeeBurner.setKNCRate();
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        let burnerkncRateAfterSet = await tempFeeBurner.kncPerEthRatePrecision();
+        assert.equal(burnerkncRateAfterSet.valueOf(), burnerInitialkncRate.valueOf());
+
+        // set non arbitrage rates
+        const ethToKncRatePrecision2 = precisionUnits.mul(aRate - 0.0001);
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision2);
+
+        hasArb = await tempExpectedRate.checkKncArbitrageRate(kncToEthRatePrecision);
+
+        // check exact qty
+        assert.equal(hasArb, false, "Arbitrage shouldn't exist");
+
+        rxEthToKnc = await mockNetwork.getExpectedRate(ethAddress, kncAddress, 10 ** 18);
+        rxKncToEth = await mockNetwork.getExpectedRate(kncAddress, ethAddress, 10 ** 18);
+
+        assert.equal(rxEthToKnc[0].valueOf(), ethToKncRatePrecision2.floor().valueOf())
+        assert.equal(rxKncToEth[0].valueOf(), kncToEthRatePrecision.floor().valueOf())
+
+        // no arb. set rate should not fail
+        let rx = await tempFeeBurner.setKNCRate();
+        burnerkncRateAfterSet = await tempFeeBurner.kncPerEthRatePrecision();
+        assert.equal(ethToKncRatePrecision2.valueOf(), burnerkncRateAfterSet.valueOf());
+    });
+
+    it("should verify function 'setKncRate' will fail if last call to findBestRate fails.", async function() {
+        const mockNetwork = await NetworkFailingGetRate.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+        await mockNetwork.setExpectedRateContract(tempExpectedRate.address);
+
+        const tempFeeBurner = await FeeBurner.new(admin, kncAddress, mockNetwork.address, 550 * 10 ** 18);
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate - 0.001);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        let hasArb =  await tempExpectedRate.checkKncArbitrageRate(kncToEthRatePrecision)
+
+        assert.equal(hasArb, false, "Arbitrage shouldn't exist");
+
+        let burnerInitialkncRate = await tempFeeBurner.kncPerEthRatePrecision();
+
+        ///set knc rate with less then 3 milion gas - should fail and revert
+        try {
+            let rxx = await tempFeeBurner.setKNCRate({gas: 2800000});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        let burnerkncRateAfterSet = await tempFeeBurner.kncPerEthRatePrecision();
+        assert.equal(burnerkncRateAfterSet.valueOf(), burnerInitialkncRate.valueOf());
+
+        await tempFeeBurner.setKNCRate({gas: 3500000});
+        burnerkncRateAfterSet = await tempFeeBurner.kncPerEthRatePrecision();
+        assert.equal(ethToKncRatePrecision.valueOf(), burnerkncRateAfterSet.valueOf());
+    });
+
+    it("call getExpectedRate call to kyber reverts. getExpectedRate should return 0 and not revert. without permissionless", async() => {
+        const mockNetwork = await MockNetwork.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+
+        const token = await TestToken.new("someToke", "some", 16);
+
+        const rate = precisionUnits.mul(1.01);
+        await mockNetwork.setPairRate(ethAddress, token.address, rate);
+        await mockNetwork.setPairRate(token.address, ethAddress, rate);
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        await mockNetwork.getExpectedRate(ethAddress, token.address, 1000);
+
+        // see REVERT_HINT causes revert on network level
+        const REVERT_HINT = await mockNetwork.REVERT_HINT();
+        try {
+            await mockNetwork.findBestRate(ethAddress, token.address, REVERT_HINT);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // this returns good values - no revert
+        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, 5000, false);
+
+        assert(rates[0].valueOf() > 0, "expected rate > 0");
+        assert(rates[1].valueOf() > 0, "expected rate > 0");
+
+        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, REVERT_HINT, false);
+        assert.equal(rates[0].valueOf(), 0, "unexpected rate");
+        assert.equal(rates[1].valueOf(), 0, "unexpected rate");
+    })
+    
+    it("call getExpectedRate call to kyber reverts. getExpectedRate should return 0 and not revert. including permissionless", async() => {
+        const mockNetwork = await MockNetwork.new();
+        const tempExpectedRate = await ExpectedRate.new(mockNetwork.address, kncAddress, admin);
+        await tempExpectedRate.addOperator(operator);
+        await tempExpectedRate.setQuantityFactor(1, {from: operator});
+
+        const token = await TestToken.new("someToke", "some", 16);
+
+        const rate = precisionUnits.mul(1.01);
+        await mockNetwork.setPairRate(ethAddress, token.address, rate);
+        await mockNetwork.setPairRate(token.address, ethAddress, rate);
+
+        aRate = 1.2345;
+        const ethToKncRatePrecision = precisionUnits.mul(aRate);
+        const kncToEthRatePrecision = precisionUnits.div(aRate);
+
+        await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
+        await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+
+        await mockNetwork.getExpectedRate(ethAddress, token.address, 1000);
+
+        // see REVERT_HINT causes revert on network level
+        const REVERT_HINT = await mockNetwork.REVERT_HINT();
+        try {
+            await mockNetwork.findBestRate(ethAddress, token.address, REVERT_HINT);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        // this returns good values - no revert
+        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, 5000, true);
+
+        assert(rates[0].valueOf() > 0, "expected rate > 0");
+        assert(rates[1].valueOf() > 0, "expected rate > 0");
+
+        rates = await tempExpectedRate.getExpectedRate(ethAddress, token.address, REVERT_HINT, true);
+        assert.equal(rates[0].valueOf(), 0, "unexpected rate");
+        assert.equal(rates[1].valueOf(), 0, "unexpected rate");
+    })
 });
 
 

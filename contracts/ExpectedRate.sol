@@ -12,6 +12,7 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
     KyberNetwork public kyberNetwork;
     uint public quantityFactor = 2;
     uint public worstCaseRateFactorInBps = 50;
+    uint constant UNIT_QTY_FOR_FEE_BURNER = 10 ** 18;
     ERC20 public knc;
 
     function ExpectedRate(KyberNetwork _kyberNetwork, ERC20 _knc, address _admin) public {
@@ -80,6 +81,13 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
             expectedRate = expectedRateSmallQty(src, dest, srcQty, usePermissionless);
         }
 
+        if (src == knc &&
+            dest == ETH_TOKEN_ADDRESS &&
+            srcQty == UNIT_QTY_FOR_FEE_BURNER )
+        {
+            if (checkKncArbitrageRate(expectedRate)) expectedRate = 0;
+        }
+
         if (expectedRate > MAX_RATE) return (0, 0);
 
         uint worstCaseSlippageRate = ((10000 - worstCaseRateFactorInBps) * expectedRate) / 10000;
@@ -88,6 +96,18 @@ contract ExpectedRate is Withdrawable, ExpectedRateInterface, Utils2 {
         }
 
         return (expectedRate, slippageRate);
+    }
+
+    function checkKncArbitrageRate(uint currentKncToEthRate) public view returns(bool) {
+        uint converseRate;
+        uint slippage;
+    	(converseRate, slippage) = getExpectedRate(ETH_TOKEN_ADDRESS, knc, UNIT_QTY_FOR_FEE_BURNER, true);
+
+        // if returned rate is 0, can't trust this arb test. assume we have arb
+        if(converseRate == 0) return true;
+
+        require(converseRate <= MAX_RATE && currentKncToEthRate <= MAX_RATE);
+        return ((converseRate * currentKncToEthRate) > (PRECISION ** 2));
     }
 
     //@dev for small src quantities dest qty might be 0, then returned rate is zero.
