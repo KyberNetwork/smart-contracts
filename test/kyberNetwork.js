@@ -1547,6 +1547,106 @@ contract('KyberNetwork', function(accounts) {
         }
     });
 
+    it("should test getter for reserves rates, showReservesRate.", async function () {
+        let tokenInd = 2;
+        let tokenAddress = tokenAdd[tokenInd];
+        let amount = 1000;
+
+        let reserve1BuyRate = await reserve1.getConversionRate(ethAddress, tokenAddress, amount, currentBlock)
+//        log("reserve1BuyRate " + reserve1BuyRate.toString())
+        let reserve2BuyRate = await reserve2.getConversionRate(ethAddress, tokenAddress, amount, currentBlock)
+//        log("reserve2BuyRate " + reserve2BuyRate)
+        let reserve1SellRate = await reserve1.getConversionRate(tokenAddress, ethAddress, amount, currentBlock)
+//        log("reserve1SellRate " + reserve1SellRate.toString())
+        let reserve2SellRate = await reserve2.getConversionRate(tokenAddress, ethAddress, amount, currentBlock)
+//        log("reserve2SellRate " + reserve2SellRate.toString())
+
+        let ratesReserves = await network.getReservesRates(tokenAddress, 0);
+//        log("ratesReserves[0][0]" + ratesReserves[0][0])
+//        log("ratesReserves[0][1]" + ratesReserves[0][1].toString())
+//        log("ratesReserves[1][0]" + ratesReserves[1][0].toString())
+//        log("rates[1][1]" + ratesReserves[1][1].toString())
+
+        assert.equal(ratesReserves[0][0].toString(), reserve2.address)
+        assert.equal(ratesReserves[0][1].toString(), reserve1.address)
+        assert.equal(ratesReserves[1][0].toString(), reserve2BuyRate.toString(), "rate should be > 0")
+        assert.equal(ratesReserves[1][1].toString(), reserve1BuyRate.toString(), "rate should be > 0")
+        assert.equal(ratesReserves[2][0].toString(), reserve2.address)
+        assert.equal(ratesReserves[2][1].toString(), reserve1.address)
+        assert.equal(ratesReserves[3][0].toString(), reserve2SellRate.toString(), "rate should be > 0")
+        assert.equal(ratesReserves[3][1].toString(), reserve1SellRate.toString(), "rate should be > 0")
+
+        //disable token trade on 1 reserve, see rate affect
+        await pricing1.disableTokenTrade(tokenAddress, {from: alerter});
+
+        ratesReserves = await network.getReservesRates(tokenAddress, 0);
+
+        assert.equal(ratesReserves[0][0].toString(), reserve2.address)
+        assert.equal(ratesReserves[0][1].toString(), reserve1.address)
+        assert.equal(ratesReserves[1][0].toString(), reserve2BuyRate.toString(), "rate should be > 0")
+        assert.equal(ratesReserves[1][1].toString(), 0, "rate should be 0")
+        assert.equal(ratesReserves[2][0].toString(), reserve2.address)
+        assert.equal(ratesReserves[2][1].toString(), reserve1.address)
+        assert.equal(ratesReserves[3][0].toString(), reserve2SellRate.toString(), "rate should be > 0")
+        assert.equal(ratesReserves[3][1].toString(), 0, "rate should be 0")
+
+        await pricing2.disableTokenTrade(tokenAddress, {from: alerter});
+
+        ratesReserves = await network.getReservesRates(tokenAddress, 0);
+
+        assert.equal(ratesReserves[0][0].toString(), reserve2.address)
+        assert.equal(ratesReserves[0][1].toString(), reserve1.address)
+        assert.equal(ratesReserves[1][0].toString(), 0, "rate should be 0")
+        assert.equal(ratesReserves[1][1].toString(), 0, "rate should be 0")
+        assert.equal(ratesReserves[2][0].toString(), reserve2.address)
+        assert.equal(ratesReserves[2][1].toString(), reserve1.address)
+        assert.equal(ratesReserves[3][0].toString(), 0, "rate should be 0")
+        assert.equal(ratesReserves[3][1].toString(), 0, "rate should be 0")
+
+
+        await pricing1.enableTokenTrade(tokenAddress, {from: admin});
+        await pricing2.enableTokenTrade(tokenAddress, {from: admin});
+
+        ratesReserves = await network.getReservesRates(tokenAddress, 0);
+
+        assert.equal(ratesReserves[0][0].toString(), reserve2.address)
+        assert.equal(ratesReserves[0][1].toString(), reserve1.address)
+        assert.equal(ratesReserves[1][0].toString(), reserve2BuyRate.toString(), "rate should be > 0")
+        assert.equal(ratesReserves[1][1].toString(), reserve1BuyRate.toString(), "rate should be > 0")
+        assert.equal(ratesReserves[2][0].toString(), reserve2.address)
+        assert.equal(ratesReserves[2][1].toString(), reserve1.address)
+        assert.equal(ratesReserves[3][0].toString(), reserve2SellRate.toString(), "rate should be > 0")
+        assert.equal(ratesReserves[3][1].toString(), reserve1SellRate.toString(), "rate should be > 0")
+    });
+
+    it("should test getter for reserves rates, see amount function parameter is used.", async function () {
+        let tokenInd = 2;
+        let tokenAddress = tokenAdd[tokenInd];
+        let amount = 1000;
+
+        let reserve1BuyRate = await reserve1.getConversionRate(ethAddress, tokenAddress, amount, currentBlock)
+//        log("reserve1BuyRate " + reserve1BuyRate.toString())
+        let reserve2BuyRate = await reserve2.getConversionRate(ethAddress, tokenAddress, amount, currentBlock)
+//        log("reserve2BuyRate " + reserve2BuyRate)
+        let reserve1SellRate = await reserve1.getConversionRate(tokenAddress, ethAddress, amount, currentBlock)
+//        log("reserve1SellRate " + reserve1SellRate.toString())
+        let reserve2SellRate = await reserve2.getConversionRate(tokenAddress, ethAddress, amount, currentBlock)
+        let ratesReserves = await network.getReservesRates(tokenAddress, 0);
+
+        assert.equal(ratesReserves[1][0].toString(), reserve2BuyRate.toString(), "rate should be > 0")
+        assert.equal(ratesReserves[1][1].toString(), reserve1BuyRate.toString(), "rate should be > 0")
+        assert.equal(ratesReserves[3][0].toString(), reserve2SellRate.toString(), "rate should be > 0")
+        assert.equal(ratesReserves[3][1].toString(), reserve1SellRate.toString(), "rate should be > 0")
+
+         // this amount is not supported so should result in 0 rates
+        ratesReserves = await network.getReservesRates(tokenAddress, 10**19);
+
+        assert.equal(ratesReserves[1][0].toString(), 0, "rate should be 0")
+        assert.equal(ratesReserves[1][1].toString(), 0, "rate should be 0")
+        assert.equal(ratesReserves[3][0].toString(), 0, "rate should be 0")
+        assert.equal(ratesReserves[3][1].toString(), 0, "rate should be 0")
+    });
+
     it("should test can't list pairs if reserve not added.", async function () {
         //here list should fail
         try {

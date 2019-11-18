@@ -418,25 +418,24 @@ contract KyberNetwork is Withdrawable, Utils3, KyberNetworkInterface, Reentrancy
     }
     /* solhint-enable code-complexity */
 
-    function showReservesRate(ERC20 token) public view returns(uint[] buyRates, uint[] sellRates) {
+    function getReservesRates(ERC20 token, uint optionalAmount) public view
+        returns(address[] buyReserves, uint[] buyRates, address[] sellReserves, uint[] sellRates)
+    {
+        uint amount = optionalAmount > 0 ? optionalAmount : 1000;
+        ERC20 ETH = ETH_TOKEN_ADDRESS;
 
-        address[] memory reserveArr = reservesPerTokenDest[token];
+        buyReserves = reservesPerTokenDest[token];
+        buyRates = new uint[](buyReserves.length);
 
-        buyRates = new uint[](reserveArr.length);
-
-        for (uint i = 0; i < reserveArr.length; i++) {
-            buyRates[i] = (KyberReserveInterface(reserveArr[i])).getConversionRate(ETH_TOKEN_ADDRESS,
-                                                                                    token,
-                                                                                    10 ** 18,
-                                                                                    block.number);
+        for (uint i = 0; i < buyReserves.length; i++) {
+            buyRates[i] = (KyberReserveInterface(buyReserves[i])).getConversionRate(ETH, token, amount, block.number);
         }
 
-        reserveArr = reservesPerTokenSrc[src];
-        for (uint i = 0; i < reserveArr.length; i++) {
-            sellRates[i] = (KyberReserveInterface(reserveArr[i])).getConversionRate(token,
-                                                                                    ETH_TOKEN_ADDRESS,
-                                                                                    10 ** 18,
-                                                                                    block.number);
+        sellReserves = reservesPerTokenSrc[token];
+        sellRates = new uint[](sellReserves.length);
+
+        for (i = 0; i < sellReserves.length; i++) {
+            sellRates[i] = (KyberReserveInterface(sellReserves[i])).getConversionRate(token, ETH, amount, block.number);
         }
     }
 
