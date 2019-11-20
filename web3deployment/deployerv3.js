@@ -221,7 +221,7 @@ async function main() {
   chainId = chainId || await web3.eth.net.getId()
   console.log('chainId', chainId);
   console.log('starting compilation');
-  output = await require("./compileOutput.js").compileContracts();
+  output = await require("./compileContracts.js").compileContracts();
   console.log("finished compilation");
 
   if (!dontSendTx) {
