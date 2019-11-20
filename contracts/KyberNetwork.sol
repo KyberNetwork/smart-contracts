@@ -418,6 +418,27 @@ contract KyberNetwork is Withdrawable, Utils3, KyberNetworkInterface, Reentrancy
     }
     /* solhint-enable code-complexity */
 
+    function getReservesRates(ERC20 token, uint optionalAmount) public view
+        returns(address[] buyReserves, uint[] buyRates, address[] sellReserves, uint[] sellRates)
+    {
+        uint amount = optionalAmount > 0 ? optionalAmount : 1000;
+        ERC20 ETH = ETH_TOKEN_ADDRESS;
+
+        buyReserves = reservesPerTokenDest[token];
+        buyRates = new uint[](buyReserves.length);
+
+        for (uint i = 0; i < buyReserves.length; i++) {
+            buyRates[i] = (KyberReserveInterface(buyReserves[i])).getConversionRate(ETH, token, amount, block.number);
+        }
+
+        sellReserves = reservesPerTokenSrc[token];
+        sellRates = new uint[](sellReserves.length);
+
+        for (i = 0; i < sellReserves.length; i++) {
+            sellRates[i] = (KyberReserveInterface(sellReserves[i])).getConversionRate(token, ETH, amount, block.number);
+        }
+    }
+
     function findBestRateTokenToToken(ERC20 src, ERC20 dest, uint srcAmount, bytes hint) internal view
         returns(BestRateResult result)
     {
