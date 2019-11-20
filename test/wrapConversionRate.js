@@ -25,10 +25,6 @@ let validRateDurationInBlocks = 60;
 let convRatesInst;
 let wrapConvRateInst;
 
-let addTokenNonce = 0;
-let tokenInfoNonce = 0;
-let validDurationNonce = 0;
-
 contract('WrapConversionRates', function(accounts) {
     it("should init ConversionRates Inst and set general parameters.", async function () {
         admin = accounts[0];
@@ -62,7 +58,13 @@ contract('WrapConversionRates', function(accounts) {
         //transfer admin to wrapper
 //        await wrapConvRateInst.addOperator(operator, {from: admin});
         await convRatesInst.transferAdmin(wrapConvRateInst.address);
+        let operators = await convRatesInst.getOperators();
+        assert.equal(operators.length, 0);
         await wrapConvRateInst.claimWrappedContractAdmin({from: admin});
+
+        operators = await convRatesInst.getOperators();
+        assert.equal(operators.length, 1);
+        assert.equal(operators[0], wrapConvRateInst.address)
 
         let rxAdmin = await convRatesInst.admin();
         assert.equal(rxAdmin, wrapConvRateInst.address);
@@ -72,9 +74,8 @@ contract('WrapConversionRates', function(accounts) {
         //new token
         let token = await TestToken.new("test6", "tst6", 18);
         //prepare add token data
-log("Sdfs")
+
         await wrapConvRateInst.addToken(token.address, minRecordResWrap, maxPerBlockImbWrap, maxTotalImbWrap, {from: admin});
-        log("Sdfdsfsdf")
         let tokenInfo = await convRatesInst.getTokenControlInfo(token.address);
 
         assert.equal(tokenInfo[0].valueOf(), minRecordResWrap);
@@ -94,15 +95,16 @@ log("Sdfs")
     });
 
     it("should test enabling token trade using wrapper", async function () {
-        let enabled = await convRatesInst.mockIsTokenTradeEnabled(token.address);
+        let token = tokens[0];
+        let enabled = await convRatesInst.mockIsTokenTradeEnabled(token);
         assert.equal(enabled, true, "trade should be enabled");
 
-        await convRatesInst.disableTokenTrade(token.address, {from: alerter});
-        enabled = await convRatesInst.mockIsTokenTradeEnabled(token.address);
+        await convRatesInst.disableTokenTrade(token, {from: alerter});
+        enabled = await convRatesInst.mockIsTokenTradeEnabled(token);
         assert.equal(enabled, false, "trade should be disabled");
 
-        await wrapConvRateInst.enableTokenTrade(token.address, {from: admin});
-        enabled = await convRatesInst.mockIsTokenTradeEnabled(token.address);
+        await wrapConvRateInst.enableTokenTrade(token, {from: admin});
+        enabled = await convRatesInst.mockIsTokenTradeEnabled(token);
         assert.equal(enabled, true, "trade should be enabled");
     });
 
@@ -125,7 +127,6 @@ log("Sdfs")
         let maxTotalList = [maxTotalImbWrap, maxTotalImbWrap];
 
         await wrapConvRateInst.setTokenControlData(tokens, maxPerBlockList, maxTotalList, {from: admin});
-        tokenInfoNonce++;
 
         //get token info, see updated
         tokenInfo = await convRatesInst.getTokenControlInfo(tokens[0]);
@@ -140,33 +141,20 @@ log("Sdfs")
         let ratesAdmin = await convRatesInst.admin();
         assert.equal(wrapConvRateInst.address, ratesAdmin.valueOf());
 
-        await wrapConvRateInst.transferWrappedContractAdmin(admin);
+        await wrapConvRateInst.transferWrappedContractAdmin(admin, {from: admin});
         await convRatesInst.claimAdmin({from: admin});
 
         ratesAdmin = await convRatesInst.admin();
         assert.equal(admin, ratesAdmin.valueOf());
 
         //transfer admin to wrapper
-        await convRatesInst.transferAdmin(wrapConvRateInst.address);
-        await wrapConvRateInst.claimWrappedContractAdmin({from: admin});
+        await convRatesInst.transferAdmin(wrapConvRateInst.address, {from: admin});
+        let pending = await convRatesInst.pendingAdmin();
+        assert.equal(pending, wrapConvRateInst.address);
 
-        ratesAdmin = await convRatesInst.admin();
-        assert.equal(wrapConvRateInst.address, ratesAdmin.valueOf());
-    });
-
-    it("should test transfer and fetch admin.", async function() {
-        let ratesAdmin = await convRatesInst.admin();
-        assert.equal(wrapConvRateInst.address, ratesAdmin.valueOf());
-
-        await wrapConvRateInst.transferWrappedContractAdmin(admin);
-        await convRatesInst.claimAdmin({from: admin});
-
-        ratesAdmin = await convRatesInst.admin();
-        assert.equal(admin, ratesAdmin.valueOf());
-
-        //transfer admin to wrapper
-        await convRatesInst.transferAdmin(wrapConvRateInst.address);
-        await wrapConvRateInst.claimWrappedContractAdmin({from: admin});
+        // for additional claim must remove operator.
+        await convRatesInst.removeOperator(wrapConvRateInst.address, {from: admin});
+        await wrapConvRateInst.claimWrappedContractAdmin( {from: admin});
 
         ratesAdmin = await convRatesInst.admin();
         assert.equal(wrapConvRateInst.address, ratesAdmin.valueOf());
@@ -175,6 +163,7 @@ log("Sdfs")
     it("should test only admin can call functions.", async function() {
         //add token data
         let token1 = await TestToken.new("test6", "tst6", 18);
+        let token = tokens[0];
 
         try {
             await wrapConvRateInst.addToken(token1.address, minRecordResWrap, maxPerBlockImbWrap, maxTotalImbWrap, {from: accounts[7]});
@@ -196,18 +185,9 @@ log("Sdfs")
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        //valid duration
-        try {
-            await wrapConvRateInst.setValidDurationData(validDurationNonce, {from: accounts[7]});
-            assert(false, "throw was expected in line above.")
-        }
-        catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
          //enable token trade
         try {
-            await wrapConvRateInst.enableTokenTrade(token.address, {from: accounts[7]});
+            await wrapConvRateInst.enableTokenTrade(token, {from: accounts[7]});
             assert(false, "throw was expected in line above.")
         }
         catch(e){
@@ -241,7 +221,7 @@ log("Sdfs")
 
     it("test can't add token with zero values.", async function() {
         //new token
-        token = await TestToken.new("test9", "tst9", 18);
+        tokenN = await TestToken.new("test9", "tst9", 18);
 
         //prepare add token data
         let minResolution = 6;
@@ -257,7 +237,7 @@ log("Sdfs")
         }
 
         try {
-            await wrapConvRateInst.addToken(token.address, 0, maxPerBlock, maxTotal, {from: admin});
+            await wrapConvRateInst.addToken(tokenN.address, 0, maxPerBlock, maxTotal, {from: admin});
             assert(false, "throw was expected in line above.")
         }
         catch(e){
@@ -265,7 +245,7 @@ log("Sdfs")
         }
 
         try {
-            await wrapConvRateInst.addToken(token.address, minResolution, 0, maxTotal, {from: admin});
+            await wrapConvRateInst.addToken(tokenN.address, minResolution, 0, maxTotal, {from: admin});
             assert(false, "throw was expected in line above.")
         }
         catch(e){
@@ -273,15 +253,14 @@ log("Sdfs")
         }
 
         try {
-            await wrapConvRateInst.addToken(token.address, minResolution, maxPerBlock, 0, {from: admin});
+            await wrapConvRateInst.addToken(tokenN.address, minResolution, maxPerBlock, 0, {from: admin});
             assert(false, "throw was expected in line above.")
         }
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await wrapConvRateInst.addToken(token.address, minResolution, maxPerBlock, maxTotal, {from: admin});
-        addTokenNonce++;
+        await wrapConvRateInst.addToken(tokenN.address, minResolution, maxPerBlock, maxTotal, {from: admin});
     });
 
     it("test can't set token control data with arrays that have different length.", async function() {
@@ -295,7 +274,6 @@ log("Sdfs")
         catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
-
 
         maxPerBlockList = [maxPerBlockImbWrap, maxPerBlockImbWrap];
         maxTotalList = [maxTotalImbWrap];
@@ -321,7 +299,6 @@ log("Sdfs")
         maxTotalList = [maxTotalImbWrap, maxTotalImbWrap];
 
         await wrapConvRateInst.setTokenControlData(tokens, maxPerBlockList, maxTotalList, {from: admin});
-        tokenInfoNonce++;
     });
 });
 

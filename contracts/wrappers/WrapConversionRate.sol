@@ -17,6 +17,12 @@ contract WrapConversionRate is WrapperBase {
         conversionRates = _conversionRates;
     }
 
+    //overriding base
+    function claimWrappedContractAdmin() public onlyAdmin {
+        super.claimWrappedContractAdmin();
+        conversionRates.addOperator(this);
+    }
+
     // add token functions
     //////////////////////
     function addToken(

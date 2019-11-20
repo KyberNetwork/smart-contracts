@@ -40,7 +40,7 @@ contract WrapFeeBurner is WrapperBase {
     }
 
     function setReserveData(address reserve, uint feeBps, address kncWallet) public onlyAdmin {
-        require(reserve != address(0));f
+        require(reserve != address(0));
         require(kncWallet != address(0));
         require(feeBps > 0);
         require(feeBps < 10000);
