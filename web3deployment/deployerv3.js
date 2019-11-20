@@ -4,7 +4,7 @@ const Web3 = require("web3");
 const fs = require("fs");
 const RLP = require('rlp');
 const BigNumber = require('bignumber.js')
-var ouput;
+var output;
 
 process.on('unhandledRejection', console.error.bind(console))
 
@@ -221,7 +221,7 @@ async function main() {
   chainId = chainId || await web3.eth.net.getId()
   console.log('chainId', chainId);
   console.log('starting compilation');
-  output = await require("./compileOutput.js").compileContracts();
+  output = await require("./compileContracts.js").compileContracts();
   console.log("finished compilation");
 
   if (!dontSendTx) {
