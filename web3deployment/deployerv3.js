@@ -4,7 +4,7 @@ const Web3 = require("web3");
 const fs = require("fs");
 const RLP = require('rlp');
 const BigNumber = require('bignumber.js')
-var ouput;
+var output;
 
 process.on('unhandledRejection', console.error.bind(console))
 
