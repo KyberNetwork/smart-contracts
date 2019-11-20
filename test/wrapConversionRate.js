@@ -45,7 +45,7 @@ contract('WrapConversionRates', function(accounts) {
 
         //create and add tokens. actually only addresses...
         for (let i = 0; i < numTokens; ++i) {
-            token = await TestToken.new("test" + i, "tst" + i, 18);
+            let token = await TestToken.new("test" + i, "tst" + i, 18);
             tokens[i] = token.address;
             await convRatesInst.addToken(token.address);
             await convRatesInst.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
@@ -63,15 +63,18 @@ contract('WrapConversionRates', function(accounts) {
 //        await wrapConvRateInst.addOperator(operator, {from: admin});
         await convRatesInst.transferAdmin(wrapConvRateInst.address);
         await wrapConvRateInst.claimWrappedContractAdmin({from: admin});
+
+        let rxAdmin = await convRatesInst.admin();
+        assert.equal(rxAdmin, wrapConvRateInst.address);
     });
 
     it("should test add token using wrapper. and verify data with get data", async function () {
         //new token
-        token = await TestToken.new("test6", "tst6", 18);
+        let token = await TestToken.new("test6", "tst6", 18);
         //prepare add token data
-
+log("Sdfs")
         await wrapConvRateInst.addToken(token.address, minRecordResWrap, maxPerBlockImbWrap, maxTotalImbWrap, {from: admin});
-        
+        log("Sdfdsfsdf")
         let tokenInfo = await convRatesInst.getTokenControlInfo(token.address);
 
         assert.equal(tokenInfo[0].valueOf(), minRecordResWrap);
@@ -81,9 +84,12 @@ contract('WrapConversionRates', function(accounts) {
 
     it("should test set valid duration in blocks and verify data with get data", async function () {
         await wrapConvRateInst.setValidDurationData(validRateDurationInBlocks, {from: admin});
-        
         rxValidDuration = await convRatesInst.validRateDurationInBlocks();
+        assert.equal(rxValidDuration.valueOf(), validRateDurationInBlocks);
 
+        validRateDurationInBlocks *= 2;
+        await wrapConvRateInst.setValidDurationData(validRateDurationInBlocks, {from: admin});
+        rxValidDuration = await convRatesInst.validRateDurationInBlocks();
         assert.equal(rxValidDuration.valueOf(), validRateDurationInBlocks);
     });
 
@@ -318,3 +324,7 @@ contract('WrapConversionRates', function(accounts) {
         tokenInfoNonce++;
     });
 });
+
+function log(str) {
+    console.log(str);
+}

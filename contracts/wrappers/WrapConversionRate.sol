@@ -12,10 +12,9 @@ contract WrapConversionRate is WrapperBase {
 
     //general functions
     function WrapConversionRate(ConversionRates _conversionRates) public
-        WrapperBase(PermissionGroups(address(_conversionRates)), msg.sender, 0)
+        WrapperBase(PermissionGroups(address(_conversionRates)))
     {
         conversionRates = _conversionRates;
-        addOperator(admin);
     }
 
     // add token functions
@@ -34,8 +33,6 @@ contract WrapConversionRate is WrapperBase {
 
         conversionRates.addToken(token);
 
-        conversionRates.addOperator(this);
-
         //token control info
         conversionRates.setTokenControlInfo(
             token,
@@ -52,8 +49,6 @@ contract WrapConversionRate is WrapperBase {
         conversionRates.setImbalanceStepFunction(token, zeroArr, zeroArr, zeroArr, zeroArr);
 
         conversionRates.enableTokenTrade(token);
-
-        conversionRates.removeOperator(this);
     }
 
     // enable trade per token

@@ -25,15 +25,17 @@ let taxWallet;
 let someExternalWallet;
 let mockKNCWallet;
 let mockReserve;
+let mockReserve2;
+let mockReserve3;
 let reserveFeeBps = 25;
 let mockKyberNetwork;
-let mock3rdPartyWallet;
+let mockThirdPartyWallet;
 let permissionLessWallet1;
 let permissionLessWallet2;
 let permissionLessWallet3;
 let permissionLessWallet4;
 
-let mock3rdPartyWalletFeeBps = 200;
+let mockThirdPartyWalletFeeBps = 200;
 let taxFeeBps = 30;
 
 let burnerInst;
@@ -54,8 +56,9 @@ contract('WrapFeeBurner', function(accounts) {
         admin = accounts[0];
         operator1 = accounts[1];
         operator2 = accounts[2];
-        operator3 = accounts[3];
-        mock3rdPartyWallet = accounts[4];
+        mockReserve2 = accounts[3];
+        mockReserve3 = accounts[4];
+        mockThirdPartyWallet = accounts[4];
 
         taxWallet = accounts[5];
         someExternalWallet = accounts[6];
@@ -78,58 +81,24 @@ contract('WrapFeeBurner', function(accounts) {
     });
 
     it("should init FeeBurner wrapper and set as fee burner admin and operator.", async function () {
-        wrapBurnerInst = await WrapFeeBurner.new(burnerInst.address, admin);
-        await wrapBurnerInst.addOperator(operator1);
-        await wrapBurnerInst.addOperator(operator2);
-        await wrapBurnerInst.addOperator(operator3);
+        wrapBurnerInst = await WrapFeeBurner.new(burnerInst.address, {from: admin});
 
         //for some operations, wrapper must be operator
         burnerInst.addOperator(wrapBurnerInst.address);
 
         //transfer admin to wrapper
         await burnerInst.transferAdmin(wrapBurnerInst.address);
-        await wrapBurnerInst.claimWrappedContractAdmin({from: operator1});
+        await wrapBurnerInst.claimWrappedContractAdmin({from: admin});
     });
 
     it("should test adding reserve with its related knc wallet and fees", async function () {
-        await wrapBurnerInst.setPendingReserveData(mockReserve, reserveFeeBps, mockKNCWallet, {from: operator1});
-        addReserveNonce++;
-        let pendingReserveData = await wrapBurnerInst.getPendingAddReserveData();
-        assert.equal(pendingReserveData[3].valueOf(), addReserveNonce);
-
-        await wrapBurnerInst.setPendingReserveData(mockReserve, reserveFeeBps, mockKNCWallet, {from: operator1});
-        addReserveNonce++;
-        pendingReserveData = await wrapBurnerInst.getPendingAddReserveData();
-        assert.equal(pendingReserveData[3].valueOf(), addReserveNonce);
-
-        assert.equal(pendingReserveData[0].valueOf(), mockReserve);
-        assert.equal(pendingReserveData[1].valueOf(), reserveFeeBps);
-        assert.equal(pendingReserveData[2].valueOf(), mockKNCWallet);
-
-        //can't approve with wrong nonce
-        try {
-            await wrapBurnerInst.approveAddReserveData((addReserveNonce - 1), {from:operator1});
-            assert(false, "throw was expected in line above.")
-        }
-        catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        await wrapBurnerInst.approveAddReserveData(addReserveNonce, {from:operator1});
-        await wrapBurnerInst.approveAddReserveData(addReserveNonce, {from:operator2});
-
-        //check approving signatures
-        let rxSignatures = await wrapBurnerInst.getAddReserveSignatures();
-        assert.equal(rxSignatures[0].valueOf(), operator1);
-        assert.equal(rxSignatures[1].valueOf(), operator2);
-
         let rxReserveWallet = await burnerInst.reserveKNCWallet(mockReserve);
         let rxReserveFee = await burnerInst.reserveFeeToBurn(mockReserve);
 
         assert.equal(rxReserveWallet.valueOf(), 0);
         assert.equal(rxReserveFee.valueOf(), 0);
 
-        await wrapBurnerInst.approveAddReserveData(addReserveNonce, {from:operator3});
+        await wrapBurnerInst.setReserveData(mockReserve, reserveFeeBps, mockKNCWallet, {from: admin});
 
         rxReserveWallet = await burnerInst.reserveKNCWallet(mockReserve);
         rxReserveFee = await burnerInst.reserveFeesInBps(mockReserve);
@@ -138,43 +107,15 @@ contract('WrapFeeBurner', function(accounts) {
         assert.equal(rxReserveFee.valueOf(), reserveFeeBps);
     });
 
-    it("should test adding 3rd party wallet with fees", async function () {
-        await wrapBurnerInst.setPendingWalletFee(mock3rdPartyWallet, mock3rdPartyWalletFeeBps, {from: operator1});
-        otherWalletNonce++;
-        let pending3rdPartyWalletData = await wrapBurnerInst.getPendingWalletFeeData();
-        assert.equal(pending3rdPartyWalletData[2].valueOf(), otherWalletNonce);
+    it("should test adding Third party wallet with fees", async function () {
 
-        await wrapBurnerInst.setPendingWalletFee(mock3rdPartyWallet, mock3rdPartyWalletFeeBps, {from: operator1});
-        otherWalletNonce++;
-        pending3rdPartyWalletData = await wrapBurnerInst.getPendingWalletFeeData();
-        assert.equal(pending3rdPartyWalletData[2].valueOf(), otherWalletNonce);
+        let rxThirdPartyFeeBps = await burnerInst.walletFeesInBps(mockThirdPartyWallet);
+        assert.equal(rxThirdPartyFeeBps.valueOf(), 0);
 
-        assert.equal(pending3rdPartyWalletData[0].valueOf(), mock3rdPartyWallet);
-        assert.equal(pending3rdPartyWalletData[1].valueOf(), mock3rdPartyWalletFeeBps);
+        await wrapBurnerInst.setWalletFee(mockThirdPartyWallet, mockThirdPartyWalletFeeBps, {from: admin});
 
-        //can't approve with wrong nonce
-        try {
-            await wrapBurnerInst.approveWalletFeeData((otherWalletNonce - 1), {from:operator1});
-            assert(false, "throw was expected in line above.")
-        }
-        catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-        await wrapBurnerInst.approveWalletFeeData(otherWalletNonce, {from:operator1});
-        await wrapBurnerInst.approveWalletFeeData(otherWalletNonce, {from:operator2});
-
-        //check approving signatures
-        let rxSignatures = await wrapBurnerInst.getWalletFeeSignatures();
-        assert.equal(rxSignatures[0].valueOf(), operator1);
-        assert.equal(rxSignatures[1].valueOf(), operator2);
-
-        let rx3rdPartyFeeBps = await burnerInst.walletFeesInBps(mock3rdPartyWallet);
-        assert.equal(rx3rdPartyFeeBps.valueOf(), 0);
-
-        await wrapBurnerInst.approveWalletFeeData(otherWalletNonce, {from:operator3});
-
-        rx3rdPartyFeeBps = await burnerInst.walletFeesInBps(mock3rdPartyWallet);
-        assert.equal(rx3rdPartyFeeBps.valueOf(), mock3rdPartyWalletFeeBps);
+        rxThirdPartyFeeBps = await burnerInst.walletFeesInBps(mockThirdPartyWallet);
+        assert.equal(rxThirdPartyFeeBps.valueOf(), mockThirdPartyWalletFeeBps);
     });
 
     it("should add permission less wallet and query values", async function () {
@@ -201,20 +142,19 @@ contract('WrapFeeBurner', function(accounts) {
         assert.equal(defaultFeeSharingBPS.valueOf(), feeForWalletBPS.valueOf());
     });
 
-
     it("verify revert when adding permission less wallet that exists", async function () {
         //any address can register any wallet.
 
         try {
-            await wrapBurnerInst.registerWalletForFeeSharing(mock3rdPartyWallet);
+            await wrapBurnerInst.registerWalletForFeeSharing(mockThirdPartyWallet);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         //see hasn't changed
-        let feeForWalletBPS = await burnerInst.walletFeesInBps(mock3rdPartyWallet);
-        assert.equal(feeForWalletBPS, mock3rdPartyWalletFeeBps);
+        let feeForWalletBPS = await burnerInst.walletFeesInBps(mockThirdPartyWallet);
+        assert.equal(feeForWalletBPS, mockThirdPartyWalletFeeBps);
     });
 
     it("verify revert when adding permission less wallet with same address as verified wallet.", async function () {
@@ -231,9 +171,11 @@ contract('WrapFeeBurner', function(accounts) {
     it("should update fee sharing value and see updated.", async function () {
         let defaultFeeSharingBPS = await wrapBurnerInst.feeSharingBps();
 
-        let newFeeShare = 5000;
+        let newFeeShare = 1 * defaultFeeSharingBPS + 1000 * 1;
+
         await wrapBurnerInst.setFeeSharingValue(newFeeShare, {from: admin});
         let feeSharingBPS = await wrapBurnerInst.feeSharingBps();
+
         assert.equal(newFeeShare, feeSharingBPS);
 
         await wrapBurnerInst.setFeeSharingValue(defaultFeeSharingBPS.valueOf());
@@ -257,34 +199,13 @@ contract('WrapFeeBurner', function(accounts) {
     });
 
     it("should test setting tax wallet and tax fees", async function () {
-        await wrapBurnerInst.setPendingTaxParameters(taxWallet, taxFeeBps, {from: operator1});
-        taxDataNonce++;
-        let pendingTaxData = await wrapBurnerInst.getPendingTaxData();
-        assert.equal(pendingTaxData[2].valueOf(), taxDataNonce);
-
-        //verify nonce changed
-        await wrapBurnerInst.setPendingTaxParameters(taxWallet, taxFeeBps, {from: operator1});
-        taxDataNonce++;
-        pendingTaxData = await wrapBurnerInst.getPendingTaxData();
-        assert.equal(pendingTaxData[2].valueOf(), taxDataNonce);
-
-        assert.equal(pendingTaxData[0].valueOf(), taxWallet);
-        assert.equal(pendingTaxData[1].valueOf(), taxFeeBps);
-
-        await wrapBurnerInst.approveTaxData(taxDataNonce, {from:operator1});
-        await wrapBurnerInst.approveTaxData(taxDataNonce, {from:operator2});
-
-        //check approving signatures
-        let rxSignatures = await wrapBurnerInst.getTaxDataSignatures();
-        assert.equal(rxSignatures[0].valueOf(), operator1);
-        assert.equal(rxSignatures[1].valueOf(), operator2);
 
         let rxTaxWallet = await burnerInst.taxWallet();
         let rxTaxFeeBps = await burnerInst.taxFeeBps();
         assert.equal(rxTaxWallet.valueOf(), 0);
         assert.equal(rxTaxFeeBps.valueOf(), 0);
 
-        await wrapBurnerInst.approveTaxData(taxDataNonce, {from:operator3});
+        await wrapBurnerInst.setTaxParameters(taxWallet, taxFeeBps, {from: admin});
 
         rxTaxWallet = await burnerInst.taxWallet();
         rxTaxFeeBps = await burnerInst.taxFeeBps();
@@ -292,155 +213,99 @@ contract('WrapFeeBurner', function(accounts) {
         assert.equal(rxTaxFeeBps.valueOf(), taxFeeBps);
     });
 
-    it("should test only operator can call set and approve function.", async function() {
+    it("should test only admin can set reserve data.", async function() {
 
         //add reserve
         try {
-            await wrapBurnerInst.setPendingReserveData(mockReserve, mockKNCWallet, reserveFeeBps, {from: admin});
+            await wrapBurnerInst.setReserveData(mockReserve2, reserveFeeBps, mockKNCWallet, {from: operator1});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        try {
-            await wrapBurnerInst.approveAddReserveData(addReserveNonce, {from:admin});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        //3rd party wallet
-        try {
-            await wrapBurnerInst.setPendingWalletFee(mock3rdPartyWallet, mock3rdPartyWalletFeeBps, {from: admin});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        try {
-            await wrapBurnerInst.approveWalletFeeData(otherWalletNonce, {from:admin});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        //tax data
-        try {
-            await wrapBurnerInst.setPendingTaxParameters(taxWallet, taxFeeBps, {from: admin});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        try {
-            await wrapBurnerInst.approveTaxData(taxDataNonce, {from:admin});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
+        await wrapBurnerInst.setReserveData(mockReserve2, reserveFeeBps,  mockKNCWallet, {from: admin});
     });
 
-    it("should test each operator can approve only once per new data that was set.", async function() {
-        //reserve data
-        await wrapBurnerInst.setPendingReserveData(mockReserve, reserveFeeBps, mockKNCWallet, {from: operator1});
-        addReserveNonce++;
+    it("should test only admin can set default wallet fee.", async function() {
 
-        await wrapBurnerInst.approveAddReserveData(addReserveNonce, {from:operator1});
+        //Third party wallet
         try {
-            await wrapBurnerInst.approveAddReserveData(addReserveNonce, {from:operator1});
+            await wrapBurnerInst.setWalletFee(mockThirdPartyWallet, mockThirdPartyWalletFeeBps, {from: operator1});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-       //3rd party wallet
-        await wrapBurnerInst.setPendingWalletFee(mock3rdPartyWallet, mock3rdPartyWalletFeeBps, {from: operator1});
-        otherWalletNonce++;
+        await wrapBurnerInst.setWalletFee(mockThirdPartyWallet, mockThirdPartyWalletFeeBps, {from: admin});
+    });
 
-        await wrapBurnerInst.approveWalletFeeData(otherWalletNonce, {from:operator1});
+
+    it("should test only admin can set default wallet fee.", async function() {
+        //tax data
         try {
-            await wrapBurnerInst.approveWalletFeeData(otherWalletNonce, {from:operator1});
+            await wrapBurnerInst.setTaxParameters(taxWallet, taxFeeBps, {from: operator1});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        // tax data
-        await wrapBurnerInst.setPendingTaxParameters(taxWallet, taxFeeBps, {from: operator1});
-        taxDataNonce++;
-
-        await wrapBurnerInst.approveTaxData(taxDataNonce, {from:operator1});
-        try {
-            await wrapBurnerInst.approveTaxData(taxDataNonce, {from:operator1});
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
+        await wrapBurnerInst.setTaxParameters(taxWallet, taxFeeBps, {from: admin});
     });
 
     it("test init wrapper with illegal values reverted.", async function() {
         let wrapper;
 
         try {
-            wrapper = await WrapFeeBurner.new(0, admin);
+            wrapper = await WrapFeeBurner.new(0);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        try {
-            wrapper = await WrapFeeBurner.new(burnerInst.address, 0);
-            assert(false, "throw was expected in line above.")
-        } catch(e){
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-
-        wrapper = await WrapFeeBurner.new(burnerInst.address, admin);
+        wrapper = await WrapFeeBurner.new(burnerInst.address);
     });
 
-    it("test set pending reserve data with illegal values is reverted.", async function() {
+    it("test set  reserve data with illegal values is reverted.", async function() {
         try {
-            await wrapBurnerInst.setPendingReserveData(0, reserveFeeBps, mockKNCWallet, {from: operator1});
+            await wrapBurnerInst.setReserveData(0, reserveFeeBps, mockKNCWallet, {from: admin});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            await wrapBurnerInst.setPendingReserveData(mockReserve, 0, mockKNCWallet, {from: operator1});
+            await wrapBurnerInst.setReserveData(mockReserve, 0, mockKNCWallet, {from: admin});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            await wrapBurnerInst.setPendingReserveData(mockReserve, reserveFeeBps, 0, {from: operator1});
+            await wrapBurnerInst.setReserveData(mockReserve, reserveFeeBps, 0, {from: admin});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await wrapBurnerInst.setPendingReserveData(mockReserve, reserveFeeBps, mockKNCWallet, {from: operator1});
-        addReserveNonce++;
+        await wrapBurnerInst.setReserveData(mockReserve, reserveFeeBps, mockKNCWallet, {from: admin});
     });
 
-    it("test set pending wallet fee with illegal values is reverted.", async function() {
+    it("test set  wallet fee with illegal values is reverted.", async function() {
         try {
-            await wrapBurnerInst.setPendingWalletFee(0, mock3rdPartyWalletFeeBps, {from: operator1});
+            await wrapBurnerInst.setWalletFee(0, mockThirdPartyWalletFeeBps, {from: admin});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            await wrapBurnerInst.setPendingWalletFee(mock3rdPartyWallet, 0, {from: operator1});
+            await wrapBurnerInst.setWalletFee(mockThirdPartyWallet, 0, {from: admin});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await wrapBurnerInst.setPendingWalletFee(mock3rdPartyWallet, mock3rdPartyWalletFeeBps, {from: operator1});
-        otherWalletNonce++;
+        await wrapBurnerInst.setWalletFee(mockThirdPartyWallet, mockThirdPartyWalletFeeBps, {from: admin});
     });
 
     it("test setting permission less wallet with wrapper proxy and query values.", async function() {
@@ -473,30 +338,28 @@ contract('WrapFeeBurner', function(accounts) {
         assert.equal(sharingWallets[0], permissionLessWallet1);
         assert.equal(sharingWallets[1], permissionLessWallet2);
         assert.equal(sharingWallets[2], permissionLessWallet3);
-        assert.equal(sharingWallets[3], permissionLessWallet4);
 
         let defaultFeeSharingBPS = await wrapBurnerInst.feeSharingBps();
         let feeForWalletBPS = await burnerInst.walletFeesInBps(permissionLessWallet4);
         assert.equal(defaultFeeSharingBPS.valueOf(), feeForWalletBPS.valueOf());
     });
 
-    it("test set pending wallet tax data with illegal values is reverted.", async function() {
+    it("test set  wallet tax data with illegal values is reverted.", async function() {
         try {
-            await wrapBurnerInst.setPendingTaxParameters(0, taxFeeBps, {from: operator1});
+            await wrapBurnerInst.setTaxParameters(0, taxFeeBps, {from: admin});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
-            await wrapBurnerInst.setPendingTaxParameters(taxWallet, 0, {from: operator1});
+            await wrapBurnerInst.setTaxParameters(taxWallet, 0, {from: admin});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await wrapBurnerInst.setPendingTaxParameters(taxWallet, taxFeeBps, {from: operator1});
-        taxDataNonce++;
+        await wrapBurnerInst.setTaxParameters(taxWallet, taxFeeBps, {from: admin});
     });
 });
 
