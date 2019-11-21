@@ -11,40 +11,8 @@ contract WrapFeeBurner is WrapperBase {
     address[] internal feeSharingWallets;
     uint public feeSharingBps = 3000; // out of 10000 = 30%
 
-    //add reserve pending data
-    struct AddReserveData {
-        address reserve;
-        uint    feeBps;
-        address kncWallet;
-    }
-
-    AddReserveData internal addReserve;
-
-    //wallet fee pending parameters
-    struct WalletFee {
-        address walletAddress;
-        uint    feeBps;
-    }
-
-    WalletFee internal walletFee;
-
-    //tax pending parameters
-    struct TaxData {
-        address wallet;
-        uint    feeBps;
-    }
-
-    TaxData internal taxData;
-    
-    //data indexes
-    uint internal constant ADD_RESERVE_INDEX = 1;
-    uint internal constant WALLET_FEE_INDEX = 2;
-    uint internal constant TAX_DATA_INDEX = 3;
-    uint internal constant LAST_DATA_INDEX = 4;
-
-    //general functions
-    function WrapFeeBurner(FeeBurner feeBurner, address _admin) public
-        WrapperBase(PermissionGroups(address(feeBurner)), _admin, LAST_DATA_INDEX)
+    function WrapFeeBurner(FeeBurner feeBurner) public
+        WrapperBase(PermissionGroups(address(feeBurner)))
     {
         require(feeBurner != address(0));
         feeBurnerContract = feeBurner;
@@ -71,101 +39,29 @@ contract WrapFeeBurner is WrapperBase {
         WalletRegisteredForFeeSharing(msg.sender, walletAddress);
     }
 
-    //set reserve data
-    //////////////////
-    function setPendingReserveData(address reserve, uint feeBps, address kncWallet) public onlyOperator {
+    function setReserveData(address reserve, uint feeBps, address kncWallet) public onlyAdmin {
         require(reserve != address(0));
         require(kncWallet != address(0));
         require(feeBps > 0);
         require(feeBps < 10000);
 
-        addReserve.reserve = reserve;
-        addReserve.feeBps = feeBps;
-        addReserve.kncWallet = kncWallet;
-        setNewData(ADD_RESERVE_INDEX);
+        feeBurnerContract.setReserveData(reserve, feeBps, kncWallet);
     }
 
-    function getPendingAddReserveData() public view
-        returns(address reserve, uint feeBps, address kncWallet, uint nonce)
-    {
-        address[] memory signatures;
-        (signatures, nonce) = getDataTrackingParameters(ADD_RESERVE_INDEX);
-        return(addReserve.reserve, addReserve.feeBps, addReserve.kncWallet, nonce);
-    }
-
-    function getAddReserveSignatures() public view returns (address[] signatures) {
-        uint nonce;
-        (signatures, nonce) = getDataTrackingParameters(ADD_RESERVE_INDEX);
-        return(signatures);
-    }
-
-    function approveAddReserveData(uint nonce) public onlyOperator {
-        if (addSignature(ADD_RESERVE_INDEX, nonce, msg.sender)) {
-            // can perform operation.
-            feeBurnerContract.setReserveData(addReserve.reserve, addReserve.feeBps, addReserve.kncWallet);
-        }
-    }
-
-    //wallet fee
-    /////////////
-    function setPendingWalletFee(address wallet, uint feeBps) public onlyOperator {
+    function setWalletFee(address wallet, uint feeBps) public onlyAdmin {
         require(wallet != address(0));
         require(feeBps > 0);
         require(feeBps < 10000);
 
-        walletFee.walletAddress = wallet;
-        walletFee.feeBps = feeBps;
-        setNewData(WALLET_FEE_INDEX);
+        feeBurnerContract.setWalletFees(wallet, feeBps);
     }
 
-    function getPendingWalletFeeData() public view returns(address wallet, uint feeBps, uint nonce) {
-        address[] memory signatures;
-        (signatures, nonce) = getDataTrackingParameters(WALLET_FEE_INDEX);
-        return(walletFee.walletAddress, walletFee.feeBps, nonce);
-    }
-
-    function getWalletFeeSignatures() public view returns (address[] signatures) {
-        uint nonce;
-        (signatures, nonce) = getDataTrackingParameters(WALLET_FEE_INDEX);
-        return(signatures);
-    }
-
-    function approveWalletFeeData(uint nonce) public onlyOperator {
-        if (addSignature(WALLET_FEE_INDEX, nonce, msg.sender)) {
-            // can perform operation.
-            feeBurnerContract.setWalletFees(walletFee.walletAddress, walletFee.feeBps);
-        }
-    }
-
-    //tax parameters
-    ////////////////
-    function setPendingTaxParameters(address taxWallet, uint feeBps) public onlyOperator {
+    function setTaxParameters(address taxWallet, uint feeBps) public onlyAdmin {
         require(taxWallet != address(0));
         require(feeBps > 0);
         require(feeBps < 10000);
 
-        taxData.wallet = taxWallet;
-        taxData.feeBps = feeBps;
-        setNewData(TAX_DATA_INDEX);
-    }
-
-    function getPendingTaxData() public view returns(address wallet, uint feeBps, uint nonce) {
-        address[] memory signatures;
-        (signatures, nonce) = getDataTrackingParameters(TAX_DATA_INDEX);
-        return(taxData.wallet, taxData.feeBps, nonce);
-    }
-
-    function getTaxDataSignatures() public view returns (address[] signatures) {
-        uint nonce;
-        (signatures, nonce) = getDataTrackingParameters(TAX_DATA_INDEX);
-        return(signatures);
-    }
-
-    function approveTaxData(uint nonce) public onlyOperator {
-        if (addSignature(TAX_DATA_INDEX, nonce, msg.sender)) {
-            // can perform operation.
-            feeBurnerContract.setTaxInBps(taxData.feeBps);
-            feeBurnerContract.setTaxWallet(taxData.wallet);
-        }
+        feeBurnerContract.setTaxInBps(feeBps);
+        feeBurnerContract.setTaxWallet(taxWallet);
     }
 }
