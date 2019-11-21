@@ -111,6 +111,16 @@ const minBuyRateInPrecision = (BigNumber(1).div(pMax)).mul(precision)
 const maxSellRateInPrecision = BigNumber(pMax).mul(precision);
 const minSellRateInPrecision = BigNumber(pMin).mul(precision);
 
+const newRs = [0.01, 0.016];
+const newP0s = [0.05, 0.01];
+const newE0s = [69.31471805598, 43.321698784];
+const newT0s = [1000.0, 3125.0];
+const newFeePercents = [0.25, 0.25];
+const newMaxCapBuyInEth = [10, 6];
+const newMaxCapSellInEth = [10, 6];
+const newpMinRatios = [0.5, 0.5];
+const newpMaxRatios = [2.0, 2.0];
+
 function pOfE(r, pMin, curE) { 
     return Helper.exp(e, BigNumber(r).mul(curE)).mul(pMin);
 }
@@ -867,6 +877,211 @@ contract('kyberReserve for Liquidity', function(accounts) {
         let collectedFees = await liqConvRatesInst.collectedFeesInTwei()
         assert.notEqual(collectedFees, 0, "bad result");
 
+    });
+
+    // init new conversion rate, reserve, make a buy then check sell rate, make a sell and check buy rate
+    it("Should check rate and expected receive amounts when buy or sell with fee is 0", async function() {
+        // if i < newRs.length, we test buy then check rate
+        // otherwise test sell then check rate
+        for (let i = 0; i < newRs.length * 2; i++) {
+            let id = i < newRs.length ? i : i - newRs.length;
+            let currentBlock = await Helper.getCurrentBlock();
+
+            let token = await TestToken.new("test", "tst", 18);
+
+            let newLiqConvRatesInst = await LiquidityConversionRates.new(admin, token.address);
+
+            let feeInBps = 0;
+            let pMin = newP0s[id] * newpMinRatios[id];
+            let pMax = newP0s[id] * newpMaxRatios[id];
+
+            let rInFp = BigNumber(newRs[id]).mul(formulaPrecision);
+            let pMinInFp = BigNumber(pMin).mul(formulaPrecision);
+            let maxCapBuyInWei = BigNumber(newMaxCapBuyInEth[id]).mul(precision);
+            let maxCapSellInWei = BigNumber(newMaxCapSellInEth[id]).mul(precision);
+            let maxSellRateInPrecision = BigNumber(pMax).mul(precision);
+            let minSellRateInPrecision = BigNumber(pMin).mul(precision);
+
+            await newLiqConvRatesInst.setLiquidityParams(
+                rInFp,
+                pMinInFp,
+                formulaPrecisionBits,
+                maxCapBuyInWei,
+                maxCapSellInWei,
+                feeInBps,
+                maxSellRateInPrecision,
+                minSellRateInPrecision
+            );
+
+            let reserveInst = await Reserve.new(network, newLiqConvRatesInst.address, admin);
+            await reserveInst.setContracts(network, newLiqConvRatesInst.address, 0);
+
+            await newLiqConvRatesInst.setReserveAddress(reserveInst.address);
+
+            //set reserve balance.
+            let reserveEtherInit = (BigNumber(10).pow(18)).mul(newE0s[id]);
+            await Helper.sendEtherWithPromise(accounts[8], reserveInst.address, reserveEtherInit);
+
+            await reserveInst.approveWithdrawAddress(token.address, accounts[0], true);
+
+            //transfer tokens to reserve.
+            let amount = (BigNumber(10).pow(18)).mul(newT0s[id]);
+            await token.transfer(reserveInst.address, amount.valueOf());
+
+            let reserveTokenBalance = amount;
+
+            if (i < newRs.length) {
+                // buy then check sell rate
+                let totalAmount = BigNumber(0);
+                for(let tx = 0; tx <= 5; tx++) {
+                    let srcAmount = maxCapBuyInWei.div(id + 2).floor();
+                    totalAmount = totalAmount.add(srcAmount);
+
+                    let buyRate = await reserveInst.getConversionRate(ethAddress, token.address, srcAmount, currentBlock);
+                    assert.notEqual(buyRate.valueOf(), 0, "buy rate should be greater than 0, loop: " + i);
+
+                    let expectedDest = buyRate.mul(srcAmount).div(precision).floor();
+
+                    await reserveInst.trade(ethAddress, srcAmount, token.address, user1, buyRate, true, {from:network, value: srcAmount});
+                    let newReserveTokenBal = await token.balanceOf(reserveInst.address);
+
+                    let diffTokenBal = reserveTokenBalance.sub(newReserveTokenBal);
+                    reserveTokenBalance = newReserveTokenBal;
+                    assert.equal(diffTokenBal.valueOf(), expectedDest.valueOf(),  "balance changed should be as expected, loop: " + i);
+
+                    let sellRate = await reserveInst.getConversionRate(token.address, ethAddress, diffTokenBal, currentBlock);
+                    expectedDest = sellRate.mul(diffTokenBal).div(precision).floor();
+
+                    assert(expectedDest * 1.0 <= totalAmount * 1.0, "expected dest amount should be lower than previous traded amount, loop: " + i);
+                }
+            } else {
+                // sell then check buy rate
+                let totalAmount = BigNumber(0);
+                for(let tx = 0; tx <= 5; tx++) {
+                    let srcAmount = maxCapBuyInWei.mul(newT0s[id]).div(newE0s[id]).div(id + 2).floor(); // 1 token
+                    totalAmount = totalAmount.add(srcAmount);
+
+                    let sellRate = await reserveInst.getConversionRate(token.address, ethAddress, srcAmount, currentBlock);
+                    assert.notEqual(sellRate.valueOf(), 0, "sell rate should be greater than 0, loop: " + i);
+
+                    let expectedDest = sellRate.mul(srcAmount).div(precision).floor();
+
+                    await token.transfer(network, srcAmount.valueOf());
+                    await token.approve(reserveInst.address, srcAmount, {from: network});
+                    await reserveInst.trade(token.address, srcAmount, ethAddress, user1, sellRate, true, {from: network});
+                    let newReserveEthBal = await Helper.getBalancePromise(reserveInst.address);
+
+                    let diffEthBal = reserveEtherInit.sub(newReserveEthBal);
+                    reserveEtherInit = newReserveEthBal;
+                    assert.equal(diffEthBal.valueOf(), expectedDest.valueOf(),  "balance changed should be as expected, loop: " + i);
+
+                    let buyRate = await reserveInst.getConversionRate(ethAddress, token.address, diffEthBal, currentBlock);
+                    expectedDest = buyRate.mul(diffEthBal).div(precision).floor();
+
+                    assert(expectedDest * 1.0 <= totalAmount * 1.0, "expected dest amount should be lower than previous traded amount, loop: " + i);
+                }
+            }
+        }
+    });
+
+    // init new conversion rate, reserve, make a buy then check sell rate, make a sell and check buy rate
+    it("Should allow buy/sell all inventory, check rate never fall above max rate or below min rate", async function() {
+        // if i < newRs.length, we test buy then check rate
+        // otherwise test sell then check rate
+        for (let i = 0; i < newRs.length * 2; i++) {
+            let id = i < newRs.length ? i : i - newRs.length;
+            let currentBlock = await Helper.getCurrentBlock();
+
+            let token = await TestToken.new("test", "tst", 18);
+
+            let newLiqConvRatesInst = await LiquidityConversionRates.new(admin, token.address);
+
+            let feeInBps = 0;
+            let pMin = newP0s[id] * newpMinRatios[id];
+            let pMax = newP0s[id] * newpMaxRatios[id];
+
+            let rInFp = BigNumber(newRs[id]).mul(formulaPrecision);
+            let pMinInFp = BigNumber(pMin).mul(formulaPrecision);
+            let maxCapBuyInWei = BigNumber(newMaxCapBuyInEth[id]).mul(precision);
+            let maxCapSellInWei = BigNumber(newMaxCapSellInEth[id]).mul(precision);
+            let maxSellRateInPrecision = BigNumber(pMax).mul(precision);
+            let minSellRateInPrecision = BigNumber(pMin).mul(precision);
+
+            await newLiqConvRatesInst.setLiquidityParams(
+                rInFp,
+                pMinInFp,
+                formulaPrecisionBits,
+                maxCapBuyInWei,
+                maxCapSellInWei,
+                feeInBps,
+                maxSellRateInPrecision,
+                minSellRateInPrecision
+            );
+
+            let reserveInst = await Reserve.new(network, newLiqConvRatesInst.address, admin);
+            await reserveInst.setContracts(network, newLiqConvRatesInst.address, 0);
+
+            await newLiqConvRatesInst.setReserveAddress(reserveInst.address);
+
+            //set reserve balance.
+            let reserveEtherInit = (BigNumber(10).pow(18)).mul(newE0s[id]);
+            await Helper.sendEtherWithPromise(accounts[9], reserveInst.address, reserveEtherInit);
+
+            await reserveInst.approveWithdrawAddress(token.address, accounts[0], true);
+
+            //transfer tokens to reserve.
+            let amount = (BigNumber(10).pow(18)).mul(newT0s[id]);
+            await token.transfer(reserveInst.address, amount.valueOf());
+
+            if (i < newRs.length) {
+                // buy then check sell rate
+                let lastBuyRate = BigNumber(precision).div(newP0s[id]).floor();
+                let srcAmount = maxCapBuyInWei;
+                while (true) {
+                    let bal = await token.balanceOf(reserveInst.address);
+                    if (bal * 1.0 <= precision * 1.0) { break; }
+                    let buyRate = await reserveInst.getConversionRate(ethAddress, token.address, srcAmount, currentBlock);
+                    if (buyRate.valueOf() == 0) {
+                        while (true) {
+                            srcAmount = srcAmount.div(2).floor();
+                            if (srcAmount.valueOf() == 0) { break; }
+                            buyRate = await reserveInst.getConversionRate(ethAddress, token.address, srcAmount, currentBlock);
+                            if (buyRate.valueOf() != 0) { break; }
+                        }
+                        if (buyRate.valueOf() == 0) { break; }
+                    }
+                    lastBuyRate = buyRate;
+
+                    await reserveInst.trade(ethAddress, srcAmount, token.address, user1, buyRate, true, {from:network, value: srcAmount});
+                }
+                let minBuyRate = BigNumber(precision).div(pMax).floor();
+                assert(lastBuyRate * 1.0 >= minBuyRate * 1.0, "rate must be greater than min rate, loop: " + i);
+            } else {
+                // sell then check buy rate
+                let lastSellRate = BigNumber(precision).mul(newP0s[id]).floor();
+                let srcAmount = maxCapSellInWei.div(newP0s[id]).floor();
+                while (true) {
+                    let ethBal = await Helper.getBalancePromise(reserveInst.address);
+                    if (ethBal * 1.0 < precision.div(100) * 1.0) { break; } // less than 0.001 ether
+                    let sellRate = await reserveInst.getConversionRate(token.address, ethAddress, srcAmount, currentBlock);
+                    if (sellRate.valueOf() == 0) {
+                        while (true) {
+                            srcAmount = srcAmount.div(2).floor();
+                            sellRate = await reserveInst.getConversionRate(token.address, ethAddress, srcAmount, currentBlock);
+                            if (sellRate.valueOf() != 0) { break; }
+                        }
+                        if (sellRate.valueOf() == 0) { break; }
+                    }
+                    lastSellRate = sellRate;
+
+                    await token.transfer(network, srcAmount.valueOf());
+                    await token.approve(reserveInst.address, srcAmount, {from: network});
+                    await reserveInst.trade(token.address, srcAmount, ethAddress, user1, sellRate, true, {from: network});
+                }
+                let minSellRate = BigNumber(precision).mul(pMin).floor();
+                assert(lastSellRate * 1.0 >= minSellRate * 1.0, "rate must be greater than min sell rate, loop: " + i);
+            }
+        }
     });
 
     it("should check getting prices for random values.", async function () {
