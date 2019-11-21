@@ -8,6 +8,9 @@ import "./LiquidityFormula.sol";
 
 
 contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula, Withdrawable, Utils {
+
+    uint constant FORMULA_PRECISION_BITS = 40;
+
     ERC20 public token;
     address public reserveContract;
 
@@ -68,7 +71,7 @@ contract LiquidityConversionRates is ConversionRatesInterface, LiquidityFormula,
         uint _maxTokenToEthRateInPrecision,
         uint _minTokenToEthRateInPrecision
     ) public onlyAdmin {
-        require(_numFpBits == 40); // at the moment other config isn't required. parameter will remain part of API
+        require(_numFpBits == FORMULA_PRECISION_BITS); // only used config, but keep in API
         formulaPrecision = uint(1)<<_numFpBits; // require(formulaPrecision <= MAX_QTY)
         require(_feeInBps < 10000);
         require(_minTokenToEthRateInPrecision < _maxTokenToEthRateInPrecision);
