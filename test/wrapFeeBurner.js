@@ -43,10 +43,6 @@ let wrapBurnerInst;
 let proxyWrapperInst;
 let registerWalletInst;
 
-let addReserveNonce = 0;
-let otherWalletNonce = 0;
-let taxDataNonce = 0;
-
 let initialKNCWalletBalance = 1000000;
 
 const ethToKncRatePrecision = precisionUnits.mul(550);
@@ -338,6 +334,7 @@ contract('WrapFeeBurner', function(accounts) {
         assert.equal(sharingWallets[0], permissionLessWallet1);
         assert.equal(sharingWallets[1], permissionLessWallet2);
         assert.equal(sharingWallets[2], permissionLessWallet3);
+        assert.equal(sharingWallets[3], permissionLessWallet4);
 
         let defaultFeeSharingBPS = await wrapBurnerInst.feeSharingBps();
         let feeForWalletBPS = await burnerInst.walletFeesInBps(permissionLessWallet4);
