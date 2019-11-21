@@ -3,10 +3,8 @@
     "KyberNetwork": { 
       "admin": "0xbc33a1f908612640f2849b56b67a4de4d179c151",
       "operator": [
-        "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
         "0x6e8138188a413ab4eb6528d356e6c98ed0f1ce71",
         "0x8180a5ca4e3b94045e05a9313777955f7518d757",
-        "0x7c8cff2c659a3ee23869497a56129f3da92e8f38",
         "0x5565d64f29ea17355106df3ba5903eb793b3e139"
       ],
       "alerter": []
@@ -15,22 +13,21 @@
     "FeeBurner": { 
       "admin": "0x833164041AaFF3CD6c7D80Affbd923C1d1cEB4b3",
       "operator": [
-        "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
         "0x2fd6181541bebe30d17cf3a5d9f40ebcecbdba43",
       ],
       "alerter": []
     },
     
     "ExpectedRate": { 
-      "admin": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
+      "admin": "0x8180a5CA4E3B94045e05A9313777955f7518D757",
       "operator": [],
       "alerter": []
     },
 
     "WrapFeeBurner": {
-      "admin": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
+      "admin": "0x8180a5CA4E3B94045e05A9313777955f7518D757",
       "operator": [
-        "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
+        "0x8180a5CA4E3B94045e05A9313777955f7518D757",
         "0x3a9b02c14d967333ce68e353a64653e258da2baa"
       ],
       "alerter": []
