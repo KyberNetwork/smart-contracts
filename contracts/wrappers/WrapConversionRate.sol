@@ -20,6 +20,7 @@ contract WrapConversionRate is WrapperBase {
     //overriding base
     function claimWrappedContractAdmin() public onlyAdmin {
         super.claimWrappedContractAdmin();
+        //for recurring claim, remove operator from wrapped contract
         conversionRates.addOperator(this);
     }
 
