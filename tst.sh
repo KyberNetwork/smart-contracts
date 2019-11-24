@@ -12,9 +12,9 @@ done
 if [ -n "$FORK" ] 
 then
   printf "${YLWBGBLK}Running fork: $FORK${NC}\n\n"
-  npx ganache-cli -e 1000 -l 7500000 -k $FORK -q & 2> /dev/null
+  npx ganache-cli -e 1000 -k $FORK -q & 2> /dev/null
 else
-  npx ganache-cli -e 1000 -l 7500000 -q & 2> /dev/null
+  npx ganache-cli -e 1000 -q & 2> /dev/null
 fi
 
 pid=$!
