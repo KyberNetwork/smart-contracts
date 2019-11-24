@@ -152,20 +152,9 @@ contract PermissionlessOrderbookReserveLister {
         return true;
     }
 
-    // Enable to unlist orderbook if 1 or 2 conditions matched:
-    // 1. kncRateBlocksTrade
-    // 2. doesn't have any orders for buy and sell
     function unlistOrderbookContract(ERC20 token, uint hintReserveIndex) public {
         require(reserveListingStage[token] == ListingStage.RESERVE_LISTED);
-
-        bool isRemovable = false;
-        if (reserves[token].kncRateBlocksTrade()) {
-            isRemovable = true;
-        } else {
-            isRemovable = reserves[token].isOrderbookEmpty();
-        }
-        require(isRemovable);
-
+        require(reserves[token].kncRateBlocksTrade());
         require(kyberNetworkContract.removeReserve(KyberReserveInterface(reserves[token]), hintReserveIndex));
         reserveListingStage[token] = ListingStage.NO_RESERVE;
         reserves[token] = OrderbookReserveInterface(0);

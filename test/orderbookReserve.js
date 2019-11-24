@@ -1518,38 +1518,6 @@ contract('OrderbookReserve', async (accounts) => {
     });
 
     describe("add and remove orders", function() {
-        it("verify isOrderbookEmpty returns correct value", async() => {
-            let isEmpty = await reserve.isOrderbookEmpty();
-            assert.equal(isEmpty.valueOf(), true, "new orderbook reserve should be empty");
-
-            const tokenWeiDepositAmount = new BigNumber(500 * 10 ** 18);
-            const kncTweiDepositAmount = 600 * 10 ** 18;
-            const ethWeiDepositAmount = new BigNumber(2 * 10 ** 18);
-            await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-
-            let srcAmountTwei = new BigNumber(9 * 10 ** 18);
-            let orderDestWei = new BigNumber(2 * 10 ** 18);
-
-            let rc = await reserve.submitTokenToEthOrder(srcAmountTwei, orderDestWei, {from: maker1});
-
-            isEmpty = await reserve.isOrderbookEmpty();
-            assert.equal(isEmpty.valueOf(), false, "new orderbook reserve shouldn't be empty");
-
-            let order2ID = rc.logs[0].args.orderId.valueOf();
-            await reserve.cancelTokenToEthOrder(order2ID, {from: maker1});
-            isEmpty = await reserve.isOrderbookEmpty();
-            assert.equal(isEmpty.valueOf(), true, "new orderbook reserve should be empty");
-
-            rc = await reserve.submitEthToTokenOrder(orderDestWei, srcAmountTwei, {from: maker1});
-            isEmpty = await reserve.isOrderbookEmpty();
-            assert.equal(isEmpty.valueOf(), false, "new orderbook reserve shouldn't be empty");
-
-            order2ID = rc.logs[0].args.orderId.valueOf();
-            await reserve.cancelEthToTokenOrder(order2ID, {from: maker1});
-            isEmpty = await reserve.isOrderbookEmpty();
-            assert.equal(isEmpty.valueOf(), true, "new orderbook reserve should be empty");
-        });
-
         it("test getMakerOrders eth to token", async() => {
             let ethWeiDepositAmount = 20 * 10 ** 18;
             let kncTweiDepositAmount = 600 * 10 ** 18;
