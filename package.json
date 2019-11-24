@@ -24,7 +24,7 @@
     "compare-versions": "^3.1.0",
     "mathjs": "^4.3.0",
     "rlp": "^2.0.0",
-    "solc": "^0.4.18",
+    "solc": "0.4.18",
     "solhint": "^1.4.0",
     "truffle": "4.0.1",
     "truffle-assertions": "^0.7.1",
