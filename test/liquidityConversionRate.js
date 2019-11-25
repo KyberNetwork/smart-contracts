@@ -43,6 +43,7 @@ const formulaPrecisionBits = 40;
 const formulaPrecision = BigNumber(2).pow(formulaPrecisionBits)
 const tokenDecimals = 18
 const tokenPrecision = BigNumber(10).pow(tokenDecimals)
+const ethPrecision = BigNumber(10).pow(18)
 
 const testing = "bbo";
 
@@ -909,6 +910,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
 
             let tokenDecimals = 18;
             let token = await TestToken.new("test", "tst", tokenDecimals);
+            let tokenPrecision = (new BigNumber(10)).pow(tokenDecimals);
 
             let newLiqConvRatesInst = await LiquidityConversionRates.new(admin, token.address);
 
@@ -977,9 +979,9 @@ contract('kyberReserve for Liquidity', function(accounts) {
                     console.log("see thissss")
                     console.log("see thissss")
                     console.log("see thissss")
-                    console.log("source amount wei: " + srcAmount.valueOf() + " eth: " + srcAmount.div(precision));
-                    console.log("dest amount twei : " + diffTokenBal.valueOf() + " tokens: " + diffTokenBal.div(precision));
-                    console.log("trade back amount wei: " + expectedDest.valueOf() + " eth: " + expectedDest.div(precision));
+                    console.log("source amount wei: " + srcAmount.valueOf() + " eth: " + srcAmount.div(ethPrecision));
+                    console.log("dest amount twei : " + diffTokenBal.valueOf() + " tokens: " + diffTokenBal.div(tokenPrecision));
+                    console.log("trade back amount wei: " + expectedDest.valueOf() + " eth: " + expectedDest.div(ethPrecision));
                     console.log("Different src amount and trade back amount: " + srcAmount.sub(expectedDest).valueOf() + "Eth: " +
                                  (srcAmount.sub(expectedDest)).div(precision).valueOf()+ "at loop: " + i + " and tx: " + tx);
 
@@ -989,9 +991,9 @@ contract('kyberReserve for Liquidity', function(accounts) {
                     expectedDest = sellRate.mul(totalDestAmount).div(precision).floor();
 
                     if (printLogs) {
-                        console.log("total source amount: " + totalAmount.valueOf()) + " Eth: " + totalAmount.div(precision).valueOf();
+                        console.log("total source amount: " + totalAmount.valueOf()) + " Eth: " + totalAmount.div(ethPrecision).valueOf();
                         console.log("total dest amount: " + totalDestAmount.valueOf());
-                        console.log("Expected trade back amount: " + expectedDest.valueOf()) + " Eth: " + expectedDest.div(precision).valueOf();
+                        console.log("Expected trade back amount: " + expectedDest.valueOf()) + " Eth: " + expectedDest.div(ethPrecision).valueOf();
                         console.log("Different src amount and expected trade back amount: " + totalAmount.sub(expectedDest).valueOf() + " at loop: " + i + " and tx: " + tx);
                     }
                     assert(expectedDest * 1.0 <= totalAmount * 1.0, "expected dest amount should be lower than previous traded amount, loop: " + i);
