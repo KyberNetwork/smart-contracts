@@ -342,11 +342,6 @@
           "address":"0x286BDA1413a2Df81731D4930ce2F862a35A609fE",
           "ethToToken":true,
           "tokenToEth":true
-        },
-        { 
-          "address":"0x6B175474E89094C44Da98b954EedeAC495271d0F",
-          "ethToToken":true,
-          "tokenToEth":true
         }
       ]
     },
@@ -515,6 +510,11 @@
           "address":"0x514910771AF9Ca656af840dff83E8264EcF986CA",
           "ethToToken":true,
           "tokenToEth":true
+        },
+        { 
+          "address":"0x6B175474E89094C44Da98b954EedeAC495271d0F",
+          "ethToToken":true,
+          "tokenToEth":true
         }
       ]
     },
@@ -562,18 +562,6 @@
         { 
           "address":"0x094c875704c14783049DDF8136E298B3a099c446",
           "ethToToken":false,
-          "tokenToEth":true
-        }
-      ]
-    },
-    { 
-      "address":"0xCf1394C5e2e879969fdB1f464cE1487147863dCb",
-      "KNCWallet":"0x0000000000000000000000000000000000000000",
-      "fees":"0",
-      "tokens":[ 
-        { 
-          "address":"0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359",
-          "ethToToken":true,
           "tokenToEth":true
         }
       ]

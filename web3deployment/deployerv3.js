@@ -42,13 +42,14 @@ async function sendTx(txObject) {
   let gasLimit;
   try {
     gasLimit = await txObject.estimateGas();
+    gasLimit = Math.round(1.1 * gasLimit);
   }
   catch (e) {
-    gasLimit = 500 * 1000;
+    gasLimit = 800 * 1000;
   }
 
   if(txTo !== null) {
-    gasLimit = 500 * 1000;
+    gasLimit = 800 * 1000;
   }
 
   //console.log(gasLimit);
@@ -228,6 +229,7 @@ async function main() {
     await waitForEth();
   }
 
+  // await initialiseContractInstances(output);
   await deployAllContacts(output);
   await setNetworkAddresses();
   await setTempOperatorToContracts();
@@ -321,8 +323,28 @@ async function deployAllContacts(output) {
   console.log("permissionless orderbook lister", permissionlessOrderbookReserveListerAddress);
 
   console.log("deploying wrap fee burner");
-  [wrapFeeBurnerAddress, wrapFeeBurnerContract] = await deployContract(output, "WrapFeeBurner.sol:WrapFeeBurner", [feeBurnerAddress, sender]);
+  [wrapFeeBurnerAddress, wrapFeeBurnerContract] = await deployContract(output, "WrapFeeBurner.sol:WrapFeeBurner", [feeBurnerAddress]);
   console.log("wrap fee burner", wrapFeeBurnerAddress);
+}
+
+async function initialiseContractInstances(output) {
+  //add production addresses if something breaks during deployment
+  networkAddress = "";
+  feeBurnerAddress = "";
+  expectedRateAddress = "";
+  factoryAddress = "";
+  permissionlessOrderbookReserveListerAddress = "";
+  wrapFeeBurnerAddress = "";
+
+  networkContract = new web3.eth.Contract(JSON.parse(output.contracts["KyberNetwork.sol:KyberNetwork"].interface), networkAddress);
+  feeBurnerContract = new web3.eth.Contract(JSON.parse(output.contracts["FeeBurner.sol:FeeBurner"].interface), feeBurnerAddress);
+  expectedRateContract = new web3.eth.Contract(JSON.parse(output.contracts["ExpectedRate.sol:ExpectedRate"].interface), expectedRateAddress);
+  factoryContract = new web3.eth.Contract(JSON.parse(output.contracts["OrderListFactory.sol:OrderListFactory"].interface), factoryAddress);
+  permissionlessOrderbookReserveListerContract = new web3.eth.Contract(
+    JSON.parse(output.contracts["PermissionlessOrderbookReserveLister.sol:PermissionlessOrderbookReserveLister"].interface), 
+    permissionlessOrderbookReserveListerAddress
+  );
+  wrapFeeBurnerContract = new web3.eth.Contract(JSON.parse(output.contracts["WrapFeeBurner.sol:WrapFeeBurner"].interface), wrapFeeBurnerAddress);
 }
 
 async function setNetworkAddresses() {
@@ -374,10 +396,13 @@ async function addReservesToNetwork() {
       console.log(`listing token ${token.address} for reserve ${reserve.address}`);
       await sendTx(networkContract.methods.listPairForReserve(reserve.address,token.address,token.ethToToken,token.tokenToEth,true));
     }
-    console.log(`set fees for reserve ${reserve.address}`);
-    await sendTx(feeBurnerContract.methods.setReserveData(reserve.address,
-                                                          reserve.fees,
-                                                          reserve.wallet));
+    
+    if (reserve.wallet != '0x0000000000000000000000000000000000000000') {
+      console.log(`set fees for reserve ${reserve.address}`);
+      await sendTx(feeBurnerContract.methods.setReserveData(reserve.address,
+        reserve.fees,
+        reserve.wallet));
+    }
   }
 }
 
