@@ -133,7 +133,7 @@ const newpMinRatios = [0.5, 0.5];
 const newpMaxRatios = [2.0, 2.0];
 
 // whether we should print logs or not
-const printLogs = false;
+const printLogs = true;
 
 function pOfE(r, pMin, curE) { 
     return Helper.exp(e, BigNumber(r).mul(curE)).mul(pMin);
@@ -971,12 +971,28 @@ contract('kyberReserve for Liquidity', function(accounts) {
                     reserveTokenBalance = newReserveTokenBal;
                     assert.equal(diffTokenBal.valueOf(), expectedDest.valueOf(),  "balance changed should be as expected, loop: " + i);
 
+                    //check result of selling back same token balance
+                    let sellRate = await reserveInst.getConversionRate(token.address, ethAddress, diffTokenBal, currentBlock);
+                    expectedDest = sellRate.mul(diffTokenBal).div(precision).floor();
+                    console.log("see thissss")
+                    console.log("see thissss")
+                    console.log("see thissss")
+                    console.log("source amount wei: " + srcAmount.valueOf() + " eth: " + srcAmount.div(precision));
+                    console.log("dest amount twei : " + diffTokenBal.valueOf() + " tokens: " + diffTokenBal.div(precision));
+                    console.log("trade back amount wei: " + expectedDest.valueOf() + " eth: " + expectedDest.div(precision));
+                    console.log("Different src amount and trade back amount: " + srcAmount.sub(expectedDest).valueOf() + "Eth: " +
+                                 (srcAmount.sub(expectedDest)).div(precision).valueOf()+ "at loop: " + i + " and tx: " + tx);
+
                     totalDestAmount = totalDestAmount.add(diffTokenBal);
-                    let sellRate = await reserveInst.getConversionRate(token.address, ethAddress, totalDestAmount, currentBlock);
+                    sellRate = await reserveInst.getConversionRate(token.address, ethAddress, totalDestAmount, currentBlock);
+                    console.log("trade back sell rate: " + sellRate)
                     expectedDest = sellRate.mul(totalDestAmount).div(precision).floor();
 
                     if (printLogs) {
-                        console.log("Different expected dest and previous traded amount: " + totalAmount.sub(expectedDest).valueOf() + " at loop: " + i + " and tx: " + tx);
+                        console.log("total source amount: " + totalAmount.valueOf()) + " Eth: " + totalAmount.div(precision).valueOf();
+                        console.log("total dest amount: " + totalDestAmount.valueOf());
+                        console.log("Expected trade back amount: " + expectedDest.valueOf()) + " Eth: " + expectedDest.div(precision).valueOf();
+                        console.log("Different src amount and expected trade back amount: " + totalAmount.sub(expectedDest).valueOf() + " at loop: " + i + " and tx: " + tx);
                     }
                     assert(expectedDest * 1.0 <= totalAmount * 1.0, "expected dest amount should be lower than previous traded amount, loop: " + i);
                 }
