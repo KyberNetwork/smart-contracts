@@ -954,8 +954,9 @@ contract('kyberReserve for Liquidity', function(accounts) {
             if (i < newRs.length) {
                 // buy then check sell rate
                 let totalAmount = BigNumber(0);
+                let totalDestAmount = BigNumber(0);
                 for(let tx = 0; tx <= 5; tx++) {
-                    let srcAmount = maxCapBuyInWei.div(id + 2).floor();
+                    let srcAmount = maxCapBuyInWei.div(tx + 2).floor();
                     totalAmount = totalAmount.add(srcAmount);
 
                     let buyRate = await reserveInst.getConversionRate(ethAddress, token.address, srcAmount, currentBlock);
@@ -970,8 +971,9 @@ contract('kyberReserve for Liquidity', function(accounts) {
                     reserveTokenBalance = newReserveTokenBal;
                     assert.equal(diffTokenBal.valueOf(), expectedDest.valueOf(),  "balance changed should be as expected, loop: " + i);
 
-                    let sellRate = await reserveInst.getConversionRate(token.address, ethAddress, diffTokenBal, currentBlock);
-                    expectedDest = sellRate.mul(diffTokenBal).div(precision).floor();
+                    totalDestAmount = totalDestAmount.add(diffTokenBal);
+                    let sellRate = await reserveInst.getConversionRate(token.address, ethAddress, totalDestAmount, currentBlock);
+                    expectedDest = sellRate.mul(totalDestAmount).div(precision).floor();
 
                     if (printLogs) {
                         console.log("Different expected dest and previous traded amount: " + totalAmount.sub(expectedDest).valueOf() + " at loop: " + i + " and tx: " + tx);
@@ -981,8 +983,9 @@ contract('kyberReserve for Liquidity', function(accounts) {
             } else {
                 // sell then check buy rate
                 let totalAmount = BigNumber(0);
+                let totalDestAmount = BigNumber(0);
                 for(let tx = 0; tx <= 5; tx++) {
-                    let srcAmount = maxCapBuyInWei.mul(newT0s[id]).div(newE0s[id]).div(id + 2).floor(); // 1 token
+                    let srcAmount = maxCapBuyInWei.mul(newT0s[id]).div(newE0s[id]).div(tx + 2).floor(); // 1 token
                     totalAmount = totalAmount.add(srcAmount);
 
                     let sellRate = await reserveInst.getConversionRate(token.address, ethAddress, srcAmount, currentBlock);
@@ -999,8 +1002,9 @@ contract('kyberReserve for Liquidity', function(accounts) {
                     reserveEtherInit = newReserveEthBal;
                     assert.equal(diffEthBal.valueOf(), expectedDest.valueOf(),  "balance changed should be as expected, loop: " + i);
 
-                    let buyRate = await reserveInst.getConversionRate(ethAddress, token.address, diffEthBal, currentBlock);
-                    expectedDest = buyRate.mul(diffEthBal).div(precision).floor();
+                    totalDestAmount = totalDestAmount.add(diffEthBal);
+                    let buyRate = await reserveInst.getConversionRate(ethAddress, token.address, totalDestAmount, currentBlock);
+                    expectedDest = buyRate.mul(totalDestAmount).div(precision).floor();
                     if (printLogs) {
                         console.log("Different expected dest and previous traded amount: " + totalAmount.sub(expectedDest).valueOf() + " at loop: " + i + " and tx: " + tx);
                     }
