@@ -43,7 +43,8 @@ const formulaPrecisionBits = 40;
 const formulaPrecision = BigNumber(2).pow(formulaPrecisionBits)
 const tokenDecimals = 18
 const tokenPrecision = BigNumber(10).pow(tokenDecimals)
-const ethPrecission = BigNumber(10).pow(18);
+const ethDecimals = 18;
+const ethPrecission = BigNumber(10).pow(ethDecimals);
 
 const testing = "bbo";
 
@@ -132,6 +133,8 @@ const newMaxCapSellInEth = [10, 6];
 const newpMinRatios = [0.5, 0.5];
 // the maximum supported price factor ratio
 const newpMaxRatios = [2.0, 2.0];
+// token decimals for real case test
+const newTokenDecimals = [18, 12];
 
 // whether we should print logs or not
 const printLogs = false;
@@ -899,7 +902,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
     it("Should test buy tokens and then sell back", async function() {
         let length = newRs.length;
         if (length != newP0s.length || length != newE0s.length || length != newT0s.length
-            || length != newFeePercents.length || length != newMaxCapBuyInEth.length
+            || length != newFeePercents.length || length != newMaxCapBuyInEth.length || length != newTokenDecimals.length
             || length != newMaxCapSellInEth.length || length != newpMinRatios.length || length != newpMaxRatios.length) {
             assert(false, "length of new config param arrays are not matched, please check again");
         }
@@ -908,9 +911,8 @@ contract('kyberReserve for Liquidity', function(accounts) {
         for (let id = 0; id < newRs.length; id++) {
             let currentBlock = await Helper.getCurrentBlock();
 
-            let tokenDecimals = 18;
-            let token = await TestToken.new("test", "tst", tokenDecimals);
-            let tokenPrecission = BigNumber(10).pow(tokenDecimals);
+            let token = await TestToken.new("test", "tst", newTokenDecimals[id]);
+            let tokenPrecission = BigNumber(10).pow(newTokenDecimals[id]);
 
             let newLiqConvRatesInst = await LiquidityConversionRates.new(admin, token.address);
 
@@ -966,7 +968,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
                 let buyRate = await reserveInst.getConversionRate(ethAddress, token.address, srcBuyAmount, currentBlock);
                 assert.notEqual(buyRate.valueOf(), 0, "buy rate should be greater than 0, loop: " + id);
 
-                let expectedDestToken = buyRate.mul(srcBuyAmount).div(precision).floor();
+                let expectedDestToken = calcDstQty(srcBuyAmount, ethDecimals, newTokenDecimals[id], buyRate);
 
                 await reserveInst.trade(ethAddress, srcBuyAmount, token.address, user1, buyRate, true, {from:network, value: srcBuyAmount});
                 let newReserveTokenBal = await token.balanceOf(reserveInst.address);
@@ -979,7 +981,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
 
                 // test for a single trade
                 let sellRate = await reserveInst.getConversionRate(token.address, ethAddress, diffTokenBal, currentBlock);
-                let tradeBackAmount = sellRate.mul(diffTokenBal).div(precision).floor();
+                let tradeBackAmount = calcDstQty(diffTokenBal, newTokenDecimals[id], ethDecimals, sellRate);
                 if (printLogs) {
                     console.log("Source buy amount wei: " + srcBuyAmount.valueOf() + ", eth: " + srcBuyAmount.div(ethPrecission).valueOf());
                     console.log("Dest amount twei: " + expectedDestToken.valueOf() + ", tokens: " + expectedDestToken.div(tokenPrecision).valueOf());
@@ -987,16 +989,16 @@ contract('kyberReserve for Liquidity', function(accounts) {
                     console.log("Different src amount and traded back amount: " + srcBuyAmount.sub(tradeBackAmount).valueOf() + " at loop: " + id + " and tx: " + tx);
                 }
                 assert(srcBuyAmount * 1.0 >= tradeBackAmount * 1.0, "Trade back amount should be lower than src buy amount, loop: " + id);
-                assert(srcBuyAmount.sub(tradeBackAmount) * 1.0 <= srcBuyAmount.div(10000) * 1.0, "Different between trade back amount and src buy amount should be very small, loop: " + id);
+                assert(srcBuyAmount.sub(tradeBackAmount) * 1.0 <= srcBuyAmount.div(BigNumber(10).pow(ethDecimals/2)).floor() * 1.0, "Different between trade back amount and src buy amount should be very small, loop: " + id);
 
                 // Test for total src buy and sell back amounts
                 sellRate = await reserveInst.getConversionRate(token.address, ethAddress, totalSellBackAmount, currentBlock);
-                tradeBackAmount = sellRate.mul(totalSellBackAmount).div(precision).floor();
+                tradeBackAmount = calcDstQty(totalSellBackAmount, newTokenDecimals[id], ethDecimals, sellRate);
                 if (printLogs) {
                     console.log("Different total src amount and total traded back amount: " + totalSrcBuyAmount.sub(tradeBackAmount).valueOf() + " at loop: " + id + " and tx: " + tx);
                 }
                 assert(totalSrcBuyAmount * 1.0 >= tradeBackAmount * 1.0, "Trade back amount should be lower than total src buy amount, loop: " + id);
-                assert(totalSrcBuyAmount.sub(tradeBackAmount) * 1.0 <= totalSrcBuyAmount.div(10000) * 1.0, "Different between trade back amount and total src buy amount should be very small, loop: " + id);
+                assert(totalSrcBuyAmount.sub(tradeBackAmount) * 1.0 <= totalSrcBuyAmount.div(BigNumber(10).pow(ethDecimals/2)).floor() * 1.0, "Different between trade back amount and total src buy amount should be very small, loop: " + id);
             }
         }
     });
@@ -1006,7 +1008,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
     it("Should test sell tokens and then buy back", async function() {
         let length = newRs.length;
         if (length != newP0s.length || length != newE0s.length || length != newT0s.length
-            || length != newFeePercents.length || length != newMaxCapBuyInEth.length
+            || length != newFeePercents.length || length != newMaxCapBuyInEth.length || length != newTokenDecimals.length
             || length != newMaxCapSellInEth.length || length != newpMinRatios.length || length != newpMaxRatios.length) {
             assert(false, "length of new config param arrays are not matched, please check again");
         }
@@ -1015,8 +1017,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
         for (let id = 0; id < newRs.length; id++) {
             let currentBlock = await Helper.getCurrentBlock();
 
-            let tokenDecimals = 18;
-            let token = await TestToken.new("test", "tst", tokenDecimals);
+            let token = await TestToken.new("test", "tst", newTokenDecimals[id]);
 
             let newLiqConvRatesInst = await LiquidityConversionRates.new(admin, token.address);
 
@@ -1048,20 +1049,20 @@ contract('kyberReserve for Liquidity', function(accounts) {
             await newLiqConvRatesInst.setReserveAddress(reserveInst.address);
 
             //set reserve balance.
-            let reserveEtherInit = (BigNumber(10).pow(18)).mul(newE0s[id]);
+            let reserveEtherInit = ethPrecission.mul(newE0s[id]);
             await Helper.sendEtherWithPromise(accounts[8], reserveInst.address, reserveEtherInit);
 
             await reserveInst.approveWithdrawAddress(token.address, accounts[0], true);
 
             //transfer tokens to reserve.
-            let amount = (BigNumber(10).pow(tokenDecimals)).mul(newT0s[id]);
+            let amount = (BigNumber(10).pow(newTokenDecimals[id])).mul(newT0s[id]);
             await token.transfer(reserveInst.address, amount.valueOf());
 
             // sell then check buy rate
             let totalSrcSellAmount = BigNumber(0);
             let totalBuyBackAmount = BigNumber(0);
             for(let tx = 0; tx <= 5; tx++) {
-                let srcSellAmount = maxCapBuyInWei.mul(newT0s[id]).div(newE0s[id]).div(tx + 2).floor(); // 1 token
+                let srcSellAmount = maxCapBuyInWei.mul(newT0s[id]).div(newE0s[id]).div(BigNumber(10).pow(ethDecimals - newTokenDecimals[id])).div(tx + 2).floor(); // 1 token
                 totalSrcSellAmount = totalSrcSellAmount.add(srcSellAmount);
 
                 if (printLogs) {
@@ -1071,7 +1072,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
                 let sellRate = await reserveInst.getConversionRate(token.address, ethAddress, srcSellAmount, currentBlock);
                 assert.notEqual(sellRate.valueOf(), 0, "sell rate should be greater than 0, loop: " + id);
 
-                let expectedDest = sellRate.mul(srcSellAmount).div(precision).floor();
+                let expectedDest = calcDstQty(srcSellAmount, newTokenDecimals[id], ethDecimals, sellRate);
 
                 await token.transfer(network, srcSellAmount.valueOf());
                 await token.approve(reserveInst.address, srcSellAmount, {from: network});
@@ -1085,7 +1086,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
                 totalBuyBackAmount = totalBuyBackAmount.add(diffEthBal);
 
                 let buyRate = await reserveInst.getConversionRate(ethAddress, token.address, diffEthBal, currentBlock);
-                let tradeBackAmount = buyRate.mul(diffEthBal).div(precision).floor();
+                let tradeBackAmount = calcDstQty(diffEthBal, ethDecimals, newTokenDecimals[id], buyRate);
                 if (printLogs) {
                     console.log("Source sell amount twei: " + srcSellAmount.valueOf() + ", tokens: " + srcSellAmount.div(tokenPrecision).valueOf());
                     console.log("Dest amount wei: " + expectedDest.valueOf() + ", eth: " + expectedDest.div(ethPrecission).valueOf());
@@ -1093,15 +1094,15 @@ contract('kyberReserve for Liquidity', function(accounts) {
                     console.log("Different traded back amount and src sell amount: " + srcSellAmount.sub(tradeBackAmount).valueOf() + " at loop: " + id + " and tx: " + tx);
                 }
                 assert(tradeBackAmount * 1.0 <= srcSellAmount * 1.0, "Trade back amount should be lower than src sell amount, loop: " + id);
-                assert(srcSellAmount.sub(tradeBackAmount) * 1.0 <= srcSellAmount.div(10000) * 1.0, "Different between trade back amount and src sell amount should be very small, loop: " + id);
+                assert(srcSellAmount.sub(tradeBackAmount) * 1.0 <= srcSellAmount.div(BigNumber(10).pow(newTokenDecimals[id]/2)).floor() * 1.0, "Different between trade back amount and src sell amount should be very small, loop: " + id);
 
                 buyRate = await reserveInst.getConversionRate(ethAddress, token.address, totalBuyBackAmount, currentBlock);
-                tradeBackAmount = buyRate.mul(totalBuyBackAmount).div(precision).floor();
+                tradeBackAmount = calcDstQty(totalBuyBackAmount, ethDecimals, newTokenDecimals[id], buyRate);
                 if (printLogs) {
                     console.log("Different expected dest and total src sell amount: " + totalSrcSellAmount.sub(expectedDest).valueOf() + " at loop: " + id + " and tx: " + tx);
                 }
                 assert(tradeBackAmount * 1.0 <= totalSrcSellAmount * 1.0, "Trade back amount should be lower than total src sell amount, loop: " + id);
-                assert(totalSrcSellAmount.sub(tradeBackAmount) * 1.0 <= totalSrcSellAmount.div(10000) * 1.0, "Different between trade back amount and total src sell amount should be very small, loop: " + id);
+                assert(totalSrcSellAmount.sub(tradeBackAmount) * 1.0 <= totalSrcSellAmount.div(BigNumber(10).pow(newTokenDecimals[id]/2)).floor() * 1.0, "Different between trade back amount and total src sell amount should be very small, loop: " + id);
             }
         }
     });
@@ -1121,8 +1122,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
             let id = i < newRs.length ? i : i - newRs.length;
             let currentBlock = await Helper.getCurrentBlock();
 
-            let tokenDecimals = 18;
-            let token = await TestToken.new("test", "tst", tokenDecimals);
+            let token = await TestToken.new("test", "tst", newTokenDecimals[id]);
 
             let newLiqConvRatesInst = await LiquidityConversionRates.new(admin, token.address);
 
@@ -1154,13 +1154,13 @@ contract('kyberReserve for Liquidity', function(accounts) {
             await newLiqConvRatesInst.setReserveAddress(reserveInst.address);
 
             //set reserve balance.
-            let reserveEtherInit = (BigNumber(10).pow(tokenDecimals)).mul(newE0s[id]);
+            let reserveEtherInit = ethPrecission.mul(newE0s[id]);
             await Helper.sendEtherWithPromise(accounts[9], reserveInst.address, reserveEtherInit);
 
             await reserveInst.approveWithdrawAddress(token.address, accounts[0], true);
 
             //transfer tokens to reserve.
-            let amount = (BigNumber(10).pow(tokenDecimals)).mul(newT0s[id]);
+            let amount = (BigNumber(10).pow(newTokenDecimals[id])).mul(newT0s[id]);
             await token.transfer(reserveInst.address, amount.valueOf());
 
             if (i < newRs.length) {
@@ -1169,7 +1169,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
                 let srcAmount = maxCapBuyInWei;
                 while (true) {
                     let bal = await token.balanceOf(reserveInst.address);
-                    if (bal * 1.0 <= BigNumber(10).pow(tokenDecimals) * 1.0) { break; }
+                    if (bal * 1.0 <= BigNumber(10).pow(newTokenDecimals[id]) * 1.0) { break; }
                     let buyRate = await reserveInst.getConversionRate(ethAddress, token.address, srcAmount, currentBlock);
                     if (buyRate.valueOf() == 0) {
                         while (true) {
@@ -1315,3 +1315,14 @@ contract('kyberReserve for Liquidity', function(accounts) {
         }
     });
 });
+
+function calcDstQty(srcQty, srcDecimals, dstDecimals, rate) {
+    rate = new BigNumber(rate);
+    if (dstDecimals >= srcDecimals) {
+        let decimalDiff = (new BigNumber(10)).pow(dstDecimals - srcDecimals);
+        return (rate.mul(srcQty).mul(decimalDiff).div(precision)).floor();
+    } else {
+        let decimalDiff = (new BigNumber(10)).pow(srcDecimals - dstDecimals);
+        return (rate.mul(srcQty).div(decimalDiff.mul(precision))).floor();
+    }
+}
