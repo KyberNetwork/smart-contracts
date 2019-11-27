@@ -897,7 +897,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
 
     });
 
-    // with 0 fee, if user traded X eth -> Y token, then traded Y token -> X' eth, X' must not be greater than X for any X amount
+    // with 0 fee, if user trades X eth -> Y token, then trades Y token -> X' eth, X' must not be greater than X for any X amount
     // test buy Y tokens using X eth and then sell Y tokens back
     it("Should test buy tokens and then sell back", async function() {
         let length = newRs.length;
