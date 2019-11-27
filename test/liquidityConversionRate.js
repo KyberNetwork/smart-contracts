@@ -950,7 +950,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
             await reserveInst.approveWithdrawAddress(token.address, accounts[0], true);
 
             //transfer tokens to reserve.
-            let amount = tokenPrecission.mul(newT0s[id]);
+            let amount = tokenPrecision.mul(newT0s[id]);
             await token.transfer(reserveInst.address, amount.valueOf());
 
             let reserveTokenBalance = amount;
