@@ -897,7 +897,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
 
     });
 
-    // with fee is 0, if user traded X eth -> Y token, then traded Y token -> X' eth, X' must be not greater than X for any X amount
+    // with 0 fee, if user traded X eth -> Y token, then traded Y token -> X' eth, X' must not be greater than X for any X amount
     // test buy Y tokens using X eth and then sell Y tokens back
     it("Should test buy tokens and then sell back", async function() {
         let length = newRs.length;
@@ -912,7 +912,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
             let currentBlock = await Helper.getCurrentBlock();
 
             let token = await TestToken.new("test", "tst", newTokenDecimals[id]);
-            let tokenPrecission = BigNumber(10).pow(newTokenDecimals[id]);
+            let tokenPrecision = BigNumber(10).pow(newTokenDecimals[id]);
 
             let newLiqConvRatesInst = await LiquidityConversionRates.new(admin, token.address);
 
@@ -1003,7 +1003,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
         }
     });
 
-    // with fee is 0, if user traded X token -> Y ETH, then traded Y ETH -> X' token, X' must be not greater than X for any X amount
+    // with 0 fee, if user trades X token -> Y ETH, then trades Y ETH -> X' token, X' must not be greater than X for any X amount
     // test sell X token -> Y eth and then use Y eth to buy back token
     it("Should test sell tokens and then buy back", async function() {
         let length = newRs.length;
