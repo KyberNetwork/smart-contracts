@@ -143,6 +143,9 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         uint rateSrcDest;
         uint rateDestSrc;
         (convertedQuantity, rateSrcDest) = calcUniswapConversion(src, dest, srcQty);
+
+        if (convertedQuantity == 0) return 0;
+
         (, rateDestSrc) = calcUniswapConversion(dest, src, convertedQuantity);
 
         uint quantityWithPremium = addPremium(token, convertedQuantity);
