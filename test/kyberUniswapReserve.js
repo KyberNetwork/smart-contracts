@@ -333,6 +333,25 @@ contract("KyberUniswapReserve", async accounts => {
             rate.should.be.bignumber.eq(new BigNumber(10).pow(18).mul(0.5));
         });
 
+        it("conversion rate 0 when dest amount = 0.", async () => {
+            await reserve.setFee(0, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                2 /* eth */,
+                1 /* token */
+            );
+
+            const rate = await reserve.getConversionRate(
+                ETH_TOKEN_ADDRESS /* src */,
+                token.address /* dst */,
+                1 /* srcQty 1 wei*/,
+                0 /* blockNumber */
+            );
+
+            //with converted amount result is 0 tokens.
+
+            rate.should.be.bignumber.eq(0);
+        });
+
         it("conversion rate token -> eth of 2:1", async () => {
             await reserve.setFee(0, { from: admin });
             await uniswapFactoryMock.setRateTokenToEth(
