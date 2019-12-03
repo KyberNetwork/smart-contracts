@@ -93,6 +93,28 @@ contract WrapConversionRate is WrapperBase {
         }
     }
 
+    //set token min resolution
+    ////////////////////////
+    function setTokenMinResolution(ERC20[] tokens, uint[] minResolution)
+        public
+        onlyAdmin
+    {
+        require(minResolution.length == tokens.length);
+
+        uint minRecordResolution;
+        uint maxPerBlock;
+        uint maxTotal;
+
+        for (uint i = 0; i < tokens.length; i++) {
+            (minRecordResolution, maxPerBlock, maxTotal) = conversionRates.getTokenControlInfo(tokens[i]);
+
+            conversionRates.setTokenControlInfo(tokens[i],
+                minResolution[i],
+                maxPerBlock,
+                maxTotal);
+        }
+    }
+
     //valid duration blocks
     ///////////////////////
     function setValidDurationData(uint validDurationBlocks) public onlyAdmin {

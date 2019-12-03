@@ -25,10 +25,6 @@ let validRateDurationInBlocks = 60;
 let convRatesInst;
 let wrapConvRateInst;
 
-let addTokenNonce = 0;
-let tokenInfoNonce = 0;
-let validDurationNonce = 0;
-
 contract('WrapConversionRates', function(accounts) {
     it("should init ConversionRates Inst and set general parameters.", async function () {
         admin = accounts[0];
@@ -113,13 +109,12 @@ contract('WrapConversionRates', function(accounts) {
         assert.equal(resAdd, reserveAddress);
     });
 
-    it("should test update token control info using wrapper. And getting info before update", async function () {
+    it("should test update token control info using wrapper. And check values updated", async function () {
         //prepare new values for tokens
-        let maxPerBlockList = [maxPerBlockImbWrap, maxTotalImbWrap];
+        let maxPerBlockList = [maxPerBlockImbWrap, maxPerBlockImbWrap];
         let maxTotalList = [maxTotalImbWrap, maxTotalImbWrap];
 
         await wrapConvRateInst.setTokenControlData(tokens, maxPerBlockList, maxTotalList, {from: admin});
-        tokenInfoNonce++;
 
         //get token info, see updated
         tokenInfo = await convRatesInst.getTokenControlInfo(tokens[0]);
@@ -128,6 +123,66 @@ contract('WrapConversionRates', function(accounts) {
         assert.equal(tokenInfo[0].valueOf(), minimalRecordResolution);
         assert.equal(tokenInfo[1].valueOf(), maxPerBlockImbWrap);
         assert.equal(tokenInfo[2].valueOf(), maxTotalImbWrap);
+
+        tokenInfo = await convRatesInst.getTokenControlInfo(tokens[1]);
+
+        //verify set values before updating
+        assert.equal(tokenInfo[0].valueOf(), minimalRecordResolution);
+        assert.equal(tokenInfo[1].valueOf(), maxPerBlockImbWrap);
+        assert.equal(tokenInfo[2].valueOf(), maxTotalImbWrap);
+
+        maxPerBlockList = [maxPerBlockImbalance, maxPerBlockImbWrap];
+        maxTotalList = [maxTotalImbalance, maxTotalImbWrap];
+
+        await wrapConvRateInst.setTokenControlData(tokens, maxPerBlockList, maxTotalList, {from: admin});
+
+        //get token info, see updated
+        tokenInfo = await convRatesInst.getTokenControlInfo(tokens[0]);
+
+        //verify set values before updating
+        assert.equal(tokenInfo[0].valueOf(), minimalRecordResolution);
+        assert.equal(tokenInfo[1].valueOf(), maxPerBlockImbalance);
+        assert.equal(tokenInfo[2].valueOf(), maxTotalImbalance);
+
+        tokenInfo = await convRatesInst.getTokenControlInfo(tokens[1]);
+        //verify set values before updating
+        assert.equal(tokenInfo[0].valueOf(), minimalRecordResolution);
+        assert.equal(tokenInfo[1].valueOf(), maxPerBlockImbWrap);
+        assert.equal(tokenInfo[2].valueOf(), maxTotalImbWrap);
+    });
+
+    it("should test update token min record resolution using wrapper. And check values updated", async function () {
+        //prepare new values for tokens
+        let minResolutionVals = [minRecordResWrap, minRecordResWrap];
+
+        await wrapConvRateInst.setTokenMinResolution(tokens, minResolutionVals, {from: admin});
+
+        //get token info, see updated
+        tokenInfo = await convRatesInst.getTokenControlInfo(tokens[0]);
+
+        //verify set values before updating
+        assert.equal(tokenInfo[0].valueOf(), minRecordResWrap);
+        assert.equal(tokenInfo[1].valueOf(), maxPerBlockImbalance);
+        assert.equal(tokenInfo[2].valueOf(), maxTotalImbalance);
+
+        //get token info, see updated
+        tokenInfo = await convRatesInst.getTokenControlInfo(tokens[1]);
+
+        //verify set values before updating
+        assert.equal(tokenInfo[0].valueOf(), minRecordResWrap);
+        assert.equal(tokenInfo[1].valueOf(), maxPerBlockImbWrap);
+        assert.equal(tokenInfo[2].valueOf(), maxTotalImbWrap);
+
+        minResolutionVals = [minRecordResWrap, minimalRecordResolution];
+
+        await wrapConvRateInst.setTokenMinResolution(tokens, minResolutionVals, {from: admin});
+
+        //get token info, see updated
+        tokenInfo = await convRatesInst.getTokenControlInfo(tokens[0]);
+        assert.equal(tokenInfo[0].valueOf(), minRecordResWrap);
+
+        tokenInfo = await convRatesInst.getTokenControlInfo(tokens[1]);
+        assert.equal(tokenInfo[0].valueOf(), minimalRecordResolution);
     });
 
     it("should test transfer and claim admin of wrapped contract.", async function() {
@@ -192,7 +247,7 @@ contract('WrapConversionRates', function(accounts) {
 
         //valid duration
         try {
-            await wrapConvRateInst.setValidDurationData(validDurationNonce, {from: accounts[7]});
+            await wrapConvRateInst.setValidDurationData(validRateDurationInBlocks, {from: accounts[7]});
             assert(false, "throw was expected in line above.")
         }
         catch(e){
@@ -275,7 +330,6 @@ contract('WrapConversionRates', function(accounts) {
         }
 
         await wrapConvRateInst.addToken(token.address, minResolution, maxPerBlock, maxTotal, {from: admin});
-        addTokenNonce++;
     });
 
     it("test can't set token control data with arrays that have different length.", async function() {
@@ -315,6 +369,5 @@ contract('WrapConversionRates', function(accounts) {
         maxTotalList = [maxTotalImbWrap, maxTotalImbWrap];
 
         await wrapConvRateInst.setTokenControlData(tokens, maxPerBlockList, maxTotalList, {from: admin});
-        tokenInfoNonce++;
     });
 });
