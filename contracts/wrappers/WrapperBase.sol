@@ -41,7 +41,7 @@ contract WrapperBase is Withdrawable {
 
     function addOperatorWrappedContract (address _operator) public onlyAdmin {
         require(_operator != address(0));
-        wrappedContract.addOperator()(_operator);
+        wrappedContract.addOperator(_operator);
     }
 
     function addDataInstance() internal {
