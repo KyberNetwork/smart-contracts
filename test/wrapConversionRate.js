@@ -228,8 +228,7 @@ contract('WrapConversionRates', function(accounts) {
         try {
             await wrapConvRateInst.addToken(token1.address, minRecordResWrap, maxPerBlockImbWrap, maxTotalImbWrap, {from: accounts[7]});
             assert(false, "throw was expected in line above.")
-        }
-        catch(e){
+        } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -240,17 +239,25 @@ contract('WrapConversionRates', function(accounts) {
         try {
             await wrapConvRateInst.setTokenControlData(tokens, maxPerBlockList, maxTotalList, {from: accounts[7]});
             assert(false, "throw was expected in line above.")
-        }
-        catch(e){
+        } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-         //enable token trade
+        //token min res data
+        let minResolutionVals = [minimalRecordResolution, minimalRecordResolution];
+
+        try {
+            await wrapConvRateInst.setTokenMinResolution(tokens, minResolutionVals, {from: accounts[7]});
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //enable token trade
         try {
             await wrapConvRateInst.enableTokenTrade(token, {from: accounts[7]});
             assert(false, "throw was expected in line above.")
-        }
-        catch(e){
+        } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -258,8 +265,7 @@ contract('WrapConversionRates', function(accounts) {
         try {
             await wrapConvRateInst.setReserveAddress(accounts[6], {from: accounts[7]});
             assert(false, "throw was expected in line above.")
-        }
-        catch(e){
+        } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     });
@@ -270,8 +276,7 @@ contract('WrapConversionRates', function(accounts) {
         try {
             wrapper = await WrapConversionRate.new(0, {from: admin});
             assert(false, "throw was expected in line above.")
-        }
-        catch(e){
+        } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -291,32 +296,28 @@ contract('WrapConversionRates', function(accounts) {
         try {
             await wrapConvRateInst.addToken(0, minResolution, maxPerBlock, maxTotal, {from: admin});
             assert(false, "throw was expected in line above.")
-        }
-        catch(e){
+        } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
             await wrapConvRateInst.addToken(tokenN.address, 0, maxPerBlock, maxTotal, {from: admin});
             assert(false, "throw was expected in line above.")
-        }
-        catch(e){
+        } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
             await wrapConvRateInst.addToken(tokenN.address, minResolution, 0, maxTotal, {from: admin});
             assert(false, "throw was expected in line above.")
-        }
-        catch(e){
+        } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         try {
             await wrapConvRateInst.addToken(tokenN.address, minResolution, maxPerBlock, 0, {from: admin});
             assert(false, "throw was expected in line above.")
-        }
-        catch(e){
+        } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -330,8 +331,7 @@ contract('WrapConversionRates', function(accounts) {
         try {
             await wrapConvRateInst.setTokenControlData(tokens, maxPerBlockList, maxTotalList, {from: admin});
             assert(false, "throw was expected in line above.")
-        }
-        catch(e){
+        } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -340,8 +340,7 @@ contract('WrapConversionRates', function(accounts) {
         try {
             await wrapConvRateInst.setTokenControlData(tokens, maxPerBlockList, maxTotalList, {from: admin});
             assert(false, "throw was expected in line above.")
-        }
-        catch(e){
+        } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
@@ -350,8 +349,7 @@ contract('WrapConversionRates', function(accounts) {
         try {
             await wrapConvRateInst.setTokenControlData(tokens, maxPerBlockList, maxTotalList, {from: admin});
             assert(false, "throw was expected in line above.")
-        }
-        catch(e){
+        } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 

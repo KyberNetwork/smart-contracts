@@ -97,10 +97,7 @@ contract WrapConversionRate is WrapperBase {
 
     //set token min resolution
     ////////////////////////
-    function setTokenMinResolution(ERC20[] tokens, uint[] minResolution)
-    public
-    onlyAdmin
-    {
+    function setTokenMinResolution(ERC20[] tokens, uint[] minResolution) public onlyAdmin {
         require(minResolution.length == tokens.length);
 
         uint minRecordResolution;
