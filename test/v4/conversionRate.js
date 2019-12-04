@@ -4,6 +4,7 @@ const Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
 
 const Helper = require("./helper.js");
 const BigNumber = require('bignumber.js');
+const BN = require("bn.js");
 
 //global variables
 let precisionUnits = (new BigNumber(10).pow(18));
@@ -133,8 +134,8 @@ contract('ConversionRates', function(accounts) {
         for (i = 0; i < numTokens; ++i) {
             thisBuy = await convRatesInst.getBasicRate(tokens[i], true);
             thisSell = await convRatesInst.getBasicRate(tokens[i], false);
-            assert.deepEqual(thisBuy.valueOf(), baseBuy[i].valueOf(), "wrong base buy rate.");
-            assert.deepEqual(thisSell.valueOf(), baseSell[i].valueOf(), "wrong base sell rate.");
+            assert.deepEqual(thisBuy.toString(10), baseBuy[i].toString(), "wrong base buy rate.");
+            assert.deepEqual(thisSell.toString(10), baseSell[i].toString(), "wrong base sell rate.");
         }
     });
 
@@ -372,7 +373,7 @@ contract('ConversionRates', function(accounts) {
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
+        assert.deepEqual(expectedRate.toString(), receivedRate.toString(10), "bad rate");
     });
 
 
@@ -408,7 +409,7 @@ contract('ConversionRates', function(accounts) {
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
+        assert.deepEqual(expectedRate.toString(), receivedRate.toString(10), "bad rate");
 
         //update compact data
         compactBuyArr1[tokenInd] = 127;
@@ -431,7 +432,7 @@ contract('ConversionRates', function(accounts) {
 
         receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
+        assert.deepEqual(expectedRate.toString(), receivedRate.toString(10), "bad rate");
     });
 
 
@@ -468,7 +469,7 @@ contract('ConversionRates', function(accounts) {
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
+        assert.deepEqual(expectedRate.toString(), receivedRate.toString(10), "bad rate");
     });
 
     it("should get buy rate with compact data and quantity step.", async function () {
@@ -489,7 +490,7 @@ contract('ConversionRates', function(accounts) {
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
+        assert.deepEqual(expectedRate.toString(), receivedRate.toString(10), "bad rate");
     });
 
     it("should get buy rate quantity step and compact data update with token index > 14.", async function () {
@@ -510,7 +511,7 @@ contract('ConversionRates', function(accounts) {
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
+        assert.deepEqual(expectedRate.toString(), receivedRate.toString(10), "bad rate");
     });
 
     it("should add imbalance. get buy rate with with compact data + quantity step + imbalance step.", async function () {
@@ -536,7 +537,7 @@ contract('ConversionRates', function(accounts) {
         await convRatesInst.recordImbalance(token, imbalance, currentBlock, currentBlock, {from: reserveAddress});
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, buyQty);
-        assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
+        assert.deepEqual(expectedRate.toString(), receivedRate.toString(10), "bad rate");
     });
 
     it("should add imbalance and get sell rate with with compact data + quantity step + imbalance step.", async function () {
@@ -629,7 +630,7 @@ contract('ConversionRates', function(accounts) {
 
     it("should verify set compact data reverted when input arrays length don't match num set tokens.", async function () {
         //set compact data
-        sells[2] = buys[2] = indices[2] = 5;
+        sells[2] = buys[2] = indices[2] = Helper.bytesToHex([5]);
 
         //length 3 but only two exist in contract
         try {
@@ -646,7 +647,7 @@ contract('ConversionRates', function(accounts) {
 
     it("should verify set base rate data reverted when input arrays length don't match each other.", async function () {
         //sells different length
-        sells[2] = 5;
+        sells[2] = Helper.bytesToHex([5]);
 
         //length 3 for sells and buys. indices 2
         try {
@@ -660,7 +661,7 @@ contract('ConversionRates', function(accounts) {
         await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
 
         //buys different length
-        buys[2] = 5;
+        buys[2] = Helper.bytesToHex([5]);
 
         //length 3 for sells and buys. indices 2
         try {
@@ -674,7 +675,7 @@ contract('ConversionRates', function(accounts) {
         await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
 
         //indices different length
-        indices[2] = 5;
+        indices[2] = Helper.bytesToHex([5]);
 
         //length 3 for sells and buys. indices 2
         try {
@@ -688,7 +689,7 @@ contract('ConversionRates', function(accounts) {
         await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
 
         //baseBuy different length
-        baseBuy.push(19);
+        baseBuy.push(Helper.bytesToHex([19]));
 
         //length 3 for sells and buys. indices 2
         try {
@@ -703,7 +704,7 @@ contract('ConversionRates', function(accounts) {
         lastSetCompactBlock = currentBlock;
 
         //baseSell different length
-        baseSell.push(19);
+        baseSell.push(Helper.bytesToHex([19]));
 
         //length 3 for sells and buys. indices 2
         try {
@@ -722,7 +723,8 @@ contract('ConversionRates', function(accounts) {
     it("should verify set base rate data reverted when setting to unlisted token.", async function () {
         //sells different length
         let tokenAdd5 = tokens[5];
-        tokens[5] = 19;
+        let newToken = await TestToken.new("tst token", "tst", 18);
+        tokens[5] = newToken.address;
 
         try {
             await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
@@ -795,8 +797,9 @@ contract('ConversionRates', function(accounts) {
     });
 
     it("should verify set qty step reverted when token not listed.", async function () {
+        let newToken = await TestToken.new("tst token", "tst", 18);
         try {
-            await convRatesInst.setQtyStepFunction(35, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            await convRatesInst.setQtyStepFunction(newToken.address, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -862,8 +865,9 @@ contract('ConversionRates', function(accounts) {
     });
 
     it("should verify set qty step reverted when token not listed.", async function () {
+        let newToken = await TestToken.new("tst token", "tst", 18);
         try {
-            await convRatesInst.setImbalanceStepFunction(35, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            await convRatesInst.setImbalanceStepFunction(newToken.address, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -1120,10 +1124,10 @@ contract('ConversionRates', function(accounts) {
     it("should verify add bps reverts for illegal values", async function () {
         let minLegalBps = -100 * 100;
         let maxLegalBps = new BigNumber(10).pow(11);
-        let legalRate = new BigNumber(10).pow(24);
-        let illegalRate = legalRate.add(1);
+        let legalRate = new BN(10).pow(new BN(24));
+        let illegalRate = legalRate.add(new BN(1));
         let illegalBpsMinSide = minLegalBps - 1*1;
-        let illegalBpsMaxSide = maxLegalBps.add(1);
+        let illegalBpsMaxSide = maxLegalBps.add(new BN(1));
 
         await convRatesInst.mockAddBps(legalRate, minLegalBps);
         await convRatesInst.mockAddBps(legalRate, maxLegalBps);
