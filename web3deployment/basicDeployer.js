@@ -18,8 +18,7 @@ const web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
 const solc = require('solc')
 
 const rand = web3.utils.randomHex(7);
-const privateKey = web3.utils.sha3("js sucks" + rand);
-console.log("privateKey", privateKey);
+const privateKey = web3.utils.sha3("in joy we trust" + rand);
 
 if (printPrivateKey) {
   let path = "privatekey_"  + web3.utils.randomHex(7) + ".txt";
@@ -100,12 +99,13 @@ async function deployContract(solcOutput, contractName, ctorArgs) {
 }
 
 const ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-//const feeBurnerAddress = '0xd6703974Dc30155d768c058189A2936Cf7C62Da6'; //staging
-//const feeBurnerAddress = '0xed4f53268bfdff39b36e8786247ba3a02cf34b04';  //production
 
 async function main() {
     nonce = await web3.eth.getTransactionCount(sender);
     console.log("nonce",nonce);
+
+    chainId = chainId || await web3.eth.net.getId()
+    console.log('chainId', chainId);
 
     console.log('starting compilation');
     output = await require("./compileContracts.js").compileContracts();
@@ -120,13 +120,12 @@ async function main() {
     let contract;
 
     [addr, contract] =
-        await deployContract(output, "ConctractName.sol:ConctractName", );
+        await deployContract(output, "ContractName.sol:ContractName", );
 
     console.log("Address: " + addr);
 
-
-//    await sendTx(wrapFeeBurnerContract.methods.addOperator(someAdd));
-//    await sendTx(feeBurnerWrapperProxyContract.methods.transferAdminQuickly(someAdd));
+//    await sendTx(contract.methods.addOperator(someAdd));
+//    await sendTx(contract.methods.transferAdminQuickly(someAdd));
 
     console.log("last nonce is", nonce);
 }
