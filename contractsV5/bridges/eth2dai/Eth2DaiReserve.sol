@@ -1,19 +1,19 @@
 pragma solidity 0.5.11;
 
-import "../IERC20Interface.sol";
-import "../KyberReserveInterfaceV5.sol";
-import "../WithdrawableV5.sol";
-import "../UtilsV5.sol";
-import "./OtcInterfaceV5.sol";
+import "../../IERC20.sol";
+import "../../IKyberReserve.sol";
+import "../../WithdrawableV5.sol";
+import "../../UtilsV5.sol";
+import "./IOtc.sol";
 
 
-contract WethInterface is IERC20 {
+contract IWeth is IERC20 {
     function deposit() public payable;
     function withdraw(uint) public;
 }
 
 
-contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
+contract Eth2DaiReserve is IKyberReserve, Withdrawable, Utils {
 
     // constants
     uint constant internal INVALID_ID = uint(-1);
@@ -26,8 +26,8 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
     bool public tradeEnabled;
     uint public feeBps;
 
-    OtcInterface public otc;// = OtcInterface(0x39755357759cE0d7f32dC8dC45414CCa409AE24e);
-    WethInterface public wethToken;// = WethInterface(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    IOtc public otc;// = IOtc(0x39755357759cE0d7f32dC8dC45414CCa409AE24e);
+    IWeth public wethToken;// = IWeth(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     mapping(address => bool) public isTokenListed;
     // 1 bit: isInternalInventoryEnabled, 95 bits: min token, 96 bits: max token, 32 bits: premiumBps, 32 bits: minSpreadBps;
@@ -75,12 +75,12 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         require(_feeBps < BPS, "constructor: fee >= bps");
         require(_admin != address(0), "constructor: admin is missing");
 
-        wethToken = WethInterface(_weth);
+        wethToken = IWeth(_weth);
         require(getDecimals(wethToken) == MAX_DECIMALS, "constructor: wethToken's decimals is not MAX_DECIMALS");
         require(wethToken.approve(_otc, 2**255), "constructor: failed to approve otc (wethToken)");
 
         kyberNetwork = _kyberNetwork;
-        otc = OtcInterface(_otc);
+        otc = IOtc(_otc);
         feeBps = _feeBps;
         admin = _admin;
         tradeEnabled = true;
@@ -239,7 +239,7 @@ contract Eth2DaiReserve is KyberReserveInterface, Withdrawable, Utils {
         require(_otc != address(0), "setContracts: otc's address is missing");
 
         kyberNetwork = _kyberNetwork;
-        otc = OtcInterface(_otc);
+        otc = IOtc(_otc);
 
         emit ContractsSet(_kyberNetwork, _otc);
     }

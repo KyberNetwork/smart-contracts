@@ -1,11 +1,11 @@
 
 pragma solidity 0.5.11;
 
-import "./TestTokenV5.sol";
+import "./Token.sol";
 
-contract IWethToken is TestTokenV5 {
+contract WethToken is Token {
 
-    constructor(string memory _name, string memory _symbol, uint _decimals) TestTokenV5(_name, _symbol, _decimals) public {}
+    constructor(string memory _name, string memory _symbol, uint _decimals) Token(_name, _symbol, _decimals) public {}
 
     event Deposit(address indexed dst, uint wad);
 

@@ -1,6 +1,6 @@
 pragma solidity 0.5.11;
 
-import "./IERC20Interface.sol";
+import "./IERC20.sol";
 import "./PermissionGroupsV5.sol";
 
 

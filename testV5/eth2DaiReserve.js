@@ -1,7 +1,7 @@
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
 
-let TestToken = artifacts.require("TestTokenV5.sol");
+let TestToken = artifacts.require("Token.sol");
 let WethToken = artifacts.require("WethTokenV5.sol");
 let MockOtcOrderbook = artifacts.require("MockOtcOrderbook.sol");
 let Eth2DaiReserve = artifacts.require("Eth2DaiReserve.sol");
