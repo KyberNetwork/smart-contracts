@@ -173,11 +173,11 @@ contract MockOtc {
         ERC20 offerPayGem;
         uint offerBuyAmt;
         ERC20 offerBuyGem;
-    
+
         (offerPayAmt, offerPayGem, offerBuyAmt, offerBuyGem) = getOffer(uint256(id));
- 
+
         uint takerPayAmount = takerBuyAmount * offerBuyAmt / offerPayAmt;
-    
+
         require(uint128(takerBuyAmount) == takerBuyAmount);
         require(uint128(takerPayAmount) == takerPayAmount);
         buy(offerBuyGem, takerPayAmount, offerPayGem, takerBuyAmount);
