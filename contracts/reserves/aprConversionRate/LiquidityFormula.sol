@@ -121,6 +121,7 @@ contract UtilMath {
 
 contract LiquidityFormula is UtilMath {
     function pE(uint r, uint pMIn, uint e, uint precision) public pure returns (uint) {
+        require(!checkMultOverflow(r, e));
         uint expRE = exp(r*e, precision*precision, precision);
         require(!checkMultOverflow(expRE, pMIn));
         return pMIn*expRE / precision;
@@ -129,6 +130,8 @@ contract LiquidityFormula is UtilMath {
     function deltaTFunc(uint r, uint pMIn, uint e, uint deltaE, uint precision) public pure returns (uint) {
         uint pe = pE(r, pMIn, e, precision);
         uint rpe = r * pe;
+
+        require(!checkMultOverflow(r, deltaE));
         uint erdeltaE = exp(r*deltaE, precision*precision, precision);
 
         require(erdeltaE >= precision);
@@ -147,6 +150,9 @@ contract LiquidityFormula is UtilMath {
     {
         uint pe = pE(r, pMIn, e, precision);
         uint rpe = r * pe;
+
+        require(!checkMultOverflow(rpe, deltaT));
+        require(precision * precision + rpe * deltaT/precision > precision * precision);
         uint lnPart = ln(precision*precision + rpe*deltaT/precision, precision*precision, numPrecisionBits);
 
         require(!checkMultOverflow(r, pe));
