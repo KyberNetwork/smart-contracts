@@ -1,7 +1,7 @@
 pragma solidity 0.5.11;
 
 
-interface ERC20 {
+interface IERC20 {
     function transfer(address _to, uint _value) external returns (bool success);
     function transferFrom(address _from, address _to, uint _value) external returns (bool success);
     function approve(address _spender, uint _value) external returns (bool success);

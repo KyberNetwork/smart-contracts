@@ -1,12 +1,12 @@
 pragma solidity 0.5.11;
 
-import "./ERC20InterfaceV5.sol";
+import "./IERC20Interface.sol";
 
 
 /// @title Kyber utils and utils2 contracts
 contract Utils {
 
-    ERC20 constant internal ETH_TOKEN_ADDRESS = ERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    IERC20 constant internal ETH_TOKEN_ADDRESS = IERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
     uint  constant internal PRECISION = (10**18);
     uint  constant internal MAX_QTY   = (10**28); // 10B tokens
     uint  constant internal MAX_RATE  = (PRECISION * 10**6); // up to 1M tokens per ETH
@@ -18,21 +18,21 @@ contract Utils {
     /// @dev get the balance of a user.
     /// @param token The token type
     /// @return The balance
-    function getBalance(ERC20 token, address user) public view returns(uint) {
+    function getBalance(IERC20 token, address user) public view returns(uint) {
         if (token == ETH_TOKEN_ADDRESS)
             return user.balance;
         else
             return token.balanceOf(user);
     }
 
-    function setDecimals(ERC20 token) internal {
+    function setDecimals(IERC20 token) internal {
         if (token == ETH_TOKEN_ADDRESS)
             decimals[address(token)] = ETH_DECIMALS;
         else
             decimals[address(token)] = token.decimals();
     }
 
-    function getDecimals(ERC20 token) internal view returns(uint) {
+    function getDecimals(IERC20 token) internal view returns(uint) {
         if (token == ETH_TOKEN_ADDRESS) return ETH_DECIMALS; // save storage access
         uint tokenDecimals = decimals[address(token)];
         // moreover, very possible that old tokens have decimals 0
@@ -58,7 +58,7 @@ contract Utils {
     function calcSrcQty(uint dstQty, uint srcDecimals, uint dstDecimals, uint rate) internal pure returns(uint) {
         require(dstQty <= MAX_QTY);
         require(rate <= MAX_RATE);
-        
+
         //source quantity is rounded up. to avoid dest quantity being too low.
         uint numerator;
         uint denominator;
@@ -74,11 +74,11 @@ contract Utils {
         return (numerator + denominator - 1) / denominator; //avoid rounding down errors
     }
 
-    function calcDestAmount(ERC20 src, ERC20 dest, uint srcAmount, uint rate) internal view returns(uint) {
+    function calcDestAmount(IERC20 src, IERC20 dest, uint srcAmount, uint rate) internal view returns(uint) {
         return calcDstQty(srcAmount, getDecimals(src), getDecimals(dest), rate);
     }
 
-    function calcSrcAmount(ERC20 src, ERC20 dest, uint destAmount, uint rate) internal view returns(uint) {
+    function calcSrcAmount(IERC20 src, IERC20 dest, uint destAmount, uint rate) internal view returns(uint) {
         return calcSrcQty(destAmount, getDecimals(src), getDecimals(dest), rate);
     }
 

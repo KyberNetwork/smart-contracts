@@ -3,7 +3,7 @@ pragma solidity 0.5.11;
 
 import "./TestTokenV5.sol";
 
-contract WethTokenV5 is TestTokenV5 {
+contract IWethToken is TestTokenV5 {
 
     constructor(string memory _name, string memory _symbol, uint _decimals) TestTokenV5(_name, _symbol, _decimals) public {}
 
