@@ -1,10 +1,10 @@
 pragma solidity 0.5.11;
 
-import "./IERC20Interface.sol";
+import "./IERC20.sol";
 
 
 /// @title Kyber Reserve contract
-interface KyberReserveInterface {
+interface IKyberReserve {
 
     function trade(
         IERC20 srcToken,
