@@ -558,8 +558,12 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         UniswapExchange exchange;
         if (src == ETH_TOKEN_ADDRESS) {
             exchange = UniswapExchange(tokenExchange[address(dest)]);
+
+            uint amountLessFee = deductFee(srcQty);
+            if (amountLessFee == 0) return (0, 0);
+
             destQty = exchange.getEthToTokenInputPrice(
-                deductFee(srcQty)
+                amountLessFee
             );
         } else {
             exchange = UniswapExchange(tokenExchange[address(src)]);
