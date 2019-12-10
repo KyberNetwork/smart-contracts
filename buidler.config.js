@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 usePlugin("@nomiclabs/buidler-truffle5");
 usePlugin("@nomiclabs/buidler-web3");
+=======
+usePlugin("@nomiclabs/buidler-truffle4");
+usePlugin("@nomiclabs/buidler-web3-legacy");
+>>>>>>> Development to Master. Istanbul changes. buidl. (#471)
 
 module.exports = {
   defaultNetwork: "develop",
