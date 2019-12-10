@@ -43,7 +43,6 @@
   },
   "devDependencies": {
     "@nomiclabs/buidler": "^1.0.1",
-    "@openzeppelin/test-helpers": "^0.5.4",
     "chai": "^4.1.2",
     "chai-bn": "^0.2.0",
     "solidity-coverage": "^0.6.7"
