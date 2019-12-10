@@ -4,14 +4,12 @@ import "../../IERC20.sol";
 import "../../IKyberReserve.sol";
 import "../../WithdrawableV5.sol";
 import "../../UtilsV5.sol";
-import "./IOtc.sol";
-
+import "./mock/IOtc.sol";
 
 contract IWeth is IERC20 {
     function deposit() public payable;
     function withdraw(uint) public;
 }
-
 
 contract Eth2DaiReserve is IKyberReserve, Withdrawable, Utils {
 

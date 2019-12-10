@@ -1,6 +1,6 @@
 pragma solidity 0.5.11;
 
-import "../../IERC20.sol";
+import "../../../IERC20.sol";
 
 contract IOtc {
     function getOffer(uint id) external view returns (uint, IERC20, uint, IERC20);

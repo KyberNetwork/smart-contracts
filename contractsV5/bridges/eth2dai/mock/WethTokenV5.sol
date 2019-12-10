@@ -1,7 +1,7 @@
 
 pragma solidity 0.5.11;
 
-import "./Token.sol";
+import "../../../mock/Token.sol";
 
 contract WethToken is Token {
 
