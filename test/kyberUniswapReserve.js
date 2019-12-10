@@ -1,4 +1,5 @@
-const web3 = require("web3");
+const Web3 = require('web3');
+const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
 
 const BigNumber = require("bignumber.js");
 
@@ -242,7 +243,7 @@ contract("KyberUniswapReserve", async accounts => {
         });
 
         it("should allow admin to withdraw tokens", async () => {
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const initialWethBalance = await token.balanceOf(admin);
 
             await token.transfer(reserve.address, amount, { from: bank });
@@ -268,7 +269,7 @@ contract("KyberUniswapReserve", async accounts => {
         });
 
         it("reject withdrawing tokens by non-admin users", async () => {
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             await token.transfer(reserve.address, amount, { from: bank });
 
             await truffleAssert.reverts(
@@ -290,7 +291,7 @@ contract("KyberUniswapReserve", async accounts => {
             const rate = await reserve.getConversionRate(
                 ETH_TOKEN_ADDRESS /* src */,
                 token.address /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
@@ -307,7 +308,7 @@ contract("KyberUniswapReserve", async accounts => {
             const rate = await reserve.getConversionRate(
                 ETH_TOKEN_ADDRESS /* src */,
                 token.address /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
@@ -325,12 +326,52 @@ contract("KyberUniswapReserve", async accounts => {
             const rate = await reserve.getConversionRate(
                 ETH_TOKEN_ADDRESS /* src */,
                 token.address /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
             rate.should.be.bignumber.eq(new BigNumber(10).pow(18).mul(0.5));
         });
+
+        it("conversion rate should be 0 when dest amount = 0.", async () => {
+            await reserve.setFee(0, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                2 /* eth */,
+                1 /* token */
+            );
+
+            const rate = await reserve.getConversionRate(
+                ETH_TOKEN_ADDRESS /* src */,
+                token.address /* dst */,
+                1 /* srcQty 1 wei*/,
+                0 /* blockNumber */
+            );
+
+            //with converted amount result is 0 tokens.
+
+            rate.should.be.bignumber.eq(0);
+        });
+
+        it("conversion rate should be 0 when src amount 0 or 1.", async () => {
+            // for 1 we deduce fee so it becomes 0
+            await reserve.setFee(DEFAULT_FEE_BPS, { from: admin });
+            await uniswapFactoryMock.setRateEthToToken(
+                2 /* eth */,
+                1 /* token */
+            );
+
+            const rate = await reserve.getConversionRate(
+                ETH_TOKEN_ADDRESS /* src */,
+                token.address /* dst */,
+                1 /* srcQty 1 wei*/,
+                0 /* blockNumber */
+            );
+
+            //with converted amount result is 0 tokens.
+
+            rate.should.be.bignumber.eq(0);
+        });
+
 
         it("conversion rate token -> eth of 2:1", async () => {
             await reserve.setFee(0, { from: admin });
@@ -342,7 +383,7 @@ contract("KyberUniswapReserve", async accounts => {
             const rate = await reserve.getConversionRate(
                 token.address /* src */,
                 ETH_TOKEN_ADDRESS /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
@@ -359,7 +400,7 @@ contract("KyberUniswapReserve", async accounts => {
             const rate = await reserve.getConversionRate(
                 token.address /* src */,
                 ETH_TOKEN_ADDRESS /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
@@ -373,7 +414,7 @@ contract("KyberUniswapReserve", async accounts => {
             const rate = await reserve.getConversionRate(
                 ETH_TOKEN_ADDRESS /* src */,
                 ETH_TOKEN_ADDRESS /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
@@ -384,7 +425,7 @@ contract("KyberUniswapReserve", async accounts => {
             const rate = await reserve.getConversionRate(
                 token.address /* src */,
                 token.address /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
@@ -397,7 +438,7 @@ contract("KyberUniswapReserve", async accounts => {
             const rate = await reserve.getConversionRate(
                 newToken.address /* src */,
                 ETH_TOKEN_ADDRESS /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
@@ -414,7 +455,7 @@ contract("KyberUniswapReserve", async accounts => {
             const rate = await reserve.getConversionRate(
                 ETH_TOKEN_ADDRESS /* src */,
                 token.address /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
@@ -437,7 +478,7 @@ contract("KyberUniswapReserve", async accounts => {
             const rate = await reserve.getConversionRate(
                 token.address /* src */,
                 ETH_TOKEN_ADDRESS /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
@@ -461,7 +502,7 @@ contract("KyberUniswapReserve", async accounts => {
             const rate = await reserve.getConversionRate(
                 token.address /* src */,
                 ETH_TOKEN_ADDRESS /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
@@ -495,14 +536,14 @@ contract("KyberUniswapReserve", async accounts => {
                 { from: operator }
             );
 
-            await token.transfer(reserve.address, web3.utils.toWei("5"), {
+            await token.transfer(reserve.address, web3.toWei("5"), {
                 from: bank
             });
 
             const rate = await reserve.getConversionRate(
                 ETH_TOKEN_ADDRESS /* src */,
                 token.address /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
@@ -553,13 +594,13 @@ contract("KyberUniswapReserve", async accounts => {
             await helper.sendEtherWithPromise(
                 bank /* sender */,
                 reserve.address /* recv */,
-                web3.utils.toWei("5") /* amount */
+                web3.toWei("5") /* amount */
             );
 
             const rate = await reserve.getConversionRate(
                 token.address /* src */,
                 ETH_TOKEN_ADDRESS /* dst */,
-                web3.utils.toWei("1") /* srcQty */,
+                web3.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
@@ -607,7 +648,7 @@ contract("KyberUniswapReserve", async accounts => {
                 25 /* eth */,
                 10 /* token */
             );
-            const amountToken = web3.utils.toWei("0.1");
+            const amountToken = web3.toWei("0.1");
 
             // Prepare the reserve's internal inventory
             // high minimum spread requirement
@@ -630,7 +671,7 @@ contract("KyberUniswapReserve", async accounts => {
             await helper.sendEtherWithPromise(
                 bank /* sender */,
                 reserve.address /* recv */,
-                web3.utils.toWei("1") /* amount */
+                web3.toWei("1") /* amount */
             );
 
             const rate = await reserve.getConversionRate(
@@ -654,7 +695,7 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 1 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = new BigNumber(10).pow(18);
 
             await reserve.trade(
@@ -674,7 +715,7 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 1 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = new BigNumber(10).pow(18);
 
             await truffleAssert.reverts(
@@ -696,7 +737,7 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 1 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = new BigNumber(10).pow(18);
 
             await truffleAssert.reverts(
@@ -718,7 +759,7 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 1 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = new BigNumber(10).pow(18);
 
             await truffleAssert.reverts(
@@ -740,7 +781,7 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 1 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = new BigNumber(10).pow(18);
             const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
 
@@ -777,7 +818,7 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 1 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = new BigNumber(10).pow(18);
             const ethBalanceBefore = await helper.getBalancePromise(user);
 
@@ -814,7 +855,7 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 1 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = new BigNumber(10).pow(18).mul(0.9975);
             const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
 
@@ -850,7 +891,7 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 1 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = new BigNumber(10).pow(18).mul(0.9975);
             const ethBalanceBefore = await helper.getBalancePromise(user);
 
@@ -887,7 +928,7 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 2 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = new BigNumber(10)
                 .pow(18)
                 .mul(2)
@@ -926,7 +967,7 @@ contract("KyberUniswapReserve", async accounts => {
                 2 /* eth */,
                 1 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = new BigNumber(10)
                 .pow(18)
                 .mul(2)
@@ -966,7 +1007,7 @@ contract("KyberUniswapReserve", async accounts => {
                 2 /* eth */,
                 1 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
 
             const expectedConversionRate = await reserve.getConversionRate(
                 token.address /* src */,
@@ -1044,7 +1085,7 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 2 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = new BigNumber(10)
                 .pow(18)
                 .mul(2)
@@ -1070,7 +1111,7 @@ contract("KyberUniswapReserve", async accounts => {
                 2 /* eth */,
                 1 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = new BigNumber(10)
                 .pow(18)
                 .mul(2)
@@ -1114,7 +1155,7 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 10 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = applyInternalInventoryHintToRate(
                 new BigNumber(10)
                     .pow(18)
@@ -1143,7 +1184,7 @@ contract("KyberUniswapReserve", async accounts => {
             await helper.sendEtherWithPromise(
                 bank /* sender */,
                 reserve.address /* recv */,
-                web3.utils.toWei("1") /* amount */
+                web3.toWei("1") /* amount */
             );
 
             // Read balance before
@@ -1217,7 +1258,7 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 10 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = applyInternalInventoryHintToRate(
                 new BigNumber(10)
                     .pow(18)
@@ -1243,7 +1284,7 @@ contract("KyberUniswapReserve", async accounts => {
                 { from: operator }
             );
 
-            await token.transfer(reserve.address, web3.utils.toWei("20"), {
+            await token.transfer(reserve.address, web3.toWei("20"), {
                 from: bank
             });
 
@@ -1301,7 +1342,7 @@ contract("KyberUniswapReserve", async accounts => {
                 1 /* eth */,
                 10 /* token */
             );
-            const amount = web3.utils.toWei("1");
+            const amount = web3.toWei("1");
             const conversionRate = applyInternalInventoryHintToRate(
                 new BigNumber(10)
                     .pow(18)
@@ -1330,7 +1371,7 @@ contract("KyberUniswapReserve", async accounts => {
             await helper.sendEtherWithPromise(
                 bank /* sender */,
                 reserve.address /* recv */,
-                web3.utils.toWei("1") /* amount */
+                web3.toWei("1") /* amount */
             );
 
             const res = await reserve.trade(
@@ -1883,8 +1924,8 @@ contract("KyberUniswapReserve", async accounts => {
             // set limits
             await reserve.setInternalInventoryLimits(
                 token.address /* token */,
-                web3.utils.toWei("1") /* minBalance */,
-                web3.utils.toWei("1000") /* maxBalance */,
+                web3.toWei("1") /* minBalance */,
+                web3.toWei("1000") /* maxBalance */,
                 { from: operator }
             );
 
@@ -1892,7 +1933,7 @@ contract("KyberUniswapReserve", async accounts => {
             tokenBalance.should.be.bignumber.eq(0);
             await token.transfer(
                 reserve.address /* to */,
-                web3.utils.toWei("500") /* value */,
+                web3.toWei("500") /* value */,
                 { from: bank }
             );
 
@@ -1900,9 +1941,9 @@ contract("KyberUniswapReserve", async accounts => {
             // Token -> ETH: 10 -> 1
             const useInternal = await reserve.shouldUseInternalInventory(
                 ETH_TOKEN_ADDRESS /* srcToken */,
-                web3.utils.toWei("3") /* srcAmount */,
+                web3.toWei("3") /* srcAmount */,
                 token.address /* destToken */,
-                web3.utils.toWei("300") /* destAmount */,
+                web3.toWei("300") /* destAmount */,
                 new BigNumber(9).div(1) /* rateSrcDest */,
                 new BigNumber(10).div(1) /* rateDestSrc */
             );
@@ -1922,8 +1963,8 @@ contract("KyberUniswapReserve", async accounts => {
             // set limits
             await reserve.setInternalInventoryLimits(
                 token.address /* token */,
-                web3.utils.toWei("1") /* minBalance */,
-                web3.utils.toWei("10") /* maxBalance */,
+                web3.toWei("1") /* minBalance */,
+                web3.toWei("10") /* maxBalance */,
                 { from: operator }
             );
 
@@ -1933,7 +1974,7 @@ contract("KyberUniswapReserve", async accounts => {
             await helper.sendEtherWithPromise(
                 bank /* sender */,
                 reserve.address /* recv */,
-                web3.utils.toWei("5") /* amount */
+                web3.toWei("5") /* amount */
             );
 
             // Fund reserve with 5 Tokens
@@ -1941,7 +1982,7 @@ contract("KyberUniswapReserve", async accounts => {
             tokenBalance.should.be.bignumber.eq(0);
             await token.transfer(
                 reserve.address /* to */,
-                web3.utils.toWei("5") /* value */,
+                web3.toWei("5") /* value */,
                 { from: bank }
             );
 
@@ -1950,9 +1991,9 @@ contract("KyberUniswapReserve", async accounts => {
             // Token -> ETH: 10001 -> 1
             const useInternal = await reserve.shouldUseInternalInventory(
                 ETH_TOKEN_ADDRESS /* srcToken */,
-                web3.utils.toWei("3") /* srcAmount */,
+                web3.toWei("3") /* srcAmount */,
                 token.address /* destToken */,
-                web3.utils.toWei("27") /* destAmount */,
+                web3.toWei("27") /* destAmount */,
                 new BigNumber(9999).div(1) /* rateSrcDest */,
                 new BigNumber(10001).div(1) /* rateDestSrc */
             );
@@ -1973,8 +2014,8 @@ contract("KyberUniswapReserve", async accounts => {
             // set limits
             await reserve.setInternalInventoryLimits(
                 token.address /* token */,
-                web3.utils.toWei("1") /* minBalance */,
-                web3.utils.toWei("1000") /* maxBalance */,
+                web3.toWei("1") /* minBalance */,
+                web3.toWei("1000") /* maxBalance */,
                 { from: operator }
             );
 
@@ -1982,7 +2023,7 @@ contract("KyberUniswapReserve", async accounts => {
             tokenBalance.should.be.bignumber.eq(0);
             await token.transfer(
                 reserve.address /* to */,
-                web3.utils.toWei("500") /* value */,
+                web3.toWei("500") /* value */,
                 { from: bank }
             );
 
@@ -1990,9 +2031,9 @@ contract("KyberUniswapReserve", async accounts => {
             // Token -> ETH: 10 -> 1
             const useInternal = await reserve.shouldUseInternalInventory(
                 ETH_TOKEN_ADDRESS /* srcToken */,
-                web3.utils.toWei("3") /* srcAmount */,
+                web3.toWei("3") /* srcAmount */,
                 token.address /* destToken */,
-                web3.utils.toWei("27") /* destAmount */,
+                web3.toWei("27") /* destAmount */,
                 new BigNumber(9).div(1).mul(0.9975) /* rateSrcDest */,
                 new BigNumber(10).div(1).mul(0.9975) /* rateDestSrc */
             );
@@ -2008,7 +2049,7 @@ contract("KyberUniswapReserve", async accounts => {
             await truffleAssert.reverts(
                 reserve.shouldUseInternalInventory(
                     ETH_TOKEN_ADDRESS /* srcToken */,
-                    web3.utils.toWei("1") /* srcAmount */,
+                    web3.toWei("1") /* srcAmount */,
                     token.address /* destToken */,
                     KYBER_MAX_QTY /* destAmount */,
                     new BigNumber(9).div(1) /* rateSrcDest */,
@@ -2027,7 +2068,7 @@ contract("KyberUniswapReserve", async accounts => {
                     ETH_TOKEN_ADDRESS /* srcToken */,
                     KYBER_MAX_QTY /* srcAmount */,
                     token.address /* destToken */,
-                    web3.utils.toWei("2") /* destAmount */,
+                    web3.toWei("2") /* destAmount */,
                     new BigNumber(21).div(9) /* rateSrcDest */,
                     new BigNumber(20).div(9) /* rateDestSrc */
                 )
@@ -2046,8 +2087,8 @@ contract("KyberUniswapReserve", async accounts => {
             // set limits
             await reserve.setInternalInventoryLimits(
                 token.address /* token */,
-                web3.utils.toWei("1") /* minBalance */,
-                web3.utils.toWei("10") /* maxBalance */,
+                web3.toWei("1") /* minBalance */,
+                web3.toWei("10") /* maxBalance */,
                 { from: operator }
             );
 
@@ -2057,7 +2098,7 @@ contract("KyberUniswapReserve", async accounts => {
             await helper.sendEtherWithPromise(
                 bank /* sender */,
                 reserve.address /* recv */,
-                web3.utils.toWei("1") /* amount */
+                web3.toWei("1") /* amount */
             );
 
             // Does not have enough ETH
@@ -2065,9 +2106,9 @@ contract("KyberUniswapReserve", async accounts => {
             // Token -> ETH: 20 -> 9
             const useInternal = await reserve.shouldUseInternalInventory(
                 token.address /* srcToken */,
-                web3.utils.toWei("4") /* srcAmount */,
+                web3.toWei("4") /* srcAmount */,
                 ETH_TOKEN_ADDRESS /* destToken */,
-                web3.utils.toWei("2") /* destAmount */,
+                web3.toWei("2") /* destAmount */,
                 new BigNumber(21).div(10) /* rateSrcDest */,
                 new BigNumber(20).div(9) /* rateDestSrc */
             );
@@ -2087,8 +2128,8 @@ contract("KyberUniswapReserve", async accounts => {
             // set limits
             await reserve.setInternalInventoryLimits(
                 token.address /* token */,
-                web3.utils.toWei("1") /* minBalance */,
-                web3.utils.toWei("10") /* maxBalance */,
+                web3.toWei("1") /* minBalance */,
+                web3.toWei("10") /* maxBalance */,
                 { from: operator }
             );
 
@@ -2098,7 +2139,7 @@ contract("KyberUniswapReserve", async accounts => {
             await helper.sendEtherWithPromise(
                 bank /* sender */,
                 reserve.address /* recv */,
-                web3.utils.toWei("5") /* amount */
+                web3.toWei("5") /* amount */
             );
 
             // Fund reserve with 5 Tokens
@@ -2106,7 +2147,7 @@ contract("KyberUniswapReserve", async accounts => {
             tokenBalance.should.be.bignumber.eq(0);
             await token.transfer(
                 reserve.address /* to */,
-                web3.utils.toWei("5") /* value */,
+                web3.toWei("5") /* value */,
                 { from: bank }
             );
 
@@ -2115,9 +2156,9 @@ contract("KyberUniswapReserve", async accounts => {
             // Token -> ETH: 20 -> 9
             const useInternal = await reserve.shouldUseInternalInventory(
                 token.address /* srcToken */,
-                web3.utils.toWei("6") /* srcAmount */,
+                web3.toWei("6") /* srcAmount */,
                 ETH_TOKEN_ADDRESS /* destToken */,
-                web3.utils.toWei("3") /* destAmount */,
+                web3.toWei("3") /* destAmount */,
                 new BigNumber(21).div(10) /* rateSrcDest */,
                 new BigNumber(20).div(9) /* rateDestSrc */
             );
@@ -2137,8 +2178,8 @@ contract("KyberUniswapReserve", async accounts => {
             // set limits
             await reserve.setInternalInventoryLimits(
                 token.address /* token */,
-                web3.utils.toWei("1") /* minBalance */,
-                web3.utils.toWei("10") /* maxBalance */,
+                web3.toWei("1") /* minBalance */,
+                web3.toWei("10") /* maxBalance */,
                 { from: operator }
             );
 
@@ -2148,7 +2189,7 @@ contract("KyberUniswapReserve", async accounts => {
             await helper.sendEtherWithPromise(
                 bank /* sender */,
                 reserve.address /* recv */,
-                web3.utils.toWei("5") /* amount */
+                web3.toWei("5") /* amount */
             );
 
             // Fund reserve with 5 Tokens
@@ -2156,7 +2197,7 @@ contract("KyberUniswapReserve", async accounts => {
             tokenBalance.should.be.bignumber.eq(0);
             await token.transfer(
                 reserve.address /* to */,
-                web3.utils.toWei("5") /* value */,
+                web3.toWei("5") /* value */,
                 { from: bank }
             );
 
@@ -2165,9 +2206,9 @@ contract("KyberUniswapReserve", async accounts => {
             // Token -> ETH: 20 -> 9
             const useInternal = await reserve.shouldUseInternalInventory(
                 ETH_TOKEN_ADDRESS /* srcToken */,
-                web3.utils.toWei("3") /* srcAmount */,
+                web3.toWei("3") /* srcAmount */,
                 token.address /* destToken */,
-                web3.utils.toWei("4.5") /* destAmount */,
+                web3.toWei("4.5") /* destAmount */,
                 new BigNumber(21).div(10) /* rateSrcDest */,
                 new BigNumber(20).div(9) /* rateDestSrc */
             );
@@ -2187,8 +2228,8 @@ contract("KyberUniswapReserve", async accounts => {
             // set limits
             await reserve.setInternalInventoryLimits(
                 token.address /* token */,
-                web3.utils.toWei("1") /* minBalance */,
-                web3.utils.toWei("10") /* maxBalance */,
+                web3.toWei("1") /* minBalance */,
+                web3.toWei("10") /* maxBalance */,
                 { from: operator }
             );
 
@@ -2198,7 +2239,7 @@ contract("KyberUniswapReserve", async accounts => {
             await helper.sendEtherWithPromise(
                 bank /* sender */,
                 reserve.address /* recv */,
-                web3.utils.toWei("5") /* amount */
+                web3.toWei("5") /* amount */
             );
 
             // Fund reserve with 5 Tokens
@@ -2206,7 +2247,7 @@ contract("KyberUniswapReserve", async accounts => {
             tokenBalance.should.be.bignumber.eq(0);
             await token.transfer(
                 reserve.address /* to */,
-                web3.utils.toWei("5") /* value */,
+                web3.toWei("5") /* value */,
                 { from: bank }
             );
 
@@ -2215,9 +2256,9 @@ contract("KyberUniswapReserve", async accounts => {
             // Token -> ETH: 10 -> 1
             const useInternal = await reserve.shouldUseInternalInventory(
                 ETH_TOKEN_ADDRESS /* srcToken */,
-                web3.utils.toWei("3") /* srcAmount */,
+                web3.toWei("3") /* srcAmount */,
                 token.address /* destToken */,
-                web3.utils.toWei("4.5") /* destAmount */,
+                web3.toWei("4.5") /* destAmount */,
                 new BigNumber(11).div(1) /* rateSrcDest */,
                 new BigNumber(10).div(1) /* rateDestSrc */
             );

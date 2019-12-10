@@ -111,7 +111,7 @@ contract('MockExchange', function (accounts) {
 
     it("should test myExchange clear balance with token.", async function (){
         let myToken = await TestToken.new("another", "ant", 18);
-        myExchange.addMockDepositAddress(myToken.address);
+        await myExchange.addMockDepositAddress(myToken.address);
 
         //send myTokens to deposit address
         let mockAddress = await myExchange.tokenDepositAddresses(myToken.address);
@@ -133,7 +133,7 @@ contract('MockExchange', function (accounts) {
     });
 
     it("should test myExchange clear balance with Ether.", async function (){
-        myExchange.addMockDepositAddress(ethAddress);
+        await myExchange.addMockDepositAddress(ethAddress);
 
         //send ethers to deposit address
         let myEtherMockAddress = await myExchange.tokenDepositAddresses(ethAddress);
@@ -155,9 +155,9 @@ contract('MockExchange', function (accounts) {
     });
 
     it("should test myExchange clear balance with Ether and token on same array.", async function (){
-        myExchange.addMockDepositAddress(ethAddress);
+        await myExchange.addMockDepositAddress(ethAddress);
         let myToken = await TestToken.new("another", "ant", 18);
-        myExchange.addMockDepositAddress(myToken.address);
+        await myExchange.addMockDepositAddress(myToken.address);
 
         //send ethers to deposit address
         let myEtherMockAddress = await myExchange.tokenDepositAddresses(ethAddress);

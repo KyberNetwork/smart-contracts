@@ -58,6 +58,9 @@ contract MockUniswapFactory is MockUniswapExchange {
         view
         returns (uint256 tokens_bought)
     {
+        // current uniswap implementation reverts when query with 0.
+        // even it later it doesn't we have no reason to query with 0 amount
+        require(ethWei > 0);
         return ethWei * ethToToken.token / ethToToken.eth;
     }
 
@@ -68,6 +71,9 @@ contract MockUniswapFactory is MockUniswapExchange {
         view
         returns (uint256 eth_bought)
     {
+        // current uniswap implementation reverts when query with 0.
+        // even it later it doesn't we have no reason to query with 0 amount
+        require(tokens_sold > 0);
         return tokens_sold * tokenToEth.eth / tokenToEth.token;
     }
 
@@ -103,6 +109,7 @@ contract MockUniswapFactory is MockUniswapExchange {
         payable
         returns (uint256  tokens_bought)
     {
+        require(msg.value > 0);
         min_tokens;  // eliminating unused variable warning
 
         require(deadline > block.timestamp);
@@ -120,6 +127,8 @@ contract MockUniswapFactory is MockUniswapExchange {
         external
         returns (uint256  eth_bought)
     {
+        require(tokens_sold > 0);
+
         min_eth;  // eliminating unused variable warning
 
         require(deadline > block.timestamp);

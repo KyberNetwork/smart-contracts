@@ -238,7 +238,7 @@ contract('OrderbookReserve', async (accounts) => {
             await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 
             try {
-                await OrderbookReserve.new(0, tokenAdd, feeBurner.address, network, medianizer.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+                await OrderbookReserve.new(0, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
                 assert(false, "throw was expected in line above.")
             } catch(e){
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -2572,7 +2572,7 @@ contract('OrderbookReserve', async (accounts) => {
             assert.equal(list[1].valueOf(), sellOrder2ID);
 
             let expectedGasDiff4BatchOrders = 100000;
-
+            
             assert(updateBatchWithHintGas < (updateBatchNoHintGas - expectedGasDiff4BatchOrders), "batch with hint gas: " + updateBatchWithHintGas +
                 " updateBatchNoHintGas " + updateBatchNoHintGas + " expected diff: " + expectedGasDiff4BatchOrders);
         });
@@ -3773,7 +3773,7 @@ contract('OrderbookReserve', async (accounts) => {
             rc = await reserve.trade(tokenAdd, orderDstTwei, ethAddress, user1, rate, false, {from:network});
 
             log("take single order gas: " + rc.receipt.gasUsed);
-            let maxExpectedGas = 130000;
+            let maxExpectedGas = 140000;
             assert(rc.receipt.gasUsed < maxExpectedGas, "Gas for single trade should have been below: " + maxExpectedGas);
 
             list = await reserve.getEthToTokenOrderList();
@@ -4625,7 +4625,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
 
         ethKncRate = initialEthKncRate * 2;
         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-        let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+        let kncToEthRatePrecision = precisionUnits.div(ethKncRate * 1.01);
 
         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
@@ -4634,7 +4634,8 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
 //        log(rate[0].valueOf())
         assert.equal(ethToKncRatePrecision.valueOf(), rate[0].valueOf());
         rate = await mockNetwork.getExpectedRate(kncAddress, ethAddress, (10 ** 18));
-        assert.equal(kncToEthRatePrecision.add(1).floor().valueOf(), rate[0].valueOf());
+//        log(rate[0].valueOf())
+        assert.equal(kncToEthRatePrecision.floor().valueOf(), rate[0].valueOf());
 
         await feeBurner.setKNCRate();
         let freeKnc2 = await reserve.makerUnlockedKnc(maker1);
@@ -4683,7 +4684,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
 
         ethKncRate = initialEthKncRate * 2;
         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-        let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+        let kncToEthRatePrecision = precisionUnits.div(ethKncRate * 1.01);
 
         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
@@ -4691,7 +4692,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
         let rate = await mockNetwork.getExpectedRate(ethAddress, kncAddress, (10 ** 18));
         assert.equal(ethToKncRatePrecision.valueOf(), rate[0].valueOf());
         rate = await mockNetwork.getExpectedRate(kncAddress, ethAddress, (10 ** 18));
-        assert.equal(kncToEthRatePrecision.add(1).floor().valueOf(), rate[0].valueOf());
+        assert.equal(kncToEthRatePrecision.floor().valueOf(), rate[0].valueOf());
 
         await feeBurner.setKNCRate();
         freeKnc2 = await reserve.makerUnlockedKnc(maker1);
@@ -4760,6 +4761,25 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
         //see can take order
         let totalPayValue = orderDstWei;
         rc = await reserve.trade(ethAddress, totalPayValue, tokenAdd, user1, lowRate, false, {from:network, value: totalPayValue});
+    });
+
+    it("see when calling getConversionRate with srcQty 0 it returns 0", async() => {
+        let tokenWeiDepositAmount = new BigNumber(70 * 10 ** 18);
+        let kncTweiDepositAmount = 600 * 10 ** 18;
+        let ethWeiDepositAmount = (new BigNumber(0 * 10 ** 18));
+        await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+
+        let orderSrcAmountTwei = new BigNumber(6 * 10 ** 18);
+        let orderDstWei = new BigNumber(minNewOrderWei);
+
+        //add orders
+        //////////////
+        let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
+        let rate = await reserve.getConversionRate(ethAddress, tokenAdd, 10 ** 8, 522);
+        assert(rate.valueOf() > 0);
+
+        rate = await reserve.getConversionRate(ethAddress, tokenAdd, 0, 522);
+        assert.equal(rate.valueOf(), 0);
     });
 
     it("change knc rate so stake amount < burn amount, see get rate blocked == returns 0", async() => {
@@ -4834,7 +4854,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
         // set higher Eth to KNC rate (less knc per eth)
         ethKncRate = initialEthKncRate / 2;
         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-        let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+        let kncToEthRatePrecision = precisionUnits.div(ethKncRate * 1.01);
 
         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
@@ -4885,7 +4905,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
         // set higher Eth to KNC rate (less knc per eth)
         ethKncRate = initialEthKncRate / 2;
         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-        let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+        let kncToEthRatePrecision = precisionUnits.div(ethKncRate * 1.01);
 
         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
@@ -4925,7 +4945,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
 
         let ethKncRate = initialEthKncRate * (burnToStakeFactor * 1 + 1 * 1);
         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-        let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+        let kncToEthRatePrecision = precisionUnits.div(ethKncRate * 1.01);
 
         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
@@ -4954,10 +4974,10 @@ function log(str) {
 
 async function makerDeposit(maker, ethWei, tokenTwei, kncTwei) {
 
-    await token.approve(reserve.address, tokenTwei);
-    await reserve.depositToken(maker, tokenTwei);
-    await KNCToken.approve(reserve.address, kncTwei);
-    await reserve.depositKncForFee(maker, kncTwei);
+    await token.approve(reserve.address, tokenTwei, {from: admin});
+    await reserve.depositToken(maker, tokenTwei, {from: admin});
+    await KNCToken.approve(reserve.address, kncTwei, {from: admin});
+    await reserve.depositKncForFee(maker, kncTwei, {from: admin});
     await reserve.depositEther(maker, {from: maker, value: ethWei});
 }
 

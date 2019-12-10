@@ -1,202 +1,1335 @@
 {
-  "tokens": {
-    "OMG": {
-      "name": "OmiseGO",
-      "decimals": 18,
-      "address": "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07",
-      "minimalRecordResolution" : "1000000000000000",
-      "maxPerBlockImbalance" : "775091297865175138304",
-      "maxTotalImbalance" : "1096640332676811325440"
+  "permission": { 
+    "KyberNetwork": { 
+      "admin": "0xbc33a1f908612640f2849b56b67a4de4d179c151",
+      "operator": [
+        "0x6e8138188a413ab4eb6528d356e6c98ed0f1ce71",
+        "0x8180a5ca4e3b94045e05a9313777955f7518d757",
+        "0x5565d64f29ea17355106df3ba5903eb793b3e139"
+      ],
+      "alerter": []
     },
-    "KNC": {
-      "name": "KyberNetwork",
-      "decimals": 18,
-      "address": "0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
-      "minimalRecordResolution" : "1000000000000000",
-      "maxPerBlockImbalance" : "2711997842670896021504",
-      "maxTotalImbalance" : "3833713935933528080384"
+    
+    "FeeBurner": { 
+      "admin": "0x833164041AaFF3CD6c7D80Affbd923C1d1cEB4b3",
+      "operator": [
+        "0x2fd6181541bebe30d17cf3a5d9f40ebcecbdba43",
+      ],
+      "alerter": []
     },
-    "EOS": {
-      "name": "Eos",
-      "decimals": 18,
-      "address": "0x86Fa049857E0209aa7D9e616F7eb3b3B78ECfdb0",
-      "minimalRecordResolution" : "1000000000000000",
-      "maxPerBlockImbalance" : "1019792725446519947264",
-      "maxTotalImbalance" : "1441689429340878536704"
-    },
-
-    "SNT": {
-      "name": "STATUS",
-      "decimals": 18,
-      "address": "0x744d70fdbe2ba4cf95131626614a1763df805b9e",
-      "minimalRecordResolution" : "10000000000000000",
-      "maxPerBlockImbalance" : "37434287125568931495936",
-      "maxTotalImbalance" : "38806865287259009056768"
+    
+    "ExpectedRate": { 
+      "admin": "0x8180a5CA4E3B94045e05A9313777955f7518D757",
+      "operator": [],
+      "alerter": []
     },
 
-    "ELF": {
-      "name": "AELF",
-      "decimals": 18,
-      "address": "0xbf2179859fc6d5bee9bf9158632dc51678a4100e",
-      "minimalRecordResolution" : "1000000000000000",
-      "maxPerBlockImbalance" : "6727090010493247553536",
-      "maxTotalImbalance" : "9489286595433755312128"
-    },
-    "POWR": {
-      "name": "Power Ledger",
-      "decimals": 6,
-      "address": "0x595832f8fc6bf59c85c527fec3740a1b7a361269",
-      "minimalRecordResolution" : "1000",
-      "maxPerBlockImbalance" : "8860273487",
-      "maxTotalImbalance" : "8860273487"
-    },
-    "MANA": {
-      "name": "MANA",
-      "decimals": 18,
-      "address": "0x0f5d2fb29fb7d3cfee444a200298f468908cc942",
-      "minimalRecordResolution" : "1000000000000000",
-      "maxPerBlockImbalance" : "54907343857240902729728",
-      "maxTotalImbalance" : "54907343857240902729728"
-    },
-    "BAT": {
-      "name": "Basic Attention Token",
-      "decimals": 18,
-      "address": "0x0d8775f648430679a709e98d2b0cb6250d2887ef",
-      "minimalRecordResolution" : "1000000000000000",
-      "maxPerBlockImbalance" : "13480268257338322845696",
-      "maxTotalImbalance" : "13480268257338322845696"
-    },
-    "REQ": {
-      "name": "Request",
-      "decimals": 18,
-      "address": "0x8f8221afbb33998d8584a2b05749ba73c37a938a",
-      "minimalRecordResolution" : "1000000000000000",
-      "maxPerBlockImbalance" : "32547010644498297389056",
-      "maxTotalImbalance" : "33735087557886343118848"
-    },
-    "GTO": {
-      "name": "Gifto",
-      "decimals": 5,
-      "address": "0xc5bbae50781be1669306b9e001eff57a2957b09d",
-      "minimalRecordResolution" : "10",
-      "maxPerBlockImbalance" : "1925452883",
-      "maxTotalImbalance" : "1925452883"
+    "WrapFeeBurner": {
+      "admin": "0x8180a5CA4E3B94045e05A9313777955f7518D757",
+      "operator": [
+        "0x8180a5CA4E3B94045e05A9313777955f7518D757",
+        "0x3a9b02c14d967333ce68e353a64653e258da2baa"
+      ],
+      "alerter": []
     }
   },
-  "exchanges": {
-    "binance" : {"ETH" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-                 "OMG" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-                 "KNC" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-                 "SNT" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-                 "EOS" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-                 "ELF" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-                 "POWR" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-                 "MANA" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-                 "BAT" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-                 "REQ" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90",
-                 "GTO" : "0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90" }
+
+  "addresses": {
+    "dgx": "0x4f3afec4e5a3f2a6a1a411def7d7dfe50ee057bf",
+    "feeBurnerWrapperProxy": "0x1dabb09c85d80d6593e1570ded731cdd6e8d1dce",
+    "knc": "0xdd974d5c2e2928dea5f71b9825b8b646686bd200",
+    "medianizer": "0x729d19f657bd0614b4985cf1d82531c67569197b",
+    "proxy": "0x818e6fecd516ecc3849daf6845e3ec868087b755",
+    "weth": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+    "whitelist": "0x0000000000000000000000000000000000000000"
   },
 
-  "permission" : { "KyberNetwork" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-                                      "operator" : ["0x8bc3da587def887b5c822105729ee1d6af05a5ca"],
-                                      "alerter" : []},
-                   "KyberReserve" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-                                      "operator" : ["0x5bab5ef16cfac98e216a229db17913454b0f9365"],
-                                      "alerter" : []},
-                   "ConversionRates" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-                                         "operator" : ["0x8bc3da587def887b5c822105729ee1d6af05a5ca",
-                                                       "0x9224016462B204C57Eb70e1D69652f60bcAF53A8"],
-                                         "alerter" : []},
-                   "FeeBurner" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-                                   "operator" : ["0xf214dde57f32f3f34492ba3148641693058d4a9e"],
-                                   "alerter" : []},
-                   "WhiteList" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-                                   "operator" : ["0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
-                                                 "0xf214dde57f32f3f34492ba3148641693058d4a9e"],
-                                   "alerter" : []},
-                   "ExpectedRate" : { "admin" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-                                      "operator" : ["0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
-                                                    "0xf214dde57f32f3f34492ba3148641693058d4a9e"],
-                                       "alerter" : []}},
+  "reserves":[ 
+    { 
+      "address":"0x63825c174ab367968EC60f061753D3bbD36A0D8F",
+      "KNCWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0xd26114cd6EE289AccF82350c8d8487fedB8A0C07",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x744d70FDBE2Ba4CF95131626614a1763DF805B9E",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xbf2179859fc6D5BEE9Bf9158632Dc51678a4100e",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x595832F8FC6BF59c85C527fEC3740A1b7a361269",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x0F5D2fB29fb7d3CFeE444a200298f468908cC942",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x0D8775F648430679A709E98d2b0Cb6250d2887EF",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x8f8221aFbB33998d8584A2B05749bA73c37a938a",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xf0Ee6b27b759C9893Ce4f094b49ad28fd15A23e4",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x1a7a8BD9106F2B8D977E08582DC7d24c723ab0DB",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x255Aa6DF07540Cb5d3d297f0D0D4D84cb52bc8e6",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x5Af2Be193a6ABCa9c8817001F45744777Db30756",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x514910771AF9Ca656af840dff83E8264EcF986CA",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x27054b13b1B798B345b591a4d22e6562d47eA75a",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x4f3AfEC4E5a3F2A6a1A411DEF7D7dFe50eE057bF",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xB98d4C97425d9908E66E53A6fDf673ACcA0BE986",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xF629cBd94d3791C9250152BD8dfBDF380E2a3B9c",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x5732046A883704404F284Ce41FfADd5b007FD668",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x41e5560054824eA6B0732E656E3Ad64E20e94E45",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x9992eC3cF6A55b00978cdDF2b27BC6882d88D1eC",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x69b148395Ce0015C13e36BFfBAd63f49EF874E03",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xB97048628DB6B661D4C2aA833e95Dbe1A905B280",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x0e0989b1f9B8A38983c2BA8053269Ca62Ec9B195",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xB8c77482e45F1F44dE1745F52C74426C631bDD52",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x1985365e9f78359a9B6AD760e32412f4a445E862",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xE41d2489571d322189246DaFA5ebDe1F4699F498",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xEA26c4aC16D4a5A106820BC8AEE85fd0b7b2b664",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x81c9151de0C8bafCd325a57E3dB5a5dF1CEBf79c",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xa6a840E50bCaa50dA017b91A0D86B8b2d41156EE",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x2C4e8f2D746113d0696cE89B35F0d8bF88E0AEcA",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x177d39AC676ED1C67A2b268AD7F1E58826E5B0af",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xB63B606Ac810a52cCa15e44bB630fd42D8d1d83d",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xBBbbCA6A901c926F240b89EacB641d8Aec7AEafD",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x607F4C5BB672230e8672085532f7e901544a7375",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xd4c435F5B09F855C3317c8524Cb1F586E42795fa",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x8E870D67F660D95d5be530380D0eC0bd388289E1",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xdAC17F958D2ee523a2206206994597C13D831ec7",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x21433Dec9Cb634A23c6A4BbcCe08c83f5aC2EC18",
+      "KNCWallet":"0x69Aa7b8534A18Bec89272B847501F9d7b2159c7E",
+      "fees":"13",
+      "tokens":[ 
+        { 
+          "address":"0xd26114cd6EE289AccF82350c8d8487fedB8A0C07",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x0D8775F648430679A709E98d2b0Cb6250d2887EF",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xf0Ee6b27b759C9893Ce4f094b49ad28fd15A23e4",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x8f8221aFbB33998d8584A2B05749bA73c37a938a",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xFA1a856Cfa3409CFa145Fa4e20Eb270dF3EB21ab",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xD0a4b8946Cb52f0661273bfbC6fD0E0C75Fc6433",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x80fB784B7eD66730e8b1DBd9820aFD29931aab03",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xF433089366899D83a9f26A773D59ec7eCF30355e",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x27054b13b1B798B345b591a4d22e6562d47eA75a",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xdB25f211AB05b1c97D595516F45794528a807ad8",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x8E870D67F660D95d5be530380D0eC0bd388289E1",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x2295fc6BC32cD12fdBb852cFf4014cEAc6d79C10",
+      "KNCWallet":"0x0000000000000000000000000000000000000000",
+      "fees":"0",
+      "tokens":[ 
+        { 
+          "address":"0x094c875704c14783049DDF8136E298B3a099c446",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x742e8BB8e6bDE9CB2DF5449f8de7510798727fB1",
+      "KNCWallet":"0xE0E1f00A2537Eccdbb993929A4265658353Affc6",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0x865ec58b06bF6305B886793AA20A2da31D034E68",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x57f8160e1c59D16C01BbE181fD94db4E56b60495",
+      "KNCWallet":"0x0000000000000000000000000000000000000000",
+      "fees":"0",
+      "tokens":[ 
+        { 
+          "address":"0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x3e9FFBA3C3eB91f501817b031031a71de2d3163B",
+      "KNCWallet":"0xb059f003cA875d9914AfF142743A902cC9e5cA03",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0x0E8d6b471e332F140e7d9dbB99E5E3822F728DA6",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x0232Ba609782Cea145Ec3663F52CF7aEb4AC773C",
+      "KNCWallet":"0xAa6c7076212375814c92Ed3C04A3BAB762985ba9",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0xC28e931814725BbEB9e670676FaBBCb694Fe7DF2",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0xa33c7c22d0BB673c2aEa2C048BB883b679fa1BE9",
+      "KNCWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0xec67005c4E498Ec7f55E092bd1d35cbC47C91892",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x04A487aFd662c4F9DEAcC07A7B10cFb686B682A4",
+      "KNCWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0xD6000fda0b38f4Bff4CfAb188E0bd18e8725a5e7",
+      "KNCWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0x255Aa6DF07540Cb5d3d297f0D0D4D84cb52bc8e6",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xd26114cd6EE289AccF82350c8d8487fedB8A0C07",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x6810e776880C02933D47DB1b9fc05908e5386b96",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x45eb33D008801d547990cAF3b63B4F8aE596EA57",
+      "KNCWallet":"0x5565d64f29Ea17355106DF3bA5903Eb793B3e139",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0x408e41876cCCDC0F92210600ef50372656052a38",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x5D154c145Db2ca90B8aB5e8Fe3E716AfA4AB7Ff0",
+      "KNCWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x0D8775F648430679A709E98d2b0Cb6250d2887EF",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x1985365e9f78359a9B6AD760e32412f4a445E862",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x2C5dcd12141c56FBEa08e95f54f12c8B22d492Eb",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0xA467b88BBF9706622be2784aF724C4B44a9d26F4",
+      "KNCWallet":"0x5565d64f29Ea17355106DF3bA5903Eb793B3e139",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x1670DFb52806DE7789D5cF7D5c005cf7083f9A5D",
+      "KNCWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0xAA14DCAA0AdbE79cBF00edC6cC4ED17ed39240AC",
+      "KNCWallet":"0xB399C994a03D4Ea83990927Fe6B091236E4C887d",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0x543Ff227F64Aa17eA132Bf9886cAb5DB55DCAddf",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x7a3370075a54B187d7bD5DceBf0ff2B5552d4F7D",
+      "KNCWallet":"0x30d89B0Ad7bF97a77d9d71D1F87C06356EB9953D",
+      "fees":"13",
+      "tokens":[ 
+        { 
+          "address":"0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0xdAC17F958D2ee523a2206206994597C13D831ec7",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x8E870D67F660D95d5be530380D0eC0bd388289E1",
+          "ethToToken":true,
+          "tokenToEth":true
+        },
+        { 
+          "address":"0x514910771AF9Ca656af840dff83E8264EcF986CA",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x05461124C86C0AD7C5d8E012e1499fd9109fFb7d",
+      "KNCWallet":"0xD2b3D480Db9Fb08Ea55c349C0299b81892F31544",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0x6810e776880C02933D47DB1b9fc05908e5386b96",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x1833AD67362249823515B59A8aA8b4f6B4358d1B",
+      "KNCWallet":"0x2ABE2A10E6A4791B7D413dE5088695Dd46E4A363",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0x5d60d8d7eF6d37E16EBABc324de3bE57f135e0BC",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x302B35bd0B01312ec2652783c04955D7200C3D9b",
+      "KNCWallet":"0x3333Ee56a2D9dC70de0f59A1D9Da7fB815516E43",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0x22B3FAaa8DF978F6bAFe18aaDe18DC2e3dfA0e0C",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x6b84DBd29643294703dBabf8Ed97cDef74EDD227",
+      "KNCWallet":"0x89bc568e74D16775a95e56Cf6032Bc323dCfA616",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0x20F7A3DdF244dc9299975b4Da1C39F8D5D75f05A",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x7e2fd015616263Add31a2AcC2A437557cEe80Fc4",
+      "KNCWallet":"0x17EbaA440fae1d97465D7588987b08301Fe903C4",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0xC86D054809623432210c107af2e3F619DcFbf652",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x485c4Ec93D18eBd16623D455567886475aE28D04",
+      "KNCWallet":"0x6f636A1A8d60747f398aA4Ce6f7BD23D83D89956",
+      "fees":"13",
+      "tokens":[ 
+        { 
+          "address":"0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0xa107dfa919c3f084a7893A260b99586981beb528",
+      "KNCWallet":"0xA97Bc5dD7B32003398645EDEb2178c91087f86D8",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x3480E12B6C2438e02319e34b4c23770679169190",
+      "KNCWallet":"0x1464797981B1C9fDb67d20939fbeB82917d110a7",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0xaAAf91D9b90dF800Df4F55c205fd6989c977E73a",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x08030715560a146E306b87CA93Fd618bb2A80363",
+      "KNCWallet":"0x5390B4DDf69505393D6338cAF37667fad8FC7156",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0xb683D83a532e2Cb7DFa5275eED3698436371cc9f",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x95f1f428485Bd41729938D620af61718Ea9B1F9E",
+      "KNCWallet":"0x33892b7722fA55E75DB5C3a3931Fd31A8A49A044",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0xec67005c4E498Ec7f55E092bd1d35cbC47C91892",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0xb45C8956a080d336934cEE52A35D4dbABF025b6F",
+      "KNCWallet":"0xbEE7f7795d90DCf976cD2990cb5F79FAE9207419",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0x751Eea622edd1E3D768C18afbCaeC7DcE7750C65",
+      "KNCWallet":"0x67119627409ab17bfEb6b8c6c308d614F2AA6264",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0xE5a3229CCb22b6484594973A03a3851dCd948756",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    },
+    { 
+      "address":"0xCf1394C5e2e879969fdB1f464cE1487147863dCb",
+      "KNCWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "fees":"25",
+      "tokens":[ 
+        { 
+          "address":"0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359",
+          "ethToToken":true,
+          "tokenToEth":true
+        }
+      ]
+    }
+  ],
 
-  "whitelist params" : {
-    "testers" : ["0x053a9f418F7BE3391A2821BE23b418a909f42F54",
-                 "0x0d225f12898e0ca01867290a61f4cbfe11a1da8a",
-                 "0x12f0453c1947269842c5646df98905533c1b9519",
-                 "0x42bbe426b1796b8eca6444928e874a58ee124973",
-                 "0xb2d904d1981080C9002818D833819e33a58F8388",
-                 "0x3Cf628d49Ae46b49b210F0521Fbd9F82B461A9E1",
-                 "0xdde0a80664fbbdb56e2cd82f725cd3be1f9bb6d3",
-                 "0xC825Ef342d94B687590E123BBB27994ccBfFcc35",
-                 "0x8180a5CA4E3B94045e05A9313777955f7518D757",
-                 "0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
-                 "0xd0643bc0d0c879f175556509dbcee9373379d5c3"],
-    "testers category" : 9,
-    "testers cap" : 5000,
-    "KGT address": "0xfce10cbf5171dc12c215bbcca5dd75cbaea72506",
-    "KGT cap": 0,
-    "users" : ["0x943252227f9cbfa10ee85912069171813e07b5df",
-      "0x85f160b182fe02d82cc771753a67425dc7da4bfd",
-      "0x3cf628d49ae46b49b210f0521fbd9f82b461a9e1",
-      "0xc137d86197f8df68038ca79df9464b5ed83b46f5",
-      "0x759604f9ae53af58905e2ed23ea2c6a7bcd4c881",
-      "0xbfe8d9a90bbebdb725333ecff6a947045514d86e",
-      "0x107d1e7d288525d8c0112a38e881a1119546ec99",
-      "0xc96dff7ddc0d9aebdc84572ea7f463341b0c3499",
-      "0xefb8085ef21ab0818bb070e5881bce01da322319",
-      "0x2c7f07e07459340025046bf77c2fdcc1c86fd4ff",
-      "0xcf298e820ec1c37d09378ed45f13081fe18af030",
-      "0x805e04be44fa0abe67c9daeb2d63dfe11ebb0b7a",
-      "0xb2d904d1981080c9002818d833819e33a58f8388",
-      "0xd64fd8f71b147071b58e849a172e443a34afb900",
-      "0xf214dde57f32f3f34492ba3148641693058d4a9e",
-      "0x7aab84d251f67a79126bc2188cf4a1e5e29f36b4",
-      "0x36890b6d03820f4d2b8dadd383a1045c05f2d89d",
-      "0x34409fda33b9ac5ad4c57f1e3113fe21c19a5294",
-      "0x538597d67c503fca3bc169e61790fc5003e5081d",
-      "0xfdc280b6733f3ae7f2420f3124cdcd9152de3827",
-      "0x759604f9ae53af58905e2ed23ea2c6a7bcd4c881",
-      "0x3f105f78359ad80562b4c34296a87b8e66c584c5",
-      "0x441bae4cda3c6feccfc98add2f2ed363d9ebc090",
-      "0x4a48312f6981484c4204d8501ad3d93f4f4571bf",
-      "0x0c3b2b708b42f99df2c0c822b9fb8fc43a5e329e",
-      "0x80c2c1ceb335e39b7021c646fd3ec159faf9109d",
-      "0xffaa5d3ece144954bf5b98977857f521972f729c",
-      "0xcfc84a1061978527a41f561ae6ed8a86fa68d44c",
-      "0x8180a5ca4e3b94045e05a9313777955f7518d757",
-      "0xf214dde57f32f3f34492ba3148641693058d4a9e",
-      "0x6d15a2372efbe32550bc02831524f9c77fb05514",
-      "0xefb8085ef21ab0818bb070e5881bce01da322319",
-      "0xe2da6286d17d589a87f58c4a1aa136d5809ca617",
-      "0x43116e303b1b001bd08f6eaf8debea50d0a8cbc9",
-      "0x453c1e38772cfe2f8550da4a47a6624b8c5ccd39",
-      "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
-      "0x0f114bcde33f3d8b5c2034810d21a030808fbb61",
-      "0xffaa5d3ece144954bf5b98977857f521972f729c",
-      "0xcfc84a1061978527a41f561ae6ed8a86fa68d44c",
-      "0x42bbe426b1796b8eca6444928e874a58ee124973",
-      "0xc4ae4aedcb717b6f04cac9492c70ed85412048ed",
-      "0xfdc63f4f9ddfaeb7fbf0fca4e09178efac765a85",
-      "0x79c1565c052808bb81df554581888dc077567222",
-      "0x9e1fe268f3f84400cebd8fe6dda5fdb0f8ae9ea9",
-      "0x1c67a930777215c9d4c617511c229e55fa53d0f8",
-      "0x0d225f12898e0ca01867290a61f4cbfe11a1da8a",
-      "0x12f0453c1947269842c5646df98905533c1b9519",
-      "0x29641cd7f394dff57eaa6ebca31c88e5b84d6b4c",
-      "0xe9dcde10206cbbd76c52944ff0eec832c886bbc6" ],
-    "users category" : 1,
-    "users cap": 0,
-    "default cap": 0
-  },
+  "wallets":[ 
+    { 
+      "id":"0x09227deaeE08a5Ba9D6Eb057F922aDfAd191c36c",
+      "fees":"4000"
+    },
+    { 
+      "id":"0xb9E29984Fe50602E7A619662EBED4F90D93824C7",
+      "fees":"5000"
+    },
+    { 
+      "id":"0xF1AA99C69715F423086008eB9D06Dc1E35Cc504d",
+      "fees":"5000"
+    },
+    { 
+      "id":"0xDD61803d4a56C597E0fc864F7a20eC7158c6cBA5",
+      "fees":"5000"
+    },
+    { 
+      "id":"0xDECAF9CD2367cdbb726E904cD6397eDFcAe6068D",
+      "fees":"4000"
+    },
+    { 
+      "id":"0x398d297BAB517770feC4d8Bb7a4127b486c244bB",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xa7615CD307F323172331865181DC8b80a2834324",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x09565F8EF3a3395D82C2BA6776a7EF6AF39D9485",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x2d841E088087D3A447d198725291D485dFBa024D",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x27F6119df51a638bE7b2b54811b80dd5B4CAEe9b",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x79314262481b92695F051161dAB8aefc365F060A",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x0064454B14cdDC990eD6520EF94d3E28fE7C41b6",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x85a55f6636033eE72C196eE69e55FBC93E2B49D1",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xa6bC6dF9Eba23abfF0d1eCD6C9847893D2B1643D",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x468fbBCB28E4D2699139c64551D6F0178760209F",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x673d26360Af6688fDD9d788677fD06f58aad5b4D",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xC9D81352fBdb0294b091e51d774A0652ef776D99",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xE2D8481eeF31CDA994833974FFfEccd576f8D71E",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xF7075e232b34E57Ca3bB91980b97C4f8a20d7ee4",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xa4a427e29022187FC470D001423cBbf9084b4a3f",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xe0a66218c40230967d4240D25f6220A28E52c7Ff",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x351a7DFfbE4b4EBA06a0b583C970c4f83e89835C",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x332D87209f7c8296389C307eAe170c2440830A47",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x0bfe4bbc873b378C6B2cC529D1e3DA4980c0020A",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xCC3A572c4D49EeAbD53154A59779F7Eb6dA912a9",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x9d0f45874c67bCb0858C30A48AAf028443cAF4ba",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x5dD835A893734B8D556EcCf87800b76dDA5AEDC5",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x440bBd6a888a36DE6e2F6A25f65bc4e16874faa9",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xEA1a7dE54a427342c8820185867cF49fc2f95d43",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x4247951c2eb6d0bA38d233fe7d542c8c80c9d46A",
+      "fees":"4000"
+    },
+    { 
+      "id":"0x21357B3dcb7AE07Da23A708DBbd9a2340001a3F4",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xdb717E3148c09333E21ca93c2c1D4C42EC8b93db",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xD8a38Ae058fB6a6A6CB9517cF9Bc1730a6E15617",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xaA98e2af598aC5EdAF35E1975e7dbBaBeD4F48e8",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xdE63aef60307655405835DA74BA02CE4dB1a42Fb",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x067D12850D0575713390aB26c7fB47Bd2a6988cd",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xaad8bd77C9E3c07481cbd9783f051c969640550F",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xc628B34855d4367B03a1F8E77d27309D7C38A1fA",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xa380090b68444038ca1CF885Acb90dFAD2c848EC",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x831A0249A4016ab6381aBE60A1DE17532298E0b4",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xD60cff99Be043D2D2F1c770D7081D9b509C569f3",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x1bF3e7EDE31dBB93826C2aF8686f80Ac53f9ed93",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x22447f6B578B25051FD43Bc8c3FF9fD16Aa33B4a",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x658a44F7F0bA51780aC2bcCBd08709b745Bcf632",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x33b8287511ac7F003902e83D642Be4603afCd876",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x305E0347C909Badc337Db560F58824135BdD28EA",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xB0132e0CE87dfd81841d288489824765f9E80a9c",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x9b4a4d920d6b32B6BF721ECaA38Bfd0d018a8B0F",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xC6394C91C3c7cda219AC0E4a2C0c4E53892540cb",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x25E3d9B98A4DeA9809B65045D1F007335032EDd4",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xcb5486630d8DeaCa19Bb820efceAe8D31696Fa97",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x7284a8451d9a0e7Dc62B3a71C0593eA2eC5c5638",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xa5c603e1C27a96171487aea0649b01c56248d2e8",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x9a68f7330A3Fe9869FfAEe4c3cF3E6BBef1189Da",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xF12c4E73868a4A028382AC51b57482b627A323d2",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xF814821b260F78fCA6dc8ceb0064DF14a1b803cC",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xa0692A72d0F0b80A5c2A5E57162291f0b476d806",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xC4159F241926cd558658162d64e862F9725a34dd",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x00000319b4bF231cfb44D365863C878D2fF39D64",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xE23b713BF714E0EA9A319A54a8c3eB0f6687346E",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x04E89f5A530Acc83136aA8300542125e2aBB5E83",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x04bb33C3A8c2D018836a1f938054Ebb59e0036B2",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x10534D4e612071E6B6480C498dd8BDB8f51b9ed7",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x01fdF2434B67A7d6F36e6dC2982b6FaD8b8e3779",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x24cfF6dDc2E5Ce354A1413Be2BBDD1AF868b5aAb",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x563A16e4469e8Ea7424410Be6A3e56407C2Db7b9",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xB806C4d481d29A73E394a7d22De04ADE3D1D4780",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x50478fbeb70a4C26A932744e066701A16C7F5307",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x107B8C8a12f24f6bfec6aB480B4C843291e1575e",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xF24DFc6DCF65EB57F460488321ebCa084DC2B1b9",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xC1D91943248Bf2e627Ca2c52860a04cDB80903A4",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xa1426C67db444dd05A90f531C233583472b6b01b",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x4D37f28D2db99e8d35A6C725a5f1749A085850a3",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x1520dd2Ccb0c150e5716f57a77c703D95427acbC",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x693717780bEdecA5F28505A33082A0B6F4d06994",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x322d58b9E75a6918f7e7849AEe0fF09369977e08",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x409B512e1cf94500877C5353B2a0C13B2d24914F",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x62a5e04F8C5683272341987B37ef0b88D7A4ccAB",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x1a719375E9b8b056C5492Fdf7BAd9bf5A2F79cC2",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x555299d7DB8fD15923B69286964f73B9a25125A8",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xa36002e0320b2679Bf247D6760d87AFe672FD2B0",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xF257246627f7CB036AE40Aa6cFe8D8CE5F0EbA63",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x4d58C05C7d3455A0aCFA72F7cc6C13918d972589",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x03E0635A77Ca3DbC23748aF10a568663964f4BAD",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xCA0F6448E251Cb9ad347A23c42f4fd4C313B8Aa4",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xB4700Da07508553877A81a9A2F40a872DE788cfE",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x9E1c71c25111F4CA7B40C956c8a21B6AC2f02274",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xb21090C8f6bAC1ba614A3F529aAe728eA92B6487",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xEC1e3dc16eE138991E105DfA3230F1c9D607A6d0",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x10E4935ac888A76C400966C28504cce49ba4410d",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x92afB508a46494AC00A242627703d1f21CA2dF1B",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xf89220007d9280f97FA44C8bB82EfBdEcC39063A",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x9FD316982B397f8117d5f1E6cfa87691E1519b22",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xD7537928b6ad4185C63F52050ab2f1D0068f8ABC",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x2c5713746EFb794a435BD1b790d911051AB8D04e",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xc4DBc8630720b0A759EccB47afb286Ab5cfbAa48",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x24a445E27ebab757CD93D550ef31022bf829CAea",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x13ddAC8d492E463073934E2a101e419481970299",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x03a0a46306c5b271DAA9CFd7e08a11c1358D056E",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x7A342739F58A55a3a01Efea152EFd95E8e96ef70",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x8018280076d7fA2cAa1147e441352E8a89e1DDbe",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x88EdE65Cb154660A84d996467bdEF80e17DE1576",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x2fe3f2B61539071826860736D675c4B542414FfE",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xF20DAB577269dC26429079d5796F204C2f90229E",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x78a598d61B230387c3267509881178557d8a5467",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x652740D58E182A6aE5fd5217063094A98d6AB8D1",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x52D35e8f0Ffa18337B093Aec3DfFF40445d8f4f4",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x4BE78b8BA92567AB0889BE896578Be56B816D318",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xBd3BF40bEEBEa315327cf69ecE02431338f7EFE7",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x087aC7736469716D73498e479E09119A02D7A59D",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x4c1974e5FF413C6E061aE217040795AaA1748e8B",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xac2D0e72f8aB200AEb7f72263480fe859A9FB99D",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xa4887EA048A49b34EE531fb43113ecAf930445e3",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x3fFFF2F4f6C0831FAC59534694ACd14AC2Ea501b",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x5b363917FEae038d597DB04D0DfBa4C30Cd5C587",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x7a0FA8E9F5450DEa45CCf034940F0f6B02582C92",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x8B2315243349f461045854beec3c5aFA84f600B6",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x30d89B0Ad7bF97a77d9d71D1F87C06356EB9953D",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x80B603bCE2D8Cc3acb43B6692514b463a16FB425",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x9Abc36Ac04Ed2A6c866beB084E70D4b1674e5ea3",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xc1F9BB72216E5ecDc97e248F65E14df1fE46600a",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x63a7b186819F6E0E1579a5C3b79526E9c6677533",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x817259dDfF5CD059f761A8b032A4B5e87501B376",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xefee065ceF8E0852BbA7c91dbbe6656E7C741707",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x6bae56C7C534c38E08564C4b482a04Ea53B7A29c",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xAB638D13047AD6BF8bC03a786e8E5239922A68Dc",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xf2EBAbAeA9da140416793cbF348F14b650fe7329",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x25Dba4fE43f3E630BBf5C675568c3D463F5b870C",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x000000Aaee6A496aaf7b7452518781786313400f",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xEc2E65258b0CB297F44f395f6fF13485A9D320DC",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x79880F298e6cbfd20d03F411F6609fc1faf1C64B",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xDdC0E4931936d9F590Ccb29f7f4758751479d0A8",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x800C74c7bD68D6de196cA46a882c2A49053b9Bf6",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xD61CB2330Eba743449188c834a407FFC691f12Fd",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x41B8b65f1b5b5F69466cc5AE8D8C7eC2756Bc5CA",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xc97816720Cb9F5aa508dF4dFf8d61491AfAA3e23",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x0730fD7D15fA9a40a6C7B2bbb4B8CE9ee6E6d08B",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xFb0fce9D94f3f69D419dBf11Cf35bEd84a501034",
+      "fees":"3000"
+    },
+    { 
+      "id":"0x583d03451406d179182efc742A1d811a9e34C36b",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xD53799e6F0728FDFB56B746DcD7B75dfcb422D74",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xcf0aCfc98B2b9a2d0BD4E54028bCd64a2ff655D7",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xB1dEbeF06e45178F53CD15741e21163461D30FFC",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xb3E20b057CBF2c0D9d099baC6772aF0c948C6ADe",
+      "fees":"3000"
+    },
+    { 
+      "id":"0xE59b150ab850CE59C3BE44AAa963fd5239d658F6",
+      "fees":"3000"
+    }
+  ],
 
   "max gas price" : "50000000000",
   "neg diff in bps" : 20,
   "min expected rate slippage" : 300,
-  "KNC wallet" : "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-  "KNC to ETH rate" : 300,
-  "tax fees bps": 2000,
-  "tax wallet address": "",
-  "valid duration block" : 60,
+  "KNC to ETH rate" : 1000,
+  "default wallet fees bps": 3000,
+  "tax fees bps": 0,
+  "tax wallet address": "0x0000000000000000000000000000000000000000",
 
-  "output filename" : "mainnet_production.json"
+  "output filename" : "mainnet.json"
 }

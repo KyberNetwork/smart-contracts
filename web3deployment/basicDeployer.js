@@ -18,9 +18,7 @@ const web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
 const solc = require('solc')
 
 const rand = web3.utils.randomHex(7);
-
 const privateKey = web3.utils.sha3("in joy we trust" + rand);
-console.log("privateKey", privateKey);
 
 if (printPrivateKey) {
   let path = "privatekey_"  + web3.utils.randomHex(7) + ".txt";
@@ -47,15 +45,15 @@ async function sendTx(txObject) {
     gasLimit = await txObject.estimateGas();
   }
   catch (e) {
-    gasLimit = 500 * 1000;
+    gasLimit = 800 * 1000;
   }
 
   if(txTo !== null) {
-    gasLimit = 500 * 1000;
+    gasLimit = 800 * 1000;
   }
 
     gasLimit *= 1.2;
-    gasLimit -= gas Limit % 1;
+    gasLimit -= gasLimit % 1;
 
   //console.log(gasLimit);
   const txData = txObject.encodeABI();
@@ -100,40 +98,7 @@ async function deployContract(solcOutput, contractName, ctorArgs) {
     return [address,myContract];
 }
 
-const contractPath = path.join(__dirname, "../contracts/");
-
-
-const input = {
-  "PermissionGroups.sol" : fs.readFileSync(contractPath + 'PermissionGroups.sol', 'utf8'),
-  "ERC20Interface.sol" : fs.readFileSync(contractPath + 'ERC20Interface.sol', 'utf8'),
-  "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
-  "Utils.sol" : fs.readFileSync(contractPath + 'Utils.sol', 'utf8'),
-  "Utils2.sol" : fs.readFileSync(contractPath + 'Utils2.sol', 'utf8'),
-//  "ConversionRatesInterface.sol" : fs.readFileSync(contractPath + 'ConversionRatesInterface.sol', 'utf8'),
-//  "ConversionRates.sol" : fs.readFileSync(contractPath + 'ConversionRates.sol', 'utf8'),
-//  "SanityRatesInterface.sol" : fs.readFileSync(contractPath + 'SanityRatesInterface.sol', 'utf8'),
-//  "ExpectedRateInterface.sol" : fs.readFileSync(contractPath + 'ExpectedRateInterface.sol', 'utf8'),
-//  "SanityRates.sol" : fs.readFileSync(contractPath + 'SanityRates.sol', 'utf8'),
-//  "ExpectedRate.sol" : fs.readFileSync(contractPath + 'ExpectedRate.sol', 'utf8'),
-//  "VolumeImbalanceRecorder.sol" : fs.readFileSync(contractPath + 'VolumeImbalanceRecorder.sol', 'utf8'),
-  "FeeBurnerInterface.sol" : fs.readFileSync(contractPath + 'FeeBurnerInterface.sol', 'utf8'),
-  "FeeBurner.sol" : fs.readFileSync(contractPath + 'FeeBurner.sol', 'utf8'),
-//  "WhiteListInterface.sol" : fs.readFileSync(contractPath + 'WhiteListInterface.sol', 'utf8'),
-//  "WhiteList.sol" : fs.readFileSync(contractPath + 'WhiteList.sol', 'utf8'),
-//  "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
-//  "KyberNetwork.sol" : fs.readFileSync(contractPath + 'KyberNetwork.sol', 'utf8'),
-//  "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
-//  "Wrapper.sol" : fs.readFileSync(contractPath + 'mockContracts/Wrapper.sol', 'utf8')
-  "WrapperBase.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapperBase.sol', 'utf8'),
-  "WrapFeeBurner.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapFeeBurner.sol', 'utf8'),
-  "FeeBurnerWrapperProxy.sol" : fs.readFileSync(contractPath + 'wrapperContracts/FeeBurnerWrapperProxy.sol', 'utf8'),
-  "KyberRegisterWallet.sol" : fs.readFileSync(contractPath + 'wrapperContracts/KyberRegisterWallet.sol', 'utf8')
-};
-
-
 const ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-const feeBurnerAddress = '0xd6703974Dc30155d768c058189A2936Cf7C62Da6'; //staging
-//const feeBurnerAddress = '0xed4f53268bfdff39b36e8786247ba3a02cf34b04';  //production
 
 async function main() {
     nonce = await web3.eth.getTransactionCount(sender);
@@ -142,51 +107,25 @@ async function main() {
     chainId = chainId || await web3.eth.net.getId()
     console.log('chainId', chainId);
 
-    console.log("starting compilation");
-    const output = await solc.compile({ sources: input }, 1);
-    console.log(output.errors);
+    console.log('starting compilation');
+    output = await require("./compileContracts.js").compileContracts();
+    console.log(output.errors)
     console.log("finished compilation");
 
     if (!dontSendTx) {
         await waitForEth();
     }
 
+    let addr;
+    let contract;
 
-    let wrapperFeeBurnerAddress;
-    let wrapFeeBurnerContract;
+    [addr, contract] =
+        await deployContract(output, "ContractName.sol:ContractName", );
 
-    [wrapperFeeBurnerAddress, wrapFeeBurnerContract] =
-        await deployContract(output, "WrapFeeBurner.sol:WrapFeeBurner", [feeBurnerAddress, sender]);
+    console.log("Address: " + addr);
 
-    console.log("wrap fee burner address: " + wrapperFeeBurnerAddress);
-
-    let feeBurnerWrapperProxyAddress;
-    let feeBurnerWrapperProxyContract;
-
-    [feeBurnerWrapperProxyAddress, feeBurnerWrapperProxyContract] =
-        await deployContract(output, "FeeBurnerWrapperProxy.sol:FeeBurnerWrapperProxy", [wrapperFeeBurnerAddress]);
-
-    console.log('feeBurnerWrapperProxyAddress')
-    console.log(feeBurnerWrapperProxyAddress)
-
-    let registerWalletAddress;
-    let registerWalletContract;
-
-    [registerWalletAddress, registerWalletContract] =
-        await deployContract(output, "KyberRegisterWallet.sol:KyberRegisterWallet", [feeBurnerWrapperProxyAddress]);
-
-    console.log('registerWalletAddress')
-    console.log(registerWalletAddress)
-//    console.log("fee burner wrapper");
-//    let wrapperFeeBurnerAddress = '0xBe401c3cf8528DB1B963e2E40827a2E0e1d98Ee4';
-//    let abi = output.contracts["WrapFeeBurner.sol:WrapFeeBurner"].interface;
-//    wrapFeeBurnerContract = await new web3.eth.Contract(JSON.parse(abi), wrapperFeeBurnerAddress);
-
-
-//    await sendTx(wrapFeeBurnerContract.methods.addOperator(anotherAdd));
-    await sendTx(wrapFeeBurnerContract.methods.addOperator(someAdd));
-    await sendTx(wrapFeeBurnerContract.methods.transferAdminQuickly(someAdd));
-    await sendTx(feeBurnerWrapperProxyContract.methods.transferAdminQuickly(someAdd));
+//    await sendTx(contract.methods.addOperator(someAdd));
+//    await sendTx(contract.methods.transferAdminQuickly(someAdd));
 
     console.log("last nonce is", nonce);
 }
@@ -211,4 +150,3 @@ async function waitForEth() {
 
 main();
 
-//console.log(deployContract(output, "cont",5));

@@ -12,10 +12,16 @@ contract WrapConversionRate is WrapperBase {
 
     //general functions
     function WrapConversionRate(ConversionRates _conversionRates) public
-        WrapperBase(PermissionGroups(address(_conversionRates)), msg.sender, 0)
+        WrapperBase(PermissionGroups(address(_conversionRates)))
     {
         conversionRates = _conversionRates;
-        addOperator(admin);
+    }
+
+    //overriding base
+    function claimWrappedContractAdmin() public onlyAdmin {
+        super.claimWrappedContractAdmin();
+        //for recurring claim, remove operator from wrapped contract
+        conversionRates.addOperator(this);
     }
 
     // add token functions
@@ -34,8 +40,6 @@ contract WrapConversionRate is WrapperBase {
 
         conversionRates.addToken(token);
 
-        conversionRates.addOperator(this);
-
         //token control info
         conversionRates.setTokenControlInfo(
             token,
@@ -52,8 +56,6 @@ contract WrapConversionRate is WrapperBase {
         conversionRates.setImbalanceStepFunction(token, zeroArr, zeroArr, zeroArr, zeroArr);
 
         conversionRates.enableTokenTrade(token);
-
-        conversionRates.removeOperator(this);
     }
 
     // enable trade per token
@@ -90,6 +92,25 @@ contract WrapConversionRate is WrapperBase {
                 minRecordResolution,
                  maxPerBlockImbalanceValues[i],
                 maxTotalImbalanceValues[i]);
+        }
+    }
+
+    //set token min resolution
+    ////////////////////////
+    function setTokenMinResolution(ERC20[] tokens, uint[] minResolution) public onlyAdmin {
+        require(minResolution.length == tokens.length);
+
+        uint minRecordResolution;
+        uint maxPerBlock;
+        uint maxTotal;
+
+        for (uint i = 0; i < tokens.length; i++) {
+            (minRecordResolution, maxPerBlock, maxTotal) = conversionRates.getTokenControlInfo(tokens[i]);
+
+            conversionRates.setTokenControlInfo(tokens[i],
+                minResolution[i],
+                maxPerBlock,
+                maxTotal);
         }
     }
 

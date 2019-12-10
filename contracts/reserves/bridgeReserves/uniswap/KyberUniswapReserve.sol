@@ -143,6 +143,9 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         uint rateSrcDest;
         uint rateDestSrc;
         (convertedQuantity, rateSrcDest) = calcUniswapConversion(src, dest, srcQty);
+
+        if (convertedQuantity == 0) return 0;
+
         (, rateDestSrc) = calcUniswapConversion(dest, src, convertedQuantity);
 
         uint quantityWithPremium = addPremium(token, convertedQuantity);
@@ -555,8 +558,12 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         UniswapExchange exchange;
         if (src == ETH_TOKEN_ADDRESS) {
             exchange = UniswapExchange(tokenExchange[address(dest)]);
+
+            uint amountLessFee = deductFee(srcQty);
+            if (amountLessFee == 0) return (0, 0);
+
             destQty = exchange.getEthToTokenInputPrice(
-                deductFee(srcQty)
+                amountLessFee
             );
         } else {
             exchange = UniswapExchange(tokenExchange[address(src)]);
