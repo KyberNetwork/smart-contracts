@@ -3,11 +3,15 @@ const TestToken = artifacts.require("TestToken.sol");
 const Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
 
 const Helper = require("./helper.js");
-const BigNumber = require('bignumber.js');
-const BN = require("bn.js");
+const BN = web3.utils.BN;
+
+require("chai")
+    .use(require("chai-as-promised"))
+    .use(require("chai-bn")(BN))
+    .should();
 
 //global variables
-let precisionUnits = (new BigNumber(10).pow(18));
+let precisionUnits = new BN(10).pow(new BN(18));
 let token;
 let minimalRecordResolution = 2; //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
 let maxPerBlockImbalance = 4000;
@@ -80,8 +84,7 @@ contract('ConversionRates', function(accounts) {
 
         for (let i = 0; i < 14; i++) {
             byte = await wrapper.getInt8FromByte(hexArr, i);
-//            console.log("byte " + i + ": " + byte.valueOf());
-            assert.equal(byte.valueOf(), arr[i].valueOf(), "bad bytes 14. index: " + i);
+            Helper.assertEqual(byte, arr[i], "bad bytes 14. index: " + i);
         }
     });
 
@@ -116,7 +119,7 @@ contract('ConversionRates', function(accounts) {
 
         for (i = 0; i < numTokens; ++i) {
             ethToTokenRate = convertRateToPricingRate((i + 1) * 10);
-            tokenToEthRate = convertRateToPricingRate(Number((1 / ((i + 1) * 10)).toFixed(13)));
+            tokenToEthRate = (new BN(10).pow(new BN(18))).div(new BN((i + 1) * 10));
             baseBuy.push(ethToTokenRate);
             baseSell.push(tokenToEthRate);
         }
@@ -134,8 +137,8 @@ contract('ConversionRates', function(accounts) {
         for (i = 0; i < numTokens; ++i) {
             thisBuy = await convRatesInst.getBasicRate(tokens[i], true);
             thisSell = await convRatesInst.getBasicRate(tokens[i], false);
-            assert.deepEqual(thisBuy.toString(10), baseBuy[i].toString(), "wrong base buy rate.");
-            assert.deepEqual(thisSell.toString(10), baseSell[i].toString(), "wrong base sell rate.");
+            Helper.assertEqual(thisBuy, baseBuy[i], "wrong base buy rate");
+            Helper.assertEqual(thisSell, baseSell[i], "wrong base sell rate");
         }
     });
 
@@ -190,11 +193,11 @@ contract('ConversionRates', function(accounts) {
         //get block number from compact data and verify
         let blockNum = await convRatesInst.getRateUpdateBlock(tokens[3]);
 
-        assert.equal(blockNum.valueOf(), currentBlock.valueOf(), "bad block number returned");
+        Helper.assertEqual(blockNum, currentBlock, "bad block number returned");
 
         blockNum = await convRatesInst.getRateUpdateBlock(tokens[11]);
 
-        assert.equal(blockNum.valueOf(), currentBlock.valueOf(), "bad block number returned");
+        Helper.assertEqual(blockNum, currentBlock, "bad block number returned");
     });
 
 
@@ -236,18 +239,18 @@ contract('ConversionRates', function(accounts) {
 
         // x axis
         let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpQtyXLength, 0); //get length
-        assert.equal(received.valueOf(), qtyBuyStepX.length, "length don't match");
+        Helper.assertEqual(received, qtyBuyStepX.length, "length don't match");
 
         // now y axis
         received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpQtyYLength, 0); //get length
-        assert.equal(received.valueOf(), qtyBuyStepX.length, "length don't match"); //x and y must match.
+        Helper.assertEqual(received, qtyBuyStepX.length, "length don't match");
 
         //iterate x and y values and compare
         for (let i = 0; i < qtyBuyStepX.length; ++i) {
             received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpQtyParamX, i); //get x value in cell i
-            assert.equal(received.valueOf(), qtyBuyStepX[i], "mismatch for x value in cell: " + i);
+            Helper.assertEqual(received, qtyBuyStepX[i], "mismatch for x value in cell: " + i);
             received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpQtyParamY, i); //get x value in cell i
-            assert.equal(received.valueOf(), qtyBuyStepY[i], "mismatch for y value in cell: " + i);
+            Helper.assertEqual(received, qtyBuyStepY[i], "mismatch for y value in cell: " + i);
         }
     });
 
@@ -257,18 +260,18 @@ contract('ConversionRates', function(accounts) {
 
         // x axis
         let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpQtyXLength, 0); //get length
-        assert.equal(received.valueOf(), qtySellStepX.length, "length don't match");
+        Helper.assertEqual(received, qtySellStepX.length, "length don't match");
 
         // now y axis
         received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpQtyYLength, 0); //get length
-        assert.equal(received.valueOf(), qtySellStepX.length, "length don't match"); //x and y must match.
+        Helper.assertEqual(received, qtySellStepX.length, "length don't match");
 
         //iterate x and y values and compare
         for (let i = 0; i < qtySellStepX.length; ++i) {
             received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpQtyParamX, i); //get x value in cell i
-            assert.equal(received.valueOf(), qtySellStepX[i], "mismatch for x value in cell: " + i);
+            Helper.assertEqual(received, qtySellStepX[i], "mismatch for x value in cell: " + i);
             received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpQtyParamY, i); //get x value in cell i
-            assert.equal(received.valueOf(), qtySellStepY[i], "mismatch for y value in cell: " + i);
+            Helper.assertEqual(received, qtySellStepY[i], "mismatch for y value in cell: " + i);
         }
     });
 
@@ -277,18 +280,18 @@ contract('ConversionRates', function(accounts) {
 
         // x axis
         let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceXLength, 0); //get length
-        assert.equal(received.valueOf(), imbalanceBuyStepX.length, "length don't match");
+        Helper.assertEqual(received, imbalanceBuyStepX.length, "length don't match");
 
         // now y axis
         received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceYLength, 0); //get length
-        assert.equal(received.valueOf(), imbalanceBuyStepX.length, "length don't match"); //x and y must match.
+        Helper.assertEqual(received, imbalanceBuyStepX.length, "length don't match");
 
         //iterate x and y values and compare
         for (let i = 0; i < imbalanceBuyStepX.length; ++i) {
             received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceParamX, i); //get x value in cell i
-            assert.equal(received.valueOf(), imbalanceBuyStepX[i], "mismatch for x value in cell: " + i);
+            Helper.assertEqual(received, imbalanceBuyStepX[i], "mismatch for x value in cell: " + i);
             received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceParamY, i); //get x value in cell i
-            assert.equal(received.valueOf(), imbalanceBuyStepY[i], "mismatch for y value in cell: " + i);
+            Helper.assertEqual(received, imbalanceBuyStepY[i], "mismatch for y value in cell: " + i);
         }
     });
 
@@ -297,18 +300,18 @@ contract('ConversionRates', function(accounts) {
 
         // x axis
         let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceXLength, 0); //get length
-        assert.equal(received.valueOf(), imbalanceSellStepX.length, "length don't match");
+        Helper.assertEqual(received, imbalanceSellStepX.length, "length don't match");
 
         // now y axis
         received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceYLength, 0); //get length
-        assert.equal(received.valueOf(), imbalanceSellStepX.length, "length don't match"); //x and y must match.
+        Helper.assertEqual(received, imbalanceSellStepX.length, "length don't match");
 
         //iterate x and y values and compare
         for (let i = 0; i < imbalanceSellStepX.length; ++i) {
             received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceParamX, i); //get x value in cell i
-            assert.equal(received.valueOf(), imbalanceSellStepX[i], "mismatch for x value in cell: " + i);
+            Helper.assertEqual(received, imbalanceSellStepX[i], "mismatch for x value in cell: " + i);
             received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceParamY, i); //get x value in cell i
-            assert.equal(received.valueOf(), imbalanceSellStepY[i], "mismatch for y value in cell: " + i);
+            Helper.assertEqual(received, imbalanceSellStepY[i], "mismatch for x value in cell: " + i);
         }
     });
 
@@ -326,10 +329,10 @@ contract('ConversionRates', function(accounts) {
 
     it("should get and verify listed tokens.", async function () {
         let rxTokens = await convRatesInst.getListedTokens();
-        assert.equal(rxTokens.length, tokens.length, "length don't match");
+        Helper.assertEqual(rxTokens.length, tokens.length, "length don't match");
 
         for (let i = 0; i < tokens.length; i++){
-            assert.equal(rxTokens[i].valueOf(), tokens[i], "address don't match");
+            Helper.assertEqual(rxTokens[i], tokens[i], "address don't match");
         }
     });
 
@@ -338,21 +341,21 @@ contract('ConversionRates', function(accounts) {
         token = await TestToken.new("testt", "tst", 18);
         //see token not listed
         let basicData = await convRatesInst.getTokenBasicData(token.address);
-        assert.equal(basicData[0].valueOf(), 0, "token should not be listed");
+        assert.equal(basicData[0].valueOf(), false, "token should not be listed");
 
         //add token and see listed
         await convRatesInst.addToken(token.address);
         basicData = await convRatesInst.getTokenBasicData(token.address);
-        assert.equal(basicData[0].valueOf(), 1, "token should  be listed");
+        assert.equal(basicData[0].valueOf(), true, "token should  be listed");
 
         //see not enabled
-        assert.equal(basicData[1].valueOf(), 0, "token should not be enabled");
+        assert.equal(basicData[1].valueOf(), false, "token should not be enabled");
 
         //enable token and see enabled
         await convRatesInst.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
         await convRatesInst.enableTokenTrade(token.address);
         basicData = await convRatesInst.getTokenBasicData(token.address);
-        assert.equal(basicData[1].valueOf(), 1, "token should be enabled");
+        assert.equal(basicData[1].valueOf(), true, "token should be enabled");
     });
 
     it("should get buy rate with update according to compact data update.", async function () {
@@ -362,18 +365,18 @@ contract('ConversionRates', function(accounts) {
 
         // get rate without activating quantity step function (small amount).
         let srcQty = 2;
-        let expectedRate = (new BigNumber(baseBuyRate));
+        let expectedRate = (new BN(baseBuyRate));
         let extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
-        let dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
+        let dstQty = new BN(srcQty).mul(expectedRate).div(precisionUnits);
         extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
         extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.toString(), receivedRate.toString(10), "bad rate");
+        Helper.assertEqual(receivedRate, expectedRate, "bad rate");
     });
 
 
@@ -397,19 +400,19 @@ contract('ConversionRates', function(accounts) {
 
         // get rate with the updated compact data.
         let srcQty = 5;
-        let expectedRate = (new BigNumber(baseBuyRate));
+        let expectedRate = (new BN(baseBuyRate));
         let extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
-        let dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
+        let dstQty = new BN(srcQty).mul(expectedRate).div(precisionUnits);
         extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
         extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
 
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.toString(), receivedRate.toString(10), "bad rate");
+        assert(receivedRate.should.be.a.bignumber.that.equals(expectedRate), "bad rate");
 
         //update compact data
         compactBuyArr1[tokenInd] = 127;
@@ -421,18 +424,18 @@ contract('ConversionRates', function(accounts) {
 
         // get rate without activating quantity step function (small amount).
         srcQty = 11;
-        expectedRate = (new BigNumber(baseBuyRate));
+        expectedRate = (new BN(baseBuyRate));
         extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
-        dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
+        dstQty = new BN(srcQty).mul(expectedRate).div(precisionUnits);
         extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
         extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
 
         receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.toString(), receivedRate.toString(10), "bad rate");
+        Helper.assertEqual(receivedRate, expectedRate, "bad rate");
     });
 
 
@@ -458,18 +461,18 @@ contract('ConversionRates', function(accounts) {
 
         // calculate expected rate
         let srcQty = 21;
-        let expectedRate = (new BigNumber(baseBuyRate));
+        let expectedRate = (new BN(baseBuyRate));
         let extraBps = compactBuyArr2[tokenInd - 14] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
-        let dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
+        let dstQty = new BN(srcQty).mul(expectedRate).div(precisionUnits);
         extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
         extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.toString(), receivedRate.toString(10), "bad rate");
+        Helper.assertEqual(receivedRate, expectedRate, "bad rate");
     });
 
     it("should get buy rate with compact data and quantity step.", async function () {
@@ -479,18 +482,18 @@ contract('ConversionRates', function(accounts) {
 
         // calculate expected rate
         let srcQty = 17;
-        let expectedRate = (new BigNumber(baseBuyRate));
+        let expectedRate = (new BN(baseBuyRate));
         let extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
-        let dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
+        let dstQty = new BN(srcQty).mul(expectedRate).div(precisionUnits);
         extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
         extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.toString(), receivedRate.toString(10), "bad rate");
+        Helper.assertEqual(receivedRate, expectedRate, "bad rate");
     });
 
     it("should get buy rate quantity step and compact data update with token index > 14.", async function () {
@@ -500,18 +503,18 @@ contract('ConversionRates', function(accounts) {
 
         // get rate
         let srcQty = 24;
-        let expectedRate = (new BigNumber(baseBuyRate));
+        let expectedRate = (new BN(baseBuyRate));
         let extraBps = compactBuyArr2[tokenInd - 14] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
-        let dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
+        let dstQty = new BN(srcQty).mul(expectedRate).div(precisionUnits);
         extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
         extraBps = getExtraBpsForImbalanceBuyQuantity(dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.toString(), receivedRate.toString(10), "bad rate");
+        Helper.assertEqual(receivedRate, expectedRate, "bad rate");
     });
 
     it("should add imbalance. get buy rate with with compact data + quantity step + imbalance step.", async function () {
@@ -522,22 +525,23 @@ contract('ConversionRates', function(accounts) {
         // get rate
         let buyQty = 15;
         let imbalance = 95;
-        let expectedRate = (new BigNumber(baseBuyRate));
+        let expectedRate = (new BN(baseBuyRate));
         let extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
-        let dstQty = new BigNumber(buyQty).mul(expectedRate).div(precisionUnits);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
+        let dstQty = new BN(buyQty).mul(expectedRate).div(precisionUnits);
         //quantity bps
         extraBps = getExtraBpsForBuyQuantity(dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
         //imbalance bps
         extraBps = getExtraBpsForImbalanceBuyQuantity(imbalance + (dstQty * 1));
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
 
         //record imbalance
         await convRatesInst.recordImbalance(token, imbalance, currentBlock, currentBlock, {from: reserveAddress});
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, buyQty);
-        assert.deepEqual(expectedRate.toString(), receivedRate.toString(10), "bad rate");
+
+        Helper.assertEqual(receivedRate, expectedRate, "bad rate");
     });
 
     it("should add imbalance and get sell rate with with compact data + quantity step + imbalance step.", async function () {
@@ -549,25 +553,24 @@ contract('ConversionRates', function(accounts) {
         // get rate
         let sellQty = 500;
         let imbalance = 1800;
-        let expectedRate = (new BigNumber(baseSellRate));
+        let expectedRate = (new BN(baseSellRate));
         //calc compact data
         let extraBps = compactSellArr2[tokenInd - 14] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
         //calc quantity steps
         extraBps = getExtraBpsForSellQuantity(sellQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
         //calc imbalance steps
         extraBps = getExtraBpsForImbalanceSellQuantity(imbalance - (sellQty * 1));
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
 
         //record imbalance
         await convRatesInst.recordImbalance(token, imbalance, currentBlock, currentBlock, {from: reserveAddress});
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, false, sellQty);
-
         //round rates a bit
 
-        compareRates(receivedRate, expectedRate);
+        Helper.assertEqual(receivedRate, expectedRate, "bad rate");
     });
 
     it("should verify addToken reverted when token already exists.", async function () {
@@ -630,7 +633,8 @@ contract('ConversionRates', function(accounts) {
 
     it("should verify set compact data reverted when input arrays length don't match num set tokens.", async function () {
         //set compact data
-        sells[2] = buys[2] = indices[2] = Helper.bytesToHex([5]);
+        sells[2] = buys[2] = Helper.bytesToHex([5]);
+        indices[2] = 5;
 
         //length 3 but only two exist in contract
         try {
@@ -675,7 +679,7 @@ contract('ConversionRates', function(accounts) {
         await convRatesInst.setBaseRate(tokens, baseBuy, baseSell, buys, sells, currentBlock, indices, {from: operator});
 
         //indices different length
-        indices[2] = Helper.bytesToHex([5]);
+        indices[2] = 5;
 
         //length 3 for sells and buys. indices 2
         try {
@@ -934,12 +938,11 @@ contract('ConversionRates', function(accounts) {
         let index = 5;
 
         let rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
-
-        assert(rate > 0, "unexpected rate");
+        Helper.assertGreater(rate, 0, "unexpected rate");
 
         await convRatesInst.disableTokenTrade(tokens[index], {from: alerter});
         rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
-        assert(rate == 0, "unexpected rate");
+        Helper.assertEqual(rate, 0, "unexpected rate");
 
         await convRatesInst.enableTokenTrade(tokens[index]);
     });
@@ -950,11 +953,11 @@ contract('ConversionRates', function(accounts) {
 
         let rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
 
-        assert(rate > 0, "unexpected rate");
+        Helper.assertGreater(rate, 0, "unexpected rate");
 
         await convRatesInst.setTokenControlInfo(tokens[index], 0, 0, 0);
         rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
-        assert(rate == 0, "unexpected rate");
+        Helper.assertEqual(rate, 0, "unexpected rate");
 
         await convRatesInst.setTokenControlInfo(tokens[index], minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
     });
@@ -965,10 +968,10 @@ contract('ConversionRates', function(accounts) {
 
         let rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
 
-        assert(rate > 0, "unexpected rate");
+        Helper.assertGreater(rate, 0, "unexpected rate");
 
         rate = await convRatesInst.getRate(tokens[index], currentBlock*1 + 2000, false, qty);
-        assert(rate == 0, "unexpected rate");
+        Helper.assertEqual(rate, 0, "unexpected rate");
     });
 
     it("should verify get rate returns 0 when qty above block imbalance.", async function () {
@@ -977,11 +980,11 @@ contract('ConversionRates', function(accounts) {
 
         let rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
 
-        assert(rate > 0, "unexpected rate");
+        Helper.assertGreater(rate, 0, "unexpected rate");
 
         qty = qty * 1 + 2;
         rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
-        assert(rate == 0, "unexpected rate");
+        Helper.assertEqual(rate, 0, "unexpected rate");
     });
 
     it("should verify get rate returns 0 when qty + total imbalance are above maxTotalImbalance.", async function () {
@@ -992,7 +995,7 @@ contract('ConversionRates', function(accounts) {
         let imbalance = qty;
 
         let lastSetBlock = await convRatesInst.getUpdateRateBlockFromCompact(token);
-        assert.equal(lastSetBlock.valueOf(), lastSetCompactBlock, "unexpected block");
+        Helper.assertEqual(lastSetBlock, lastSetCompactBlock, "unexpected block");
 
         while ((totalImbalance + imbalance) > (-maxTotalImbalance)) {
             await convRatesInst.recordImbalance(token, imbalance, lastSetCompactBlock, currentBlock++, {from: reserveAddress});
@@ -1001,20 +1004,20 @@ contract('ConversionRates', function(accounts) {
 
         qty = maxTotalImbalance + totalImbalance - 1;
         let rximbalance = await convRatesInst.mockGetImbalance(token, lastSetCompactBlock, currentBlock);
-        assert.equal(rximbalance[0].valueOf(), totalImbalance, "bad imbalance");
+        Helper.assertEqual(rximbalance[0], totalImbalance, "bad imbalance");
 
         let maxTotal = await convRatesInst.mockGetMaxTotalImbalance(token);
-        assert.equal(maxTotalImbalance, maxTotal.valueOf(), "unexpected max total imbalance.");
+        Helper.assertEqual(maxTotal, maxTotalImbalance, "unexpected max total imbalance.");
 
         //we are near total imbalance so small getRate will get legal rate.
         let rate = await convRatesInst.getRate(token, currentBlock, false, qty);
 
-        assert(rate > 0, "expected rate > 0, received: " + rate);
+        Helper.assertGreater(rate, 0, "expected rate > 0, received: " + rate);
 
         //high get rate should get 0.
         rate = await convRatesInst.getRate(token, currentBlock, false, (qty + 1));
 
-        assert.equal(rate.valueOf(), 0, "unexpected rate");
+        Helper.assertEqual(rate, 0, "unexpected rate");
     });
 
 
@@ -1123,7 +1126,7 @@ contract('ConversionRates', function(accounts) {
 
     it("should verify add bps reverts for illegal values", async function () {
         let minLegalBps = -100 * 100;
-        let maxLegalBps = new BigNumber(10).pow(11);
+        let maxLegalBps = new BN(10).pow(new BN(11));
         let legalRate = new BN(10).pow(new BN(24));
         let illegalRate = legalRate.add(new BN(1));
         let illegalBpsMinSide = minLegalBps - 1*1;
@@ -1163,7 +1166,7 @@ function convertRateToPricingRate (baseRate) {
 // conversion rate in pricing is in precision units (10 ** 18) so
 // rate 1 to 50 is 50 * 10 ** 18
 // rate 50 to 1 is 1 / 50 * 10 ** 18
-    return ((new BigNumber(10).pow(18)).mul(baseRate).floor());
+    return new BN(10).pow(new BN(18)).mul(new BN(baseRate));
 };
 
 function getExtraBpsForBuyQuantity(qty) {
@@ -1192,14 +1195,4 @@ function getExtraBpsForImbalanceSellQuantity(qty) {
         if (qty <= imbalanceSellStepX[i]) return imbalanceSellStepY[i];
     }
     return (imbalanceSellStepY[imbalanceSellStepY.length - 1]);
-};
-
-function addBps (rate, bps) {
-    return (rate.mul(10000 + bps).div(10000));
-};
-
-function compareRates (receivedRate, expectedRate) {
-    expectedRate = expectedRate - (expectedRate % 10);
-    receivedRate = receivedRate - (receivedRate % 10);
-    assert.deepEqual(expectedRate, receivedRate, "different rates");
 };

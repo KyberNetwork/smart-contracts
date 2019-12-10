@@ -1,5 +1,10 @@
 const Math = require('mathjs');
-const BigNumber = require('bignumber.js');
+const BN = web3.utils.BN;
+
+require("chai")
+    .use(require("chai-as-promised"))
+    .use(require("chai-bn")(BN))
+    .should();
 
 module.exports.isRevertErrorMessage = function( error ) {
     if( error.message.search('invalid opcode') >= 0 ) return true;
@@ -96,20 +101,20 @@ module.exports.sendPromise = function(method, params) {
 ////////////////////////////////////////////////////////////////////////////////
 
 module.exports.exp = function(num1,num2) {
-    const num1Math = Math.bignumber(new BigNumber(num1).toString(10));
-    const num2Math = Math.bignumber(new BigNumber(num2).toString(10));
+    const num1Math = Math.bignumber(new BN(num1).toString(10));
+    const num2Math = Math.bignumber(new BN(num2).toString(10));
 
     const result = Math.pow(num1Math,num2Math);
 
-    return new BigNumber(result.toString());
+    return new BN(result.toString());
 };
 
 module.exports.ln = function(num) {
-    const numMath = Math.bignumber(new BigNumber(num).toString(10));
+    const numMath = Math.bignumber(new BN(num).toString(10));
 
     const result = Math.log(numMath);
 
-    return new BigNumber(result.toString());
+    return new BN(result.toString());
 };
 
 
@@ -120,14 +125,14 @@ function absDiffInPercent(num1, num2) {
 }
 
 function checkAbsDiff(num1, num2, maxDiffInPercentage) {
-    const maxDiffBig = new BigNumber(maxDiffInPercentage);
+    const maxDiffBig = new BN(maxDiffInPercentage);
     const diff = absDiff(num1,num2);
     return (diff.div(num1)).lte(maxDiffInPercentage.div(100));
 };
 
 function absDiff(num1,num2) {
-    const bigNum1 = new BigNumber(num1);
-    const bigNum2 = new BigNumber(num2);
+    const bigNum1 = new BN(num1);
+    const bigNum2 = new BN(num2);
 
     if(bigNum1.gt(bigNum2)) {
         return bigNum1.minus(bigNum2);
@@ -147,3 +152,15 @@ module.exports.assertAbsDiff = function(val1, val2, expectedDiffInPct, errorStr)
            " result diff is " + absDiff(val1, val2).toString(10) +
            " actual result diff in percents is " + absDiffInPercent(val1,val2).toString(10));
 }
+
+module.exports.assertEqual = function(val1, val2, errorStr) {
+    assert(new BN(val1).should.be.a.bignumber.that.equals(new BN(val2)), errorStr);
+}
+
+module.exports.assertGreater = function(val1, val2, errorStr) {
+    assert(new BN(val1).should.be.a.bignumber.that.is.greaterThan(new BN(val2)), errorStr);
+}
+
+module.exports.addBps = function(rate, bps) {
+    return ((new BN(rate)).mul(new BN(10000 + bps)).div(new BN(10000)));
+};
