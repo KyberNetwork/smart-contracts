@@ -6,7 +6,7 @@ let WethToken = artifacts.require("WethTokenV5.sol");
 let MockOtcOrderbook = artifacts.require("MockOtcOrderbook.sol");
 let Eth2DaiReserve = artifacts.require("Eth2DaiReserve.sol");
 
-let Helper = require("../test/helper.js");
+let Helper = require("../v4/helper.js");
 let BigNumber = require('bignumber.js');
 
 const ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
