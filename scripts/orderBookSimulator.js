@@ -14,7 +14,7 @@ const MockKyberNetwork = artifacts.require("MockKyberNetwork.sol");
 const PermissionlessOrderbookReserveLister = artifacts.require("PermissionlessOrderbookReserveLister.sol");
 const MockUtils = artifacts.require("MockUtils.sol");
 
-const Helper = require("../test/helper.js");
+const Helper = require("../v4/helper.js");
 const BigNumber = require('bignumber.js');
 const ReserveSim = require("./simulator/simulator_orderbookReserve.js");
 const OrderGenerator = require("./simulator/tradeGenerator_orderbook.js");
