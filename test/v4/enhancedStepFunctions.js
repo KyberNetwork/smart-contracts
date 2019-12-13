@@ -7,11 +7,6 @@ let Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
 let Helper = require("./helper.js");
 const BN = web3.utils.BN;
 
-require("chai")
-    .use(require("chai-as-promised"))
-    .use(require("chai-bn")(BN))
-    .should();
-
 //global variables
 let precisionUnits = (new BN(10).pow(new BN(18)));
 let token;
@@ -1291,12 +1286,6 @@ function getExtraBpsForQuantity(from, to, stepX, stepY) {
     }
     return divSolidity(change, qty);
 }
-
-function compareRates (receivedRate, expectedRate) {
-    expectedRate = expectedRate - (expectedRate % 10);
-    receivedRate = receivedRate - (receivedRate % 10);
-    assert.deepEqual(expectedRate, receivedRate, "different rates");
-};
 
 function divSolidity(a, b) {
     let c = a / b;

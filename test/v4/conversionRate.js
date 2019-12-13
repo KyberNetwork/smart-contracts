@@ -5,11 +5,6 @@ const Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
 const Helper = require("./helper.js");
 const BN = web3.utils.BN;
 
-require("chai")
-    .use(require("chai-as-promised"))
-    .use(require("chai-bn")(BN))
-    .should();
-
 //global variables
 let precisionUnits = new BN(10).pow(new BN(18));
 let token;
