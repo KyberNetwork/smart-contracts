@@ -1,14 +1,7 @@
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
-const BigNumber = require("bignumber.js");
-
-require("chai")
-    .use(require("chai-as-promised"))
-    .use(require("chai-bignumber")(BigNumber))
-    .should();
-
-
-const truffleAssert = require("truffle-assertions");
+const BN = web3.utils.BN;
+const truffleAssert = require('truffle-assertions');
 
 const helper = require("./helper.js");
 const WETH9 = artifacts.require("WETH9");
@@ -16,7 +9,9 @@ const KyberDutchXReserve = artifacts.require("KyberDutchXReserve");
 const MockDutchX = artifacts.require("MockDutchX");
 const TestToken = artifacts.require("TestToken");
 
-const ETH_TOKEN_ADDRESS = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+const lowerCaseEthAdd = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const zeroAddress = '0x0000000000000000000000000000000000000000';
 
 let DEFAULT_FEE_BPS = 25;
 
@@ -57,22 +52,22 @@ contract("KyberDutchXReserve", async accounts => {
 
         token1 = await deployToken();
         token2 = await deployToken();
-        priceNumerator = 10 ** 21;
+        priceNumerator = new BN(10).pow(new BN(21));
 
-        await token1.transfer(kyberNetwork, 10 ** 25);
+        await token1.transfer(kyberNetwork, new BN(10).pow(new BN(25)));
 
         wethContract = await WETH9.new()
         dbg(`deployed weth to ${wethContract.address}`)
 
         dutchX = await MockDutchX.new(wethContract.address);
-        await token1.approve(dutchX.address, 10 ** 22, {From: admin});
-        await token2.approve(dutchX.address, 10 ** 22, {From: admin});
-        await wethContract.deposit({value: 10 ** 20});
-        await wethContract.approve(dutchX.address, 10 ** 20);
+        await token1.approve(dutchX.address, new BN(10).pow(new BN(22)), {from: admin});
+        await token2.approve(dutchX.address, new BN(10).pow(new BN(22)), {from: admin});
+        await wethContract.deposit({value: new BN(10).pow(new BN(20))});
+        await wethContract.approve(dutchX.address, new BN(10).pow(new BN(20)));
         await dutchX.startNewAuctionIndex(wethContract.address, token1.address);
         await dutchX.startNewAuctionIndex(token1.address, wethContract.address);
-        await dutchX.addSellFundsToAuction(token1.address, wethContract.address, 10 ** 22, priceNumerator, {from: admin})
-        await dutchX.addSellFundsToAuction(wethContract.address, token1.address, 10 ** 20, priceNumerator, {from: admin})
+        await dutchX.addSellFundsToAuction(token1.address, wethContract.address, new BN(10).pow(new BN(22)), priceNumerator, {from: admin})
+        await dutchX.addSellFundsToAuction(wethContract.address, token1.address, new BN(10).pow(new BN(20)), priceNumerator, {from: admin})
     });
 
     beforeEach("setup contract for each test", async () => {
@@ -93,15 +88,15 @@ contract("KyberDutchXReserve", async accounts => {
 
         await reserve.setDutchXFee();
 
-        priceNumerator = 10 ** 21;
+        priceNumerator = new BN(10).pow(new BN(21));
         priceDenominator = await dutchX.mutualDenominator();
 
         await reserve.listToken(token1.address, { from: admin });
 //        await reserve.listToken(token2.address, { from: admin });
         await reserve.addAlerter(alerter, { from: admin });
 
-        await token1.approve(reserve.address, 10 ** 30, {From: admin});
-        await token2.approve(reserve.address, 10 ** 30, {From: admin});
+        await token1.approve(reserve.address, new BN(10).pow(new BN(30)), {from: admin});
+        await token2.approve(reserve.address, new BN(10).pow(new BN(30)), {from: admin});
 
         await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceNumerator, {from: admin})
         await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceNumerator, {from: admin})
@@ -125,7 +120,7 @@ contract("KyberDutchXReserve", async accounts => {
 
         it("verify dutchx auction data", async() => {
             let dest = token1.address;
-            let src = wethContract.address;// ETH_TOKEN_ADDRESS;
+            let src = wethContract.address;// ethAddress;
 
             let index = await dutchX.getAuctionIndex(dest, src);
 
@@ -153,7 +148,7 @@ contract("KyberDutchXReserve", async accounts => {
         })
 
         it("should allow admin to withdraw tokens", async () => {
-            const amount = web3.toWei("1");
+            const amount = new BN(web3.utils.toWei("1"));
             const initialBalance = await token1.balanceOf(admin);
 
             await token1.transfer(reserve.address, amount, { from: admin });
@@ -179,7 +174,7 @@ contract("KyberDutchXReserve", async accounts => {
         });
 
         it("reject withdrawing tokens by non-admin users", async () => {
-            const amount = web3.toWei("1");
+            const amount = web3.utils.toWei("1");
             await token1.transfer(reserve.address, amount, { from: admin });
 
             await truffleAssert.reverts(
@@ -194,7 +189,7 @@ contract("KyberDutchXReserve", async accounts => {
         it("dutchx must not be 0", async () => {
             await truffleAssert.reverts(
                 KyberDutchXReserve.new(
-                    0 /* dutchx */,
+                    zeroAddress /* dutchx */,
                     admin,
                     kyberNetwork,
                     wethContract.address
@@ -206,7 +201,7 @@ contract("KyberDutchXReserve", async accounts => {
             await truffleAssert.reverts(
                 KyberDutchXReserve.new(
                     dutchX.address,
-                    0,
+                    zeroAddress,
                     kyberNetwork,
                     wethContract.address
                 )
@@ -218,7 +213,7 @@ contract("KyberDutchXReserve", async accounts => {
                 KyberDutchXReserve.new(
                     dutchX.address,
                     admin,
-                    0,
+                    zeroAddress,
                     wethContract.address
                 )
             );
@@ -230,7 +225,7 @@ contract("KyberDutchXReserve", async accounts => {
                     dutchX.address,
                     admin,
                     kyberNetwork,
-                    0
+                    zeroAddress
                 )
             );
         });
@@ -290,7 +285,7 @@ contract("KyberDutchXReserve", async accounts => {
             await dutchX.setFee(0, 1);
             await reserve.setDutchXFee();
 
-            const source = ETH_TOKEN_ADDRESS;
+            const source = ethAddress;
             const src = wethContract.address;
             const dst = token1.address;
 
@@ -302,13 +297,13 @@ contract("KyberDutchXReserve", async accounts => {
 
 //            dbg(`price: ${price}`)
             const rate = await reserve.getConversionRate(
-                ETH_TOKEN_ADDRESS /* src */,
+                ethAddress /* src */,
                 token1.address /* dst */,
                 1000 /* srcQty */,
                 0 /* blockNumber */
             );
 
-            rate.should.be.bignumber.eq(new BigNumber(10).pow(18));
+            rate.should.be.bignumber.eq(new BN(10).pow(new BN(18)));
         });
 
         it("conversion rate 1:1", async () => {
@@ -320,93 +315,93 @@ contract("KyberDutchXReserve", async accounts => {
             await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
             const rate = await reserve.getConversionRate(
-                ETH_TOKEN_ADDRESS /* src */,
+                ethAddress /* src */,
                 token1.address /* dst */,
-                web3.toWei("1") /* srcQty */,
+                web3.utils.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             );
 
-            rate.should.be.bignumber.eq(new BigNumber(10).pow(18));
+            rate.should.be.bignumber.eq(new BN(10).pow(new BN(18)));
         });
 
         it("rate 0 for small qty Eth - > token", async () => {
             let rate = await reserve.getConversionRate(
-                ETH_TOKEN_ADDRESS /* src */,
+                ethAddress /* src */,
                 token1.address /* dst */,
                 1 /* srcQty */,
                 0 /* blockNumber */
             )
 
-            rate.should.be.bignumber.eq(0);
+            rate.should.be.bignumber.eq(new BN(0));
         });
 
         it("rate 0 for small qty token -> Eth", async () => {
             let rate = await reserve.getConversionRate(
-                ETH_TOKEN_ADDRESS /* src */,
+                ethAddress /* src */,
                 token1.address /* dst */,
                 1 /* srcQty */,
                 0 /* blockNumber */
             )
 
-            rate.should.be.bignumber.eq(0);
+            rate.should.be.bignumber.eq(new BN(0));
         });
 
         it("rate 0 if both tokens are ETH", async () => {
             let rate = await reserve.getConversionRate(
-                ETH_TOKEN_ADDRESS /* src */,
-                ETH_TOKEN_ADDRESS /* dst */,
-                web3.toWei("1") /* srcQty */,
+                ethAddress /* src */,
+                ethAddress /* dst */,
+                web3.utils.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             )
 
-            rate.should.be.bignumber.eq(0);
+            rate.should.be.bignumber.eq(new BN(0));
         });
 
         it("0 rate if both tokens are not ETH", async () => {
             let rate = await reserve.getConversionRate(
                 token1.address /* src */,
                 token2.address /* dst */,
-                web3.toWei("1") /* srcQty */,
+                web3.utils.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             )
 
-            rate.should.be.bignumber.eq(0);
+            rate.should.be.bignumber.eq(new BN(0));
         });
 
         it("0 rate for unsupported tokens", async () => {
             const newToken = await deployToken();
 
             let rate = await reserve.getConversionRate(
-                ETH_TOKEN_ADDRESS /* src */,
+                ethAddress /* src */,
                 newToken.address /* dst */,
-                web3.toWei("1") /* srcQty */,
+                web3.utils.toWei("1") /* srcQty */,
                 0 /* blockNumber */
             )
 
-            rate.should.be.bignumber.eq(0);
+            rate.should.be.bignumber.eq(new BN(0));
         });
 
         it("returns 0 if trade is disabled", async () => {
 
             let rate = await reserve.getConversionRate(
-                ETH_TOKEN_ADDRESS /* src */,
+                ethAddress /* src */,
                 token1.address /* dst */,
                 1000 /* srcQty */,
                 0 /* blockNumber */
             )
 
-            assert(rate.valueOf() > 0);
+            helper.assertGreater(rate.valueOf(), new BN(0), "rate not > 0");
 
             await reserve.disableTrade({ from: alerter });
 
             rate = await reserve.getConversionRate(
-                ETH_TOKEN_ADDRESS /* src */,
+                ethAddress /* src */,
                 token1.address /* dst */,
                 1000 /* srcQty */,
                 0 /* blockNumber */
             )
 
-            rate.should.be.bignumber.eq(0);
+            rate.should.be.bignumber.eq(new BN(0));
         });
 
         it("returns 0 if insufficient funds", async () => {
@@ -421,26 +416,26 @@ contract("KyberDutchXReserve", async accounts => {
             const buyVolume = await dutchX.buyVolumes(dest, source);
             const sellVolume = await dutchX.sellVolumesCurrent(dest, source);
 
-            let outstandingVolume = (new BigNumber(sellVolume)).mul(auctionData[0].valueOf()).div(auctionData[1].valueOf()).sub(buyVolume);
+            let outstandingVolume = (new BN(sellVolume)).mul(auctionData[0].valueOf()).div(auctionData[1].valueOf()).sub(buyVolume);
 
 //            dbg(`outstandingVolume: ${outstandingVolume}`)
             let rate = await reserve.getConversionRate(
-                ETH_TOKEN_ADDRESS /* src */,
+                ethAddress /* src */,
                 token1.address /* dst */,
                 outstandingVolume /* srcQty */,
                 0 /* blockNumber */
             )
 
-            rate.should.be.bignumber.gt(0);
+            rate.should.be.bignumber.gt(new BN(0));
 
             rate = await reserve.getConversionRate(
-                ETH_TOKEN_ADDRESS /* src */,
+                ethAddress /* src */,
                 token1.address /* dst */,
-                outstandingVolume.add(1) /* srcQty */,
+                outstandingVolume.add(new BN(1)) /* srcQty */,
                 0 /* blockNumber */
             )
 
-            rate.should.be.bignumber.eq(0);
+            rate.should.be.bignumber.eq(new BN(0));
         });
 
         it("returns 0 if auction not running == price value 0", async () => {
@@ -448,24 +443,24 @@ contract("KyberDutchXReserve", async accounts => {
             const source = wethContract.address;
 
             let rate = await reserve.getConversionRate(
-                ETH_TOKEN_ADDRESS /* src */,
+                ethAddress /* src */,
                 token1.address /* dst */,
                 1000 /* srcQty */,
                 0 /* blockNumber */
             )
 
-            rate.should.be.bignumber.gt(0);
+            rate.should.be.bignumber.gt(new BN(0));
 
             await dutchX.setNewAuctionNumerator(dest, source, 0);
 
             rate = await reserve.getConversionRate(
-                ETH_TOKEN_ADDRESS /* src */,
+                ethAddress /* src */,
                 token1.address /* dst */,
                 1000 /* srcQty */,
                 0 /* blockNumber */
             )
 
-            rate.should.be.bignumber.eq(0);
+            rate.should.be.bignumber.eq(new BN(0));
         });
 
     });
@@ -478,7 +473,7 @@ contract("KyberDutchXReserve", async accounts => {
             const conversionRate = 1000;
 
             await reserve.trade(
-                ETH_TOKEN_ADDRESS /* srcToken */,
+                ethAddress /* srcToken */,
                 amount /* srcAmount */,
                 token1.address /* dstToken */,
                 user /* destAddress */,
@@ -491,12 +486,12 @@ contract("KyberDutchXReserve", async accounts => {
         it("can not be called by user other than KyberNetwork", async () => {
             await reserve.setFee(0, { from: admin });
 
-            const amount = (web3.toWei("1"));
+            const amount = (web3.utils.toWei("1"));
             const conversionRate = 100;
 
             await truffleAssert.reverts(
                 reserve.trade(
-                    ETH_TOKEN_ADDRESS /* srcToken */,
+                    ethAddress /* srcToken */,
                     amount /* srcAmount */,
                     token1.address /* dstToken */,
                     user /* destAddress */,
@@ -514,10 +509,10 @@ contract("KyberDutchXReserve", async accounts => {
 
             await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
-            const tradeAmount = web3.toWei("1");
+            const tradeAmount = web3.utils.toWei("1");
 
             const rate = await reserve.getConversionRate(
-                            ETH_TOKEN_ADDRESS /* src */,
+                            ethAddress /* src */,
                             token1.address /* dst */,
                             tradeAmount /* srcQty */,
                             0 /* blockNumber */
@@ -526,7 +521,7 @@ contract("KyberDutchXReserve", async accounts => {
             let userBalanceBefore = await token1.balanceOf(user);
 
             await reserve.trade(
-                ETH_TOKEN_ADDRESS, //ERC20 srcToken,
+                ethAddress, //ERC20 srcToken,
                 tradeAmount,  // uint srcAmount,
                 token1.address,         //ERC20 destToken,
                 user,                   //address destAddress,
@@ -536,7 +531,7 @@ contract("KyberDutchXReserve", async accounts => {
             );
 
             let userBalanceAfter = await token1.balanceOf(user);
-            let expectedBalance = userBalanceBefore.add(tradeAmount);
+            let expectedBalance = userBalanceBefore.add(new BN(tradeAmount));
             userBalanceAfter.should.be.bignumber.eq(expectedBalance);
         });
 
@@ -548,16 +543,16 @@ contract("KyberDutchXReserve", async accounts => {
             //make rate 1:1
             await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
 
-            const tradeAmount = web3.toWei("1");
+            const tradeAmount = web3.utils.toWei("1");
 
             const rate = await reserve.getConversionRate(
-                            ETH_TOKEN_ADDRESS /* src */,
+                            ethAddress /* src */,
                             token1.address /* dst */,
                             tradeAmount /* srcQty */,
                             0 /* blockNumber */
                         );
 
-            let userBalanceBefore = await helper.getBalancePromise(user);
+            let userBalanceBefore = new BN(await helper.getBalancePromise(user));
 
             await token1.transfer(kyberNetwork, tradeAmount, {from: admin});
             await token1.approve(reserve.address, tradeAmount, {from: kyberNetwork});
@@ -565,15 +560,15 @@ contract("KyberDutchXReserve", async accounts => {
             await reserve.trade(
                 token1.address, //ERC20 srcToken,
                 tradeAmount,  // uint srcAmount,
-                ETH_TOKEN_ADDRESS,         //ERC20 destToken,
+                ethAddress,         //ERC20 destToken,
                 user,                   //address destAddress,
                 1, //uint conversionRate,
                 true, //                              bool validate
                 {from: kyberNetwork}
             );
 
-            let userBalanceAfter = await helper.getBalancePromise(user);
-            let expectedBalance = userBalanceBefore.add(tradeAmount);
+            let userBalanceAfter = new BN(await helper.getBalancePromise(user));
+            let expectedBalance = userBalanceBefore.add(new BN(tradeAmount));
             userBalanceAfter.should.be.bignumber.eq(expectedBalance);
         });
 
@@ -583,9 +578,9 @@ contract("KyberDutchXReserve", async accounts => {
 
             await truffleAssert.reverts(
                 reserve.trade(
-                    ETH_TOKEN_ADDRESS /* srcToken */,
+                    ethAddress /* srcToken */,
                     amount /* srcAmount */,
-                    ETH_TOKEN_ADDRESS /* destToken */,
+                    ethAddress /* destToken */,
                     kyberNetwork /* destAddress */,
                     conversionRate /* conversionRate */,
                     true /* validate */,
@@ -595,7 +590,7 @@ contract("KyberDutchXReserve", async accounts => {
         });
 
         it("fail if token in both src and dest", async () => {
-            const tradeAmount = web3.toWei("1");
+            const tradeAmount = web3.utils.toWei("1");
             const conversionRate = 1;
 
             await token1.transfer(kyberNetwork, tradeAmount, {from: admin});
@@ -618,16 +613,16 @@ contract("KyberDutchXReserve", async accounts => {
             await reserve.setFee(25, { from: admin });
             await dutchX.setFee(0, 1);
             await reserve.setDutchXFee();
-            const conversionRate = new BigNumber(10).pow(18).mul(0.9975);
-            const amount = new BigNumber(10 ** 18);
-            const tokenBalanceBefore = await token1.balanceOf(kyberNetwork);
+            const conversionRate = (new BN(10).pow(new BN(18))).mul(new BN(9975)).div(new BN(10000));
+            let amount = new BN(10).pow(new BN(18));
+            let tokenBalanceBefore = new BN(await token1.balanceOf(kyberNetwork));
 
             // make rate 1:1
             await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
             await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
             const traded = await reserve.trade.call(
-                ETH_TOKEN_ADDRESS /* srcToken */,
+                ethAddress /* srcToken */,
                 amount /* srcAmount */,
                 token1.address /* destToken */,
                 kyberNetwork /* destAddress */,
@@ -637,7 +632,7 @@ contract("KyberDutchXReserve", async accounts => {
             );
 
             await reserve.trade(
-                ETH_TOKEN_ADDRESS /* srcToken */,
+                ethAddress /* srcToken */,
                 amount /* srcAmount */,
                 token1.address /* destToken */,
                 kyberNetwork /* destAddress */,
@@ -646,9 +641,8 @@ contract("KyberDutchXReserve", async accounts => {
                 { from: kyberNetwork, value: amount }
             );
 
-            const tokenBalanceAfter = await token1.balanceOf(kyberNetwork);
-            const expectedBalance = tokenBalanceBefore.add(amount.mul(0.9975));
-
+            let tokenBalanceAfter = new BN(await token1.balanceOf(kyberNetwork));
+            let expectedBalance = tokenBalanceBefore.add(amount.mul(new BN(9975)).div(new BN(10000)));
             traded.should.be.true;
             tokenBalanceAfter.should.be.bignumber.eq(expectedBalance);
         });
@@ -657,16 +651,16 @@ contract("KyberDutchXReserve", async accounts => {
             await reserve.setFee(25, { from: admin });
             await dutchX.setFee(1, 200);
             await reserve.setDutchXFee();
-            const amount = new BigNumber(10 ** 18);
-            const conversionRate = new BigNumber(10).pow(18).mul(0.9975).mul(0.995);
-            const tokenBalanceBefore = await token1.balanceOf(kyberNetwork);
+            let amount = new BN(10).pow(new BN(18));
+            const conversionRate = new BN(10).pow(new BN(18)).mul(new BN(9975)).div(new BN(10000)).mul(new BN(995)).div(new BN(1000));
+            let tokenBalanceBefore = await token1.balanceOf(kyberNetwork);
 
             // make rate 1:1
             await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
             await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
             const traded = await reserve.trade.call(
-                ETH_TOKEN_ADDRESS /* srcToken */,
+                ethAddress /* srcToken */,
                 amount /* srcAmount */,
                 token1.address /* destToken */,
                 kyberNetwork /* destAddress */,
@@ -676,7 +670,7 @@ contract("KyberDutchXReserve", async accounts => {
             );
 
             await reserve.trade(
-                ETH_TOKEN_ADDRESS /* srcToken */,
+                ethAddress /* srcToken */,
                 amount /* srcAmount */,
                 token1.address /* destToken */,
                 kyberNetwork /* destAddress */,
@@ -685,8 +679,8 @@ contract("KyberDutchXReserve", async accounts => {
                 { from: kyberNetwork, value: amount }
             );
 
-            const tokenBalanceAfter = await token1.balanceOf(kyberNetwork);
-            const expectedBalance = tokenBalanceBefore.add(amount.mul(0.9975).mul(0.995));
+            let tokenBalanceAfter = await token1.balanceOf(kyberNetwork);
+            let expectedBalance = tokenBalanceBefore.add(amount.mul(new BN(9975)).div(new BN(10000)).mul(new BN(995)).div(new BN(1000)));
 
             traded.should.be.true;
             tokenBalanceAfter.should.be.bignumber.eq(expectedBalance);
@@ -701,17 +695,17 @@ contract("KyberDutchXReserve", async accounts => {
             await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
             await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
-            const amount = new BigNumber(10 ** 18);
-            const conversionRate = new BigNumber(10).pow(18).mul(0.9975);
+            let amount = new BN(10).pow(new BN(18));
+            const conversionRate = new BN(10).pow(new BN(18)).mul(new BN(9975)).div(new BN(10000));
             await token1.approve(reserve.address, amount, {
                 from: kyberNetwork
             });
-            const ethBalanceBefore = await helper.getBalancePromise(user);
+            let ethBalanceBefore = new BN(await helper.getBalancePromise(user));
 
             const traded = await reserve.trade.call(
                 token1.address /* srcToken */,
                 amount /* srcAmount */,
-                ETH_TOKEN_ADDRESS /* destToken */,
+                ethAddress /* destToken */,
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
@@ -720,18 +714,18 @@ contract("KyberDutchXReserve", async accounts => {
             await reserve.trade(
                 token1.address /* srcToken */,
                 amount /* srcAmount */,
-                ETH_TOKEN_ADDRESS /* destToken */,
+                ethAddress /* destToken */,
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
                 { from: kyberNetwork }
             );
 
-            const ethBalanceAfter = await helper.getBalancePromise(user);
+            let ethBalanceAfter = new BN(await helper.getBalancePromise(user));
 
             traded.should.be.true;
             ethBalanceAfter.should.be.bignumber.eq(
-                ethBalanceBefore.add(amount.mul(0.9975))
+                ethBalanceBefore.add(amount.mul(new BN(9975)).div(new BN(10000)))
             );
         });
 
@@ -744,17 +738,17 @@ contract("KyberDutchXReserve", async accounts => {
             await dutchX.setNewAuctionNumerator(wethContract.address, token1.address, priceDenominator);
             await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
-            const amount = new BigNumber(10 ** 18);
-            const conversionRate = new BigNumber(10).pow(18).mul(0.9975).mul(0.995);
+            let amount = new BN(10).pow(new BN(18));
+            const conversionRate = (new BN(10).pow(new BN(18))).mul(new BN(9975)).div(new BN(10000)).mul(new BN(995)).div(new BN(1000));
             await token1.approve(reserve.address, amount, {
                 from: kyberNetwork
             });
-            const ethBalanceBefore = await helper.getBalancePromise(user);
+            let ethBalanceBefore = new BN(await helper.getBalancePromise(user));
 
             const traded = await reserve.trade.call(
                 token1.address /* srcToken */,
                 amount /* srcAmount */,
-                ETH_TOKEN_ADDRESS /* destToken */,
+                ethAddress /* destToken */,
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
@@ -763,18 +757,18 @@ contract("KyberDutchXReserve", async accounts => {
             await reserve.trade(
                 token1.address /* srcToken */,
                 amount /* srcAmount */,
-                ETH_TOKEN_ADDRESS /* destToken */,
+                ethAddress /* destToken */,
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
                 { from: kyberNetwork }
             );
 
-            const ethBalanceAfter = await helper.getBalancePromise(user);
+            let ethBalanceAfter = new BN(await helper.getBalancePromise(user));
 
             traded.should.be.true;
             ethBalanceAfter.should.be.bignumber.eq(
-                ethBalanceBefore.add(amount.mul(0.9975).mul(0.995))
+                ethBalanceBefore.add(amount.mul(new BN(9975)).div(new BN(10000)).mul(new BN(995)).div(new BN(1000)))
             );
         });
 
@@ -783,17 +777,17 @@ contract("KyberDutchXReserve", async accounts => {
             await dutchX.setFee(0, 200);
             await reserve.setDutchXFee();
 
-            const amount = web3.toWei("1");
-            const conversionRate = new BigNumber(10).pow(18).add(100);
+            const amount = web3.utils.toWei("1");
+            const conversionRate = new BN(10).pow(new BN(18)).add(new BN(100));
             await token1.approve(reserve.address, amount, {
                 from: kyberNetwork
             });
-            const ethBalanceBefore = await helper.getBalancePromise(user);
+            const ethBalanceBefore = new BN(await helper.getBalancePromise(user));
 
             await truffleAssert.reverts( reserve.trade(
                     token1.address /* srcToken */,
                     amount /* srcAmount */,
-                    ETH_TOKEN_ADDRESS /* destToken */,
+                    ethAddress /* destToken */,
                     user /* destAddress */,
                     conversionRate /* conversionRate */,
                     true /* validate */,
@@ -801,18 +795,18 @@ contract("KyberDutchXReserve", async accounts => {
                 )
             );
 
-            const ethBalanceAfter = await helper.getBalancePromise(user);
+            const ethBalanceAfter = new BN(await helper.getBalancePromise(user));
             ethBalanceAfter.should.be.bignumber.eq(ethBalanceBefore);
         });
 
         it("ETH -> token, fail if srcAmount != msg.value", async () => {
             await reserve.setFee(0, { from: admin });
 
-            const amount = (web3.toWei("1"));
+            const amount = (web3.utils.toWei("1"));
             const conversionRate = 1000;
 
             await truffleAssert.reverts( reserve.trade(
-                    ETH_TOKEN_ADDRESS /* srcToken */,
+                    ethAddress /* srcToken */,
                     amount /* srcAmount */,
                     token1.address /* dstToken */,
                     user /* destAddress */,
@@ -826,17 +820,17 @@ contract("KyberDutchXReserve", async accounts => {
         it("token -> ETH, fail if 0 != msg.value", async () => {
             await reserve.setFee(0, { from: admin });
 
-            const amount = (web3.toWei("1"));
+            const amount = (web3.utils.toWei("1"));
             const conversionRate = 1000;
             await token1.approve(reserve.address, amount, {
                 from: kyberNetwork
             });
-            const ethBalanceBefore = await helper.getBalancePromise(user);
+            const ethBalanceBefore = new BN(await helper.getBalancePromise(user));
 
             await truffleAssert.reverts( reserve.trade(
                     token1.address /* srcToken */,
                     amount /* srcAmount */,
-                    ETH_TOKEN_ADDRESS /* destToken */,
+                    ethAddress /* destToken */,
                     user /* destAddress */,
                     conversionRate /* conversionRate */,
                     true /* validate */,
@@ -844,7 +838,7 @@ contract("KyberDutchXReserve", async accounts => {
                 )
             );
 
-            const ethBalanceAfter = await helper.getBalancePromise(user);
+            const ethBalanceAfter = new BN(await helper.getBalancePromise(user));
 
             ethBalanceAfter.should.be.bignumber.eq(
                 ethBalanceBefore
@@ -856,11 +850,11 @@ contract("KyberDutchXReserve", async accounts => {
 
             await reserve.setFee(0, { from: admin });
 
-            const amount = (web3.toWei("1"));
+            const amount = (web3.utils.toWei("1"));
             const conversionRate = 1000;
 
             await truffleAssert.reverts( reserve.trade(
-                    ETH_TOKEN_ADDRESS /* srcToken */,
+                    ethAddress /* srcToken */,
                     amount /* srcAmount */,
                     token1.address /* dstToken */,
                     user /* destAddress */,
@@ -872,7 +866,7 @@ contract("KyberDutchXReserve", async accounts => {
         });
 
         it("trade event emitted", async () => {
-            const amount = (web3.toWei("1"));
+            const amount = (web3.utils.toWei("1"));
             const conversionRate = 1000;
 
             await reserve.setFee(0, { from: admin });
@@ -884,7 +878,7 @@ contract("KyberDutchXReserve", async accounts => {
             await dutchX.setNewAuctionNumerator(token1.address, wethContract.address, priceDenominator);
 
             const res = await reserve.trade(
-                ETH_TOKEN_ADDRESS /* srcToken */,
+                ethAddress /* srcToken */,
                 amount /* srcAmount */,
                 token1.address /* dstToken */,
                 user /* destAddress */,
@@ -893,16 +887,16 @@ contract("KyberDutchXReserve", async accounts => {
                 { from: kyberNetwork, value: amount }
             )
 
-            const auctionIndex = await dutchX.getAuctionIndex(token1.address, wethContract.address);
+            const auctionIndex = new BN(await dutchX.getAuctionIndex(token1.address, wethContract.address));
 
             assert(res.logs[0].event ==  "TradeExecute");
             assert(res.logs[0].args.sender === kyberNetwork);
             assert(res.logs[0].args.destToken === token1.address);
-            assert(res.logs[0].args.srcAmount.valueOf() == amount);
-            assert(res.logs[0].args.src === ETH_TOKEN_ADDRESS);
-            assert(res.logs[0].args.destAmount.valueOf() == amount);
+            helper.assertEqual(res.logs[0].args.srcAmount.valueOf(), amount, "unexpected src amount");
+            assert(res.logs[0].args.src === ethAddress);
+            helper.assertEqual(res.logs[0].args.destAmount.valueOf(), amount, "unexpected dest amount");
             assert(res.logs[0].args.destAddress === user);
-            assert(res.logs[0].args.auctionIndex.valueOf() == auctionIndex);
+            helper.assertEqual(res.logs[0].args.auctionIndex.valueOf(),auctionIndex,"unexpected auction index");
         });
     });
 
@@ -917,7 +911,7 @@ contract("KyberDutchXReserve", async accounts => {
 
             const feeValue = await newReserve.feeBps();
 
-            feeValue.should.be.bignumber.eq(DEFAULT_FEE_BPS);
+            feeValue.should.be.bignumber.eq(new BN(DEFAULT_FEE_BPS));
         });
 
         it ("dutchX fee", async () => {
@@ -934,27 +928,27 @@ contract("KyberDutchXReserve", async accounts => {
             let feeNum = await newReserve.dutchXFeeNum();
             let feeDen = await newReserve.dutchXFeeDen();
 
-            feeNum.should.be.bignumber.eq(10);
-            feeDen.should.be.bignumber.eq(30);
+            feeNum.should.be.bignumber.eq(new BN(10));
+            feeDen.should.be.bignumber.eq(new BN(30));
 
             await newDutchX.setFee(1, 5);
             feeNum = await newReserve.dutchXFeeNum();
             feeDen = await newReserve.dutchXFeeDen();
-            feeNum.should.be.bignumber.eq(10);
-            feeDen.should.be.bignumber.eq(30);
+            feeNum.should.be.bignumber.eq(new BN(10));
+            feeDen.should.be.bignumber.eq(new BN(30));
 
             await newReserve.setDutchXFee();
             feeNum = await newReserve.dutchXFeeNum();
             feeDen = await newReserve.dutchXFeeDen();
-            feeNum.should.be.bignumber.eq(1);
-            feeDen.should.be.bignumber.eq(5);
+            feeNum.should.be.bignumber.eq(new BN(1));
+            feeDen.should.be.bignumber.eq(new BN(5));
         });
 
         it("fee value saved", async () => {
             await reserve.setFee(30, { from: admin });
 
             const feeValue = await reserve.feeBps();
-            feeValue.should.be.bignumber.eq(30);
+            feeValue.should.be.bignumber.eq(new BN(30));
         });
 
         it("calling by admin allowed", async () => {
@@ -972,7 +966,7 @@ contract("KyberDutchXReserve", async accounts => {
         it("event sent on setFee", async () => {
             const res = await reserve.setFee(20, { from: admin });
             truffleAssert.eventEmitted(res, "FeeUpdated", ev => {
-                return ev.bps.eq(20);
+                return ev.bps.eq(new BN(20));
             });
         });
 
@@ -994,7 +988,7 @@ contract("KyberDutchXReserve", async accounts => {
         });
 
         it("fails for token with address 0", async () => {
-            await truffleAssert.reverts(reserve.listToken(0, { from: user }));
+            await truffleAssert.reverts(reserve.listToken(zeroAddress, { from: user }));
         });
 
         it("event sent on token listed", async () => {
@@ -1019,7 +1013,7 @@ contract("KyberDutchXReserve", async accounts => {
                 reserve.address,
                 dutchX.address
             );
-            amount.should.be.bignumber.eq(new BigNumber(2).pow(255));
+            amount.should.be.bignumber.eq(new BN(2).pow(new BN(255)));
         });
     });
 
@@ -1050,24 +1044,24 @@ contract("KyberDutchXReserve", async accounts => {
 
             const amount = 5000;
             const rate = await reserve.getConversionRate(
-                ETH_TOKEN_ADDRESS /* src */,
+                ethAddress /* src */,
                 token1.address /* dst */,
                 amount /* srcQty */,
                 0 /* blockNumber */
             );
 
-            rate.should.be.bignumber.eq(10**18);
+            rate.should.be.bignumber.eq(new BN(10).pow(new BN(18)));
 
             await reserve.delistToken(token1.address);
 
             const rate2 = await reserve.getConversionRate(
-                ETH_TOKEN_ADDRESS /* src */,
+                ethAddress /* src */,
                 token1.address /* dst */,
                 amount /* srcQty */,
                 0 /* blockNumber */
             );
 
-            rate2.should.be.bignumber.eq(0);
+            rate2.should.be.bignumber.eq(new BN(0));
         });
 
         it("cannot delist unlisted tokens", async () => {
@@ -1150,7 +1144,7 @@ contract("KyberDutchXReserve", async accounts => {
         });
 
         it("should reject address 0", async () => {
-            await truffleAssert.reverts(reserve.setKyberNetwork(0));
+            await truffleAssert.reverts(reserve.setKyberNetwork(zeroAddress));
         });
 
         it("only admin can set values", async () => {
