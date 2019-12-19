@@ -4003,11 +4003,6 @@ function calculateRateAmountNewConversionRate(isBuy, tokenInd, srcQty) {
     return expected;
 }
 
-
-function addBps (price, bps) {
-    return (price.mul(10000 + bps).div(10000));
-};
-
 function compareRates (receivedRate, expectedRate) {
     expectedRate = expectedRate - (expectedRate % 10);
     receivedRate = receivedRate - (receivedRate % 10);
