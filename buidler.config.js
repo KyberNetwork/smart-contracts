@@ -1,5 +1,5 @@
-usePlugin("@nomiclabs/buidler-truffle4");
-usePlugin("@nomiclabs/buidler-web3-legacy");
+usePlugin("@nomiclabs/buidler-truffle5");
+usePlugin("@nomiclabs/buidler-web3");
 
 module.exports = {
   defaultNetwork: "develop",
