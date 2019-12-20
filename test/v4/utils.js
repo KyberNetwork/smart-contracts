@@ -1,12 +1,14 @@
 let MockUtils = artifacts.require("./mockContracts/MockUtils.sol")
 
-let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+const Helper = require("./helper.js");
+const BN = web3.utils.BN;
 
-let ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
-let PRECISION = new BigNumber(10).pow(18);
-const MAX_QTY = new BigNumber(10).pow(28);
-const MAX_RATE = new BigNumber(10).pow(24);
+const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+const lowerCaseEthAdd = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const zeroAddress = '0x0000000000000000000000000000000000000000';
+const PRECISION = new BN(10).pow(new BN(18));
+const MAX_QTY = new BN(10).pow(new BN(28));
+const MAX_RATE = new BN(10).pow(new BN(24));
 const MAX_DECIMAL_DIFF = 18;
 
 let utils;
@@ -18,7 +20,7 @@ contract('utils', function(accounts) {
 
     it("check dest qty calculation.", async function () {
         let srcQty = 100;
-        let rate = PRECISION.div(2); //1 to 2. in PRECISION units
+        let rate = PRECISION.div(new BN(2)); //1 to 2. in PRECISION units
 
         //first check when dest decimals > src decimals
         let srcDecimal = 10;
@@ -28,7 +30,7 @@ contract('utils', function(accounts) {
 
         let reportedDstQty = await utils.mockCalcDstQty(srcQty, srcDecimal, dstDecimal, rate);
 
-        assert.equal(expectedDestQty.valueOf(), reportedDstQty.valueOf(), "unexpected dst qty");
+        assert.equal(expectedDestQty, reportedDstQty, "unexpected dst qty");
 
         //check when dest decimals < src decimals
         srcQty = 100000000000;
@@ -38,12 +40,12 @@ contract('utils', function(accounts) {
         expectedDestQty = srcQty * rate / (PRECISION * 10 ** (srcDecimal - dstDecimal));
         reportedDstQty = await utils.mockCalcDstQty(srcQty, srcDecimal, dstDecimal, rate);
 
-        assert.equal(expectedDestQty, reportedDstQty.valueOf(), "unexpected dst qty");
+        assert.equal(expectedDestQty, reportedDstQty, "unexpected dst qty");
     });
 
     it("check dest qty calculation for high quantities.", async function () {
         let srcQty = MAX_QTY;
-        let rate = PRECISION.div(2).floor();
+        let rate = PRECISION.div(new BN(2));
 
         //first check when dest decimals > src decimals
         let srcDecimal = 10;
@@ -52,14 +54,14 @@ contract('utils', function(accounts) {
         //should work with max Qty
         let expectedDestQty = calcDestQty(srcQty, rate, srcDecimal, dstDecimal);
 
-        let reportedDstQty = await utils.mockCalcDstQty(srcQty.valueOf(), srcDecimal, dstDecimal, rate.valueOf());
+        let reportedDstQty = await utils.mockCalcDstQty(srcQty, srcDecimal, dstDecimal, rate);
 
-        assert.equal(expectedDestQty.valueOf(), reportedDstQty.valueOf(), "unexpected dst qty");
+        assert.equal(expectedDestQty, reportedDstQty, "unexpected dst qty");
 
         //should revert
-        srcQty = MAX_QTY.add(1);
+        srcQty = MAX_QTY.add(new BN(1));
         try {
-            reportedDstQty = await utils.mockCalcDstQty(srcQty.valueOf(), srcDecimal, dstDecimal, rate.valueOf());
+            reportedDstQty = await utils.mockCalcDstQty(srcQty, srcDecimal, dstDecimal, rate);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -67,7 +69,7 @@ contract('utils', function(accounts) {
     });
 
     it("check dest qty calculation for high quantities.", async function () {
-        let srcQty = MAX_QTY.div(2).floor();
+        let srcQty = MAX_QTY.div(new BN(2));
         let rate = MAX_RATE;
 
         //first check when dest decimals > src decimals
@@ -77,14 +79,14 @@ contract('utils', function(accounts) {
         //should work with max Qty
         let expectedDestQty = calcDestQty(srcQty, rate, srcDecimal, dstDecimal);
 
-        let reportedDstQty = await utils.mockCalcDstQty(srcQty.valueOf(), srcDecimal, dstDecimal, rate.valueOf());
+        let reportedDstQty = await utils.mockCalcDstQty(srcQty, srcDecimal, dstDecimal, rate);
 
-        assert.equal(expectedDestQty.valueOf(), reportedDstQty.valueOf(), "unexpected dst qty");
+        assert.equal(expectedDestQty, reportedDstQty, "unexpected dst qty");
 
         //should revert
-        rate = MAX_RATE.add(1);
+        rate = MAX_RATE.add(new BN(1));
         try {
-            reportedDstQty = await utils.mockCalcDstQty(srcQty.valueOf(), srcDecimal, dstDecimal, rate.valueOf());
+            reportedDstQty = await utils.mockCalcDstQty(srcQty, srcDecimal, dstDecimal, rate);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -93,7 +95,7 @@ contract('utils', function(accounts) {
 
     it("check src qty calculation.", async function () {
         let dstQty = 100000;
-        let rate = PRECISION.mul(5); //2 to 1. in PRECISION units
+        let rate = PRECISION.mul(new BN(5)); //2 to 1. in PRECISION units
 
         //check when dest decimals > src decimals
         let srcDecimal = 10;
@@ -102,20 +104,20 @@ contract('utils', function(accounts) {
         let expectedSrcQty = calcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
         let reportedSrcQty = await utils.mockCalcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
 
-        assert.equal(expectedSrcQty.valueOf(), reportedSrcQty.valueOf(), "unexpected src qty");
+        assert.equal(expectedSrcQty, reportedSrcQty, "unexpected src qty");
 
         //check when dest decimals < src decimals
         srcDecimal = 12;
         dstDecimal = 10;
 
         expectedSrcQty = (((PRECISION / rate)* dstQty * (10**(srcDecimal - dstDecimal))));
-        reportedSrcQty = await utils.mockCalcSrcQty(dstQty, srcDecimal, dstDecimal, rate.valueOf());
-        assert.equal(expectedSrcQty, reportedSrcQty.valueOf(), "unexpected src qty");
+        reportedSrcQty = await utils.mockCalcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
+        assert.equal(expectedSrcQty, reportedSrcQty, "unexpected src qty");
     });
 
     it("check src qty calculation with high qty.", async function () {
         let dstQty = MAX_QTY;
-        let rate = PRECISION.mul(3); //2 to 1. in PRECISION units
+        let rate = PRECISION.mul(new BN(3)); //2 to 1. in PRECISION units
 
         //check when dest decimals > src decimals
         let srcDecimal = 10;
@@ -124,10 +126,10 @@ contract('utils', function(accounts) {
         let expectedSrcQty = calcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
         let reportedSrcQty = await utils.mockCalcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
 
-        assert.equal(expectedSrcQty.valueOf(), reportedSrcQty.valueOf(), "unexpected src qty");
+        assert.equal(expectedSrcQty, reportedSrcQty, "unexpected src qty");
 
         //here should revert
-        dstQty = MAX_QTY.add(1);
+        dstQty = MAX_QTY.add(new BN(1));
 
         try {
             reportedSrcQty = await utils.mockCalcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
@@ -138,7 +140,7 @@ contract('utils', function(accounts) {
     });
 
     it("check src qty calculation with high rate.", async function () {
-        let dstQty = MAX_QTY.div(2).floor();
+        let dstQty = MAX_QTY.div(new BN(2));
         let rate = MAX_RATE;
 
         //check when dest decimals > src decimals
@@ -149,10 +151,10 @@ contract('utils', function(accounts) {
         let reportedSrcQty = await utils.mockCalcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
 
 //        console.log(reportedSrcQty.logs[0].args)
-//        assert.equal(expectedSrcQty.valueOf(), reportedSrcQty.valueOf(), "unexpected src qty. expected: " + expectedSrcQty.valueOf());
+//        assert.equal(expectedSrcQty, reportedSrcQty, "unexpected src qty. expected: " + expectedSrcQty);
 
         //here should revert
-        rate = MAX_RATE.add(1);
+        rate = MAX_RATE.add(new BN(1));
 
         try {
             reportedSrcQty = await utils.mockCalcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
@@ -226,11 +228,11 @@ contract('utils', function(accounts) {
 function calcDestQty (srcQty, rate, srcDecimal, dstDecimal) {
     let result;
     if (dstDecimal >= srcDecimal) {
-        result = ((((new BigNumber(srcQty)).mul(rate).mul((new BigNumber(10)).pow(dstDecimal - srcDecimal))).div(PRECISION)));
+        result = (((new BN(srcQty)).mul(rate).mul((new BN(10)).pow(new BN(dstDecimal - srcDecimal)))).div(PRECISION));
     } else {
-        result = ((new BigNumber(srcQty)).mul(rate).div(PRECISION.mul((new BigNumber(10)).pow(srcDecimal - dstDecimal))));
+        result = (new BN(srcQty)).mul(rate).div(PRECISION.mul((new BN(10)).pow(new BN(srcDecimal - dstDecimal))));
     }
-    return result.floor();
+    return Math.floor(result)
 }
 
 function calcSrcQty(dstQty, srcDecimals, dstDecimals, rate) {
@@ -238,13 +240,13 @@ function calcSrcQty(dstQty, srcDecimals, dstDecimals, rate) {
     let numerator;
     let denominator;
     if (srcDecimals >= dstDecimals) {
-        numerator = PRECISION.mul(dstQty).mul((new BigNumber(10)).pow(srcDecimals - dstDecimals));
-        denominator = new BigNumber(rate);
+        numerator = PRECISION.mul(new BN(dstQty)).mul((new BN(10)).pow(new BN(srcDecimals - dstDecimals)));
+        denominator = new BN(rate);
     } else {
-        numerator = PRECISION.mul(dstQty);
-        denominator = (new BigNumber(rate)).mul((new BigNumber(10)).pow(dstDecimals - srcDecimals));
+        numerator = PRECISION.mul(new BN(dstQty));
+        denominator = (new BN(rate)).mul((new BN(10)).pow(new BN(dstDecimals - srcDecimals)));
     }
-//    console.log("numerator: " + numerator.valueOf() + " denominator: " + denominator.valueOf())
-    return (((numerator.add(denominator).sub(1)).div(denominator)).floor()); //avoid rounding down errors
+//    console.log("numerator: " + numerator + " denominator: " + denominator)
+    return Math.floor(((numerator.add(denominator).sub(new BN(1))).div(denominator))); //avoid rounding down errors
 }
 
