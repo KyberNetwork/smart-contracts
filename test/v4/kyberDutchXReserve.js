@@ -1,5 +1,3 @@
-const Web3 = require('web3');
-const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
 const BN = web3.utils.BN;
 const truffleAssert = require('truffle-assertions');
 
