@@ -761,7 +761,3 @@ contract('ExpectedRate', function(accounts) {
     });
 });
 
-
-function log (string) {
-    console.log(string);
-};
