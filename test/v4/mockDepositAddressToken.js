@@ -1,11 +1,15 @@
-var MockDepositAddressToken = artifacts.require("./mockContracts/MockDepositAddressToken.sol");
-var MockDepositAddressEther = artifacts.require("./mockContracts/MockDepositAddressEther.sol");
-var TestToken = artifacts.require("./mockContracts/TestToken.sol");
-var MockCentralBank = artifacts.require("./mockContracts/MockCentralBank.sol");
-var Helper = require("./helper.js");
+const MockDepositAddressToken = artifacts.require("./mockContracts/MockDepositAddressToken.sol");
+const MockDepositAddressEther = artifacts.require("./mockContracts/MockDepositAddressEther.sol");
+const TestToken = artifacts.require("./mockContracts/TestToken.sol");
+const MockCentralBank = artifacts.require("./mockContracts/MockCentralBank.sol");
+const Helper = require("./helper.js");
 
-var bank;
-var token;
+const BN = web3.utils.BN;
+
+let bank;
+let token;
+
+const zeroBN = new BN(0);
 
 contract('MockDepositAddressToken', function (accounts) {
     it("should test withdraw successful with owner", async function (){
@@ -21,7 +25,7 @@ contract('MockDepositAddressToken', function (accounts) {
         await mockAddress.withdraw(100, accounts[2], {from:accounts[2]})
 
         let balance = await token.balanceOf(accounts[2]);
-        assert.equal(balance.valueOf(), 100);
+        Helper.assertEqual(balance, 100);
     });
 
     it("should test withdraw rejected with non owner", async function (){
@@ -33,23 +37,22 @@ contract('MockDepositAddressToken', function (accounts) {
         try {
             await mockAddress.withdraw(60, accounts[3], {from:accounts[3]});
             assert(false, "expected to throw error in line above.")
-        }
-        catch(e){
+        } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
         let balance = await token.balanceOf(accounts[3]);
-        assert.equal(balance.valueOf(), 0); //withdraw should have failed.
+        Helper.assertEqual(balance, zeroBN); //withdraw should have failed.
    });
 
     it("should test MockDepositAddress get balance.", async function (){
         let mockAddress = await MockDepositAddressToken.new(token.address, bank.address, accounts[0]);
         let balance = await mockAddress.getBalance();
-        assert.equal(balance.valueOf(), 0, "new mockadrress balance not 0.");
+        Helper.assertEqual(balance, 0, "new mockadrress balance not 0.");
 
         await bank.withdrawToken(token.address, 80);
         await token.transfer(mockAddress.address, 80);
         balance = await mockAddress.getBalance();
-        assert.equal(balance.valueOf(), 80, "Mockadrress balance not 80.");
+        Helper.assertEqual(balance, 80, "Mockadrress balance not 80.");
     });
 
     it("should test MockDepositAddress clear balance.", async function (){
@@ -59,30 +62,16 @@ contract('MockDepositAddressToken', function (accounts) {
         await token.transfer(mockAddress.address, 20);
 
         let balance = await mockAddress.getBalance();
-        assert.equal(balance.valueOf(), 20, "new mockadrress balance not 20.");
+        Helper.assertEqual(balance, 20, "new mockadrress balance not 20.");
 
         await mockAddress.clearBalance(30);
 
         balance = await mockAddress.getBalance();
-        assert.equal(balance.valueOf(), 20, "mockadrress balance not 20.");
+        Helper.assertEqual(balance, 20, "mockadrress balance not 20.");
 
         await mockAddress.clearBalance(15);
 
         balance = await mockAddress.getBalance();
-        assert.equal(balance.valueOf(), 5, "mockadrress balance not 5.");
+        Helper.assertEqual(balance, 5, "mockadrress balance not 5.");
     });
 });
-
-
-var sendEtherWithPromise = function( sender, recv, amount ) {
-    return new Promise(function(fulfill, reject){
-            web3.eth.sendTransaction({to: recv, from: sender, value: amount}, function(error, result){
-            if( error ) {
-                return reject(error);
-            }
-            else {
-                return fulfill(true);
-            }
-        });
-    });
-};
