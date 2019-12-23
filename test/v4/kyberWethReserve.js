@@ -229,8 +229,3 @@ async function calcGasCost(txInfo) {
     let tx = await web3.eth.getTransaction(txInfo.tx);
     return (new BN(tx.gasPrice)).mul(new BN(txInfo.receipt.gasUsed));
 }
-
-
-function log(str) {
-    console.log(str);
-}
