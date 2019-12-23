@@ -1,9 +1,10 @@
-let ConversionRates = artifacts.require("./mockContracts/MockConversionRate.sol");
-let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let WrapConversionRate = artifacts.require("./wrapperContracts/WrapConversionRate.sol");
+const ConversionRates = artifacts.require("MockConversionRate.sol");
+const TestToken = artifacts.require("TestToken.sol");
+const WrapConversionRate = artifacts.require("WrapConversionRate.sol");
 
-let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+const Helper = require("./helper.js");
+const BN = web3.utils.BN;
+const zeroAddress = '0x0000000000000000000000000000000000000000';
 
 //global variables
 let minimalRecordResolution = 2; //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
@@ -20,7 +21,7 @@ let numTokens = 2;
 let tokens = [];
 let operator;
 let reserveAddress;
-let validRateDurationInBlocks = 60;
+let validRateDurationInBlocks = new BN(60);
 
 let convRatesInst;
 let wrapConvRateInst;
@@ -86,12 +87,12 @@ contract('WrapConversionRates', function(accounts) {
     it("should test set valid duration in blocks and verify data ", async function () {
         await wrapConvRateInst.setValidDurationData(validRateDurationInBlocks, {from: admin});
         rxValidDuration = await convRatesInst.validRateDurationInBlocks();
-        assert.equal(rxValidDuration.valueOf(), validRateDurationInBlocks);
+        Helper.assertEqual(rxValidDuration, validRateDurationInBlocks);
 
-        validRateDurationInBlocks *= 2;
+        validRateDurationInBlocks.imul(new BN(2));
         await wrapConvRateInst.setValidDurationData(validRateDurationInBlocks, {from: admin});
         rxValidDuration = await convRatesInst.validRateDurationInBlocks();
-        assert.equal(rxValidDuration.valueOf(), validRateDurationInBlocks);
+        Helper.assertEqual(rxValidDuration, validRateDurationInBlocks);
     });
 
     it("should test enabling token trade using wrapper", async function () {
@@ -274,7 +275,7 @@ contract('WrapConversionRates', function(accounts) {
         let wrapper;
 
         try {
-            wrapper = await WrapConversionRate.new(0, {from: admin});
+            wrapper = await WrapConversionRate.new(zeroAddress, {from: admin});
             assert(false, "throw was expected in line above.")
         } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -294,7 +295,7 @@ contract('WrapConversionRates', function(accounts) {
         let maxTotal = 400;
 
         try {
-            await wrapConvRateInst.addToken(0, minResolution, maxPerBlock, maxTotal, {from: admin});
+            await wrapConvRateInst.addToken(zeroAddress, minResolution, maxPerBlock, maxTotal, {from: admin});
             assert(false, "throw was expected in line above.")
         } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
