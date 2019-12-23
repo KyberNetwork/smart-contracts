@@ -53,7 +53,7 @@ module.exports.getBalancePromise = function( account ) {
     return new Promise(function (fulfill, reject){
         web3.eth.getBalance(account,function(err,result){
             if( err ) reject(err);
-            else fulfill(result);
+            else fulfill(new BN(result));
         });
     });
 };
