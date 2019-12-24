@@ -157,13 +157,13 @@ contract('PermissionGroups', function(accounts) {
         }
 
         let rate = await mockPermissionsInst.rate();
-        assert.equal(rate.valueOf(), 0, "rate should be as initialized.")
+        assert.equal(rate, 0, "rate should be as initialized.")
     });
 
     it("should test set rate success for operator.", async function () {
         await mockPermissionsInst.setRate(9, {from:accounts[2]});
         let rate = await mockPermissionsInst.rate();
-        assert.equal(rate.valueOf(), 9, "rate should be as initialized.")
+        assert.equal(rate, 9, "rate should be as initialized.")
     });
 
     it("should test stop trade is rejected for non alerter.", async function () {

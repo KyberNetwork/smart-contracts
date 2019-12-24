@@ -42,7 +42,7 @@ contract('WhiteList', function(accounts) {
         let userCap = await whiteListInst.getUserCapInWei(user1);
 //        console.log("user1" + user1 + " userCap" + userCap);
         let expectedUserCapWei = sgdToEthRateInWei.mul(defaultUserCapSgd);
-        Helper.assertEqual(userCap.valueOf(), expectedUserCapWei, "unexpected user cap");
+        Helper.assertEqual(userCap, expectedUserCapWei, "unexpected user cap");
     });
 
     it("should verify the cap for user with unique category.", async function () {
@@ -50,40 +50,40 @@ contract('WhiteList', function(accounts) {
         await whiteListInst.setUserCategory(user2, 17, {from : operator});
         userCap = await whiteListInst.getUserCapInWei(user2);
         let expectedUserCapWei = sgdToEthRateInWei.mul(new BN(2000));
-        Helper.assertEqual(userCap.valueOf(), expectedUserCapWei, "unexpected user cap");
+        Helper.assertEqual(userCap, expectedUserCapWei, "unexpected user cap");
     });
 
     it("should verify the category for kgt holder with no set category.", async function () {
-        Helper.assertEqual(kgtCategory.valueOf(), 2, "unexpected kgt holder category");
+        Helper.assertEqual(kgtCategory, 2, "unexpected kgt holder category");
 
         //get non kgt holder category
         let userCategory = await whiteListInst.getUserCategory(kgtHolder);
-        Helper.assertEqual(userCategory.valueOf(), 0, "Unexpected category");
+        Helper.assertEqual(userCategory, 0, "Unexpected category");
 
         //make this user kgt holder by tx kgt token to user.
         await kgtToken.transfer(kgtHolder, 1);
 
         //get user category when kgt holder
         userCategory = await whiteListInst.getUserCategory(kgtHolder);
-        Helper.assertEqual(userCategory.valueOf(), kgtCategory, "Unexpected category");
+        Helper.assertEqual(userCategory, kgtCategory, "Unexpected category");
     });
 
     it("should verify if kgt Holder has set category. being KGT holder has no affect.", async function () {
         //get user category when kgt holder
         let userCategory = await whiteListInst.getUserCategory(kgtHolder);
-        Helper.assertEqual(userCategory.valueOf(), kgtCategory, "Unexpected category");
+        Helper.assertEqual(userCategory, kgtCategory, "Unexpected category");
 
         //set another user category to this KGT holder
         await whiteListInst.setUserCategory(kgtHolder, 6, {from : operator});
 
         //get user category
         userCategory = await whiteListInst.getUserCategory(kgtHolder);
-        Helper.assertEqual(userCategory.valueOf(), 6, "Unexpected category");
+        Helper.assertEqual(userCategory, 6, "Unexpected category");
 
         //set kgt holder cat back to 0 and see he gets kgt holder cat
         await whiteListInst.setUserCategory(kgtHolder, 0, {from : operator});
         userCategory = await whiteListInst.getUserCategory(kgtHolder);
-        Helper.assertEqual(userCategory.valueOf(), kgtCategory, "Unexpected category");
+        Helper.assertEqual(userCategory, kgtCategory, "Unexpected category");
     });
 
     it("should verify the cap for kgt holder with non set category.", async function () {
@@ -93,7 +93,7 @@ contract('WhiteList', function(accounts) {
 
         //get user cap as kgt holder
         let userCap = await whiteListInst.getUserCapInWei(kgtHolder);
-        Helper.assertEqual(userCap.valueOf(), sgdToEthRateInWei.mul(kgtHolderCap).valueOf(), "user cap should be " + kgtHolderCap);
+        Helper.assertEqual(userCap, sgdToEthRateInWei.mul(kgtHolderCap), "user cap should be " + kgtHolderCap);
 
         //make this user non kgt holder
         let balance = await kgtToken.balanceOf(kgtHolder);
@@ -101,13 +101,13 @@ contract('WhiteList', function(accounts) {
 
         //get user cap when not kgt holder
         userCap = await whiteListInst.getUserCapInWei(kgtHolder);
-        Helper.assertEqual(userCap, sgdToEthRateInWei.mul(defaultUserCapSgd).valueOf(), "user cap should be 0");
+        Helper.assertEqual(userCap, sgdToEthRateInWei.mul(defaultUserCapSgd), "user cap should be 0");
     });
 
     it("should verify the cap for user with uninit category is 0.", async function () {
         await whiteListInst.setUserCategory(user2, 25, {from : operator});
         userCap = await whiteListInst.getUserCapInWei(user2);
-        Helper.assertEqual(userCap.valueOf(), 0, "unexpected user cap");
+        Helper.assertEqual(userCap, 0, "unexpected user cap");
     });
 
     it("should test when sgdtoWei not init, cap is always 0.", async function () {
@@ -115,13 +115,13 @@ contract('WhiteList', function(accounts) {
         await whiteListInst2.addOperator(operator, {from: admin});
         //tests unset user
         userCap = await whiteListInst.getUserCapInWei(user2);
-        Helper.assertEqual(0, userCap.valueOf(), "unexpected user cap");
+        Helper.assertEqual(0, userCap, "unexpected user cap");
 
         //set specific user cap
         await whiteListInst2.setCategoryCap(17, 2000, {from : operator});
         await whiteListInst2.setUserCategory(user2, 17, {from : operator});
         userCap = await whiteListInst2.getUserCapInWei(user2);
-        Helper.assertEqual(0, userCap.valueOf(), "unexpected user cap");
+        Helper.assertEqual(0, userCap, "unexpected user cap");
     });
 
     it("should test when no category is init, cap is always 0.", async function () {
@@ -130,12 +130,12 @@ contract('WhiteList', function(accounts) {
 
         //tests unset user
         userCap = await whiteListInst2.getUserCapInWei(user2);
-        Helper.assertEqual(0, userCap.valueOf(), "unexpected user cap");
+        Helper.assertEqual(0, userCap, "unexpected user cap");
 
         //set specific user cap
         await whiteListInst2.setUserCategory(user2, 17, {from : operator});
         userCap = await whiteListInst2.getUserCapInWei(user2);
-        Helper.assertEqual(0, userCap.valueOf(), "unexpected user cap");
+        Helper.assertEqual(0, userCap, "unexpected user cap");
     });
 
     it("should test can't init this contract with empty addresses (address 0).", async function () {
