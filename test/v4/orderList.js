@@ -441,7 +441,7 @@ contract('OrderList', async (accounts) => {
     });
 
     describe("#addAfterId", async () => {
-        it.only("add order after a specified order id", async () => {
+        it("add order after a specified order id", async () => {
             let worseId = await addOrderGetId(
                 user1 /* maker */,
                 10 /* srcAmount */,
@@ -459,10 +459,6 @@ contract('OrderList', async (accounts) => {
                 200 /* dstAmount */,
                 betterId
             );
-
-            log("better ID " + betterId)
-            log("middle ID " + order.id)
-            log("worse ID " + worseId)
 
             // HEAD -> better -> order -> worse -> TAIL
             await assertOrdersOrder3(betterId, order.id, worseId);
@@ -1724,22 +1720,48 @@ async function addOrderGetId(maker, srcAmount, dstAmount, args = 'none') {
 }
 
 async function addOrderAfterIdGetId(
-    maker,
-    srcAmount,
-    dstAmount,
-    prevId,
-    args = 'none'
-)
+        maker,
+        srcAmount,
+        dstAmount,
+        prevId,
+        args = 'none'
+    )
 {
     let orderId = await allocateIds(1);
 
-    let canAdd = args == 'none' ? await orders.addAfterId.call(
+    let canAdd;
+
+    if (args == 'none') {
+        canAdd = await orders.addAfterId.call(
+                user1 /* maker */,
+                orderId,
+                srcAmount,
+                dstAmount,
+                prevId
+            )
+    } else {
+        await orders.addAfterId.call(
+                user1 /* maker */,
+                orderId,
+                srcAmount,
+                dstAmount,
+                prevId,
+                args
+            );
+    }
+
+    if (!canAdd) throw new Error('add after id failed');
+
+    if (args == 'none') {
+        await orders.addAfterId(
             user1 /* maker */,
             orderId,
             srcAmount,
             dstAmount,
             prevId
-        ) : await orders.addAfterId.call(
+       );
+    } else {
+        await orders.addAfterId(
             user1 /* maker */,
             orderId,
             srcAmount,
@@ -1747,23 +1769,8 @@ async function addOrderAfterIdGetId(
             prevId,
             args
         );
+    }
 
-    if (!canAdd) throw new Error('add after id failed');
-
-    args == 'none' ? await orders.addAfterId.call(
-               user1 /* maker */,
-               orderId,
-               srcAmount,
-               dstAmount,
-               prevId
-       ) : await orders.addAfterId.call(
-               user1 /* maker */,
-               orderId,
-               srcAmount,
-               dstAmount,
-               prevId,
-               args
-       );
     return orderId;
 }
 
@@ -1833,12 +1840,6 @@ async function assertOrdersOrder3(orderId1, orderId2, orderId3) {
     const order1 = await getOrderById(orderId1);
     const order2 = await getOrderById(orderId2);
     const order3 = await getOrderById(orderId3);
-
-    log("orderID1 " + orderId1)
-    log("orderID2 " + orderId2)
-    log("orderID3 " + orderId3)
-    log("order1.nextId " + order1.nextId)
-
 
 //    orderID1.nextId
     // after: HEAD -> order1 -> order2 -> order3 -> TAIL
