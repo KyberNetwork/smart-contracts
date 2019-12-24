@@ -101,33 +101,32 @@ module.exports.sendPromise = function(method, params) {
 ////////////////////////////////////////////////////////////////////////////////
 
 module.exports.exp = function(num1,num2) {
-    const num1Math = Math.bignumber(new BN(num1).toString(10));
-    const num2Math = Math.bignumber(new BN(num2).toString(10));
+    const num1Math = Math.bignumber(new BN(num1 * 10**9).toString(10)).div(10**9);
+    const num2Math = Math.bignumber(new BN(num2 * 10**9).toString(10)).div(10**9);
 
     const result = Math.pow(num1Math,num2Math);
 
-    return new BN(result.toString());
+    return result.toNumber();
 };
 
 module.exports.ln = function(num) {
-    const numMath = Math.bignumber(new BN(num).toString(10));
+    const numMath = Math.bignumber(new BN(num * 10**9).toString(10)).div(10**9);
 
     const result = Math.log(numMath);
 
-    return new BN(result.toString());
+    return result.toNumber();
 };
 
 
 ////////////////////////////////////////////////////////////////////////////////
 
 function absDiffInPercent(num1, num2) {
-    return (absDiff(num1,num2).div(num1)).mul(100)
+    return (absDiff(num1,num2).div(new BN(num1))).mul(new BN(100))
 }
 
 function checkAbsDiff(num1, num2, maxDiffInPercentage) {
-    const maxDiffBig = new BN(maxDiffInPercentage);
     const diff = absDiff(num1,num2);
-    return (diff.div(num1)).lte(maxDiffInPercentage.div(100));
+    return (diff.mul(new BN(100).div(new BN(num1)))).lte(new BN(maxDiffInPercentage * 100));
 };
 
 function absDiff(num1,num2) {
@@ -135,10 +134,10 @@ function absDiff(num1,num2) {
     const bigNum2 = new BN(num2);
 
     if(bigNum1.gt(bigNum2)) {
-        return bigNum1.minus(bigNum2);
+        return bigNum1.sub(bigNum2);
     }
     else {
-        return bigNum2.minus(bigNum1);
+        return bigNum2.sub(bigNum1);
     }
 };
 
@@ -198,5 +197,5 @@ module.exports.calcDstQty = function(srcQty, srcDecimals, dstDecimals, rate) {
     } else {
         result = (srcQty).mul(rate).div(precisionUnits.mul((new BN(10)).pow(new BN(srcDecimals - dstDecimals))));
     }
-    return new BN(Math.floor(result.toString()).toString());
+    return result;
 }
