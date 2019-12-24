@@ -53,7 +53,7 @@ module.exports.getBalancePromise = function( account ) {
     return new Promise(function (fulfill, reject){
         web3.eth.getBalance(account,function(err,result){
             if( err ) reject(err);
-            else fulfill(result);
+            else fulfill(new BN(result));
         });
     });
 };
@@ -168,3 +168,35 @@ module.exports.assertLesser = function(val1, val2, errorStr) {
 module.exports.addBps = function(rate, bps) {
     return ((new BN(rate)).mul(new BN(10000 + bps)).div(new BN(10000)));
 };
+
+module.exports.calcSrcQty = function(dstQty, srcDecimals, dstDecimals, rate) {
+    //source quantity is rounded up. to avoid dest quantity being too low.
+    let srcQty;
+    let numerator;
+    let denominator;
+    let precisionUnits = (new BN(10).pow(new BN(18)));
+    if (srcDecimals >= dstDecimals) {
+        numerator = precisionUnits.mul(dstQty).mul((new BN(10)).pow(new BN(srcDecimals - dstDecimals)));
+        denominator = new BN(rate);
+    } else {
+        numerator = precisionUnits.mul(dstQty);
+        denominator = (new BN(rate)).mul((new BN(10)).pow(new BN(dstDecimals - srcDecimals)));
+    }
+    srcQty = numerator.add(denominator.sub(new BN(1))).div(denominator); //avoid rounding down errors
+    srcQty = new BN(Math.floor(srcQty.toString()).toString());
+    return srcQty;
+}
+
+module.exports.calcDstQty = function(srcQty, srcDecimals, dstDecimals, rate) {
+    srcQty = new BN(srcQty);
+    rate = new BN(rate);
+    let precisionUnits = (new BN(10).pow(new BN(18)));
+    let result;
+
+    if (dstDecimals >= srcDecimals) {
+        result = ((srcQty.mul(rate).mul((new BN(10)).pow(new BN(dstDecimals - srcDecimals)))).div(precisionUnits));
+    } else {
+        result = (srcQty).mul(rate).div(precisionUnits.mul((new BN(10)).pow(new BN(srcDecimals - dstDecimals))));
+    }
+    return new BN(Math.floor(result.toString()).toString());
+}

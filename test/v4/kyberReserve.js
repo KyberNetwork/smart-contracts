@@ -209,12 +209,12 @@ contract('KyberReserve', function(accounts) {
         await Helper.sendEtherWithPromise(accounts[9], reserveInst.address, reserveEtherInit);
         await Helper.sendEtherWithPromise(accounts[9], reserveInst2.address, reserveEtherInit);
 
-        let balance = new BN(await Helper.getBalancePromise(reserveInst.address));
+        let balance = await Helper.getBalancePromise(reserveInst.address);
         expectedReserveBalanceWei = balance;
 
         Helper.assertEqual(balance, reserveEtherInit, "wrong ether balance");
 
-        balance = new BN(await Helper.getBalancePromise(reserveInst2.address));
+        balance = await Helper.getBalancePromise(reserveInst2.address);
         Helper.assertEqual(balance, reserveEtherInit, "wrong ether balance");
         expectedReserveBalanceWei2 = balance;
 
@@ -412,7 +412,6 @@ contract('KyberReserve', function(accounts) {
         let expectedRate = baseSellRate[tokenInd];
         let extraBps = getExtraBpsForSellQuantity(amountTwei);
         expectedRate = Helper.addBps(expectedRate, extraBps);
-        expectedRate;
 
         //check correct rate calculated
         Helper.assertEqual(sellRate, expectedRate, "unexpected rate.");
@@ -729,11 +728,11 @@ contract('KyberReserve', function(accounts) {
 
         //make sure src qty rounded up.
         let getSrcQTY = await reserveInst.getSrcQty(token3Dec.address, ethAddress, dstQty, rate);  
-        let srcQty = calcSrcQty(dstQty, srcDecimal, destDecimal, rate);
+        let srcQty = Helper.calcSrcQty(dstQty, srcDecimal, destDecimal, rate);
         Helper.assertEqual(srcQty, getSrcQTY, "bad src qty");
     
         getSrcQTY = await reserveInst.getSrcQty(ethAddress, token3Dec.address, dstQty, rate);
-        srcQty = calcSrcQty(dstQty, destDecimal, srcDecimal, rate);
+        srcQty = Helper.calcSrcQty(dstQty, destDecimal, srcDecimal, rate);
         Helper.assertEqual(srcQty, getSrcQTY, "bad src qty");
 
     });
@@ -749,7 +748,7 @@ contract('KyberReserve', function(accounts) {
 
         //first get src qty when decimal diff is legal
         getSrcQTY = await reserveInst.getSrcQty(ethAddress, token3Dec.address, dstQty, rate);
-        let srcQty = calcSrcQty(dstQty, destDecimal, srcDecimal, rate);
+        let srcQty = Helper.calcSrcQty(dstQty, destDecimal, srcDecimal, rate);
         Helper.assertEqual(srcQty, getSrcQTY, "bad src qty");
 
         //see reverted when qty decimal diff > max decimal diff
@@ -785,7 +784,7 @@ contract('KyberReserve', function(accounts) {
         reportedBalance = await token.balanceOf(withDrawAddress);
         Helper.assertEqual(reportedBalance, amount, "bad token balance on withdraw address");
 
-        expectedReserveBalanceWei = new BN(await Helper.getBalancePromise(reserveInst.address));
+        expectedReserveBalanceWei = await Helper.getBalancePromise(reserveInst.address);
 
         //ether
         await reserveInst.approveWithdrawAddress(ethAddress, withDrawAddress, true);
@@ -859,7 +858,7 @@ contract('KyberReserve', function(accounts) {
         let tokenB = await TestToken.new("dest", "dst", dstDecimal);
 
         //get dest QTY
-        let expectedDestQty = calcDstQty(srcQty, srcDecimal, dstDecimal, rate);
+        let expectedDestQty = Helper.calcDstQty(srcQty, srcDecimal, dstDecimal, rate);
 
         let reportedDstQty = await reserveInst.getDestQty(tokenA.address, tokenB.address, srcQty, rate);
 
@@ -877,7 +876,7 @@ contract('KyberReserve', function(accounts) {
 
         //get src qty
         let dstQty = new BN(100000);
-        let expectedSrcQty = calcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
+        let expectedSrcQty = Helper.calcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
 
         let reportedSrcQty = await reserveInst.getSrcQty(tokenA.address, tokenB.address, dstQty, rate);
 
@@ -1080,13 +1079,13 @@ contract('KyberReserve', function(accounts) {
             extraBps = compactBuyArr[tokenInd] * 10;
             expectedRate = Helper.addBps(expectedRate, extraBps);
             //first calculate number of destination tokens according to basic rate
-            let destQty = calcDstQty(amountWei, 18, 18, expectedRate);
+            let destQty = Helper.calcDstQty(amountWei, 18, 18, expectedRate);
             extraBps = getExtraBpsForImbalanceBuyQuantityNew(reserveTokenImbalance2[tokenInd].toNumber(), destQty.toNumber());
             expectedRate = Helper.addBps(expectedRate, extraBps);
             Helper.assertEqual(buyRate, expectedRate, "unexpected rate. loop: " + i);
 
             //update balances based on new rate
-            let expectedTweiAmount = calcDstQty(amountWei, 18, 18, expectedRate);
+            let expectedTweiAmount = Helper.calcDstQty(amountWei, 18, 18, expectedRate);
             totalExpectedTwei = totalExpectedTwei.add(expectedTweiAmount);
             reserveTokenBalance2[tokenInd] = reserveTokenBalance2[tokenInd].sub(expectedTweiAmount);
             let recordImbal = expectedTweiAmount.div(minimalRecordResolution).mul(minimalRecordResolution);
@@ -1140,13 +1139,13 @@ contract('KyberReserve', function(accounts) {
             let extraBps = compactBuyArr[tokenInd] * 10;
             expectedRate = Helper.addBps(expectedRate, extraBps);
             //first calculate number of destination tokens according to basic rate
-            let destQty = calcDstQty(amountWei, 18, 18, expectedRate);
+            let destQty = Helper.calcDstQty(amountWei, 18, 18, expectedRate);
             extraBps = getExtraBpsForImbalanceBuyQuantityNew(reserveTokenImbalance2[tokenInd].toNumber(), destQty.toNumber());
             expectedRate = Helper.addBps(expectedRate, extraBps);
 
             Helper.assertEqual(buyRate, expectedRate, "unexpected rate. loop: " + i);
 
-            let expectedTweiAmount = calcDstQty(amountWei, 18, 18, expectedRate);
+            let expectedTweiAmount = Helper.calcDstQty(amountWei, 18, 18, expectedRate);
             totalExpectedTwei = totalExpectedTwei.add(expectedTweiAmount);
             reserveTokenBalance2[tokenInd] = reserveTokenBalance2[tokenInd].sub(expectedTweiAmount);
             let recordImbal = expectedTweiAmount.div(minimalRecordResolution).mul(minimalRecordResolution);
@@ -1190,7 +1189,7 @@ contract('KyberReserve', function(accounts) {
             expectedRate = Helper.addBps(expectedRate, extraBps);
 
             //first calculate number of destination tokens according to basic rate
-            let destQty = calcDstQty(amountTwei, 18, 18, expectedRate);
+            let destQty = Helper.calcDstQty(amountTwei, 18, 18, expectedRate);
             extraBps = getExtraBpsForImbalanceSellQuantityNew(reserveTokenImbalance2[tokenInd].toNumber(), amountTwei.toNumber());
             expectedRate = Helper.addBps(expectedRate, extraBps);
 
@@ -1204,7 +1203,7 @@ contract('KyberReserve', function(accounts) {
             await reserveInst2.trade(tokenAdd[tokenInd], amountTwei, ethAddress, user4, sellRate, true, {from:network});
 
             //check lower ether balance on reserve
-            let amountWei = calcDstQty(amountTwei, 18, 18, expectedRate);
+            let amountWei = Helper.calcDstQty(amountTwei, 18, 18, expectedRate);
             expectedReserveBalanceWei2 = expectedReserveBalanceWei2.sub(amountWei);
             let balance = await Helper.getBalancePromise(reserveInst2.address);
             Helper.assertEqual(balance, expectedReserveBalanceWei2, "bad reserve balance wei");
@@ -1334,13 +1333,13 @@ function calculateRateAmount(isBuy, tokenInd, srcQty, reserveIndex, maxDestAmoun
 
     if (isBuy) {
         expectedRate = (new BN(baseArray[tokenInd]));
-        let dstQty = calcDstQty(srcQty, 18, tokenDecimals[tokenInd], expectedRate);
+        let dstQty = Helper.calcDstQty(srcQty, 18, tokenDecimals[tokenInd], expectedRate);
         let extraBps = getExtraBpsForBuyQuantity(dstQty);
         expectedRate = Helper.addBps(expectedRate, extraBps);
         let relevantImbalance = imbalanceArray[tokenInd] * 1 + dstQty * 1;
         extraBps = getExtraBpsForImbalanceBuyQuantity(relevantImbalance);
         expectedRate = Helper.addBps(expectedRate, extraBps);
-        expectedAmount = calcDstQty(srcQty, 18, tokenDecimals[tokenInd], expectedRate);
+        expectedAmount = Helper.calcDstQty(srcQty, 18, tokenDecimals[tokenInd], expectedRate);
     } else {
         expectedRate = (new BN(baseArray[tokenInd]));
         let extraBps = getExtraBpsForSellQuantity(srcQty);
@@ -1348,41 +1347,11 @@ function calculateRateAmount(isBuy, tokenInd, srcQty, reserveIndex, maxDestAmoun
         let relevantImbalance = imbalanceArray[tokenInd] - srcQty;
         extraBps = getExtraBpsForImbalanceSellQuantity(relevantImbalance);
         expectedRate = Helper.addBps(expectedRate, extraBps);
-        expectedAmount = calcDstQty(srcQty, tokenDecimals[tokenInd], 18, expectedRate);
+        expectedAmount = Helper.calcDstQty(srcQty, tokenDecimals[tokenInd], 18, expectedRate);
     }
 
     expected = [expectedRate, expectedAmount];
     return expected;
-}
-
-function calcSrcQty(dstQty, srcDecimals, dstDecimals, rate) {
-    //source quantity is rounded up. to avoid dest quantity being too low.
-    let srcQty;
-    let numerator;
-    let denominator;
-    if (srcDecimals >= dstDecimals) {
-        numerator = precisionUnits.mul(dstQty).mul((new BN(10)).pow(new BN(srcDecimals - dstDecimals)));
-        denominator = new BN(rate);
-    } else {
-        numerator = precisionUnits.mul(dstQty);
-        denominator = (new BN(rate)).mul((new BN(10)).pow(new BN(dstDecimals - srcDecimals)));
-    }
-    srcQty = numerator.add(denominator.sub(new BN(1))).div(denominator); //avoid rounding down errors
-    srcQty = new BN(Math.floor(srcQty).toString());
-    return srcQty;
-}
-
-function calcDstQty (srcQty, srcDecimals, dstDecimals, rate) {
-    srcQty = new BN(srcQty);
-    rate = new BN(rate);
-    let result;
-
-    if (dstDecimals >= srcDecimals) {
-        result = ((srcQty.mul(rate).mul((new BN(10)).pow(new BN(dstDecimals - srcDecimals)))).div(precisionUnits));
-    } else {
-        result = (srcQty).mul(rate).div(precisionUnits.mul((new BN(10)).pow(new BN(srcDecimals - dstDecimals))));
-    }
-    return new BN(Math.floor(result).toString());
 }
 
 function divSolidity(a, b) {
