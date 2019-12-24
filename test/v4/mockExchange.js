@@ -1,10 +1,12 @@
-const TestToken = artifacts.require("./mockContracts/TestToken.sol");
-const MockExchange = artifacts.require("./mockContracts/MockExchange.sol")
-const MockCentralBank = artifacts.require("./mockContracts/MockCentralBank.sol");
-const MockDepositAddressEther = artifacts.require("./mockContracts/MockDepositAddressEther.sol");
+const TestToken = artifacts.require("TestToken.sol");
+const MockExchange = artifacts.require("MockExchange.sol")
+const MockCentralBank = artifacts.require("MockCentralBank.sol");
+const MockDepositAddressEther = artifacts.require("MockDepositAddressEther.sol");
 const Helper = require("./helper.js")
+const BN = web3.utils.BN;
 
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+const zeroBN = new BN(0);
 
 let centralBank;
 let myToken;
@@ -47,7 +49,7 @@ contract('MockExchange', function (accounts) {
         }
 
         let balance = await myToken.balanceOf(payable.address);
-        Helper.assertEqual(balance, 0, "unexpected balance."); //withdraw should have failed. value stays 100
+        Helper.assertEqual(balance, zeroBN, "unexpected balance."); //withdraw should have failed. value stays 100
     });
 
     it("should test withdraw successful with owner, for Eth", async function (){
@@ -77,14 +79,14 @@ contract('MockExchange', function (accounts) {
 
         balance = await Helper.getBalancePromise(payable.address);
         //withdraw should have failed.
-        Helper.assertEqual(balance, 0, "didn't find expected balance");
+        Helper.assertEqual(balance, zeroBN, "didn't find expected balance");
     });
 
     it("should test MockDepositAddress get balance with token.", async function (){
         let token = await TestToken.new("other token", "oth", 18);
         await myExchange.addMockDepositAddress(token.address);
         let balance = await myExchange.getBalance(token.address);
-        Helper.assertEqual(balance, 0, "new myExchange balance not 0.");
+        Helper.assertEqual(balance, zeroBN, "new myExchange balance not 0.");
 
         //get mockDepositAddress address for this myToken
         let mockAddress = await myExchange.tokenDepositAddresses(token.address);
@@ -97,7 +99,7 @@ contract('MockExchange', function (accounts) {
         //first see init with balance 0
         await myExchange.addMockDepositAddress(ethAddress);
         let balance = await myExchange.getBalance(ethAddress);
-        Helper.assertEqual(balance, 0, "new myExchange balance not 0.");
+        Helper.assertEqual(balance, zeroBN, "new myExchange balance not 0.");
 
         //get mockDepositAddress address for this myToken
         let mockAddress = await myExchange.tokenDepositAddresses(ethAddress);

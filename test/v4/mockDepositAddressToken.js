@@ -47,7 +47,7 @@ contract('MockDepositAddressToken', function (accounts) {
     it("should test MockDepositAddress get balance.", async function (){
         let mockAddress = await MockDepositAddressToken.new(token.address, bank.address, accounts[0]);
         let balance = await mockAddress.getBalance();
-        Helper.assertEqual(balance, 0, "new mockadrress balance not 0.");
+        Helper.assertEqual(balance, zeroBN, "new mockadrress balance not 0.");
 
         await bank.withdrawToken(token.address, 80);
         await token.transfer(mockAddress.address, 80);
