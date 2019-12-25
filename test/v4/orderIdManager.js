@@ -1,5 +1,5 @@
-const OrderIdManager = artifacts.require("./permissionless/mock/MockOrderIdManager.sol");
-const TestToken = artifacts.require("./mockContracts/TestToken.sol");
+const OrderIdManager = artifacts.require("MockOrderIdManager.sol");
+const TestToken = artifacts.require("TestToken.sol");
 
 const Helper = require("./helper.js");
 
