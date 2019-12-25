@@ -82,7 +82,7 @@ contract('MockDepositAddressEther', function (accounts) {
         await mockAddress.clearBalance(amount30);
 
         balance = await mockAddress.getBalance();
-        Helper.assertEqual(balance.valueOf(), amount, "mockadrress balance not as expected.");
+        Helper.assertEqual(balance, amount, "mockadrress balance not as expected.");
 
         let amount15 = new BN(15);
         await mockAddress.clearBalance(amount15);
