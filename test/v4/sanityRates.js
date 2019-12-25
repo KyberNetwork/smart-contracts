@@ -41,11 +41,11 @@ contract('SanityRates', function(accounts) {
 
     it("check rates for token 0 (where diff is 0) so only tests rates.", async function () {
         let tokenToEthRate = await sanityRates.getSanityRate(tokens[0], ethAddress);
-        Helper.assertEqual(tokenToEthRate.valueOf(), rates[0], "unexpected rate");
+        Helper.assertEqual(tokenToEthRate, rates[0], "unexpected rate");
 
         let expectedEthToToken = precisionUnits.mul(precisionUnits).div(tokenToEthRate);
         let ethToTokenRate = await sanityRates.getSanityRate(ethAddress, tokens[0]);
-        Helper.assertEqual(expectedEthToToken.valueOf(), ethToTokenRate.valueOf(), "unexpected rate");
+        Helper.assertEqual(expectedEthToToken, ethToTokenRate, "unexpected rate");
     });
 
     it("check rates with reasonable diff.", async function () {
@@ -53,11 +53,11 @@ contract('SanityRates', function(accounts) {
         let expectedTokenToEthRate = rates[tokenInd].mul(bps.add(reasonableDiffs[tokenInd])).div(bps);
 
         let tokenToEthRate = await sanityRates.getSanityRate(tokens[tokenInd], ethAddress);
-        Helper.assertEqual(tokenToEthRate.valueOf(), expectedTokenToEthRate.valueOf(), "unexpected rate");
+        Helper.assertEqual(tokenToEthRate, expectedTokenToEthRate, "unexpected rate");
 
-        let expectedEthToToken = (new BN(precisionUnits)).mul(precisionUnits).div(rates[tokenInd]).mul(bps.add(reasonableDiffs[tokenInd])).div(bps);
+        let expectedEthToToken = precisionUnits.mul(precisionUnits).div(rates[tokenInd]).mul(bps.add(reasonableDiffs[tokenInd])).div(bps);
         let ethToTokenRate = await sanityRates.getSanityRate(ethAddress, tokens[tokenInd]);
-        Helper.assertEqual(expectedEthToToken.valueOf(), ethToTokenRate.valueOf(), "unexpected rate");
+        Helper.assertEqual(expectedEthToToken, ethToTokenRate, "unexpected rate");
     });
 
     it("should test can't init this contract with empty contracts (address 0).", async function () {
