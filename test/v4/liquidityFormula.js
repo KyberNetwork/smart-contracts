@@ -90,9 +90,6 @@ contract('FeeBurner', function(accounts) {
                                                           new BN(deltaE).mul(precision),
                                                           precision);
 
-        console.log(result.div(precision).toString(10));
-        console.log(expectedResult.div(precision).toString(10));
-
         Helper.assertAbsDiff(expectedResult,result,expectedDiffInPct);
 
         /* Helper.assertAbsDiff(expectedResult2,result2,expectedDiffInPct) */
@@ -116,9 +113,6 @@ contract('FeeBurner', function(accounts) {
                                                           new BN(deltaT).mul(precision),
                                                           precision,
                                                           precisionBits);
-
-        console.log(result.div(precision).toString(10));
-        console.log(expectedResult.div(precision).toString(10));
 
         Helper.assertAbsDiff(expectedResult,result,expectedDiffInPct);
 
