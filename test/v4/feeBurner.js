@@ -25,7 +25,7 @@ let initialKNCWalletBalance = 10000000000;
 let burnFeeInBPS = 70;  //basic price steps
 let taxFeesInBPS = 30;
 let totalBPS = 10000;   //total price steps.
-let payedSoFar = 0; //track how much fees payed or burned so far.
+let payedSoFar = new BN(0); //track how much fees payed or burned so far.
 let MAX_RATE;
 
 //accounts
@@ -48,7 +48,7 @@ contract('FeeBurner', function(accounts) {
         kncToken = await TestToken.new("kyber", "KNC", 18);
         await kncToken.transfer(mockKNCWallet, initialKNCWalletBalance);
         let balance = await kncToken.balanceOf(mockKNCWallet);
-        Helper.assertEqual(balance.valueOf(), initialKNCWalletBalance, "unexpected wallet balance.");
+        Helper.assertEqual(balance, initialKNCWalletBalance, "unexpected wallet balance.");
 
         //init fee burner
         feeBurnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork, kncPerEthRatePrecision);
@@ -59,16 +59,14 @@ contract('FeeBurner', function(accounts) {
         //set parameters in fee burner.
         let result = await feeBurnerInst.setReserveData(mockReserve, burnFeeInBPS, mockKNCWallet, {from: operator});
 
-//        console.log("result")
-//        console.log(result.logs[0].args)
         Helper.assertEqual(result.logs[0].args.reserve, mockReserve);
-        Helper.assertEqual(result.logs[0].args.feeInBps.valueOf(), burnFeeInBPS);
+        Helper.assertEqual(result.logs[0].args.feeInBps, burnFeeInBPS);
         Helper.assertEqual(result.logs[0].args.kncWallet, mockKNCWallet);
 
         //allowance to fee burner to enable burning
         await kncToken.approve(feeBurnerInst.address, initialKNCWalletBalance / 10, {from: mockKNCWallet});
         let allowance = await kncToken.allowance(mockKNCWallet, feeBurnerInst.address);
-        Helper.assertEqual(allowance.valueOf(), initialKNCWalletBalance / 10, "unexpected allowance");
+        Helper.assertEqual(allowance, initialKNCWalletBalance / 10, "unexpected allowance");
 
         let mockUtils = await MockUtils.new();
         MAX_RATE = await mockUtils.getMaxRate();
@@ -85,7 +83,7 @@ contract('FeeBurner', function(accounts) {
         let expectedWaitingFees = feeSize.add(feesWaitingToBurn);
         feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
 
-        Helper.assertEqual(feesWaitingToBurn.valueOf(), expectedWaitingFees.valueOf(), "unexpected waiting to burn.");
+        Helper.assertEqual(feesWaitingToBurn, expectedWaitingFees, "unexpected waiting to burn.");
     });
 
     it("should test handle fees success with other wallet ID fees.", async function () {
@@ -96,21 +94,20 @@ contract('FeeBurner', function(accounts) {
 
         //set other wallet fee
         let result = await feeBurnerInst.setWalletFees(someExternalWallet, totalBPS/2);
-//        console.log("result")
-//        console.log(result.logs[0].args)
+
         Helper.assertEqual(result.logs[0].args.wallet, someExternalWallet);
-        Helper.assertEqual(result.logs[0].args.feesInBps.valueOf(), totalBPS/2);
+        Helper.assertEqual(result.logs[0].args.feesInBps, totalBPS/2);
 
         await feeBurnerInst.handleFees(tradeSizeWei, mockReserve, someExternalWallet, {from: mockKyberNetwork});
 
         let expectedWaitingFees = feeSize.div(new BN(2)).add(feesWaitingToBurn);
         feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
-        Helper.assertEqual(feesWaitingToBurn.valueOf(), expectedWaitingFees.valueOf(), "unexpected waiting to burn.");
+        Helper.assertEqual(feesWaitingToBurn, expectedWaitingFees, "unexpected waiting to burn.");
 
         let expectedOtherWalletWaitingFees = feeSize.div(new BN(2));
 
         let waitingWalletFees = await feeBurnerInst.reserveFeeToWallet(mockReserve, someExternalWallet);
-        Helper.assertEqual(expectedOtherWalletWaitingFees.valueOf(), waitingWalletFees.valueOf(), "unexpected wallet balance.");
+        Helper.assertEqual(expectedOtherWalletWaitingFees, waitingWalletFees, "unexpected wallet balance.");
     });
 
     it("should test handle fees rejected with wrong caller.", async function () {
@@ -152,7 +149,7 @@ contract('FeeBurner', function(accounts) {
 
     it("verify burn reverts if transferFrom knc wallet fail", async() => {
         let feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
-        assert(feesWaitingToBurn.valueOf() > 1, "unexpected waiting to burn.");
+        Helper.assertGreater(feesWaitingToBurn, 1, "unexpected waiting to burn.");
 
         await kncToken.approve(feeBurnerInst.address, 0, {from: mockKNCWallet});
 
@@ -168,23 +165,23 @@ contract('FeeBurner', function(accounts) {
 
     it("should test burn fee success. See waiting fees 'zeroed' (= 1).", async function () {
         let feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
-        Helper.assertGreater(feesWaitingToBurn.valueOf(), 1, "unexpected waiting to burn.");
+        Helper.assertGreater(feesWaitingToBurn, 1, "unexpected waiting to burn.");
 
         waitingFees = await feeBurnerInst.reserveFeeToBurn(mockReserve);
-        payedSoFar += (1 * waitingFees.valueOf()) - 1;
+        addWaitingFees(payedSoFar, waitingFees);
         await feeBurnerInst.burnReserveFees(mockReserve);
 
         feesWaitingToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
-        Helper.assertEqual(feesWaitingToBurn.valueOf(), 1, "unexpected waiting to burn.");
+        Helper.assertEqual(feesWaitingToBurn, 1, "unexpected waiting to burn.");
 
         let waitingWalletFees = await feeBurnerInst.reserveFeeToWallet(mockReserve, someExternalWallet);
-        Helper.assertGreater(waitingWalletFees.valueOf(), 1, "unexpected waiting wallet fees.");
+        Helper.assertGreater(waitingWalletFees, 1, "unexpected waiting wallet fees.");
 
-        payedSoFar += (1 * waitingWalletFees.valueOf()) - 1;
+        addWaitingFees(payedSoFar, waitingWalletFees);
         await feeBurnerInst.sendFeeToWallet(someExternalWallet, mockReserve);
 
         waitingWalletFees = await feeBurnerInst.reserveFeeToWallet(mockReserve, someExternalWallet);
-        Helper.assertEqual(waitingWalletFees.valueOf(), 1, "unexpected waiting wallet fees.");
+        Helper.assertEqual(waitingWalletFees, 1, "unexpected waiting wallet fees.");
     });
 
     it("should set tax fee and and tax wallet and validate values.", async function () {
@@ -192,7 +189,7 @@ contract('FeeBurner', function(accounts) {
 
         rxTaxWallet = await feeBurnerInst.taxWallet();
 
-        Helper.assertEqual(rxTaxWallet.valueOf(), taxWallet, "invalid tax wallet address");
+        Helper.assertEqual(rxTaxWallet, taxWallet, "invalid tax wallet address");
 
         //see zero address blocked.
         try {
@@ -202,14 +199,14 @@ contract('FeeBurner', function(accounts) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got other error: " + e);
         }
 
-        Helper.assertEqual(rxTaxWallet.valueOf(), taxWallet, "invalid tax wallet address");
+        Helper.assertEqual(rxTaxWallet, taxWallet, "invalid tax wallet address");
 
         //set tax in BPS
         await feeBurnerInst.setTaxInBps(taxFeesInBPS);
 
         rxTaxFees = await feeBurnerInst.taxFeeBps();
 
-        Helper.assertEqual(rxTaxFees.valueOf(), taxFeesInBPS, "invalid tax fees BPS");
+        Helper.assertEqual(rxTaxFees, taxFeesInBPS, "invalid tax fees BPS");
     });
 
 
@@ -224,27 +221,27 @@ contract('FeeBurner', function(accounts) {
         await feeBurnerInst.handleFees(tradeSize, mockReserve, zeroAddress, {from: mockKyberNetwork});
 
         let waitingFees = await feeBurnerInst.reserveFeeToBurn(mockReserve);
-        payedSoFar += (1 * waitingFees.valueOf()) - 1;
+        addWaitingFees(payedSoFar, waitingFees);
 
-        Helper.assertGreater(waitingFees.valueOf(), 0);
+        Helper.assertGreater(waitingFees, 0);
 
         await feeBurnerInst.burnReserveFees(mockReserve);
 
         let taxWalletBalance = await kncToken.balanceOf(taxWallet);
-        Helper.assertEqual(taxWalletBalance.valueOf(), taxWalletInitBalance.valueOf());
+        Helper.assertEqual(taxWalletBalance, taxWalletInitBalance);
 
         //now with tax
         await feeBurnerInst.setTaxInBps(taxFeesInBPS);
         await feeBurnerInst.handleFees(tradeSize, mockReserve, zeroAddress, {from: mockKyberNetwork});
 
         waitingFees = await feeBurnerInst.reserveFeeToBurn(mockReserve);
-        payedSoFar += (1 * waitingFees.valueOf()) - 1;
-        Helper.assertGreater(waitingFees.valueOf(), 0);
+        addWaitingFees(payedSoFar, waitingFees);
+        Helper.assertGreater(waitingFees, 0);
         await feeBurnerInst.burnReserveFees(mockReserve);
 
         let taxWalletBalanceAfter = await kncToken.balanceOf(taxWallet);
         let expectedBalance = waitingFees * taxFeesInBPS / totalBPS;
-        Helper.assertEqual(taxWalletBalanceAfter.valueOf(), Math.floor(expectedBalance));
+        Helper.assertEqual(taxWalletBalanceAfter, Math.floor(expectedBalance));
     });
 
     it("should test tax fees behavior with smallest values.", async function () {
@@ -256,7 +253,7 @@ contract('FeeBurner', function(accounts) {
         //handle fees
         await feeBurnerInst.handleFees(tradeSize, mockReserve, zeroAddress, {from: mockKyberNetwork});
         waitingFees = await feeBurnerInst.reserveFeeToBurn(mockReserve);
-        Helper.assertEqual(waitingFees.valueOf(), 2);
+        Helper.assertEqual(waitingFees, 2);
 
         //see burn fails
         try {
@@ -268,14 +265,14 @@ contract('FeeBurner', function(accounts) {
 
         await feeBurnerInst.handleFees(tradeSize, mockReserve, zeroAddress, {from: mockKyberNetwork});
         waitingFees = await feeBurnerInst.reserveFeeToBurn(mockReserve);
-        Helper.assertEqual(waitingFees.valueOf(), 3);
+        Helper.assertEqual(waitingFees, 3);
 
         //on value 3 want to see tax wallet gets 0 fees.
         let taxWalletInitBalance = await kncToken.balanceOf(taxWallet);
         await feeBurnerInst.burnReserveFees(mockReserve);
-        payedSoFar += waitingFees - 1;
+        addWaitingFees(payedSoFar, waitingFees);
         let taxWalletBalance = await kncToken.balanceOf(taxWallet);
-        Helper.assertEqual(taxWalletBalance.valueOf(), taxWalletInitBalance.valueOf());
+        Helper.assertEqual(taxWalletBalance, taxWalletInitBalance);
     });
 
     it("should test that when knc wallet (we burn from) is empty burn fee is reverted.", async function () {
@@ -285,7 +282,7 @@ contract('FeeBurner', function(accounts) {
         let tradeSizeWei = requiredFeeSize.mul(new BN(totalBPS)).div(new BN(burnFeeInBPS)).mul(precision).div(kncPerEthRatePrecision).add(new BN(30));
         let feeSize = (tradeSizeWei.mul(kncPerEthRatePrecision).div(precision)).mul(new BN(burnFeeInBPS)).div(new BN(totalBPS));
 
-        Helper.assertGreater(feeSize.valueOf(), requiredFeeSize.valueOf(), " fee size not big enough.");
+        Helper.assertGreater(feeSize, requiredFeeSize, " fee size not big enough.");
         await feeBurnerInst.handleFees(tradeSizeWei, mockReserve, zeroAddress, {from: mockKyberNetwork});
 
         //now burn
@@ -301,7 +298,7 @@ contract('FeeBurner', function(accounts) {
         //send more tokens to wallet and approve for reserve.
         //check current fee to burn see wallet has that amount.
         let feeToBurn = await feeBurnerInst.reserveFeeToBurn(mockReserve);
-        Helper.assertGreater(feeToBurn.valueOf(), 2);
+        Helper.assertGreater(feeToBurn, 2);
         let numKncWalletTokens = await kncToken.balanceOf(mockKNCWallet);
 
 //        console.log("feeToBurn " + feeToBurn + " numKncWalletTokens " + numKncWalletTokens)
@@ -315,7 +312,7 @@ contract('FeeBurner', function(accounts) {
 
         //burn success
         await feeBurnerInst.burnReserveFees(mockReserve);
-        payedSoFar += feeToBurn - 1;
+        addWaitingFees(payedSoFar, feeToBurn);
 
         //now burn fail. since all was burned...
         try {
@@ -456,7 +453,7 @@ contract('FeeBurner', function(accounts) {
     it("should verify payed so far on this reserve.", async function () {
         let rxPayedSoFar = await feeBurnerInst.feePayedPerReserve(mockReserve);
 
-        Helper.assertEqual(rxPayedSoFar.valueOf(), payedSoFar);
+        Helper.assertEqual(rxPayedSoFar, payedSoFar);
     });
 
     it("should test tax fees revert when knc.transferFrom doesn't return true value.", async function () {
@@ -470,7 +467,7 @@ contract('FeeBurner', function(accounts) {
         //handle fees
         await feeBurnerInst.handleFees(tradeSize, someReserve, zeroAddress, {from: mockKyberNetwork});
         waitingFees = await feeBurnerInst.reserveFeeToBurn(someReserve);
-        Helper.assertEqual(waitingFees.valueOf(), 3);
+        Helper.assertEqual(waitingFees, 3);
 
         await kncToken.approve(feeBurnerInst.address, 0, {from: mockKNCWallet});
 
@@ -497,9 +494,9 @@ contract('FeeBurner', function(accounts) {
         await mockKyberNetwork.setPairRate(kncToken.address, ethAddress, kncToEthRatePrecision);
 
         let rate = await mockKyberNetwork.getExpectedRate(ethAddress, kncToken.address, new BN(10).pow(new BN(18)));
-        Helper.assertEqual(ethToKncRatePrecision.valueOf(), rate[0].valueOf());
+        Helper.assertEqual(ethToKncRatePrecision, rate[0]);
         rate = await mockKyberNetwork.getExpectedRate(kncToken.address, ethAddress, new BN(10).pow(new BN(18)));
-        Helper.assertEqual(kncToEthRatePrecision.valueOf(), rate[0].valueOf());
+        Helper.assertEqual(kncToEthRatePrecision, rate[0]);
 
         //init fee burner
         feeBurnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork.address, kncPerEthRatePrecision);
@@ -507,12 +504,12 @@ contract('FeeBurner', function(accounts) {
 
         await feeBurnerInst.setKNCRate();
         let rxKncRate = await feeBurnerInst.kncPerEthRatePrecision()
-        Helper.assertEqual(rxKncRate.valueOf(), ethToKncRatePrecision.valueOf());
+        Helper.assertEqual(rxKncRate, ethToKncRatePrecision);
 
         //see rate the same. not matter what min max are
         await feeBurnerInst.setKNCRate();
         rxKncRate = await feeBurnerInst.kncPerEthRatePrecision()
-        Helper.assertEqual(rxKncRate.valueOf(), ethToKncRatePrecision.valueOf());
+        Helper.assertEqual(rxKncRate, ethToKncRatePrecision);
 
         //update knc rate in kyber network
         let oldRate = ethToKncRatePrecision;
@@ -524,11 +521,11 @@ contract('FeeBurner', function(accounts) {
 
         //verify old rate still exists
         rxKncRate = await feeBurnerInst.kncPerEthRatePrecision()
-        Helper.assertEqual(rxKncRate.valueOf(), oldRate.valueOf());
+        Helper.assertEqual(rxKncRate, oldRate);
 
         await feeBurnerInst.setKNCRate();
         rxKncRate = await feeBurnerInst.kncPerEthRatePrecision()
-        Helper.assertEqual(rxKncRate.valueOf(), ethToKncRatePrecision.valueOf());
+        Helper.assertEqual(rxKncRate, ethToKncRatePrecision);
     });
 
     it("should test 'set KNC rate' reverted when min is 0.", async function () {
@@ -538,7 +535,7 @@ contract('FeeBurner', function(accounts) {
         await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, ethToKncRatePrecision);
         await mockKyberNetwork.setPairRate(kncToken.address, ethAddress, kncToEthRatePrecision);
         let rate = await mockKyberNetwork.getExpectedRate(ethAddress, kncToken.address, new BN(10).pow(new BN(18)));
-        Helper.assertEqual(0, rate[0].valueOf());
+        Helper.assertEqual(0, rate[0]);
 
         try {
             await feeBurnerInst.setKNCRate();
@@ -583,18 +580,18 @@ contract('FeeBurner', function(accounts) {
         let rc = await feeBurnerInst.setKNCRate({from: accounts[7]});
 //        console.log(rc.logs[0].args)
         Helper.assertEqual(rc.logs[0].event, 'KNCRateSet');
-        Helper.assertEqual(rc.logs[0].args.ethToKncRatePrecision.valueOf(), ethToKncRatePrecision);
-        Helper.assertEqual(rc.logs[0].args.kyberEthKnc.valueOf(), ethToKncRatePrecision.valueOf());
-        Helper.assertEqual(rc.logs[0].args.kyberKncEth.valueOf(), kncToEthRatePrecision.valueOf());
-        Helper.assertEqual(rc.logs[0].args.updater.valueOf(), accounts[7]);
+        Helper.assertEqual(rc.logs[0].args.ethToKncRatePrecision, ethToKncRatePrecision);
+        Helper.assertEqual(rc.logs[0].args.kyberEthKnc, ethToKncRatePrecision);
+        Helper.assertEqual(rc.logs[0].args.kyberKncEth, kncToEthRatePrecision);
+        Helper.assertEqual(rc.logs[0].args.updater, accounts[7]);
 
         //verify event isn't affected from min and max
         rc = await feeBurnerInst.setKNCRate({from: accounts[3]});
         Helper.assertEqual(rc.logs[0].event, 'KNCRateSet');
-        Helper.assertEqual(rc.logs[0].args.ethToKncRatePrecision.valueOf(), ethToKncRatePrecision);
-        Helper.assertEqual(rc.logs[0].args.kyberEthKnc.valueOf(), ethToKncRatePrecision.valueOf());
-        Helper.assertEqual(rc.logs[0].args.kyberKncEth.valueOf(), kncToEthRatePrecision.valueOf());
-        Helper.assertEqual(rc.logs[0].args.updater.valueOf(), accounts[3]);
+        Helper.assertEqual(rc.logs[0].args.ethToKncRatePrecision, ethToKncRatePrecision);
+        Helper.assertEqual(rc.logs[0].args.kyberEthKnc, ethToKncRatePrecision);
+        Helper.assertEqual(rc.logs[0].args.kyberKncEth, kncToEthRatePrecision);
+        Helper.assertEqual(rc.logs[0].args.updater, accounts[3]);
     });
 
     it("verify if spread in kyber too big (rate tampered). can't set knc rate in fee burner", async function () {
@@ -619,7 +616,7 @@ contract('FeeBurner', function(accounts) {
 
         await mockKyberNetwork.setPairRate(ethAddress, kncToken.address, ethToKncRatePrecision);
         let rate = await mockKyberNetwork.getExpectedRate(ethAddress, kncToken.address, new BN(10).pow(new BN(18)));
-        Helper.assertEqual(ethToKncRatePrecision.valueOf(), rate[0].valueOf());
+        Helper.assertEqual(ethToKncRatePrecision, rate[0]);
 
         let rc = await feeBurnerInst.setKNCRate();
 
@@ -646,3 +643,11 @@ contract('FeeBurner', function(accounts) {
         }
     });
 });
+
+function addWaitingFees(payedTillNow, theFee) {
+    payedTillNow.iadd(theFee.sub(new BN(1)));
+}
+
+function log(str) {
+    console.log(str)
+}
