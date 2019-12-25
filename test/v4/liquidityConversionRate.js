@@ -90,9 +90,11 @@ const baseNumber = 10**9;
 // determine theoretical minimal pMIn, maximal pMax according to r, p0, e0, t0.
 // this is done just to make sure pMmin and pMax are in the range.
 const minPmin = new BN(p0).mul(new BN(baseNumber)).div(new BN(Helper.exp(e, r*e0) * baseNumber));
-const maxPmax = new BN((p0 / (1 - r * p0 * t0)).toString());
+const maxPmax = new BN((p0 / (1 - r * p0 * t0)));
 const pMin = p0 * pMinRatio
 const pMax = p0 * pMaxRatio
+
+const actualFee = (100 - feePercent)/100;
 
 /*
 console.log("pMin: " + pMin.toString())
@@ -148,13 +150,13 @@ function pOfE(r, pMin, curE) {
 function buyPriceForZeroQuant(r, pMin, curE) { 
     let pOfERes = pOfE(r, pMin, curE);
     let buyPrice = 1 / pOfERes;
-    let buyPriceAfterFeesReduction = new BN(buyPrice * baseNumber * (100-feePercent) / 100).div(new BN(baseNumber));
+    let buyPriceAfterFeesReduction = new BN(buyPrice * baseNumber * actualFee).div(new BN(baseNumber));
     return buyPriceAfterFeesReduction;
 }
 
 function sellPriceForZeroQuant(r, pMin, curE) { 
     let sellPrice = pOfE(r, pMin, curE);
-    let sellPriceAfterFeeReduction = sellPrice * (100-feePercent) / 100;
+    let sellPriceAfterFeeReduction = sellPrice * actualFee;
     return sellPriceAfterFeeReduction;
 }
 
@@ -174,12 +176,12 @@ function calcDeltaE(r, pMin, deltaT, curE) {
 function priceForDeltaE(feePercent, r, pMin, deltaE, curE) { 
     let deltaT = calcDeltaT(r, pMin, deltaE, curE);
     if (deltaT < 0) { deltaT *= -1; }
-    let deltaTAfterReducedFee = deltaT * (100-feePercent)/100;
+    let deltaTAfterReducedFee = deltaT * actualFee;
     return deltaTAfterReducedFee/deltaE;
 }
 
 function priceForDeltaT(feePercent, r, pMin, qtyBeforeReduce, curE) {
-    let deltaTAfterReducingFee = qtyBeforeReduce * (100 - feePercent) / 100;
+    let deltaTAfterReducingFee = qtyBeforeReduce * actualFee;
     let deltaE = calcDeltaE(r, pMin, deltaTAfterReducingFee, curE);
     if (deltaE < 0) { deltaE *= -1; }
     return deltaE/qtyBeforeReduce;
@@ -265,12 +267,12 @@ contract('LiquidityConversionRates', function(accounts) {
         await liqConvRatesInst.resetCollectedFees()
 
         let input = 1458 * formulaPrecision
-        let expectedValueBeforeReducingFee = input / ((100 - feePercent)/100)
+        let expectedValueBeforeReducingFee = input / actualFee
         let expectedResult = (feePercent / 100) * expectedValueBeforeReducingFee
 
         await liqConvRatesInst.recordImbalance(token.address, input, 0, 0, {from: reserveAddress})
         result = await liqConvRatesInst.collectedFeesInTwei()
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test calculation of collected fee for sell case.", async function () {
@@ -280,79 +282,79 @@ contract('LiquidityConversionRates', function(accounts) {
 
         await liqConvRatesInst.recordImbalance(token.address, input, 0, 0, {from: reserveAddress})
         result = await liqConvRatesInst.collectedFeesInTwei()
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test reducing fees from amount.", async function () {
         let input = 5763 * formulaPrecision;
-        let expectedResult =  input * (100 - feePercent) / 100;
+        let expectedResult =  input * actualFee;
         let result =  await liqConvRatesInst.valueAfterReducingFee(input);
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test converting from wei to formula formulaPrecision.", async function () {
         let input = new BN(7).mul(precision)
         let expectedResult = input.mul(formulaPrecision).div(precision) 
         let result =  await liqConvRatesInst.fromWeiToFp(input);
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test converting from token wei to formula formulaPrecision.", async function () {
         let input = new BN(10).pow(new BN(tokenDecimals)).mul(new BN(17));
         let expectedResult = input.mul(formulaPrecision).div(tokenPrecision) 
         let result =  await liqConvRatesInst.fromTweiToFp(input);
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test calculation of buy rate for zero quantity.", async function () {
         let expectedResult = new BN(buyPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.buyRateZeroQuantity(eInFp);
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test calculation of sell rate for zero quantity.", async function () {
         let expectedResult = new BN(sellPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.sellRateZeroQuantity(eInFp);
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test calculation of deltaT.", async function () {
         let expectedResult = new BN(calcDeltaT(r, pMin, deltaE, e0) * baseNumber).abs().mul(formulaPrecision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.deltaTFunc(rInFp, pMinInFp, eInFp, deltaEInFp, formulaPrecision);
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test calculation of buy rate for non zero quantity.", async function () {
         let expectedResult = new BN(priceForDeltaE(feePercent, r, pMin, deltaE, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.buyRate(eInFp, deltaEInFp)
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test calculation of deltaE.", async function () {
         let expectedResult = new BN(calcDeltaE(r, pMin, deltaT, e0) * baseNumber).abs().mul(formulaPrecision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.deltaEFunc(rInFp, pMinInFp, eInFp, deltaTInFp, formulaPrecision, formulaPrecisionBits);
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test calculation of sell rate for non zero quantity.", async function () {
         let expectedResult = new BN(priceForDeltaT(feePercent, r, pMin, deltaT, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
-        let deltaTAfterReducingFeeInFp = deltaTInFp*(100 - feePercent)/100;
+        let deltaTAfterReducingFeeInFp = deltaTInFp*actualFee;
         let result =  await liqConvRatesInst.sellRate(eInFp, deltaTInFp, deltaTAfterReducingFeeInFp);
         result = result[0]
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test recording of imbalance.", async function () {
         let buyAmountInTwei = new BN(10).pow(new BN(tokenDecimals)).mul(new BN(deltaT * baseNumber)).div(new BN(baseNumber));
 
-        let expectedValueBeforeReducingFee = buyAmountInTwei.mul(new BN(3)) / ((100 - feePercent)/100) // TODO - this calc is a duplication, move to general place...
-        let expectedResult = new BN(((feePercent / 100) * expectedValueBeforeReducingFee).toString())
+        let expectedValueBeforeReducingFee = buyAmountInTwei.mul(new BN(3)) / actualFee // TODO - this calc is a duplication, move to general place...
+        let expectedResult = (feePercent / 100) * expectedValueBeforeReducingFee;
 
         await liqConvRatesInst.recordImbalance(token.address, buyAmountInTwei, 3000, 3000, {from: reserveAddress})
         await liqConvRatesInst.recordImbalance(token.address, buyAmountInTwei.mul(new BN(2)), 3000, 3000, {from: reserveAddress})
         let result = await liqConvRatesInst.collectedFeesInTwei()
 
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test resetting of imbalance not by admin.", async function () {
@@ -382,21 +384,21 @@ contract('LiquidityConversionRates', function(accounts) {
         let expectedResult = new BN(priceForDeltaE(feePercent, r, pMin, deltaE, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let qtyInSrcWei = new BN(deltaE * baseNumber).mul(precision).div(new BN(baseNumber))
         let result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,eInFp);
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test getrate for buy=true and qtyInSrcWei = 0.", async function () {
         let expectedResult = new BN(buyPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let qtyInSrcWei = 0
         let result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,eInFp);
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test getrate for buy=true and qtyInSrcWei very small.", async function () {
         let expectedResult = new BN(buyPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let qtyInSrcWei = 10 // this is assumed to be rounded to 0 by fromTweiToFp.
         let result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,eInFp);
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
         assert(result.valueOf != 0)
     });
 
@@ -404,21 +406,21 @@ contract('LiquidityConversionRates', function(accounts) {
         let qtyInSrcWei = new BN(deltaT).mul(tokenPrecision)
         let expectedResult = new BN(priceForDeltaT(feePercent, r, pMin, deltaT, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test getrate for buy=false and qtyInSrcWei = 0.", async function () {
         let expectedResult = new BN(sellPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let qtyInSrcWei = 0
         let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test getrate for buy=false and qtyInSrcWei very small.", async function () {
         let expectedResult = new BN(sellPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let qtyInSrcWei = 10 // this is assumed to be rounded to 0 by fromTweiToFp.
         let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
         assert(result.valueOf != 0)
     });
 
@@ -520,12 +522,12 @@ contract('LiquidityConversionRates', function(accounts) {
 
     it("should test max sell rate smaller then expected rate and min sell rate larger then expected rate .", async function () {
         let qtyInSrcWei = new BN(deltaT).mul(tokenPrecision)
-        let deltaTAfterReducingFee = deltaT * (100 - feePercent) / 100; //reduce fee, as done in getRateWithE
+        let deltaTAfterReducingFee = deltaT * actualFee; //reduce fee, as done in getRateWithE
         let expectedResult = new BN(priceForDeltaT(feePercent, r, pMin, deltaTAfterReducingFee, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
         let gotResult = result
 
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
         assert.notEqual(result, 0, "bad result");
 
         let currentMaxSellRateInPrecision= gotResult.sub(new BN(100))
@@ -561,7 +563,7 @@ contract('LiquidityConversionRates', function(accounts) {
         let expectedResult = new BN(priceForDeltaE(feePercent, r, pMin, deltaE, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let qtyInSrcWei = new BN(deltaE * baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.getRateWithE(token.address, true, qtyInSrcWei, eInFp);
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct);
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct);
     });
 
     it("should test recording of imbalance from non reserve address.", async function () {
@@ -634,14 +636,14 @@ contract('kyberReserve for Liquidity', function(accounts) {
         let expectedResult = new BN( buyPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let amountWei = 0
         let result = await reserveInst.getConversionRate(ethAddress, token.address, amountWei, currentBlock);
-        Helper.assertAbsDiff(Math.floor(expectedResult),result,expectedDiffInPct);
+        Helper.assertAbsDiff(expectedResult,result,expectedDiffInPct);
     });
 
     it("should test getConversionRate of sell rate for zero quantity.", async function () {
         let expectedResult = new BN(sellPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let amountWei = 0;
         let result = await reserveInst.getConversionRate(token.address, ethAddress, amountWei, currentBlock);
-        Helper.assertAbsDiff(Math.floor(expectedResult), result, expectedDiffInPct);
+        Helper.assertAbsDiff(expectedResult, result, expectedDiffInPct);
     });
 
     it("should test getConversionRate of buy rate for non zero quantity.", async function () {
@@ -649,7 +651,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
         let expectedResult = new BN(priceForDeltaE(feePercent, r, pMin, deltaE, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let amountWei = new BN(10).pow(new BN(18)).mul(new BN(deltaE * 10)).div(new BN(10));
         let result = await reserveInst.getConversionRate(ethAddress, token.address, amountWei, currentBlock);
-        Helper.assertAbsDiff(Math.floor(expectedResult), result, expectedDiffInPct);
+        Helper.assertAbsDiff(expectedResult, result, expectedDiffInPct);
     });
 
     it("should test getConversionRate of sell rate for non zero quantity.", async function () {
@@ -657,7 +659,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
         let expectedResult = new BN(priceForDeltaT(feePercent, r, pMin, deltaT, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let amountWei = new BN(10).pow(new BN(tokenDecimals)).mul(new BN(deltaT))
         let result = await reserveInst.getConversionRate(token.address, ethAddress, amountWei, currentBlock);
-        Helper.assertAbsDiff(Math.floor(expectedResult), result, expectedDiffInPct);
+        Helper.assertAbsDiff(expectedResult, result, expectedDiffInPct);
     });
 
     it("should perform a series of buys and check: correct balances change, rates and fees as expected.", async function () {
@@ -728,7 +730,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
             Helper.assertAbsDiff(balancesAfter["TInTwei"], expectedReserveTokenBalance, expectedDiffInPct);
 
             // check collected fees for this trade is as expected
-            expectedCollectedFeesDiff = tradeActualTweiAmount.mul(new BN(feePercent * 100)).div(tokenPrecision.mul(new BN(100 - feePercent)));
+            expectedCollectedFeesDiff = tradeActualTweiAmount.mul(new BN(feeInBps)).div(tokenPrecision.mul(new BN(100 - feePercent)));
             collectedFeesInTokensDiff = balancesAfter["collectedFeesInTokens"].sub(balancesBefore["collectedFeesInTokens"])
             Helper.assertAbsDiff(expectedCollectedFeesDiff, collectedFeesInTokensDiff, expectedDiffInPct);
 
@@ -765,7 +767,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
             balancesBefore = await getBalances();
             amountTokens = (!prevSellRate) ? 50000 : 50000
             amountTwei = new BN(amountTokens).mul(tokenPrecision)
-            amountTokensAfterFees = amountTokens * (100 - feePercent) / 100;
+            amountTokensAfterFees = amountTokens * actualFee;
 
             // calculate expected qunatity
             expectedDestQty = calcDeltaE(r, pMin, amountTokensAfterFees, balancesBefore["EInEth"]);
@@ -820,7 +822,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
             Helper.assertAbsDiff(balancesAfter["TInTwei"], expectedReserveTokenBalance, expectedDiffInPct);
 
             // check collected fees for this trade is as expected
-            expectedCollectedFeesDiff = amountTwei.mul(new BN(feePercent * 100)).div(new BN(100)).div(tokenPrecision);
+            expectedCollectedFeesDiff = amountTwei.mul(new BN(feeInBps)).div(new BN(100)).div(tokenPrecision);
             collectedFeesInTokensDiff = balancesAfter["collectedFeesInTokens"].sub(balancesBefore["collectedFeesInTokens"])
             Helper.assertAbsDiff(expectedCollectedFeesDiff, collectedFeesInTokensDiff, expectedDiffInPct);
 
@@ -871,7 +873,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
 
         let expectedResult = new BN(priceForDeltaE(feePercent, r, newPmin, deltaE, sameE0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.buyRate(newEInFp, deltaEInFp)
-        Helper.assertAbsDiff(result, Math.floor(expectedResult), expectedDiffInPct)
+        Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
 
         // make sure collected fees are not zeroed
         let collectedFees = await liqConvRatesInst.collectedFeesInTwei()
