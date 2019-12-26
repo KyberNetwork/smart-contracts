@@ -6,6 +6,8 @@ require("chai")
     .use(require("chai-bn")(BN))
     .should();
 
+const precisionUnits = (new BN(10)).pow(new BN(18));
+
 module.exports.isRevertErrorMessage = function( error ) {
     if( error.message.search('invalid opcode') >= 0 ) return true;
     if( error.message.search('revert') >= 0 ) return true;
@@ -199,3 +201,15 @@ module.exports.calcDstQty = function(srcQty, srcDecimals, dstDecimals, rate) {
     }
     return result;
 }
+
+module.exports.calcRateFromQty = function(srcAmount, dstAmount, srcDecimals, dstDecimals) {
+
+    if (dstDecimals >= srcDecimals) {
+            let decimals = new BN(10).pow(new BN(dstDecimals - srcDecimals));
+            return ((precisionUnits.mul(dstAmount)).div(decimals.mul(srcAmount)));
+    } else {
+        let decimals = new BN(10).pow(new BN(srcDecimals - dstDecimals));
+        return ((precision.mul(dstAmount).mul(decimals)).div(srcAmount));
+    }
+}
+
