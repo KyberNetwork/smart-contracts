@@ -75,7 +75,7 @@ contract('WrapFeeBurner', function(accounts) {
         kncToken = await TestToken.new("kyber", "KNC", 18);
         await kncToken.transfer(mockKNCWallet, initialKNCWalletBalance);
         let balance = await kncToken.balanceOf(mockKNCWallet);
-        Helper.assertEqual(balance.valueOf(), initialKNCWalletBalance, "unexpected wallet balance.");
+        Helper.assertEqual(balance, initialKNCWalletBalance, "unexpected wallet balance.");
         burnerInst = await FeeBurner.new(admin, kncToken.address, mockKyberNetwork, ethToKncRatePrecision);
     });
 
@@ -95,7 +95,7 @@ contract('WrapFeeBurner', function(accounts) {
         let rxReserveFee = await burnerInst.reserveFeeToBurn(mockReserve);
 
         Helper.assertEqual(rxReserveWallet, zeroAddress);
-        Helper.assertEqual(rxReserveFee.valueOf(), zeroBN);
+        Helper.assertEqual(rxReserveFee, zeroBN);
 
         await wrapBurnerInst.setReserveData(mockReserve, reserveFeeBps, mockKNCWallet, {from: admin});
 
@@ -109,12 +109,12 @@ contract('WrapFeeBurner', function(accounts) {
     it("should test adding Third party wallet with fees", async function () {
 
         let rxThirdPartyFeeBps = await burnerInst.walletFeesInBps(mockThirdPartyWallet);
-        Helper.assertEqual(rxThirdPartyFeeBps.valueOf(), 0);
+        Helper.assertEqual(rxThirdPartyFeeBps, 0);
 
         await wrapBurnerInst.setWalletFee(mockThirdPartyWallet, mockThirdPartyWalletFeeBps, {from: admin});
 
         rxThirdPartyFeeBps = await burnerInst.walletFeesInBps(mockThirdPartyWallet);
-        Helper.assertEqual(rxThirdPartyFeeBps.valueOf(), mockThirdPartyWalletFeeBps);
+        Helper.assertEqual(rxThirdPartyFeeBps, mockThirdPartyWalletFeeBps);
     });
 
     it("should add permission less wallet and query values", async function () {
@@ -322,7 +322,7 @@ contract('WrapFeeBurner', function(accounts) {
 
         let defaultFeeSharingBPS = await wrapBurnerInst.feeSharingBps();
         let feeForWalletBPS = await burnerInst.walletFeesInBps(permissionLessWallet3);
-        Helper.assertEqual(defaultFeeSharingBPS.valueOf(), feeForWalletBPS.valueOf());
+        Helper.assertEqual(defaultFeeSharingBPS, feeForWalletBPS);
     });
 
     it("test setting permission less wallet with register wallet contract and query values.", async function() {
@@ -341,7 +341,7 @@ contract('WrapFeeBurner', function(accounts) {
 
         let defaultFeeSharingBPS = await wrapBurnerInst.feeSharingBps();
         let feeForWalletBPS = await burnerInst.walletFeesInBps(permissionLessWallet4);
-        Helper.assertEqual(defaultFeeSharingBPS.valueOf(), feeForWalletBPS.valueOf());
+        Helper.assertEqual(defaultFeeSharingBPS, feeForWalletBPS);
     });
 
     it("test set tax wallet data with illegal values is reverted.", async function() {

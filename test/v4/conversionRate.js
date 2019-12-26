@@ -170,8 +170,8 @@ contract('ConversionRates', function(accounts) {
             let compactBuy;
             let compactSell;
 
-            assert.equal(compactResArr[0].valueOf(), arrIndex.valueOf(), "wrong array " + i);
-            assert.equal(compactResArr[1].valueOf(), fieldIndex.valueOf(), "wrong field index " + i);
+            assert.equal(compactResArr[0], arrIndex, "wrong array " + i);
+            assert.equal(compactResArr[1], fieldIndex, "wrong field index " + i);
             if (arrIndex == 0) {
                 compactBuy = compactBuyArr1;
                 compactSell = compactSellArr1;
@@ -181,8 +181,8 @@ contract('ConversionRates', function(accounts) {
                 compactBuy = compactBuyArr2;
                 compactSell = compactSellArr2;
             }
-            assert.equal(compactResArr[2].valueOf(), compactBuy[fieldIndex].valueOf(), "wrong buy: " + i);
-            assert.equal(compactResArr[3].valueOf(), compactSell[fieldIndex].valueOf(), "wrong sell: " + i);
+            assert.equal(compactResArr[2], compactBuy[fieldIndex], "wrong buy: " + i);
+            assert.equal(compactResArr[3], compactSell[fieldIndex], "wrong sell: " + i);
         }
 
         //get block number from compact data and verify
@@ -336,21 +336,21 @@ contract('ConversionRates', function(accounts) {
         token = await TestToken.new("testt", "tst", 18);
         //see token not listed
         let basicData = await convRatesInst.getTokenBasicData(token.address);
-        assert.equal(basicData[0].valueOf(), false, "token should not be listed");
+        assert.equal(basicData[0], false, "token should not be listed");
 
         //add token and see listed
         await convRatesInst.addToken(token.address);
         basicData = await convRatesInst.getTokenBasicData(token.address);
-        assert.equal(basicData[0].valueOf(), true, "token should  be listed");
+        assert.equal(basicData[0], true, "token should  be listed");
 
         //see not enabled
-        assert.equal(basicData[1].valueOf(), false, "token should not be enabled");
+        assert.equal(basicData[1], false, "token should not be enabled");
 
         //enable token and see enabled
         await convRatesInst.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
         await convRatesInst.enableTokenTrade(token.address);
         basicData = await convRatesInst.getTokenBasicData(token.address);
-        assert.equal(basicData[1].valueOf(), true, "token should be enabled");
+        assert.equal(basicData[1], true, "token should be enabled");
     });
 
     it("should get buy rate with update according to compact data update.", async function () {

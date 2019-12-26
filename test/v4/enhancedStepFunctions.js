@@ -147,8 +147,8 @@ contract('EnhancedStepFunctions', function(accounts) {
             let compactBuy;
             let compactSell;
 
-            assert.equal(compactResArr[0].valueOf(), arrIndex.valueOf(), "wrong array " + i);
-            assert.equal(compactResArr[1].valueOf(), fieldIndex.valueOf(), "wrong field index " + i);
+            assert.equal(compactResArr[0], arrIndex, "wrong array " + i);
+            assert.equal(compactResArr[1], fieldIndex, "wrong field index " + i);
             if (arrIndex == 0) {
                 compactBuy = compactBuyArr1;
                 compactSell = compactSellArr1;
@@ -158,8 +158,8 @@ contract('EnhancedStepFunctions', function(accounts) {
                 compactBuy = compactBuyArr2;
                 compactSell = compactSellArr2;
             }
-            assert.equal(compactResArr[2].valueOf(), compactBuy[fieldIndex].valueOf(), "wrong buy: " + i);
-            assert.equal(compactResArr[3].valueOf(), compactSell[fieldIndex].valueOf(), "wrong sell: " + i);
+            assert.equal(compactResArr[2], compactBuy[fieldIndex], "wrong buy: " + i);
+            assert.equal(compactResArr[3], compactSell[fieldIndex], "wrong sell: " + i);
         }
 
         //get block number from compact data and verify

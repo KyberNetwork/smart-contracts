@@ -108,7 +108,7 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         await network.setWhiteList(whiteList);
         await network.setExpectedRate(expectedRate);
         await network.setFeeBurner(feeBurner.address);
-        await network.setParams(gasPrice.valueOf(), negligibleRateDiff);
+        await network.setParams(gasPrice, negligibleRateDiff);
         await network.addOperator(operator);
         await network.setEnable(true);
 
@@ -137,13 +137,13 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         feeBurnerOperators.should.include(reserveLister.address);
 
         let kyberAdd = await reserveLister.kyberNetworkContract();
-        assert.equal(kyberAdd.valueOf(), network.address);
+        Helper.assertEqual(kyberAdd, network.address);
 
         add = await reserveLister.orderFactoryContract();
-        assert.equal(add.valueOf(), orderFactory.address);
+        Helper.assertEqual(add, orderFactory.address);
 
         let rxKnc = await reserveLister.kncToken();
-        assert.equal(rxKnc.valueOf(), kncAddress);
+        Helper.assertEqual(rxKnc, kncAddress);
 
         await network.addOperator(reserveLister.address);
     });
@@ -151,21 +151,21 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
     it("verify lister global parameters", async() => {
 
         let address = await reserveLister.medianizerContract();
-        assert.equal(address, medianizer.address);
+        Helper.assertEqual(address, medianizer.address);
 //        log("address" + medianizer.address)
         address = await reserveLister.kyberNetworkContract();
-        assert.equal(address, network.address)
+        Helper.assertEqual(address, network.address)
         address = await reserveLister.orderFactoryContract();
-        assert.equal(address.valueOf(), orderFactory.address)
+        Helper.assertEqual(address, orderFactory.address)
         address = await reserveLister.kncToken();
-        assert.equal(address.valueOf(), kncAddress)
+        Helper.assertEqual(address, kncAddress)
 
         let value = await reserveLister.ORDERBOOK_BURN_FEE_BPS();
-        assert.equal(value.valueOf(), 25);
+        Helper.assertEqual(value, 25);
         value = await reserveLister.maxOrdersPerTrade();
-        assert.equal(value.valueOf(), maxOrdersPerTrade);
+        Helper.assertEqual(value, maxOrdersPerTrade);
         value = await reserveLister.minNewOrderValueUsd();
-        assert.equal(value.valueOf(), minNewOrderValueUsd);
+        Helper.assertEqual(value, minNewOrderValueUsd);
     })
 
     it("test adding and listing order book reserve, get through network contract and through lister", async() => {
@@ -180,19 +180,19 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
 //
         let reserveAddress = await network.reservesPerTokenDest(tokenAdd, 0);
         let listReserveAddress = await reserveLister.reserves(tokenAdd);
-        assert.equal(reserveAddress.valueOf(), listReserveAddress.valueOf());
+        Helper.assertEqual(reserveAddress, listReserveAddress);
 
-        reserve = await OrderbookReserve.at(reserveAddress.valueOf());
+        reserve = await OrderbookReserve.at(reserveAddress);
         let rxLimits = await reserve.limits();
 
-        minNewOrderWei = rxLimits[2].valueOf();
+        minNewOrderWei = rxLimits[2];
 
         let rxContracts = await reserve.contracts();
-        assert.equal(rxContracts[0].valueOf(), kncAddress);
-        assert.equal(rxContracts[1].valueOf(), token.address);
-        assert.equal(rxContracts[2].valueOf(), feeBurner.address);
-        assert.equal(rxContracts[3].valueOf(), network.address);
-        assert.equal(rxContracts[4].valueOf(), medianizer.address);
+        Helper.assertEqual(rxContracts[0], kncAddress);
+        Helper.assertEqual(rxContracts[1], token.address);
+        Helper.assertEqual(rxContracts[2], feeBurner.address);
+        Helper.assertEqual(rxContracts[3], network.address);
+        Helper.assertEqual(rxContracts[4], medianizer.address);
     })
 
     it("see listing arbitrary address = no token contract - reverts", async() => {
@@ -207,7 +207,7 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
     it("maker sure can't add same token twice.", async() => {
         // make sure its already added
         let ready =  await reserveLister.getOrderbookListingStage(tokenAdd);
-        assert.equal(ready[1].valueOf(), LISTING_STATE_LISTED);
+        Helper.assertEqual(ready[1], LISTING_STATE_LISTED);
 
         try {
             let rc = await reserveLister.addOrderbookContract(tokenAdd);
@@ -239,7 +239,7 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         await networkFail.setKyberProxy(kyberProxy);
         await networkFail.setExpectedRate(expectedRate);
         await networkFail.setFeeBurner(feeBurner.address);
-        await networkFail.setParams(gasPrice.valueOf(), negligibleRateDiff);
+        await networkFail.setParams(gasPrice, negligibleRateDiff);
         await networkFail.setEnable(true);
 
         let tempLister = await PermissionlessOrderbookReserveLister.new(
@@ -267,7 +267,7 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         }
 
         let listingStage = await tempLister.getOrderbookListingStage(tok.address);
-        assert.equal(listingStage[1].valueOf(), LISTING_STATE_INIT)
+        Helper.assertEqual(listingStage[1], LISTING_STATE_INIT)
     });
 
     it("maker sure in each listing stage can only perform the next stage listing.", async() => {
@@ -276,7 +276,7 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         newTokAdd = newToken.address;
 
         let listed =  await reserveLister.getOrderbookListingStage(newTokAdd);
-        assert.equal(listed[1].valueOf(), LISTING_NONE);
+        Helper.assertEqual(listed[1], LISTING_NONE);
 
         try {
             rc = await reserveLister.initOrderbookContract(newTokAdd);
@@ -295,7 +295,7 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         let rc = await reserveLister.addOrderbookContract(newTokAdd);
 
         listed =  await reserveLister.getOrderbookListingStage(newTokAdd);
-        assert.equal(listed[1].valueOf(), LISTING_STATE_ADDED);
+        Helper.assertEqual(listed[1], LISTING_STATE_ADDED);
 
         try {
             let rc = await reserveLister.addOrderbookContract(newTokAdd);
@@ -314,7 +314,7 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         rc = await reserveLister.initOrderbookContract(newTokAdd);
 
         listed =  await reserveLister.getOrderbookListingStage(newTokAdd);
-        assert.equal(listed[1].valueOf(), LISTING_STATE_INIT);
+        Helper.assertEqual(listed[1], LISTING_STATE_INIT);
 
         try {
             rc = await reserveLister.initOrderbookContract(newTokAdd);
@@ -333,7 +333,7 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         rc = await reserveLister.listOrderbookContract(newTokAdd);
 
         listed =  await reserveLister.getOrderbookListingStage(newTokAdd);
-        assert.equal(listed[1].valueOf(), LISTING_STATE_LISTED);
+        Helper.assertEqual(listed[1], LISTING_STATE_LISTED);
 
         try {
             rc = await reserveLister.initOrderbookContract(newTokAdd);
@@ -357,13 +357,13 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         }
 
         listed =  await reserveLister.getOrderbookListingStage(newTokAdd);
-        assert.equal(listed[1].valueOf(), LISTING_STATE_LISTED);
+        Helper.assertEqual(listed[1], LISTING_STATE_LISTED);
     })
 
     it("make sure can't list unsupported tokens.", async() => {
         // make sure its already added
         let isListed =  await reserveLister.getOrderbookListingStage(unSupportedTok1.address);
-        assert.equal(isListed[1].valueOf(), LISTING_NONE);
+        Helper.assertEqual(isListed[1], LISTING_NONE);
 
         try {
             let rc = await reserveLister.addOrderbookContract(unSupportedTok1.address);
@@ -388,7 +388,7 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
 
         let res = await OrderbookReserve.at(await reserveLister.reserves(tokenAdd));
 
-        await makerDeposit(res, maker1, amountEth, amountTwei.valueOf(), amountKnc.valueOf(), KNCToken);
+        await makerDeposit(res, maker1, amountEth, amountTwei, amountKnc, KNCToken);
 
         let rxNumTwei = await res.makerFunds(maker1, tokenAdd);
         Helper.assertEqual(rxNumTwei, amountTwei);
@@ -413,27 +413,27 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         newTokenAdd = newToken.address;
 
         let ready =  await reserveLister.getOrderbookListingStage(newTokenAdd);
-        assert.equal(ready[0].valueOf(), 0);
-        assert.equal(ready[1].valueOf(), LISTING_NONE);
+        Helper.assertEqual(ready[0], zeroAddress);
+        Helper.assertEqual(ready[1], LISTING_NONE);
 
         let rc = await reserveLister.addOrderbookContract(newTokenAdd);
         let reserveAddress = await reserveLister.reserves(newTokenAdd);
 
         ready = await reserveLister.getOrderbookListingStage(newTokenAdd);
-        assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
-        assert.equal(ready[1].valueOf(), LISTING_STATE_ADDED);
+        Helper.assertEqual(ready[0], reserveAddress);
+        Helper.assertEqual(ready[1], LISTING_STATE_ADDED);
 
         rc = await reserveLister.initOrderbookContract(newTokenAdd);
 
         ready =  await reserveLister.getOrderbookListingStage(newTokenAdd);
-        assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
-        assert.equal(ready[1].valueOf(), LISTING_STATE_INIT);
+        Helper.assertEqual(ready[0], reserveAddress);
+        Helper.assertEqual(ready[1], LISTING_STATE_INIT);
 
         rc = await reserveLister.listOrderbookContract(newTokenAdd);
 
         ready =  await reserveLister.getOrderbookListingStage(newTokenAdd);
-        assert.equal(ready[0].valueOf(), reserveAddress.valueOf());
-        assert.equal(ready[1].valueOf(), LISTING_STATE_LISTED);
+        Helper.assertEqual(ready[0], reserveAddress);
+        Helper.assertEqual(ready[1], LISTING_STATE_LISTED);
     })
 
     it("verify can't construct new lister with address 0.", async() => {
@@ -515,7 +515,7 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         }
 
         let listingStage = await newLister.getOrderbookListingStage(tokenAdd);
-        assert.equal(listingStage[1].valueOf(), LISTING_STATE_ADDED);
+        Helper.assertEqual(listingStage[1], LISTING_STATE_ADDED);
     })
 
     it("verify if listing on kyber fails. reserve listing reverts and stage will stay in init stage.", async() => {
@@ -527,7 +527,7 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         rc = await reserveLister.initOrderbookContract(newTokenAdd);
 
         let listingStage =  await reserveLister.getOrderbookListingStage(newTokenAdd);
-        assert.equal(listingStage[1].valueOf(), LISTING_STATE_INIT);
+        Helper.assertEqual(listingStage[1], LISTING_STATE_INIT);
 
         //remove permissions on kyber.
         await network.removeOperator(reserveLister.address)
@@ -540,7 +540,7 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         }
 
         listingStage =  await reserveLister.getOrderbookListingStage(newTokenAdd);
-        assert.equal(listingStage[1].valueOf(), LISTING_STATE_INIT);
+        Helper.assertEqual(listingStage[1], LISTING_STATE_INIT);
 
         //add permissions on kyber.
         await network.addOperator(reserveLister.address)
@@ -548,7 +548,7 @@ contract('PermissionlessOrderbookReserveLister', function (accounts) {
         rc = await reserveLister.listOrderbookContract(newTokenAdd);
 
         listingStage =  await reserveLister.getOrderbookListingStage(newTokenAdd);
-        assert.equal(listingStage[1].valueOf(), LISTING_STATE_LISTED);
+        Helper.assertEqual(listingStage[1], LISTING_STATE_LISTED);
     })
 });
 
@@ -621,7 +621,7 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
         await kyberNetwork.setWhiteList(whiteList.address);
         await kyberNetwork.setExpectedRate(expectedRate);
         await kyberNetwork.setFeeBurner(feeBurner.address);
-        await kyberNetwork.setParams(gasPrice.valueOf(), negligibleRateDiff);
+        await kyberNetwork.setParams(gasPrice, negligibleRateDiff);
         await kyberNetwork.addOperator(operator);
         await kyberNetwork.setEnable(true);
         await kyberNetwork.addOperator(lister.address);
@@ -637,7 +637,7 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
         );
 
         let rxLimits = await reserve.limits();
-        minNewOrderWei = rxLimits[2].valueOf();
+        minNewOrderWei = rxLimits[2];
 
         let amountTokenInWei = new BN(0);
         let amountKncInWei = precisionUnits.mul(new BN(600));
@@ -746,7 +746,7 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
 
         let reserveIndex = 0;
         let address = await kyberNetwork.reserves(reserveIndex);
-        assert.equal(address.valueOf(), reserve.address);
+        Helper.assertEqual(address, reserve.address);
 
          // see unlist fails
         try {
@@ -766,16 +766,16 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
 
         let tradeBlocked = await reserve.kncRateBlocksTrade();
-        assert.equal(tradeBlocked.valueOf(), false);
+        Helper.assertEqual(tradeBlocked, false);
 
         await feeBurner.setKNCRate();
         tradeBlocked = await reserve.kncRateBlocksTrade();
-        assert.equal(tradeBlocked.valueOf(), true);
+        Helper.assertEqual(tradeBlocked, true);
 
         await lister.unlistOrderbookContract(token.address, reserveIndex);
 
         let listing = await lister.getOrderbookListingStage(token.address);
-        assert.equal(listing[1].valueOf(), LISTING_NONE);
+        Helper.assertEqual(listing[1], LISTING_NONE);
     })
 
     it("lister. see list and unlist fail when lister not operator in network", async() => {
@@ -987,7 +987,7 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
         }
 
         let listing = await lister.getOrderbookListingStage(token.address);
-        assert.equal(listing[1].valueOf(), LISTING_STATE_ADDED);
+        Helper.assertEqual(listing[1], LISTING_STATE_ADDED);
 
         await lister.initOrderbookContract(token.address);
 
@@ -999,13 +999,13 @@ contract('PermissionlessOrderbookReserveLister_feeBurner_tests', function (accou
         }
 
         listing = await lister.getOrderbookListingStage(token.address);
-        assert.equal(listing[1].valueOf(), LISTING_STATE_INIT);
+        Helper.assertEqual(listing[1], LISTING_STATE_INIT);
 
         //now should succeed
         await lister.listOrderbookContract(token.address);
 
         listing = await lister.getOrderbookListingStage(token.address);
-        assert.equal(listing[1].valueOf(), LISTING_STATE_LISTED);
+        Helper.assertEqual(listing[1], LISTING_STATE_LISTED);
 
         await lister.unlistOrderbookContract(token.address, reserveIndex);
         listing = await lister.getOrderbookListingStage(token.address);
