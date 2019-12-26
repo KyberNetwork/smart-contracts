@@ -181,6 +181,7 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
 
         // both BNT and ETH has decimals of 18 (MAX_DECIMALS)
         uint userExpectedDestAmount = calcDstQty(srcAmount, MAX_DECIMALS, MAX_DECIMALS, conversionRate);
+        require(userExpectedDestAmount > 0, "doTrade: user expected amount must be greater than 0");
         uint destAmount;
 
         if (srcToken == ETH_TOKEN_ADDRESS) {

@@ -17,6 +17,8 @@ contract MockBancorNetwork is IBancorNetwork, Utils {
         bancorBNT = IERC20(_bancorBNT);
     }
 
+    function() external payable { }
+
     function setExchangeRate(uint _rateEthToBnt, uint _rateBntToEth) public {
         rateEthToBnt = _rateEthToBnt;
         rateBntToETh = _rateBntToEth;
@@ -30,7 +32,7 @@ contract MockBancorNetwork is IBancorNetwork, Utils {
             if (destAmount > address(this).balance) {
                 return (0, 0);
             }
-            return (rateBntToETh, 0);
+            return (destAmount, 0);
         }
         if (_path[0] == bancorETH && _path[1] == bancorBNT && _path[2] == bancorBNT) {
             // rate eth to bnt
@@ -38,7 +40,7 @@ contract MockBancorNetwork is IBancorNetwork, Utils {
             if (destAmount > bancorBNT.balanceOf(address(this))) {
                 return (0, 0);
             }
-            return (rateEthToBnt, 0);
+            return (destAmount, 0);
         }
         return (0, 0);
     }
