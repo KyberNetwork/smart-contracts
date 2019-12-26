@@ -145,7 +145,7 @@ contract('Eth2DaiReserve', function(accounts) {
     it("Should test getConversionRate returns 0 amount is smaller than min support eth (eth -> dai)", async function() {
         await otc.setBuyOffer(1, myDaiToken.address, precision.mul(new BN(300)), myWethToken.address, precision);// rate: 300
         await otc.setBuyOffer(2, myDaiToken.address, precision.mul(new BN(280 * 1.5)), myWethToken.address, precision.mul(new BN(15)).div(new BN(10)));// rate: 280
-        await otc.setBuyOffer(3, myDaiToken.address, precision.mul(new BN(250 * 3.5)).div(new BN(10)), myWethToken.address, precision.mul(new BN(35)).div(new BN(10))); // rate: 250
+        await otc.setBuyOffer(3, myDaiToken.address, precision.mul(new BN(250 * 3.5)), myWethToken.address, precision.mul(new BN(35)).div(new BN(10))); // rate: 250
         await otc.setBuyOffer(4, myDaiToken.address, precision.mul(new BN(4 * 245)), myWethToken.address, precision.mul(new BN(4))); // rate: 245
         await otc.setBuyOffer(5, myDaiToken.address, precision.mul(new BN(240 * 10)), myWethToken.address, precision.mul(new BN(10))); // rate: 240
 
@@ -159,7 +159,7 @@ contract('Eth2DaiReserve', function(accounts) {
     it("Should test getConversionRate returns correct rate with apply fee without internal inventory (eth -> dai)", async function() {
         await otc.setBuyOffer(1, myDaiToken.address, precision.mul(new BN(300)), myWethToken.address, precision.mul(new BN(1)));// rate: 300
         await otc.setBuyOffer(2, myDaiToken.address, precision.mul(new BN(1.5 * 280)), myWethToken.address, precision.mul(new BN(15)).div(new BN(10)));// rate: 280
-        await otc.setBuyOffer(3, myDaiToken.address, precision.mul(new BN(3.5 * 250)).div(new BN(10)), myWethToken.address, precision.mul(new BN(35)).div(new BN(10))); // rate: 250
+        await otc.setBuyOffer(3, myDaiToken.address, precision.mul(new BN(3.5 * 250)), myWethToken.address, precision.mul(new BN(35)).div(new BN(10))); // rate: 250
         await otc.setBuyOffer(4, myDaiToken.address, precision.mul(new BN(4 * 245)), myWethToken.address, precision.mul(new BN(4))); // rate: 245
         await otc.setBuyOffer(5, myDaiToken.address, precision.mul(new BN(10 * 240)), myWethToken.address, precision.mul(new BN(10))); // rate: 240
 
@@ -167,7 +167,7 @@ contract('Eth2DaiReserve', function(accounts) {
         let expectedRate;
         let newFeeBps;
         
-//        try {
+        try {
             newFeeBps = 25;
             await reserve.setFeeBps(newFeeBps, {from: admin});
             result = await reserve.getConversionRate(ethAddress, myDaiToken.address, precision.mul(new BN(15)).div(new BN(10)), 0);
@@ -211,16 +211,16 @@ contract('Eth2DaiReserve', function(accounts) {
             Helper.assertEqual(expectedRate.sub(new BN(1)), newExpectedRate, "expected rate is reduced by 1");
             Helper.assertEqual(result, newExpectedRate, "rate is not correct");
 
-//        } catch (e) {
-//            await reserve.setFeeBps(feeBps, {from: admin});
-//            assert(false, "shouldn't fail or revert");
-//        }
+        } catch (e) {
+            await reserve.setFeeBps(feeBps, {from: admin});
+            assert(false, "shouldn't fail or revert");
+        }
 
         await reserve.setFeeBps(feeBps, {from: admin});
     });
 
     it("Should test getConversionRate still returns rate even spread is not ok with no internal inventory (eth -> dai)", async function() {
-        await otc.setBuyOffer(2, myDaiToken.address, precision.mul(new BN(300 * 3)), myWethToken.address, precision.mul(new BN)); // rate: 300
+        await otc.setBuyOffer(2, myDaiToken.address, precision.mul(new BN(300 * 3)), myWethToken.address, precision.mul(new BN(3))); // rate: 300
 
         let result;
 
@@ -329,7 +329,7 @@ contract('Eth2DaiReserve', function(accounts) {
 
         newFeeBps = 25;
         await reserve.setFeeBps(newFeeBps, {from: admin});
-        result = await reserve.getConversionRate(myDaiToken.address, ethAddress, precision.mul(5 * 210 + 3 * 212), 0);
+        result = await reserve.getConversionRate(myDaiToken.address, ethAddress, precision.mul(new BN(5 * 210 + 3 * 212)), 0);
         // dest amount = 8
         // rate = 8 * 10^18 / (5 * 210 + 3 * 212)
         expectedRate = precision.mul(8).div(new BN(5 * 210 + 3 * 212));
@@ -348,7 +348,7 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setSellOffer(3, myWethToken.address, precision.mul(new BN(22)).div(new BN(10)), myDaiToken.address, precision.mul(new BN(212 * 22)).div(new BN(10))); // rate: 212
         await otc.setSellOffer(4, myWethToken.address, precision.mul(new BN(26)).div(new BN(10)), myDaiToken.address, precision.mul(new BN(216 * 26)).div(new BN(10))); // rate: 216
         await otc.setSellOffer(5, myWethToken.address, precision.mul(new BN(26)).div(new BN(10)), myDaiToken.address, precision.mul(new BN(220 * 26)).div(new BN(10))); // rate: 220
-        await otc.setSellOffer(6, myWethToken.address, precision.mul(new BN), myDaiToken.address, precision.mul(new BN(224 * 3))); // rate: 222
+        await otc.setSellOffer(6, myWethToken.address, precision.mul(new BN(3)), myDaiToken.address, precision.mul(new BN(224 * 3))); // rate: 222
         await otc.setSellOffer(6, myWethToken.address, precision.mul(new BN(10)), myDaiToken.address, precision.mul(new BN(10 * 225))); // rate: 222
 
         let result;
@@ -399,7 +399,7 @@ contract('Eth2DaiReserve', function(accounts) {
         await otc.setBuyOffer(3, myDaiToken.address, precision.mul(new BN(20000)), myWethToken.address, precision.mul(new BN(100)));
 
         let result = await reserve.showBestOffers(myDaiToken.address, true, 5);
-        assert.equal(result[0], precision.mul(1500), "dest amount should be correct");
+        assert.equal(result[0], precision.mul(new BN(1500)), "dest amount should be correct");
         assert.equal(result[1], 1500, "dest amount should be 1500");
         assert.equal(result[2].length, 1, "Should take only 1 offer");
         assert.equal(result[2][0], 1, "offer id should be 1");
