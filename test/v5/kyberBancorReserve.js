@@ -108,13 +108,11 @@ contract('KyberBancorNetwork', function(accounts) {
     });
 
     it("Should test getConversionRate returns 0 when srcQty is 0", async function() {
-        let result;
-
-        result = await reserve.getConversionRate(ethAddress, bancorBntToken.address, 0, 0);
-        assert.equal(result.valueOf(), 0, "should return 0 for srcqty = 0");
+        let result = await reserve.getConversionRate(ethAddress, bancorBntToken.address, 0, 0);
+        assert.equal(result.valueOf(), 0, "rate should be 0 when src qty is 0"); 
 
         result = await reserve.getConversionRate(bancorBntToken.address, ethAddress, 0, 0);
-        assert.equal(result.valueOf(), 0, "should return 0 for srcqty = 0");
+        assert.equal(result.valueOf(), 0, "rate should be 0 when src qty is 0");  
     });
 
     it("Should test getConversionRate returns correct rate", async function() {
@@ -485,6 +483,24 @@ contract('KyberBancorNetwork', function(accounts) {
         await bancorBntToken.transfer(network, amountBnt);
         await reserve.trade(bancorBntToken.address, amountBnt, ethAddress, user, bntToEthRate, true, {from: network});
         await reserve.setFeeBps(feeBps, {from: admin});
+    });
+
+    it("Should test trade is reverted when src amount is 0", async function() {
+        let ethToBntRate = await reserve.getConversionRate(ethAddress, bancorBntToken.address, precision, 0);
+        let bntToEthRate = await reserve.getConversionRate(bancorBntToken.address, ethAddress, precision, 0);
+        try {
+            await reserve.trade(ethAddress, 0, bancorBntToken.address, user, ethToBntRate, true, {from: network, value: 0});
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        try {
+            await reserve.trade(bancorBntToken.address, 0, ethAddress, user, bntToEthRate, true, {from: network});
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
     });
 
     it("Should test buy balance changes as expected", async function() {

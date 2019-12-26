@@ -98,6 +98,7 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
 
         require(tradeEnabled, "trade: trade is not enabled");
         require(msg.sender == kyberNetwork, "trade: sender is not network");
+        require(srcAmount > 0, "trade: src amount must be greater than 0");
         require(srcToken == ETH_TOKEN_ADDRESS || destToken == ETH_TOKEN_ADDRESS, "trade: src or dest must be ETH");
         require(srcToken == bancorToken || destToken == bancorToken, "trade: src or dest must be BNT");
 
