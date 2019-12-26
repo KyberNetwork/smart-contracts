@@ -52,7 +52,7 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
     function() external payable { }
 
     function getConversionRate(IERC20 src, IERC20 dest, uint srcQty, uint) public view returns(uint) {
-        if (!tradeEnabled) return 0;
+        if (!tradeEnabled) { return 0; }
         if (srcQty == 0) { return 0; }
 
         if (src != ETH_TOKEN_ADDRESS && dest != ETH_TOKEN_ADDRESS) {
@@ -116,6 +116,7 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
     }
 
     event BancorNetworkSet(address _bancorNetwork);
+
     function setBancorContract(address _bancorNetwork) public onlyAdmin {
         require(_bancorNetwork != address(0), "setBancorContract: bancorNetwork address is missing");
 

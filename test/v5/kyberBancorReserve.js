@@ -74,11 +74,9 @@ contract('KyberBancorNetwork', function(accounts) {
         await Helper.sendEtherWithPromise(user, bancorNetwork.address, initEthBalance);
         balance = await Helper.getBalancePromise(bancorNetwork.address);
         assert.equal(balance.valueOf(), initEthBalance.valueOf(), "init balance eth is not correct");
-
-        await bancorBntToken.transfer(user, (new BigNumber(10)).pow(18).mul(1000000));
     });
 
-    it("Should test getConversionRate returns 0 token is not bnt", async function() {
+    it("Should test getConversionRate returns 0 when token is not bnt", async function() {
         let token = await TestToken.new("test token", "tes", 18);
         let result;
         result = await reserve.getConversionRate(ethAddress, token.address, 1 * precision, 0);
@@ -94,7 +92,7 @@ contract('KyberBancorNetwork', function(accounts) {
         assert.equal(result.valueOf(), bntToEthRate.valueOf(), "should have bnt -> eth as token is bnt");
     });
 
-    it("Should test getConversionRate returns 0 trade not enable", async function() {
+    it("Should test getConversionRate returns 0 when trade not enable", async function() {
         await reserve.disableTrade({from: alerter});
         let result;
         // not have sell order
@@ -109,7 +107,7 @@ contract('KyberBancorNetwork', function(accounts) {
         assert.notEqual(result.valueOf(), 0, "should have rate as trade is enable");
     });
 
-    it("Should test getConversionRate returns 0 with srcQty is 0", async function() {
+    it("Should test getConversionRate returns 0 when srcQty is 0", async function() {
         let result;
 
         result = await reserve.getConversionRate(ethAddress, bancorBntToken.address, 0, 0);
@@ -144,7 +142,7 @@ contract('KyberBancorNetwork', function(accounts) {
         assert.equal(result.valueOf(), newBntToEthRate.valueOf(), "should return correct bnt to eth rate");
     });
 
-    it("Should test getConversionRate return 0 when path is not correct", async function() {
+    it("Should test getConversionRate returns 0 when path is not correct", async function() {
         let testNewToken = await TestToken.new("Test token", "TST", tokenDecimal);
         let testBancorNetwork = await MockBancorNetwork.new(testNewToken.address, bancorBntToken.address);
         let testReserve = await KyberBancorReserve.new(
@@ -270,7 +268,7 @@ contract('KyberBancorNetwork', function(accounts) {
         }
     });
 
-    it("Should test can not set fee sender is not admin", async function() {
+    it("Should test can not set fee when sender is not admin", async function() {
         await reserve.setFeeBps(feeBps, {from: admin});
         try {
             await reserve.setFeeBps(feeBps, {from: user});
@@ -311,7 +309,7 @@ contract('KyberBancorNetwork', function(accounts) {
         await reserve.setBancorContract(bancorNetwork.address, {from: admin});
     });
 
-    it("Should test trade with trade is not enable", async function() {
+    it("Should test trade is reverted when trade is not enable", async function() {
         let amountEth = (new BigNumber(10)).pow(18);
         let amountBnt = (new BigNumber(10)).pow(18).mul(500);
         let ethToBntRate = await reserve.getConversionRate(ethAddress, bancorBntToken.address, amountEth, 0);
@@ -339,7 +337,7 @@ contract('KyberBancorNetwork', function(accounts) {
         await reserve.enableTrade({from: admin});
     });
 
-    it("Should test trade msg sender is not network", async function() {
+    it("Should test trade is reverted when msg sender is not network", async function() {
         let amountEth = (new BigNumber(10)).pow(18);
         let amountBnt = (new BigNumber(10)).pow(18).mul(500);
         let ethToBntRate = await reserve.getConversionRate(ethAddress, bancorBntToken.address, amountEth, 0);
@@ -360,14 +358,14 @@ contract('KyberBancorNetwork', function(accounts) {
         }
     });
 
-    it("Should test trade token is invalid (src & dest are not ETH or token is not bnt)", async function() {
+    it("Should test trade is reverted when token is invalid (src & dest are not ETH or token is not bnt)", async function() {
         let amountEth = (new BigNumber(10)).pow(18);
         let amountBnt = (new BigNumber(10)).pow(18).mul(500);
         let ethToBntRate = await reserve.getConversionRate(ethAddress, bancorBntToken.address, amountEth, 0);
         let bntToEthRate = await reserve.getConversionRate(bancorBntToken.address, ethAddress, amountBnt, 0);
 
         let token = await TestToken.new("test token", "tst", 18);
-        await token.transfer(user, (new BigNumber(2)).pow(18).mul(1000));
+        await token.transfer(network, (new BigNumber(2)).pow(18).mul(1000));
         try {
             await reserve.trade(token.address, amountEth, bancorBntToken.address, user, ethToBntRate, true, {from: network});
             assert(false, "throw was expected in line above.")
@@ -397,7 +395,7 @@ contract('KyberBancorNetwork', function(accounts) {
         }
     });
 
-    it("Should test trade msg value and src amount are not correct", async function() {
+    it("Should test trade is reverted when msg value and src amount are not correct", async function() {
         let amountEth = (new BigNumber(10)).pow(18);
         let amountBnt = (new BigNumber(10)).pow(18).mul(500);
         let ethToBntRate = await reserve.getConversionRate(ethAddress, bancorBntToken.address, amountEth, 0);
@@ -425,7 +423,7 @@ contract('KyberBancorNetwork', function(accounts) {
         }
     });
 
-    it("Should test trade conversion rate is 0", async function() {
+    it("Should test trade is reverted when conversion rate is 0", async function() {
         let amountEth = (new BigNumber(10)).pow(18);
         let amountBnt = (new BigNumber(10)).pow(18).mul(500);
 
