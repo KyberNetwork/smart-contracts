@@ -9,6 +9,7 @@ import "./mock/IBancorNetwork.sol";
 contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
 
     uint constant internal BPS = 10000; // 10^4
+    uint constant ETH_BNT_DECIMALS = 18;
 
     address public kyberNetwork;
     bool public tradeEnabled;
@@ -65,7 +66,8 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
         uint destQty;
         (destQty, ) = bancorNetwork.getReturnByPath(path, srcQty);
 
-        uint rate = calcRateFromQty(srcQty, destQty, getDecimals(src), getDecimals(dest));
+        // src and dest can be only BNT or ETH
+        uint rate = calcRateFromQty(srcQty, destQty, ETH_BNT_DECIMALS, ETH_BNT_DECIMALS);
 
         rate = valueAfterReducingFee(rate);
 
@@ -94,12 +96,12 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
         returns(bool)
     {
 
-        require(tradeEnabled, "doTrade: trade is not enabled");
-        require(msg.sender == kyberNetwork, "doTrade: sender is not network");
-        require(srcToken == ETH_TOKEN_ADDRESS || destToken == ETH_TOKEN_ADDRESS, "doTrade: src or dest must be ETH");
-        require(srcToken == bancorToken || destToken == bancorToken, "doTrade: src or dest must be BNT");
+        require(tradeEnabled, "trade: trade is not enabled");
+        require(msg.sender == kyberNetwork, "trade: sender is not network");
+        require(srcToken == ETH_TOKEN_ADDRESS || destToken == ETH_TOKEN_ADDRESS, "trade: src or dest must be ETH");
+        require(srcToken == bancorToken || destToken == bancorToken, "trade: src or dest must be BNT");
 
-        require(doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate));
+        require(doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate), "trade: doTrade function returns false");
 
         return true;
     }
@@ -179,8 +181,8 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
         IERC20[] memory path = getConversionPath(srcToken, destToken);
         require(path.length > 0, "doTrade: couldn't find path");
 
-        // both BNT and ETH has decimals of 18 (MAX_DECIMALS)
-        uint userExpectedDestAmount = calcDstQty(srcAmount, MAX_DECIMALS, MAX_DECIMALS, conversionRate);
+        // BNT and ETH have the same decimals
+        uint userExpectedDestAmount = calcDstQty(srcAmount, ETH_BNT_DECIMALS, ETH_BNT_DECIMALS, conversionRate);
         require(userExpectedDestAmount > 0, "doTrade: user expected amount must be greater than 0");
         uint destAmount;
 

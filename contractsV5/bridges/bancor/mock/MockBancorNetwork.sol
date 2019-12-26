@@ -26,6 +26,7 @@ contract MockBancorNetwork is IBancorNetwork, Utils {
 
     function getReturnByPath(IERC20[] calldata _path, uint256 _amount) external view returns (uint256, uint256) {
         if (_path.length != 3) { return (0, 0); }
+        if (_amount == 0) { return (0, 0); }
         if (_path[0] == bancorBNT && _path[1] == bancorBNT && _path[2] == bancorETH) {
             // rate btn to eth
             uint destAmount = calcDstQty(_amount, getDecimals(bancorBNT), ETH_DECIMALS, rateBntToETh);
@@ -55,7 +56,7 @@ contract MockBancorNetwork is IBancorNetwork, Utils {
         require(_path.length == 3);
         // trade eth to bnt
         require(_path[0] == bancorETH && _path[1] == bancorBNT && _path[2] == bancorBNT);
-        require(msg.value == _amount);
+        require(msg.value == _amount && _amount > 0);
         require(rateEthToBnt > 0);
         uint destAmount = calcDstQty(_amount, ETH_DECIMALS, getDecimals(bancorBNT), rateEthToBnt);
         require(destAmount >= _minReturn);
@@ -75,6 +76,7 @@ contract MockBancorNetwork is IBancorNetwork, Utils {
         // trade eth to bnt
         require(_path[0] == bancorBNT && _path[1] == bancorBNT && _path[2] == bancorETH);
         // collect bnt
+        require(_amount > 0);
         require(bancorBNT.transferFrom(msg.sender, address(this), _amount));
         require(rateBntToETh > 0);
         uint destAmount = calcDstQty(_amount, getDecimals(bancorBNT), ETH_DECIMALS, rateBntToETh);
