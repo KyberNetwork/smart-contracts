@@ -10,6 +10,11 @@ interface IKyberNetwork {
     function info(bytes32 id) external view returns(uint);
     function getExpectedRate(IERC20 src, IERC20 dest, uint srcQty) external view
         returns (uint expectedRate, uint slippageRate);
+    function getExpectedRateNoFees(IERC20 src, IERC20 dest, uint srcQty, bytes hint) external view
+        returns (uint expectedRate, uint slippageRate);
+    function getExpectedRateWNetworkFee(IERC20 src, IERC20 dest, uint srcQty, bytes hint) external view
+        returns (uint expectedRate, uint slippageRate);
+
     function tradeWithHint(
         address payable trader,
         IERC20 src,
@@ -24,7 +29,7 @@ interface IKyberNetwork {
 
     // hint support
     ///////////////////////////
-    ///
+    /// @function getSplitHint
     /// will return a suggested hint with max 2 reserves per trade leg (token->Eth / Eth->token)
     /// there is no guaranty the suggested reserve split is the best one possible, anyone can create his own algorithm for
     /// finding a reserve split that will create the best trade outcome.
