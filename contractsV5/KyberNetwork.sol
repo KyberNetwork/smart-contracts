@@ -419,7 +419,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         //todo: exclude taker fees
         uint bestRate = 0;
         uint bestReserve = 0;
-        uint numRelevantReserves = 0;
+        uint numRelevantReserves = 1; // assume alywas best reserve will be relevant
 
         //return 1 for ether to ether
         if (src == dest) return (address(reserves[bestReserve]), PRECISION);
@@ -445,17 +445,25 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             if (rates[i] > bestRate) {
                 //best rate is highest rate
                 bestRate = rates[i];
+                bestReserve = i;
             }
         }
 
         if (bestRate > 0) {
-
-            uint smallestRelevantRate = (bestRate * 10000) / (10000 + negligibleRateDiff) - reserveFeeBps[address(reserveCandidates[0])];
+            
+            reserveCandidates[0] = bestReserve;
+            
+            // if this reserve pays fee its acutal rate is less. so smallestRelevantRate is smaller.
+            uint smallestRelevantRate = (bestRate * BPS) / (10000 + negligibleRateDiff) * 
+                reserveFeeBps[reserveArr[bestReserve]] > 0 ? (BPS - takerFeeBps) / BPS : 1;
 
             for (i = 0; i < reserveArr.length; i++) {
-                if (rates[i] >= smallestRelevantRate) {
-                    if(rates[i] + reserveFeeBps[address(reserveArr[i])] > smallestRelevantRate)
-                        reserveCandidates[numRelevantReserves++] = i;
+                
+                if (i == bestReserve) continue;
+                
+                if (smallestRelevantRate < (rates[i] * reserveFeeBps[reserveArr[i]] > 0 ? (BPS - takerFeeBps) / BPS : 1)) 
+                {
+                    reserveCandidates[numRelevantReserves++] = i;
                 }
             }
 
@@ -497,8 +505,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         TradingReserves tokenToEth;
         TradingReserves ethToToken;
 
-        uint srcDecimals;
-        uint dstDecimals;
+        uint feePayingSplitBps; // what part of this trade is fee paying.
         uint totalFeeWei;
         uint weiAmount;
         uint destAmount;
@@ -538,8 +545,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // send total fee amount
     }
 
-    function calcTradeSrcAmounts(uint srcDecimals, uint dstDecimals, uint destAmount, uint[] memory rates, uint[] memory splitValues)
-    internal pure returns (uint srcAmount)
+    function calcTradeSrcAmounts(uint srcDecimals, uint dstDecimals, uint destAmount, uint[] memory rates, 
+                                uint[] memory splitValues)
+        internal pure returns (uint srcAmount)
     {
         uint amountSoFar;
 
@@ -559,26 +567,23 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
             if (dest != ETH_TOKEN_ADDRESS) {
                 // todo: constant for eth decimals? or in solidity?
-                weiAmount = calcTradeSrcAmounts(tradeData.dstDecimals, ETH_DECIMALS, actualDestAmount, tradeData.ethToToken.rates, tradeData.ethToToken.splitValuesPercent);
+                weiAmount = calcTradeSrcAmounts(tradeData.ethToToken.decimals, ETH_DECIMALS, actualDestAmount, tradeData.ethToToken.rates, tradeData.ethToToken.splitValuesPercent);
             } else {
                 weiAmount = actualDestAmount;
             }
 
-            uint feeBps = takerFeeBps * ((src != ETH_TOKEN_ADDRESS && dest != ETH_TOKEN_ADDRESS) ? 2 : 1);
-            weiAmount = (weiAmount * BPS) / (BPS - feeBps);
-            totalFeeWei = weiAmount * feeBps / BPS;
+            totalFeeWei = weiAmount * tradeData.feePayingSplitBps / BPS;
+            weiAmount -= totalFeeWei;
 
             if (src != ETH_TOKEN_ADDRESS) {
-                srcAmount = calcTradeSrcAmounts(ETH_DECIMALS, tradeData.tokenToEth.decimals, actualDestAmount, tradeData.tokenToEth.rates, tradeData.tokenToEth.splitValuesPercent);
+                actualSrcAmount = calcTradeSrcAmounts(ETH_DECIMALS, tradeData.tokenToEth.decimals, actualDestAmount, tradeData.tokenToEth.rates, tradeData.tokenToEth.splitValuesPercent);
             } else {
-                srcAmount = weiAmount;
+                actualSrcAmount = weiAmount;
             }
-            // todo: update total fee Wei
-            // todo: update weiAmount with fee
-            // actualSrcAmount = calcSrcAmount(src, ETH_TOKEN_ADDRESS, weiAmount, rateResult.rateSrcToEth);
+        
             require(actualSrcAmount <= srcAmount);
         } else {
-            // actualDestAmount = rateResult.destAmount;
+            actualDestAmount = tradeData.destAmount;
             actualSrcAmount = srcAmount;
             weiAmount = tradeData.weiAmount;
         }

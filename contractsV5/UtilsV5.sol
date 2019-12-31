@@ -9,10 +9,10 @@ contract Utils {
     IERC20 constant internal ETH_TOKEN_ADDRESS = IERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
     uint  constant internal PRECISION = (10**18);
     uint  constant internal MAX_QTY   = (10**28); // 10B tokens
-    uint  constant internal MAX_RATE  = (PRECISION * 10**6); // up to 1M tokens per ETH
+    uint  constant internal MAX_RATE  = (PRECISION * 10**7); // up to 10M tokens per ETH
     uint  constant internal MAX_DECIMALS = 18;
     uint  constant internal ETH_DECIMALS = 18;
-    uint  constant BPS = 10000;
+    uint  constant BPS = 10000; // Basic Price Steps. 1 step = 0.01%
 
     mapping(address=>uint) internal decimals;
 

@@ -10,9 +10,9 @@ interface IKyberNetwork {
     function info(bytes32 id) external view returns(uint);
     function getExpectedRate(IERC20 src, IERC20 dest, uint srcQty) external view
         returns (uint expectedRate, uint slippageRate);
-    function getExpectedRateNoFees(IERC20 src, IERC20 dest, uint srcQty, bytes hint) external view
+    function getExpectedRateNoFees(IERC20 src, IERC20 dest, uint srcQty, bytes calldata hint) external view
         returns (uint expectedRate, uint slippageRate);
-    function getExpectedRateWNetworkFee(IERC20 src, IERC20 dest, uint srcQty, bytes hint) external view
+    function getExpectedRateWNetworkFee(IERC20 src, IERC20 dest, uint srcQty, bytes calldata hint) external view
         returns (uint expectedRate, uint slippageRate);
 
     function tradeWithHint(
@@ -29,16 +29,17 @@ interface IKyberNetwork {
 
     // hint support
     ///////////////////////////
-    /// @function getSplitHint
+    /// function getSplitHint
     /// will return a suggested hint with max 2 reserves per trade leg (token->Eth / Eth->token)
     /// there is no guaranty the suggested reserve split is the best one possible, anyone can create his own algorithm for
     /// finding a reserve split that will create the best trade outcome.
-    function getSplitHint(IERC20 src, IERC20 dest, uint srcQty, bool usePermissionLess) exterenal view
-        returns(address[]ethToTokenReserves, uint[] ethToTokenSplits, address[] tokenToEthReserves,
-                uint[]tokenToEthSplit, bytes hint);
-    function parseHint(bytes hint) external view
-        returns(address[]ethToTokenReserves, uint[] ethToTokenSplits, address[] tokenToEthReserves,
-                uint[]tokenToEthSplit, bool usePermissionLess);
-    function buildHint(address[]ethToTokenReserves, uint[] ethToTokenSplits, address[] tokenToEthReserves,
-        uint[]tokenToEthSplit, bool usePermissionLess) external view returns(bytes hint);
+    function getSplitHint(IERC20 src, IERC20 dest, uint srcQty, bool usePermissionLess) external view
+        returns(address[] memory ethToTokenReserves, uint[] memory ethToTokenSplits, address[] memory tokenToEthReserves,
+                uint[] memory tokenToEthSplit, bytes memory hint);
+    function parseHint(bytes calldata hint) external view
+        returns(address[] memory ethToTokenReserves, uint[] memory ethToTokenSplits, address[] memory tokenToEthReserves,
+                uint[] memory tokenToEthSplit, bool usePermissionLess);
+    function buildHint(address[] calldata ethToTokenReserves, uint[] calldata ethToTokenSplits,
+        address[] calldata tokenToEthReserves, uint[] calldata tokenToEthSplit, bool usePermissionLess) 
+        external view returns(bytes memory hint);
 }
