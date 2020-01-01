@@ -513,8 +513,15 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     // accumulate fee wei
     function findRatesAndAmounts(IERC20 src, IERC20 dst, uint srcAmount, TradeData memory tradeData) internal 
-    // function should set following data:
-    // reserve addresses E2T
+    // function should set following data for E2T and T2E:
+    // reserve addresses array
+    // reserve rate array
+    // trade splits array
+    // all above twice.
+    // tradeWeiAmount
+    // feeWeiAmount
+    // tradeDestAmount
+    // percent of trade that is fee paying.
     {
         uint accumulatedFeeWei; //save all fee in Wei
 
