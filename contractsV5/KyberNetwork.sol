@@ -484,16 +484,15 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     function initTradeData (bytes memory hint)  internal view returns (TradeData memory ) {
         // parse hint and set reserves.
-        // if no hint init arrays to size 1 and set zero address.
+        // if no hint don't init arrays.
         //
     }
 
     struct TradingReserves {
         IKyberReserve[] addresses;
-        uint[] splitValuesPercent;
-        uint[] destAmounts;
-        uint[] feesBps;
         uint[] rates; // rate per chosen reserve for token to eth
+        bool[] isPayingFees;
+        uint[] splitValuesPercent;
         uint decimals;
     }
 
@@ -501,20 +500,22 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     // if not hinted reserves use 1 reserve for each trade side
     struct TradeData {
         bool usePermissionless;
-        bool useOnlyKyberReserves;
 
         TradingReserves tokenToEth;
         TradingReserves ethToToken;
 
-        uint feePayingSplitBps; // what part of this trade is fee paying.
+        uint feePayingPercentage; // what part of this trade is fee paying. for token to token - up to 200%
         uint totalFeeWei;
-        uint weiAmount;
+        uint tradeWeiAmount;
         uint destAmount;
         uint rate; //the accumulated rate for full trade
     }
 
     // accumulate fee wei
-    function findRatesAndAmounts(IERC20 src, IERC20 dst, uint srcAmount, TradeData memory tradeData) internal {
+    function findRatesAndAmounts(IERC20 src, IERC20 dst, uint srcAmount, TradeData memory tradeData) internal 
+    // function should set following data:
+    // reserve addresses E2T
+    {
         uint accumulatedFeeWei; //save all fee in Wei
 
         // token to Eth
@@ -540,8 +541,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     }
 
     function handleFees(TradeData memory tradeData) internal returns(bool) {
-        // create array of reserves recieving fees + .
-        // send total fee amount
+        // create array of reserves receiving fees + fee percent per reserve
+        // fees should add up to 100%.
+        // send total fee amount to fee handler with reserve data.
     }
 
     function calcTradeSrcAmounts(uint srcDecimals, uint dstDecimals, uint destAmount, uint[] memory rates, 
@@ -558,7 +560,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         }
     }
 
-    function calcActualAmounts (IERC20 src, IERC20 dest, uint srcAmount, uint maxDestAmount, TradeData memory tradeData)
+    function calcTradeSrcAmountFromDest (IERC20 src, IERC20 dest, uint srcAmount, uint maxDestAmount, TradeData memory tradeData)
         internal view returns(uint actualSrcAmount)
     {
         if (tradeData.destAmount > maxDestAmount) {
@@ -570,7 +572,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
                 tradeData.weiAmount = maxDestAmount;
             }
 
-            tradeData.totalFeeWei = tradeData.weiAmount * tradeData.feePayingSplitBps / BPS;
+            tradeData.totalFeeWei = tradeData.weiAmount * takerFeeBps * tradeData.feePayingSplitPercentage / (BPS * 100) ;
             tradeData.weiAmount -= tradeData.totalFeeWei;
 
             if (src != ETH_TOKEN_ADDRESS) {
@@ -609,15 +611,19 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         uint actualSrcAmount;
 
-        (actualSrcAmount) = calcActualAmounts(
-            tradeInput.src,
-            tradeInput.dest,
-            tradeInput.srcAmount,
-            tradeInput.maxDestAmount,
-            tradeData);
+        if (tradeData.destAmount > tradeInput.maxDestAmount) {
+            actualSrcAmount = calcTradeSrcAmountFromDest(
+                tradeInput.src,
+                tradeInput.dest,
+                tradeInput.srcAmount,
+                tradeInput.maxDestAmount,
+                tradeData);
 
-        require(handleChange(tradeInput.src, tradeInput.srcAmount, actualSrcAmount, tradeInput.trader));
-
+            require(handleChange(tradeInput.src, tradeInput.srcAmount, actualSrcAmount, tradeInput.trader));
+        } else {
+            actualSrcAmount = tradeInput.srcAmount;
+        } 
+        
         require(doReserveTrades(     //src to ETH
                 tradeInput.src,
                 actualSrcAmount,
