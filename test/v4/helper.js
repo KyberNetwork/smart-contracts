@@ -172,7 +172,6 @@ module.exports.addBps = function(rate, bps) {
 
 module.exports.calcSrcQty = function(dstQty, srcDecimals, dstDecimals, rate) {
     //source quantity is rounded up. to avoid dest quantity being too low.
-    let srcQty;
     let numerator;
     let denominator;
     let precisionUnits = (new BN(10).pow(new BN(18)));
@@ -183,9 +182,7 @@ module.exports.calcSrcQty = function(dstQty, srcDecimals, dstDecimals, rate) {
         numerator = precisionUnits.mul(dstQty);
         denominator = (new BN(rate)).mul((new BN(10)).pow(new BN(dstDecimals - srcDecimals)));
     }
-    srcQty = numerator.add(denominator.sub(new BN(1))).div(denominator); //avoid rounding down errors
-    srcQty = new BN(Math.floor(srcQty.toString()).toString());
-    return srcQty;
+    return numerator.add(denominator).sub(new BN(1)).div(denominator);;
 }
 
 module.exports.calcDstQty = function(srcQty, srcDecimals, dstDecimals, rate) {
@@ -202,14 +199,14 @@ module.exports.calcDstQty = function(srcQty, srcDecimals, dstDecimals, rate) {
     return result;
 }
 
-module.exports.calcRateFromQty = function(srcAmount, dstAmount, srcDecimals, dstDecimals) {
-
+module.exports.calcRateFromQty = function(srcQty, dstQty, srcDecimals, dstDecimals) {
+    let decimals;
     if (dstDecimals >= srcDecimals) {
-            let decimals = new BN(10).pow(new BN(dstDecimals - srcDecimals));
-            return ((precisionUnits.mul(dstAmount)).div(decimals.mul(srcAmount)));
+        decimals = new BN(10).pow(new BN(dstDecimals - srcDecimals));
+        return precisionUnits.mul(new BN(dstQty)).div((decimals).mul(new BN(srcQty)));
     } else {
-        let decimals = new BN(10).pow(new BN(srcDecimals - dstDecimals));
-        return ((precision.mul(dstAmount).mul(decimals)).div(srcAmount));
+        decimals = new BN(10).pow(new BN(dstDecimals - srcDecimals));
+        return (precisionUnits.mul(new BN(dstQty)).mul(decimals)).div(new BN(srcQty));
     }
 }
 
