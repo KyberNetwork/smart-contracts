@@ -18,6 +18,7 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
     IBancorNetwork public bancorNetwork; // 0x0e936B11c2e7b601055e58c7E32417187aF4de4a
 
     IERC20 public bancorEth; // 0xc0829421C1d260BD3cB3E0F06cfE2D52db2cE315
+    IERC20 public bancorETHBNT; // 0xb1CD6e4153B2a390Cf00A6556b0fC1458C4A5533
     IERC20 public bancorToken; // 0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C
 
     constructor(
@@ -25,6 +26,7 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
         address _kyberNetwork,
         uint _feeBps,
         address _bancorEth,
+        address _bancorETHBNT,
         address _bancorToken,
         address _admin
     )
@@ -33,6 +35,7 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
         require(_bancorNetwork != address(0), "constructor: bancorNetwork address is missing");
         require(_kyberNetwork != address(0), "constructor: kyberNetwork address is missing");
         require(_bancorEth != address(0), "constructor: bancorEth address is missing");
+        require(_bancorETHBNT != address(0), "constructor: bancorETHBNT address is missing");
         require(_bancorToken != address(0), "constructor: bancorToken address is missing");
         require(_admin != address(0), "constructor: admin address is missing");
         require(_feeBps < BPS, "constructor: fee is too big");
@@ -40,6 +43,7 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
         bancorNetwork = IBancorNetwork(_bancorNetwork);
         bancorToken = IERC20(_bancorToken);
         bancorEth = IERC20(_bancorEth);
+        bancorETHBNT = IERC20(_bancorETHBNT);
 
         kyberNetwork = _kyberNetwork;
         feeBps = _feeBps;
@@ -208,21 +212,19 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
     }
 
     function getConversionPath(IERC20 src, IERC20 dest) public view returns(IERC20[] memory path) {
-        IERC20 bntToken = bancorToken;
-
-        if (src == bntToken) {
+        if (src == bancorToken) {
             // trade from BNT to ETH
             path = new IERC20[](3);
-            path[0] = bntToken;
-            path[1] = bntToken;
+            path[0] = bancorToken;
+            path[1] = bancorETHBNT;
             path[2] = bancorEth;
             return path;
-        } else if (dest == bntToken) {
+        } else if (dest == bancorToken) {
             // trade from ETH to BNT
             path = new IERC20[](3);
             path[0] = bancorEth;
-            path[1] = bntToken;
-            path[2] = bntToken;
+            path[1] = bancorETHBNT;
+            path[2] = bancorToken;
             return path;
         }
     }

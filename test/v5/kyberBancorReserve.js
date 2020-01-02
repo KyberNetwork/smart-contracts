@@ -42,13 +42,15 @@ contract('KyberBancorNetwork', function(accounts) {
         user = accounts[4];
 
         bancorEthToken = await TestToken.new("BancorETH", "BETH", tokenDecimal);
+        bancorETHBNTToken = await TestToken.new("BancorETHBNT", "BETHBNT", tokenDecimal);
         bancorBntToken = await TestToken.new("BancorBNT", "BBNT", tokenDecimal);
-        bancorNetwork = await MockBancorNetwork.new(bancorEthToken.address, bancorBntToken.address);
+        bancorNetwork = await MockBancorNetwork.new(bancorEthToken.address, bancorETHBNTToken.address, bancorBntToken.address);
         reserve = await KyberBancorReserve.new(
             bancorNetwork.address,
             network,
             feeBps,
             bancorEthToken.address,
+            bancorETHBNTToken.address,
             bancorBntToken.address,
             admin
         );
@@ -142,12 +144,13 @@ contract('KyberBancorNetwork', function(accounts) {
 
     it("Should test getConversionRate returns 0 when path is not correct", async function() {
         let testNewToken = await TestToken.new("Test token", "TST", tokenDecimal);
-        let testBancorNetwork = await MockBancorNetwork.new(testNewToken.address, bancorBntToken.address);
+        let testBancorNetwork = await MockBancorNetwork.new(testNewToken.address, bancorBntToken.address, bancorBntToken.address);
         let testReserve = await KyberBancorReserve.new(
             testBancorNetwork.address,
             network,
             feeBps,
             bancorEthToken.address,
+            bancorBntToken.address,
             bancorBntToken.address,
             admin
         );
@@ -160,12 +163,13 @@ contract('KyberBancorNetwork', function(accounts) {
         rate = await testReserve.getConversionRate(bancorBntToken.address, ethAddress, amount, 0);
         assert.equal(rate.valueOf(), 0, "rate should be 0 as path is incorrect");
 
-        testBancorNetwork = await MockBancorNetwork.new(bancorEthToken.address, testNewToken.address);
+        testBancorNetwork = await MockBancorNetwork.new(bancorEthToken.address, testNewToken.address, testNewToken.address);
         testReserve = await KyberBancorReserve.new(
             testBancorNetwork.address,
             network,
             feeBps,
             bancorEthToken.address,
+            testNewToken.address,
             bancorBntToken.address,
             admin
         );
@@ -187,6 +191,7 @@ contract('KyberBancorNetwork', function(accounts) {
                 network,
                 feeBps.valueOf(),
                 bancorEthToken.address,
+                bancorETHBNTToken.address,
                 bancorBntToken.address,
                 admin
             );
@@ -200,6 +205,7 @@ contract('KyberBancorNetwork', function(accounts) {
                 zeroAddress,
                 feeBps.valueOf(),
                 bancorEthToken.address,
+                bancorETHBNTToken.address,
                 bancorBntToken.address,
                 admin
             );
@@ -213,6 +219,7 @@ contract('KyberBancorNetwork', function(accounts) {
                 network,
                 feeBps.valueOf(),
                 zeroAddress,
+                bancorETHBNTToken.address,
                 bancorBntToken.address,
                 admin
             );
@@ -226,6 +233,7 @@ contract('KyberBancorNetwork', function(accounts) {
                 network,
                 feeBps.valueOf(),
                 bancorEthToken.address,
+                bancorETHBNTToken.address,
                 zeroAddress,
                 admin
             );
@@ -239,6 +247,21 @@ contract('KyberBancorNetwork', function(accounts) {
                 network,
                 feeBps.valueOf(),
                 bancorEthToken.address,
+                bancorETHBNTToken.address,
+                bancorBntToken.address,
+                zeroAddress
+            );
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+        try {
+            _ = await KyberBancorReserve.new(
+                bancorNetwork.address,
+                network,
+                feeBps.valueOf(),
+                bancorEthToken.address,
+                zeroAddress.address,
                 bancorBntToken.address,
                 zeroAddress
             );
@@ -251,6 +274,7 @@ contract('KyberBancorNetwork', function(accounts) {
             network,
             feeBps.valueOf(),
             bancorEthToken.address,
+            bancorETHBNTToken.address,
             bancorBntToken.address,
             admin
         );
