@@ -209,7 +209,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberNetwork, Withdrawa
 
     function getExpectedRate(IERC20 src, IERC20 dest, uint srcQty)
     public view
-    returns(uint expectedRate, uint slippageRate)
+    returns(uint expectedRate, uint worstRate)
     {
         return kyberNetworkContract.getExpectedRate(src, dest, srcQty);
     }

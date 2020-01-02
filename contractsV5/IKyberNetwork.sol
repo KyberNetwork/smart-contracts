@@ -9,11 +9,11 @@ interface IKyberNetwork {
     function enabled() external view returns(bool);
     function info(bytes32 id) external view returns(uint);
     function getExpectedRate(IERC20 src, IERC20 dest, uint srcQty) external view
-        returns (uint expectedRate, uint slippageRate);
+        returns (uint expectedRate, uint worstRate);
     function getExpectedRateNoFees(IERC20 src, IERC20 dest, uint srcQty, bytes calldata hint) external view
-        returns (uint expectedRate, uint slippageRate);
+        returns (uint expectedRate, uint worstRate);
     function getExpectedRateWNetworkFee(IERC20 src, IERC20 dest, uint srcQty, bytes calldata hint) external view
-        returns (uint expectedRate, uint slippageRate);
+        returns (uint expectedRate, uint worstRate);
 
     function tradeWithHint(
         address payable trader,

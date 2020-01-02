@@ -15,7 +15,7 @@ contract IWhiteList {
 
 interface IExpectedRate {
     function getExpectedRate(IERC20 src, IERC20 dest, uint srcQty, bool usePermissionless) external view
-    returns (uint expectedRate, uint slippageRate);
+    returns (uint expectedRate, uint worstRate);
 }
 
 
@@ -269,7 +269,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     function getExpectedRate(IERC20 src, IERC20 dest, uint srcQty)
         public view
-        returns(uint expectedRate, uint slippageRate)
+        returns(uint expectedRate, uint worstRate)
     {
         require(expectedRateContract != IExpectedRate(0));
         if (src == dest) return (0,0);
@@ -285,7 +285,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     function getExpectedRateOnlyPermission(IERC20 src, IERC20 dest, uint srcQty)
         public view
-        returns(uint expectedRate, uint slippageRate)
+        returns(uint expectedRate, uint worstRate)
     {
         require(expectedRateContract != IExpectedRate(0));
         if (src == dest) return (0,0);

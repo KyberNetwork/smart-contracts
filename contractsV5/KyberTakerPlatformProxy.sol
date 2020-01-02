@@ -211,7 +211,7 @@ contract KyberNetworkProxy is KyberNetworkProxyInterface, SimpleNetworkInterface
 
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
     public view
-    returns(uint expectedRate, uint slippageRate)
+    returns(uint expectedRate, uint worstRate)
     {
         return kyberNetworkContract.getExpectedRate(src, dest, srcQty);
     }
