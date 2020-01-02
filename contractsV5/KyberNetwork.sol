@@ -570,28 +570,23 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function calcTradeSrcAmountFromDest (IERC20 src, IERC20 dest, uint srcAmount, uint maxDestAmount, TradeData memory tradeData)
         internal view returns(uint actualSrcAmount)
     {
-        if (tradeData.destAmount > maxDestAmount) {
-            
-            if (dest != ETH_TOKEN_ADDRESS) {
-                // todo: constant for eth decimals? or in solidity?
-                tradeData.weiAmount = calcTradeSrcAmounts(tradeData.ethToToken.decimals, ETH_DECIMALS, maxDestAmount, tradeData.ethToToken.rates, tradeData.ethToToken.splitValuesPercent);
-            } else {
-                tradeData.weiAmount = maxDestAmount;
-            }
-
-            tradeData.totalFeeWei = tradeData.weiAmount * takerFeeBps * tradeData.feePayingSplitPercentage / (BPS * 100) ;
-            tradeData.weiAmount -= tradeData.totalFeeWei;
-
-            if (src != ETH_TOKEN_ADDRESS) {
-                actualSrcAmount = calcTradeSrcAmounts(ETH_DECIMALS, tradeData.tokenToEth.decimals, tradeData.weiAmount, tradeData.tokenToEth.rates, tradeData.tokenToEth.splitValuesPercent);
-            } else {
-                actualSrcAmount = tradeData.weiAmount;
-            }
-        
-            require(actualSrcAmount <= srcAmount);
+        if (dest != ETH_TOKEN_ADDRESS) {
+            tradeData.tradeWeiAmount = calcTradeSrcAmounts(tradeData.ethToToken.decimals, ETH_DECIMALS, maxDestAmount, 
+                tradeData.ethToToken.rates, tradeData.ethToToken.splitValuesPercent);
         } else {
-            actualSrcAmount = srcAmount;
+            tradeData.tradeWeiAmount = maxDestAmount;
         }
+
+        tradeData.totalFeeWei = tradeData.tradeWeiAmount * takerFeeBps * tradeData.feePayingPercentage / (BPS * 100) ;
+        tradeData.tradeWeiAmount -= tradeData.totalFeeWei;
+
+        if (src != ETH_TOKEN_ADDRESS) {
+            actualSrcAmount = calcTradeSrcAmounts(ETH_DECIMALS, tradeData.tokenToEth.decimals, tradeData.tradeWeiAmount, tradeData.tokenToEth.rates, tradeData.tokenToEth.splitValuesPercent);
+        } else {
+            actualSrcAmount = tradeData.tradeWeiAmount;
+        }
+    
+        require(actualSrcAmount <= srcAmount);
     }
 
     event KyberTrade(address indexed trader, IERC20 src, IERC20 dest, uint srcAmount, uint dstAmount,
@@ -637,11 +632,11 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
                 ETH_TOKEN_ADDRESS,
                 address(this),
                 tradeData,
-                tradeData.weiAmount));
+                tradeData.tradeWeiAmount));
 
         require(doReserveTrades(     //Eth to dest
                 ETH_TOKEN_ADDRESS,
-                tradeData.weiAmount,
+                tradeData.tradeWeiAmount,
                 tradeInput.dest,
                 tradeInput.destAddress,
                 tradeData,

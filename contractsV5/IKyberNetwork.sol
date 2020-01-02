@@ -38,7 +38,7 @@ interface IKyberNetwork {
                 uint[] memory tokenToEthSplit, bytes memory hint);
     function parseHint(bytes calldata hint) external view
         returns(address[] memory ethToTokenReserves, uint[] memory ethToTokenSplits, address[] memory tokenToEthReserves,
-                uint[] memory tokenToEthSplit, bool usePermissionLess);
+                uint[] memory tokenToEthSplit, bool usePermissionLess, uint failingIndex);
     function buildHint(address[] calldata ethToTokenReserves, uint[] calldata ethToTokenSplits,
         address[] calldata tokenToEthReserves, uint[] calldata tokenToEthSplit, bool usePermissionLess) 
         external view returns(bytes memory hint);
