@@ -40,7 +40,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     IKyberReserve[] public reserves;
     mapping(address=>ReserveType) public reserveType;
-    mapping(address=>uint) public reserveFeeBps;
+    mapping(address=>bool) public isFeeLessReserve;
     mapping(address=>address[]) public reservesPerTokenSrc; //reserves supporting token to eth
     mapping(address=>address[]) public reservesPerTokenDest;//reserves support eth to token
 
@@ -347,39 +347,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             sellRates[i] = (IKyberReserve(sellReserves[i])).getConversionRate(token, ETH, amount, block.number);
         }
     }
-
-    // function findBestRateTokenToToken(IERC20 src, IERC20 dest, uint srcAmount, bytes hint) internal view
-    //     returns(BestRateResult result)
-    // {
-    //     //by default we use permission less reserves
-    //     bool usePermissionless = true;
-
-    //     // if hint in first 4 bytes == 'PERM' only permissioned reserves will be used.
-    //     if ((hint.length >= 4) && (keccak256(hint[0], hint[1], hint[2], hint[3]) == keccak256(PERM_HINT))) {
-    //         usePermissionless = false;
-    //     }
-
-    //     uint srcDecimals = getDecimals(src);
-    //     uint destDecimals = getDecimals(dest);
-
-    //     (result.reserve1, result.rateSrcToEth) =
-    //         searchBestRate(src, ETH_TOKEN_ADDRESS, srcAmount, usePermissionless);
-
-    //     result.weiAmount = calcDestAmountWithDecimals(srcDecimals, ETH_DECIMALS, srcAmount, result.rateSrcToEth);
-    //     //if weiAmount is zero, return zero rate to avoid revert in ETH -> token call
-    //     if (result.weiAmount == 0) {
-    //         result.rate = 0;
-    //         return;
-    //     }
-
-    //     (result.reserve2, result.rateEthToDest) =
-    //         searchBestRate(ETH_TOKEN_ADDRESS, dest, result.weiAmount, usePermissionless);
-
-    //     result.destAmount = calcDestAmountWithDecimals(ETH_DECIMALS, destDecimals, result.weiAmount, result.rateEthToDest);
-
-    //     result.rate = calcRateFromQty(srcAmount, result.destAmount, srcDecimals, destDecimals);
-    // }
-
+   
     function listPairs(address reserve, IERC20 token, bool isTokenToEth, bool add) internal {
         uint i;
         address[] storage reserveArr = reservesPerTokenDest[address(token)];
@@ -411,74 +379,83 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
     //  It has been tested, reviewed and found to be clear enough.
     //@dev this function always src or dest are ether. can't do token to token
-    function searchBestRate(IERC20 src, IERC20 dest, uint srcAmount, bool usePermissionless)
+    function searchBestDestAmount(IERC20 src, IERC20 dest, uint srcAmount, bool usePermissionless)
         public
         view
-        returns(address reserve, uint rate, uint reserveFee)
+        returns(address reserve, uint destAmount, bool isPayingFees)
     {
-        //todo: exclude taker fees
-        uint bestRate = 0;
+        //todo: read isPayingFees once.
+        uint bestDestAmount = 0;
         uint bestReserve = 0;
         uint numRelevantReserves = 1; // assume alywas best reserve will be relevant
 
         //return 1 for ether to ether
-        if (src == dest) return (address(reserves[bestReserve]), PRECISION, 0);
+        if (src == dest) return (address(reserves[bestReserve]), PRECISION, false);
 
-        address[] memory reserveArr;
+        address[] memory reserveArr = src == ETH_TOKEN_ADDRESS ? 
+            reservesPerTokenDest[address(dest)] : 
+            reservesPerTokenSrc[address(src)];
 
-        reserveArr = src == ETH_TOKEN_ADDRESS ? reservesPerTokenDest[address(dest)] : reservesPerTokenSrc[address(src)];
+        if (reserveArr.length == 0) return (address(reserves[bestReserve]), 0, false);
 
-        if (reserveArr.length == 0) return (address(reserves[bestReserve]), bestRate, 0);
-
-        uint[] memory rates = new uint[](reserveArr.length);
+        uint[] memory destAmounts = new uint[](reserveArr.length);
         uint[] memory reserveCandidates = new uint[](reserveArr.length);
         uint i;
+        uint rate;
+        uint srcAmountWithFee;
 
         for (i = 0; i < reserveArr.length; i++) {
             //list all reserves that have this token.
             if (!usePermissionless && reserveType[reserveArr[i]] == ReserveType.PERMISSIONLESS) {
                 continue;
             }
+            
+            srcAmountWithFee = (src == ETH_TOKEN_ADDRESS && isFeeLessReserve[reserveArr[i]])? srcAmount : 
+                srcAmount * (BPS - takerFeeBps) / BPS;
+            rate = (IKyberReserve(reserveArr[i])).getConversionRate(
+                src, 
+                dest, 
+                srcAmountWithFee, 
+                block.number);
 
-            rates[i] = (IKyberReserve(reserveArr[i])).getConversionRate(src, dest, srcAmount, block.number);
-
-            if (rates[i] > bestRate) {
+            destAmounts[i] = srcAmountWithFee * rate / PRECISION;
+            destAmounts[i] = (dest == ETH_TOKEN_ADDRESS && isFeeLessReserve[reserveArr[i]])? destAmounts[i] : 
+                destAmounts[i] * (BPS - takerFeeBps) / BPS;
+            
+            if (destAmounts[i] > bestDestAmount) {
                 //best rate is highest rate
-                bestRate = rates[i];
+                bestDestAmount = destAmounts[i];
                 bestReserve = i;
             }
         }
 
-        if (bestRate > 0) {
+        if(bestDestAmount == 0) return (address(reserves[bestReserve]), 0, false);
+        
+        reserveCandidates[0] = bestReserve;
+        
+        // if this reserve pays fee its acutal rate is less. so smallestRelevantRate is smaller.
+        uint smallestRelevantDestAmount = bestDestAmount * BPS / (10000 + negligibleRateDiff);
+
+        for (i = 0; i < reserveArr.length; i++) {
             
-            reserveCandidates[0] = bestReserve;
+            if (i == bestReserve) continue;
             
-            // if this reserve pays fee its acutal rate is less. so smallestRelevantRate is smaller.
-            uint smallestRelevantRate = (bestRate * BPS) / (10000 + negligibleRateDiff) * 
-                reserveFeeBps[reserveArr[bestReserve]] > 0 ? (BPS - takerFeeBps) / BPS : 1;
-
-            for (i = 0; i < reserveArr.length; i++) {
-                
-                if (i == bestReserve) continue;
-                
-                if ((rates[i] > smallestRelevantRate) && //first assume this reserve doesn't pay fee
-                    (smallestRelevantRate < (rates[i] * reserveFeeBps[reserveArr[i]] > 0 ? (BPS - takerFeeBps) / BPS : 1))) 
-                {
-                    reserveCandidates[numRelevantReserves++] = i;
-                }
+            if (destAmounts[i] > smallestRelevantDestAmount) 
+            {
+                reserveCandidates[numRelevantReserves++] = i;
             }
-
-            if (numRelevantReserves > 1) {
-                //when encountering small rate diff from bestRate. draw from relevant reserves
-                bestReserve = reserveCandidates[uint(blockhash(block.number-1)) % numRelevantReserves];
-            } else {
-                bestReserve = reserveCandidates[0];
-            }
-
-            bestRate = rates[bestReserve];
         }
 
-        return (reserveArr[bestReserve], bestRate, reserveFeeBps[reserveArr[bestReserve]]);
+        if (numRelevantReserves > 1) {
+            //when encountering small rate diff from bestRate. draw from relevant reserves
+            bestReserve = reserveCandidates[uint(blockhash(block.number-1)) % numRelevantReserves];
+        } else {
+            bestReserve = reserveCandidates[0];
+        }
+
+        bestDestAmount = destAmounts[bestReserve];
+    
+        return (reserveArr[bestReserve], bestDestAmount, isFeeLessReserve[reserveArr[bestReserve]]);
     }
     /* solhint-enable code-complexity */
 
