@@ -508,7 +508,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint totalFeeWei;
         uint tradeWeiAmount;
         uint destAmount;
-        uint rate; //the accumulated rate for full trade
+        uint rateWithFee; // rate for full trade, after accounting for fees
+        uint rateNoFee; // rate for full trade, without fees
     }
 
     // accumulate fee wei
@@ -523,28 +524,107 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     // tradeDestAmount
     // percent of trade that is fee paying.
     {
-        uint accumulatedFeeWei; //save all fee in Wei
+        IKyberReserve reserve;
+        uint rate;
+        uint amountSoFarAfterFee;
+        uint amountSoFarNoFee;
+        uint percentageSoFar; //need this to calculate feePayingPercentage
+        uint splitAmountAfterFee; //to calculate rate with fee
+        uint splitAmountNoFee; //to calculate rate without fee
+        uint destAmountNoFee;
+        tradeData.tokenToEth.decimals = getDecimals(src);
+        tradeData.ethToToken.decimals = getDecimals(dest);
 
         // token to Eth
         ///////////////
         // if hinted reserves, find rates.
-        // calculate accumulated amounts
+        if (tradeData.tokenToEth.addresses.length > 0) {
+            for (i = 0; i < tradeData.tokenToEth.addresses.length; i++) {
+                reserve = tradeData.tokenToEth.addresses[i];
+                //calculate split and corresponding trade amounts
+                splitAmountNoFee = (i == tradeData.tokenToEth.splitValuesPercent.length) ? (srcAmount - amountSoFarNoFee) : tradeData.tokenToEth.splitValuesPercent[i] * srcAmount /  100;
+                amountSoFarNoFee += splitAmountNoFee;
+                tradeData.tokenToEth.rates[i] = reserve.getConversionRate(src, dest, splitAmountNoFee, block.number);
+                tradeData.tradeWeiAmount += calcDestAmountWithDecimals(tradeData.tokenToEth.decimals, ETH_DECIMALS, splitAmountNoFee, rate);
 
-        // else find best rate
+                //account for fees
+                if (tradeData.tokenToEth.isPayingFees[i]) {
+                    tradeData.feePayingPercentage += (i == tradeData.tokenToEth.splitValuesPercent.length) ? (100 - percentageSoFar) : tradeData.tokenToEth.splitValuesPercent[i];
+                }
+                percentageSoFar += tradeData.tokenToEth.splitValuesPercent[i];
+            }
+        } else {
+            // else find best rate
+            (reserve, rate, isPayingFees) = searchBestRate(src, ETH_TOKEN_ADDRESS, srcAmount, tradeData.usePermissionless);
+            // save into tradeData
+            tradeData.tokenToEth.addresses[0] = reserve;
+            tradeData.tokenToEth.rates[0] = rate;
+            tradeData.tokenToEth.splitValuesPercent[0] = 100; //max percentage amount
+            tradeData.tradeWeiAmount = calcDestAmountWithDecimals(tradeData.tokenToEth.decimals, ETH_DECIMALS, srcAmount, rate);
 
+            //account for fees
+            if (isPayingFees) {
+                tradeData.feePayingPercentage = 100; //max percentage amount for token -> ETH
+            }
+        }
 
+        //add percentage for ETH -> token reserves
+        //if there is no ETH -> token reserve specified, percentage added will be zero, to be handled after searching best rate
+        for (i = 0; i < tradeData.ethToToken.addresses.length; i++) {
+            if (tradeData.ethToToken.isPayingFees[i]) {
+                tradeData.feePayingPercentage += (i == tradeData.ethToToken.splitValuesPercent.length-1) ? (100 - percentageSoFar) : tradeData.ethToToken.splitValuesPercent[i];
+            }
+            percentageSoFar += tradeData.tokenToEth.splitValuesPercent[i];
+        }
+
+        //fee deduction
+        //no fee deduction occurs if there is no ETH -> token reserve specified
+        tradeData.totalFeeWei = tradeData.tradeWeiAmount * takerFeeBps / BPS * tradeData.feePayingPercentage / 100;
+        uint tradeWeiAmountAfterFee = tradeData.tradeWeiAmount - tradeData.feeInWei;        
+
+        //reset amountSoFarNoFee
+        //no need to reset percentageSoFar, as the only case to handle is after searching for best ETH -> token reserve
+        amountSoFarNoFee = 0;
 
         // Eth to token
         ///////////////
         // if hinted reserves, find rates and save.
+        if (tradeData.ethToToken.addresses.length > 0) {
+            for (i = 0; i < tradeData.ethToToken.addresses.length; i++) {
+                IKyberReserve reserve = tradeData.ethToToken.addresses[i];
+                //calculate split amount, with and without fee
+                splitAmountAfterFee = (i == tradeData.ethToToken.splitValuesPercent.length-1) ? (tradeWeiAmountAfterFee - amountSoFarAfterFee) : tradeData.ethToToken.splitValuesPercent[i] * tradeWeiAmountAfterFee /  100;
+                splitAmountNoFee = (i == tradeData.ethToToken.splitValuesPercent.length-1) ? (tradeWeiAmount - amountSoFarNoFee) : tradeData.ethToToken.splitValuesPercent[i] * tradeWeiAmount /  100;
+                //calculate split and corresponding trade amounts
+                amountSoFarAfterFee += splitAmountAfterFee;
+                amountSoFarNoFee += splitAmountNoFee;
+                //to save gas, we make just 1 conversion rate call with splitAmountAfterFee
+                rate = reserve.getConversionRate(src, dest, splitAmountAfterFee, block.number);
 
-        // else find best rate
-        // calculate accumulated amounts
+                //using same rate, calculate both destAmounts (with and without fees)
+                tradeData.destAmount += calcDestAmountWithDecimals(ETH_DECIMALS, tradeData.ethToToken.decimals, splitAmountAfterFee, rate);
+                destAmountNoFee += calcDestAmountWithDecimals(ETH_DECIMALS, tradeData.ethToToken.decimals, splitAmountNoFee, rate);
 
+                //save rate data
+                tradeData.ethToToken.rates[i] = rate;
+            }
+        } else {
+            // else, search best reserve and its rate
+            // issue: To save gas, I have to search best rate with token -> ETH fee deduction
+            (reserve, rate, isFeePaying) = searchBestRate(ETH_TOKEN_ADDRESS, dest, tradeWeiAmountAfterFee, tradeData.usePermissionless);
+            // deduct fee from tradeWeiAmount if necessary
+            if (isFeePaying) {
+                tradeWeiAmountAfterFee -= tradeWeiAmountAfterFee * takerFeeBps / BPS;
+                tradeData.feePayingPercentage += 100; //max percentage amount for ETH -> token
+            }
 
-        // dest amount sbutract total fee wei
-
-        // calc final rate
+            //calculate destAmounts (with and without fees)
+            tradeData.destAmount = calcDestAmountWithDecimals(ETH_DECIMALS, tradeData.ethToToken.decimals, tradeWeiAmountAfterFee, rate);
+            destAmountNoFee = calcDestAmountWithDecimals(ETH_DECIMALS, tradeData.ethToToken.decimals, tradeData.tradeWeiAmount, rate);
+        }
+        // calc final rates
+        tradeData.rateWithFee = calcRateFromQty(srcAmount, tradeData.destAmount, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
+        tradeData.rateNoFee = calcRateFromQty(srcAmount, destAmountNoFee, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
     }
 
     function handleFees(TradeData memory tradeData) internal returns(bool) {
