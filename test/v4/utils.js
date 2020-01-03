@@ -1,11 +1,8 @@
-let MockUtils = artifacts.require("./mockContracts/MockUtils.sol")
+const MockUtils = artifacts.require("./mockContracts/MockUtils.sol")
 
 const Helper = require("./helper.js");
 const BN = web3.utils.BN;
 
-const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
-const lowerCaseEthAdd = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-const zeroAddress = '0x0000000000000000000000000000000000000000';
 const PRECISION = new BN(10).pow(new BN(18));
 const MAX_QTY = new BN(10).pow(new BN(28));
 const MAX_RATE = new BN(10).pow(new BN(24));
