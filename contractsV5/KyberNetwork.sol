@@ -513,7 +513,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     }
 
     // accumulate fee wei
-    function findRatesAndAmounts(IERC20 src, IERC20 dst, uint srcAmount, TradeData memory tradeData) internal 
+    function findRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, TradeData memory tradeData) internal 
     // function should set following data for E2T and T2E:
     // reserve addresses array
     // reserve rate array
@@ -531,6 +531,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint amountSoFarNoFee;
         uint splitAmountAfterFee; //to calculate rate with fee
         uint splitAmountNoFee; //to calculate rate without fee
+        bool isPayingFees;
         tradeData.tokenToEth.decimals = getDecimals(src);
         tradeData.ethToToken.decimals = getDecimals(dest);
 
@@ -538,7 +539,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         ///////////////
         // if hinted reserves, find rates.
         if (tradeData.tokenToEth.addresses.length > 0) {
-            for (i = 0; i < tradeData.tokenToEth.addresses.length; i++) {
+            for (uint i = 0; i < tradeData.tokenToEth.addresses.length; i++) {
                 reserve = tradeData.tokenToEth.addresses[i];
                 //calculate split and corresponding trade amounts
                 splitAmountNoFee = (i == tradeData.tokenToEth.splitValuesPercent.length) ? (srcAmount - amountSoFarNoFee) : tradeData.tokenToEth.splitValuesPercent[i] * srcAmount /  100;
@@ -578,7 +579,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         //add percentage for ETH -> token reserves
         //if there is no ETH -> token reserve specified, percentage added will be zero, to be handled after searching best rate
-        for (i = 0; i < tradeData.ethToToken.addresses.length; i++) {
+        for (uint i = 0; i < tradeData.ethToToken.addresses.length; i++) {
             if (tradeData.ethToToken.isPayingFees[i]) {
                 tradeData.feePayingPercentage += (i == tradeData.ethToToken.splitValuesPercent.length) ? (100 - percentageSoFar) : tradeData.ethToToken.splitValuesPercent[i];
             }
@@ -598,7 +599,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         ///////////////
         // if hinted reserves, find rates and save.
         if (tradeData.ethToToken.addresses.length > 0) {
-            for (i = 0; i < tradeData.ethToToken.addresses.length; i++) {
+            for (uint i = 0; i < tradeData.ethToToken.addresses.length; i++) {
                 IKyberReserve reserve = tradeData.ethToToken.addresses[i];
                 //calculate split amount, with and without fee
                 splitAmountAfterFee = (i == tradeData.ethToToken.splitValuesPercent.length) ? (tradeWeiAmountAfterFee - amountSoFarAfterFee) : tradeData.ethToToken.splitValuesPercent[i] * tradeWeiAmountAfterFee /  100;
@@ -619,9 +620,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         } else {
             // else, search best reserve and its rate
             // issue: To save gas, I have to search best rate with token -> ETH fee deduction
-            (reserve, rate, isFeePaying) = searchBestRate(ETH_TOKEN_ADDRESS, dest, tradeWeiAmountAfterFee, tradeData.usePermissionless);
+            (reserve, rate, isPayingFees) = searchBestRate(ETH_TOKEN_ADDRESS, dest, tradeWeiAmountAfterFee, tradeData.usePermissionless);
             // deduct fee from tradeWeiAmount if necessary
-            if (isFeePaying) {
+            if (isPayingFees) {
                 tradeWeiAmountAfterFee -= tradeWeiAmountAfterFee * takerFeeBps / BPS;
                 tradeData.feePayingPercentage += 100; //max percentage amount for ETH -> token
             }
