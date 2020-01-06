@@ -541,7 +541,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint destAmountWithNetworkFee;
         uint actualDestAmount; // all fees
 
-        // todo: do we need to save rate locally. seems dest amoutns enough.
+        // todo: do we need to save rate locally. seems dest amounts enough.
         // uint rateNoFee;
         uint rateWithNetworkFee;
         // uint rateWithAllFees;
