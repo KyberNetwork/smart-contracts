@@ -506,10 +506,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         uint feePayingPercentage; // what part of this trade is fee paying. for token to token - up to 200%
         uint totalFeeWei;
-        uint tradeWeiAmount;
-        uint destAmount;
-        uint rateWithFee; // rate for full trade, after accounting for fees
-        uint rateNoFee; // rate for full trade, without fees
+        uint tradeWeiAmountNoFee;
+        uint destAmountWithFee;
+        uint destAmountNoFee;
+        uint rate; // rate for full trade, after accounting for fees
     }
 
     // accumulate fee wei
@@ -526,12 +526,11 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     {
         IKyberReserve reserve;
         uint rate;
+        uint percentageSoFar; //need this to calculate feePayingPercentage
         uint amountSoFarAfterFee;
         uint amountSoFarNoFee;
-        uint percentageSoFar; //need this to calculate feePayingPercentage
         uint splitAmountAfterFee; //to calculate rate with fee
         uint splitAmountNoFee; //to calculate rate without fee
-        uint destAmountNoFee;
         tradeData.tokenToEth.decimals = getDecimals(src);
         tradeData.ethToToken.decimals = getDecimals(dest);
 
@@ -545,7 +544,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
                 splitAmountNoFee = (i == tradeData.tokenToEth.splitValuesPercent.length) ? (srcAmount - amountSoFarNoFee) : tradeData.tokenToEth.splitValuesPercent[i] * srcAmount /  100;
                 amountSoFarNoFee += splitAmountNoFee;
                 tradeData.tokenToEth.rates[i] = reserve.getConversionRate(src, dest, splitAmountNoFee, block.number);
-                tradeData.tradeWeiAmount += calcDestAmountWithDecimals(tradeData.tokenToEth.decimals, ETH_DECIMALS, splitAmountNoFee, rate);
+                tradeData.tradeWeiAmountNoFee += calcDestAmountWithDecimals(tradeData.tokenToEth.decimals, ETH_DECIMALS, splitAmountNoFee, rate);
 
                 //account for fees
                 if (tradeData.tokenToEth.isPayingFees[i]) {
@@ -560,7 +559,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             tradeData.tokenToEth.addresses[0] = reserve;
             tradeData.tokenToEth.rates[0] = rate;
             tradeData.tokenToEth.splitValuesPercent[0] = 100; //max percentage amount
-            tradeData.tradeWeiAmount = calcDestAmountWithDecimals(tradeData.tokenToEth.decimals, ETH_DECIMALS, srcAmount, rate);
+            tradeData.tradeWeiAmountNoFee = calcDestAmountWithDecimals(tradeData.tokenToEth.decimals, ETH_DECIMALS, srcAmount, rate);
 
             //account for fees
             if (isPayingFees) {
@@ -568,19 +567,28 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             }
         }
 
+        //handle tradeWeiAmountNoFee being zero
+        if (tradeData.tradeWeiAmountNoFee == 0) {
+            tradeData.rate = 0;
+            return;
+        }
+
+        //reset percentageSoFar
+        percentageSoFar = 0;
+
         //add percentage for ETH -> token reserves
         //if there is no ETH -> token reserve specified, percentage added will be zero, to be handled after searching best rate
         for (i = 0; i < tradeData.ethToToken.addresses.length; i++) {
             if (tradeData.ethToToken.isPayingFees[i]) {
-                tradeData.feePayingPercentage += (i == tradeData.ethToToken.splitValuesPercent.length-1) ? (100 - percentageSoFar) : tradeData.ethToToken.splitValuesPercent[i];
+                tradeData.feePayingPercentage += (i == tradeData.ethToToken.splitValuesPercent.length) ? (100 - percentageSoFar) : tradeData.ethToToken.splitValuesPercent[i];
             }
             percentageSoFar += tradeData.tokenToEth.splitValuesPercent[i];
         }
 
         //fee deduction
         //no fee deduction occurs if there is no ETH -> token reserve specified
-        tradeData.totalFeeWei = tradeData.tradeWeiAmount * takerFeeBps / BPS * tradeData.feePayingPercentage / 100;
-        uint tradeWeiAmountAfterFee = tradeData.tradeWeiAmount - tradeData.feeInWei;        
+        tradeData.totalFeeWei = tradeData.tradeWeiAmountNoFee * takerFeeBps / BPS * tradeData.feePayingPercentage / 100;
+        uint tradeWeiAmountAfterFee = tradeData.tradeWeiAmountNoFee - tradeData.feeInWei;
 
         //reset amountSoFarNoFee
         //no need to reset percentageSoFar, as the only case to handle is after searching for best ETH -> token reserve
@@ -593,8 +601,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             for (i = 0; i < tradeData.ethToToken.addresses.length; i++) {
                 IKyberReserve reserve = tradeData.ethToToken.addresses[i];
                 //calculate split amount, with and without fee
-                splitAmountAfterFee = (i == tradeData.ethToToken.splitValuesPercent.length-1) ? (tradeWeiAmountAfterFee - amountSoFarAfterFee) : tradeData.ethToToken.splitValuesPercent[i] * tradeWeiAmountAfterFee /  100;
-                splitAmountNoFee = (i == tradeData.ethToToken.splitValuesPercent.length-1) ? (tradeWeiAmount - amountSoFarNoFee) : tradeData.ethToToken.splitValuesPercent[i] * tradeWeiAmount /  100;
+                splitAmountAfterFee = (i == tradeData.ethToToken.splitValuesPercent.length) ? (tradeWeiAmountAfterFee - amountSoFarAfterFee) : tradeData.ethToToken.splitValuesPercent[i] * tradeWeiAmountAfterFee /  100;
+                splitAmountNoFee = (i == tradeData.ethToToken.splitValuesPercent.length) ? (tradeData.tradeWeiAmountNoFee - amountSoFarNoFee) : tradeData.ethToToken.splitValuesPercent[i] * tradeData.tradeWeiAmountNoFee /  100;
                 //calculate split and corresponding trade amounts
                 amountSoFarAfterFee += splitAmountAfterFee;
                 amountSoFarNoFee += splitAmountNoFee;
@@ -602,8 +610,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
                 rate = reserve.getConversionRate(src, dest, splitAmountAfterFee, block.number);
 
                 //using same rate, calculate both destAmounts (with and without fees)
-                tradeData.destAmount += calcDestAmountWithDecimals(ETH_DECIMALS, tradeData.ethToToken.decimals, splitAmountAfterFee, rate);
-                destAmountNoFee += calcDestAmountWithDecimals(ETH_DECIMALS, tradeData.ethToToken.decimals, splitAmountNoFee, rate);
+                tradeData.destAmountWithFee += calcDestAmountWithDecimals(ETH_DECIMALS, tradeData.ethToToken.decimals, splitAmountAfterFee, rate);
+                tradeData.destAmountNoFee += calcDestAmountWithDecimals(ETH_DECIMALS, tradeData.ethToToken.decimals, splitAmountNoFee, rate);
 
                 //save rate data
                 tradeData.ethToToken.rates[i] = rate;
@@ -619,12 +627,11 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             }
 
             //calculate destAmounts (with and without fees)
-            tradeData.destAmount = calcDestAmountWithDecimals(ETH_DECIMALS, tradeData.ethToToken.decimals, tradeWeiAmountAfterFee, rate);
-            destAmountNoFee = calcDestAmountWithDecimals(ETH_DECIMALS, tradeData.ethToToken.decimals, tradeData.tradeWeiAmount, rate);
+            tradeData.destAmountWithFee = calcDestAmountWithDecimals(ETH_DECIMALS, tradeData.ethToToken.decimals, tradeWeiAmountAfterFee, rate);
+            tradeData.destAmountNoFee = calcDestAmountWithDecimals(ETH_DECIMALS, tradeData.ethToToken.decimals, tradeData.tradeWeiAmountNoFee, rate);
         }
-        // calc final rates
-        tradeData.rateWithFee = calcRateFromQty(srcAmount, tradeData.destAmount, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
-        tradeData.rateNoFee = calcRateFromQty(srcAmount, destAmountNoFee, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
+        // calc final rate
+        tradeData.rate = calcRateFromQty(srcAmount, tradeData.destAmountWithFee, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
     }
 
     function handleFees(TradeData memory tradeData) internal returns(bool) {
