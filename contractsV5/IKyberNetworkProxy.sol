@@ -5,7 +5,7 @@ import "./IERC20.sol";
 
 /// @title Kyber Network interface
 interface IKyberNetworkProxy {
-    // backward comaptible - don't modify
+    // backward compatible - don't modify
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
         returns (uint expectedRate, uint worsteRate);
 

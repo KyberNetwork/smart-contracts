@@ -16,10 +16,6 @@ interface IKyberNetwork {
     function enabled() external view returns(bool);
     function info(bytes32 id) external view returns(uint);
 
-    // new APIs
-    function getExpectedRateWithFee(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps) external view
-        returns (uint expectedRateNoFees, uint expectedRateWithNetworkFees, uint expectedRateWithAllFees, uint worstRateAllFees);
-
     // backward compatible: don't modify
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
         returns (uint expectedRate, uint worstRate);
@@ -27,7 +23,7 @@ interface IKyberNetwork {
     // todo: create connector that support funciton signature without calldata and call the one with call data.
     function tradeWithHint(address trader, ERC20 src, uint srcAmount, ERC20 dest, address destAddress,
         uint maxDestAmount, uint minConversionRate, address walletId, bytes calldata hint) external payable returns(uint);
-    
+
     // new APIs
     function getExpectedRateWithFee(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps) external view
         returns (uint expectedRateNoFees, uint expectedRateWithNetworkFees, uint expectedRateWithAllFees, uint worstRateAllFees);
