@@ -140,7 +140,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tradeData.input.platformFeeBps = platformFeeBps;
 
         setTradeDataHint(tradeData, e2tHintType, e2tReserveIds, e2tSplitsBps, t2eHintType, t2eReserveIds, t2eSplitsBps);
-        
+
         return trade(tradeData);
     }
 
