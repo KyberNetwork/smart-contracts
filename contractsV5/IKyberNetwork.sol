@@ -15,8 +15,7 @@ interface IKyberNetwork {
     function maxGasPrice() external view returns(uint);
     function enabled() external view returns(bool);
     function info(bytes32 id) external view returns(uint);
-    
-<<<<<<< HEAD
+
     // new APIs
     function getExpectedRateWithFee(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps) external view
         returns (uint expectedRateNoFees, uint expectedRateWithNetworkFees, uint expectedRateWithAllFees, uint worstRateAllFees);
