@@ -45,7 +45,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     mapping(address=>address[]) public reservesPerTokenSrc; //reserves supporting token to eth
     mapping(address=>address[]) public reservesPerTokenDest;//reserves support eth to token
 
-    enum ReserveType {NONE, PERMISSIONED, PERMISSIONLESS}
     bytes internal constant EMPTY_HINT = "";
 
     constructor(address _admin) public {
@@ -322,7 +321,11 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         return maxGasPriceValue;
     }
 
-     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
+    function updateTakerFee() public returns(uint takerFeeBps) {
+        takerFeeBps = getAndUpdateTakerFee();    
+    }
+    
+    function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
         returns (uint expectedRate, uint worstRate)
     {
         require(expectedRateContract != IExpectedRate(0));
@@ -495,11 +498,12 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     }
     /* solhint-enable code-complexity */
 
-    function initTradeData (uint takerPlatformFeeBps, bytes memory hint)  internal returns (TradeData memory ) {
+    function initTradeData (uint takerPlatformFeeBps, bytes memory hint, TradeData memory tradeData) internal 
+    {
         // parse hint and set reserves.
         // if no hint don't init arrays.
         
-        uint takerFeeBps = getAndUpdateTakerFee();
+        tradeData.takerFeeBps = getAndUpdateTakerFee();
         //
     }
 
@@ -784,6 +788,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // todo: read data. decode. 
         // todo: if expired read from DAO and encode
         // todo: don't revert if DAO reverts. just return exsiting value.
+        // handle situation where DAO doesn't exist
     }
     
     function decodeTakerFee(uint feeData) internal pure returns(uint expiryBlock, uint takerFeeDataDecoded) {
