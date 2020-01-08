@@ -4,18 +4,156 @@ import "./WithdrawableV5.sol";
 import "./UtilsV5.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberNetworkProxy.sol";
-import "./ISimpleKyberNetwork.sol";
+import "./ISimpleKyberProxy.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network proxy for main contract
-contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberNetwork, Withdrawable, Utils {
+contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawable, Utils {
 
     IKyberNetwork public kyberNetworkContract;
 
-    function KyberNetworkProxy(address _admin) public {
-        require(_admin != address(0));
+    constructor(address _admin) public {
+        require(_admin != address(0), "Proxy: admin 0 address not allowed");
         admin = _admin;
+    }
+
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev makes a trade between src and dest token and send dest token to destAddress
+    /// @param src Src token
+    /// @param srcAmount amount of src tokens
+    /// @param dest Destination token
+    /// @param destAddress Address to send tokens to
+    /// @param maxDestAmount A limit on the amount of dest tokens
+    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
+    /// @param platformWallet is the wallet ID to send part of the fees
+    /// @param hint will give hints for the trade.
+    /// @return amount of actual dest tokens
+    function tradeWithHintAndPlatformFee(
+        IERC20 src,
+        uint srcAmount,
+        IERC20 dest,
+        address payable destAddress,
+        uint maxDestAmount,
+        uint minConversionRate,
+        address payable platformWallet,
+        uint platformFeeBps,
+        bytes memory hint
+    )
+        public
+        payable
+        returns(uint)
+    {
+        require(src == ETH_TOKEN_ADDRESS || msg.value == 0);
+
+        UserBalance memory userBalanceBefore;
+
+        userBalanceBefore.srcBalance = getBalance(src, msg.sender);
+        userBalanceBefore.destBalance = getBalance(dest, destAddress);
+
+        if (src == ETH_TOKEN_ADDRESS) {
+            userBalanceBefore.srcBalance += msg.value;
+        } else {
+            require(src.transferFrom(msg.sender, address(kyberNetworkContract), srcAmount));
+        }
+
+        (uint finalDestAmount, uint destAmountBeforeFee) = kyberNetworkContract.tradeWithHint.value(msg.value)(
+            msg.sender,
+            src,
+            srcAmount,
+            dest,
+            destAddress,
+            maxDestAmount,
+            minConversionRate,
+            platformWallet,
+            platformFeeBps,
+            hint
+        );
+
+        TradeOutcome memory tradeOutcome = calculateTradeOutcome(
+            userBalanceBefore.srcBalance,
+            userBalanceBefore.destBalance,
+            src,
+            dest,
+            destAddress
+        );
+
+        require(destAmountBeforeFee == tradeOutcome.userDeltaDestAmount);
+        require(tradeOutcome.userDeltaDestAmount <= maxDestAmount);
+        require(tradeOutcome.actualRate >= minConversionRate);
+
+        emit ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcAmount, tradeOutcome.userDeltaDestAmount);
+        
+        return tradeOutcome.userDeltaDestAmount;
+    }
+    
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev makes a trade between src and dest token and send dest token to destAddress
+    /// @param src Src token
+    /// @param srcAmount amount of src tokens
+    /// @param dest Destination token
+    /// @param destAddress Address to send tokens to
+    /// @param maxDestAmount A limit on the amount of dest tokens
+    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
+    /// @param platformWallet is the wallet ID to send part of the fees
+    /// @param hint will give hints for the trade.
+    /// @return amount of actual dest tokens
+    function tradeWithHint(
+        IERC20 src,
+        uint srcAmount,
+        IERC20 dest,
+        address payable destAddress,
+        uint maxDestAmount,
+        uint minConversionRate,
+        address payable platformWallet,
+        bytes memory hint
+    )
+        public
+        payable
+        returns(uint)
+    {
+        require(src == ETH_TOKEN_ADDRESS || msg.value == 0);
+
+        UserBalance memory userBalanceBefore;
+
+        userBalanceBefore.srcBalance = getBalance(src, msg.sender);
+        userBalanceBefore.destBalance = getBalance(dest, destAddress);
+
+        if (src == ETH_TOKEN_ADDRESS) {
+            userBalanceBefore.srcBalance += msg.value;
+        } else {
+            require(src.transferFrom(msg.sender, address(kyberNetworkContract), srcAmount));
+        }
+
+        uint platformFeeBps = getFeeBpsForWallet(platformWallet);
+        
+        (uint finalDestAmount, uint destAmountBeforeFee) = kyberNetworkContract.tradeWithHint.value(msg.value)(
+            msg.sender,
+            src,
+            srcAmount,
+            dest,
+            destAddress,
+            maxDestAmount,
+            minConversionRate,
+            platformWallet,
+            platformFeeBps,
+            hint
+        );
+
+        TradeOutcome memory tradeOutcome = calculateTradeOutcome(
+            userBalanceBefore.srcBalance,
+            userBalanceBefore.destBalance,
+            src,
+            dest,
+            destAddress
+        );
+
+        require(destAmountBeforeFee == tradeOutcome.userDeltaDestAmount);
+        require(tradeOutcome.userDeltaDestAmount <= maxDestAmount);
+        require(tradeOutcome.actualRate >= minConversionRate);
+
+        emit ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcAmount, tradeOutcome.userDeltaDestAmount);
+        return tradeOutcome.userDeltaDestAmount;
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
@@ -26,20 +164,20 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberNetwork, Withdrawa
     /// @param destAddress Address to send tokens to
     /// @param maxDestAmount A limit on the amount of dest tokens
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
-    /// @param walletId is the wallet ID to send part of the fees
+    /// @param platformWallet is the wallet ID to send part of the fees
     /// @return amount of actual dest tokens
     function trade(
         IERC20 src,
         uint srcAmount,
         IERC20 dest,
-        address destAddress,
+        address payable destAddress,
         uint maxDestAmount,
         uint minConversionRate,
-        address walletId
+        address payable platformWallet
     )
-    public
-    payable
-    returns(uint)
+        public
+        payable
+        returns(uint)
     {
         bytes memory hint;
 
@@ -50,9 +188,86 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberNetwork, Withdrawa
             destAddress,
             maxDestAmount,
             minConversionRate,
-            walletId,
+            platformWallet,
             hint
         );
+    }
+
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev makes a trade between src and dest token and send dest token to destAddress
+    /// @param src Src token
+    /// @param srcAmount amount of src tokens
+    /// @param dest Destination token
+    /// @param destAddress Address to send tokens to
+    /// @param maxDestAmount A limit on the amount of dest tokens
+    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
+    /// @param platformWallet is the wallet ID to send part of the fees
+    /// @return amount of actual dest tokens
+    function tradeWithParsedHint(
+        IERC20 src,
+        uint srcAmount,
+        IERC20 dest,
+        address payable destAddress,
+        uint maxDestAmount,
+        uint minConversionRate,
+        address payable platformWallet,
+        IKyberNetwork.HintType E2THintType,
+        uint[] memory E2TReserveIds,
+        uint[] memory E2TSplitsBps,
+        IKyberNetwork.HintType T2EHintType,
+        uint[] memory T2EReserveIds,
+        uint[] memory T2ESplitsBps
+    )
+        internal
+        returns(uint)
+    {
+        require(src == ETH_TOKEN_ADDRESS || msg.value == 0);
+
+        UserBalance memory userBalanceBefore;
+
+        userBalanceBefore.srcBalance = getBalance(src, msg.sender);
+        userBalanceBefore.destBalance = getBalance(dest, destAddress);
+
+        if (src == ETH_TOKEN_ADDRESS) {
+            userBalanceBefore.srcBalance += msg.value;
+        } else {
+            require(src.transferFrom(msg.sender, address(kyberNetworkContract),srcAmount));
+        }
+        
+        uint platformFeeBps = getFeeBpsForWallet(platformWallet);
+
+        (uint finalDestAmount, uint destAmountBeforeFee) = kyberNetworkContract.tradeWithParsedHint.value(msg.value)(
+            msg.sender,
+            src,
+            srcAmount,
+            dest,
+            destAddress,
+            maxDestAmount,
+            minConversionRate,
+            platformWallet,
+            platformFeeBps,
+            E2THintType,
+            E2TReserveIds,
+            E2TSplitsBps,
+            T2EHintType,
+            T2EReserveIds,
+            T2ESplitsBps
+        );
+
+        TradeOutcome memory tradeOutcome = calculateTradeOutcome(
+            userBalanceBefore.srcBalance,
+            userBalanceBefore.destBalance,
+            src,
+            dest,
+            destAddress
+        );
+
+        require(destAmountBeforeFee == tradeOutcome.userDeltaDestAmount);
+        require(tradeOutcome.userDeltaDestAmount <= maxDestAmount);
+        require(tradeOutcome.actualRate >= minConversionRate);
+
+        emit ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcAmount, tradeOutcome.userDeltaDestAmount);
+        return tradeOutcome.userDeltaDestAmount;
     }
 
     /// @dev makes a trade between src and dest token and send dest tokens to msg sender
@@ -67,21 +282,21 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberNetwork, Withdrawa
         IERC20 dest,
         uint minConversionRate
     )
-    public
-    returns(uint)
+        public
+        returns(uint)
     {
         bytes memory hint;
 
-        return tradeWithHint(
-            src,
-            srcAmount,
-            dest,
-            msg.sender,
-            MAX_QTY,
-            minConversionRate,
-            0,
-            hint
-        );
+        // return tradeWithHint(
+        //     src,
+        //     srcAmount,
+        //     dest,
+        //     msg.sender,
+        //     MAX_QTY,
+        //     minConversionRate,
+        //     0,
+        //     hint
+        // );
     }
 
     /// @dev makes a trade from Ether to token. Sends token to msg sender
@@ -91,16 +306,16 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberNetwork, Withdrawa
     function swapEtherToToken(IERC20 token, uint minConversionRate) public payable returns(uint) {
         bytes memory hint;
 
-        return tradeWithHint(
-            ETH_TOKEN_ADDRESS,
-            msg.value,
-            token,
-            msg.sender,
-            MAX_QTY,
-            minConversionRate,
-            0,
-            hint
-        );
+        // return tradeWithHint(
+        //     ETH_TOKEN_ADDRESS,
+        //     msg.value,
+        //     token,
+        //     msg.sender,
+        //     MAX_QTY,
+        //     minConversionRate,
+        //     0,
+        //     hint
+        // );
     }
 
     /// @dev makes a trade from token to Ether, sends Ether to msg sender
@@ -111,16 +326,16 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberNetwork, Withdrawa
     function swapTokenToEther(IERC20 token, uint srcAmount, uint minConversionRate) public returns(uint) {
         bytes memory hint;
 
-        return tradeWithHint(
-            token,
-            srcAmount,
-            ETH_TOKEN_ADDRESS,
-            msg.sender,
-            MAX_QTY,
-            minConversionRate,
-            0,
-            hint
-        );
+        // return tradeWithHint(
+        //     token,
+        //     srcAmount,
+        //     ETH_TOKEN_ADDRESS,
+        //     msg.sender,
+        //     MAX_QTY,
+        //     minConversionRate,
+        //     0,
+        //     hint
+        // );
     }
 
     struct UserBalance {
@@ -130,96 +345,23 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberNetwork, Withdrawa
 
     event ExecuteTrade(address indexed trader, IERC20 src, IERC20 dest, uint actualSrcAmount, uint actualDestAmount);
 
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev makes a trade between src and dest token and send dest token to destAddress
-    /// @param src Src token
-    /// @param srcAmount amount of src tokens
-    /// @param dest Destination token
-    /// @param destAddress Address to send tokens to
-    /// @param maxDestAmount A limit on the amount of dest tokens
-    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
-    /// @param walletId is the wallet ID to send part of the fees
-    /// @param hint will give hints for the trade.
-    /// @return amount of actual dest tokens
-    function tradeWithHint(
-        IERC20 src,
-        uint srcAmount,
-        IERC20 dest,
-        address destAddress,
-        uint maxDestAmount,
-        uint minConversionRate,
-        address walletId,
-        bytes hint
-    )
-    public
-    payable
-    returns(uint)
-    {
-        require(src == ETH_TOKEN_ADDRESS || msg.value == 0);
 
-        UserBalance memory userBalanceBefore;
+    event KyberNetworkSet(IKyberNetwork newNetworkContract, IKyberNetwork oldNetworkContract);
 
-        userBalanceBefore.srcBalance = getBalance(src, msg.sender);
-        userBalanceBefore.destBalance = getBalance(dest, destAddress);
+    function setKyberNetworkContract(IKyberNetwork _kyberNetworkContract) public onlyAdmin {
 
-        if (src == ETH_TOKEN_ADDRESS) {
-            userBalanceBefore.srcBalance += msg.value;
-        } else {
-            require(src.transferFrom(msg.sender, kyberNetworkContract, srcAmount));
-        }
+        require(_kyberNetworkContract != IKyberNetwork(0));
 
-        uint reportedDestAmount = kyberNetworkContract.tradeWithHint.value(msg.value)(
-            msg.sender,
-            src,
-            srcAmount,
-            dest,
-            destAddress,
-            maxDestAmount,
-            minConversionRate,
-            walletId,
-            hint
-        );
-
-        TradeOutcome memory tradeOutcome = calculateTradeOutcome(
-            userBalanceBefore.srcBalance,
-            userBalanceBefore.destBalance,
-            src,
-            dest,
-            destAddress
-        );
-
-        require(reportedDestAmount == tradeOutcome.userDeltaDestAmount);
-        require(tradeOutcome.userDeltaDestAmount <= maxDestAmount);
-        require(tradeOutcome.actualRate >= minConversionRate);
-
-        ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcAmount, tradeOutcome.userDeltaDestAmount);
-        return tradeOutcome.userDeltaDestAmount;
-    }
-
-    event KyberNetworkSet(address newNetworkContract, address oldNetworkContract);
-
-    function setKyberNetworkContract(KyberNetworkInterface _kyberNetworkContract) public onlyAdmin {
-
-        require(_kyberNetworkContract != address(0));
-
-        KyberNetworkSet(_kyberNetworkContract, kyberNetworkContract);
+        emit KyberNetworkSet(_kyberNetworkContract, kyberNetworkContract);
 
         kyberNetworkContract = _kyberNetworkContract;
     }
 
-    function getExpectedRate(IERC20 src, IERC20 dest, uint srcQty)
-    public view
-    returns(uint expectedRate, uint worstRate)
+    function getExpectedRate(IERC20 src, IERC20 dest, uint srcQty) 
+        external view
+        returns (uint expectedRateNoFees, uint expectedRateNetworkFees, uint expectedRateAllFees, uint worstRateAllFees)
     {
-        return kyberNetworkContract.getExpectedRate(src, dest, srcQty);
-    }
-
-    function getUserCapInWei(address user) public view returns(uint) {
-        return kyberNetworkContract.getUserCapInWei(user);
-    }
-
-    function getUserCapInTokenWei(address user, IERC20 token) public view returns(uint) {
-        return kyberNetworkContract.getUserCapInTokenWei(user, token);
+        return kyberNetworkContract.getExpectedRate(src, dest, srcQty, 0);
     }
 
     function maxGasPrice() public view returns(uint) {
@@ -242,7 +384,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberNetwork, Withdrawa
 
     function calculateTradeOutcome (uint srcBalanceBefore, uint destBalanceBefore, IERC20 src, IERC20 dest,
         address destAddress)
-    internal returns(TradeOutcome outcome)
+        internal returns(TradeOutcome memory outcome)
     {
         uint userSrcBalanceAfter;
         uint userDestBalanceAfter;
@@ -260,8 +402,14 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberNetwork, Withdrawa
         outcome.actualRate = calcRateFromQty(
             outcome.userDeltaSrcAmount,
             outcome.userDeltaDestAmount,
-            getDecimalsSafe(src),
-            getDecimalsSafe(dest)
+            getDecimals(src),
+            getDecimals(dest)
         );
+    }
+    
+    function getFeeBpsForWallet(address payable platformWallet) internal view returns(uint platformFeeBps) {
+        
+        //todo: get fee from mapping.
+        return(100);
     }
 }
