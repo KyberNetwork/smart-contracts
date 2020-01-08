@@ -11,3 +11,8 @@ interface IERC20 {
     function decimals() external view returns(uint digits);
     event Approval(address indexed _owner, address indexed _spender, uint _value);
 }
+
+
+// to support backward compatible contract name -- so function signature remains same
+contract ERC20 is IERC20 {}
+
