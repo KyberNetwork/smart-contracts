@@ -184,12 +184,12 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         uint maxDestAmount,
         uint minConversionRate,
         address payable platformWallet,
-        IKyberNetwork.HintType E2THintType,
-        uint[] memory E2TReserveIds,
-        uint[] memory E2TSplitsBps,
-        IKyberNetwork.HintType T2EHintType,
-        uint[] memory T2EReserveIds,
-        uint[] memory T2ESplitsBps
+        IKyberNetwork.HintType e2tHintType,
+        uint[] memory e2tReserveIds,
+        uint[] memory e2tSplitsBps,
+        IKyberNetwork.HintType t2eHintType,
+        uint[] memory t2eReserveIds,
+        uint[] memory t2eSplitsBps
     )
         internal
         returns(uint)
@@ -219,12 +219,12 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
             minConversionRate,
             platformWallet,
             platformFeeBps,
-            E2THintType,
-            E2TReserveIds,
-            E2TSplitsBps,
-            T2EHintType,
-            T2EReserveIds,
-            T2ESplitsBps
+            e2tHintType,
+            e2tReserveIds,
+            e2tSplitsBps,
+            t2eHintType,
+            t2eReserveIds,
+            t2eSplitsBps
         );
 
         TradeOutcome memory tradeOutcome = calculateTradeOutcome(

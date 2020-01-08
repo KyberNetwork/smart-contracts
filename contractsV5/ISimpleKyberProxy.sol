@@ -10,24 +10,24 @@ interface ISimpleKyberProxy {
     function swapEtherToToken(IERC20 token, uint minConversionRate) external payable returns(uint destAmount);
     function swapTokenToEther(IERC20 token, uint srcAmount, uint minConversionRate) external returns(uint destAmount);
 
-    function swapTokenToTokenWithMaskOutHint(IERC20 src, uint srcAmount, IERC20 dest, uint[] calldata E2TReserveIds,
-        uint[] calldata T2EReserveIds) external returns(uint destAmount);
+    function swapTokenToTokenWithMaskOutHint(IERC20 src, uint srcAmount, IERC20 dest, uint[] calldata e2tReserveIds,
+        uint[] calldata t2eReserveIds) external returns(uint destAmount);
         
-    function swapTokenToTokenWithMaskInHint(IERC20 src, uint srcAmount, IERC20 dest, uint[] calldata E2TReserveIds,
-        uint[] calldata T2EReserveIds) external returns(uint destAmount);
+    function swapTokenToTokenWithMaskInHint(IERC20 src, uint srcAmount, IERC20 dest, uint[] calldata e2tReserveIds,
+        uint[] calldata t2eReserveIds) external returns(uint destAmount);
         
-    function swapTokenToTokenWithSplitHint(IERC20 src, uint srcAmount, IERC20 dest, uint[] calldata E2TReserveIds, 
-        uint[]  calldata E2TSplitsBps, uint[] calldata T2EReserveIds, uint T2ESplitsBps) external returns(uint destAmount);
+    function swapTokenToTokenWithSplitHint(IERC20 src, uint srcAmount, IERC20 dest, uint[] calldata e2tReserveIds,
+        uint[]  calldata e2tSplitsBps, uint[] calldata t2eReserveIds, uint t2eSplitsBps) external returns(uint destAmount);
 
-    function getExpectedRateWithMaskOutHint(IERC20 src, IERC20 dest, uint srcQty, address platformWallet, uint[] calldata E2TReserveIds,
-        uint[] calldata T2EReserveIds) external view
+    function getExpectedRateWithMaskOutHint(IERC20 src, IERC20 dest, uint srcQty, address platformWallet, uint[] calldata e2tReserveIds,
+        uint[] calldata t2eReserveIds) external view
         returns (uint expectedRate, uint rateAfterNetworkFee, uint worstRateAfterNetworkFee);
 
-    function getExpectedRateWithMaskInHint(IERC20 src, IERC20 dest, uint srcQty, address platformWallet, uint[] calldata E2TReserveIds,
-        uint[] calldata T2EReserveIds) external view
+    function getExpectedRateWithMaskInHint(IERC20 src, IERC20 dest, uint srcQty, address platformWallet, uint[] calldata e2tReserveIds,
+        uint[] calldata t2eReserveIds) external view
         returns (uint expectedRate, uint rateAfterNetworkFee, uint worstRateAfterNetworkFee);
 
-    function getExpectedRateWithSplitHint(IERC20 src, IERC20 dest, uint srcQty, address platformWallet, uint[] calldata E2TReserveIds, 
-        uint[] calldata E2TSplitsBps, uint[] calldata T2EReserveIds, uint T2ESplitsBps) external view
+    function getExpectedRateWithSplitHint(IERC20 src, IERC20 dest, uint srcQty, address platformWallet, uint[] calldata e2tReserveIds,
+        uint[] calldata e2tSplitsBps, uint[] calldata t2eReserveIds, uint t2eSplitsBps) external view
         returns (uint expectedRate, uint rateAfterNetworkFee, uint worstRateAfterNetworkFee);
 }
