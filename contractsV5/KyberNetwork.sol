@@ -523,6 +523,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint takerFeeBps;
         uint platformFeeBps;
         
+        uint numFeePayingReserves;
         uint feePayingReservesBps; // what part of this trade is fee paying. for token to token - up to 200%
         uint takePlatformFeeBps;
         
