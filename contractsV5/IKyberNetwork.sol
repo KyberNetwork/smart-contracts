@@ -20,7 +20,7 @@ interface IKyberNetwork {
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
         returns (uint expectedRate, uint worstRate);
 
-    // todo: create connector that support funciton signature without calldata and call the one with call data.
+    // todo: create connector that support function signature without calldata and call the one with call data.
     function tradeWithHint(address trader, ERC20 src, uint srcAmount, ERC20 dest, address destAddress,
         uint maxDestAmount, uint minConversionRate, address walletId, bytes calldata hint) external payable returns(uint);
 

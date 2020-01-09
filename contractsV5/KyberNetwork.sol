@@ -420,10 +420,17 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
     //  It has been tested, reviewed and found to be clear enough.
     //@dev this function always src or dest are ether. can't do token to token
+<<<<<<< HEAD
     function searchBestRate(IKyberReserve[] memory reserveArr, IERC20 src, IERC20 dest, uint srcAmount, uint takerFeeBps)
         public
         view
         returns(IKyberReserve reserve, uint bestRate, bool isPayingFees)
+=======
+    function searchBestRate(address[] memory reserveArr, IERC20 src, IERC20 dest, uint srcAmount, uint takerFeeBps)
+        public
+        view
+        returns(address reserve, uint bestRate, bool isPayingFees)
+>>>>>>> Updated findRatesAndAmounts and searchBestDestAmount -> searchBestRate
     {
         //use destAmounts for comparison, but return the best rate
         uint bestDestAmount = 0;
@@ -442,8 +449,13 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         for (uint i = 0; i < reserveArr.length; i++) {
             //list all reserves that support this token.
+<<<<<<< HEAD
             isPayingFees = isFeePayingReserve[address(reserveArr[i])]; //not feeless
             rates[i] = reserveArr[i].getConversionRate(
+=======
+            isPayingFees = !isFeeLessReserve[reserveArr[i]]; //not feeless
+            rates[i] = (IKyberReserve(reserveArr[i])).getConversionRate(
+>>>>>>> Updated findRatesAndAmounts and searchBestDestAmount -> searchBestRate
                 src,
                 dest,
                 (src == ETH_TOKEN_ADDRESS && isPayingFees) ? srcAmount * (BPS - takerFeeBps) / BPS : srcAmount, //srcAmountWithFee
@@ -701,7 +713,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     {
         if (dest != ETH_TOKEN_ADDRESS) {
             tradeData.tradeWei = calcTradeSrcAmounts(tradeData.ethToToken.decimals, ETH_DECIMALS, maxDestAmount, 
-                tradeData.ethToToken.rates, tradeData.ethToToken.splitValuesPercent);
+                tradeData.ethToToken.rates, tradeData.ethToToken.splitValuesBps);
         } else {
             tradeData.tradeWei = maxDestAmount;
         }
@@ -710,7 +722,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tradeData.tradeWei -= tradeData.networkFeeWei;
 
         if (src != ETH_TOKEN_ADDRESS) {
-            actualSrcAmount = calcTradeSrcAmounts(ETH_DECIMALS, tradeData.tokenToEth.decimals, tradeData.tradeWei, tradeData.tokenToEth.rates, tradeData.tokenToEth.splitValuesPercent);
+            actualSrcAmount = calcTradeSrcAmounts(ETH_DECIMALS, tradeData.tokenToEth.decimals, tradeData.tradeWei, tradeData.tokenToEth.rates, tradeData.tokenToEth.splitValuesBps);
         } else {
             actualSrcAmount = tradeData.tradeWei;
         }
