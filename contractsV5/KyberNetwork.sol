@@ -12,10 +12,12 @@ contract IWhiteList {
     function getUserCapInWei(address user) external view returns (uint userCapWei);
 }
 
+
 interface IExpectedRate {
     function getExpectedRate(IERC20 src, IERC20 dest, uint srcQty) external view
         returns (uint expectedRateNoFees, uint expectedRateNetworkFees, uint expectedRateAllFees, uint worstRateAllFees);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
@@ -114,12 +116,12 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint minConversionRate,
         address platformWallet,
         uint platformFeeBps,
-        HintType E2THintType,
-        uint[] memory E2TReserveIds,
-        uint[] memory E2TSplitsBps,
-        HintType T2EHintType,
-        uint[] memory T2EReserveIds,
-        uint[] memory T2ESplitsBps
+        HintType e2tHintType,
+        uint[] memory e2tReserveIds,
+        uint[] memory e2tSplitsBps,
+        HintType t2eHintType,
+        uint[] memory t2eReserveIds,
+        uint[] memory t2eSplitsBps
     )
         public
         payable
@@ -137,7 +139,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tradeData.input.platformWallet = platformWallet;
         tradeData.input.platformFeeBps = platformFeeBps;
 
-        setTradeDataHint(tradeData, E2THintType, E2TReserveIds, E2TSplitsBps, T2EHintType, T2EReserveIds, T2ESplitsBps);
+        setTradeDataHint(tradeData, e2tHintType, e2tReserveIds, e2tSplitsBps, t2eHintType, t2eReserveIds, t2eSplitsBps);
         
         return trade(tradeData);
     }
@@ -344,9 +346,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         return expectedRateContract.getExpectedRate(src, dest, qty);
     }
 
-    function getExpectedRateWithParsedHint(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps, HintType E2THintType,
-        uint[] calldata E2TReserveIds, uint[] calldata E2TSplitsBps, HintType T2EHintType, uint[] calldata T2EReserveIds,
-        uint[] calldata T2ESplitsBps) 
+    function getExpectedRateWithParsedHint(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps, HintType e2tHintType,
+        uint[] calldata e2tReserveIds, uint[] calldata e2tSplitsBps, HintType t2eHintType, uint[] calldata t2eReserveIds,
+        uint[] calldata t2eSplitsBps) 
         external view
         returns (uint expectedRateNoFees, uint expectedRateNetworkFees, uint expectedRateAllFees, uint worstRateAllFees)
     {
@@ -911,8 +913,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         
     }
     
-    function setTradeDataHint(TradeData memory tradeData,  HintType E2THintType, uint[] memory E2TReserveIds, uint[] memory E2TSplitsBps,
-        HintType T2EHintType, uint[] memory T2EReserveIds, uint[] memory T2ESplitsBps) internal
+    function setTradeDataHint(TradeData memory tradeData,  HintType e2tHintType, uint[] memory e2tReserveIds, uint[] memory e2tSplitsBps,
+        HintType t2eHintType, uint[] memory t2eReserveIds, uint[] memory t2eSplitsBps) internal
     {
  
     }
