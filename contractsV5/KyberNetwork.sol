@@ -420,17 +420,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
     //  It has been tested, reviewed and found to be clear enough.
     //@dev this function always src or dest are ether. can't do token to token
-<<<<<<< HEAD
     function searchBestRate(IKyberReserve[] memory reserveArr, IERC20 src, IERC20 dest, uint srcAmount, uint takerFeeBps)
         public
         view
         returns(IKyberReserve reserve, uint bestRate, bool isPayingFees)
-=======
-    function searchBestRate(address[] memory reserveArr, IERC20 src, IERC20 dest, uint srcAmount, uint takerFeeBps)
-        public
-        view
-        returns(address reserve, uint bestRate, bool isPayingFees)
->>>>>>> Updated findRatesAndAmounts and searchBestDestAmount -> searchBestRate
     {
         //use destAmounts for comparison, but return the best rate
         uint bestDestAmount = 0;
@@ -449,13 +442,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         for (uint i = 0; i < reserveArr.length; i++) {
             //list all reserves that support this token.
-<<<<<<< HEAD
             isPayingFees = isFeePayingReserve[address(reserveArr[i])]; //not feeless
             rates[i] = reserveArr[i].getConversionRate(
-=======
-            isPayingFees = !isFeeLessReserve[reserveArr[i]]; //not feeless
-            rates[i] = (IKyberReserve(reserveArr[i])).getConversionRate(
->>>>>>> Updated findRatesAndAmounts and searchBestDestAmount -> searchBestRate
                 src,
                 dest,
                 (src == ETH_TOKEN_ADDRESS && isPayingFees) ? srcAmount * (BPS - takerFeeBps) / BPS : srcAmount, //srcAmountWithFee
