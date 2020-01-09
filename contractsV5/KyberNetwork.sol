@@ -140,7 +140,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tradeData.input.platformFeeBps = platformFeeBps;
 
         setTradeDataHint(tradeData, e2tHintType, e2tReserveIds, e2tSplitsBps, t2eHintType, t2eReserveIds, t2eSplitsBps);
-        
+
         return trade(tradeData);
     }
 
@@ -154,6 +154,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         require(reserveAddressToId[address(reserve)] == uint(0));
         
         reserveAddressToId[address(reserve)] = reserveId;
+
         reserveIdToAddresses[reserveId][0] = address(reserve);
         isFeePayingReserve[address(reserve)] = isFeePaying;
         
@@ -348,7 +349,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     function getExpectedRateWithParsedHint(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps, HintType e2tHintType,
         uint[] calldata e2tReserveIds, uint[] calldata e2tSplitsBps, HintType t2eHintType, uint[] calldata t2eReserveIds,
-        uint[] calldata t2eSplitsBps) 
+        uint[] calldata t2eSplitsBps)
         external view
         returns (uint expectedRateNoFees, uint expectedRateNetworkFees, uint expectedRateAllFees, uint worstRateAllFees)
     {
