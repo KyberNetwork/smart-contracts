@@ -701,7 +701,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     {
         if (dest != ETH_TOKEN_ADDRESS) {
             tradeData.tradeWei = calcTradeSrcAmounts(tradeData.ethToToken.decimals, ETH_DECIMALS, maxDestAmount, 
-                tradeData.ethToToken.rates, tradeData.ethToToken.splitValuesBps);
+                tradeData.ethToToken.rates, tradeData.ethToToken.splitValuesPercent);
         } else {
             tradeData.tradeWei = maxDestAmount;
         }
@@ -710,7 +710,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tradeData.tradeWei -= tradeData.networkFeeWei;
 
         if (src != ETH_TOKEN_ADDRESS) {
-            actualSrcAmount = calcTradeSrcAmounts(ETH_DECIMALS, tradeData.tokenToEth.decimals, tradeData.tradeWei, tradeData.tokenToEth.rates, tradeData.tokenToEth.splitValuesBps);
+            actualSrcAmount = calcTradeSrcAmounts(ETH_DECIMALS, tradeData.tokenToEth.decimals, tradeData.tradeWei, tradeData.tokenToEth.rates, tradeData.tokenToEth.splitValuesPercent);
         } else {
             actualSrcAmount = tradeData.tradeWei;
         }
