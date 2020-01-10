@@ -419,6 +419,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         }
     }
 
+    struct BestReserveInfo {
+        uint index;
+        uint destAmount;
+    }
     /* solhint-disable code-complexity */
     // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
     //  It has been tested, reviewed and found to be clear enough.
@@ -426,11 +430,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function searchBestRate(IKyberReserve[] memory reserveArr, IERC20 src, IERC20 dest, uint srcAmount, uint takerFeeBps)
         public
         view
-        returns(IKyberReserve reserve, uint bestRate, bool isPayingFees)
+        returns(IKyberReserve reserve, uint, bool isPayingFees)
     {
         //use destAmounts for comparison, but return the best rate
-        uint bestDestAmount = 0;
-        uint bestReserve = 0;
+        BestReserveInfo memory bestReserve;
         uint numRelevantReserves = 1; // assume always best reserve will be relevant
 
         //return 1 for ether to ether, or if empty reserve array is passed
@@ -440,12 +443,13 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint[] memory reserveCandidates = new uint[](reserveArr.length);
         uint destAmount;
         uint srcAmountWithFee;
-
+        
         for (uint i = 0; i < reserveArr.length; i++) {
+            reserve = reserveArr[i];
             //list all reserves that support this token.
-            isPayingFees = isFeePayingReserve[address(reserveArr[i])]; //not feeless
+            isPayingFees = isFeePayingReserve[address(reserve)];
             srcAmountWithFee = ((src == ETH_TOKEN_ADDRESS) && isPayingFees) ? srcAmount * (BPS - takerFeeBps) / BPS : srcAmount;
-            rates[i] = reserveArr[i].getConversionRate(
+            rates[i] = reserve.getConversionRate(
                 src,
                 dest,
                 srcAmountWithFee,
@@ -455,40 +459,40 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
              //if token -> ETH swap & reserve is not feeless, deduct fee from destAmount
             destAmount = (dest == ETH_TOKEN_ADDRESS && isPayingFees) ? destAmount * (BPS - takerFeeBps) / BPS : destAmount;
 
-            if (destAmount > bestDestAmount) {
-                //bestDestAmount is highest destAmount
-                bestDestAmount = destAmount;
-                bestReserve = i;
+            if (destAmount > bestReserve.destAmount) {
+                //best rate is highest rate
+                bestReserve.destAmount = destAmount;
+                bestReserve.index = i;
             }
         }
 
-        if(bestDestAmount == 0) return (reserves[bestReserve], 0, false);
+        if(bestReserve.destAmount == 0) return (reserves[bestReserve.index], 0, false);
         
-        reserveCandidates[0] = bestReserve;
+        reserveCandidates[0] = bestReserve.index;
         
-        // if this reserve pays fee its acutal rate is less. so smallestRelevantRate is smaller.
-        uint smallestRelevantDestAmount = bestDestAmount * BPS / (10000 + negligibleRateDiff);
+        // if this reserve pays fee its actual rate is less. so smallestRelevantRate is smaller.
+        bestReserve.destAmount = bestReserve.destAmount * BPS / (10000 + negligibleRateDiff);
 
         for (uint i = 0; i < reserveArr.length; i++) {
 
-            if (i == bestReserve) continue;
+            if (i == bestReserve.index) continue;
 
             destAmount = srcAmount * rates[i] / PRECISION;
             destAmount = (dest == ETH_TOKEN_ADDRESS && isPayingFees) ? destAmount * (BPS - takerFeeBps) / BPS : destAmount;
 
-            if (destAmount > smallestRelevantDestAmount) {
+            if (destAmount > bestReserve.destAmount) {
                 reserveCandidates[numRelevantReserves++] = i;
             }
         }
 
         if (numRelevantReserves > 1) {
             //when encountering small rate diff from bestRate. draw from relevant reserves
-            bestReserve = reserveCandidates[uint(blockhash(block.number-1)) % numRelevantReserves];
+            bestReserve.index = reserveCandidates[uint(blockhash(block.number-1)) % numRelevantReserves];
         } else {
-            bestReserve = reserveCandidates[0];
+            bestReserve.index = reserveCandidates[0];
         }
-        isPayingFees = isFeePayingReserve[address(reserveArr[bestReserve])];
-        return (reserveArr[bestReserve], rates[bestReserve], isPayingFees);
+        isPayingFees = isFeePayingReserve[address(reserveArr[bestReserve.index])];
+        return (reserveArr[bestReserve.index], rates[bestReserve.index], isPayingFees);
     }
     /* solhint-enable code-complexity */
 
