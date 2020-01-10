@@ -433,32 +433,31 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint bestReserve = 0;
         uint numRelevantReserves = 1; // assume always best reserve will be relevant
 
-        //return 1 for ether to ether
-        if (src == dest) return (reserves[bestReserve], PRECISION, false);
-
-        if (reserveArr.length == 0) return (reserves[bestReserve], 0, false);
+        //return 1 for ether to ether, or if empty reserve array is passed
+        if (src == dest || reserveArr.length == 0) return (IKyberReserve(address(0)), PRECISION, false);
 
         uint[] memory rates = new uint[](reserveArr.length);
         uint[] memory reserveCandidates = new uint[](reserveArr.length);
-        uint destAmountForComparison;
-        uint fullDestAmount;
+        uint destAmount;
+        uint srcAmountWithFee;
 
         for (uint i = 0; i < reserveArr.length; i++) {
             //list all reserves that support this token.
             isPayingFees = isFeePayingReserve[address(reserveArr[i])]; //not feeless
+            srcAmountWithFee = ((src == ETH_TOKEN_ADDRESS) && isPayingFees) ? srcAmount * (BPS - takerFeeBps) / BPS : srcAmount;
             rates[i] = reserveArr[i].getConversionRate(
                 src,
                 dest,
-                (src == ETH_TOKEN_ADDRESS && isPayingFees) ? srcAmount * (BPS - takerFeeBps) / BPS : srcAmount, //srcAmountWithFee
+                srcAmountWithFee,
                 block.number);
 
-            fullDestAmount = srcAmount * rates[i] / PRECISION;
+            destAmount = srcAmount * rates[i] / PRECISION;
              //if token -> ETH swap & reserve is not feeless, deduct fee from destAmount
-            destAmountForComparison = (dest == ETH_TOKEN_ADDRESS && isPayingFees) ? fullDestAmount * (BPS - takerFeeBps) / BPS : fullDestAmount;
+            destAmount = (dest == ETH_TOKEN_ADDRESS && isPayingFees) ? destAmount * (BPS - takerFeeBps) / BPS : destAmount;
 
-            if (destAmountForComparison > bestDestAmount) {
-                //best rate is highest rate
-                bestDestAmount = destAmountForComparison;
+            if (destAmount > bestDestAmount) {
+                //bestDestAmount is highest destAmount
+                bestDestAmount = destAmount;
                 bestReserve = i;
             }
         }
@@ -474,10 +473,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
             if (i == bestReserve) continue;
 
-            fullDestAmount = srcAmount * rates[i] / PRECISION;
-            destAmountForComparison = (dest == ETH_TOKEN_ADDRESS && isPayingFees) ? fullDestAmount * (BPS - takerFeeBps) / BPS : fullDestAmount;
+            destAmount = srcAmount * rates[i] / PRECISION;
+            destAmount = (dest == ETH_TOKEN_ADDRESS && isPayingFees) ? destAmount * (BPS - takerFeeBps) / BPS : destAmount;
 
-            if (destAmountForComparison > smallestRelevantDestAmount) {
+            if (destAmount > smallestRelevantDestAmount) {
                 reserveCandidates[numRelevantReserves++] = i;
             }
         }
@@ -488,8 +487,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         } else {
             bestReserve = reserveCandidates[0];
         }
-
-        return (reserveArr[bestReserve], rates[bestReserve], isFeePayingReserve[address(reserveArr[bestReserve])]);
+        isPayingFees = isFeePayingReserve[address(reserveArr[bestReserve])];
+        return (reserveArr[bestReserve], rates[bestReserve], isPayingFees);
     }
     /* solhint-enable code-complexity */
 
