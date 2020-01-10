@@ -443,7 +443,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint[] memory reserveCandidates = new uint[](reserveArr.length);
         uint destAmount;
         uint srcAmountWithFee;
-        
+
         for (uint i = 0; i < reserveArr.length; i++) {
             reserve = reserveArr[i];
             //list all reserves that support this token.
