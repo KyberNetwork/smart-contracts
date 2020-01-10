@@ -589,7 +589,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tradeData.rateWithNetworkFee = calcRateFromQty(srcAmount, tradeData.destAmountWithNetworkFee, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
     }
 
-    function findRatesAndAmountsTokenToEth(IERC20 src, uint srcAmount, TradeData memory tradeData) public view {
+    function findRatesAndAmountsTokenToEth(IERC20 src, uint srcAmount, TradeData memory tradeData) internal view {
         IKyberReserve reserve;
         uint splitAmount;
         uint amountSoFar;
@@ -637,7 +637,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint tradeWeiMinusNetworkCustomFees,
         TradeData memory tradeData
     )
-        public
+        internal
         view
     {
         IKyberReserve reserve;
