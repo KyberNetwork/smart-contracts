@@ -45,10 +45,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     mapping(address=>address[]) public reservesPerTokenSrc; //reserves supporting token to eth
     mapping(address=>address[]) public reservesPerTokenDest;//reserves support eth to token
 
-    constructor(address _admin) public {
-        require(_admin != address(0));
-        admin = _admin;
-    }
+    constructor(address _admin) public 
+        Withdrawable(_admin)
+    { /* empty body */ }
 
     event EtherReceival(address indexed sender, uint amount);
 
