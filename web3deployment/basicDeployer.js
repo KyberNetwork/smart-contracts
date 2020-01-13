@@ -120,7 +120,7 @@ async function main() {
     let contract;
 
     [addr, contract] =
-        await deployContract(output, "WrapConversionRate.sol:WrapConversionRate", );
+        await deployContract(output, "ContractName.sol:ContractName", );
 
     console.log("Address: " + addr);
 
