@@ -298,18 +298,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     }
 
      // new APIs
-    function getExpectedRateWithHint(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps) external view
-        returns (uint expectedRateNoFees, uint expectedRateWithNetworkFees, uint expectedRateWithAllFees)
-    {   
-        require(expectedRateContract != IExpectedRate(0));
-        
-        if (src == dest) return (0, 0, 0);
-
-        uint qty = srcQty & ~PERM_HINT_GET_RATE;
-
-        return expectedRateContract.getExpectedRate(src, dest, qty);
-    }
-
     function getExpectedRateWithHintAndFee(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps, bytes calldata hint) 
         external view
         returns (uint expectedRateNoFees, uint expectedAfterRateNetworkFees, uint expectedRateAfterAllFees)
