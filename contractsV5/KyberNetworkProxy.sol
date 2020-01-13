@@ -284,7 +284,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     }
 
     function calculateTradeOutcome (IERC20 src, IERC20 dest,
-        address destAddress, uint feeBps, UserBalance memory balanceBefore)
+        address destAddress, uint platformFeeBps, UserBalance memory balanceBefore)
         internal returns(TradeOutcome memory outcome)
     {
         uint userSrcBalanceAfter;
@@ -300,11 +300,12 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         outcome.userDeltaSrcToken = balanceBefore.srcBalance - userSrcBalanceAfter;
         outcome.userDeltaDestToken = userDestBalanceAfter - balanceBefore.destBalance;
         
-        uint destTokenAmountBeforePlatformFee = (outcome.userDeltaDestToken * BPS) / (BPS - feeBps);
+        // what would be the dest amount if we didn't deduct platformFee
+        uint destTokenAmountBeforeDeductingFee = (outcome.userDeltaDestToken * BPS) / (BPS - platformFeeBps);
         
         outcome.actualRate = calcRateFromQty(
             outcome.userDeltaSrcToken,
-            destTokenAmountBeforePlatformFee,
+            destTokenAmountBeforeDeductingFee,
             getUpdateDecimals(src),
             getUpdateDecimals(dest)
         );
@@ -337,7 +338,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     {
         tradeOutcome = calculateTradeOutcome(src, dest, destAddress, platformFee, balanceBefore);
 
-        require(returnedDestAmount == tradeOutcome.userDeltaDestToken);
+        require(tradeOutcome.userDeltaDestToken == returnedDestAmount);
         require(tradeOutcome.userDeltaDestToken <= maxDestAmount);
         require(tradeOutcome.actualRate >= minConversionRate);
 
