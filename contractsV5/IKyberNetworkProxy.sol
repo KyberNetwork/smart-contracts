@@ -12,30 +12,26 @@ interface IKyberNetworkProxy {
     function tradeWithHint(ERC20 src, uint srcAmount, ERC20 dest, address destAddress, uint maxDestAmount,
         uint minConversionRate, address walletId, bytes calldata hint) external payable returns(uint);
 
-    // new APIs
     function trade(IERC20 src, uint srcAmount, IERC20 dest, address payable destAddress, uint maxDestAmount,
         uint minConversionRate, address payable platformWallet) external payable returns(uint);
 
-    function tradeWithBytesHint(IERC20 src, uint srcAmount, IERC20 dest, address payable destAddress, uint maxDestAmount,
-        uint minConversionRate, address payable platformWallet, bytes calldata hint) external payable returns(uint);
+    // new APIs
+     function getExpectedRateWithHint(IERC20 src, IERC20 dest, uint srcQty, bytes calldata hint) external view
+        returns (uint expectedRate);
 
+    function getExpectedRateAfterCustomFee(IERC20 src, IERC20 dest, uint srcQty, uint customFeeBps, bytes calldata hint) 
+        external view
+        returns (uint expectedRate);
+        
+    function getPriceData(IERC20 src, IERC20 dest, uint srcQty) external view returns (uint priceNoFees);
+    
     function tradeWithHintAndPlatformFee(IERC20 src, uint srcAmount, IERC20 dest, address payable destAddress, uint maxDestAmount,
-        uint minConversionRate, address payable platformWallet, uint platformFeeBps, bytes calldata hint) external payable returns(uint);
+        uint minConversionRate, address payable platformWallet, uint platformFeeBps, bytes calldata hint) 
+        external payable 
+        returns(uint destAmount);
 
-    function getExpectedRateBasic(IERC20 src, IERC20 dest, uint srcQty) external view
-        returns (uint expectedRateNoFees, uint expectedRateNetworkFees, uint expectedRateAllFees, uint worstRateAllFees);
-
-    function getExpectedRateWithPlatformFee(IERC20 src, IERC20 dest, uint srcQty, address platformWallet) external view
-        returns (uint expectedRate, uint rateAfterNetworkFee, uint worstRateAfterNetworkFee, uint rateAfterFullFee);
-
-    // user will pass platformWallet and we lookup fee in local DB
-    function getExpectedRateWithPlatformFeeAndHint(IERC20 src, IERC20 dest, uint srcQty, address platformWallet, 
-        bytes calldata hint) external view returns (uint expectedRate, uint worstRate);
-
-    // user should pass platform fee BPS
-    function getExpectedRateWithCustomFeeAndHint(IERC20 src, IERC20 dest, uint srcQty, uint customFeeBps, 
-        bytes calldata hint) external view returns (uint expectedRate, uint worstRate);
-
+    // TODO: will we save bps per platform?
+    // below API not finalized. TBD
     function setPlatformFeeBps(address platformWallet, uint platformFeeBps) external returns(bool);
     
     function getPlatformFeeBps(address platformWallet) external returns(uint platformFeeBps);
