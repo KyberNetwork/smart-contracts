@@ -15,7 +15,7 @@ contract IWhiteList {
 
 interface IExpectedRate {
     function getExpectedRate(IERC20 src, IERC20 dest, uint srcQty) external view
-        returns (uint expectedRateNoFees, uint expectedRateNetworkFees, uint expectedRateAllFees, uint worstRateAllFees);
+        returns (uint expectedRateNoFees, uint expectedRateNetworkFees, uint expectedRateAllFees);
 }
 
 
@@ -106,13 +106,14 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @notice can be called only by operator
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
-    function addReserve(IKyberReserve reserve, uint reserveId) public onlyOperator returns(bool) {
+    function addReserve(IKyberReserve reserve, uint reserveId, bool isFeePaying) public onlyOperator returns(bool) {
         require(reserveIdToAddresses[reserveId][0] == address(0));
         require(reserveAddressToId[address(reserve)] == uint(0));
         
         reserveAddressToId[address(reserve)] = reserveId;
 
         reserveIdToAddresses[reserveId][0] = address(reserve);
+        isFeePayingReserve[address(reserve)] = isFeePaying;
         
         reserves.push(reserve);
 
@@ -283,6 +284,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         takerFeeBps = getAndUpdateTakerFee();    
     }
     
+    //backward compatible
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
         returns (uint expectedRate, uint worstRate)
     {
@@ -291,41 +293,34 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         uint qty = srcQty & ~PERM_HINT_GET_RATE;
         
-        ( , , expectedRate, worstRate) = expectedRateContract.getExpectedRate(src, dest, qty);
+        ( , , expectedRate) = expectedRateContract.getExpectedRate(src, dest, qty);
+        worstRate = expectedRate * 97 / 100; // backward compatible formula
     }
 
      // new APIs
-    function getExpectedRateWithFee(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps) external view
-        returns (uint expectedRateNoFees, uint expectedRateWithNetworkFees, uint expectedRateWithAllFees, uint worstRateAllFees)
+    function getExpectedRateWithHint(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps) external view
+        returns (uint expectedRateNoFees, uint expectedRateWithNetworkFees, uint expectedRateWithAllFees)
     {   
-        
-    }
-
-    function getExpectedRateWithHint(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps, bytes calldata hint) 
-        external view
-        returns (uint expectedRateNoFees, uint expectedRateNetworkFees, uint expectedRateAllFees, uint worstRateAllFees)
-    {
         require(expectedRateContract != IExpectedRate(0));
         
-        if (src == dest) return (0, 0, 0, 0);
+        if (src == dest) return (0, 0, 0);
 
         uint qty = srcQty & ~PERM_HINT_GET_RATE;
 
         return expectedRateContract.getExpectedRate(src, dest, qty);
     }
 
-    function getExpectedRateWithParsedHint(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps, HintType e2tHintType,
-        uint[] calldata e2tReserveIds, HintType t2eHintType, uint[] calldata t2eReserveIds)
+    function getExpectedRateWithHintAndFee(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps, bytes calldata hint) 
         external view
-        returns (uint expectedRateNoFees, uint expectedRateNetworkFees, uint expectedRateAllFees, uint worstRateAllFees)
+        returns (uint expectedRateNoFees, uint expectedAfterRateNetworkFees, uint expectedRateAfterAllFees)
     {
         require(expectedRateContract != IExpectedRate(0));
         
-        // if (src == dest) return (0, 0, 0, 0);
+        if (src == dest) return (0, 0, 0);
 
-        // uint qty = srcQty & ~PERM_HINT_GET_RATE;
+        uint qty = srcQty & ~PERM_HINT_GET_RATE;
 
-        // return expectedRateContract.getExpectedRate(src, dest, qty);
+        return expectedRateContract.getExpectedRate(src, dest, qty);
     }
 
     function enabled() public view returns(bool) {
@@ -389,6 +384,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint index;
         uint bestDestAmount;
     }
+
     /* solhint-disable code-complexity */
     // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
     //  It has been tested, reviewed and found to be clear enough.
