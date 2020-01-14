@@ -6,12 +6,6 @@ import "./IERC20.sol";
 /// @title Kyber Network interface
 interface IKyberNetwork {
     
-    enum HintType {
-        MaskInHint,
-        MaskOutHint,
-        SplitHint
-    }
-    
     function maxGasPrice() external view returns(uint);
     function enabled() external view returns(bool);
     function info(bytes32 id) external view returns(uint);

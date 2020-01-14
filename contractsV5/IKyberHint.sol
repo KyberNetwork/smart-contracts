@@ -4,12 +4,30 @@ import "./IERC20.sol";
 
 
 interface IKyberHint {
+    
+    enum HintType {
+        MaskInHint,
+        MaskOutHint,
+        SplitHint
+    }
 
-    function parseHint(bytes calldata hint) external view
-        returns(address[] memory e2tReserves, uint[] memory e2tSplits, address[] memory t2eReserves,
-                uint[] memory t2eSplit, uint failingIndex);
+    function parseEthToTokenHint(bytes calldata hint) external view
+        returns(HintType hintType, address[] memory reserves, uint[] memory splits, uint failureHint);
 
-    function buildHint(address[] calldata e2tReserves, uint[] calldata e2tSplits,
-        address[] calldata t2eReserves, uint[] calldata t2eSplit)
+    function parseTokenToEthHint(bytes calldata hint) external view
+        returns(HintType hintType, address[] memory reserves, uint[] memory splits, uint failureHint);
+
+    function parseTokenToTokenHint(bytes calldata hint) external view
+        returns(HintType tokenToEthType, address[] memory tokenToEthReserves, uint[] memory tokenToEthSplits,
+            HintType ethToTokenType, address[] memory ethToTokenReserves, uint[] memory ethToTokenSplits);
+
+    function buildEthToTokenHint(HintType hintType, address[] calldata reserves, uint[] calldata splits)
+        external view returns(bytes memory hint);
+        
+    function buildTokenToEthHint(HintType hintType, address[] calldata reserves, uint[] calldata splits)
+        external view returns(bytes memory hint);
+
+    function buildTokenToTokenHint(HintType tokenToEthType, address[] calldata tokenToEthReserves, uint[] calldata tokenToEthSplits,
+        HintType ethToTokenType, address[] calldata ethToTokenReserves, uint[] calldata ethToTokenSplits)
         external view returns(bytes memory hint);
 }

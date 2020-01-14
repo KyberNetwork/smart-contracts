@@ -23,7 +23,6 @@ interface IExpectedRate {
 /// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
-    bytes public constant PERM_HINT = "PERM";
     uint  public constant PERM_HINT_GET_RATE = 1 << 255; // for get rate. bit mask hint.
    
     uint            public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
