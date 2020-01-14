@@ -15,6 +15,19 @@ const getNameFromAdd = utils.getNameFromAdd;
 process.on('unhandledRejection', console.error.bind(console))
 
 
+
+
+//// for using this script set data here
+////////////////////////////////////////
+
+const conversionRateAddress = '';
+const wrapConversionRate = ''
+const chain = ''; // r = ropsten, m = mainnet, k = kovan
+let evmNodeUrl = '';
+
+//////////////////////////////////
+/////////////////////////////////
+
 //contract sources
 const contractPath = "../contracts/";
 
@@ -43,16 +56,6 @@ let solcOutput;
 
 const ethAddress = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 
-//// for using this script set data here
-////////////////////////////////////////
-
-const conversionRateAddress = '0x852480907E71B6e60230A3b3E7675eb2F0b26418';
-const wrapConversionRate = ''
-const network = 'r'; // r = ropsten, m = mainnet, k = kovan
-
-
-//////////////////////////////////
-/////////////////////////////////
 
 
 const ropstenReaderAddress = '0x6D3CbB74C9ad8be2d1aCa76d1156F6B3C9cF88CC';
@@ -69,14 +72,12 @@ const mainnetUrls = ['https://mainnet.infura.io',
 const kovanPublicNode = 'https://kovan.infura.io';
 const ropstenPublicNode = 'https://ropsten.infura.io';
 
+let tokenReaderAddress = '';
 
-let evmNodeUrl;
-let tokenReaderAddress;
-
-if (network == 'r') {
+if (chain == 'r') {
     tokenReaderAddress = ropstenReaderAddress;
     evmNodeUrl = ropstenPublicNode;
-} else if (network == 'm') {
+} else if (chain == 'm') {
     tokenReaderAddress = mainNetReaderAddress;
     evmNodeUrl = mainnetUrls[0];
 }
@@ -91,6 +92,20 @@ let conversionRateContract;
 main();
 
 async function main(){
+
+    if((chain == '') && (evmNodeUrl == '')) {
+        myLog(0, 1, "please open this file and update settings in line 21")
+        myLog(0, 1, "must choose which chain to use. (mainnet, ropsten, kovan, etc,,,")
+        myLog(0, 1, "Alternatively can set must choose which chain to use. (mainnet, ropsten, kovan, etc,,,")
+        return;
+    }
+
+    if(conversionRateAddress == '') {
+        myLog(0, 1, "please open this file and update settings in line 21")
+        myLog(0, 1, "must set conversion rate address to analyze.")
+        return;
+    }
+
     myLog(0, 1, 'notice, by default this script uses a public node with limited query rate')
     myLog(0, 1, 'If you have a non limited node URL, please open file and set evmNodeUrl')
 
