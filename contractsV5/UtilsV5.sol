@@ -42,6 +42,20 @@ contract Utils {
 
         return tokenDecimals;
     }
+    
+    function getUpdateDecimals(IERC20 token) internal returns(uint) {
+        if (token == ETH_TOKEN_ADDRESS) return ETH_DECIMALS; // save storage access
+        uint tokenDecimals = decimals[address(token)];
+        // moreover, very possible that old tokens have decimals 0
+        // these tokens will just have higher gas fees.
+        if (tokenDecimals == 0) {
+            tokenDecimals = token.decimals();
+            decimals[address(token)] = token.decimals();
+        }
+
+        return tokenDecimals;
+    }
+
 
     function calcDstQty(uint srcQty, uint srcDecimals, uint dstDecimals, uint rate) internal pure returns(uint) {
         require(srcQty <= MAX_QTY);

@@ -11,8 +11,9 @@ contract PermissionGroups {
     address[] internal alertersGroup;
     uint constant internal MAX_GROUP_SIZE = 50;
 
-    constructor() public {
-        admin = msg.sender;
+    constructor(address _admin) public {
+        require(_admin != address(0), "PermissionGroups, admin address 0 blocked.");
+        admin = _admin;
     }
 
     modifier onlyAdmin() {
