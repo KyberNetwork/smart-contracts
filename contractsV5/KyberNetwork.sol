@@ -22,10 +22,7 @@ interface IExpectedRate {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
-
-    bytes public constant PERM_HINT = "PERM";
-    uint  public constant PERM_HINT_GET_RATE = 1 << 255; // for get rate. bit mask hint.
-   
+    
     uint            public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
     IWhiteList      public whiteListContract;
     IExpectedRate   public expectedRateContract;
@@ -62,18 +59,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         returns(uint destAmount)
     {    
         TradeData memory tradeData;
-
-        tradeData.input.trader = trader;
-        tradeData.input.src = src;
-        tradeData.input.srcAmount = srcAmount;
-        tradeData.input.dest = dest;
-        tradeData.input.destAddress = destAddress;
-        tradeData.input.maxDestAmount = maxDestAmount;
-        tradeData.input.minConversionRate = minConversionRate;
-        tradeData.input.platformWallet = platformWallet;
-        tradeData.input.platformFeeBps = platformFeeBps;
-
+        initTradeData(trader, src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, platformWallet, platformFeeBps, tradeData);
         parseTradeDataHint(tradeData, hint);
+        tradeData.takerFeeBps = getAndUpdateTakerFee();
         
         return trade(tradeData);
     }
@@ -85,17 +73,21 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     {
         TradeData memory tradeData;
 
-        tradeData.input.trader = address(uint160(trader));
-        tradeData.input.src = src;
-        tradeData.input.srcAmount = srcAmount;
-        tradeData.input.dest = dest;
-        tradeData.input.destAddress = address(uint160(destAddress));
-        tradeData.input.maxDestAmount = maxDestAmount;
-        tradeData.input.minConversionRate = minConversionRate;
-        tradeData.input.platformWallet = walletId;
-        tradeData.input.platformFeeBps = 0;
+        initTradeData(
+            address(uint160(trader)),
+            src,
+            srcAmount,
+            dest,
+            address(uint160(destAddress)),
+            maxDestAmount,
+            minConversionRate,
+            address(uint160(walletId)),
+            0,
+            tradeData
+        );
 
         parseTradeDataHint(tradeData, hint);
+        tradeData.takerFeeBps = getAndUpdateTakerFee();
         
         return trade(tradeData);
     }
@@ -106,7 +98,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
     function addReserve(IKyberReserve reserve, uint reserveId, bool isFeePaying) public onlyOperator returns(bool) {
-        require(reserveIdToAddresses[reserveId][0] == address(0));
+        require(reserveIdToAddresses[reserveId].length == 0);
         require(reserveAddressToId[address(reserve)] == uint(0));
         
         reserveAddressToId[address(reserve)] = reserveId;
@@ -287,10 +279,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
         returns (uint expectedRate, uint worstRate)
     {
-        require(expectedRateContract != IExpectedRate(0));
+        // require(expectedRateContract != IExpectedRate(0));
         if (src == dest) return (0, 0);
-
-        uint qty = srcQty & ~PERM_HINT_GET_RATE;
+        TradeData memory tradeData;
+        bytes memory hint;
         
         ( , , expectedRate) = expectedRateContract.getExpectedRate(src, dest, qty);
         worstRate = expectedRate * 97 / 100; // backward compatible formula
@@ -376,7 +368,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
     //  It has been tested, reviewed and found to be clear enough.
     //@dev this function always src or dest are ether. can't do token to token
-    function searchBestRate(IKyberReserve[] memory reserveArr, IERC20 src, IERC20 dest, uint srcAmount, uint takerFeeBps)
+    //TODO: document takerFee
+    function searchBestRate(IKyberReserve[] memory reserveArr, IERC20 src, IERC20 dest, uint srcAmount, uint takerFee)
         public
         view
         returns(IKyberReserve reserve, uint, bool isPayingFees)
@@ -399,16 +392,17 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             reserve = reserveArr[i];
             //list all reserves that support this token.
             isPayingFees = isFeePayingReserve[address(reserve)];
-            srcAmountWithFee = ((src == ETH_TOKEN_ADDRESS) && isPayingFees) ? srcAmount * (BPS - takerFeeBps) / BPS : srcAmount;
+            //for ETH -> token paying reserve, takerFee is specified in amount
+            srcAmountWithFee = ((src == ETH_TOKEN_ADDRESS) && isPayingFees) ? srcAmount - takerFee : srcAmount;
             rates[i] = reserve.getConversionRate(
                 src,
                 dest,
                 srcAmountWithFee,
                 block.number);
 
-            destAmount = srcAmount * rates[i] / PRECISION;
-             //if token -> ETH swap & reserve is not feeless, deduct fee from destAmount
-            destAmount = (dest == ETH_TOKEN_ADDRESS && isPayingFees) ? destAmount * (BPS - takerFeeBps) / BPS : destAmount;
+            destAmount = srcAmountWithFee * rates[i] / PRECISION;
+             //for token -> ETH paying reserve, takerFee is specified in bps
+            destAmount = (dest == ETH_TOKEN_ADDRESS && isPayingFees) ? destAmount * (BPS - takerFee) / BPS : destAmount;
 
             if (destAmount > bestReserve.destAmount) {
                 //best rate is highest rate
@@ -427,9 +421,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         for (uint i = 0; i < reserveArr.length; i++) {
 
             if (i == bestReserve.index) continue;
-
-            destAmount = srcAmount * rates[i] / PRECISION;
-            destAmount = (dest == ETH_TOKEN_ADDRESS && isPayingFees) ? destAmount * (BPS - takerFeeBps) / BPS : destAmount;
+            isPayingFees = isFeePayingReserve[address(reserve)];
+            srcAmountWithFee = ((src == ETH_TOKEN_ADDRESS) && isPayingFees) ? srcAmount - takerFee : srcAmount;
+            destAmount = srcAmountWithFee * rates[i] / PRECISION;
+            destAmount = (dest == ETH_TOKEN_ADDRESS && isPayingFees) ? destAmount * (BPS - takerFee) / BPS : destAmount;
 
             if (destAmount > bestReserve.destAmount) {
                 reserveCandidates[numRelevantReserves++] = i;
@@ -498,7 +493,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint destAmountWithNetworkFee;
         uint actualDestAmount; // all fees
 
-        // todo: do we need to save rate locally. seems dest amounts enough.
+        // TODO: do we need to save rate locally. seems dest amounts enough.
         // uint rateNoFee;
         uint rateWithNetworkFee;
         // uint rateWithAllFees;
@@ -512,7 +507,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // assume TradingReserves stores the reserves to be iterated over (meaning masking has been applied
         findRatesAndAmountsTokenToEth(src, srcAmount, tradeData);
 
-        //handle tradeWei being zero
+        //TODO: see if this need to be shifted below instead
         if (tradeData.tradeWei == 0) {
             tradeData.rateWithNetworkFee = 0;
             return;
@@ -533,6 +528,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tradeData.networkFeeWei = tradeData.tradeWei * tradeData.takerFeeBps * tradeData.feePayingReservesBps / (BPS * BPS);
         tradeData.platformFeeWei = tradeData.tradeWei * tradeData.input.platformFeeBps / BPS;
 
+        //change to if condition instead
+        require(tradeData.tradeWei >= (tradeData.networkFeeWei + tradeData.platformFeeWei), "fees exceed trade amount");
         findRatesAndAmountsEthToToken(
             dest,
             tradeData.tradeWei,
@@ -548,7 +545,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function findRatesAndAmountsTokenToEth(IERC20 src, uint srcAmount, TradeData memory tradeData) internal view {
         IKyberReserve reserve;
         uint splitAmount;
-        uint amountSoFar;
+        uint srcAmountSoFar;
         bool isPayingFees;
 
         // token to Eth
@@ -559,8 +556,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             for (uint i = 0; i < tradeData.tokenToEth.addresses.length; i++) {
                 reserve = tradeData.tokenToEth.addresses[i];
                 //calculate split and corresponding trade amounts
-                splitAmount = (i == tradeData.tokenToEth.splitValuesBps.length - 1) ? (srcAmount - amountSoFar) : tradeData.tokenToEth.splitValuesBps[i] * srcAmount /  BPS;
-                amountSoFar += splitAmount;
+                splitAmount = (i == tradeData.tokenToEth.splitValuesBps.length - 1) ? (srcAmount - srcAmountSoFar) : tradeData.tokenToEth.splitValuesBps[i] * srcAmount / BPS;
+                srcAmountSoFar += splitAmount;
                 tradeData.tokenToEth.rates[i] = reserve.getConversionRate(src, ETH_TOKEN_ADDRESS, splitAmount, block.number);
                 tradeData.tradeWei += calcDstQty(splitAmount, tradeData.tokenToEth.decimals, ETH_DECIMALS, tradeData.tokenToEth.rates[i]);
 
@@ -638,12 +635,13 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         } else {
             // else, search best reserve and its corresponding dest amount
             // Have to search with tradeWei minus fees, because that is the actual src amount for ETH -> token trade
+            require(tradeWeiMinusNetworkCustomFees >= (tradeData.tradeWei * tradeData.takerFeeBps / BPS), "ETH->token network fee exceeds remaining trade wei amt");
             (tradeData.ethToToken.addresses[0], tradeData.ethToToken.rates[0], isPayingFees) = searchBestRate(
                 tradeData.ethToToken.addresses,
                 ETH_TOKEN_ADDRESS,
                 dest,
                 tradeWeiMinusNetworkCustomFees,
-                tradeData.takerFeeBps
+                tradeData.tradeWei * tradeData.takerFeeBps / BPS
             );
             //store chosen reserve into tradeData
             tradeData.ethToToken.splitValuesBps[0] = BPS;
