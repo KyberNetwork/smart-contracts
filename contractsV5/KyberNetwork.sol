@@ -385,8 +385,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         BestReserveInfo memory bestReserve;
         uint numRelevantReserves = 1; // assume always best reserve will be relevant
 
-        //return 1 for ether to ether
-        if (src == dest) return (reserves[bestReserve.index], PRECISION, false);
+        //return 1 for ether to ether, or if empty reserve array is passed
+        if (src == dest || reserveArr.length == 0) return (IKyberReserve(address(0)), PRECISION, false);
 
         if (reserveArr.length == 0) return (reserves[bestReserve.index], 0, false);
 
