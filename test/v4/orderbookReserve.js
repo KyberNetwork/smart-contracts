@@ -27,7 +27,7 @@ const initialEthKncRate = new BN(280);
 const initialEthToKncRatePrecision = PRECISION.mul(new BN(initialEthKncRate));
 const BPS = new BN(10000);
 const ethDecimals = new BN(18);
-const Token18Dec = new BN(10).pow(new BN(18));
+const token18Dec = new BN(10).pow(new BN(18));
 
 let MAX_RATE = PRECISION.mul(new BN(String(10 ** 6))); //internal parameter in Utils.sol.
 let MAX_QTY = new BN(10).pow(new BN(28));
@@ -184,13 +184,13 @@ contract('OrderbookReserve', async (accounts) => {
     });
 
     it("test events, 'take full order' event, 'take partial order' event", async()=> {
-        let tokenWeiDepositAmount = Token18Dec.mul(new BN(60));
+        let tokenWeiDepositAmount = token18Dec.mul(new BN(60));
         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
         let valueWei = PRECISION.mul(new BN(2));
-        let valueTwei = Token18Dec.mul(new BN(12));
+        let valueTwei = token18Dec.mul(new BN(12));
 
         //add orders
         await reserve.submitTokenToEthOrder(valueTwei, valueWei, {from: maker1});
@@ -410,51 +410,51 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("verify get rate works only for token->Eth or eth->token. other options revert", async() => {
-            let rate = await reserve.getConversionRate(tokenAdd, ethAddress, Token18Dec, 0);
+            let rate = await reserve.getConversionRate(tokenAdd, ethAddress, token18Dec, 0);
             Helper.assertEqual(rate, 0);
-            rate = await reserve.getConversionRate(ethAddress, tokenAdd, Token18Dec, 0);
+            rate = await reserve.getConversionRate(ethAddress, tokenAdd, token18Dec, 0);
             Helper.assertEqual(rate, 0);
 
             let otherTok = await TestToken.new("other", "oth", 15);
             let address = otherTok.address;
 
             try {
-                rate = await reserve.getConversionRate(ethAddress, ethAddress, Token18Dec, 0);
+                rate = await reserve.getConversionRate(ethAddress, ethAddress, token18Dec, 0);
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
 
             try {
-                rate = await reserve.getConversionRate(tokenAdd, tokenAdd, Token18Dec, 0);
+                rate = await reserve.getConversionRate(tokenAdd, tokenAdd, token18Dec, 0);
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
 
             try {
-                rate = await reserve.getConversionRate(address, tokenAdd, Token18Dec, 0);
+                rate = await reserve.getConversionRate(address, tokenAdd, token18Dec, 0);
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
 
             try {
-                rate = await reserve.getConversionRate(tokenAdd, address, Token18Dec, 0);
+                rate = await reserve.getConversionRate(tokenAdd, address, token18Dec, 0);
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
 
             try {
-                rate = await reserve.getConversionRate(address, ethAddress, Token18Dec, 0);
+                rate = await reserve.getConversionRate(address, ethAddress, token18Dec, 0);
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
 
             try {
-                rate = await reserve.getConversionRate(ethAddress, address, Token18Dec, 0);
+                rate = await reserve.getConversionRate(ethAddress, address, token18Dec, 0);
                 assert(false, "throw was expected in line above.")
             } catch(e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -485,7 +485,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("verify get update order hint reverts if Eth value is below min order value", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(30));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(30));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(3));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -517,13 +517,13 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("verify trade with token source only works for token->Eth. other options revert", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(10));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let valueWei = PRECISION.mul(new BN(5));
-            let valueTwei = Token18Dec.mul(new BN(15));
+            let valueTwei = token18Dec.mul(new BN(15));
 
             //add orders
             let rc = await reserve.submitEthToTokenOrder(valueWei, valueTwei, {from: maker1});
@@ -565,13 +565,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("verify trade with eth source only works for Eth->token. other options revert", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(60));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(60));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(0));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let valueWei = PRECISION.mul(new BN(5));
-            let valueTwei = Token18Dec.mul(new BN(15));
+            let valueTwei = token18Dec.mul(new BN(15));
 
             //add orders
             let rc = await reserve.submitTokenToEthOrder(valueTwei, valueWei, {from: maker1});
@@ -606,13 +606,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("verify trade illegal message eth value revert", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(90));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(90));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(5));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let valueWei = PRECISION.mul(new BN(5));
-            let valueTwei = Token18Dec.mul(new BN(15));
+            let valueTwei = token18Dec.mul(new BN(15));
 
             //add orders
             await reserve.submitTokenToEthOrder(valueTwei, valueWei, {from: maker1});
@@ -653,13 +653,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("verify trade token to eth with not enough tokens approved to reserve, reverts", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(5));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let valueWei = PRECISION.mul(new BN(5));
-            let valueTwei = Token18Dec.mul(new BN(15));
+            let valueTwei = token18Dec.mul(new BN(15));
 
             //add orders
             await reserve.submitEthToTokenOrder(valueWei, valueTwei, {from: maker1});
@@ -693,7 +693,7 @@ contract('OrderbookReserve', async (accounts) => {
                         ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
             await aReserve.init();
 
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(20));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(20));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(5));
 
@@ -704,7 +704,7 @@ contract('OrderbookReserve', async (accounts) => {
             await aReserve.depositEther(maker1, {from: maker1, value: ethWeiDepositAmount});
 
             let valueWei = PRECISION.mul(new BN(5));
-            let valueTwei = Token18Dec.mul(new BN(15));
+            let valueTwei = token18Dec.mul(new BN(15));
 
             //add orders
             await aReserve.submitTokenToEthOrder(valueTwei, valueWei, {from: maker1});
@@ -726,7 +726,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(500)); // 2 ether
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
             let bestOrderID = rc.logs[0].args.orderId;
@@ -759,7 +759,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("verify add order batch with bad array sizes reverts", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -832,7 +832,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("verify update order batch with bad array sizes reverts", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -913,13 +913,13 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("verify trade not from network reverts", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(90));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(90));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(10));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let valueWei = PRECISION.mul(new BN(5));
-            let valueTwei = Token18Dec.mul(new BN(15));
+            let valueTwei = token18Dec.mul(new BN(15));
 
             //add order
             await reserve.submitTokenToEthOrder(valueTwei, valueWei, {from: maker1});
@@ -940,7 +940,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("verify trade with src Amount >= max qty reverts.", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(7));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -973,7 +973,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("verify get rate with src Amount >= max qty reverts.", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(7));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -1001,13 +1001,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("verify trade with not enough tokens for taker src amount, reverts.", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(7));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let valueWei = PRECISION.mul(new BN(2));
-            let valueTwei = Token18Dec.mul(new BN(9));
+            let valueTwei = token18Dec.mul(new BN(9));
 
             //add order
             await reserve.submitEthToTokenOrder(valueWei, valueTwei, {from: maker1});
@@ -1028,7 +1028,7 @@ contract('OrderbookReserve', async (accounts) => {
 
     describe ("deposit funds, bind funds, withdraw funds", function() {
         it("maker deposit tokens, ethers, knc, validate updated in contract", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(50));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(50));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(2));
 
@@ -1053,7 +1053,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker deposit tokens, ethers, knc, withdraw and see sums updated", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(50));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(50));
             let kncTweiDepositAmount = PRECISION.mul(new BN(60));
             let ethWeiDepositAmount = PRECISION.mul(new BN(2));
 
@@ -1088,7 +1088,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("test deposit token reverts when maker address 0", async()=> {
-            let tokenTweiDepositAmount = Token18Dec.mul(new BN(2));
+            let tokenTweiDepositAmount = token18Dec.mul(new BN(2));
 
             await token.approve(reserve.address, tokenTweiDepositAmount);
             try {
@@ -1100,7 +1100,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("test deposit token reverts when approve amount < deposit token call amount", async()=> {
-            let tokenTweiDepositAmount = Token18Dec.mul(new BN(2));
+            let tokenTweiDepositAmount = token18Dec.mul(new BN(2));
 
             await token.approve(reserve.address, tokenTweiDepositAmount.sub(new BN(1)));
             try {
@@ -1135,7 +1135,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("test deposit knc reverts when maker address 0", async()=> {
-            let tokenTweiDepositAmount = Token18Dec.mul(new BN(2));
+            let tokenTweiDepositAmount = token18Dec.mul(new BN(2));
 
             await KNCToken.approve(reserve.address, tokenTweiDepositAmount);
             try {
@@ -1147,7 +1147,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("test deposit knc reverts when approve amount < deposit token call amount", async()=> {
-            let tokenTweiDepositAmount = Token18Dec.mul(new BN(2));
+            let tokenTweiDepositAmount = token18Dec.mul(new BN(2));
 
             await KNCToken.approve(reserve.address, tokenTweiDepositAmount.sub(new BN(1)));
             try {
@@ -1173,7 +1173,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("test withdraw token reverts when amount above free amount", async() => {
-            let tokenTweiDepositAmount = Token18Dec.mul(new BN(20));
+            let tokenTweiDepositAmount = token18Dec.mul(new BN(20));
             await token.approve(reserve.address, tokenTweiDepositAmount);
             await reserve.depositToken(maker1, tokenTweiDepositAmount);
 
@@ -1206,7 +1206,7 @@ contract('OrderbookReserve', async (accounts) => {
                         medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
             await aReserve.init();
 
-            let tokenTweiDepositAmount = Token18Dec.mul(new BN(20));
+            let tokenTweiDepositAmount = token18Dec.mul(new BN(20));
             await failingTok.approve(aReserve.address, tokenTweiDepositAmount);
             await aReserve.depositToken(maker1, tokenTweiDepositAmount);
 
@@ -1219,7 +1219,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("test withdraw KNC reverts when amount above total maker knc amount", async() => {
-            let tokenTweiDepositAmount = Token18Dec.mul(new BN(20));
+            let tokenTweiDepositAmount = token18Dec.mul(new BN(20));
             await KNCToken.approve(reserve.address, tokenTweiDepositAmount);
             await reserve.depositKncForFee(maker1, tokenTweiDepositAmount);
 
@@ -1233,12 +1233,12 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("test withdraw KNC reverts when amount above maker unlocked knc amount", async() => {
-            let tokenTweiDepositAmount = Token18Dec.mul(new BN(20));
+            let tokenTweiDepositAmount = token18Dec.mul(new BN(20));
             await KNCToken.approve(reserve.address, tokenTweiDepositAmount);
             await reserve.depositKncForFee(maker1, tokenTweiDepositAmount);
 
             let orderWei = PRECISION.mul(new BN(2));
-            let orderTwei = Token18Dec.mul(new BN(1));
+            let orderTwei = token18Dec.mul(new BN(1));
 
             await reserve.depositEther(maker1, {value: orderWei});
 
@@ -1260,7 +1260,7 @@ contract('OrderbookReserve', async (accounts) => {
             let aReserve = await OrderbookReserve.new(failingKnc.address, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
             await aReserve.init();
 
-            let tokenTweiDepositAmount = Token18Dec.mul(new BN(20));
+            let tokenTweiDepositAmount = token18Dec.mul(new BN(20));
             await failingKnc.approve(aReserve.address, tokenTweiDepositAmount);
             await aReserve.depositKncForFee(maker1, tokenTweiDepositAmount);
 
@@ -1315,7 +1315,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             //add order from maker1
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -1468,7 +1468,7 @@ contract('OrderbookReserve', async (accounts) => {
 
             await makerDepositFull(maker1, mockReserve, token, 0, new BN(10).pow(new BN(19)), kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(6));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(6));
             let orderDstWei = new BN(minNewOrderWei);
 
             //add orders
@@ -1497,7 +1497,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             //check maker free token funds
             let rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
@@ -1519,7 +1519,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             //add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -1566,7 +1566,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker2, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             //add orders maker1
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -1625,12 +1625,12 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("test getMakerOrders token to eth with two makers", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(80));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(80));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
             await makerDeposit(maker2, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let srcTwei = Token18Dec.mul(new BN(2));
+            let srcTwei = token18Dec.mul(new BN(2));
             let dstWei = PRECISION.mul(new BN(9));
 
             //add orders maker1
@@ -1695,10 +1695,10 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             // first getConversionRate should return 0
-            let rate = await reserve.getConversionRate(tokenAdd, ethAddress, Token18Dec, 0);
+            let rate = await reserve.getConversionRate(tokenAdd, ethAddress, token18Dec, 0);
             Helper.assertEqual(rate, 0);
 
             //add order
@@ -1713,8 +1713,8 @@ contract('OrderbookReserve', async (accounts) => {
             Helper.assertEqual(orderDetails[3], headId); // prev should be buy head id - since first
             Helper.assertEqual(orderDetails[4], tailId); // next should be tail ID - since last
 
-            rate = await reserve.getConversionRate(token.address, ethAddress, Token18Dec, 0);
-            let expectedRate = Token18Dec.mul(srcAmountWei).div(orderDstTwei);
+            rate = await reserve.getConversionRate(token.address, ethAddress, token18Dec, 0);
+            let expectedRate = token18Dec.mul(srcAmountWei).div(orderDstTwei);
             Helper.assertEqual(rate, expectedRate);
         });
 
@@ -1729,7 +1729,7 @@ contract('OrderbookReserve', async (accounts) => {
             orderRate = Helper.calcRateFromQty(orderDstTwei, srcAmountWei, 18, 18);
             Helper.assertEqual(orderRate, MAX_RATE);
 
-            let rate = await reserve.getConversionRate(tokenAdd, ethAddress, Token18Dec, 0);
+            let rate = await reserve.getConversionRate(tokenAdd, ethAddress, token18Dec, 0);
             Helper.assertEqual(rate, 0);
 
             //add order
@@ -1737,7 +1737,7 @@ contract('OrderbookReserve', async (accounts) => {
             let orderId = rc.logs[0].args.orderId;
 
             rate = await reserve.getConversionRate(token.address, ethAddress, orderDstTwei, 0);
-            let expectedRate = Token18Dec.mul(srcAmountWei).div(orderDstTwei);
+            let expectedRate = token18Dec.mul(srcAmountWei).div(orderDstTwei);
             Helper.assertEqual(rate, expectedRate);
 
             let illegalOrderDstTwei = orderDstTwei.sub(new BN(1))
@@ -1760,14 +1760,14 @@ contract('OrderbookReserve', async (accounts) => {
             }
 
             rate = await reserve.getConversionRate(token.address, ethAddress, orderDstTwei, 0);
-            expectedRate = Token18Dec.mul(srcAmountWei).div(orderDstTwei);
+            expectedRate = token18Dec.mul(srcAmountWei).div(orderDstTwei);
             Helper.assertEqual(rate, expectedRate);
         });
 
         it("test min eth to token order size. see revert when wei size below min", async() => {
             let ethWeiDepositAmount = PRECISION.mul(new BN(20));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-            let tokenTweiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenTweiDepositAmount = token18Dec.mul(new BN(0));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenTweiDepositAmount, kncTweiDepositAmount);
 
             let weiAmount = new BN(minNewOrderWei);
@@ -1796,7 +1796,7 @@ contract('OrderbookReserve', async (accounts) => {
         it("test min token to eth order size. see revert when wei size below min", async() => {
             let ethWeiDepositAmount = PRECISION.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-            let tokenTweiDepositAmount = Token18Dec.mul(new BN(2));
+            let tokenTweiDepositAmount = token18Dec.mul(new BN(2));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenTweiDepositAmount, kncTweiDepositAmount);
 
             let weiAmount = new BN(minNewOrderWei);
@@ -1833,7 +1833,7 @@ contract('OrderbookReserve', async (accounts) => {
             orderRate = Helper.calcRateFromQty(orderDstWei, srcAmountTwei, 18, 18);
             Helper.assertEqual(orderRate, MAX_RATE);
 
-            let rate = await reserve.getConversionRate(tokenAdd, ethAddress, Token18Dec, 0);
+            let rate = await reserve.getConversionRate(tokenAdd, ethAddress, token18Dec, 0);
             Helper.assertEqual(rate, 0);
 
             //add order
@@ -1841,7 +1841,7 @@ contract('OrderbookReserve', async (accounts) => {
             let orderId = rc.logs[0].args.orderId;
 
             rate = await reserve.getConversionRate(ethAddress, token.address, orderDstTwei, 0);
-            let expectedRate = Token18Dec.mul(srcAmountTwei).div(orderDstWei);
+            let expectedRate = token18Dec.mul(srcAmountTwei).div(orderDstWei);
             Helper.assertEqual(rate, expectedRate);
 
             let illegalOrderDstWei = orderDstWei.sub(new BN(1))
@@ -1864,7 +1864,7 @@ contract('OrderbookReserve', async (accounts) => {
             }
 
             rate = await reserve.getConversionRate(ethAddress, token.address, orderDstTwei, 0);
-            expectedRate = Token18Dec.mul(srcAmountWei).div(orderDstTwei);
+            expectedRate = token18Dec.mul(srcAmountWei).div(orderDstTwei);
             Helper.assertEqual(rate, expectedRate);
         });
 
@@ -1873,7 +1873,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, PRECISION.mul(new BN(600)));
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             //add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -1889,14 +1889,14 @@ contract('OrderbookReserve', async (accounts) => {
 
         it("maker add sell token order. see rate updated. verify order details.", async () => {
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(9)).add(new BN(3000));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(9)).add(new BN(3000));
             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(9));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(9));
             let orderDstWei = PRECISION.mul(new BN(2));
 
             // first getConversionRate should return 0
-            let rate = await reserve.getConversionRate(ethAddress, tokenAdd, Token18Dec, 0);
+            let rate = await reserve.getConversionRate(ethAddress, tokenAdd, token18Dec, 0);
             Helper.assertEqual(rate, 0);
 
             //add order
@@ -1913,8 +1913,8 @@ contract('OrderbookReserve', async (accounts) => {
             let orderList = await reserve.getTokenToEthOrderList();
             Helper.assertEqual(orderList.length, 1); //sell head only
 
-            rate = await reserve.getConversionRate(ethAddress, token.address, Token18Dec, 0);
-            let expectedRate = Token18Dec.mul(orderSrcAmountTwei).div(orderDstWei);
+            rate = await reserve.getConversionRate(ethAddress, token.address, token18Dec, 0);
+            let expectedRate = token18Dec.mul(orderSrcAmountTwei).div(orderDstWei);
             Helper.assertEqual(rate, expectedRate);
         });
 
@@ -1989,7 +1989,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(300));
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             //check maker free token funds
             let rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
@@ -2035,7 +2035,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(300)); // 2 ether
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             // insert 1st order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -2099,7 +2099,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(300)); // 2 ether
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             // insert 1st order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -2125,7 +2125,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(300)); // 2 ether
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             // insert 1st order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -2189,7 +2189,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(500)); // 2 ether
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             // insert 1st order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -2224,7 +2224,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(500)); // 2 ether
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
             let order1ID = rc.logs[0].args.orderId;
@@ -2255,12 +2255,12 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add 2 sell orders. get hint for next sell order and see correct", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(500)); // 500 tokens
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(500)); // 500 tokens
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let orderDestWei = PRECISION.mul(new BN(2)).add(new BN(2000)); // 2 ether
-            let srcAmountTwei = Token18Dec.mul(new BN(9));
+            let srcAmountTwei = token18Dec.mul(new BN(9));
 
             let rc = await reserve.submitTokenToEthOrder(srcAmountTwei, orderDestWei, {from: maker1});
             let order1ID = rc.logs[0].args.orderId;
@@ -2295,7 +2295,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(500)); // 2 ether
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
             let order1ID = rc.logs[0].args.orderId;
@@ -2335,12 +2335,12 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add 3 sell orders. test get hint for updating last order to different amounts", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(500)); // 500 tokens
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(500)); // 500 tokens
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let orderDestWei = PRECISION.mul(new BN(2)).add(new BN(800)); // 2 ether
-            let srcAmountTwei = Token18Dec.mul(new BN(9));
+            let srcAmountTwei = token18Dec.mul(new BN(9));
 
             let rc = await reserve.submitTokenToEthOrder(srcAmountTwei, orderDestWei, {from: maker1});
             let order1ID = rc.logs[0].args.orderId;
@@ -2439,7 +2439,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(300)); // 2 ether
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             // insert 1st order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -2465,14 +2465,14 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add few buy and sell orders and perform batch update - only amounts. compare gas no hint and good hint.", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(500)); // 500 tokens
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(500)); // 500 tokens
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(4)).add(new BN(3000));
 
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(250)); // 2 ether
-            let dstAmountTwei = Token18Dec.mul(new BN(9));
+            let dstAmountTwei = token18Dec.mul(new BN(9));
 
             // insert buy orders
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, dstAmountTwei, {from: maker1});
@@ -2481,7 +2481,7 @@ contract('OrderbookReserve', async (accounts) => {
             let buyOrder2ID = rc.logs[0].args.orderId;
 
             // insert sell orders
-            let srcAmountTwei = Token18Dec.mul(new BN(9));
+            let srcAmountTwei = token18Dec.mul(new BN(9));
             let orderDestWei = PRECISION.mul(new BN(2));
 
             rc = await reserve.submitTokenToEthOrder(srcAmountTwei, orderDestWei, {from: maker1});
@@ -2544,14 +2544,14 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add few buy and sell orders and perform batch update + move position. compare gas no hint and good hint.", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(500)); // 500 tokens
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(500)); // 500 tokens
             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
             let ethWeiDepositAmount = PRECISION.mul(new BN(6)).add(new BN(3000));
 
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(200)); // 2 ether
-            let dstAmountTwei = Token18Dec.mul(new BN(9));
+            let dstAmountTwei = token18Dec.mul(new BN(9));
 
             // insert 2 buy orders
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, dstAmountTwei, {from: maker1});
@@ -2562,7 +2562,7 @@ contract('OrderbookReserve', async (accounts) => {
             let buyOrder3ID = rc.logs[0].args.orderId;
 
             // insert 2 sell orders
-            let srcAmountTwei = Token18Dec.mul(new BN(9));
+            let srcAmountTwei = token18Dec.mul(new BN(9));
             let orderDestWei = PRECISION.mul(new BN(2));
 
             rc = await reserve.submitTokenToEthOrder(srcAmountTwei, orderDestWei, {from: maker1});
@@ -2632,13 +2632,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add a few buy orders. see orders added in correct position. print gas price per order", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(200)); // 2 ether
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
 
@@ -2702,13 +2702,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker - check gas price for order reuse is better.", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(2000)); // 2 ether
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
             let gasAmountFirstOrderUse = new BN(rc.receipt.gasUsed);
@@ -2742,7 +2742,7 @@ contract('OrderbookReserve', async (accounts) => {
             }
 
             srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(2000)); // 2 ether
-            orderDstTwei = Token18Dec.mul(new BN(9));
+            orderDstTwei = token18Dec.mul(new BN(9));
             rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
             let gasAmountOrderReuse = new BN(rc.receipt.gasUsed);
 
@@ -2778,7 +2778,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("use batch add order - 3 orders. print gas for using hint array.", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(6));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -2800,7 +2800,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("use batch add order. print gas for using special add array.", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(6));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -2820,7 +2820,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("use batch add order. print gas when using no hints.", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(6));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -2840,7 +2840,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("maker - compare gas price for making 5 buy orders. one by one in order vs batch add.", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -2880,7 +2880,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("make order - compare gas price. add 5th order with / without hint.", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -2928,12 +2928,12 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add a few sell orders. see orders added in correct position.", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(500));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(500));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(0)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(9));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(9));
             let orderDstWei = PRECISION.mul(new BN(2)).add(new BN(2000));
 
             let rc = await reserve.submitTokenToEthOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
@@ -3003,12 +3003,12 @@ contract('OrderbookReserve', async (accounts) => {
         it("add max number of orders per maker x sell and x buy. see next order reverted.", async () => {
             const MAX_ORDERS_PER_MAKER = numOrderIdsPerMaker;
 
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(3000));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(3000));
             let kncTweiDepositAmount = PRECISION.mul(new BN(300000));
             let ethWeiDepositAmount = PRECISION.mul(new BN(0));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(3));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(3));
             let orderDstWei = PRECISION.mul(new BN(2));
 
             let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});;
@@ -3061,12 +3061,12 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("test can't 'revive' deleted (tok to eth) order by setting it as prev ID (in empty list)", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(500));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(500));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(0)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(9));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(9));
             let orderDstWei = PRECISION.mul(new BN(2)).add(new BN(2000));
 
             let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
@@ -3085,12 +3085,12 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("test can't 'revive' deleted (tok to eth) order by setting it as prev ID (in non empty list)", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(500));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(500));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(0)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(9));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(9));
             let orderDstWei = PRECISION.mul(new BN(2));
 
             await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
@@ -3112,12 +3112,12 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("test can't 'revive' canceled (tok to eth) order by updating it", async() => {
-            const tokenWeiDepositAmount = Token18Dec.mul(new BN(500));
+            const tokenWeiDepositAmount = token18Dec.mul(new BN(500));
             const kncTweiDepositAmount = PRECISION.mul(new BN(600));
             const ethWeiDepositAmount = PRECISION.mul(new BN(0));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(9));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(9));
             let orderDstWei = PRECISION.mul(new BN(2));
 
             await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
@@ -3142,12 +3142,12 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("test can't cancel canceled (tok to eth) order", async() => {
-            const tokenWeiDepositAmount = Token18Dec.mul(new BN(500));
+            const tokenWeiDepositAmount = token18Dec.mul(new BN(500));
             const kncTweiDepositAmount = PRECISION.mul(new BN(600));
             const ethWeiDepositAmount = new BN(0);
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(9));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(9));
             let orderDstWei = PRECISION.mul(new BN(2));
 
             await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
@@ -3166,12 +3166,12 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("test can't 'revive' deleted (eth to tok) order by setting it as prev ID (in empty list)", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderTwei = Token18Dec.mul(new BN(9));
+            let orderTwei = token18Dec.mul(new BN(9));
             let orderWei = PRECISION.mul(new BN(2)).add(new BN(2000));
 
             let rc = await reserve.submitEthToTokenOrder(orderWei, orderTwei, {from: maker1});
@@ -3190,12 +3190,12 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("test can't 'revive' deleted (eth to tok) order by setting it as prev ID (in non empty list)", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderTwei = Token18Dec.mul(new BN(9));
+            let orderTwei = token18Dec.mul(new BN(9));
             let orderWei = PRECISION.mul(new BN(2));
 
             await reserve.submitEthToTokenOrder(orderWei, orderTwei, {from: maker1});
@@ -3223,7 +3223,7 @@ contract('OrderbookReserve', async (accounts) => {
             let tokenWeiDepositAmount = new BN(String(PRECISION * 11.1));
             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(9));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(9));
             let orderDstWei = PRECISION.mul(new BN(2));
 
             //check maker free token funds
@@ -3256,7 +3256,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let orderSrcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(5));
+            let orderDstTwei = token18Dec.mul(new BN(5));
 
             //check maker free token funds
             let rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
@@ -3349,7 +3349,7 @@ contract('OrderbookReserve', async (accounts) => {
             let tokenTweiDepositAmount = PRECISION.mul(new BN(16)).add(new BN(700));
             await makerDeposit(maker1, 0, tokenTweiDepositAmount, kncTweiDepositAmount);
 
-            let srcAmountTwei = Token18Dec.mul(new BN(3));
+            let srcAmountTwei = token18Dec.mul(new BN(3));
             let dstWei = PRECISION.mul(new BN(2));
 
             //add 3 orders
@@ -3409,7 +3409,7 @@ contract('OrderbookReserve', async (accounts) => {
             let tokenWeiDepositAmount = new BN(String(PRECISION * 11.1));
             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(9));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(9));
             let orderDstWei = PRECISION.mul(new BN(2));
 
             //add order
@@ -3441,7 +3441,7 @@ contract('OrderbookReserve', async (accounts) => {
             let tokenWeiDepositAmount = new BN(String(PRECISION * 11.1));
             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(9));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(9));
             let orderDstWei = PRECISION.mul(new BN(2));
 
             let freeTwei = await reserve.makerFunds(maker1, tokenAdd);
@@ -3477,7 +3477,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(300));
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             //check maker free token funds
             let rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
@@ -3510,7 +3510,7 @@ contract('OrderbookReserve', async (accounts) => {
             let tokenWeiDepositAmount = new BN(String(PRECISION * 11.1));
             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(9));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(9));
             let orderDstWei = PRECISION.mul(new BN(2));
 
             let freeTwei = await reserve.makerFunds(maker1, tokenAdd);
@@ -3546,7 +3546,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             //check maker free token funds
             let rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
@@ -3577,14 +3577,14 @@ contract('OrderbookReserve', async (accounts) => {
 
     describe("trade (add orders and take)", function() {
         it("maker add sell order. take using trade. see amounts updated in contracts. see funds transferred.", async() => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(10));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(10));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(0));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let makerTokenBalance = await reserve.makerFunds(maker1, tokenAdd);
             Helper.assertEqual(makerTokenBalance, tokenWeiDepositAmount);
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(9));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(9));
             let orderDstWei = PRECISION.mul(new BN(2)).add(new BN(2000));
 
             let rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei, {from: maker1});
@@ -3611,7 +3611,7 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("maker - make 5 buy orders and take in one trade. see gas for take.", async () => {
-            const tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            const tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             const kncTweiDepositAmount = PRECISION.mul(new BN(600));
             const ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -3658,13 +3658,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add buy order. user takes order. see taken order removed as expected.", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(2)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             // add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -3691,13 +3691,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add a few buy orders. user takes full orders. see user gets traded wei. maker gets tokens.", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(6)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             // add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -3741,13 +3741,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("buy orders print gas for taking 0.5 order 1.5 order 2.5 orders. remaining removed", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
             let ethWeiDepositAmount = PRECISION.mul(new BN(12)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             // add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -3780,13 +3780,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("buy orders print gas for taking 0.5 order 1.5 order 2.5 orders. remaining not removed", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
             let ethWeiDepositAmount = PRECISION.mul(new BN(12)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));;
-            let orderDstTwei = Token18Dec.mul(new BN(9));
+            let orderDstTwei = token18Dec.mul(new BN(9));
 
             // add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -3823,13 +3823,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("test over flows for get rate on partial order. tests overflow in dest amount calculation", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
             let ethWeiDepositAmount = PRECISION.mul(new BN(10));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(10));
-            let orderDstTwei = Token18Dec.mul(new BN(1000));
+            let orderDstTwei = token18Dec.mul(new BN(1000));
 
             // add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -3908,13 +3908,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("test over flows for get rate on partial order use MAX_QTY.", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
             let ethWeiDepositAmount = PRECISION.mul(new BN(10));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(10));
-            let orderDstTwei = Token18Dec.mul(new BN(1000));
+            let orderDstTwei = token18Dec.mul(new BN(1000));
 
             // add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -3933,13 +3933,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("test over flows in trade partial order. i.e. overflow in dest amount calculation", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
             let ethWeiDepositAmount = PRECISION.mul(new BN(20));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(20));
-            let orderDstTwei = Token18Dec.mul(new BN(2000));
+            let orderDstTwei = token18Dec.mul(new BN(2000));
 
             // add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -3960,13 +3960,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add buy order. user takes partial. remaining order stays in book.", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
             let ethWeiDepositAmount = PRECISION.mul(new BN(2)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(7));
+            let orderDstTwei = token18Dec.mul(new BN(7));
 
             // add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -3993,13 +3993,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add buy order. user takes partial. remaining order removed.", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(2)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(7));
+            let orderDstTwei = token18Dec.mul(new BN(7));
 
             // add order
             let rc = await reserve.submitEthToTokenOrder(srcAmountWei, orderDstTwei, {from: maker1});
@@ -4028,12 +4028,12 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("maker add a few sell orders. user takes orders. see taken orders are removed. user gets token. maker get eth.", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(70));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(0));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(6));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(6));
             let orderDstWei = PRECISION.mul(new BN(2));
 
             //add order
@@ -4059,12 +4059,12 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("sell orders print gas for taking 0.5 order 1.5 order 2.5 orders. remaining removed", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(70));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
             let ethWeiDepositAmount = PRECISION.mul(new BN(0));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(6));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(6));
             let orderDstWei = PRECISION.mul(new BN(2));
 
             //add order
@@ -4098,12 +4098,12 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("sell orders print gas for taking 0.5 order 1.5 order 2.5 orders. remaining not removed", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(70));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
             let ethWeiDepositAmount = PRECISION.mul(new BN(0));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-            let orderSrcAmountTwei = Token18Dec.mul(new BN(6));
+            let orderSrcAmountTwei = token18Dec.mul(new BN(6));
             let orderDstWei = PRECISION.mul(new BN(2));
 
             //add order
@@ -4144,13 +4144,13 @@ contract('OrderbookReserve', async (accounts) => {
         })
 
         it("add 9 buy orders 1 maker. user takes all orders. print gas", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(1100));
             let ethWeiDepositAmount = PRECISION.mul(new BN(20)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(7));
+            let orderDstTwei = token18Dec.mul(new BN(7));
 
             // add orders
             let totalPayAmountTwei = new BN(0);
@@ -4179,13 +4179,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("add 10 buy orders. user takes all and last partial. remaining order stays in book. print gas", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(1400));
             let ethWeiDepositAmount = PRECISION.mul(new BN(20)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(7));
+            let orderDstTwei = token18Dec.mul(new BN(7));
 
             // add orders
             let totalPayAmountTwei = new BN(0);
@@ -4214,13 +4214,13 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("add 10 buy orders. user takes all and last partial. remaining order removed.", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(1500));
             let ethWeiDepositAmount = PRECISION.mul(new BN(20)).add(new BN(30000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(7));
+            let orderDstTwei = token18Dec.mul(new BN(7));
 
             // add orders
             let totalPayAmountTwei = new BN(0);
@@ -4254,7 +4254,7 @@ contract('OrderbookReserve', async (accounts) => {
         });
 
         it("add 3 buy orders per 3 makers. take all orders in one trade. see each maker gets his part of tokens", async () => {
-            let tokenWeiDepositAmount = Token18Dec.mul(new BN(0));
+            let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
             let ethWeiDepositAmount = PRECISION.mul(new BN(6)).add(new BN(3000));
             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -4262,7 +4262,7 @@ contract('OrderbookReserve', async (accounts) => {
             await makerDeposit(maker3, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
             let srcAmountWei = PRECISION.mul(new BN(2));
-            let orderDstTwei = Token18Dec.mul(new BN(7));
+            let orderDstTwei = token18Dec.mul(new BN(7));
 
             // add orders
             let totalPayAmountTwei = new BN(0);
@@ -4327,7 +4327,7 @@ contract('OrderbookReserve', async (accounts) => {
         await Helper.sendEtherWithPromise(user1, admin, PRECISION.mul(new BN(6)));
         await Helper.sendEtherWithPromise(user1, maker2, PRECISION.mul(new BN(6)));
 
-        let tokenWeiDepositAmount = Token18Dec.mul(new BN(70));
+        let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
@@ -4336,7 +4336,7 @@ contract('OrderbookReserve', async (accounts) => {
         let rate = await reserve.getConversionRate(token.address, ethAddress, PRECISION, 0);
         Helper.assertEqual(rate, 0);
 
-        let orderSrcAmountTwei = Token18Dec.mul(new BN(6));
+        let orderSrcAmountTwei = token18Dec.mul(new BN(6));
         let orderDstWei = PRECISION.mul(new BN(2));
 
         //add order
@@ -4470,12 +4470,12 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
     });
 
     it("add orders modify knc rate to lower knc value, see unlocked knc and staked knc don't change", async() => {
-        let tokenWeiDepositAmount = Token18Dec.mul(new BN(70));
+        let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-        let orderSrcAmountTwei = Token18Dec.mul(new BN(6));
+        let orderSrcAmountTwei = token18Dec.mul(new BN(6));
         let orderDstWei = new BN(minNewOrderWei);
 
         //add orders
@@ -4516,12 +4516,12 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
     })
 
     it("create knc rate change, so stakes per order aren't enough. see can still take order", async() => {
-        let tokenWeiDepositAmount = Token18Dec.mul(new BN(70));
+        let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-        let orderSrcAmountTwei = Token18Dec.mul(new BN(6));
+        let orderSrcAmountTwei = token18Dec.mul(new BN(6));
         let orderDstWei = new BN(minNewOrderWei);
 
         //add orders
@@ -4577,12 +4577,12 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
     });
 
     it("create knc rate that sets stake amount equal to expected burn amount, see can take order", async() => {
-        let tokenWeiDepositAmount = Token18Dec.mul(new BN(70));
+        let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-        let orderSrcAmountTwei = Token18Dec.mul(new BN(6));
+        let orderSrcAmountTwei = token18Dec.mul(new BN(6));
         let orderDstWei = new BN(minNewOrderWei);
 
         //add orders
@@ -4624,12 +4624,12 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
     });
 
     it("see when calling getConversionRate with srcQty 0 it returns 0", async() => {
-        let tokenWeiDepositAmount = Token18Dec.mul(new BN(70));
+        let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-        let orderSrcAmountTwei = Token18Dec.mul(new BN(6));
+        let orderSrcAmountTwei = token18Dec.mul(new BN(6));
         let orderDstWei = new BN(minNewOrderWei);
 
         //add orders
@@ -4642,12 +4642,12 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
     });
 
     it("change knc rate so stake amount < burn amount, see get rate blocked == returns 0", async() => {
-        let tokenWeiDepositAmount = Token18Dec.mul(new BN(70));
+        let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-        let orderSrcAmountTwei = Token18Dec.mul(new BN(6));
+        let orderSrcAmountTwei = token18Dec.mul(new BN(6));
         let orderDstWei = new BN(minNewOrderWei);
 
         //add orders
@@ -4686,12 +4686,12 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
     });
 
     it("change knc rate so less stake required. see reflected in burn amount calculation", async() => {
-        let tokenWeiDepositAmount = Token18Dec.mul(new BN(70));
+        let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-        let orderSrcAmountTwei = Token18Dec.mul(new BN(6));
+        let orderSrcAmountTwei = token18Dec.mul(new BN(6));
         let orderDstWei = new BN(minNewOrderWei);
 
         //add orders
@@ -4736,12 +4736,12 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
     });
 
     it("change knc rate so less stake required. see reflected", async() => {
-        let tokenWeiDepositAmount = Token18Dec.mul(new BN(70));
+        let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
 
-        let orderSrcAmountTwei = Token18Dec.mul(new BN(6));
+        let orderSrcAmountTwei = token18Dec.mul(new BN(6));
         let orderDstWei = new BN(minNewOrderWei);
 
         //add orders
@@ -4784,7 +4784,7 @@ contract('OrderbookReserve_feeBurner_network', async (accounts) => {
     });
 
     it("add order. reduce knc rate by factor. see can't take order if not enough burn amount", async() => {
-        let tokenWeiDepositAmount = Token18Dec.mul(new BN(6));
+        let tokenWeiDepositAmount = token18Dec.mul(new BN(6));
         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
 
         await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
