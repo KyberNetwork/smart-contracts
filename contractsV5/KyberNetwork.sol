@@ -55,14 +55,14 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     // the new trade with hint
     function tradeWithHintAndFee(address payable trader, IERC20 src, uint srcAmount, IERC20 dest, address payable destAddress,
         uint maxDestAmount, uint minConversionRate, address payable platformWallet, uint platformFeeBps, bytes calldata hint)
-        external payable 
+        external payable
         returns(uint destAmount)
-    {    
+    {
         TradeData memory tradeData;
         initTradeData(trader, src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, platformWallet, platformFeeBps, tradeData);
         parseTradeDataHint(tradeData, hint);
         tradeData.takerFeeBps = getAndUpdateTakerFee();
-        
+
         return trade(tradeData);
     }
 
@@ -88,7 +88,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         parseTradeDataHint(tradeData, hint);
         tradeData.takerFeeBps = getAndUpdateTakerFee();
-        
+
         return trade(tradeData);
     }
 
@@ -98,8 +98,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
     function addReserve(IKyberReserve reserve, uint reserveId, bool isFeePaying) public onlyOperator returns(bool) {
-        require(reserveIdToAddresses[reserveId].length == 0);
-        require(reserveAddressToId[address(reserve)] == uint(0));
+        require(reserveIdToAddresses[reserveId].length == 0, "reserve id already taken");
+        require(reserveAddressToId[address(reserve)] == uint(0), "reserve address has existing id");
         
         reserveAddressToId[address(reserve)] = reserveId;
 
@@ -121,7 +121,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @param startIndex to search in reserve array.
     function removeReserveWithIndex(IKyberReserve reserve, uint startIndex) public onlyOperator returns(bool) {
 
-        require(reserveAddressToId[address(reserve)] != uint(0));
+        require(reserveAddressToId[address(reserve)] != uint(0), "corresponding reserve id is zero");
         
         uint reserveIndex = 2 ** 255;
         uint reserveId = reserveAddressToId[address(reserve)];
