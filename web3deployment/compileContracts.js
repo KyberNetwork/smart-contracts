@@ -41,7 +41,8 @@ const input = {
     "WhiteListInterface.sol" : fs.readFileSync(contractPath + 'WhiteListInterface.sol', 'utf8'),
     "WrapFeeBurner.sol" : fs.readFileSync(contractPath + 'wrappers/WrapFeeBurner.sol', 'utf8'),
     "KyberUniswapReserve.sol" : fs.readFileSync(contractPath + 'reserves/bridgeReserves/uniswap/KyberUniswapReserve.sol', 'utf8'),
-    "WrapperBase.sol" : fs.readFileSync(contractPath + 'wrappers/WrapperBase.sol', 'utf8')
+    "WrapperBase.sol" : fs.readFileSync(contractPath + 'wrappers/WrapperBase.sol', 'utf8'),
+    "SetStepFunctionWrapper.sol" : fs.readFileSync(contractPath + 'wrappers/SetStepFunctionWrapper.sol', 'utf8')
   };
 
 module.exports.compileContracts = async function() {
