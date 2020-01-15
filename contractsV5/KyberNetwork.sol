@@ -272,7 +272,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     }
 
     function updateTakerFee() public returns(uint takerFeeBps) {
-        takerFeeBps = getAndUpdateTakerFee();    
+        takerFeeBps = getAndUpdateTakerFee();
     }
     
     //backward compatible
@@ -283,8 +283,14 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         if (src == dest) return (0, 0);
         TradeData memory tradeData;
         bytes memory hint;
-        
-        ( , , expectedRate) = expectedRateContract.getExpectedRate(src, dest, qty);
+
+        initTradeData(address(uint160(0)), src, srcQty, dest, address(uint160(0)), 2 ** 255, 0, address(uint160(0)), 0, tradeData);
+        tradeData.takerFeeBps = getTakerFee();
+        parseTradeDataHint(tradeData, hint);
+
+        findRatesAndAmounts(src, dest, srcQty, tradeData);
+
+        expectedRate = tradeData.rateWithNetworkFee;
         worstRate = expectedRate * 97 / 100; // backward compatible formula
     }
 
@@ -296,10 +302,16 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         require(expectedRateContract != IExpectedRate(0));
         
         if (src == dest) return (0, 0, 0);
-
-        uint qty = srcQty & ~PERM_HINT_GET_RATE;
-
-        return expectedRateContract.getExpectedRate(src, dest, qty);
+        TradeData memory tradeData;
+        initTradeData(address(0), src, srcQty, dest, address(0), 2 ** 255, 0, address(0), platformFeeBps, tradeData);
+        tradeData.takerFeeBps = getTakerFee();
+        parseTradeDataHint(tradeData, hint);
+        
+        findRatesAndAmounts(src, dest, srcQty, tradeData);
+        
+        expectedRateNoFees = calcRateFromQty(srcQty, tradeData.destAmountNoFee, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
+        expectedRateAfterNetworkFees = tradeData.rateWithNetworkFee;
+        expectedRateAfterAllFees = calcRateFromQty(srcQty, tradeData.actualDestAmount, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
     }
 
     function enabled() public view returns(bool) {
@@ -421,6 +433,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         for (uint i = 0; i < reserveArr.length; i++) {
 
             if (i == bestReserve.index) continue;
+
             isPayingFees = isFeePayingReserve[address(reserve)];
             srcAmountWithFee = ((src == ETH_TOKEN_ADDRESS) && isPayingFees) ? srcAmount - takerFee : srcAmount;
             destAmount = srcAmountWithFee * rates[i] / PRECISION;
