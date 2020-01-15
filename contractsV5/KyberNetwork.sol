@@ -44,6 +44,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     mapping(address=>bool) public isFeePayingReserve;
     mapping(address=>address[]) public reservesPerTokenSrc; //reserves supporting token to eth
     mapping(address=>address[]) public reservesPerTokenDest;//reserves support eth to token
+    mapping(address=>address) public reserveRebateWallet;
 
     constructor(address _admin) public 
         Withdrawable(_admin)
@@ -100,14 +101,15 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         return trade(tradeData);
     }
 
-    event AddReserveToNetwork(IKyberReserve indexed reserve, uint indexed reserveId, bool add);
+    event AddReserveToNetwork(IKyberReserve indexed reserve, uint indexed reserveId, bool add, address indexed wallet);
 
     /// @notice can be called only by operator
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
-    function addReserve(IKyberReserve reserve, uint reserveId, bool isFeePaying) public onlyOperator returns(bool) {
+    function addReserve(IKyberReserve reserve, uint reserveId, bool isFeePaying, address wallet) public onlyOperator returns(bool) {
         require(reserveIdToAddresses[reserveId][0] == address(0));
         require(reserveAddressToId[address(reserve)] == uint(0));
+        require(wallet != address(0), "The rebate wallet should not be the zero address.");
         
         reserveAddressToId[address(reserve)] = reserveId;
 
@@ -116,7 +118,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         
         reserves.push(reserve);
 
-        emit AddReserveToNetwork(reserve, reserveId, true);
+        reserveRebateWallet[reserve] = wallet;
+
+        emit AddReserveToNetwork(reserve, reserveId, true, wallet);
 
         return true;
     }
