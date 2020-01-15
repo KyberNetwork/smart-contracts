@@ -433,6 +433,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         for (uint i = 0; i < reserveArr.length; i++) {
 
             if (i == bestReserve.index) continue;
+
             isPayingFees = isFeePayingReserve[address(reserve)];
             srcAmountWithFee = ((src == ETH_TOKEN_ADDRESS) && isPayingFees) ? srcAmount - takerFee : srcAmount;
             destAmount = srcAmountWithFee * rates[i] / PRECISION;
