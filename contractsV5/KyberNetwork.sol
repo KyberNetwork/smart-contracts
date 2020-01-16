@@ -69,6 +69,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tradeData.input.minConversionRate = minConversionRate;
         tradeData.input.platformWallet = platformWallet;
         tradeData.input.platformFeeBps = platformFeeBps;
+
         parseTradeDataHint(tradeData, hint);
         tradeData.takerFeeBps = getAndUpdateTakerFee();
         

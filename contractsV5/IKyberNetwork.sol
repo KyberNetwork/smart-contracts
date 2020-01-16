@@ -20,23 +20,13 @@ interface IKyberNetwork {
 
     // new APIs
     function getExpectedRateWithHintAndFee(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps, bytes calldata hint)
-<<<<<<< HEAD
     external view
     returns (uint expectedRateNoFees, uint expectedAfterRateNetworkFees, uint expectedRateAfterAllFees);
-=======
-        external view
-        returns (uint expectedRateNoFees, uint expectedAfterRateNetworkFees, uint expectedRateAfterAllFees);
->>>>>>> Finetune searchBestRate and findRatesAndAmounts, hint parser
 
     // destAmount is amount after deducting Network fee
     // destAmountAfterNetworkFee: after taking Network fee, before taking custom fee
     function tradeWithHintAndFee(address payable trader, IERC20 src, uint srcAmount, IERC20 dest, address payable destAddress,
         uint maxDestAmount, uint minConversionRate, address payable platformWallet, uint platformFeeBps, bytes calldata hint)
-<<<<<<< HEAD
     external payable
     returns(uint destAmount);
-=======
-        external payable 
-        returns(uint destAmount);
->>>>>>> Finetune searchBestRate and findRatesAndAmounts, hint parser
 }
