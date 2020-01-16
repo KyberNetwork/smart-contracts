@@ -305,23 +305,22 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         require(expectedRateContract != IExpectedRate(0));
         
         if (src == dest) return (0, 0, 0);
-        uint qty = srcQty & ~PERM_HINT_GET_RATE;
         
         TradeData memory tradeData;
         
         tradeData.input.src = src;
-        tradeData.input.srcAmount = qty;
+        tradeData.input.srcAmount = srcQty;
         tradeData.input.dest = dest;
         tradeData.input.maxDestAmount = 2 ** 255;
         tradeData.input.platformFeeBps = platformFeeBps;
         parseTradeDataHint(tradeData, hint);
         tradeData.takerFeeBps = getTakerFee();
         
-        findRatesAndAmounts(src, dest, qty, tradeData);
+        findRatesAndAmounts(src, dest, srcQty, tradeData);
         
-        expectedRateNoFees = calcRateFromQty(qty, tradeData.destAmountNoFee, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
+        expectedRateNoFees = calcRateFromQty(srcQty, tradeData.destAmountNoFee, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
         expectedRateAfterNetworkFees = tradeData.rateWithNetworkFee;
-        expectedRateAfterAllFees = calcRateFromQty(qty, tradeData.actualDestAmount, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
+        expectedRateAfterAllFees = calcRateFromQty(srcQty, tradeData.actualDestAmount, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
     }
 
     function enabled() public view returns(bool) {
