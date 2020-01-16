@@ -21,7 +21,7 @@ interface IKyberNetwork {
     // new APIs
     function getExpectedRateWithHintAndFee(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps, bytes calldata hint)
     external view
-    returns (uint expectedRateNoFees, uint expectedAfterRateNetworkFees, uint expectedRateAfterAllFees);
+    returns (uint expectedRateNoFees, uint expectedRateAfterNetworkFees, uint expectedRateAfterAllFees);
 
     // destAmount is amount after deducting Network fee
     // destAmountAfterNetworkFee: after taking Network fee, before taking custom fee
