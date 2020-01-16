@@ -8,11 +8,6 @@ import "./IKyberReserve.sol";
 import "./IFeeHandler.sol";
 
 
-contract IWhiteList {
-    function getUserCapInWei(address user) external view returns (uint userCapWei);
-}
-
-
 interface IExpectedRate {
     function getExpectedRate(IERC20 src, IERC20 dest, uint srcQty) external view
         returns (uint expectedRateNoFees, uint expectedRateNetworkFees, uint expectedRateAllFees);
@@ -22,9 +17,10 @@ interface IExpectedRate {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
-    
+
+    bytes constant PERM_HINT = "PERM"; //for backwards compatibility
+    uint  constant PERM_HINT_GET_RATE = 1 << 255; //for backwards compatibility
     uint            public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
-    IWhiteList      public whiteListContract;
     IExpectedRate   public expectedRateContract;
     IFeeHandler     public feeHandlerContract;
 
@@ -41,6 +37,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     mapping(address=>bool) public isFeePayingReserve;
     mapping(address=>IKyberReserve[]) public reservesPerTokenSrc; //reserves supporting token to eth
     mapping(address=>IKyberReserve[]) public reservesPerTokenDest;//reserves support eth to token
+    mapping(address=>address) public reserveRebateWallet;
 
     constructor(address _admin) public 
         Withdrawable(_admin)
@@ -99,23 +96,25 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         return trade(tradeData);
     }
 
-    event AddReserveToNetwork(IKyberReserve indexed reserve, uint indexed reserveId, bool add);
+    event AddReserveToNetwork(address indexed reserve, uint indexed reserveId, bool add, address indexed rebateWallet);
 
     /// @notice can be called only by operator
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
-    function addReserve(IKyberReserve reserve, uint reserveId, bool isFeePaying) public onlyOperator returns(bool) {
+    function addReserve(address reserve, uint reserveId, bool isFeePaying, address wallet) public onlyOperator returns(bool) {
         require(reserveIdToAddresses[reserveId].length == 0);
-        require(reserveAddressToId[address(reserve)] == uint(0));
+        require(reserveAddressToId[reserve] == uint(0));
         
-        reserveAddressToId[address(reserve)] = reserveId;
+        reserveAddressToId[reserve] = reserveId;
 
-        reserveIdToAddresses[reserveId][0] = address(reserve);
-        isFeePayingReserve[address(reserve)] = isFeePaying;
+        reserveIdToAddresses[reserveId][0] = reserve;
+        isFeePayingReserve[reserve] = isFeePaying;
         
-        reserves.push(reserve);
+        reserves.push(IKyberReserve(reserve));
 
-        emit AddReserveToNetwork(reserve, reserveId, true);
+        reserveRebateWallet[reserve] = wallet;
+
+        emit AddReserveToNetwork(reserve, reserveId, true, wallet);
 
         return true;
     }
@@ -192,14 +191,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         setDecimals(token);
 
         return true;
-    }
-
-    event WhiteListContractSet(IWhiteList newContract, IWhiteList currentContract);
-
-    ///@param whiteList can be empty
-    function setWhiteList(IWhiteList whiteList) public onlyAdmin {
-        emit WhiteListContractSet(whiteList, whiteListContract);
-        whiteListContract = whiteList;
     }
 
     event ExpectedRateContractSet(IExpectedRate newContract, IExpectedRate currentContract);
@@ -288,17 +279,19 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     {
         // require(expectedRateContract != IExpectedRate(0));
         if (src == dest) return (0, 0);
+        uint qty = srcQty & ~PERM_HINT_GET_RATE;
+        
         TradeData memory tradeData;
         bytes memory hint;
         
         tradeData.input.src = src;
-        tradeData.input.srcAmount = srcQty;
+        tradeData.input.srcAmount = qty;
         tradeData.input.dest = dest;
         tradeData.input.maxDestAmount = 2 ** 255;
         parseTradeDataHint(tradeData, hint);
         tradeData.takerFeeBps = getTakerFee();
 
-        findRatesAndAmounts(src, dest, srcQty, tradeData);
+        findRatesAndAmounts(src, dest, qty, tradeData);
         
         expectedRate = tradeData.rateWithNetworkFee;
         worstRate = expectedRate * 97 / 100; // backward compatible formula
@@ -312,21 +305,23 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         require(expectedRateContract != IExpectedRate(0));
         
         if (src == dest) return (0, 0, 0);
+        uint qty = srcQty & ~PERM_HINT_GET_RATE;
+        
         TradeData memory tradeData;
         
         tradeData.input.src = src;
-        tradeData.input.srcAmount = srcQty;
+        tradeData.input.srcAmount = qty;
         tradeData.input.dest = dest;
         tradeData.input.maxDestAmount = 2 ** 255;
         tradeData.input.platformFeeBps = platformFeeBps;
         parseTradeDataHint(tradeData, hint);
         tradeData.takerFeeBps = getTakerFee();
         
-        findRatesAndAmounts(src, dest, srcQty, tradeData);
+        findRatesAndAmounts(src, dest, qty, tradeData);
         
-        expectedRateNoFees = calcRateFromQty(srcQty, tradeData.destAmountNoFee, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
+        expectedRateNoFees = calcRateFromQty(qty, tradeData.destAmountNoFee, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
         expectedRateAfterNetworkFees = tradeData.rateWithNetworkFee;
-        expectedRateAfterAllFees = calcRateFromQty(srcQty, tradeData.actualDestAmount, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
+        expectedRateAfterAllFees = calcRateFromQty(qty, tradeData.actualDestAmount, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
     }
 
     function enabled() public view returns(bool) {
@@ -920,5 +915,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function parseTradeDataHint(TradeData memory tradeData,  bytes memory hint) internal view {
         tradeData.tokenToEth.addresses = reservesPerTokenSrc[address(tradeData.input.src)];
         tradeData.ethToToken.addresses = reservesPerTokenDest[address(tradeData.input.dest)];
+        //PERM_HINT is treated as no hint, so we just return
+        if (hint.length == 0 || keccak256(hint) == keccak256(PERM_HINT)) return;
     }
 }
