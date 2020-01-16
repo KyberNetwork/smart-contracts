@@ -187,6 +187,7 @@ async function main() {
     console.log('chainId', chainId);
     console.log('starting compilation');
     output = await require("./compileContracts.js").compileContracts();
+    console.log(output.errors)
     console.log("finished compilation");
 
     if (!dontSendTx) {
@@ -210,15 +211,22 @@ async function main() {
 
     console.log("wrapperAddress", wrapperAddress);
 
+    let stepsSetterContract;
+    let stepsSetterAddress;
+
+    console.log("deploying step function setter.");
+    [stepsSetterAddress, stepsSetterContract] = await deployContract(output, "WrapConversionRate.sol:WrapConversionRate", [conversionRatesAddress]);
+
     operators = ['0xF76d38Da26c0c0a4ce8344370D7Ae4c34B031dea','0xf3d872b9e8d314820dc8e99dafbe1a3feedc27d5']
     admin = '0xf3d872b9e8d314820dc8e99dafbe1a3feedc27d5';
 
     await setPermissions(reserveContract, operators, operators, admin);
     await setPermissions(wrapperContract, operators, operators, admin);
+    await setPermissions(stepsSetterContract, operators, operators, admin);
 
-    operators[2] = wrapperAddress;
+    operators.push(stepsSetterAddress);
     await setPermissions(conversionRatesContract, operators, operators, admin);
-
+console.log(operators)
     console.log("done for now...")
 return;
 

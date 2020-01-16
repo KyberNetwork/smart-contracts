@@ -25,16 +25,17 @@ contract SetStepFunctionWrapper2 is Withdrawable {
         rateContract = _contract;
     }
 
-    function setImbalanceStepFunction(ERC20 token,
+    function setImbalanceStepFunction(
+        ERC20 token,
         int[] xBuy,
         int[] yBuy,
         int[] xSell,
         int[] ySell)
-    public onlyOperator
+        public onlyOperator
     {
         uint i;
 
-        // check all x for buy are positiv
+        // check all x for buy are positive
         for( i = 0 ; i < xBuy.length ; i++ ) {
             require(xBuy[i] >= 0 );
         }
