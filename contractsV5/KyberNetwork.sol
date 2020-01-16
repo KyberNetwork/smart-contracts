@@ -101,7 +101,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         return trade(tradeData);
     }
 
-    event AddReserveToNetwork(IKyberReserve indexed reserve, uint indexed reserveId, bool add, address indexed wallet);
+    event AddReserveToNetwork(IKyberReserve indexed reserve, uint indexed reserveId, bool add, address indexed rebateWallet);
 
     /// @notice can be called only by operator
     /// @dev add or deletes a reserve to/from the network.
@@ -109,7 +109,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function addReserve(IKyberReserve reserve, uint reserveId, bool isFeePaying, address wallet) public onlyOperator returns(bool) {
         require(reserveIdToAddresses[reserveId][0] == address(0));
         require(reserveAddressToId[address(reserve)] == uint(0));
-        require(wallet != address(0), "The rebate wallet should not be the zero address.");
         
         reserveAddressToId[address(reserve)] = reserveId;
 
