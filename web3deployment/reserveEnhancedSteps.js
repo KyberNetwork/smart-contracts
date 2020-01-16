@@ -40,63 +40,62 @@ let chainId = chainIdInput;
 console.log("from",sender);
 
 async function sendTx(txObject) {
-  const txTo = txObject._parent.options.address;
+    const txTo = txObject._parent.options.address;
 
-  let gasLimit;
-  try {
-    gasLimit = await txObject.estimateGas();
-  }
-  catch (e) {
-    gasLimit = 500 * 1000;
-  }
+    let gasLimit;
+    try {
+        gasLimit = await txObject.estimateGas();
+    } catch (e) {
+        gasLimit = 500 * 1000;
+    }
 
-  if(txTo !== null) {
-    gasLimit = 500 * 1000;
-  }
+    if(txTo !== null) {
+        gasLimit = 500 * 1000;
+    }
 
-   gasLimit *= 1.2;
-      gasLimit -= gasLimit % 1;
-  //console.log(gasLimit);
-  const txData = txObject.encodeABI();
-  const txFrom = account.address;
-  const txKey = account.privateKey;
+    gasLimit *= 1.2;
+    gasLimit -= gasLimit % 1;
+    //console.log(gasLimit);
+    const txData = txObject.encodeABI();
+    const txFrom = account.address;
+    const txKey = account.privateKey;
 
-  const tx = {
-    from : txFrom,
-    to : txTo,
-    nonce : nonce,
-    data : txData,
-    gas : gasLimit,
-    chainId,
-    gasPrice
-  };
+    const tx = {
+        from : txFrom,
+        to : txTo,
+        nonce : nonce,
+        data : txData,
+        gas : gasLimit,
+        chainId,
+        gasPrice
+    };
 
-  const signedTx = await web3.eth.accounts.signTransaction(tx, txKey);
-  nonce++;
-  // don't wait for confirmation
-  signedTxs.push(signedTx.rawTransaction)
-  if (!dontSendTx) {
-    web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
-  }
+    const signedTx = await web3.eth.accounts.signTransaction(tx, txKey);
+    nonce++;
+    // don't wait for confirmation
+    signedTxs.push(signedTx.rawTransaction)
+    if (!dontSendTx) {
+        web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
+    }
 }
 
 async function deployContract(solcOutput, contractName, ctorArgs) {
 
-  const actualName = contractName;
-  const bytecode = solcOutput.contracts[actualName].bytecode;
+    const actualName = contractName;
+    const bytecode = solcOutput.contracts[actualName].bytecode;
 
-  const abi = solcOutput.contracts[actualName].interface;
-  const myContract = new web3.eth.Contract(JSON.parse(abi));
-  const deploy = myContract.deploy({data:"0x" + bytecode, arguments: ctorArgs});
-  let address = "0x" + web3.utils.sha3(RLP.encode([sender,nonce])).slice(12).substring(14);
-  address = web3.utils.toChecksumAddress(address);
+    const abi = solcOutput.contracts[actualName].interface;
+    const myContract = new web3.eth.Contract(JSON.parse(abi));
+    const deploy = myContract.deploy({data:"0x" + bytecode, arguments: ctorArgs});
+    let address = "0x" + web3.utils.sha3(RLP.encode([sender,nonce])).slice(12).substring(14);
+    address = web3.utils.toChecksumAddress(address);
 
-  await sendTx(deploy);
+    await sendTx(deploy);
 
-  myContract.options.address = address;
+    myContract.options.address = address;
 
 
-  return [address,myContract];
+    return [address,myContract];
 }
 
 const contractPath = path.join(__dirname, "../contracts/");
@@ -113,7 +112,6 @@ let conversionRatesPermissions;
 const depositAddresses = [];
 let validDurationBlock = 24;
 let taxWalletAddress = 0x0;
-let taxFeesBps = 1000;
 
 const ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
@@ -168,6 +166,7 @@ async function setPermissions(contract, alerters, operators, admin) {
         console.log(operator);
         await sendTx(contract.methods.addOperator(operator));
     }
+
     console.log("set alerter(s)");
     for(let i = 0 ; i < alerters.length ; i++ ) {
         const alerter = alerters[i];
@@ -179,7 +178,6 @@ async function setPermissions(contract, alerters, operators, admin) {
     console.log(admin);
     await sendTx(contract.methods.transferAdminQuickly(admin));
 }
-
 
 async function main() {
     nonce = await web3.eth.getTransactionCount(sender);
@@ -216,8 +214,10 @@ async function main() {
     admin = '0xf3d872b9e8d314820dc8e99dafbe1a3feedc27d5';
 
     await setPermissions(reserveContract, operators, operators, admin);
-    await setPermissions(conversionRatesContract, operators, operators, admin);
     await setPermissions(wrapperContract, operators, operators, admin);
+
+    operators[2] = wrapperAddress;
+    await setPermissions(conversionRatesContract, operators, operators, admin);
 
     console.log("done for now...")
 return;
