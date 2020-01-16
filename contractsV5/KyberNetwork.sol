@@ -59,6 +59,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         returns(uint destAmount)
     {
         TradeData memory tradeData;
+
         tradeData.input.trader = trader;
         tradeData.input.src = src;
         tradeData.input.srcAmount = srcAmount;
@@ -466,7 +467,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         isPayingFees = isFeePayingReserve[address(reserveArr[bestReserve.index])];
         return (reserveArr[bestReserve.index], rates[bestReserve.index], isPayingFees);
     }
-    /* solhint-enable code-complexity */
 
     struct TradingReserves {
         IKyberReserve[] addresses;
@@ -914,12 +914,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     
     function encodeTakerFee(uint expiryBlock, uint feeBps) internal pure returns(uint feeData) {
         
-    }
-    
-    function setTradeDataHint(TradeData memory tradeData,  HintType e2tHintType, uint[] memory e2tReserveIds, uint[] memory e2tSplitsBps,
-        HintType t2eHintType, uint[] memory t2eReserveIds, uint[] memory t2eSplitsBps) internal
-    {
- 
     }
     
     function parseTradeDataHint(TradeData memory tradeData,  bytes memory hint) internal view {
