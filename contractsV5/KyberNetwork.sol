@@ -55,9 +55,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     // the new trade with hint
     function tradeWithHintAndFee(address payable trader, IERC20 src, uint srcAmount, IERC20 dest, address payable destAddress,
         uint maxDestAmount, uint minConversionRate, address payable platformWallet, uint platformFeeBps, bytes calldata hint)
-        external payable 
+        external payable
         returns(uint destAmount)
-    {    
+    {
         TradeData memory tradeData;
         tradeData.input.trader = trader;
         tradeData.input.src = src;
@@ -93,7 +93,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         parseTradeDataHint(tradeData, hint);
         tradeData.takerFeeBps = getAndUpdateTakerFee();
-        
+
         return trade(tradeData);
     }
 
@@ -126,7 +126,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @param startIndex to search in reserve array.
     function removeReserveWithIndex(IKyberReserve reserve, uint startIndex) public onlyOperator returns(bool) {
 
-        require(reserveAddressToId[address(reserve)] != uint(0));
+        require(reserveAddressToId[address(reserve)] != uint(0), "corresponding reserve id is zero");
         
         uint reserveIndex = 2 ** 255;
         uint reserveId = reserveAddressToId[address(reserve)];
