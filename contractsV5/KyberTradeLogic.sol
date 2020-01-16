@@ -184,9 +184,11 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         return (reserveArr[bestReserve.index], rates[bestReserve.index], isPayingFees);
     }
 
+    uint constant rateMul = 1;
+    
     struct TradingReserves {
         IKyberReserve[] addresses;
-        uint[] data;
+        uint[] data; // data will hold hint type in cell 0. next cells for rates for x reserve, then is fee paying x reserves
         bool[] isFeePaying;
         uint decimals;
     }
@@ -272,24 +274,24 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
                 reserve = tradeData.t2e.addresses[i];
                 //calculate split and corresponding trade amounts
                 splitAmount = (i == tradeData.t2e.addresses.length - 1) ? (srcAmount - srcAmountSoFar) : 
-                    tradeData.t2e.data[i + 1 + tradeData.t2e.addresses.length] * srcAmount / BPS;
+                    tradeData.t2e.data[i + 1] * srcAmount / BPS;
                 srcAmountSoFar += splitAmount;
-                tradeData.t2e.data[i + 1] = reserve.getConversionRate(src, ETH_TOKEN_ADDRESS, splitAmount, block.number);
-                tradeWeiAmount += calcDstQty(splitAmount, tradeData.t2e.decimals, ETH_DECIMALS, tradeData.t2e.data[i + 1]);
+                tradeData.t2e.data[i + 1 + tradeData.t2e.addresses.length] = reserve.getConversionRate(src, ETH_TOKEN_ADDRESS, splitAmount, block.number);
+                tradeWeiAmount += calcDstQty(splitAmount, tradeData.t2e.decimals, ETH_DECIMALS, tradeData.t2e.data[i + 1 + tradeData.t2e.addresses.length]);
 
                 //account for fees
-                if (tradeData.t2e.data[i + 1 + 2 * tradeData.t2e.addresses.length] == 1) {
-                    tradeData.results[uint(ResultIndex.feePayingReservesBps)] += tradeData.t2e.data[i + 1 + tradeData.t2e.addresses.length];
+                if (tradeData.t2e.isFeePaying[i]) {
+                    tradeData.results[uint(ResultIndex.feePayingReservesBps)] += tradeData.t2e.data[i + 1];
                     tradeData.results[uint(ResultIndex.numFeePayingReserves)] ++;
                 }
             }
         } else {
             // else find best rate
-            (reserve, tradeData.t2e.data[1], tradeData.t2e.isFeePaying[0]) = searchBestRate(tradeData.t2e.addresses, src, ETH_TOKEN_ADDRESS, srcAmount, tradeData.fees[uint(FeesIndex.takerFee)]);
+            (reserve, tradeData.t2e.data[2], tradeData.t2e.isFeePaying[0]) = searchBestRate(tradeData.t2e.addresses, src, ETH_TOKEN_ADDRESS, srcAmount, tradeData.fees[uint(FeesIndex.takerFee)]);
             // save into tradeData
             tradeData.t2e.addresses[0] = reserve;
-            tradeWeiAmount = calcDstQty(srcAmount, tradeData.t2e.decimals, ETH_DECIMALS, tradeData.t2e.data[1]);
-            tradeData.t2e.data[2] = BPS; //max percentage amount
+            tradeWeiAmount = calcDstQty(srcAmount, tradeData.t2e.decimals, ETH_DECIMALS, tradeData.t2e.data[2]);
+            tradeData.t2e.data[1] = BPS; //max percentage amount
 
             //account for fees
             if (tradeData.t2e.isFeePaying[0]) {
@@ -328,34 +330,35 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
 
                 //calculate split amount without any fee
                 splitAmount = (i == tradeData.e2t.addresses.length - 1) ? (tradeWei - amountSoFarNoFee) : 
-                    tradeData.e2t.data[1 + i + tradeData.e2t.addresses.length] * tradeWei / BPS;
+                    tradeData.e2t.data[1 + i] * tradeWei / BPS;
                 amountSoFarNoFee += splitAmount;
                 
                 //to save gas, we make just 1 conversion rate call with splitAmount
-                tradeData.e2t.data[i + 1] = reserve.getConversionRate(ETH_TOKEN_ADDRESS, dest, splitAmount, block.number);
+                tradeData.e2t.data[i + 1 + tradeData.e2t.addresses.length] = reserve.getConversionRate(ETH_TOKEN_ADDRESS, dest, splitAmount, block.number);
                 //save rate data
                 tradeData.results[uint(ResultIndex.destAmountNoFee)] += calcDstQty(splitAmount, ETH_DECIMALS, 
-                    tradeData.e2t.decimals, tradeData.e2t.data[i + 1]);
+                    tradeData.e2t.decimals, tradeData.e2t.data[i + 1 + tradeData.e2t.addresses.length]);
 
                 //calculate split amount with just network fee
                 splitAmount = (i == tradeData.e2t.addresses.length - 1) ? (tradeWeiMinusNetworkFee - amountSoFarWithNetworkFee) : 
-                    tradeData.e2t.data[i + 1 + tradeData.e2t.addresses.length] * tradeWeiMinusNetworkFee / BPS;
+                    tradeData.e2t.data[i + 1] * tradeWeiMinusNetworkFee / BPS;
                 amountSoFarWithNetworkFee += splitAmount;
                 tradeData.results[uint(ResultIndex.destAmountWithNetworkFee)] += 
-                    calcDstQty(splitAmount, ETH_DECIMALS, tradeData.e2t.decimals, tradeData.e2t.data[i + 1]);
+                    calcDstQty(splitAmount, ETH_DECIMALS, tradeData.e2t.decimals, tradeData.e2t.data[i + 1 + tradeData.e2t.addresses.length]);
 
                 //calculate split amount with both network and custom platform fee
                 splitAmount = (i == tradeData.e2t.addresses.length - 1) ?
                     (tradeWeiMinusNetworkCustomFees - amountSoFarWithNetworkAndCustomFee)
-                    : tradeData.e2t.data[i + 1 + tradeData.e2t.addresses.length] * tradeWeiMinusNetworkCustomFees / BPS;
+                    : tradeData.e2t.data[i + 1] * tradeWeiMinusNetworkCustomFees / BPS;
                 amountSoFarWithNetworkAndCustomFee += splitAmount;
-                tradeData.results[uint(ResultIndex.actualDestAmount)] = calcDstQty(splitAmount, ETH_DECIMALS, tradeData.e2t.decimals, tradeData.e2t.data[i + 1]);
+                tradeData.results[uint(ResultIndex.actualDestAmount)] = 
+                    calcDstQty(splitAmount, ETH_DECIMALS, tradeData.e2t.decimals, tradeData.e2t.data[i + 1 + tradeData.e2t.addresses.length]);
             }
         } else {
             // else, search best reserve and its corresponding dest amount
             // Have to search with tradeWei minus fees, because that is the actual src amount for ETH -> token trade
             require(tradeWeiMinusNetworkCustomFees >= (tradeData.results[uint(ResultIndex.tradeWei)] * tradeData.fees[uint(FeesIndex.takerFee)] / BPS), "ETH->token network fee exceeds remaining trade wei amt");
-            (tradeData.e2t.addresses[0], tradeData.e2t.data[1], tradeData.e2t.isFeePaying[0]) = searchBestRate(
+            (tradeData.e2t.addresses[0], tradeData.e2t.data[2], tradeData.e2t.isFeePaying[0]) = searchBestRate(
                 tradeData.e2t.addresses,
                 ETH_TOKEN_ADDRESS,
                 dest,
@@ -363,12 +366,13 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
                 tradeData.results[uint(ResultIndex.tradeWei)] * tradeData.fees[uint(FeesIndex.takerFee)] / BPS
             );
             //store chosen reserve into tradeData
-            tradeData.e2t.data[2] = BPS;
+            tradeData.e2t.data[1] = BPS;
             tradeData.results[uint(ResultIndex.destAmountNoFee)] = calcDstQty(tradeWei, ETH_DECIMALS, tradeData.e2t.decimals, tradeData.e2t.data[1]);
 
             // add to feePayingReservesBps if reserve is fee paying
-            if (tradeData.e2t.data[3] == 1) {
-                tradeData.results[uint(ResultIndex.networkFeeWei)] += tradeData.results[uint(ResultIndex.tradeWei)] * tradeData.fees[uint(FeesIndex.takerFee)] / BPS;
+            if (tradeData.e2t.isFeePaying[0]) {
+                tradeData.results[uint(ResultIndex.networkFeeWei)] += 
+                    tradeData.results[uint(ResultIndex.tradeWei)] * tradeData.fees[uint(FeesIndex.takerFee)] / BPS;
                 tradeData.results[uint(ResultIndex.feePayingReservesBps)] += BPS; //max percentage amount for ETH -> token
                 tradeData.results[uint(ResultIndex.numFeePayingReserves)]++;
             }
@@ -378,10 +382,10 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
             // since network fee might have increased for fee paying ETH -> token reserve
             tradeData.results[uint(ResultIndex.destAmountWithNetworkFee)] = 
                 calcDstQty(tradeData.results[uint(ResultIndex.tradeWei)] - tradeData.results[uint(ResultIndex.networkFeeWei)], ETH_DECIMALS, 
-                tradeData.e2t.decimals, tradeData.e2t.data[1]);
+                    tradeData.e2t.decimals, tradeData.e2t.data[2]);
             tradeData.results[uint(ResultIndex.actualDestAmount)] = 
                 calcDstQty(tradeData.results[uint(ResultIndex.tradeWei)] - tradeData.results[uint(ResultIndex.networkFeeWei)] - 
-                tradeData.results[uint(ResultIndex.platformFeeWei)], ETH_DECIMALS, tradeData.e2t.decimals, tradeData.e2t.data[1]);
+                    tradeData.results[uint(ResultIndex.platformFeeWei)], ETH_DECIMALS, tradeData.e2t.decimals, tradeData.e2t.data[2]);
         }
     }
 
