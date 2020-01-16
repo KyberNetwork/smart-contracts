@@ -8,12 +8,6 @@ import "./IKyberReserve.sol";
 import "./IFeeHandler.sol";
 
 
-interface IExpectedRate {
-    function getExpectedRate(IERC20 src, IERC20 dest, uint srcQty) external view
-        returns (uint expectedRateNoFees, uint expectedRateNetworkFees, uint expectedRateAllFees);
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
@@ -21,7 +15,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     bytes constant PERM_HINT = "PERM"; //for backwards compatibility
     uint  constant PERM_HINT_GET_RATE = 1 << 255; //for backwards compatibility
     uint            public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
-    IExpectedRate   public expectedRateContract;
     IFeeHandler     public feeHandlerContract;
 
     uint            public takerFeeData; // will include feeBps and expiry block
@@ -193,15 +186,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         return true;
     }
 
-    event ExpectedRateContractSet(IExpectedRate newContract, IExpectedRate currentContract);
-
-    function setExpectedRate(IExpectedRate expectedRate) public onlyAdmin {
-        require(expectedRate != IExpectedRate(0));
-
-        emit ExpectedRateContractSet(expectedRate, expectedRateContract);
-        expectedRateContract = expectedRate;
-    }
-
     event FeeHandlerContractSet(IFeeHandler newContract, IFeeHandler currentContract);
 
     function setFeeHandler(IFeeHandler feeHandler) public onlyAdmin {
@@ -232,7 +216,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function setEnable(bool _enable) public onlyAdmin {
         if (_enable) {
             require(feeHandlerContract != IFeeHandler(0));
-            require(expectedRateContract != IExpectedRate(0));
             require(kyberNetworkProxyContract != address(0));
         }
         isEnabled = _enable;
@@ -277,7 +260,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
         returns (uint expectedRate, uint worstRate)
     {
-        // require(expectedRateContract != IExpectedRate(0));
         if (src == dest) return (0, 0);
         uint qty = srcQty & ~PERM_HINT_GET_RATE;
         
@@ -302,8 +284,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         external view
         returns (uint expectedRateNoFees, uint expectedRateAfterNetworkFees, uint expectedRateAfterAllFees)
     {
-        require(expectedRateContract != IExpectedRate(0));
-        
         if (src == dest) return (0, 0, 0);
         
         TradeData memory tradeData;
@@ -500,7 +480,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         
         uint numFeePayingReserves;
         uint feePayingReservesBps; // what part of this trade is fee paying. for token to token - up to 200%
-        uint takePlatformFeeBps;
         
         uint destAmountNoFee;
         uint destAmountWithNetworkFee;
@@ -681,40 +660,42 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // send total fee amount to fee handler with reserve data.
     }
 
-    function calcTradeSrcAmounts(uint srcDecimals, uint destDecimals, uint destAmount, uint[] memory rates, 
+    function calcTradeSrcAmount(uint srcDecimals, uint destDecimals, uint destAmount, uint[] memory rates, 
                                 uint[] memory splitValues)
         internal pure returns (uint srcAmount)
     {
-        uint amountSoFar;
+        uint destAmountSoFar;
 
         for (uint i = 0; i < rates.length; i++) {
-            uint destAmountSplit = i == (splitValues.length - 1) ? (destAmount - amountSoFar) : splitValues[i] * destAmount /  100;
-            amountSoFar += destAmountSplit;
+            uint destAmountSplit = i == (splitValues.length - 1) ? 
+                (destAmount - destAmountSoFar) : splitValues[i] * destAmount /  100;
+            destAmountSoFar += destAmountSplit;
 
             srcAmount += calcSrcQty(destAmountSplit, srcDecimals, destDecimals, rates[i]);
         }
     }
 
-    function calcTradeSrcAmountFromDest (IERC20 src, IERC20 dest, uint srcAmount, uint maxDestAmount, TradeData memory tradeData)
+    function calcTradeSrcAmountFromDest (TradeData memory tradeData)
         internal pure returns(uint actualSrcAmount)
     {
-        if (dest != ETH_TOKEN_ADDRESS) {
-            tradeData.tradeWei = calcTradeSrcAmounts(tradeData.ethToToken.decimals, ETH_DECIMALS, maxDestAmount, 
+        if (tradeData.input.dest != ETH_TOKEN_ADDRESS) {
+            tradeData.tradeWei = calcTradeSrcAmount(tradeData.ethToToken.decimals, ETH_DECIMALS, tradeData.input.maxDestAmount, 
                 tradeData.ethToToken.rates, tradeData.ethToToken.splitValuesBps);
         } else {
-            tradeData.tradeWei = maxDestAmount;
+            tradeData.tradeWei = tradeData.input.maxDestAmount;
         }
 
-        tradeData.networkFeeWei = tradeData.tradeWei * tradeData.takerFeeBps * tradeData.feePayingReservesBps / (BPS * 100) ;
-        tradeData.tradeWei -= tradeData.networkFeeWei;
+        tradeData.networkFeeWei = tradeData.tradeWei * tradeData.takerFeeBps * tradeData.feePayingReservesBps / (BPS * BPS);
+        tradeData.platformFeeWei = tradeData.tradeWei * tradeData.input.platformFeeBps / BPS;
+        tradeData.tradeWei -= (tradeData.networkFeeWei - tradeData.platformFeeWei);
 
-        if (src != ETH_TOKEN_ADDRESS) {
-            actualSrcAmount = calcTradeSrcAmounts(ETH_DECIMALS, tradeData.tokenToEth.decimals, tradeData.tradeWei, tradeData.tokenToEth.rates, tradeData.tokenToEth.splitValuesBps);
+        if (tradeData.input.src != ETH_TOKEN_ADDRESS) {
+            actualSrcAmount = calcTradeSrcAmount(ETH_DECIMALS, tradeData.tokenToEth.decimals, tradeData.tradeWei, tradeData.tokenToEth.rates, tradeData.tokenToEth.splitValuesBps);
         } else {
             actualSrcAmount = tradeData.tradeWei;
         }
     
-        require(actualSrcAmount <= srcAmount);
+        require(actualSrcAmount <= tradeData.input.srcAmount);
     }
 
     event KyberTrade(address indexed trader, IERC20 src, IERC20 dest, uint srcAmount, uint dstAmount,
@@ -742,12 +723,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint actualSrcAmount;
 
         if (tradeData.actualDestAmount > tradeData.input.maxDestAmount) {
-            actualSrcAmount = calcTradeSrcAmountFromDest(
-                tradeData.input.src,
-                tradeData.input.dest,
-                tradeData.input.srcAmount,
-                tradeData.input.maxDestAmount,
-                tradeData);
+            // notice tradeData passed by reference. and updated
+            actualSrcAmount = calcTradeSrcAmountFromDest(tradeData);
 
             require(handleChange(tradeData.input.src, tradeData.input.srcAmount, actualSrcAmount, tradeData.input.trader));
         } else {
@@ -817,11 +794,11 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         TradingReserves memory reservesData = src == ETH_TOKEN_ADDRESS? tradeData.ethToToken : tradeData.tokenToEth;
         uint callValue;
-        uint amountSoFar;
+        uint srcAmountSoFar;
 
         for(uint i = 0; i < reservesData.addresses.length; i++) {
-            uint splitAmount = i == (reservesData.splitValuesBps.length - 1) ? (amount - amountSoFar) : reservesData.splitValuesBps[i] * amount /  100;
-            amountSoFar += splitAmount;
+            uint splitAmount = i == (reservesData.splitValuesBps.length - 1) ? (amount - srcAmountSoFar) : reservesData.splitValuesBps[i] * amount /  100;
+            srcAmountSoFar += splitAmount;
             callValue = (src == ETH_TOKEN_ADDRESS)? splitAmount : 0;
 
             // reserve sends tokens/eth to network. network sends it to destination
@@ -889,7 +866,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function getTakerFee() internal view returns(uint takerFeeBps) {
         return 25;
 
-        // todo: read data. decode. read from DAO if expired;
+         // todo: read data. decode. read from DAO if expired; on DAO read from view function.
         // todo: don't revert if DAO reverts. just return exsiting value.
     }
     
