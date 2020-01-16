@@ -14,7 +14,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     bytes constant PERM_HINT = "PERM"; //for backwards compatibility
     uint  constant PERM_HINT_GET_RATE = 1 << 255; //for backwards compatibility
-    uint            public negligibleRateDiff = 10; // basic rate steps will be in 0.01%
+    uint            public negligibleRateDiffBps = 10; // bps is 0.01%
     IFeeHandler     public feeHandlerContract;
 
     uint            public takerFeeData; // will include feeBps and expiry block
@@ -89,7 +89,12 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         return trade(tradeData);
     }
 
-    event AddReserveToNetwork(address indexed reserve, uint indexed reserveId, bool add, address indexed rebateWallet);
+    event AddReserveToNetwork (
+        address indexed reserve,
+        uint indexed reserveId,
+        bool isFeePaying,
+        address indexed rebateWallet,
+        bool add);
 
     /// @notice can be called only by operator
     /// @dev add or deletes a reserve to/from the network.
@@ -107,7 +112,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         reserveRebateWallet[reserve] = wallet;
 
-        emit AddReserveToNetwork(reserve, reserveId, true, wallet);
+        emit AddReserveToNetwork(reserve, reserveId, isFeePaying, wallet, true);
 
         return true;
     }
@@ -195,20 +200,20 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         feeHandlerContract = feeHandler;
     }
 
-    event KyberNetworkParamsSet(uint maxGasPrice, uint negligibleRateDiff);
+    event KyberNetworkParamsSet(uint maxGasPrice, uint negligibleRateDiffBps);
 
     function setParams(
         uint                  _maxGasPrice,
-        uint                  _negligibleRateDiff
+        uint                  _negligibleRateDiffBps
     )
         public
         onlyAdmin
     {
-        require(_negligibleRateDiff <= 100 * 100); // at most 100%
+        require(_negligibleRateDiffBps <= BPS); // at most 100%
 
         maxGasPriceValue = _maxGasPrice;
-        negligibleRateDiff = _negligibleRateDiff;
-        emit KyberNetworkParamsSet(maxGasPriceValue, negligibleRateDiff);
+        negligibleRateDiffBps = _negligibleRateDiffBps;
+        emit KyberNetworkParamsSet(maxGasPriceValue, negligibleRateDiffBps);
     }
 
     event KyberNetworkSetEnable(bool isEnabled);
@@ -261,6 +266,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         returns (uint expectedRate, uint worstRate)
     {
         if (src == dest) return (0, 0);
+        
         uint qty = srcQty & ~PERM_HINT_GET_RATE;
         
         TradeData memory tradeData;
@@ -380,9 +386,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint numRelevantReserves = 1; // assume always best reserve will be relevant
 
         //return 1 for ether to ether, or if empty reserve array is passed
-        if (src == dest || reserveArr.length == 0) return (IKyberReserve(address(0)), PRECISION, false);
-
-        if (reserveArr.length == 0) return (reserves[bestReserve.index], 0, false);
+        if (src == dest || reserveArr.length == 0) return (IKyberReserve(0), PRECISION, false);
 
         uint[] memory rates = new uint[](reserveArr.length);
         uint[] memory reserveCandidates = new uint[](reserveArr.length);
@@ -417,7 +421,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         reserveCandidates[0] = bestReserve.index;
         
         // if this reserve pays fee its actual rate is less. so smallestRelevantRate is smaller.
-        bestReserve.destAmount = bestReserve.destAmount * BPS / (10000 + negligibleRateDiff);
+        bestReserve.destAmount = bestReserve.destAmount * BPS / (BPS + negligibleRateDiffBps);
 
         for (uint i = 0; i < reserveArr.length; i++) {
 
