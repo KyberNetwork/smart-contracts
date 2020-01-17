@@ -6,9 +6,10 @@ import "./IERC20.sol";
 interface IKyberHint {
 
     enum HintType {
-        MaskInHint,
-        MaskOutHint,
-        SplitHint
+        None,
+        MaskIn,
+        MaskOut,
+        Split
     }
 
     function parseEthToTokenHint(bytes calldata hint) external view
