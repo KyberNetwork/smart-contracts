@@ -5,6 +5,7 @@ import "./UtilsV5.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberNetworkProxy.sol";
 import "./ISimpleKyberProxy.sol";
+import "./IKyberHint.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -12,12 +13,12 @@ import "./ISimpleKyberProxy.sol";
 contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawable, Utils {
 
     IKyberNetwork public kyberNetworkContract;
+    IKyberHint kyberHintHandler;
+    
     mapping(address=>uint) platformWalletFeeBps;    
 
-    constructor(address _admin) public {
-        require(_admin != address(0), "Proxy: admin address 0 not allowed");
-        admin = _admin;
-    }
+    constructor(address _admin) public Withdrawable(_admin) 
+        {/*empty body*/}
     
     // backward compatible APIs
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
@@ -265,6 +266,17 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         kyberNetworkContract = _kyberNetworkContract;
     }
     
+    event kyberHintHandlerSet(IKyberHint newHandler, IKyberHint oldHandler);
+
+    function setHintHandlerContract(IKyberHint _hintHandler) public onlyAdmin {
+
+        require(_hintHandler != IKyberHint(0));
+
+        emit kyberHintHandlerSet(_hintHandler, kyberHintHandler);
+
+        kyberHintHandler = _hintHandler;
+    }
+    
     function maxGasPrice() public view returns(uint) {
         return kyberNetworkContract.maxGasPrice();
     }
@@ -301,11 +313,11 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         outcome.userDeltaDestToken = userDestBalanceAfter - balanceBefore.destBalance;
         
         // what would be the dest amount if we didn't deduct platformFee
-        uint destTokenAmountBeforeDeductingFee = (outcome.userDeltaDestToken * BPS) / (BPS - platformFeeBps);
+        uint srcTokenAmountAfterDeductingFee = outcome.userDeltaSrcToken * (BPS - platformFeeBps);
         
         outcome.actualRate = calcRateFromQty(
-            outcome.userDeltaSrcToken,
-            destTokenAmountBeforeDeductingFee,
+            srcTokenAmountAfterDeductingFee,
+            outcome.userDeltaDestToken,
             getUpdateDecimals(src),
             getUpdateDecimals(dest)
         );
