@@ -102,6 +102,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
     function addReserve(address reserve, uint reserveId, bool isFeePaying, address wallet) public onlyOperator returns(bool) {
+<<<<<<< HEAD
         require(reserveAddressToId[reserve] == uint(0), "reserve has an existing id");
         if (reserveIdToAddresses[reserveId].length == 0) {
             reserveIdToAddresses[reserveId].push(reserve);
@@ -111,6 +112,16 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         }
 
         reserveAddressToId[reserve] = reserveId;
+=======
+        require(reserveIdToAddresses[reserveId].length == 0, "reserveId points to existing reserve");
+        require(reserveAddressToId[reserve] == uint(0), "reserve has an existing id");
+        
+        reserveAddressToId[reserve] = reserveId;
+
+        reserveIdToAddresses[reserveId] = new address[](1);
+        reserveIdToAddresses[reserveId][0] = reserve;
+
+>>>>>>> Fix perm hint in getExpectedRate, base case handling in parseTradeDataHint
         isFeePayingReserve[reserve] = isFeePaying;
 
         reserves.push(IKyberReserve(reserve));
@@ -276,9 +287,14 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
 =======
         uint permHintGetRate = 1 << 255; //for backwards compatibility
+<<<<<<< HEAD
         uint qty = srcQty & ~(permHintGetRate);
         
 >>>>>>> some refactoring, findRatesAndAmounts -> calcRatesAndAmounts
+=======
+        uint qty = ((srcQty & permHintGetRate) > 0) ? srcQty & ~permHintGetRate : srcQty;
+
+>>>>>>> Fix perm hint in getExpectedRate, base case handling in parseTradeDataHint
         TradeData memory tradeData = initTradeData({
             trader: address(uint160(0)),
             src: src,
@@ -929,6 +945,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     
     function parseTradeDataHint(TradeData memory tradeData,  bytes memory hint) internal view {
 <<<<<<< HEAD
+<<<<<<< HEAD
         tradeData.tokenToEth.addresses = (tradeData.input.src == ETH_TOKEN_ADDRESS) ? new IKyberReserve[](1) : reservesPerTokenSrc[address(tradeData.input.src)];
         tradeData.ethToToken.addresses = (tradeData.input.dest == ETH_TOKEN_ADDRESS) ? new IKyberReserve[](1) :reservesPerTokenDest[address(tradeData.input.dest)];
 
@@ -946,5 +963,18 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         //PERM is treated as no hint, so we just return
         if (hint.length == 0 || keccak256(hint) == keccak256("PERM")) return;
 >>>>>>> some refactoring, findRatesAndAmounts -> calcRatesAndAmounts
+=======
+        tradeData.tokenToEth.addresses = (tradeData.input.src == ETH_TOKEN_ADDRESS) ? new IKyberReserve[](1) : reservesPerTokenSrc[address(tradeData.input.src)];
+        tradeData.ethToToken.addresses = (tradeData.input.dest == ETH_TOKEN_ADDRESS) ? new IKyberReserve[](1) :reservesPerTokenDest[address(tradeData.input.dest)];
+
+        //PERM is treated as no hint, so we just return
+        if (hint.length == 0 || keccak256(hint) == keccak256("PERM")) {
+            tradeData.tokenToEth.splitValuesBps = new uint[](1);
+            tradeData.tokenToEth.rates = new uint[](1);
+            tradeData.ethToToken.splitValuesBps = new uint[](1);
+            tradeData.ethToToken.rates = new uint[](1);
+            return;
+        }
+>>>>>>> Fix perm hint in getExpectedRate, base case handling in parseTradeDataHint
     }
 }
