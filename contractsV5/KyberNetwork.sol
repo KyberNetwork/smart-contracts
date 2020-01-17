@@ -98,12 +98,14 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
     function addReserve(address reserve, uint reserveId, bool isFeePaying, address wallet) public onlyOperator returns(bool) {
-        require(reserveIdToAddresses[reserveId].length == 0);
-        require(reserveAddressToId[reserve] == uint(0));
+        require(reserveIdToAddresses[reserveId].length == 0, "reserveId points to existing reserve");
+        require(reserveAddressToId[reserve] == uint(0), "reserve has an existing id");
         
         reserveAddressToId[reserve] = reserveId;
 
+        reserveIdToAddresses[reserveId] = new address[](1);
         reserveIdToAddresses[reserveId][0] = reserve;
+
         isFeePayingReserve[reserve] = isFeePaying;
         
         reserves.push(IKyberReserve(reserve));
@@ -265,8 +267,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     {
         if (src == dest) return (0, 0);
         uint permHintGetRate = 1 << 255; //for backwards compatibility
-        uint qty = srcQty & ~(permHintGetRate);
-        
+        uint qty = ((srcQty & permHintGetRate) > 0) ? srcQty & ~permHintGetRate : srcQty;
+
         TradeData memory tradeData = initTradeData({
             trader: address(uint160(0)),
             src: src,
@@ -696,6 +698,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // create array of reserves receiving fees + fee percent per reserve
         // fees should add up to 100%.
         // send total fee amount to fee handler with reserve data.
+        return true;
     }
 
     function calcTradeSrcAmount(uint srcDecimals, uint destDecimals, uint destAmount, uint[] memory rates, 
@@ -927,9 +930,16 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     }
     
     function parseTradeDataHint(TradeData memory tradeData,  bytes memory hint) internal view {
-        tradeData.tokenToEth.addresses = reservesPerTokenSrc[address(tradeData.input.src)];
-        tradeData.ethToToken.addresses = reservesPerTokenDest[address(tradeData.input.dest)];
+        tradeData.tokenToEth.addresses = (tradeData.input.src == ETH_TOKEN_ADDRESS) ? new IKyberReserve[](1) : reservesPerTokenSrc[address(tradeData.input.src)];
+        tradeData.ethToToken.addresses = (tradeData.input.dest == ETH_TOKEN_ADDRESS) ? new IKyberReserve[](1) :reservesPerTokenDest[address(tradeData.input.dest)];
+
         //PERM is treated as no hint, so we just return
-        if (hint.length == 0 || keccak256(hint) == keccak256("PERM")) return;
+        if (hint.length == 0 || keccak256(hint) == keccak256("PERM")) {
+            tradeData.tokenToEth.splitValuesBps = new uint[](1);
+            tradeData.tokenToEth.rates = new uint[](1);
+            tradeData.ethToToken.splitValuesBps = new uint[](1);
+            tradeData.ethToToken.rates = new uint[](1);
+            return;
+        }
     }
 }
