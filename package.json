@@ -1,7 +1,7 @@
 {
   "name": "smart-contracts",
   "version": "1.0.0",
-  "description": "This repository has the main contracts in KyberNetwork platform. There are three main components in this repository including  KyberNetwork contract, KyberReserve and KyberWallet contracts. In addition, we have a couple of mock modules that simulate testnet tokens and centralized exchanges. This repository is for testing purposes only,  do not use it for real deployment.",
+  "description": "This repository has the main contracts in KyberNetwork platform. There are three main components in this repository including  KyberNetwork contract, KyberReserve and KyberWallet contracts. In addition, we have a couple of mock modules that simulate testnet tokens and centralized exchanges. This repository is for testing purposes only, do not use it for production.",
   "main": "truffle.js",
   "directories": {
     "test": "test"
@@ -20,29 +20,19 @@
   },
   "homepage": "https://github.com/KyberNetwork/smart-contracts#readme",
   "dependencies": {
-    "@nomiclabs/buidler-truffle5": "^1.0.1",
-    "@nomiclabs/buidler-web3": "^1.0.1",
-    "bignumber.js": "^5.0.0",
-    "braces": "^2.3.2",
-    "chai-as-promised": "^7.1.1",
-    "chai-bignumber": "^3.0.0",
+    "@nomiclabs/buidler-truffle5": "1.0.1",
+    "@nomiclabs/buidler-web3": "1.0.1",
     "compare-versions": "^3.1.0",
-    "ganache-cli": "^6.8.0-istanbul.0",
-    "mathjs": "^4.3.0",
-    "rlp": "^2.0.0",
-    "secp256k1": "^3.7.1",
-    "sha3": "^2.0.6",
+    "ganache-cli": "^6.8.2",
+    "rlp": "^2.2.4",
     "solc": "0.4.18",
-    "solhint": "^1.4.0",
-    "truffle": "^4.0.1",
+    "solhint": "^1.5.1",
     "truffle-assertions": "^0.7.1",
     "truffle-flattener": "^1.2.5",
-    "web3": "^1.2.4",
-    "web3-utils": "^1.2.4",
+    "web3": "1.2.4",
     "yargs": "^11.0.0"
   },
   "devDependencies": {
-    "@nomiclabs/buidler": "^1.0.1",
     "chai": "^4.1.2",
     "chai-bn": "^0.2.0",
     "solidity-coverage": "^0.6.7"
