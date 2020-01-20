@@ -3,8 +3,8 @@ pragma solidity 0.5.11;
 import "../IERC20.sol";
 import "../ReentrancyGuard.sol";
 import "./IKyberStaking.sol";
-import "./IKyberDAO.sol";
-import "./EpochUtils.sol";
+import "../DAO/IKyberDAO.sol";
+import "../EpochUtils.sol";
 
 contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
 
