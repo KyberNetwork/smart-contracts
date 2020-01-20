@@ -19,7 +19,7 @@ contract ConversionRateEnhancedSteps is ConversionRates {
     int128 constant internal MIN_STEP_VALUE = -1 * 2 ** 127;
     int constant internal MAX_BPS_ADJUSTMENT = 100 * 100;
 
-    function EnhancedStepFunctions(address _admin) public ConversionRates(_admin)
+    function ConversionRateEnhancedSteps(address _admin) public ConversionRates(_admin)
         { } // solhint-disable-line no-empty-blocks
 
     // Blocking set qty step func as we won't use
