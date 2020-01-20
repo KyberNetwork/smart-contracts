@@ -119,16 +119,20 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 >>>>>>> Edit addReserve function
         require(reserveAddressToId[reserve] == uint(0), "reserve has an existing id");
         if (reserveIdToAddresses[reserveId].length == 0) {
-            reserveIdToAddresses[reserveId] = new address[](1);
+            reserveIdToAddresses[reserveId].push(reserve);
         } else {
             require(reserveIdToAddresses[reserveId][0] == address(0), "reserveId points to existing reserve");
+            reserveIdToAddresses[reserveId][0] = reserve;
         }
 
+<<<<<<< HEAD
         reserveIdToAddresses[reserveId][0] = reserve;
 <<<<<<< HEAD
 
 >>>>>>> Fix perm hint in getExpectedRate, base case handling in parseTradeDataHint
 =======
+=======
+>>>>>>> Improved addReserve and removeReserveWithIndex functions
         reserveAddressToId[reserve] = reserveId;
 >>>>>>> Edit addReserve function
         isFeePayingReserve[reserve] = isFeePaying;
