@@ -1,8 +1,8 @@
 let MockImbalanceRecorder = artifacts.require("./mockContracts/MockImbalanceRecorder.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 
-let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+const Helper = require("./helper.js");
+const BN = web3.utils.BN;
 
 //global variables
 let token;
@@ -13,6 +13,11 @@ let imbalanceInst;
 let admin;
 let priceUpdateBlock;
 let currentBlock;
+const zeroAddress = '0x0000000000000000000000000000000000000000';
+
+let pow_2_64 = (new BN(2).pow(new BN(64)).div(new BN(1)));
+let pow_2_64_div2 = (new BN(2).pow(new BN(64)).div(new BN(2)));
+let neg_pow_2_64_div2 = (new BN(2).pow(new BN(64)).div(new BN(2)).mul(new BN(-1)));
 
 contract('VolumeImbalanceRecorder', function(accounts) {
     it("should init globals and init VolumeImbalanceRecorder Inst.", async function() {
@@ -46,15 +51,15 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         //get token control info
         let controlInfoArr = await imbalanceInst.getTokenControlInfo(token.address);
 
-        assert.equal(controlInfoArr[0].valueOf(), minimalRecordResolution, "unexpected minimal record resolution.");
-        assert.equal(controlInfoArr[1].valueOf(), maxPerBlockImbalance, "unexpected maxPerBlockImbalance.");
-        assert.equal(controlInfoArr[2].valueOf(), maxTotalImbalance, "maxTotalImbalance");
+        Helper.assertEqual(controlInfoArr[0], minimalRecordResolution, "unexpected minimal record resolution.");
+        Helper.assertEqual(controlInfoArr[1], maxPerBlockImbalance, "unexpected maxPerBlockImbalance.");
+        Helper.assertEqual(controlInfoArr[2], maxTotalImbalance, "maxTotalImbalance");
 
         let getMaxPerBlock = await imbalanceInst.getMaxBlockImbalance(token.address);
-        assert.equal(getMaxPerBlock, maxPerBlockImbalance, "unexpected maxPerBlockImbalance.");
+        Helper.assertEqual(getMaxPerBlock, maxPerBlockImbalance, "unexpected maxPerBlockImbalance.");
 
         let getMaxTotal = await imbalanceInst.getMaxImbalance(token.address);
-        assert.equal(getMaxTotal, maxTotalImbalance, "maxTotalImbalance");
+        Helper.assertEqual(getMaxTotal, maxTotalImbalance, "maxTotalImbalance");
     });
 
     it("should test encode / decode of token imbalance data.", async function() {
@@ -73,12 +78,12 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         bytes[16] = 3;
         bytes[24] = 4;
         let startIntStr = Helper.bytesToHex(bytes);
-        let startInt = (new BigNumber(Helper.bytesToHex(bytes)));
+        let startInt = (new BN(Helper.bytesToHex(bytes)));
         let toStruct = await imbalanceInst.callDecodeTokenImbalanceData(startInt);
 
         let toInt = await imbalanceInst.callEncodeTokenImbalanceData(toStruct[0], toStruct[1], toStruct[2], toStruct[3]);
 
-        assert.equal(startInt.valueOf(), toInt.valueOf(), "conversion failed");
+        Helper.assertEqual(startInt, toInt, "conversion failed");
 
         //test negative values.
         for (let i = 0; i < 32; ++i){
@@ -89,11 +94,11 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         bytes[23] = -55;
         bytes[24] = -1002;
         startIntStr = Helper.bytesToHex(bytes);
-        startInt = (new BigNumber(Helper.bytesToHex(bytes)));
+        startInt = (new BN(Helper.bytesToHex(bytes)));
         toStruct = await imbalanceInst.callDecodeTokenImbalanceData(startInt);
 
         toInt = await imbalanceInst.callEncodeTokenImbalanceData(toStruct[0], toStruct[1], toStruct[2], toStruct[3]);
-        assert.equal(startInt.valueOf(), toInt.valueOf(), "conversion failed");
+        Helper.assertEqual(startInt, toInt, "conversion failed");
     });
 
     it("should test variable range for encode / decode of token imbalance data.", async function() {
@@ -104,29 +109,24 @@ contract('VolumeImbalanceRecorder', function(accounts) {
     //            int  totalBuyUnitsImbalance;
     //            uint lastPriceUpdateBlock;
     //        }
-
-        let pow_2_64 = (new BigNumber(2).pow(64).div(1));
-        let pow_2_64_div2 = (new BigNumber(2).pow(64).div(2));
-        let neg_pow_2_64_div2 = (new BigNumber(2).pow(64).div(2).mul(-1));
-
-        let startStruct = [pow_2_64_div2.sub(1), pow_2_64.sub(1), pow_2_64_div2.sub(1), pow_2_64.sub(1)];
+        let startStruct = [pow_2_64_div2.sub(new BN(1)), pow_2_64.sub(new BN(1)), pow_2_64_div2.sub(new BN(1)), pow_2_64.sub(new BN(1))];
 
         let toInt = await imbalanceInst.callEncodeTokenImbalanceData(startStruct[0], startStruct[1], startStruct[2], startStruct[3]);
 
         let toStruct = await imbalanceInst.callDecodeTokenImbalanceData(toInt);
 
         for(let i =0; i < 4; i++){
-            assert.equal(startStruct[i].valueOf(), toStruct[i].valueOf(), "array cell: " + i + " not equal");
+            Helper.assertEqual(startStruct[i], toStruct[i], "array cell: " + i + " not equal");
         }
 
-        startStruct = [neg_pow_2_64_div2.add(1), pow_2_64.sub(1), neg_pow_2_64_div2.add(1), pow_2_64.sub(1)];
+        startStruct = [neg_pow_2_64_div2.add(new BN(1)), pow_2_64.sub(new BN(1)), neg_pow_2_64_div2.add(new BN(1)), pow_2_64.sub(new BN(1))];
 
         toInt = await imbalanceInst.callEncodeTokenImbalanceData(startStruct[0], startStruct[1], startStruct[2], startStruct[3]);
 
         toStruct = await imbalanceInst.callDecodeTokenImbalanceData(toInt);
 
         for(let i =0; i < 4; i++){
-            assert.equal(startStruct[i].valueOf(), toStruct[i].valueOf(), "array cell: " + i + " not equal");
+            Helper.assertEqual(startStruct[i], toStruct[i], "array cell: " + i + " not equal");
         }
 
     });
@@ -147,8 +147,8 @@ contract('VolumeImbalanceRecorder', function(accounts) {
 
         let imbalanceArr =  await imbalanceInst.getMockImbalance(token.address, priceUpdateBlock, currentBlock);
 
-        assert.equal(imbalanceArr[1].valueOf(), totalBlockImbalance, "unexpected last block imbalance.");
-        assert.equal(imbalanceArr[0].valueOf(), totalImbalanceSinceUpdate, "unexpected total imbalance.");
+        Helper.assertEqual(imbalanceArr[1], totalBlockImbalance, "unexpected last block imbalance.");
+        Helper.assertEqual(imbalanceArr[0], totalImbalanceSinceUpdate, "unexpected total imbalance.");
     });
 
     it("should test correct imbalance calculated on updates with block changes and without price updates.", async function() {
@@ -158,7 +158,7 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         let currBlocks = [1010, 1010, 1011, 1080, 1350, 1350];
         let totalImbalanceSinceUpdate = 0;
 
-        assert.equal(trades.length, currBlocks.length, "arrays mismatch");
+        Helper.assertEqual(trades.length, currBlocks.length, "arrays mismatch");
 
         for (let i = 0; i < trades.length; ++i) {
             await imbalanceInst.addTrade(token.address, trades[i], priceUpdateBlock, currBlocks[i]);
@@ -171,8 +171,8 @@ contract('VolumeImbalanceRecorder', function(accounts) {
 
         let imbalanceArr =  await imbalanceInst.getMockImbalance(token.address, priceUpdateBlock, currBlocks[currBlocks.length - 1]);
 
-        assert.equal(imbalanceArr[0].valueOf(), totalImbalanceSinceUpdate, "unexpected total imbalance.");
-        assert.equal(imbalanceArr[1].valueOf(), lastBlockImbalance, "unexpected last block imbalance.");
+        Helper.assertEqual(imbalanceArr[0], totalImbalanceSinceUpdate, "unexpected total imbalance.");
+        Helper.assertEqual(imbalanceArr[1], lastBlockImbalance, "unexpected last block imbalance.");
     });
 
     it("should test correct imbalance calculated on updates with block changes and with price updates.", async function() {
@@ -182,8 +182,8 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         let priceUpdateBlocks = [2000, 2000, 2000, 2000, 2300, 2300, 2300];
         let totalImbalanceSinceUpdate = 0;
 
-        assert.equal(trades.length, currBlocks.length, "arrays mismatch");
-        assert.equal(trades.length, priceUpdateBlocks.length, "arrays mismatch");
+        Helper.assertEqual(trades.length, currBlocks.length, "arrays mismatch");
+        Helper.assertEqual(trades.length, priceUpdateBlocks.length, "arrays mismatch");
 
         for (let i = 0; i < trades.length; ++i) {
             await imbalanceInst.addTrade(token.address, trades[i], priceUpdateBlocks[i], currBlocks[i]);
@@ -202,8 +202,8 @@ contract('VolumeImbalanceRecorder', function(accounts) {
                                                              priceUpdateBlocks[priceUpdateBlocks.length - 1],
                                                              currBlocks[currBlocks.length - 1]);
 
-        assert.equal(imbalanceArr[0].valueOf(), totalImbalanceSinceUpdate, "unexpected total imbalance.");
-        assert.equal(imbalanceArr[1].valueOf(), lastBlockImbalance, "unexpected last block imbalance.");
+        Helper.assertEqual(imbalanceArr[0], totalImbalanceSinceUpdate, "unexpected total imbalance.");
+        Helper.assertEqual(imbalanceArr[1], lastBlockImbalance, "unexpected last block imbalance.");
     });
 
     it("should test correct imbalance calculated on updates with block changes and with price updates in middle of block.", async function() {
@@ -213,8 +213,8 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         let priceUpdateBlocks = [6000, 6000, 6000, 6000, 6000, 6002, 6002];
         let totalImbalanceSinceUpdate = 0;
 
-        assert.equal(trades.length, currBlocks.length, "arrays mismatch");
-        assert.equal(trades.length, priceUpdateBlocks.length, "arrays mismatch");
+        Helper.assertEqual(trades.length, currBlocks.length, "arrays mismatch");
+        Helper.assertEqual(trades.length, priceUpdateBlocks.length, "arrays mismatch");
 
         for (let i = 0; i < trades.length; ++i) {
             await imbalanceInst.addTrade(token.address, trades[i], priceUpdateBlocks[i], currBlocks[i]);
@@ -237,8 +237,8 @@ contract('VolumeImbalanceRecorder', function(accounts) {
                                                              priceUpdateBlocks[priceUpdateBlocks.length - 1],
                                                              currBlocks[currBlocks.length - 1]);
 
-        assert.equal(imbalanceArr[0].valueOf(), totalImbalanceSinceUpdate, "unexpected total imbalance.");
-        assert.equal(imbalanceArr[1].valueOf(), lastBlockImbalance, "unexpected last block imbalance.");
+        Helper.assertEqual(imbalanceArr[0], totalImbalanceSinceUpdate, "unexpected total imbalance.");
+        Helper.assertEqual(imbalanceArr[1], lastBlockImbalance, "unexpected last block imbalance.");
     });
 
     it("should test correct imbalance calculated when minimal resolution is a non dividable number.", async function() {
@@ -248,8 +248,8 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         let priceUpdateBlocks = [6000, 6000, 6000, 6000, 6000, 6002, 6002];
         let totalImbalanceSinceUpdate = 0;
 
-        assert.equal(trades.length, currBlocks.length, "arrays mismatch");
-        assert.equal(trades.length, priceUpdateBlocks.length, "arrays mismatch");
+        Helper.assertEqual(trades.length, currBlocks.length, "arrays mismatch");
+        Helper.assertEqual(trades.length, priceUpdateBlocks.length, "arrays mismatch");
 
         //create new instance
         let imbalanceInst2 = await MockImbalanceRecorder.new(admin);
@@ -279,10 +279,10 @@ contract('VolumeImbalanceRecorder', function(accounts) {
                                                              priceUpdateBlocks[priceUpdateBlocks.length - 1],
                                                              currBlocks[currBlocks.length - 1]);
 
-        assert(((imbalanceArr[0].valueOf() < totalImbalanceSinceUpdate + newRecordResolution) &&
-                (imbalanceArr[0].valueOf() > totalImbalanceSinceUpdate - newRecordResolution)), "unexpected total imbalance.");
-        assert(((imbalanceArr[1].valueOf() < lastBlockImbalance + newRecordResolution) &&
-                (imbalanceArr[1].valueOf() > lastBlockImbalance - newRecordResolution)), "unexpected last block imbalance.");
+        assert(((imbalanceArr[0] < totalImbalanceSinceUpdate + newRecordResolution) &&
+                (imbalanceArr[0] > totalImbalanceSinceUpdate - newRecordResolution)), "unexpected total imbalance.");
+        assert(((imbalanceArr[1] < lastBlockImbalance + newRecordResolution) &&
+                (imbalanceArr[1] > lastBlockImbalance - newRecordResolution)), "unexpected last block imbalance.");
     });
 
     it("should test scenario of price update mined late and some previous blocks should be recorded.", async function() {
@@ -294,8 +294,8 @@ contract('VolumeImbalanceRecorder', function(accounts) {
 
         let lastPriceUpdateBlock = priceUpdateBlocks[priceUpdateBlocks.length - 1];
 
-        assert.equal(trades.length, currBlocks.length, "arrays mismatch");
-        assert.equal(trades.length, priceUpdateBlocks.length, "arrays mismatch");
+        Helper.assertEqual(trades.length, currBlocks.length, "arrays mismatch");
+        Helper.assertEqual(trades.length, priceUpdateBlocks.length, "arrays mismatch");
 
         //create new instance
         let imbalanceInst3 = await MockImbalanceRecorder.new(admin);
@@ -318,8 +318,8 @@ contract('VolumeImbalanceRecorder', function(accounts) {
                                                             lastPriceUpdateBlock,
                                                             currBlocks[currBlocks.length - 1]);
 
-        assert.equal(imbalanceArr[1].valueOf(), lastBlockImbalance, "unexpected last block imbalance.");
-        assert.equal(imbalanceArr[0].valueOf(), totalImbalanceSinceUpdate.valueOf(), "unexpected total imbalance.");
+        Helper.assertEqual(imbalanceArr[1], lastBlockImbalance, "unexpected last block imbalance.");
+        Helper.assertEqual(imbalanceArr[0], totalImbalanceSinceUpdate, "unexpected total imbalance.");
 
     });
 
@@ -342,8 +342,8 @@ contract('VolumeImbalanceRecorder', function(accounts) {
 
         let imbalanceArr =  await imbalanceInst.getMockImbalance(token.address, priceUpdateBlock, currentBlock);
 
-        assert.equal(imbalanceArr[0].valueOf(), tradeSoFar, "unexpected total imbalance.");
-        assert.equal(imbalanceArr[1].valueOf(), perBlockImbalance, "unexpected last block imbalance.");
+        Helper.assertEqual(imbalanceArr[0], tradeSoFar, "unexpected total imbalance.");
+        Helper.assertEqual(imbalanceArr[1], perBlockImbalance, "unexpected last block imbalance.");
     });
 
     it("should test get imbalance in range.", async function() {
@@ -354,8 +354,8 @@ contract('VolumeImbalanceRecorder', function(accounts) {
         let firstGetBlock = 6001;
         let lastGetBlock = 6003
 
-        assert.equal(trades.length, currBlocks.length, "arrays mismatch");
-        assert.equal(trades.length, priceUpdateBlocks.length, "arrays mismatch");
+        Helper.assertEqual(trades.length, currBlocks.length, "arrays mismatch");
+        Helper.assertEqual(trades.length, priceUpdateBlocks.length, "arrays mismatch");
 
         //create new instance
         let imbalanceInst2 = await MockImbalanceRecorder.new(admin);
@@ -374,7 +374,7 @@ contract('VolumeImbalanceRecorder', function(accounts) {
 
         let imbalanceInRange = await imbalanceInst2.getMockImbalanceInRange(token.address, firstGetBlock, lastGetBlock);
 
-        assert.equal((imbalanceInRange.valueOf() * newRecordResolution), totalImbalanceInRange, "unexpected total imbalance.");
+        Helper.assertEqual((imbalanceInRange * newRecordResolution), totalImbalanceInRange, "unexpected total imbalance.");
     });
 
     it("should test get imbalance in range reverted when start block > and block.", async function() {
@@ -408,14 +408,14 @@ contract('VolumeImbalanceRecorder', function(accounts) {
 
         let imbalanceArr = await imbalanceInst2.getMockImbalance(token.address, priceUpdateBlock, currentBlock);
 
-        assert.equal(imbalanceArr[0].valueOf(), 0, "unexpected total imbalance.");
+        Helper.assertEqual(imbalanceArr[0], 0, "unexpected total imbalance.");
     });
 
     it("should test can't init this contract with empty contracts (address 0).", async function () {
         let recorder;
 
         try {
-           recorder = await MockImbalanceRecorder.new(0);
+           recorder = await MockImbalanceRecorder.new(zeroAddress);
            assert(false, "throw was expected in line above.")
         } catch(e){
            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -426,9 +426,6 @@ contract('VolumeImbalanceRecorder', function(accounts) {
     });
 
     it("should test encode imbalance data reverts on data overflow or underflow.", async function() {
-        let pow_2_64 = (new BigNumber(2).pow(64).div(1));
-        let pow_2_64_div2 = (new BigNumber(2).pow(64).div(2));
-        let neg_pow_2_64_div2 = (new BigNumber(2).pow(64).div(2).mul(-1));
         let legalValue = 100;
 
         /*function prototype
@@ -444,65 +441,65 @@ contract('VolumeImbalanceRecorder', function(accounts) {
 
         //test invalid range for lastBlockBuyUnitsImbalance
         try {
-            await imbalanceInst.callEncodeTokenImbalanceData(pow_2_64_div2.sub(0).valueOf(), legalValue, legalValue, legalValue);
+            await imbalanceInst.callEncodeTokenImbalanceData(pow_2_64_div2.sub(new BN(0)), legalValue, legalValue, legalValue);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         //see success
-        await imbalanceInst.callEncodeTokenImbalanceData(pow_2_64_div2.sub(1).valueOf(), legalValue, legalValue, legalValue);
+        await imbalanceInst.callEncodeTokenImbalanceData(pow_2_64_div2.sub(new BN(1)), legalValue, legalValue, legalValue);
 
         try {
-            await imbalanceInst.callEncodeTokenImbalanceData(neg_pow_2_64_div2.valueOf(), legalValue, legalValue, legalValue);
+            await imbalanceInst.callEncodeTokenImbalanceData(neg_pow_2_64_div2, legalValue, legalValue, legalValue);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await imbalanceInst.callEncodeTokenImbalanceData(neg_pow_2_64_div2.add(1).valueOf(), legalValue, legalValue, legalValue);
+        await imbalanceInst.callEncodeTokenImbalanceData(neg_pow_2_64_div2.add(new BN(1)), legalValue, legalValue, legalValue);
 
         //test invalid range for lastBlock
         try {
-            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, pow_2_64.valueOf(), legalValue, legalValue);
+            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, pow_2_64, legalValue, legalValue);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
         //see success
-        await imbalanceInst.callEncodeTokenImbalanceData(legalValue, pow_2_64.sub(1).valueOf(), legalValue, legalValue);
+        await imbalanceInst.callEncodeTokenImbalanceData(legalValue, pow_2_64.sub(new BN(1)), legalValue, legalValue);
 
 
         //test invalid range for totalBuyUnitsImbalance
         try {
-            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, pow_2_64_div2.valueOf(), legalValue);
+            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, pow_2_64_div2, legalValue);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, pow_2_64_div2.sub(1).valueOf(), legalValue);
+        await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, pow_2_64_div2.sub(new BN(1)), legalValue);
 
         try {
-            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, neg_pow_2_64_div2.valueOf(), legalValue);
+            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, neg_pow_2_64_div2, legalValue);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
 
-        await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, neg_pow_2_64_div2.add(1).valueOf(), legalValue);
+        await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, neg_pow_2_64_div2.add(new BN(1)), legalValue);
 
         //test invalid range for lastRateUpdateBlock
         try {
-            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, legalValue, pow_2_64_div2 * 2);
+            await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, legalValue, pow_2_64_div2.mul(new BN(2)));
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "using" + pow_2_64 +  " expected throw but got: " + e);
         }
 
-        await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, legalValue, pow_2_64.sub(1));
+        await imbalanceInst.callEncodeTokenImbalanceData(legalValue, legalValue, legalValue, pow_2_64.sub(new BN(1)));
 
     });
 });

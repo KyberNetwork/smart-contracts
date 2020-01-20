@@ -1,13 +1,16 @@
-const BigNumber = require('bignumber.js');
+const BN = web3.utils.BN;
 
 require("chai")
     .use(require("chai-as-promised"))
-    .use(require('chai-bignumber')(BigNumber))
     .should()
 
 const Helper = require("./helper.js");
 
-const OrderList = artifacts.require("OrderList");
+const OrderList = artifacts.require("OrderList.sol");
+
+const zeroAddress = '0x0000000000000000000000000000000000000000';
+const zeroBN = new BN(0);
+const precision = new BN(10).pow(new BN(18));
 
 let user1;
 let user2;
@@ -42,7 +45,7 @@ contract('OrderList', async (accounts) => {
 
         it("should not allow deploying with address 0 as admin", async () => {
             try {
-                await OrderList.new(0);
+                await OrderList.new(zeroAddress);
                 assert(false, "throw was expected in line above.")
             } catch(e){
                 assert(
@@ -103,10 +106,10 @@ contract('OrderList', async (accounts) => {
         });
 
         it("should reach over flow in nextFreeId, see revert", async() => {
-            let maxUint32 = new BigNumber(2 ** 32);
+            let maxUint32 = (new BN(2)).pow(new BN(32));
             let nextFreeId = await orders.nextFreeId();
 
-            await orders.allocateIds(maxUint32.sub(nextFreeId).sub(1));
+            await orders.allocateIds(maxUint32.sub(nextFreeId).sub(new BN(1)));
 
             try {
                 await orders.allocateIds(2);
@@ -128,7 +131,7 @@ contract('OrderList', async (accounts) => {
                 101 /* dstAmount2 */
             );
 
-            orderComparison.should.be.bignumber.below(0);
+            orderComparison.should.be.bignumber.below(zeroBN);
         });
 
         it("compare orders: order1 worse than order2 -> positive", async () => {
@@ -139,7 +142,7 @@ contract('OrderList', async (accounts) => {
                 100 /* dstAmount2 */
             );
 
-            orderComparison.should.be.bignumber.above(0);
+            orderComparison.should.be.bignumber.above(zeroBN);
         });
 
         it("compare orders: order1 equals order2 -> 0", async () => {
@@ -150,35 +153,35 @@ contract('OrderList', async (accounts) => {
                 2468 /* dstAmount2 */
             );
 
-            orderComparison.should.be.bignumber.equal(0);
+            orderComparison.should.be.bignumber.equal(zeroBN);
         });
 
         it("small differences in the order amounts should influence", async () => {
             const orderComparison = await orders.compareOrders.call(
-                new BigNumber(2).mul(10 ** 18).add(300) /* srcAmount1 */,
-                new BigNumber(9).mul(10 ** 18).add(220) /* dstAmount1 */,
-                new BigNumber(2).mul(10 ** 18).add(300) /* srcAmount2 */,
-                new BigNumber(9).mul(10 ** 18).add(200) /* dstAmount2 */
+                new BN(2).mul(precision).add(new BN(300)) /* srcAmount1 */,
+                new BN(9).mul(precision).add(new BN(220)) /* dstAmount1 */,
+                new BN(2).mul(precision).add(new BN(300)) /* srcAmount2 */,
+                new BN(9).mul(precision).add(new BN(200)) /* dstAmount2 */
             );
 
-            orderComparison.should.be.bignumber.above(0);
+            orderComparison.should.be.bignumber.above(zeroBN);
         });
 
         it("handles possible overflows due to multiplication", async () => {
             const orderComparison = await orders.compareOrders.call(
-                new BigNumber(300) /* srcAmount1 */,
-                new BigNumber(2).pow(128).sub(1) /* dstAmount1 */,
-                new BigNumber(2).pow(128).sub(1) /* srcAmount2 */,
-                new BigNumber(200) /* dstAmount2 */
+                new BN(300) /* srcAmount1 */,
+                new BN(2).pow(new BN(128)).sub(new BN(1)) /* dstAmount1 */,
+                new BN(2).pow(new BN(128)).sub(new BN(1)) /* srcAmount2 */,
+                new BN(200) /* dstAmount2 */
             );
 
-            orderComparison.should.be.bignumber.above(0);
+            orderComparison.should.be.bignumber.above(zeroBN);
         });
     });
 
     describe("#findPrevOrderId", async () => {
         it("should handle empty list", async () => {
-            let srcAmount = 10;
+            let srcAmount = new BN(10);
             let dstAmount = 100;
             let prevId = await orders.findPrevOrderId(srcAmount, dstAmount);
 
@@ -192,7 +195,7 @@ contract('OrderList', async (accounts) => {
                 100 /* dstAmount */
             );
 
-            let srcAmount = 10;
+            let srcAmount = new BN(10);
             let dstAmount = 200;
             let prevId = await orders.findPrevOrderId(srcAmount, dstAmount);
 
@@ -206,7 +209,7 @@ contract('OrderList', async (accounts) => {
                 300 /* dstAmount */
             );
 
-            let srcAmount = 10;
+            let srcAmount = new BN(10);
             let dstAmount = 200;
             let prevId = await orders.findPrevOrderId(srcAmount, dstAmount);
 
@@ -225,7 +228,7 @@ contract('OrderList', async (accounts) => {
                 300 /* dstAmount */
             );
 
-            let srcAmount = 10;
+            let srcAmount = new BN(10);
             let dstAmount = 200;
             let prevId = await orders.findPrevOrderId(srcAmount, dstAmount);
 
@@ -242,8 +245,8 @@ contract('OrderList', async (accounts) => {
             );
 
             order.maker.should.equal(user1);
-            order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(100);
+            order.srcAmount.should.be.bignumber.equal(new BN(10));
+            order.dstAmount.should.be.bignumber.equal(new BN(100));
         });
 
         it("should add single order so that head is its prev and tail is its next", async () => {
@@ -270,11 +273,11 @@ contract('OrderList', async (accounts) => {
             );
 
             order1.maker.should.equal(user1);
-            order1.srcAmount.should.be.bignumber.equal(10);
-            order1.dstAmount.should.be.bignumber.equal(100);
+            order1.srcAmount.should.be.bignumber.equal(new BN(10));
+            order1.dstAmount.should.be.bignumber.equal(new BN(100));
             order2.maker.should.equal(user2);
-            order2.srcAmount.should.be.bignumber.equal(10);
-            order2.dstAmount.should.be.bignumber.equal(200);
+            order2.srcAmount.should.be.bignumber.equal(new BN(10));
+            order2.dstAmount.should.be.bignumber.equal(new BN(200));
         });
 
         it("should return order maker from a different user", async () => {
@@ -286,7 +289,7 @@ contract('OrderList', async (accounts) => {
             );
 
             let params = await orders.getOrderDetails(orderId, {from: user2});
-            let [maker,,,,] = params;
+            let maker = params.maker;
 
             maker.should.equal(user1);
         });
@@ -593,8 +596,8 @@ contract('OrderList', async (accounts) => {
 
             let order = await getOrderById(orderId);
             order.maker.should.be.bignumber.equal(user1);
-            order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(100);
+            order.srcAmount.should.be.bignumber.equal(new BN(10));
+            order.dstAmount.should.be.bignumber.equal(new BN(100));
         });
 
         it("removing all orders from list: starting with highest", async () => {
@@ -908,8 +911,8 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 100 /* dstAmount */);
 
-            let srcAmount = 20;
-            let dstAmount = 200;
+            let srcAmount = new BN(20);
+            let dstAmount = new BN(200);
             await orders.update(orderId, srcAmount, dstAmount);
 
             let order = await getOrderById(orderId);
@@ -933,7 +936,7 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 300 /* dstAmount */);
 
-            let srcAmount = 10;
+            let srcAmount = new BN(10);
             let dstAmount = 90;
             await orders.update(firstId, srcAmount, dstAmount);
 
@@ -956,7 +959,7 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 300 /* dstAmount */);
 
-            let srcAmount = 10;
+            let srcAmount = new BN(10);
             let dstAmount = 220;
             await orders.update(firstId, srcAmount, dstAmount);
 
@@ -979,7 +982,7 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 300 /* dstAmount */);
 
-            let srcAmount = 10;
+            let srcAmount = new BN(10);
             let dstAmount = 330;
             await orders.update(firstId, srcAmount, dstAmount);
 
@@ -1002,7 +1005,7 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 300 /* dstAmount */);
 
-            let srcAmount = 10;
+            let srcAmount = new BN(10);
             let dstAmount = 90;
             await orders.update(secondId, srcAmount, dstAmount);
 
@@ -1025,7 +1028,7 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 300 /* dstAmount */);
 
-            let srcAmount = 10;
+            let srcAmount = new BN(10);
             let dstAmount = 220;
             await orders.update(secondId, srcAmount, dstAmount);
 
@@ -1048,7 +1051,7 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 300 /* dstAmount */);
 
-            let srcAmount = 10;
+            let srcAmount = new BN(10);
             let dstAmount = 330;
             await orders.update(secondId, srcAmount, dstAmount);
 
@@ -1071,7 +1074,7 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 300 /* dstAmount */);
 
-            let srcAmount = 10;
+            let srcAmount = new BN(10);
             let dstAmount = 90;
             await orders.update(thirdId, srcAmount, dstAmount);
 
@@ -1094,7 +1097,7 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 300 /* dstAmount */);
 
-            let srcAmount = 10;
+            let srcAmount = new BN(10);
             let dstAmount = 180;
             await orders.update(thirdId, srcAmount, dstAmount);
 
@@ -1117,7 +1120,7 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 300 /* dstAmount */);
 
-            let srcAmount = 10;
+            let srcAmount = new BN(10);
             let dstAmount = 330;
             await orders.update(thirdId, srcAmount, dstAmount);
 
@@ -1152,9 +1155,10 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 300 /* dstAmount */);
 
-            let srcAmount = 10;
-            let dstAmount = 190;
-            let [updated, updateMethod] = await updateWithPositionHint(
+            let srcAmount = new BN(10);
+            let dstAmount = new BN(190);
+
+            let [updated, updateMethod]  = await updateWithPositionHint(
                 thirdId /* orderId */,
                 srcAmount /* srcAmount */,
                 dstAmount /* dstAmount */,
@@ -1184,8 +1188,8 @@ contract('OrderList', async (accounts) => {
                 10 /* srcAmount */,
                 300 /* dstAmount */);
 
-            let srcAmount = 10;
-            let dstAmount = 190;
+            let srcAmount = new BN(10);
+            let dstAmount = new BN(190);
             const [updated, updateMethod] = await updateWithPositionHint(
                 thirdId /* orderId */,
                 srcAmount /* srcAmount */,
@@ -1222,8 +1226,8 @@ contract('OrderList', async (accounts) => {
             updateMethod.should.be.bignumber.equal(UPDATE_FAILED);
 
             order = await getOrderById(order.id);
-            order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(200);
+            order.srcAmount.should.be.bignumber.equal(new BN(10));
+            order.dstAmount.should.be.bignumber.equal(new BN(200));
 
             // after: HEAD -> order -> TAIL
             await assertOrdersOrder1(order.id);
@@ -1251,8 +1255,8 @@ contract('OrderList', async (accounts) => {
             updateMethod.should.be.bignumber.equal(UPDATE_FAILED);
 
             order = await getOrderById(order.id);
-            order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(200);
+            order.srcAmount.should.be.bignumber.equal(new BN(10));
+            order.dstAmount.should.be.bignumber.equal(new BN(200));
 
             // after: HEAD -> order -> TAIL
             await assertOrdersOrder1(order.id);
@@ -1283,8 +1287,8 @@ contract('OrderList', async (accounts) => {
             updateMethod.should.be.bignumber.equal(UPDATE_FAILED);
 
             order = await getOrderById(order.id);
-            order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(100);
+            order.srcAmount.should.be.bignumber.equal(new BN(10));
+            order.dstAmount.should.be.bignumber.equal(new BN(100));
 
             // after: HEAD -> order -> worse -> TAIL
             await assertOrdersOrder2(order.id, worseId);
@@ -1320,8 +1324,8 @@ contract('OrderList', async (accounts) => {
             updateMethod.should.be.bignumber.equal(UPDATE_FAILED);
 
             order = await getOrderById(order.id);
-            order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(400);
+            order.srcAmount.should.be.bignumber.equal(new BN(10));
+            order.dstAmount.should.be.bignumber.equal(new BN(400));
 
             // after: HEAD -> best -> better -> order -> TAIL
             await assertOrdersOrder3(bestId, betterId, order.id);
@@ -1355,8 +1359,8 @@ contract('OrderList', async (accounts) => {
             // values changed.
             const order = await getOrderById(secondId);
             order.maker.should.equal(user1);
-            order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(150);
+            order.srcAmount.should.be.bignumber.equal(new BN(10));
+            order.dstAmount.should.be.bignumber.equal(new BN(150));
 
             // order did not change
             // after: HEAD -> first -> second -> third -> TAIL
@@ -1388,8 +1392,8 @@ contract('OrderList', async (accounts) => {
             updated.should.be.true;
             updateMethod.should.be.bignumber.equal(UPDATE_ONLY_AMOUNTS);
             let order = await getOrderById(firstId);
-            order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(90);
+            order.srcAmount.should.be.bignumber.equal(new BN(10));
+            order.dstAmount.should.be.bignumber.equal(new BN(90));
 
             // after: HEAD -> first -> second -> third -> TAIL
             await assertOrdersOrder3(firstId, secondId, thirdId);
@@ -1420,8 +1424,8 @@ contract('OrderList', async (accounts) => {
             updated.should.be.true;
             updateMethod.should.be.bignumber.equal(UPDATE_ONLY_AMOUNTS);
             let order = await getOrderById(secondId);
-            order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(220);
+            order.srcAmount.should.be.bignumber.equal(new BN(10));
+            order.dstAmount.should.be.bignumber.equal(new BN(220));
 
             // after: HEAD -> first -> second -> third -> TAIL
             await assertOrdersOrder3(firstId, secondId, thirdId);
@@ -1452,8 +1456,8 @@ contract('OrderList', async (accounts) => {
             updated.should.be.true;
             updateMethod.should.be.bignumber.equal(UPDATE_ONLY_AMOUNTS);
             let order = await getOrderById(thirdId);
-            order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(280);
+            order.srcAmount.should.be.bignumber.equal(new BN(10));
+            order.dstAmount.should.be.bignumber.equal(new BN(280));
 
             // after: HEAD -> first -> second -> third -> TAIL
             await assertOrdersOrder3(firstId, secondId, thirdId);
@@ -1571,8 +1575,8 @@ contract('OrderList', async (accounts) => {
             // values changed.
             const order = await getOrderById(thirdId);
             order.maker.should.equal(user1);
-            order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(300);
+            order.srcAmount.should.be.bignumber.equal(new BN(10));
+            order.dstAmount.should.be.bignumber.equal(new BN(300));
 
             // after: HEAD -> second -> third -> TAIL
             await assertOrdersOrder2(secondId, thirdId);
@@ -1610,8 +1614,8 @@ contract('OrderList', async (accounts) => {
             // values changed.
             const order = await getOrderById(thirdId);
             order.maker.should.equal(user1);
-            order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(300);
+            order.srcAmount.should.be.bignumber.equal(new BN(10));
+            order.dstAmount.should.be.bignumber.equal(new BN(300));
 
             // after: HEAD -> first -> third -> TAIL
             await assertOrdersOrder2(firstId, thirdId);
@@ -1649,8 +1653,8 @@ contract('OrderList', async (accounts) => {
             // values changed.
             const order = await getOrderById(firstId);
             order.maker.should.equal(user1);
-            order.srcAmount.should.be.bignumber.equal(10);
-            order.dstAmount.should.be.bignumber.equal(100);
+            order.srcAmount.should.be.bignumber.equal(new BN(10));
+            order.dstAmount.should.be.bignumber.equal(new BN(100));
 
             // after: HEAD -> first -> second -> TAIL
             await assertOrdersOrder2(firstId, secondId);
@@ -1666,7 +1670,8 @@ contract('OrderList', async (accounts) => {
             );
 
             let params = await orders.getFirstOrder();
-            let [firstOrderId, isEmpty] = params;
+            let firstOrderId = params[0];
+            let isEmpty = params[1];
 
             firstOrderId.should.be.bignumber.equal(order.id);
             isEmpty.should.equal(false);
@@ -1674,7 +1679,8 @@ contract('OrderList', async (accounts) => {
 
         it("should return empty if called with getFirstOrder when no order", async () => {
             let params = await orders.getFirstOrder();
-            let [firstOrderId, isEmpty] = params;
+            let firstOrderId = params[0];
+            let isEmpty = params[1];
 
             isEmpty.should.equal(true);
         });
@@ -1694,52 +1700,86 @@ class Order {
 
 async function getOrderById(id) {
     let params = await orders.getOrderDetails(id);
-    let [maker, srcAmount, dstAmount, prevId, nextId] = params;
+    let maker = params.maker;
+    let srcAmount = params.srcAmount;
+    let dstAmount = params.dstAmount;
+    let prevId = params.prevId;
+    let nextId = params.nextId;
+
     return new Order(id, maker, srcAmount, dstAmount, prevId, nextId);
 }
 
-async function addOrderGetId(maker, srcAmount, dstAmount, args = {}) {
+async function addOrderGetId(maker, srcAmount, dstAmount, args = 'none') {
     let orderId = await allocateIds(1);
-    await orders.add(maker, orderId, srcAmount, dstAmount, args);
+    if (args == 'none') {
+        await orders.add(maker, orderId, srcAmount, dstAmount);
+    } else {
+        await orders.add(maker, orderId, srcAmount, dstAmount, args);
+    }
     return orderId;
 }
 
 async function addOrderAfterIdGetId(
-    maker,
-    srcAmount,
-    dstAmount,
-    prevId,
-    args = {}
-)
+        maker,
+        srcAmount,
+        dstAmount,
+        prevId,
+        args = 'none'
+    )
 {
     let orderId = await allocateIds(1);
-    let canAdd = await orders.addAfterId.call(
-        user1 /* maker */,
-        orderId,
-        srcAmount,
-        dstAmount,
-        prevId,
-        args
-    );
+
+    let canAdd;
+
+    if (args == 'none') {
+        canAdd = await orders.addAfterId.call(
+                user1 /* maker */,
+                orderId,
+                srcAmount,
+                dstAmount,
+                prevId
+            )
+    } else {
+        await orders.addAfterId.call(
+                user1 /* maker */,
+                orderId,
+                srcAmount,
+                dstAmount,
+                prevId,
+                args
+            );
+    }
+
     if (!canAdd) throw new Error('add after id failed');
 
-    await orders.addAfterId(
-        user1 /* maker */,
-        orderId,
-        srcAmount,
-        dstAmount,
-        prevId,
-        args
-    );
+    if (args == 'none') {
+        await orders.addAfterId(
+            user1 /* maker */,
+            orderId,
+            srcAmount,
+            dstAmount,
+            prevId
+       );
+    } else {
+        await orders.addAfterId(
+            user1 /* maker */,
+            orderId,
+            srcAmount,
+            dstAmount,
+            prevId,
+            args
+        );
+    }
+
     return orderId;
 }
 
-async function addOrder(maker, srcAmount, dstAmount, args = {}) {
+async function addOrder(maker, srcAmount, dstAmount, args = 'none') {
     let orderId = await addOrderGetId(maker, srcAmount, dstAmount, args);
     return await getOrderById(orderId);
 }
 
-async function addOrderAfterId(maker, srcAmount, dstAmount, prevId, args = {}) {
+async function addOrderAfterId(maker, srcAmount, dstAmount, prevId, args = 'none') {
     let id = await addOrderAfterIdGetId(
         maker, srcAmount, dstAmount, prevId, args);
     return await getOrderById(id);
@@ -1752,12 +1792,15 @@ async function allocateIds(howMany) {
 }
 
 async function updateWithPositionHint(orderId, srcAmount, dstAmount, prevId) {
-    const [updated, updateMethod] = await orders.updateWithPositionHint.call(
+    let rxUpdate = await orders.updateWithPositionHint.call(
         orderId,
         srcAmount,
         dstAmount,
         prevId
     );
+
+    const updated = rxUpdate[0];
+    const updateMethod = rxUpdate[1];
     await orders.updateWithPositionHint(
         orderId,
         srcAmount,
@@ -1798,6 +1841,7 @@ async function assertOrdersOrder3(orderId1, orderId2, orderId3) {
     const order2 = await getOrderById(orderId2);
     const order3 = await getOrderById(orderId3);
 
+//    orderID1.nextId
     // after: HEAD -> order1 -> order2 -> order3 -> TAIL
     head.nextId.should.be.bignumber.equal(order1.id);
     order1.nextId.should.be.bignumber.equal(order2.id);
@@ -1820,4 +1864,8 @@ async function debugOrders(max) {
                 + `srcAmount=${srcAmount}, dstAmount=${dstAmount})`
             );
     }
+}
+
+function log(str) {
+    console.log(str)
 }
