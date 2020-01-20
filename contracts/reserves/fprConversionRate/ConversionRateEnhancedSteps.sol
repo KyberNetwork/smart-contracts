@@ -10,7 +10,7 @@ import "./ConversionRates.sol";
 /// https://github.com/KyberNetwork/smart-contracts/issues/240
 
 
-contract EnhancedStepFunctions is ConversionRates {
+contract ConversionRateEnhancedSteps is ConversionRates {
 
     uint constant internal MAX_STEPS_IN_FUNCTION = 16;
     int constant internal MAX_IMBALANCE = 2 ** 255 - 1;
