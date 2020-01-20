@@ -38,10 +38,10 @@ contract EnhancedStepFunctions is ConversionRates {
 
     function setImbalanceStepFunction(
         ERC20 token,
-        int128[] xBuy,
-        int128[] yBuy,
-        int128[] xSell,
-        int128[] ySell
+        int[] xBuy,
+        int[] yBuy,
+        int[] xSell,
+        int[] ySell
     )
         public
         onlyOperator
@@ -86,14 +86,14 @@ contract EnhancedStepFunctions is ConversionRates {
 
         int[] memory buyArray = new int[](yBuy.length);
         for(i = 0; i < yBuy.length; i++) {
-            int128 xBuyVal = (i == yBuy.length - 1) ? MAX_STEP_VALUE : xBuy[i];
-            buyArray[i] = encodeStepFunctionData(xBuyVal, yBuy[i]);
+            int128 xBuyVal = (i == yBuy.length - 1) ? MAX_STEP_VALUE : int128(xBuy[i]);
+            buyArray[i] = encodeStepFunctionData(xBuyVal, int128(yBuy[i]));
         }
 
         int[] memory sellArray = new int[](ySell.length);
         for(i = 0; i < ySell.length; i++) {
-            int128 xSellVal = (i == ySell.length - 1) ? MAX_STEP_VALUE : xSell[i];
-            sellArray[i] = encodeStepFunctionData(xSellVal, ySell[i]);
+            int128 xSellVal = (i == ySell.length - 1) ? MAX_STEP_VALUE : int128(xSell[i]);
+            sellArray[i] = encodeStepFunctionData(xSellVal, int128(ySell[i]));
         }
 
         int[] memory emptyArr = new int[](0);
@@ -171,8 +171,8 @@ contract EnhancedStepFunctions is ConversionRates {
 
             // add imbalance overhead
             extraBps = executeStepFunction(
-                tokenData[token].buyRateImbalanceStepFunction, 
-                totalImbalance, 
+                tokenData[token].buyRateImbalanceStepFunction,
+                totalImbalance,
                 totalImbalance + imbalanceQty
             );
             rate = addBps(rate, extraBps);
@@ -191,8 +191,8 @@ contract EnhancedStepFunctions is ConversionRates {
 
             // add imbalance overhead
             extraBps = executeStepFunction(
-                tokenData[token].sellRateImbalanceStepFunction, 
-                totalImbalance + imbalanceQty, 
+                tokenData[token].sellRateImbalanceStepFunction,
+                totalImbalance + imbalanceQty,
                 totalImbalance
             );
             rate = addBps(rate, extraBps);
