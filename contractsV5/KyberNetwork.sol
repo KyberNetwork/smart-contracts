@@ -683,6 +683,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         }
     }
     
+    event HandleFees(address indexed recipient, uint fees);
+
     function handleFees(TradeData memory tradeData) internal returns(bool) {
         // create array of reserves receiving fees + fee percent per reserve
         // fees should add up to 100%.
@@ -694,14 +696,20 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         updateEligibilityAndRebates(eligibleReserves, rebatePercentages, tradeData);
 
         // Sending platform fee to taker platform
-        (bool success, ) = tradeData.input.platformWallet.call.value(tradeData.platformFeeWei)("");
+        (bool success, ) = tradeData.input.platformFeeWei != 0 ?
+            tradeData.input.platformWallet.call.value(tradeData.platformFeeWei)("") :
+            (true, bytes(""));
         require(success, "Transfer platform fee to taker platform failed");
+        emit HandleFees(tradeData.input.platformWallet, tradeData.platformFeeWei);
 
         // Send total fee amount to fee handler with reserve data.
         require(
             feeHandlerContract.handleFees.value(tradeData.networkFeeWei)(eligibleReserves, rebatePercentages),
             "Transfer network fee to FeeHandler failed"
         );
+        emit HandleFees(address(feeHandlerContract), tradeData.networkFeeWei);
+
+
     }
 
     function updateEligibilityAndRebates(
