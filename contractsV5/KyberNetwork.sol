@@ -13,11 +13,14 @@ import "./IFeeHandler.sol";
 contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     uint  constant PERM_HINT_GET_RATE = 1 << 255; //for backwards compatibility
 =======
 >>>>>>> some refactoring, findRatesAndAmounts -> calcRatesAndAmounts
+=======
+    uint  constant PERM_HINT_GET_RATE = 1 << 255; //for backwards compatibility
+>>>>>>> Minor edit
     uint            public negligibleRateDiffBps = 10; // bps is 0.01%
-    uint            constant PERM_HINT_GET_RATE = 1 << 255;
     IFeeHandler     public feeHandlerContract;
 
     uint            public takerFeeData; // will include feeBps and expiry block
