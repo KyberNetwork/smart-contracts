@@ -103,6 +103,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @param reserve The reserve address.
     function addReserve(address reserve, uint reserveId, bool isFeePaying, address wallet) public onlyOperator returns(bool) {
 <<<<<<< HEAD
+<<<<<<< HEAD
         require(reserveAddressToId[reserve] == uint(0), "reserve has an existing id");
         if (reserveIdToAddresses[reserveId].length == 0) {
             reserveIdToAddresses[reserveId].push(reserve);
@@ -114,14 +115,22 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         reserveAddressToId[reserve] = reserveId;
 =======
         require(reserveIdToAddresses[reserveId].length == 0, "reserveId points to existing reserve");
+=======
+>>>>>>> Edit addReserve function
         require(reserveAddressToId[reserve] == uint(0), "reserve has an existing id");
-        
-        reserveAddressToId[reserve] = reserveId;
+        if (reserveIdToAddresses[reserveId].length == 0) {
+            reserveIdToAddresses[reserveId] = new address[](1);
+        } else {
+            require(reserveIdToAddresses[reserveId][0] == address(0), "reserveId points to existing reserve");
+        }
 
-        reserveIdToAddresses[reserveId] = new address[](1);
         reserveIdToAddresses[reserveId][0] = reserve;
+<<<<<<< HEAD
 
 >>>>>>> Fix perm hint in getExpectedRate, base case handling in parseTradeDataHint
+=======
+        reserveAddressToId[reserve] = reserveId;
+>>>>>>> Edit addReserve function
         isFeePayingReserve[reserve] = isFeePaying;
 
         reserves.push(IKyberReserve(reserve));
