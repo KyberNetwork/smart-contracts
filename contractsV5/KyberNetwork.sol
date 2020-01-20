@@ -628,9 +628,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     {
         IKyberReserve reserve;
         uint rate;
-        uint amountSoFarNoFee;
-        uint amountSoFarWithNetworkFee;
-        uint amountSoFarWithNetworkAndCustomFee;
+        uint amountSoFar;
         uint splitAmount;
         bool isPayingFees;
         
@@ -638,33 +636,23 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         ///////////////
         // if hinted reserves, find rates and save.
         if (tradeData.ethToToken.splitValuesBps.length > 1) {
-            //reset amountSoFarNoFee
-            amountSoFarNoFee = 0;
-
             for (uint i = 0; i < tradeData.ethToToken.addresses.length; i++) {
                 reserve = tradeData.ethToToken.addresses[i];
 
                 //calculate split amount without any fee
-                splitAmount = (i == tradeData.ethToToken.splitValuesBps.length - 1) ? (tradeWei - amountSoFarNoFee) : tradeData.ethToToken.splitValuesBps[i] * tradeWei / BPS;
-                amountSoFarNoFee += splitAmount;
+                splitAmount = (i == tradeData.ethToToken.splitValuesBps.length - 1) ? (tradeWei - amountSoFar) : tradeData.ethToToken.splitValuesBps[i] * tradeWei / BPS;
+                amountSoFar += splitAmount;
                 //to save gas, we make just 1 conversion rate call with splitAmount
                 rate = reserve.getConversionRate(ETH_TOKEN_ADDRESS, dest, splitAmount, block.number);
                 //save rate data
                 tradeData.ethToToken.rates[i] = rate;
                 tradeData.destAmountNoFee += calcDstQty(splitAmount, ETH_DECIMALS, tradeData.ethToToken.decimals, rate);
-
-                //calculate split amount with just network fee
-                splitAmount = (i == tradeData.ethToToken.splitValuesBps.length - 1) ? (tradeWeiMinusNetworkFee - amountSoFarWithNetworkFee) : tradeData.ethToToken.splitValuesBps[i] * tradeWeiMinusNetworkFee / BPS;
-                amountSoFarWithNetworkFee += splitAmount;
-                tradeData.destAmountWithNetworkFee += calcDstQty(splitAmount, ETH_DECIMALS, tradeData.ethToToken.decimals, rate);
-                
-                //calculate split amount with both network and custom platform fee
-                splitAmount = (i == tradeData.ethToToken.splitValuesBps.length - 1) ?
-                (tradeWeiMinusNetworkCustomFees - amountSoFarWithNetworkAndCustomFee)
-                : tradeData.ethToToken.splitValuesBps[i] * tradeWeiMinusNetworkCustomFees / BPS;
-                amountSoFarWithNetworkAndCustomFee += splitAmount;
-                tradeData.actualDestAmount = calcDstQty(splitAmount, ETH_DECIMALS, tradeData.ethToToken.decimals, rate);
             }
+
+            rate = calcRateFromQty(tradeWei, tradeData.destAmountNoFee, ETH_DECIMALS, tradeData.ethToToken.decimals);
+            tradeData.destAmountWithNetworkFee = calcDstQty(tradeWeiMinusNetworkFee, ETH_DECIMALS, tradeData.ethToToken.decimals, rate);
+            tradeData.actualDestAmount = calcDstQty(tradeWeiMinusNetworkCustomFees, ETH_DECIMALS, tradeData.ethToToken.decimals, rate);
+
         } else {
             // else, search best reserve and its corresponding dest amount
             // Have to search with tradeWei minus fees, because that is the actual src amount for ETH -> token trade
