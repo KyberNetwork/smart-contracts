@@ -38,15 +38,20 @@ let numTokens = 4;
 let tokens = [];
 let tokenAddresses = [];
 let tokenDecimals = [];
+let srcTokenId;
+let destTokenId;
+let srcToken;
+let destToken;
+let srcQty;
 
 contract('KyberNetwork', function(accounts) {
     before("one time init", async() => {
         //init accounts
         admin = accounts[0];
-        networkProxy = accounts[0];
         operator = accounts[1];
         alerter = accounts[2];
         user = accounts[3];
+        networkProxy = accounts[3];
         feeHandler = accounts[4]; // to change to actual fee burner
 
         //init tokens
@@ -95,6 +100,22 @@ contract('KyberNetwork', function(accounts) {
         await network.setEnable(true);
     });
 
+    beforeEach("running before each test", async() => {
+        srcTokenId = 0;
+        destTokenId = 0;
+        while (srcTokenId == destTokenId) {
+            srcTokenId = getRandomInt(0,numTokens-1);
+            destTokenId = getRandomInt(0,numTokens-1);
+        }
+        
+        srcToken = tokens[srcTokenId];
+        destToken = tokens[destTokenId];
+        srcDecimals = tokenDecimals[srcTokenId];
+        destDecimals = tokenDecimals[destTokenId];
+
+        srcQty = new BN(1000).mul(new BN(10).pow(srcDecimals));
+    })
+
     it("should test enable API", async() => {
         let isEnabled = await network.enabled();
         assert.equal(isEnabled, true);
@@ -108,33 +129,21 @@ contract('KyberNetwork', function(accounts) {
     });
 
     it("should get best rate for some token to another", async() => {
-        let srcToken = tokens[0];
-        let destToken = tokens[1];
-        let srcQty = precisionUnits;
+        srcQty = precisionUnits;
         let takerFeesBps = new BN(25);
         result = await network.searchBestRate(reserveAddresses, ethAddress, destToken.address, srcQty, takerFeesBps);
-        console.log(result[0].toString());
-        console.log(result[1].toString());
         result = await network.searchBestRate(reserveAddresses, srcToken.address, ethAddress, srcQty, takerFeesBps);
-        console.log(result[0].toString());
-        console.log(result[1].toString());
     });
 
     it("should get expected rate for some token", async() => {
-        let srcToken = tokens[0];
-        let destToken = tokens[1];
-        let srcQty = new BN(1000).mul((new BN(10).pow(tokenDecimals[0])));
-        console.log(srcQty.toString());
-        result = await network.getExpectedRate(srcToken.address, destToken.address, srcQty);
-        console.log(result[0].toString());
-        console.log(result[1].toString());
-        // result = await network.getExpectedRate(ethAddress, destToken.address, srcQty);
-        // console.log(result[0].toString());
-        // console.log(result[1].toString());
         result = await network.getExpectedRate(srcToken.address, ethAddress, srcQty);
-        console.log(result[0].toString());
-        console.log(result[1].toString());
-    })
+        result = await network.getExpectedRate(srcToken.address, destToken.address, srcQty);
+    });
+
+    it("should perform a token -> ETH trade and check balances change as expected", async() => {
+        initialUserTokenBalance = await srcToken.balanceOf(user);
+        initialUserETHBalance = await 
+    });
 })
 
 async function assertSameEtherBalance(account, expectedBalance) {
@@ -147,3 +156,9 @@ async function assertSameTokenBalance(account, token, expectedBalance) {
     Helper.assertEqual(balance, expectedBalance, "wrong token balance");
 }
 
+//returns random integer between min (inclusive) and max (inclusive)
+function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}

@@ -13,6 +13,7 @@ import "./IFeeHandler.sol";
 contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     uint            public negligibleRateDiffBps = 10; // bps is 0.01%
+    uint            constant PERM_HINT_GET_RATE = 1 << 255;
     IFeeHandler     public feeHandlerContract;
 
     uint            public takerFeeData; // will include feeBps and expiry block
@@ -100,15 +101,15 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function addReserve(address reserve, uint reserveId, bool isFeePaying, address wallet) public onlyOperator returns(bool) {
         require(reserveAddressToId[reserve] == uint(0), "reserve has an existing id");
         if (reserveIdToAddresses[reserveId].length == 0) {
-            reserveIdToAddresses[reserveId] = new address[](1);
+            reserveIdToAddresses[reserveId].push(reserve);
         } else {
             require(reserveIdToAddresses[reserveId][0] == address(0), "reserveId points to existing reserve");
+            reserveIdToAddresses[reserveId][0] = reserve;
         }
 
-        reserveIdToAddresses[reserveId][0] = reserve;
         reserveAddressToId[reserve] = reserveId;
         isFeePayingReserve[reserve] = isFeePaying;
-        
+
         reserves.push(IKyberReserve(reserve));
 
         reserveRebateWallet[reserve] = wallet;
@@ -141,7 +142,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         reserves[reserveIndex] = reserves[reserves.length - 1];
         reserves.length--;
 
-        reserveIdToAddresses[reserveId][reserveIdToAddresses[reserveId].length] = reserveIdToAddresses[reserveId][0];
+        reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
         reserveIdToAddresses[reserveId][0] = address(0);
         
         emit RemoveReserveFromNetwork(reserve, reserveId);
@@ -333,7 +334,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         address payable platformWallet,
         uint platformFeeBps
         ) 
-    internal pure returns (TradeData memory tradeData)
+    internal view returns (TradeData memory tradeData)
     {
         tradeData.input.trader = trader;
         tradeData.input.src = src;
@@ -344,6 +345,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tradeData.input.minConversionRate = minConversionRate;
         tradeData.input.platformWallet = platformWallet;
         tradeData.input.platformFeeBps = platformFeeBps;
+
+        tradeData.tokenToEth.decimals = getDecimals(src);
+        tradeData.ethToToken.decimals = getDecimals(dest);
     }
     
     function enabled() public view returns(bool) {

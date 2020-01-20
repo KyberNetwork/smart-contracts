@@ -4,24 +4,28 @@ import "../IKyberReserve.sol";
 import "../UtilsV5.sol";
 
 contract MockReserve is IKyberReserve, Utils {
-    mapping(address=>uint) public tokenToEthRates;
-    mapping(address=>uint) public ethToTokenRates;
+    mapping(address=>uint) public buyTokenRates;
+    mapping(address=>uint) public sellTokenRates;
     
     function() external payable {}
 
-    function setRate(IERC20 token, uint tokenToEthRate, uint ethToTokenRate) public {
-        tokenToEthRates[address(token)] = tokenToEthRate;
-        ethToTokenRates[address(token)] = ethToTokenRate;
+    function setRate(IERC20 token, uint buyRate, uint sellRate) public {
+        buyTokenRates[address(token)] = buyRate;
+        sellTokenRates[address(token)] = sellRate;
+    }
+    
+    function getTokenDecimals(IERC20 token) public view returns (uint) {
+        return getDecimals(token);
     }
     
     function getConversionRate(IERC20 src, IERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
         blockNumber;
         uint destQty;
         uint rate;
-        rate = (dest == ETH_TOKEN_ADDRESS) ? tokenToEthRates[address(src)] : ethToTokenRates[address(dest)];
-        destQty = calcDestAmount(src, dest, srcQty, rate);
+        rate = (src == ETH_TOKEN_ADDRESS) ? buyTokenRates[address(dest)] : sellTokenRates[address(src)];
         uint srcDecimals = getDecimals(src);
         uint destDecimals = getDecimals(dest);
+        destQty = calcDstQty(srcQty, srcDecimals, destDecimals, rate);
         return calcRateFromQty(srcQty, destQty, srcDecimals, destDecimals);
     }
     
