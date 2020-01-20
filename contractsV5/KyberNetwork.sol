@@ -344,6 +344,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tradeData.input.minConversionRate = minConversionRate;
         tradeData.input.platformWallet = platformWallet;
         tradeData.input.platformFeeBps = platformFeeBps;
+
+        tradeData.tokenToEth.decimals = getDecimals(src);
+        tradeData.ethToToken.decimals = getDecimals(dest);
     }
     
     function enabled() public view returns(bool) {
