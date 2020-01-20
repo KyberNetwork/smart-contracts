@@ -683,7 +683,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         }
     }
     
-    event HandlePlatformFee(address indexed recipient, uint fees);
+    event HandlePlatformFee(address recipient, uint fees);
 
     function handleFees(TradeData memory tradeData) internal returns(bool) {
         // create array of reserves receiving fees + fee percent per reserve
@@ -707,7 +707,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             feeHandlerContract.handleFees.value(tradeData.networkFeeWei)(eligibleWallets, rebatePercentages),
             "Transfer network fee to FeeHandler failed"
         );
-        emit HandlePlatformFee(address(feeHandlerContract), tradeData.networkFeeWei);
     }
 
     function updateEligibilityAndRebates(
