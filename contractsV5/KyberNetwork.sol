@@ -13,6 +13,7 @@ import "./IFeeHandler.sol";
 contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     uint            public negligibleRateDiffBps = 10; // bps is 0.01%
+    uint            constant PERM_HINT_GET_RATE = 1 << 255;
     IFeeHandler     public feeHandlerContract;
 
     uint            public takerFeeData; // will include feeBps and expiry block
@@ -267,8 +268,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         returns (uint expectedRate, uint worstRate)
     {
         if (src == dest) return (0, 0);
-        uint permHintGetRate = 1 << 255; //for backwards compatibility
-        uint qty = ((srcQty & permHintGetRate) > 0) ? srcQty & ~permHintGetRate : srcQty;
+        uint qty = srcQty & ~PERM_HINT_GET_RATE;
 
         TradeData memory tradeData = initTradeData({
             trader: address(uint160(0)),
@@ -935,7 +935,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tradeData.ethToToken.addresses = (tradeData.input.dest == ETH_TOKEN_ADDRESS) ? new IKyberReserve[](1) :reservesPerTokenDest[address(tradeData.input.dest)];
 
         //PERM is treated as no hint, so we just return
-        if (hint.length == 0 || keccak256(hint) == keccak256("PERM")) {
+        if (hint.length == 0 || hint.length == 4) {
             tradeData.tokenToEth.splitValuesBps = new uint[](1);
             tradeData.tokenToEth.rates = new uint[](1);
             tradeData.ethToToken.splitValuesBps = new uint[](1);
