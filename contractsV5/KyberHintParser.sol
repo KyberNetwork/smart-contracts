@@ -5,7 +5,6 @@ import "./BytesLib.sol";
 import "./IKyberHint.sol";
 import "./UtilsV5.sol";
 
-
 contract KyberHintParser is IKyberHint, Utils {
     bytes public constant SEPARATOR = "\x00";
     bytes public constant MASK_IN_OPCODE = "\x01";
@@ -202,7 +201,6 @@ contract KyberHintParser is IKyberHint, Utils {
         }
 
         indexToContinueFrom += 1;
-
         if (opcodeHash == keccak256(END_OPCODE)) {
             return;
         } else if (opcodeHash == keccak256(SEPARATOR)) {
