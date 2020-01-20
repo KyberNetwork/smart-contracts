@@ -98,14 +98,15 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
     function addReserve(address reserve, uint reserveId, bool isFeePaying, address wallet) public onlyOperator returns(bool) {
-        require(reserveIdToAddresses[reserveId].length == 0, "reserveId points to existing reserve");
         require(reserveAddressToId[reserve] == uint(0), "reserve has an existing id");
-        
-        reserveAddressToId[reserve] = reserveId;
+        if (reserveIdToAddresses[reserveId].length == 0) {
+            reserveIdToAddresses[reserveId] = new address[](1);
+        } else {
+            require(reserveIdToAddresses[reserveId][0] == address(0), "reserveId points to existing reserve");
+        }
 
-        reserveIdToAddresses[reserveId] = new address[](1);
         reserveIdToAddresses[reserveId][0] = reserve;
-
+        reserveAddressToId[reserve] = reserveId;
         isFeePayingReserve[reserve] = isFeePaying;
         
         reserves.push(IKyberReserve(reserve));
