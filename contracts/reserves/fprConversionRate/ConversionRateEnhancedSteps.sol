@@ -10,7 +10,7 @@ import "./ConversionRates.sol";
 /// https://github.com/KyberNetwork/smart-contracts/issues/240
 
 
-contract EnhancedStepFunctions is ConversionRates {
+contract ConversionRateEnhancedSteps is ConversionRates {
 
     uint constant internal MAX_STEPS_IN_FUNCTION = 16;
     int constant internal MAX_IMBALANCE = 2 ** 255 - 1;
@@ -19,7 +19,7 @@ contract EnhancedStepFunctions is ConversionRates {
     int128 constant internal MIN_STEP_VALUE = -1 * 2 ** 127;
     int constant internal MAX_BPS_ADJUSTMENT = 100 * 100;
 
-    function EnhancedStepFunctions(address _admin) public ConversionRates(_admin)
+    function ConversionRateEnhancedSteps(address _admin) public ConversionRates(_admin)
         { } // solhint-disable-line no-empty-blocks
 
     // Blocking set qty step func as we won't use
@@ -38,10 +38,10 @@ contract EnhancedStepFunctions is ConversionRates {
 
     function setImbalanceStepFunction(
         ERC20 token,
-        int128[] xBuy,
-        int128[] yBuy,
-        int128[] xSell,
-        int128[] ySell
+        int[] xBuy,
+        int[] yBuy,
+        int[] xSell,
+        int[] ySell
     )
         public
         onlyOperator
@@ -86,14 +86,14 @@ contract EnhancedStepFunctions is ConversionRates {
 
         int[] memory buyArray = new int[](yBuy.length);
         for(i = 0; i < yBuy.length; i++) {
-            int128 xBuyVal = (i == yBuy.length - 1) ? MAX_STEP_VALUE : xBuy[i];
-            buyArray[i] = encodeStepFunctionData(xBuyVal, yBuy[i]);
+            int128 xBuyVal = (i == yBuy.length - 1) ? MAX_STEP_VALUE : int128(xBuy[i]);
+            buyArray[i] = encodeStepFunctionData(xBuyVal, int128(yBuy[i]));
         }
 
         int[] memory sellArray = new int[](ySell.length);
         for(i = 0; i < ySell.length; i++) {
-            int128 xSellVal = (i == ySell.length - 1) ? MAX_STEP_VALUE : xSell[i];
-            sellArray[i] = encodeStepFunctionData(xSellVal, ySell[i]);
+            int128 xSellVal = (i == ySell.length - 1) ? MAX_STEP_VALUE : int128(xSell[i]);
+            sellArray[i] = encodeStepFunctionData(xSellVal, int128(ySell[i]));
         }
 
         int[] memory emptyArr = new int[](0);
@@ -171,8 +171,8 @@ contract EnhancedStepFunctions is ConversionRates {
 
             // add imbalance overhead
             extraBps = executeStepFunction(
-                tokenData[token].buyRateImbalanceStepFunction, 
-                totalImbalance, 
+                tokenData[token].buyRateImbalanceStepFunction,
+                totalImbalance,
                 totalImbalance + imbalanceQty
             );
             rate = addBps(rate, extraBps);
@@ -191,8 +191,8 @@ contract EnhancedStepFunctions is ConversionRates {
 
             // add imbalance overhead
             extraBps = executeStepFunction(
-                tokenData[token].sellRateImbalanceStepFunction, 
-                totalImbalance + imbalanceQty, 
+                tokenData[token].sellRateImbalanceStepFunction,
+                totalImbalance + imbalanceQty,
                 totalImbalance
             );
             rate = addBps(rate, extraBps);

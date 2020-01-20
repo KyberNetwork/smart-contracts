@@ -4,7 +4,7 @@ const solc = require('solc');
 const contractPath = path.join(__dirname, "../contracts/");
 const input = {
     "ConversionRates.sol" : fs.readFileSync(contractPath + 'reserves/fprConversionRate/ConversionRates.sol','utf8'),
-    "EnhancedStepFunctions.sol" : fs.readFileSync(contractPath + 'reserves/fprConversionRate/EnhancedStepFunctions.sol', 'utf8'),
+    "ConversionRateEnhancedSteps.sol" : fs.readFileSync(contractPath + 'reserves/fprConversionRate/ConversionRateEnhancedSteps.sol', 'utf8'),
     "ConversionRatesInterface.sol" : fs.readFileSync(contractPath + 'ConversionRatesInterface.sol', 'utf8'),
     "reserves/fprConversionRate/ConversionRates.sol" : fs.readFileSync(contractPath + 'reserves/fprConversionRate/ConversionRates.sol','utf8'),
     "reserves/VolumeImbalanceRecorder.sol" : fs.readFileSync(contractPath + 'reserves/VolumeImbalanceRecorder.sol', 'utf8'),
