@@ -58,14 +58,14 @@ contract Utils {
 
 
     function calcDstQty(uint srcQty, uint srcDecimals, uint dstDecimals, uint rate) internal pure returns(uint) {
-        require(srcQty <= MAX_QTY);
-        require(rate <= MAX_RATE);
+        require(srcQty <= MAX_QTY, "srcQty exceeds MAX_QTY");
+        require(rate <= MAX_RATE, "rate exceeds MAX_RATE");
 
         if (dstDecimals >= srcDecimals) {
-            require((dstDecimals - srcDecimals) <= MAX_DECIMALS);
+            require((dstDecimals - srcDecimals) <= MAX_DECIMALS, "dstDecimals - srcDecimals > MAX_DECIMALS");
             return (srcQty * rate * (10**(dstDecimals - srcDecimals))) / PRECISION;
         } else {
-            require((srcDecimals - dstDecimals) <= MAX_DECIMALS);
+            require((srcDecimals - dstDecimals) <= MAX_DECIMALS, "srcDecimals - dstDecimals > MAX_DECIMALS");
             return (srcQty * rate) / (PRECISION * (10**(srcDecimals - dstDecimals)));
         }
     }
