@@ -566,13 +566,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         //change to if condition instead
         require(tradeData.tradeWei >= (tradeData.networkFeeWei + tradeData.platformFeeWei), "fees exceed trade amount");
-        calcRatesAndAmountsEthToToken(
-            dest,
-            tradeData.tradeWei,
-            tradeData.tradeWei - tradeData.networkFeeWei,
-            tradeData.tradeWei - tradeData.networkFeeWei - tradeData.platformFeeWei,
-            tradeData
-        );
+        calcRatesAndAmountsEthToToken(dest, tradeData.tradeWei - tradeData.networkFeeWei - tradeData.platformFeeWei, tradeData);
 
         // calc final rate
         tradeData.rateWithNetworkFee = calcRateFromQty(srcAmount, tradeData.destAmountWithNetworkFee, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
@@ -621,9 +615,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     function calcRatesAndAmountsEthToToken(
         IERC20 dest,
-        uint tradeWei,
-        uint tradeWeiMinusNetworkFee,
-        uint tradeWeiMinusNetworkCustomFees,
+        uint actualTradeWei,
         TradeData memory tradeData
     )
         internal
@@ -642,48 +634,52 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             for (uint i = 0; i < tradeData.ethToToken.addresses.length; i++) {
                 reserve = tradeData.ethToToken.addresses[i];
 
-                //calculate split amount without any fee
-                splitAmount = (i == tradeData.ethToToken.splitValuesBps.length - 1) ? (tradeWei - amountSoFar) : tradeData.ethToToken.splitValuesBps[i] * tradeWei / BPS;
+                //calculate split amount with fees
+                splitAmount = (i == tradeData.ethToToken.splitValuesBps.length - 1) ? (actualTradeWei - amountSoFar) : tradeData.ethToToken.splitValuesBps[i] * actualTradeWei / BPS;
                 amountSoFar += splitAmount;
                 //to save gas, we make just 1 conversion rate call with splitAmount
                 rate = reserve.getConversionRate(ETH_TOKEN_ADDRESS, dest, splitAmount, block.number);
                 //save rate data
                 tradeData.ethToToken.rates[i] = rate;
-                tradeData.destAmountNoFee += calcDstQty(splitAmount, ETH_DECIMALS, tradeData.ethToToken.decimals, rate);
+                //add to actualDestAmount
+                tradeData.actualDestAmount += calcDstQty(splitAmount, ETH_DECIMALS, tradeData.ethToToken.decimals, rate);
             }
-
-            rate = calcRateFromQty(tradeWei, tradeData.destAmountNoFee, ETH_DECIMALS, tradeData.ethToToken.decimals);
-            tradeData.destAmountWithNetworkFee = calcDstQty(tradeWeiMinusNetworkFee, ETH_DECIMALS, tradeData.ethToToken.decimals, rate);
-            tradeData.actualDestAmount = calcDstQty(tradeWeiMinusNetworkCustomFees, ETH_DECIMALS, tradeData.ethToToken.decimals, rate);
-
+            //calculate actual rate
+            rate = calcRateFromQty(actualTradeWei, tradeData.actualDestAmount, ETH_DECIMALS, tradeData.ethToToken.decimals);
         } else {
-            // else, search best reserve and its corresponding dest amount
+            //network fee for ETH -> token is in ETH amount
+            uint ethToTokenNetworkFeeWei = tradeData.tradeWei * tradeData.takerFeeBps / BPS;
+            // search best reserve and its corresponding dest amount
             // Have to search with tradeWei minus fees, because that is the actual src amount for ETH -> token trade
-            require(tradeWeiMinusNetworkCustomFees >= (tradeData.tradeWei * tradeData.takerFeeBps / BPS), "ETH->token network fee exceeds remaining trade wei amt");
-            (tradeData.ethToToken.addresses[0], tradeData.ethToToken.rates[0], isPayingFees) = searchBestRate(
+            require(actualTradeWei >= (ethToTokenNetworkFeeWei), "ETH->token network fee exceeds remaining trade wei amt");
+            (tradeData.ethToToken.addresses[0], rate, isPayingFees) = searchBestRate(
                 tradeData.ethToToken.addresses,
                 ETH_TOKEN_ADDRESS,
                 dest,
-                tradeWeiMinusNetworkCustomFees,
-                tradeData.tradeWei * tradeData.takerFeeBps / BPS
+                actualTradeWei,
+                ethToTokenNetworkFeeWei
             );
+
             //store chosen reserve into tradeData
             tradeData.ethToToken.splitValuesBps[0] = BPS;
-            tradeData.destAmountNoFee = calcDstQty(tradeWei, ETH_DECIMALS, tradeData.ethToToken.decimals, tradeData.ethToToken.rates[0]);
+            tradeData.ethToToken.rates[0] = rate;
 
             // add to feePayingReservesBps if reserve is fee paying
             if (isPayingFees) {
-                tradeData.networkFeeWei += tradeWei * tradeData.takerFeeBps / BPS;
+                actualTradeWei -= ethToTokenNetworkFeeWei;
+
+                tradeData.networkFeeWei += ethToTokenNetworkFeeWei;
                 tradeData.feePayingReservesBps += BPS; //max percentage amount for ETH -> token
                 tradeData.numFeePayingReserves ++;
             }
 
-            // calculate destAmountWithNetworkFee and actualDestAmount
-            // not using tradeWeiMinusNetworkFee and tradeWeiMinusNetworkCustomFee
-            // since network fee might have increased for fee paying ETH -> token reserve
-            tradeData.destAmountWithNetworkFee = calcDstQty(tradeWei - tradeData.networkFeeWei, ETH_DECIMALS, tradeData.ethToToken.decimals, tradeData.ethToToken.rates[0]);
-            tradeData.actualDestAmount = calcDstQty(tradeWei - tradeData.networkFeeWei - tradeData.platformFeeWei, ETH_DECIMALS, tradeData.ethToToken.decimals, tradeData.ethToToken.rates[0]);
+            //actualTradeWei has all fees deducted (including possible ETH -> token network fee)
+            tradeData.actualDestAmount = calcDstQty(actualTradeWei, ETH_DECIMALS, tradeData.ethToToken.decimals, rate);
         }
+
+        //finally, in both cases, we calculate destAmountWithNetworkFee and destAmountNoFee
+        tradeData.destAmountWithNetworkFee = calcDstQty(tradeData.tradeWei - tradeData.networkFeeWei, ETH_DECIMALS, tradeData.ethToToken.decimals, rate);
+        tradeData.destAmountNoFee = calcDstQty(tradeData.tradeWei, ETH_DECIMALS, tradeData.ethToToken.decimals, rate);
     }
     
     function handleFees(TradeData memory tradeData) internal returns(bool) {
