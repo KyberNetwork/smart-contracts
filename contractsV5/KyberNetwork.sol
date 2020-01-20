@@ -17,6 +17,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 =======
 >>>>>>> some refactoring, findRatesAndAmounts -> calcRatesAndAmounts
     uint            public negligibleRateDiffBps = 10; // bps is 0.01%
+    uint            constant PERM_HINT_GET_RATE = 1 << 255;
     IFeeHandler     public feeHandlerContract;
 
     uint            public takerFeeData; // will include feeBps and expiry block
@@ -296,6 +297,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     {
         if (src == dest) return (0, 0);
 <<<<<<< HEAD
+<<<<<<< HEAD
         uint qty = srcQty & ~PERM_HINT_GET_RATE;
 
 =======
@@ -306,6 +308,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 >>>>>>> some refactoring, findRatesAndAmounts -> calcRatesAndAmounts
 =======
         uint qty = ((srcQty & permHintGetRate) > 0) ? srcQty & ~permHintGetRate : srcQty;
+=======
+        uint qty = srcQty & ~PERM_HINT_GET_RATE;
+>>>>>>> Fixed perm hint comparison stuff
 
 >>>>>>> Fix perm hint in getExpectedRate, base case handling in parseTradeDataHint
         TradeData memory tradeData = initTradeData({
@@ -981,7 +986,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tradeData.ethToToken.addresses = (tradeData.input.dest == ETH_TOKEN_ADDRESS) ? new IKyberReserve[](1) :reservesPerTokenDest[address(tradeData.input.dest)];
 
         //PERM is treated as no hint, so we just return
-        if (hint.length == 0 || keccak256(hint) == keccak256("PERM")) {
+        if (hint.length == 0 || hint.length == 4) {
             tradeData.tokenToEth.splitValuesBps = new uint[](1);
             tradeData.tokenToEth.rates = new uint[](1);
             tradeData.ethToToken.splitValuesBps = new uint[](1);
