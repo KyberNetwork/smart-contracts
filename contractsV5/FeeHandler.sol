@@ -1,12 +1,12 @@
 pragma solidity 0.5.11;
 
 import "./IKyberDAO.sol";
-import "./KyberNetwork.sol"
+import "./KyberNetwork.sol";
 import "./IFeeHandler.sol";
 import "./PermissionGroupsV5.sol";
 import "./UtilsV5.sol";
 
-contract FeeHandler is IFeeHandler, UtilsV5 {
+contract FeeHandler is IFeeHandler, Utils {
 
     IKyberDAO public kyberDAOContract;
     KyberNetwork public kyberNetworkContract;
@@ -18,51 +18,58 @@ contract FeeHandler is IFeeHandler, UtilsV5 {
     uint public brrAndEpochData;
 
     uint constant BITS_PER_PARAM = 64;
-    uint public burnInBPS;
-    uint public rebateInBPS;
-    uint public rewardInBPS;
-    uint public epoch;
-    uint public expiryBlock;
 
     uint public totalRebates;
-    mapping(uint => address) public totalRebatesPerRebateWallet;
-    mapping(address => address) public reserveRebateWallet;
+    mapping(address => uint) public totalRebatesPerRebateWallet;
     uint public totalRewards;
     mapping(uint => uint) public totalRewardsPerEpoch;
 
-    constructor(IKyberDAO _kyberDAOContract, KyberNetwork _kyberNetworkContract) {
+    constructor(IKyberDAO _kyberDAOContract, KyberNetwork _kyberNetworkContract) public {
         kyberDAOContract = _kyberDAOContract;
         kyberNetworkContract = _kyberNetworkContract;
     }
 
 
-    function encodeData(uint _burn, uint _reward, uint _epoch, uint _expiryBlock) public {
-        brrAndEpochData = (((((_burn << BITS_PER_PARAM) + _reward) << BITS_PER_PARAM) + _epoch) << BITS_PER_PARAM) + _expiryBlock;
+    function encodeData(uint _burn, uint _reward, uint _epoch, uint _expiryBlock) public pure returns (uint) {
+        return (((((_burn << BITS_PER_PARAM) + _reward) << BITS_PER_PARAM) + _epoch) << BITS_PER_PARAM) + _expiryBlock;
     }
 
-    function decodeData() public {
-        expiryBlock = brrAndEpochData & (1 << BITS_PER_PARAM) - 1;
-        epoch = (brrAndEpochData / (1 << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        rewardInBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        burnInBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        rebateInBPS = BPS - rewardInBPS - burnInBPS;
+    function decodeData() public view returns(uint, uint, uint, uint) {
+        uint expiryBlock = brrAndEpochData & (1 << BITS_PER_PARAM) - 1;
+        uint epoch = (brrAndEpochData / (1 << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
+        uint rewardInBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
+        uint burnInBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
+        return (burnInBPS, rewardInBPS, epoch, expiryBlock);
     }
 
-    function handleFees(address[] calldata eligibleReserves, uint[] calldata rebatePercentages) external payable returns(bool) {
-        
-        // Per trade check epoch number, and if changed, call DAO to get existing percentage values for reward / burn / rebate
-        // Rebates to reserves if entitled. (if reserve isn’t entitled, it means fee wasn’t taken!)
-        // Internal accounting per reserve.
-        // Update total_reserve_rebate
-        // Update rewards
-        // Update total_reward [epoch]
-        // Update total_reward_amount.
-        // Eth for burning is the remaining == (total balance - total_reward_amount - total_reserve_rebate).
+    // Todo: future optimisation to accumulate rebates for 2 rebate wallet
+    // encode totals, 128 bits per reward / rebate
+    function handleFees(address[] calldata eligibleWallets, uint[] calldata rebatePercentages) external payable returns(bool) {
+        // Decoding BRR data
+        (uint burnInBPS, uint rewardInBPS, uint epoch, uint expiryBlock) = decodeData();
+        uint rebateInBPS = BPS - rewardInBPS - burnInBPS;
 
+        // Check current block number
+        if(block.number > expiryBlock) {
+            (burnInBPS, rewardInBPS, rebateInBPS, epoch, expiryBlock) = kyberDAOContract.getLatestBRRData();
 
-        // When you update reserve rebate, you must first check if 2 reserves i.e. handled on both token to eth n eth to token.
-        // encode totals, 128 bits per reward / rebate.
-        // accumulate rebates per wallet instead of per reserve use reserveRebateWallet
+            // Update brrAndEpochData
+            brrAndEpochData = encodeData(burnInBPS, rewardInBPS, epoch, expiryBlock);
+        }
+
+        uint rebateWei = rebateInBPS * msg.value / BPS;
+        uint rewardWei = rewardInBPS * msg.value / BPS;
+        for(uint i = 0; i < eligibleWallets.length; i ++) {
+            // Internal accounting for rebates per reserve wallet (totalRebatesPerRebateWallet)
+            totalRebatesPerRebateWallet[eligibleWallets[i]] = rebateWei * rebatePercentages[i] / 100;
+            // Internal accounting for total rebates (totalRebates)
+            totalRebates += rebateWei * rebatePercentages[i] / 100;
+            // Internal accounting for reward per epoch (totalRewardsPerEpoch)
+            totalRewardsPerEpoch[epoch] += rewardWei;
+            // Internal accounting for total rewards (totalRewards)
+            totalRewards += rewardWei;
+        }
+        // Todo: emit event
         return true;
     }
 
@@ -86,10 +93,10 @@ contract FeeHandler is IFeeHandler, UtilsV5 {
     function burnKNC() public {
         // only DAO?
         // convert fees to KNC and burn
+        // Eth for burning is the remaining == (total balance - total_reward_amount - total_reserve_rebate).
     }
 
-    function setReserveRebateWallet(address reserve, address wallet) public returns (bool){
-    }
+    function setReserveRebateWallet(address reserve, address wallet) public returns (bool){}
 
 
 }
