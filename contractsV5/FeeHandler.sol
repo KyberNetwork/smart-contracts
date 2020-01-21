@@ -54,6 +54,8 @@ contract FeeHandler is IFeeHandler, Utils {
         return (burnInBPS, rewardInBPS, epoch, expiryBlock);
     }
 
+    event AccumulateReserveRebate(address rebateWallet, uint rebateAmountWei);
+
     // Todo: future optimisation to accumulate rebates for 2 rebate wallet
     // encode totals, 128 bits per reward / rebate
     // Need onlyKyberNetwork modifier because
@@ -83,10 +85,13 @@ contract FeeHandler is IFeeHandler, Utils {
             totalRewardsPerEpoch[epoch] += rewardWei;
             // Internal accounting for total rewards (totalRewards)
             totalRewards += rewardWei;
+
+            emit AccumulateReserveRebate(eligibleWallets[i], rebateWei * rebatePercentages[i] / 100);
         }
-        // Todo: emit event
         return true;
     }
+
+    event DistributeFee(address recipient, uint amount);
 
     function claimStakerReward(address staker, uint percentageInPrecision, uint epoch) public onlyDAO returns(uint) {
         // Amount of reward to be sent to staker
@@ -100,7 +105,8 @@ contract FeeHandler is IFeeHandler, Utils {
         (bool success, ) = staker.call.value(amount)("");
         require(success, "Transfer of rewards to staker failed.");
 
-        // Todo: emit event
+        emit DistributeFee(staker, amount);
+
         return amount;
 
     }
@@ -120,8 +126,9 @@ contract FeeHandler is IFeeHandler, Utils {
         // send rebate to rebate wallet
         (bool success, ) = rebateWallet.call.value(amount)("");
         require(success, "Transfer of rebates to rebate wallet failed.");
-        
-        // Todo: emit event
+
+        emit DistributeFee(rebateWallet, amount);
+
         return amount;
     }
 
