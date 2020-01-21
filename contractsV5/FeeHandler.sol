@@ -25,13 +25,13 @@ contract FeeHandler is IFeeHandler, Utils {
         kyberNetworkContract = _kyberNetworkContract;
     }
 
-    // modifier onlyDAO {
-    //     require(
-    //         msg.sender == address(kyberDAOContract),
-    //         "Only the DAO can call this function."
-    //     );
-    //     _;
-    // }
+    modifier onlyDAO {
+        require(
+            msg.sender == address(kyberDAOContract),
+            "Only the DAO can call this function."
+        );
+        _;
+    }
 
     modifier onlyKyberNetwork {
         require(
@@ -88,18 +88,25 @@ contract FeeHandler is IFeeHandler, Utils {
         return true;
     }
 
+    function claimStakerReward(address staker, uint percentageInPrecision, uint epoch) public onlyDAO returns(uint) {
+        // Amount of reward to be sent to staker
+        uint amount = totalRewardsPerEpoch[epoch] * percentageInPrecision / 10**18;
 
-    function claimStakerReward(address staker, uint percentageInPrecision, uint epoch) public {
-        // onlyDAO?
-        // send reward
-        // update rewardPerEpoch
-        // update totalReward
+        // Update total rewards and total rewards per epoch
+        totalRewardsPerEpoch[epoch] -= amount;
+        totalRewards -= amount;
+
+        // send reward to staker
+        (bool success, ) = staker.call.value(amount)("");
+        require(success, "Transfer of rewards to staker failed.");
+
+        // Todo: emit event
+        return amount;
 
     }
 
     // Maybe we should pass in rebate wallet instead of reserve address? If so, we can remove the kyberNetworkContract variable.
-    function claimReserveRebate(address reserve) public {
-        // only DAO?
+    function claimReserveRebate(address reserve) public returns (uint){
         // Get rebate wallet address from KyberNetwork contract
         address rebateWallet = kyberNetworkContract.reserveRebateWallet(reserve);
 
@@ -113,10 +120,12 @@ contract FeeHandler is IFeeHandler, Utils {
         // send rebate to rebate wallet
         (bool success, ) = rebateWallet.call.value(amount)("");
         require(success, "Transfer of rebates to rebate wallet failed.");
+        
+        // Todo: emit event
+        return amount;
     }
 
     function burnKNC() public {
-        // only DAO?
         // convert fees to KNC and burn
         // Eth for burning is the remaining == (total balance - total_reward_amount - total_reserve_rebate).
     }
