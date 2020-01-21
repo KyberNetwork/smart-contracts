@@ -335,7 +335,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         address payable platformWallet,
         uint platformFeeBps
         ) 
-    internal pure returns (TradeData memory tradeData)
+    internal view returns (TradeData memory tradeData)
     {
         tradeData.input.trader = trader;
         tradeData.input.src = src;
