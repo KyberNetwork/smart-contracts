@@ -14,6 +14,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> e02b54ffc9eea3ac37db93d5ee85adefab2f1950
     uint  constant PERM_HINT_GET_RATE = 1 << 255; //for backwards compatibility
 =======
 >>>>>>> some refactoring, findRatesAndAmounts -> calcRatesAndAmounts
@@ -108,6 +111,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function addReserve(address reserve, uint reserveId, bool isFeePaying, address wallet) public onlyOperator returns(bool) {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         require(reserveAddressToId[reserve] == uint(0), "reserve has an existing id");
         if (reserveIdToAddresses[reserveId].length == 0) {
             reserveIdToAddresses[reserveId].push(reserve);
@@ -121,6 +125,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         require(reserveIdToAddresses[reserveId].length == 0, "reserveId points to existing reserve");
 =======
 >>>>>>> Edit addReserve function
+=======
+>>>>>>> e02b54ffc9eea3ac37db93d5ee85adefab2f1950
         require(reserveAddressToId[reserve] == uint(0), "reserve has an existing id");
         if (reserveIdToAddresses[reserveId].length == 0) {
             reserveIdToAddresses[reserveId].push(reserve);
@@ -129,6 +135,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             reserveIdToAddresses[reserveId][0] = reserve;
         }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
         reserveIdToAddresses[reserveId][0] = reserve;
 <<<<<<< HEAD
@@ -139,6 +146,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 >>>>>>> Improved addReserve and removeReserveWithIndex functions
         reserveAddressToId[reserve] = reserveId;
 >>>>>>> Edit addReserve function
+=======
+        reserveAddressToId[reserve] = reserveId;
+>>>>>>> e02b54ffc9eea3ac37db93d5ee85adefab2f1950
         isFeePayingReserve[reserve] = isFeePaying;
 
         reserves.push(IKyberReserve(reserve));
@@ -301,6 +311,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         if (src == dest) return (0, 0);
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         uint qty = srcQty & ~PERM_HINT_GET_RATE;
 
 =======
@@ -316,6 +327,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 >>>>>>> Fixed perm hint comparison stuff
 
 >>>>>>> Fix perm hint in getExpectedRate, base case handling in parseTradeDataHint
+=======
+        uint qty = srcQty & ~PERM_HINT_GET_RATE;
+
+>>>>>>> e02b54ffc9eea3ac37db93d5ee85adefab2f1950
         TradeData memory tradeData = initTradeData({
             trader: address(uint160(0)),
             src: src,
@@ -966,6 +981,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function parseTradeDataHint(TradeData memory tradeData,  bytes memory hint) internal view {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> e02b54ffc9eea3ac37db93d5ee85adefab2f1950
         tradeData.tokenToEth.addresses = (tradeData.input.src == ETH_TOKEN_ADDRESS) ? new IKyberReserve[](1) : reservesPerTokenSrc[address(tradeData.input.src)];
         tradeData.ethToToken.addresses = (tradeData.input.dest == ETH_TOKEN_ADDRESS) ? new IKyberReserve[](1) :reservesPerTokenDest[address(tradeData.input.dest)];
 
@@ -977,6 +995,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             tradeData.ethToToken.rates = new uint[](1);
             return;
         }
+<<<<<<< HEAD
 =======
         tradeData.tokenToEth.addresses = reservesPerTokenSrc[address(tradeData.input.src)];
         tradeData.ethToToken.addresses = reservesPerTokenDest[address(tradeData.input.dest)];
@@ -996,5 +1015,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             return;
         }
 >>>>>>> Fix perm hint in getExpectedRate, base case handling in parseTradeDataHint
+=======
+>>>>>>> e02b54ffc9eea3ac37db93d5ee85adefab2f1950
     }
 }
