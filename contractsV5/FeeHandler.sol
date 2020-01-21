@@ -11,10 +11,6 @@ contract FeeHandler is IFeeHandler, Utils {
     IKyberDAO public kyberDAOContract;
     KyberNetwork public kyberNetworkContract;
 
-    // Todo: Add the correct startBlock and epoch duration values
-    uint constant STARTBLOCK = 0;
-    uint constant EPOCH = 10000;
-
     uint public brrAndEpochData;
 
     uint constant BITS_PER_PARAM = 64;
@@ -74,16 +70,16 @@ contract FeeHandler is IFeeHandler, Utils {
     }
 
 
-    function claimStakerReward(address staker, uint percentageinPrecision, uint epoch) public {
-        // onlyDAO
+    function claimStakerReward(address staker, uint percentageInPrecision, uint epoch) public {
+        // onlyDAO?
         // send reward
         // update rewardPerEpoch
         // update totalReward
     }
 
     function claimReserveRebate(address reserve) public {
-        // only DAO
-        // send rebate to reserve
+        // only DAO?
+        // send rebate to rebate wallet
         // update rebatePerReserve;
         // update total rebate amounts?
         // update reserve rebate to 1 (avoid 0...) otherwise div by 0 issue? but will we even need to div by 0?
@@ -95,8 +91,4 @@ contract FeeHandler is IFeeHandler, Utils {
         // convert fees to KNC and burn
         // Eth for burning is the remaining == (total balance - total_reward_amount - total_reserve_rebate).
     }
-
-    function setReserveRebateWallet(address reserve, address wallet) public returns (bool){}
-
-
 }
