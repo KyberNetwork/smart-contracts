@@ -14,9 +14,12 @@ interface SetStepFunctionInterface {
     ) public;
 }
 
-contract SetStepFunctionWrapper2 is Withdrawable {
+contract SetStepFunctionWrapper is Withdrawable {
     SetStepFunctionInterface public rateContract;
     function SetStepFunctionWrapper(address admin, address operator) public {
+        require(admin != address(0));
+        require(operator != (address(0)));
+
         addOperator(operator);
         transferAdminQuickly(admin);
     }
