@@ -17,12 +17,14 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     IFeeHandler     public feeHandlerContract;
 
     uint            public takerFeeData; // will include feeBps and expiry block
-    address         public kyberNetworkProxyContract;
     uint            maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool            isEnabled = false; // network is enabled
     
     mapping(bytes32=>uint) public infoFields; // this is only a UI field for external app.
 
+    mapping(address=>bool) public kyberProxyContracts;
+    address[] public kyberProxyArray;
+    
     IKyberReserve[] public reserves;
     mapping(address=>uint) public reserveAddressToId;
     mapping(uint=>address[]) public reserveIdToAddresses;
@@ -223,7 +225,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function setEnable(bool _enable) public onlyAdmin {
         if (_enable) {
             require(feeHandlerContract != IFeeHandler(0));
-            require(kyberNetworkProxyContract != address(0));
+            require(kyberProxyArray.length > 0);
         }
         isEnabled = _enable;
 
@@ -234,14 +236,39 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         infoFields[field] = value;
     }
 
-    event KyberProxySet(address proxy, address sender);
-
-    function setKyberProxy(address networkProxy) public onlyAdmin {
+    event KyberProxyAdded(address proxy, address sender);
+    event KyberProxyRemoved(address proxy);
+    
+    function addKyberProxy(address networkProxy) public onlyAdmin {
         require(networkProxy != address(0));
-        kyberNetworkProxyContract = networkProxy;
-        emit KyberProxySet(kyberNetworkProxyContract, msg.sender);
+        require(!kyberProxyContracts[networkProxy]);
+        
+        kyberProxyArray.push(networkProxy);
+        
+        kyberProxyContracts[networkProxy] = true;
+        emit KyberProxyAdded(networkProxy, msg.sender);
     }
+    
+    function removeKyberProxy(address networkProxy) public onlyAdmin {
+        require(kyberProxyContracts[networkProxy]);
+        
+        uint proxyIndex = 2 ** 255;
+        
+        for (uint i = 0; i < kyberProxyArray.length; i++) {
+            if(kyberProxyArray[i] == networkProxy) {
+                proxyIndex = i;
+                break;
+            }
+        }
+        
+        kyberProxyArray[proxyIndex] = kyberProxyArray[kyberProxyArray.length - 1];
+        kyberProxyArray.length--;
 
+        
+        kyberProxyContracts[networkProxy] = false;
+        emit KyberProxyRemoved(networkProxy);
+    }
+    
     /// @dev returns number of reserves
     /// @return number of reserves
     function getNumReserves() public view returns(uint) {
@@ -947,7 +974,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         returns(bool)
     {
         require(isEnabled);
-        require(msg.sender == kyberNetworkProxyContract);
+        require(kyberProxyContracts[msg.sender]);
         require(tx.gasprice <= maxGasPriceValue);
         require(srcAmount <= MAX_QTY);
         require(srcAmount != 0);
