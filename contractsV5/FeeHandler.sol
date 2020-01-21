@@ -25,6 +25,22 @@ contract FeeHandler is IFeeHandler, Utils {
         kyberNetworkContract = _kyberNetworkContract;
     }
 
+    // modifier onlyDAO {
+    //     require(
+    //         msg.sender == address(kyberDAOContract),
+    //         "Only the DAO can call this function."
+    //     );
+    //     _;
+    // }
+
+    modifier onlyKyberNetwork {
+        require(
+            msg.sender == address(kyberNetworkContract),
+            "Only the internal KyberNetwork contract can call this function."
+        );
+        _;
+    }
+
 
     function encodeData(uint _burn, uint _reward, uint _epoch, uint _expiryBlock) public pure returns (uint) {
         return (((((_burn << BITS_PER_PARAM) + _reward) << BITS_PER_PARAM) + _epoch) << BITS_PER_PARAM) + _expiryBlock;
@@ -40,7 +56,10 @@ contract FeeHandler is IFeeHandler, Utils {
 
     // Todo: future optimisation to accumulate rebates for 2 rebate wallet
     // encode totals, 128 bits per reward / rebate
-    function handleFees(address[] calldata eligibleWallets, uint[] calldata rebatePercentages) external payable returns(bool) {
+    // Need onlyKyberNetwork modifier because
+    // 1) functions in interface need to be external
+    // 2) internal functions cannot be payable
+    function handleFees(address[] calldata eligibleWallets, uint[] calldata rebatePercentages) external payable onlyKyberNetwork returns(bool) {
         // Decoding BRR data
         (uint burnInBPS, uint rewardInBPS, uint epoch, uint expiryBlock) = decodeData();
         uint rebateInBPS = BPS - rewardInBPS - burnInBPS;
@@ -75,15 +94,25 @@ contract FeeHandler is IFeeHandler, Utils {
         // send reward
         // update rewardPerEpoch
         // update totalReward
+
     }
 
+    // Maybe we should pass in rebate wallet instead of reserve address? If so, we can remove the kyberNetworkContract variable.
     function claimReserveRebate(address reserve) public {
         // only DAO?
+        // Get rebate wallet address from KyberNetwork contract
+        address rebateWallet = kyberNetworkContract.reserveRebateWallet(reserve);
+
+        // Get total amount of rebate accumulated
+        uint amount = totalRebatesPerRebateWallet[rebateWallet] - 1;
+
+        // Update total rebate and rebate per rebate wallet amounts
+        totalRebates -= amount;
+        totalRebatesPerRebateWallet[rebateWallet] = 1; // Do not use 0 to avoid potential issues with div by 0
+
         // send rebate to rebate wallet
-        // update rebatePerReserve;
-        // update total rebate amounts?
-        // update reserve rebate to 1 (avoid 0...) otherwise div by 0 issue? but will we even need to div by 0?
-        // if we include a dest address, we need an owner / admin of the reserve and the below function.
+        (bool success, ) = rebateWallet.call.value(amount)("");
+        require(success, "Transfer of rebates to rebate wallet failed.");
     }
 
     function burnKNC() public {
