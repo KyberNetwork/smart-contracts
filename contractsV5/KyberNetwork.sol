@@ -683,11 +683,84 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         }
     }
     
+    event HandlePlatformFee(address recipient, uint fees);
+
     function handleFees(TradeData memory tradeData) internal returns(bool) {
         // create array of reserves receiving fees + fee percent per reserve
         // fees should add up to 100%.
-        // send total fee amount to fee handler with reserve data.
-        return true;
+
+        address[] memory eligibleWallets = new address[](tradeData.numFeePayingReserves);
+        uint[] memory rebatePercentages = new uint[](tradeData.numFeePayingReserves);
+
+        // Updates reserve eligibility and rebate percentages
+        updateEligibilityAndRebates(eligibleWallets, rebatePercentages, tradeData);
+
+        // Sending platform fee to taker platform
+        (bool success, ) = tradeData.platformFeeWei != 0 ?
+            tradeData.input.platformWallet.call.value(tradeData.platformFeeWei)("") :
+            (true, bytes(""));
+        require(success, "Transfer platform fee to taker platform failed");
+        emit HandlePlatformFee(tradeData.input.platformWallet, tradeData.platformFeeWei);
+
+        // Send total fee amount to fee handler with reserve data.
+        require(
+            feeHandlerContract.handleFees.value(tradeData.networkFeeWei)(eligibleWallets, rebatePercentages),
+            "Transfer network fee to FeeHandler failed"
+        );
+    }
+
+    function updateEligibilityAndRebates(
+        address[] memory eligibleWallets,
+        uint[] memory rebatePercentages,
+        TradeData memory tradeData
+    ) internal pure returns(uint)
+    {
+        uint index; // Index for eligibleWallets and rebatePercentages;
+
+        // Parse ethToToken list
+        index = parseReserveList(
+            eligibleWallets,
+            rebatePercentages,
+            tradeData.ethToToken,
+            index,
+            tradeData.feePayingReservesBps
+        );
+
+        // Parse tokenToEth list
+        index = parseReserveList(
+            eligibleWallets,
+            rebatePercentages,
+            tradeData.tokenToEth,
+            index,
+            tradeData.feePayingReservesBps
+        );
+
+        return index;
+    }
+
+    function parseReserveList(
+        address[] memory eligibleWallets,
+        uint[] memory rebatePercentages,
+        TradingReserves memory reserves,
+        uint index,
+        uint feePayingReservesBps
+    ) internal pure returns(uint) {
+        uint i;
+        uint _index = index;
+
+        for(i = 0; i < reserves.splitValuesBps.length; i ++) {
+            if(reserves.splitValuesBps[i] > 0) {
+                eligibleWallets[_index] = reserveRebateWallet[address(reserves.addresses[i])];
+                rebatePercentages[_index] = getRebatePercentage(reserves.splitValuesBps[i], feePayingReservesBps);
+                _index ++;
+            }
+        }
+        return _index;
+    }
+
+    function getRebatePercentage(uint splitValueBps, uint feePayingReservesBps) internal pure returns(uint) {
+        return splitValueBps * 100 / feePayingReservesBps;
+>>>>>>> updated handleFees in KyberNetwork.sol
     }
 
     function calcTradeSrcAmount(uint srcDecimals, uint destDecimals, uint destAmount, uint[] memory rates, 
