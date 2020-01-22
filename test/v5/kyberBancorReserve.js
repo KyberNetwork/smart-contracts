@@ -32,6 +32,9 @@ let user;
 
 let bancorEthToken;
 let bancorBntToken;
+let bancorETHBNTToken;
+let bntToEthPath;
+let ethToBntPath;
 
 contract('KyberBancorNetwork', function(accounts) {
     before("one time init", async() => {
@@ -44,16 +47,18 @@ contract('KyberBancorNetwork', function(accounts) {
         bancorEthToken = await TestToken.new("BancorETH", "BETH", tokenDecimal);
         bancorETHBNTToken = await TestToken.new("BancorETHBNT", "BETHBNT", tokenDecimal);
         bancorBntToken = await TestToken.new("BancorBNT", "BBNT", tokenDecimal);
-        bancorNetwork = await MockBancorNetwork.new(bancorEthToken.address, bancorETHBNTToken.address, bancorBntToken.address);
+        ethToBntPath = [bancorEthToken.address, bancorETHBNTToken.address, bancorBntToken.address];
+        bntToEthPath = [bancorBntToken.address, bancorETHBNTToken.address, bancorEthToken.address];
+        bancorNetwork = await MockBancorNetwork.new(bancorBntToken.address, ethToBntPath, bntToEthPath);
         reserve = await KyberBancorReserve.new(
             bancorNetwork.address,
             network,
             feeBps,
             bancorEthToken.address,
-            bancorETHBNTToken.address,
             bancorBntToken.address,
             admin
         );
+        reserve.setNewEthBntPath(ethToBntPath, bntToEthPath, {from: admin});
 
         await reserve.addAlerter(alerter);
         await reserve.addOperator(operator);
@@ -143,16 +148,18 @@ contract('KyberBancorNetwork', function(accounts) {
 
     it("Should test getConversionRate returns 0 when path is not correct", async function() {
         let testNewToken = await TestToken.new("Test token", "TST", tokenDecimal);
-        let testBancorNetwork = await MockBancorNetwork.new(testNewToken.address, bancorBntToken.address, bancorBntToken.address);
+        let newEthToBnt = [bancorEthToken.address, testNewToken.address, bancorBntToken.address];
+        let newBntToEth = [bancorBntToken.address, testNewToken.address, bancorEthToken.address];
+        let testBancorNetwork = await MockBancorNetwork.new(testNewToken.address, newEthToBnt, newBntToEth);
         let testReserve = await KyberBancorReserve.new(
             testBancorNetwork.address,
             network,
             feeBps,
-            bancorEthToken.address,
             bancorBntToken.address,
             bancorBntToken.address,
             admin
         );
+        testReserve.setNewEthBntPath(ethToBntPath, bntToEthPath, {from: admin});
         await testBancorNetwork.setExchangeRate(ethToBntRate, bntToEthRate);
         await Helper.sendEtherWithPromise(user, testBancorNetwork.address, initEthBalance);
         await bancorBntToken.transfer(testBancorNetwork.address, initBntBalance);
@@ -162,16 +169,15 @@ contract('KyberBancorNetwork', function(accounts) {
         rate = await testReserve.getConversionRate(bancorBntToken.address, ethAddress, amount, 0);
         Helper.assertEqual(rate, 0, "rate should be 0 as path is incorrect");
 
-        testBancorNetwork = await MockBancorNetwork.new(bancorEthToken.address, testNewToken.address, testNewToken.address);
-        testReserve = await KyberBancorReserve.new(
-            testBancorNetwork.address,
-            network,
-            feeBps,
-            bancorEthToken.address,
-            testNewToken.address,
-            bancorBntToken.address,
-            admin
-        );
+        newEthToBnt = [bancorEthToken.address, bancorBntToken.address];
+        newBntToEth = [bancorBntToken.address, bancorEthToken.address];
+        testReserve.setNewEthBntPath(newEthToBnt, newBntToEth, {from: admin});
+
+        newEthToBnt = [bancorEthToken.address, bancorBntToken.address];
+        newBntToEth = [bancorBntToken.address, bancorEthToken.address];
+        testBancorNetwork = await MockBancorNetwork.new(bancorEthToken.address, newEthToBnt, newBntToEth);
+        testReserve.setNewEthBntPath(ethToBntPath, bntToEthPath, {from: admin});
+        await testBancorNetwork.setExchangeRate(ethToBntRate, bntToEthRate);
         await testBancorNetwork.setExchangeRate(ethToBntRate, bntToEthRate);
         await Helper.sendEtherWithPromise(user, testBancorNetwork.address, initEthBalance);
         await bancorBntToken.transfer(testBancorNetwork.address, initBntBalance);
@@ -190,7 +196,6 @@ contract('KyberBancorNetwork', function(accounts) {
                 network,
                 feeBps,
                 bancorEthToken.address,
-                bancorETHBNTToken.address,
                 bancorBntToken.address,
                 admin
             );
@@ -204,7 +209,6 @@ contract('KyberBancorNetwork', function(accounts) {
                 zeroAddress,
                 feeBps,
                 bancorEthToken.address,
-                bancorETHBNTToken.address,
                 bancorBntToken.address,
                 admin
             );
@@ -218,7 +222,6 @@ contract('KyberBancorNetwork', function(accounts) {
                 network,
                 feeBps,
                 zeroAddress,
-                bancorETHBNTToken.address,
                 bancorBntToken.address,
                 admin
             );
@@ -232,23 +235,8 @@ contract('KyberBancorNetwork', function(accounts) {
                 network,
                 feeBps,
                 bancorEthToken.address,
-                bancorETHBNTToken.address,
                 zeroAddress,
                 admin
-            );
-            assert(false, "throw was expected in line above.")
-        } catch (e) {
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-        try {
-            _ = await KyberBancorReserve.new(
-                bancorNetwork.address,
-                network,
-                feeBps,
-                bancorEthToken.address,
-                bancorETHBNTToken.address,
-                bancorBntToken.address,
-                zeroAddress
             );
             assert(false, "throw was expected in line above.")
         } catch (e) {
@@ -273,7 +261,6 @@ contract('KyberBancorNetwork', function(accounts) {
             network,
             feeBps,
             bancorEthToken.address,
-            bancorETHBNTToken.address,
             bancorBntToken.address,
             admin
         );
@@ -287,6 +274,19 @@ contract('KyberBancorNetwork', function(accounts) {
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
+    });
+
+    it("Should test can not set new paths when sender is not admin", async function() {
+        let testNewToken = await TestToken.new("Test token", "TST", tokenDecimal);
+        let newEthToBnt = [bancorEthToken.address, testNewToken.address, bancorBntToken.address];
+        let newBntToEth = [bancorBntToken.address, testNewToken.address, bancorEthToken.address];
+        try {
+            await reserve.setNewEthBntPath(newEthToBnt, newBntToEth, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+        await reserve.setNewEthBntPath(ethToBntPath, bntToEthPath, {from: admin});
     });
 
     it("Should test can not set fee when sender is not admin", async function() {
