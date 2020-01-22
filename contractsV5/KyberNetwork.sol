@@ -788,7 +788,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     function getRebatePercentage(uint splitValueBps, uint feePayingReservesBps) internal pure returns(uint) {
         return splitValueBps * 100 / feePayingReservesBps;
->>>>>>> updated handleFees in KyberNetwork.sol
     }
 
     function calcTradeSrcAmount(uint srcDecimals, uint destDecimals, uint destAmount, uint[] memory rates, 
