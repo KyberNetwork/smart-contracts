@@ -771,17 +771,17 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function parseReserveList(
         address[] memory eligibleWallets,
         uint[] memory rebatePercentages,
-        TradingReserves memory reserves,
+        TradingReserves memory resList,
         uint index,
         uint feePayingReservesBps
     ) internal view returns(uint) {
         uint i;
         uint _index = index;
 
-        for(i = 0; i < reserves.isFeePaying.length; i ++) {
-            if(reserves.isFeePaying[i]) {
-                eligibleWallets[_index] = reserveRebateWallet[address(reserves.addresses[i])];
-                rebatePercentages[_index] = getRebatePercentage(reserves.splitValuesBps[i], feePayingReservesBps);
+        for(i = 0; i < resList.isPayingFees.length; i ++) {
+            if(resList.isPayingFees[i]) {
+                eligibleWallets[_index] = reserveRebateWallet[address(resList.addresses[i])];
+                rebatePercentages[_index] = getRebatePercentage(resList.splitValuesBps[i], feePayingReservesBps);
                 _index ++;
             }
         }
