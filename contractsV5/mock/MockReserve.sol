@@ -43,25 +43,25 @@ contract MockReserve is IKyberReserve, Utils {
     {
         validate;
         if (srcToken == ETH_TOKEN_ADDRESS)
-            require(msg.value == srcAmount);
+            require(msg.value == srcAmount, "ETH sent != srcAmount");
         else
-            require(msg.value == 0);
+            require(msg.value == 0, "ETH was sent for token -> ETH trade");
         
         uint srcDecimals = getDecimals(srcToken);
         uint destDecimals = getDecimals(destToken);
-        uint destAmount = calcDstQty(srcDecimals, destDecimals, srcAmount, conversionRate);
+        uint destAmount = calcDstQty(srcAmount, srcDecimals, destDecimals, conversionRate);
         
         // collect src tokens
         if (srcToken != ETH_TOKEN_ADDRESS) {
-            require(srcToken.transferFrom(msg.sender, address(this), srcAmount));
+            require(srcToken.transferFrom(msg.sender, address(this), srcAmount), "failed to trf src tokens to reserve");
         }
 
         // send dest tokens
         if (destToken == ETH_TOKEN_ADDRESS) {
             destAddress.transfer(destAmount);
         } else {
-            require(destToken.transferFrom(address(this), destAddress, destAmount));
-        }    
-        return true;        
+            require(destToken.transfer(destAddress, destAmount), "failed to trf dest tokens to destAddress");
+        }
+        return true;
     }
 }

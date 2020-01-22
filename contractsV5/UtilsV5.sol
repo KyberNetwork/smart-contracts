@@ -58,8 +58,8 @@ contract Utils {
 
 
     function calcDstQty(uint srcQty, uint srcDecimals, uint dstDecimals, uint rate) internal pure returns(uint) {
-        require(srcQty <= MAX_QTY, "srcQty exceeds MAX_QTY");
-        require(rate <= MAX_RATE, "rate exceeds MAX_RATE");
+        require(srcQty <= MAX_QTY, "srcQty > MAX_QTY");
+        require(rate <= MAX_RATE, "rate > MAX_RATE");
 
         if (dstDecimals >= srcDecimals) {
             require((dstDecimals - srcDecimals) <= MAX_DECIMALS, "dstDecimals - srcDecimals > MAX_DECIMALS");
@@ -71,18 +71,18 @@ contract Utils {
     }
 
     function calcSrcQty(uint dstQty, uint srcDecimals, uint dstDecimals, uint rate) internal pure returns(uint) {
-        require(dstQty <= MAX_QTY);
-        require(rate <= MAX_RATE);
+        require(dstQty <= MAX_QTY, "dstQty > MAX_QTY");
+        require(rate <= MAX_RATE, "rate > MAX_RATE");
 
         //source quantity is rounded up. to avoid dest quantity being too low.
         uint numerator;
         uint denominator;
         if (srcDecimals >= dstDecimals) {
-            require((srcDecimals - dstDecimals) <= MAX_DECIMALS);
+            require((srcDecimals - dstDecimals) <= MAX_DECIMALS, "srcDecimals - dstDecimals > MAX_DECIMALS");
             numerator = (PRECISION * dstQty * (10**(srcDecimals - dstDecimals)));
             denominator = rate;
         } else {
-            require((dstDecimals - srcDecimals) <= MAX_DECIMALS);
+            require((dstDecimals - srcDecimals) <= MAX_DECIMALS, "dstDecimals - srcDecimals > MAX_DECIMALS");
             numerator = (PRECISION * dstQty);
             denominator = (rate * (10**(dstDecimals - srcDecimals)));
         }
@@ -100,14 +100,14 @@ contract Utils {
     function calcRateFromQty(uint srcAmount, uint destAmount, uint srcDecimals, uint dstDecimals)
         internal pure returns(uint)
     {
-        require(srcAmount <= MAX_QTY);
-        require(destAmount <= MAX_QTY);
+        require(srcAmount <= MAX_QTY, "srcAmount > MAX_QTY");
+        require(destAmount <= MAX_QTY, "destAmount > MAX_QTY");
 
         if (dstDecimals >= srcDecimals) {
-            require((dstDecimals - srcDecimals) <= MAX_DECIMALS);
+            require((dstDecimals - srcDecimals) <= MAX_DECIMALS, "dstDecimals - srcDecimals > MAX_DECIMALS");
             return (destAmount * PRECISION / ((10 ** (dstDecimals - srcDecimals)) * srcAmount));
         } else {
-            require((srcDecimals - dstDecimals) <= MAX_DECIMALS);
+            require((srcDecimals - dstDecimals) <= MAX_DECIMALS, "srcDecimals - dstDecimals > MAX_DECIMALS");
             return (destAmount * PRECISION * (10 ** (srcDecimals - dstDecimals)) / srcAmount);
         }
     }
