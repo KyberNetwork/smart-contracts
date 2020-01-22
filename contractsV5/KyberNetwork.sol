@@ -725,7 +725,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         //no need to handle fees if no fee paying reserves
         if (tradeData.numFeePayingReserves == 0) return true;
 
-        // create array of reserves receiving fees + fee percent per reserve
+        // create array of rebate wallets + fee percent per reserve
         // fees should add up to 100%.
         address[] memory eligibleWallets = new address[](tradeData.numFeePayingReserves);
         uint[] memory rebatePercentages = new uint[](tradeData.numFeePayingReserves);
@@ -734,10 +734,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         updateEligibilityAndRebates(eligibleWallets, rebatePercentages, tradeData);
 
         // // Send total fee amount to fee handler with reserve data.
-        // require(
-        //     feeHandlerContract.handleFees.value(tradeData.networkFeeWei)(eligibleWallets, rebatePercentages),
-        //     "Transfer network fee to FeeHandler failed"
-        // );
+        require(
+            feeHandlerContract.handleFees.value(tradeData.networkFeeWei)(eligibleWallets, rebatePercentages),
+            "Transfer network fee to FeeHandler failed"
+        );
         return true;
     }
 
