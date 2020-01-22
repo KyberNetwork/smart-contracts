@@ -1,18 +1,24 @@
 pragma solidity 0.5.11;
 
 import "./IKyberDAO.sol";
-import "./KyberNetwork.sol";
 import "./IFeeHandler.sol";
 import "./PermissionGroupsV5.sol";
+import "./KyberNetworkProxy.sol";
 import "./UtilsV5.sol";
+import "./IERC20.sol";
 
 contract FeeHandler is IFeeHandler, Utils {
 
     IKyberDAO public kyberDAOContract;
-    KyberNetwork public kyberNetworkContract;
+    // if I use the interface, I am not able to get the KyberNetwork internal contract from the proxy..
+    KyberNetworkProxy public kyberNetworkProxyContract;
+    address public knc;
+    address payable public burnAddress;
+    uint public burnBlockInterval;
+    uint public lastBurnBlock;
+    uint constant ETH_TO_BURN = 10**19;
 
     uint public brrAndEpochData;
-
     uint constant BITS_PER_PARAM = 64;
 
     uint public totalRebates;
@@ -20,9 +26,21 @@ contract FeeHandler is IFeeHandler, Utils {
     uint public totalRewards;
     mapping(uint => uint) public totalRewardsPerEpoch;
 
-    constructor(IKyberDAO _kyberDAOContract, KyberNetwork _kyberNetworkContract) public {
+
+    constructor(
+        IKyberDAO _kyberDAOContract,
+        KyberNetworkProxy _kyberNetworkProxyContract,
+        address _knc,
+        address payable _burnAddress,
+        uint _burnBlockInterval
+    ) public
+    {
         kyberDAOContract = _kyberDAOContract;
-        kyberNetworkContract = _kyberNetworkContract;
+        kyberNetworkProxyContract = _kyberNetworkProxyContract;
+        knc = _knc;
+        burnAddress = _burnAddress;
+        burnBlockInterval = _burnBlockInterval;
+        lastBurnBlock = block.number;
     }
 
     modifier onlyDAO {
@@ -35,7 +53,7 @@ contract FeeHandler is IFeeHandler, Utils {
 
     modifier onlyKyberNetwork {
         require(
-            msg.sender == address(kyberNetworkContract),
+            msg.sender == address(kyberNetworkProxyContract.kyberNetworkContract()),
             "Only the internal KyberNetwork contract can call this function."
         );
         _;
@@ -58,9 +76,6 @@ contract FeeHandler is IFeeHandler, Utils {
 
     // Todo: future optimisation to accumulate rebates for 2 rebate wallet
     // encode totals, 128 bits per reward / rebate
-    // Need onlyKyberNetwork modifier because
-    // 1) functions in interface need to be external
-    // 2) internal functions cannot be payable
     function handleFees(address[] calldata eligibleWallets, uint[] calldata rebatePercentages) external payable onlyKyberNetwork returns(bool) {
         // Decoding BRR data
         (uint burnInBPS, uint rewardInBPS, uint epoch, uint expiryBlock) = decodeData();
@@ -91,7 +106,7 @@ contract FeeHandler is IFeeHandler, Utils {
         return true;
     }
 
-    event DistributeFee(address recipient, uint amount);
+    event DistributeRewards(address staker, uint amountWei);
 
     function claimStakerReward(address staker, uint percentageInPrecision, uint epoch) public onlyDAO returns(uint) {
         // Amount of reward to be sent to staker
@@ -105,17 +120,16 @@ contract FeeHandler is IFeeHandler, Utils {
         (bool success, ) = staker.call.value(amount)("");
         require(success, "Transfer of rewards to staker failed.");
 
-        emit DistributeFee(staker, amount);
+        emit DistributeRewards(staker, amount);
 
         return amount;
 
     }
 
-    // Maybe we should pass in rebate wallet instead of reserve address? If so, we can remove the kyberNetworkContract variable.
-    function claimReserveRebate(address reserve) public returns (uint){
-        // Get rebate wallet address from KyberNetwork contract
-        address rebateWallet = kyberNetworkContract.reserveRebateWallet(reserve);
+    event DistributeRebate(address rebateWallet, uint amountWei);
 
+    // Using rebateWallet instead of reserve so I don't have to store KyberNetwork variable.
+    function claimReserveRebate(address rebateWallet) public returns (uint){
         // Get total amount of rebate accumulated
         uint amount = totalRebatesPerRebateWallet[rebateWallet] - 1;
 
@@ -127,13 +141,49 @@ contract FeeHandler is IFeeHandler, Utils {
         (bool success, ) = rebateWallet.call.value(amount)("");
         require(success, "Transfer of rebates to rebate wallet failed.");
 
-        emit DistributeFee(rebateWallet, amount);
+        emit DistributeRebate(rebateWallet, amount);
 
         return amount;
     }
 
-    function burnKNC() public {
-        // convert fees to KNC and burn
-        // Eth for burning is the remaining == (total balance - total_reward_amount - total_reserve_rebate).
+    event BurnKNC(address burnAddress, uint amountWei);
+
+    // we will have to limit amounts. per burn.
+    // and create some block delay between burns.
+    function burnKNC() public returns(uint) {
+        // check if current block > last buy block number + num block interval
+        require(
+            block.number < lastBurnBlock + burnBlockInterval,
+            "Unable to burn as burnBlockInterval has not passed since lastBurnBlock"
+        );
+
+        // update last buy block number
+        lastBurnBlock = block.number;
+
+        // Get srcQty to burn, if greater than 10 ETH, burn only 10 ETH per function call.
+        uint srcQty = address(this).balance - totalRebates - totalRewards;
+
+        srcQty = srcQty > ETH_TO_BURN ? ETH_TO_BURN : srcQty;
+
+        // Get the slippage rate
+        // If srcQty is too big, get expected rate will return 0 so maybe we should limit how much can be bought at one time.
+        uint expectedRate = kyberNetworkProxyContract.getExpectedRateAfterCustomFee(IERC20(ETH_TOKEN_ADDRESS), IERC20(knc), srcQty, 0, "");
+
+        // Buy some KNC and send to burn address
+        // Swap the ERC20 token and send to destAddress
+        uint destQty = kyberNetworkProxyContract.tradeWithHintAndPlatformFee(
+            ETH_TOKEN_ADDRESS,
+            srcQty,
+            IERC20(knc),
+            burnAddress,
+            MAX_QTY,
+            expectedRate * 97 / 100,
+            address(0), // platform wallet
+            0, // platformFeeBps
+            "" // hint
+        );
+
+        // emit event
+        emit BurnKNC(burnAddress, destQty);
     }
 }
