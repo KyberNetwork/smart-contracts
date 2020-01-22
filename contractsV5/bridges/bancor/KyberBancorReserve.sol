@@ -15,7 +15,7 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
     bool public tradeEnabled;
     uint public feeBps;
 
-    IBancorNetwork public bancorNetwork; // 0x0e936B11c2e7b601055e58c7E32417187aF4de4a
+    IBancorNetwork public bancorNetwork; // 0x3ab6564d5c214bc416ee8421e05219960504eead
 
     IERC20 public bancorEth; // 0xc0829421C1d260BD3cB3E0F06cfE2D52db2cE315
     IERC20 public bancorToken; // 0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C
