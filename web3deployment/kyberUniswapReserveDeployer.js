@@ -4,7 +4,7 @@ const Web3 = require("web3");
 const fs = require("fs");
 const path = require("path");
 const RLP = require("rlp");
-const BigNumber = require("bignumber.js");
+const BN = Web3.utils.BN;
 
 process.on("unhandledRejection", console.error.bind(console));
 
@@ -41,7 +41,7 @@ if (printPrivateKey) {
 }
 const account = web3.eth.accounts.privateKeyToAccount(privateKey);
 const sender = account.address;
-const gasPrice = BigNumber(gasPriceGwei).mul(10 ** 9);
+const gasPrice = new BN(gasPriceGwei).mul(new BN(10).pow(new BN (9)));
 const signedTxs = [];
 let nonce;
 let chainId = chainIdInput;

@@ -1,10 +1,11 @@
-let WrapperBase = artifacts.require("WrapperBase.sol");
-let PermissionGroups = artifacts.require("PermissionGroups");
+const WrapperBase = artifacts.require("WrapperBase.sol");
+const PermissionGroups = artifacts.require("PermissionGroups.sol");
 
-let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+const Helper = require("./helper.js");
+const BN = web3.utils.BN;
 
-const precisionUnits = new BigNumber(10 ** 18);
+const precisionUnits = (new BN(10)).pow(new BN(18));
+
 //global variables
 let admin;
 let alerter;
@@ -28,7 +29,7 @@ contract('WrapperBase', function(accounts) {
     beforeEach("init WrapperBase and Wrapped contract.", async function () {
         wrapped = await PermissionGroups.new();
         wrapper = await WrapperBase.new(wrapped.address, {from: admin});
-        wrapped.transferAdminQuickly(wrapper.address, {from: deployer});
+        await wrapped.transferAdminQuickly(wrapper.address, {from: deployer});
     });
 
     it("transfer wrapped contract admin and claim.", async function () {

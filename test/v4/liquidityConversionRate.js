@@ -4,10 +4,10 @@ let Reserve = artifacts.require("./KyberReserve");
 let SanityRates = artifacts.require("./SanityRates");
 
 let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+const BN = web3.utils.BN;
 
-//global variables
-let ethAddress = '0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+const zeroAddress = '0x0000000000000000000000000000000000000000';
 
 //balances
 let expectedReserveBalanceWei = 0;
@@ -34,17 +34,17 @@ let tokenAdd
 let currentBlock;
 
 //general calculation related consts
-const e = new BigNumber("2.7182818284590452353602874713527");
-const expectedDiffInPct = new BigNumber(0.01);
+const e = 2.7182818284590452353602874713527;
+const expectedDiffInPct = new BN(0.01);
 
 // default values
-const precision = BigNumber(10).pow(18);
+const precision = new BN(10).pow(new BN(18));
 const formulaPrecisionBits = 40;
-const formulaPrecision = BigNumber(2).pow(formulaPrecisionBits)
+const formulaPrecision = new BN(2).pow(new BN(formulaPrecisionBits))
 const tokenDecimals = 18
-const tokenPrecision = BigNumber(10).pow(tokenDecimals)
+const tokenPrecision = new BN(10).pow(new BN(tokenDecimals))
 const ethDecimals = 18;
-const ethPrecission = BigNumber(10).pow(ethDecimals);
+const ethPrecission = new BN(10).pow(new BN(ethDecimals));
 
 const testing = "bbo";
 
@@ -85,12 +85,16 @@ if (testing == "bbo") {
     pMaxRatio = 2.0
 }
 
+const baseNumber = 10**9;
+
 // determine theoretical minimal pMIn, maximal pMax according to r, p0, e0, t0.
 // this is done just to make sure pMmin and pMax are in the range.
-const minPmin = BigNumber(p0).div((Helper.exp(e, BigNumber(r).mul(e0))))
-const maxPmax = BigNumber((p0 / (1 - r * p0 * t0)).toString())
+const minPmin = new BN(p0).mul(new BN(baseNumber)).div(new BN(Helper.exp(e, r*e0) * baseNumber));
+const maxPmax = new BN((p0 / (1 - r * p0 * t0)));
 const pMin = p0 * pMinRatio
 const pMax = p0 * pMaxRatio
+
+const actualFee = (100 - feePercent)/100;
 
 /*
 console.log("pMin: " + pMin.toString())
@@ -103,15 +107,15 @@ console.log("pMaxRatio: " + pMaxRatio.toString())
 
 // default values in contract common units
 const feeInBps = feePercent * 100
-const eInFp = BigNumber(e0).mul(formulaPrecision);
-const rInFp = BigNumber(r).mul(formulaPrecision);
-const pMinInFp = BigNumber(pMin).mul(formulaPrecision);
-const maxCapBuyInWei = BigNumber(maxCapBuyInEth).mul(precision);
-const maxCapSellInWei = BigNumber(maxCapSellInEth).mul(precision);
-const maxBuyRateInPrecision = (BigNumber(1).div(pMin)).mul(precision)
-const minBuyRateInPrecision = (BigNumber(1).div(pMax)).mul(precision)
-const maxSellRateInPrecision = BigNumber(pMax).mul(precision);
-const minSellRateInPrecision = BigNumber(pMin).mul(precision);
+const eInFp = new BN(e0 * baseNumber).mul(formulaPrecision).div(new BN(baseNumber));
+const rInFp = new BN(r * baseNumber).mul(formulaPrecision).div(new BN(baseNumber));
+const pMinInFp = new BN(pMin * baseNumber).mul(formulaPrecision).div(new BN(baseNumber));
+const maxCapBuyInWei = new BN(maxCapBuyInEth).mul(precision);
+const maxCapSellInWei = new BN(maxCapSellInEth).mul(precision);
+const maxBuyRateInPrecision = new BN(1 / pMin).mul(precision)
+const minBuyRateInPrecision = new BN(1 / pMax).mul(precision)
+const maxSellRateInPrecision = new BN(pMax * baseNumber).mul(precision).div(new BN(baseNumber));
+const minSellRateInPrecision = new BN(pMin * baseNumber).mul(precision).div(new BN(baseNumber));
 
 // Note: new params array for APR, arrays should have same length
 // To test new config, just put new data into corresponding array
@@ -139,60 +143,48 @@ const newTokenDecimals = [18, 12];
 // whether we should print logs or not
 const printLogs = false;
 
-function pOfE(r, pMin, curE) { 
-    return Helper.exp(e, BigNumber(r).mul(curE)).mul(pMin);
+function pOfE(r, pMin, curE) {
+    return Helper.exp(e, r * curE) * pMin;
 }
 
 function buyPriceForZeroQuant(r, pMin, curE) { 
     let pOfERes = pOfE(r, pMin, curE);
-    let buyPrice = BigNumber(1).div(pOfERes);
-    let buyPriceAfterFeesReduction = buyPrice.mul((100-feePercent)/100)
+    let buyPrice = 1 / pOfERes;
+    let buyPriceAfterFeesReduction = new BN(buyPrice * baseNumber * actualFee).div(new BN(baseNumber));
     return buyPriceAfterFeesReduction;
 }
 
 function sellPriceForZeroQuant(r, pMin, curE) { 
     let sellPrice = pOfE(r, pMin, curE);
-    let sellPriceAfterFeeReduction = sellPrice.mul((100-feePercent)/100)
+    let sellPriceAfterFeeReduction = sellPrice * actualFee;
     return sellPriceAfterFeeReduction;
 }
 
 function calcDeltaT(r, pMin, deltaE, curE) {
-    let eMinusRDeltaE = Helper.exp(e, BigNumber(-r).mul(deltaE))
-    let eMinus1 = eMinusRDeltaE.minus(1)
-    let rP = BigNumber(r).mul(pOfE(r, pMin, curE))
-    return eMinus1.div(rP)
+    let eMinusRDeltaE = Helper.exp(e, -r*deltaE) - 1;
+    let rP = r * pOfE(r, pMin, curE);
+    return eMinusRDeltaE / rP;
 }
 
 function calcDeltaE(r, pMin, deltaT, curE) {
-    let rPdeltaT = BigNumber(r).mul(pOfE(r, pMin, curE)).mul(deltaT)
-    let onePlusRPdeltaT = BigNumber(1).plus(rPdeltaT)
-    let lnOnePlusrPdeltaT = Helper.ln(onePlusRPdeltaT)
-    return lnOnePlusrPdeltaT.mul(-1).div(r)
+    let rPdeltaT = r* pOfE(r, pMin, curE) * deltaT;
+    let onePlusRPdeltaT = 1 + rPdeltaT;
+    let lnOnePlusrPdeltaT = Helper.ln(onePlusRPdeltaT);
+    return lnOnePlusrPdeltaT * -1 / r;
 }
 
 function priceForDeltaE(feePercent, r, pMin, deltaE, curE) { 
-    let deltaT = calcDeltaT(r, pMin, deltaE, curE).abs();
-    let factor = (100-feePercent)/100
-    let deltaTAfterReducedFee = deltaT.mul(factor.toString())
-    return BigNumber(deltaTAfterReducedFee).div(deltaE);
+    let deltaT = calcDeltaT(r, pMin, deltaE, curE);
+    if (deltaT < 0) { deltaT *= -1; }
+    let deltaTAfterReducedFee = deltaT * actualFee;
+    return deltaTAfterReducedFee/deltaE;
 }
 
 function priceForDeltaT(feePercent, r, pMin, qtyBeforeReduce, curE) {
-    let deltaTAfterReducingFee = qtyBeforeReduce * (100 - feePercent) / 100;
-    let deltaE = calcDeltaE(r, pMin, deltaTAfterReducingFee, curE).abs();
-    return deltaE.div(qtyBeforeReduce);
-}
-
-function tForCurPWithoutFees(r, curSellPrice) {
-    let oneOverPmax = BigNumber(1).div(pMax);
-    let oneOverCurSellPrice = BigNumber(1).div(curSellPrice);
-    let oneOverR = BigNumber(1).div(r);
-    let t = oneOverR.mul(oneOverCurSellPrice.minus(oneOverPmax));
-    return t;
-}
-
-function eForCurPWithoutFees(r, curSellPrice) {
-    return (Helper.ln(curSellPrice/pMin)/r).toString()
+    let deltaTAfterReducingFee = qtyBeforeReduce * actualFee;
+    let deltaE = calcDeltaE(r, pMin, deltaTAfterReducingFee, curE);
+    if (deltaE < 0) { deltaE *= -1; }
+    return deltaE/qtyBeforeReduce;
 }
 
 async function sellRateForZeroQuantInPrecision(eInEth) {
@@ -205,11 +197,6 @@ async function buyRateForZeroQuantInPrecision(eInEth) {
     let eFp = eInEth.mul(formulaPrecision); 
     let rateInPrecision = await liqConvRatesInst.buyRateZeroQuantity(eFp)
     return rateInPrecision;
-}
-
-async function getExpectedTWithoutFees(curE) {
-    let rateFor0 = pOfE(r, pMin, curE);
-    return tForCurPWithoutFees(r, rateFor0.valueOf());
 }
 
 async function getBalances() {
@@ -229,9 +216,9 @@ async function getBalances() {
 
 contract('LiquidityConversionRates', function(accounts) {
     const deltaE = 0.1
-    const deltaEInFp = BigNumber(deltaE).mul(formulaPrecision);
+    const deltaEInFp = formulaPrecision.div(new BN(10)); // 0.1
     const deltaT = 2000
-    const deltaTInFp = BigNumber(deltaT).mul(formulaPrecision);
+    const deltaTInFp = new BN(deltaT).mul(formulaPrecision);
 
     it("should init globals", function() {
         admin = accounts[0];
@@ -247,20 +234,20 @@ contract('LiquidityConversionRates', function(accounts) {
     });
 
     it("should test abs.", async function () {
-        let input = new BigNumber(10).pow(18).mul(7);
-        let output = new BigNumber(10).pow(18).mul(7);
+        let input = new BN(10).pow(new BN(18)).mul(new BN(7));
+        let output = new BN(10).pow(new BN(18)).mul(new BN(7));
         let result = await liqConvRatesInst.abs(input);
-        assert.equal(result.valueOf(), output.valueOf(), "bad result");
+        Helper.assertEqual(result, output, "bad result");
 
-        input = new BigNumber(10).pow(18).mul(-5);
-        output = new BigNumber(10).pow(18).mul(5);
+        input = new BN(10).pow(new BN(18)).mul(new BN(-5));
+        output = new BN(10).pow(new BN(18)).mul(new BN(5));
         result = await liqConvRatesInst.abs(input);
-        assert.equal(result.valueOf(), output.valueOf(), "bad result");
+        Helper.assertEqual(result, output, "bad result");
 
-        input = new BigNumber(10).pow(18).mul(0);
-        output = new BigNumber(10).pow(18).mul(0);
+        input = new BN(10).pow(new BN(18)).mul(new BN(0));
+        output = new BN(10).pow(new BN(18)).mul(new BN(0));
         result = await liqConvRatesInst.abs(input);
-        assert.equal(result.valueOf(), output.valueOf(), "bad result");
+        Helper.assertEqual(result, output, "bad result");
     });
 
     it("should set liquidity params", async function () {
@@ -276,12 +263,11 @@ contract('LiquidityConversionRates', function(accounts) {
          */
         await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision) 
     });
-
     it("should test calculation of collected fee for buy case.", async function () {
         await liqConvRatesInst.resetCollectedFees()
 
         let input = 1458 * formulaPrecision
-        let expectedValueBeforeReducingFee = input / ((100 - feePercent)/100)
+        let expectedValueBeforeReducingFee = input / actualFee
         let expectedResult = (feePercent / 100) * expectedValueBeforeReducingFee
 
         await liqConvRatesInst.recordImbalance(token.address, input, 0, 0, {from: reserveAddress})
@@ -301,71 +287,71 @@ contract('LiquidityConversionRates', function(accounts) {
 
     it("should test reducing fees from amount.", async function () {
         let input = 5763 * formulaPrecision;
-        let expectedResult =  input * (100 - feePercent) / 100;
+        let expectedResult =  input * actualFee;
         let result =  await liqConvRatesInst.valueAfterReducingFee(input);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test converting from wei to formula formulaPrecision.", async function () {
-        let input = BigNumber(7).mul(precision)
+        let input = new BN(7).mul(precision)
         let expectedResult = input.mul(formulaPrecision).div(precision) 
         let result =  await liqConvRatesInst.fromWeiToFp(input);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test converting from token wei to formula formulaPrecision.", async function () {
-        let input = BigNumber(10).pow(tokenDecimals).mul(17);
+        let input = new BN(10).pow(new BN(tokenDecimals)).mul(new BN(17));
         let expectedResult = input.mul(formulaPrecision).div(tokenPrecision) 
         let result =  await liqConvRatesInst.fromTweiToFp(input);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test calculation of buy rate for zero quantity.", async function () {
-        let expectedResult = buyPriceForZeroQuant(r, pMin, e0).mul(precision).valueOf()
+        let expectedResult = new BN(buyPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.buyRateZeroQuantity(eInFp);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test calculation of sell rate for zero quantity.", async function () {
-        let expectedResult = sellPriceForZeroQuant(r, pMin, e0).mul(precision).valueOf()
+        let expectedResult = new BN(sellPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.sellRateZeroQuantity(eInFp);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test calculation of deltaT.", async function () {
-        let expectedResult = calcDeltaT(r, pMin, deltaE, e0).abs().mul(formulaPrecision).valueOf()
+        let expectedResult = new BN(calcDeltaT(r, pMin, deltaE, e0) * baseNumber).abs().mul(formulaPrecision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.deltaTFunc(rInFp, pMinInFp, eInFp, deltaEInFp, formulaPrecision);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test calculation of buy rate for non zero quantity.", async function () {
-        let expectedResult = priceForDeltaE(feePercent, r, pMin, deltaE, e0).mul(precision).valueOf()
+        let expectedResult = new BN(priceForDeltaE(feePercent, r, pMin, deltaE, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.buyRate(eInFp, deltaEInFp)
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test calculation of deltaE.", async function () {
-        let expectedResult = calcDeltaE(r, pMin, deltaT, e0).abs().mul(formulaPrecision).valueOf()
+        let expectedResult = new BN(calcDeltaE(r, pMin, deltaT, e0) * baseNumber).abs().mul(formulaPrecision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.deltaEFunc(rInFp, pMinInFp, eInFp, deltaTInFp, formulaPrecision, formulaPrecisionBits);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test calculation of sell rate for non zero quantity.", async function () {
-        let expectedResult = priceForDeltaT(feePercent, r, pMin, deltaT, e0).mul(precision).valueOf()
-        let deltaTAfterReducingFeeInFp = BigNumber(deltaTInFp).mul((100 - feePercent) / 100);
+        let expectedResult = new BN(priceForDeltaT(feePercent, r, pMin, deltaT, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
+        let deltaTAfterReducingFeeInFp = deltaTInFp*actualFee;
         let result =  await liqConvRatesInst.sellRate(eInFp, deltaTInFp, deltaTAfterReducingFeeInFp);
         result = result[0]
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test recording of imbalance.", async function () {
-        let buyAmountInTwei = BigNumber(10).pow(tokenDecimals).mul(deltaT)
+        let buyAmountInTwei = new BN(10).pow(new BN(tokenDecimals)).mul(new BN(deltaT * baseNumber)).div(new BN(baseNumber));
 
-        let expectedValueBeforeReducingFee = buyAmountInTwei.mul(3) / ((100 - feePercent)/100) // TODO - this calc is a duplication, move to general place...
-        let expectedResult = BigNumber(((feePercent / 100) * expectedValueBeforeReducingFee).toString())
+        let expectedValueBeforeReducingFee = buyAmountInTwei.mul(new BN(3)) / actualFee // TODO - this calc is a duplication, move to general place...
+        let expectedResult = (feePercent / 100) * expectedValueBeforeReducingFee;
 
         await liqConvRatesInst.recordImbalance(token.address, buyAmountInTwei, 3000, 3000, {from: reserveAddress})
-        await liqConvRatesInst.recordImbalance(token.address, buyAmountInTwei.mul(2), 3000, 3000, {from: reserveAddress})
+        await liqConvRatesInst.recordImbalance(token.address, buyAmountInTwei.mul(new BN(2)), 3000, 3000, {from: reserveAddress})
         let result = await liqConvRatesInst.collectedFeesInTwei()
 
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
@@ -391,25 +377,25 @@ contract('LiquidityConversionRates', function(accounts) {
         await liqConvRatesInst.resetCollectedFees()
         let result = await liqConvRatesInst.collectedFeesInTwei()
         let expectedResult = 0
-        assert.equal(result, expectedResult, "bad result");
+        Helper.assertEqual(result, expectedResult, "bad result");
     });
 
     it("should test getrate for buy=true and qtyInSrcWei = non_0.", async function () {
-        let expectedResult = priceForDeltaE(feePercent, r, pMin, deltaE, e0).mul(precision).valueOf()
-        let qtyInSrcWei = BigNumber(deltaE).mul(precision)
+        let expectedResult = new BN(priceForDeltaE(feePercent, r, pMin, deltaE, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
+        let qtyInSrcWei = new BN(deltaE * baseNumber).mul(precision).div(new BN(baseNumber))
         let result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,eInFp);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test getrate for buy=true and qtyInSrcWei = 0.", async function () {
-        let expectedResult = buyPriceForZeroQuant(r, pMin, e0).mul(precision).valueOf()
+        let expectedResult = new BN(buyPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let qtyInSrcWei = 0
         let result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,eInFp);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test getrate for buy=true and qtyInSrcWei very small.", async function () {
-        let expectedResult = buyPriceForZeroQuant(r, pMin, e0).mul(precision).valueOf()
+        let expectedResult = new BN(buyPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let qtyInSrcWei = 10 // this is assumed to be rounded to 0 by fromTweiToFp.
         let result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,eInFp);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
@@ -417,21 +403,21 @@ contract('LiquidityConversionRates', function(accounts) {
     });
 
     it("should test getrate for buy=false and qtyInSrcWei = non_0.", async function () {
-        let qtyInSrcWei = BigNumber(deltaT).mul(tokenPrecision)
-        let expectedResult = priceForDeltaT(feePercent, r, pMin, deltaT, e0).mul(precision).valueOf()
+        let qtyInSrcWei = new BN(deltaT).mul(tokenPrecision)
+        let expectedResult = new BN(priceForDeltaT(feePercent, r, pMin, deltaT, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test getrate for buy=false and qtyInSrcWei = 0.", async function () {
-        let expectedResult = sellPriceForZeroQuant(r, pMin, e0).mul(precision).valueOf()
+        let expectedResult = new BN(sellPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let qtyInSrcWei = 0
         let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
     });
 
     it("should test getrate for buy=false and qtyInSrcWei very small.", async function () {
-        let expectedResult = sellPriceForZeroQuant(r, pMin, e0).mul(precision).valueOf()
+        let expectedResult = new BN(sellPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let qtyInSrcWei = 10 // this is assumed to be rounded to 0 by fromTweiToFp.
         let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
@@ -529,62 +515,60 @@ contract('LiquidityConversionRates', function(accounts) {
 
     it("should test get rate with invalid token.", async function () {
         let otherToken = await TestToken.new("otherToken", "oth", tokenDecimals);
-        let expectedResult = priceForDeltaE(feePercent, r, pMin, deltaE, e0).mul(precision).valueOf()
-        let qtyInSrcWei = BigNumber(deltaE).mul(precision)
+        let qtyInSrcWei = new BN(deltaE*baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.getRateWithE(otherToken.address,true,qtyInSrcWei,eInFp);
-        assert.equal(result, 0, "bad result");
+        Helper.assertEqual(result, 0, "bad result");
     });
 
     it("should test max sell rate smaller then expected rate and min sell rate larger then expected rate .", async function () {
-        let qtyInSrcWei = BigNumber(deltaT).mul(tokenPrecision)
-        let deltaTAfterReducingFee = deltaT * (100 - feePercent) / 100; //reduce fee, as done in getRateWithE
-        let expectedResult = priceForDeltaT(feePercent, r, pMin, deltaTAfterReducingFee, e0).mul(precision).valueOf()
+        let qtyInSrcWei = new BN(deltaT).mul(tokenPrecision)
+        let deltaTAfterReducingFee = deltaT * actualFee; //reduce fee, as done in getRateWithE
+        let expectedResult = new BN(priceForDeltaT(feePercent, r, pMin, deltaTAfterReducingFee, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
         let gotResult = result
 
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
         assert.notEqual(result, 0, "bad result");
 
-        let currentMaxSellRateInPrecision= gotResult.minus(100)
+        let currentMaxSellRateInPrecision= gotResult.sub(new BN(100))
         let currentMinSellRateInPrecision= minSellRateInPrecision
         await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, currentMaxSellRateInPrecision, currentMinSellRateInPrecision)
         result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
-        assert.equal(result, 0, "bad result");
+        Helper.assertEqual(result, 0, "bad result");
 
         currentMaxSellRateInPrecision = maxSellRateInPrecision
-        currentMinSellRateInPrecision = gotResult.plus(100)
+        currentMinSellRateInPrecision = gotResult.add(new BN(100))
         await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, currentMaxSellRateInPrecision, currentMinSellRateInPrecision)
         result =  await liqConvRatesInst.getRateWithE(token.address,false,qtyInSrcWei,eInFp);
-        assert.equal(result, 0, "bad result");
+        Helper.assertEqual(result, 0, "bad result");
 
         //return things to normal
         await liqConvRatesInst.setLiquidityParams(rInFp, pMinInFp, formulaPrecisionBits, maxCapBuyInWei, maxCapSellInWei, feeInBps, maxSellRateInPrecision, minSellRateInPrecision)
     });
 
     it("should test exceeding max cap buy", async function () {
-        let qtyInSrcWei = BigNumber(maxCapBuyInEth + 0.2).mul(precision)
+        let qtyInSrcWei = new BN((maxCapBuyInEth + 0.2) * baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.getRateWithE(token.address,true,qtyInSrcWei,eInFp);
-        assert.equal(result, 0, "bad result");
+        Helper.assertEqual(result, 0, "bad result");
     });
 
     it("should test exceeding max cap sell", async function () {
-        let sellQtyInTokens = (maxCapSellInEth / p0) * (1.1);
-        let sellQtyInTwi = BigNumber(sellQtyInTokens.toString()).mul(tokenPrecision)
+        let sellQtyInTokens = (maxCapSellInEth / p0) * 1.1;
+        let sellQtyInTwi = new BN(sellQtyInTokens * baseNumber).mul(tokenPrecision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.getRateWithE(token.address,false,sellQtyInTwi,eInFp);
-        assert.equal(result.valueOf(), 0, "bad result");
+        Helper.assertEqual(result, 0, "bad result");
     });
 
     it("should test get rate with E", async function () {
-        let expectedResult = priceForDeltaE(feePercent, r, pMin, deltaE, e0).mul(precision)
-        let qtyInSrcWei = BigNumber(deltaE).mul(precision)
+        let expectedResult = new BN(priceForDeltaE(feePercent, r, pMin, deltaE, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
+        let qtyInSrcWei = new BN(deltaE * baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.getRateWithE(token.address, true, qtyInSrcWei, eInFp);
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct);
     });
 
     it("should test recording of imbalance from non reserve address.", async function () {
-        let buyAmountInTwei = BigNumber(10).pow(tokenDecimals).mul(deltaT)
-        let expectedValueBeforeReducingFee = buyAmountInTwei.mul(3) / ((100 - feePercent)/100) // TODO - this calc is a duplication, move to general place...
-        let expectedResult = BigNumber(((feePercent / 100) * expectedValueBeforeReducingFee).toString())
+        let buyAmountInTwei = new BN(10).pow(new BN(tokenDecimals)).mul(new BN(deltaT * baseNumber)).div(new BN(baseNumber));
+        let expectedValueBeforeReducingFee = buyAmountInTwei.mul(new BN(3)).mul(new BN(100)).div(new BN(100 - feePercent)); // TODO - this calc is a duplication, move to general place...
         try {
             await liqConvRatesInst.recordImbalance(token.address, buyAmountInTwei, 3000, 3000, {from: operator})
             assert(false, "expected to throw error in line above.")
@@ -624,39 +608,39 @@ contract('kyberReserve for Liquidity', function(accounts) {
 
     it("should init reserve and set all reserve data including balances", async function () {
         reserveInst = await Reserve.new(network, liqConvRatesInst.address, admin);
-        await reserveInst.setContracts(network, liqConvRatesInst.address, 0);
+        await reserveInst.setContracts(network, liqConvRatesInst.address, zeroAddress);
 
         await liqConvRatesInst.setReserveAddress(reserveInst.address);
 
         //set reserve balance.
-        let reserveEtherInit = (BigNumber(10).pow(18)).mul(e0);
+        let reserveEtherInit = (new BN(10).pow(new BN(18))).mul(new BN(e0 * baseNumber)).div(new BN(baseNumber));
         await Helper.sendEtherWithPromise(accounts[9], reserveInst.address, reserveEtherInit);
         
         let balance = await Helper.getBalancePromise(reserveInst.address);
-        expectedReserveBalanceWei = balance.valueOf();
+        expectedReserveBalanceWei = balance;
 
-        assert.equal(balance.valueOf(), reserveEtherInit, "wrong ether balance");
+        Helper.assertEqual(balance, reserveEtherInit, "wrong ether balance");
 
         await reserveInst.approveWithdrawAddress(token.address,accounts[0],true);
 
         //transfer tokens to reserve.
-        let amount = (BigNumber(10).pow(tokenDecimals)).mul(t0);
-        await token.transfer(reserveInst.address, amount.valueOf());
+        let amount = (new BN(10).pow(new BN(tokenDecimals))).mul(new BN(t0));
+        await token.transfer(reserveInst.address, amount);
         balance = await token.balanceOf(reserveInst.address);
-        assert.equal(amount.valueOf(), balance.valueOf());
+        Helper.assertEqual(amount, balance);
 
         reserveTokenBalance = amount;
     });
 
     it("should test getConversionRate of buy rate for zero quantity.", async function () {
-        let expectedResult = buyPriceForZeroQuant(r, pMin, e0).mul(precision).valueOf()
+        let expectedResult = new BN( buyPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let amountWei = 0
         let result = await reserveInst.getConversionRate(ethAddress, token.address, amountWei, currentBlock);
         Helper.assertAbsDiff(expectedResult,result,expectedDiffInPct);
     });
 
     it("should test getConversionRate of sell rate for zero quantity.", async function () {
-        let expectedResult = sellPriceForZeroQuant(r, pMin, e0).mul(precision).valueOf()
+        let expectedResult = new BN(sellPriceForZeroQuant(r, pMin, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let amountWei = 0;
         let result = await reserveInst.getConversionRate(token.address, ethAddress, amountWei, currentBlock);
         Helper.assertAbsDiff(expectedResult, result, expectedDiffInPct);
@@ -664,16 +648,16 @@ contract('kyberReserve for Liquidity', function(accounts) {
 
     it("should test getConversionRate of buy rate for non zero quantity.", async function () {
         let deltaE = 2.7
-        let expectedResult = priceForDeltaE(feePercent, r, pMin, deltaE, e0).mul(precision).valueOf()
-        let amountWei = BigNumber(10).pow(18).mul(deltaE)
+        let expectedResult = new BN(priceForDeltaE(feePercent, r, pMin, deltaE, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
+        let amountWei = new BN(10).pow(new BN(18)).mul(new BN(deltaE * 10)).div(new BN(10));
         let result = await reserveInst.getConversionRate(ethAddress, token.address, amountWei, currentBlock);
         Helper.assertAbsDiff(expectedResult, result, expectedDiffInPct);
     });
 
     it("should test getConversionRate of sell rate for non zero quantity.", async function () {
-        let deltaT = 120.0
-        let expectedResult = priceForDeltaT(feePercent, r, pMin, deltaT, e0).mul(precision).valueOf()
-        let amountWei = BigNumber(10).pow(tokenDecimals).mul(deltaT)
+        let deltaT = 120
+        let expectedResult = new BN(priceForDeltaT(feePercent, r, pMin, deltaT, e0) * baseNumber).mul(precision).div(new BN(baseNumber));
+        let amountWei = new BN(10).pow(new BN(tokenDecimals)).mul(new BN(deltaT))
         let result = await reserveInst.getConversionRate(token.address, ethAddress, amountWei, currentBlock);
         Helper.assertAbsDiff(expectedResult, result, expectedDiffInPct);
     });
@@ -693,31 +677,31 @@ contract('kyberReserve for Liquidity', function(accounts) {
             iterations++;
             balancesBefore = await getBalances();
             amountEth = (!prevBuyRate) ? 2.9 : 2.9
-            amountWei = BigNumber(amountEth).mul(precision);
+            amountWei = new BN(amountEth * 10).mul(precision).div(new BN(10));
 
             // get expected and actual rate
-            expectedRate = priceForDeltaE(feePercent, r, pMin, amountEth, balancesBefore["EInEth"]).mul(precision)
+            expectedRate = new BN(priceForDeltaE(feePercent, r, pMin, amountEth, balancesBefore["EInEth"]) * baseNumber).mul(precision).div(new BN(baseNumber));
             buyRate = await reserveInst.getConversionRate(ethAddress, token.address, amountWei, currentBlock);
 
             // make sure buys are only ended when we are around 1/Pmax 
             if (buyRate == 0) {
                 let rateFor0 = await buyRateForZeroQuantInPrecision((balancesBefore["EInEth"]));
-                let expectedMinRate = (BigNumber(1).div(pMax)).mul(precision);
-                let thresholdPriceexpectedDiffInPct = BigNumber(10.0);
-                Helper.assertAbsDiff(rateFor0, expectedMinRate, thresholdPriceexpectedDiffInPct);
+                let expectedMinRate = (new BN(1 / pMax * baseNumber)).mul(precision).div(new BN(baseNumber));
+                let thresholdPriceexpectedDiffInPct = new BN(10.0);
+                Helper.assertAbsDiff(rateFor0, Math.floor(expectedMinRate), thresholdPriceexpectedDiffInPct);
             }
 
             // expect to eventually get 0 rate when tokens are depleted or rate is lower than min buy rate.
             if (buyRate == 0) {
-                let expectedDestQty = calcDeltaT(r, pMin, amountEth, balancesBefore["EInEth"])
+                let expectedDestQty = new BN(calcDeltaT(r, pMin, amountEth, balancesBefore["EInEth"]))
                 assert(
                     (expectedDestQty < balancesBefore["TInTokens"]) ||
-                    (BigNumber(expectedRate).lt(minBuyRateInPrecision)),
+                    (new BN(expectedRate).lt(minBuyRateInPrecision)),
                     "got 0 rate without justification "
                 )
                 break;
             }
-            Helper.assertAbsDiff(buyRate, expectedRate, expectedDiffInPct);
+            Helper.assertAbsDiff(buyRate, Math.floor(expectedRate), expectedDiffInPct);
 
             // make sure prices (tokens/eth) are getting lower as tokens are depleted.
             if (!prevBuyRate) {
@@ -733,21 +717,21 @@ contract('kyberReserve for Liquidity', function(accounts) {
 
             // check reserve eth balance after the trade (got more eth) is as expected.
             expectedReserveBalanceWei = balancesBefore["EInWei"].add(amountWei);
-            assert.equal(balancesAfter["EInWei"].valueOf(), expectedReserveBalanceWei.valueOf(), "bad reserve balance wei");
+            Helper.assertEqual(balancesAfter["EInWei"], expectedReserveBalanceWei, "bad reserve balance wei");
 
             // check token balance on user1 after the trade (got more tokens) is as expected. 
             tradeExpectedTweiAmount = expectedRate.mul(amountWei).div(precision)
-            expectedUser1TweiAmount = balancesBefore["User1Twei"].plus(tradeExpectedTweiAmount);
+            expectedUser1TweiAmount = balancesBefore["User1Twei"].add(tradeExpectedTweiAmount);
             Helper.assertAbsDiff(balancesAfter["User1Twei"], expectedUser1TweiAmount, expectedDiffInPct);
 
             // check reserve token balance after the trade (lost some tokens) is as expected.
             tradeActualTweiAmount = buyRate.mul(amountWei).div(precision)
-            expectedReserveTokenBalance = balancesBefore["TInTwei"].minus(tradeActualTweiAmount);
+            expectedReserveTokenBalance = balancesBefore["TInTwei"].sub(tradeActualTweiAmount);
             Helper.assertAbsDiff(balancesAfter["TInTwei"], expectedReserveTokenBalance, expectedDiffInPct);
 
             // check collected fees for this trade is as expected
-            expectedCollectedFeesDiff = tradeActualTweiAmount.mul(feePercent / 100).div(tokenPrecision * ((100 - feePercent)/100));
-            collectedFeesInTokensDiff = balancesAfter["collectedFeesInTokens"].minus(balancesBefore["collectedFeesInTokens"])
+            expectedCollectedFeesDiff = tradeActualTweiAmount.mul(new BN(feeInBps)).div(tokenPrecision.mul(new BN(100 - feePercent)));
+            collectedFeesInTokensDiff = balancesAfter["collectedFeesInTokens"].sub(balancesBefore["collectedFeesInTokens"])
             Helper.assertAbsDiff(expectedCollectedFeesDiff, collectedFeesInTokensDiff, expectedDiffInPct);
 
             /* removed following test since now we allow putting bigger T0 than needed for calcs.
@@ -775,29 +759,29 @@ contract('kyberReserve for Liquidity', function(accounts) {
         //in the full scenario. user approves network which collects the tokens and approves reserve
         //which collects tokens from network.
         //so here transfer tokens to network and approve allowance from network to reserve.
-        let tx4InTwei = BigNumber(t0).mul(4).mul(tokenPrecision)
+        let tx4InTwei = new BN(t0 * baseNumber).mul(new BN(4)).mul(tokenPrecision).div(new BN(baseNumber));
         await token.transfer(network, tx4InTwei);
 
         while (true) {
             iterations++;
             balancesBefore = await getBalances();
             amountTokens = (!prevSellRate) ? 50000 : 50000
-            amountTwei = BigNumber(amountTokens).mul(tokenPrecision)
-            amountTokensAfterFees = amountTokens * (100 - feePercent) / 100;
+            amountTwei = new BN(amountTokens).mul(tokenPrecision)
+            amountTokensAfterFees = amountTokens * actualFee;
 
             // calculate expected qunatity
-            expectedDestQty = calcDeltaE(r, pMin, amountTokensAfterFees, balancesBefore["EInEth"]) ;
-            tradeExpectedWeiAmount = BigNumber(expectedDestQty).mul(precision).abs()
+            expectedDestQty = calcDeltaE(r, pMin, amountTokensAfterFees, balancesBefore["EInEth"]);
+            tradeExpectedWeiAmount = new BN(expectedDestQty * baseNumber).mul(precision).div(new BN(baseNumber)).abs()
 
             // get expected and actual rate
-            expectedRate = priceForDeltaT(feePercent, r, pMin, amountTokens, balancesBefore["EInEth"]).mul(precision).valueOf();
+            expectedRate = new BN(priceForDeltaT(feePercent, r, pMin, amountTokens, balancesBefore["EInEth"]) * baseNumber).mul(precision).div(new BN(baseNumber));
             sellRate = await reserveInst.getConversionRate(token.address, ethAddress, amountTwei, currentBlock);
 
             // make sure sells are only ended when we are around Pmin
             if (sellRate == 0) {
                 let rateFor0 = await sellRateForZeroQuantInPrecision(balancesBefore["EInEth"]);
-                let expectedMinRate = BigNumber(pMin).mul(precision);
-                let thresholdPriceexpectedDiffInPct = BigNumber(10.0);
+                let expectedMinRate = new BN(pMin * baseNumber).mul(precision).div(new BN(baseNumber));
+                let thresholdPriceexpectedDiffInPct = new BN(10.0);
                 Helper.assertAbsDiff(rateFor0, expectedMinRate, thresholdPriceexpectedDiffInPct);
             }
 
@@ -805,7 +789,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
             if (sellRate == 0) {
                 assert(
                     (expectedDestQty < balancesBefore["EInEth"]) ||
-                    (BigNumber(expectedRate).lt(minSellRateInPrecision)),
+                    (new BN(expectedRate).lt(minSellRateInPrecision)),
                     "got 0 rate without justification "
                 )
                 break;
@@ -826,20 +810,20 @@ contract('kyberReserve for Liquidity', function(accounts) {
             balancesAfter = await getBalances();
 
             // check reserve eth balance after the trade (reserve lost some eth) is as expected.
-            expectedReserveBalanceWei = balancesBefore["EInWei"].minus(tradeExpectedWeiAmount);
+            expectedReserveBalanceWei = balancesBefore["EInWei"].sub(tradeExpectedWeiAmount);
             Helper.assertAbsDiff(balancesAfter["EInWei"], expectedReserveBalanceWei, expectedDiffInPct);
 
             //check token balance on network after the trade (lost some tokens) is as expected. 
-            expectedTweiAmount = balancesBefore["networkTwei"].minus(amountTwei);
+            expectedTweiAmount = balancesBefore["networkTwei"].sub(amountTwei);
             Helper.assertAbsDiff(balancesAfter["networkTwei"], expectedTweiAmount, expectedDiffInPct);
 
             //check reserve token balance after the trade (got some tokens) is as expected.
-            expectedReserveTokenBalance = balancesBefore["TInTwei"].plus(amountTwei);
+            expectedReserveTokenBalance = balancesBefore["TInTwei"].add(amountTwei);
             Helper.assertAbsDiff(balancesAfter["TInTwei"], expectedReserveTokenBalance, expectedDiffInPct);
 
             // check collected fees for this trade is as expected
-            expectedCollectedFeesDiff = amountTwei.mul(feePercent / 100).div(tokenPrecision);
-            collectedFeesInTokensDiff = balancesAfter["collectedFeesInTokens"].minus(balancesBefore["collectedFeesInTokens"])
+            expectedCollectedFeesDiff = amountTwei.mul(new BN(feeInBps)).div(new BN(100)).div(tokenPrecision);
+            collectedFeesInTokensDiff = balancesAfter["collectedFeesInTokens"].sub(balancesBefore["collectedFeesInTokens"])
             Helper.assertAbsDiff(expectedCollectedFeesDiff, collectedFeesInTokensDiff, expectedDiffInPct);
 
             /* removed following test since now we allow putting bigger T0 than needed for calcs.
@@ -863,14 +847,14 @@ contract('kyberReserve for Liquidity', function(accounts) {
         let sameT0 = t0
 
         // calculate new pmin and pmax to match the current price with existing inventory
-        let newPmin = BigNumber(newP0).div((Helper.exp(e, BigNumber(r).mul(sameE0))))
-        let newpMax = BigNumber((newP0 / (1 - r * newP0 * sameT0)).toString()) 
+        let newPmin = newP0 / Helper.exp(e, r * sameE0);
+        let newpMax = newP0 / (1 - r * newP0 * sameT0);
 
         // set new params in contract units
-        let newEInFp = BigNumber(sameE0).mul(formulaPrecision);
-        let newPMinInFp = BigNumber(newPmin).mul(formulaPrecision);
-        let newMaxSellRateInPrecision = BigNumber(newpMax).mul(precision);
-        let newMinSellRateInPrecision = BigNumber(newPmin).mul(precision);
+        let newEInFp = new BN(sameE0 * baseNumber).mul(formulaPrecision).div(new BN(baseNumber));
+        let newPMinInFp = new BN(newPmin * baseNumber).mul(formulaPrecision).div(new BN(baseNumber));
+        let newMaxSellRateInPrecision = new BN(newpMax * baseNumber).mul(precision).div(new BN(baseNumber));
+        let newMinSellRateInPrecision = new BN(newPmin * baseNumber).mul(precision).div(new BN(baseNumber));
 
         // set liquidity params again.
         await liqConvRatesInst.setLiquidityParams(
@@ -885,9 +869,9 @@ contract('kyberReserve for Liquidity', function(accounts) {
 
         // check price is as expected
         let deltaE = 1.2
-        let deltaEInFp = BigNumber(deltaE).mul(formulaPrecision);
+        let deltaEInFp = new BN(deltaE).mul(formulaPrecision);
 
-        let expectedResult = priceForDeltaE(feePercent, r, newPmin, deltaE, sameE0).mul(precision).valueOf()
+        let expectedResult = new BN(priceForDeltaE(feePercent, r, newPmin, deltaE, sameE0) * baseNumber).mul(precision).div(new BN(baseNumber));
         let result =  await liqConvRatesInst.buyRate(newEInFp, deltaEInFp)
         Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
 
@@ -912,7 +896,7 @@ contract('kyberReserve for Liquidity', function(accounts) {
             let currentBlock = await Helper.getCurrentBlock();
 
             let token = await TestToken.new("test", "tst", newTokenDecimals[id]);
-            let tokenPrecision = BigNumber(10).pow(newTokenDecimals[id]);
+            let tokenPrecision = new BN(10).pow(new BN(newTokenDecimals[id]));
 
             let newLiqConvRatesInst = await LiquidityConversionRates.new(admin, token.address);
 
@@ -920,85 +904,85 @@ contract('kyberReserve for Liquidity', function(accounts) {
             let pMin = newP0s[id] * newpMinRatios[id];
             let pMax = newP0s[id] * newpMaxRatios[id];
 
-            let rInFp = BigNumber(newRs[id]).mul(formulaPrecision);
-            let pMinInFp = BigNumber(pMin).mul(formulaPrecision);
-            let maxCapBuyInWei = BigNumber(newMaxCapBuyInEth[id]).mul(precision);
-            let maxCapSellInWei = BigNumber(newMaxCapSellInEth[id]).mul(precision);
-            let maxSellRateInPrecision = BigNumber(pMax).mul(precision);
-            let minSellRateInPrecision = BigNumber(pMin).mul(precision);
+            let rInFp = new BN(newRs[id] * baseNumber).mul(formulaPrecision).div(new BN(baseNumber));
+            let pMinInFp = new BN(pMin * baseNumber).mul(formulaPrecision).div(new BN(baseNumber));
+            let maxCapBuyInWei = new BN(newMaxCapBuyInEth[id]).mul(precision);
+            let maxCapSellInWei = new BN(newMaxCapSellInEth[id]).mul(precision);
+            let maxSellRateInPrecision = new BN(pMax * baseNumber).mul(precision).div(new BN(baseNumber));
+            let minSellRateInPrecision = new BN(pMin * baseNumber).mul(precision).div(new BN(baseNumber));
 
             await newLiqConvRatesInst.setLiquidityParams(
                 rInFp,
                 pMinInFp,
                 formulaPrecisionBits,
-                maxCapBuyInWei.mul(100), // set higher cap to prevent fail big tx
-                maxCapSellInWei.mul(100), // set higher cap to prevent fail big tx
+                maxCapBuyInWei.mul(new BN(100)), // set higher cap to prevent fail big tx
+                maxCapSellInWei.mul(new BN(100)), // set higher cap to prevent fail big tx
                 feeInBps,
                 maxSellRateInPrecision,
                 minSellRateInPrecision
             );
 
             let reserveInst = await Reserve.new(network, newLiqConvRatesInst.address, admin);
-            await reserveInst.setContracts(network, newLiqConvRatesInst.address, 0);
+            await reserveInst.setContracts(network, newLiqConvRatesInst.address, zeroAddress);
 
             await newLiqConvRatesInst.setReserveAddress(reserveInst.address);
 
             //set reserve balance.
-            let reserveEtherInit = ethPrecission.mul(newE0s[id]);
+            let reserveEtherInit = ethPrecission.mul(new BN(newE0s[id] * baseNumber)).div(new BN(baseNumber));
             await Helper.sendEtherWithPromise(accounts[8], reserveInst.address, reserveEtherInit);
 
             await reserveInst.approveWithdrawAddress(token.address, accounts[0], true);
 
             //transfer tokens to reserve.
-            let amount = tokenPrecision.mul(newT0s[id]);
-            await token.transfer(reserveInst.address, amount.valueOf());
+            let amount = tokenPrecision.mul(new BN(newT0s[id] * baseNumber)).div(new BN(baseNumber));
+            await token.transfer(reserveInst.address, amount);
 
             let reserveTokenBalance = amount;
 
             // buy then check sell rate
-            let totalSrcBuyAmount = BigNumber(0);
-            let totalSellBackAmount = BigNumber(0);
+            let totalSrcBuyAmount = new BN(0);
+            let totalSellBackAmount = new BN(0);
             for(let tx = 0; tx <= 5; tx++) {
-                let srcBuyAmount = maxCapBuyInWei.div(tx + 2).floor();
+                let srcBuyAmount = maxCapBuyInWei.div(new BN(tx + 2));
                 totalSrcBuyAmount = totalSrcBuyAmount.add(srcBuyAmount);
 
                 if (printLogs) {
                     console.log("==================== Logs for loop: " + id + ", tx: " + tx + " ====================")
                 }
                 let buyRate = await reserveInst.getConversionRate(ethAddress, token.address, srcBuyAmount, currentBlock);
-                assert.notEqual(buyRate.valueOf(), 0, "buy rate should be greater than 0, loop: " + id);
+                assert.notEqual(buyRate, 0, "buy rate should be greater than 0, loop: " + id);
 
-                let expectedDestToken = calcDstQty(srcBuyAmount, ethDecimals, newTokenDecimals[id], buyRate);
+                let expectedDestToken = Helper.calcDstQty(srcBuyAmount, ethDecimals, newTokenDecimals[id], buyRate);
 
                 await reserveInst.trade(ethAddress, srcBuyAmount, token.address, user1, buyRate, true, {from:network, value: srcBuyAmount});
                 let newReserveTokenBal = await token.balanceOf(reserveInst.address);
 
                 let diffTokenBal = reserveTokenBalance.sub(newReserveTokenBal);
                 reserveTokenBalance = newReserveTokenBal;
-                assert.equal(diffTokenBal.valueOf(), expectedDestToken.valueOf(),  "token balance changed should be as expected, loop: " + id);
+                Helper.assertEqual(diffTokenBal, expectedDestToken,  "token balance changed should be as expected, loop: " + id);
 
                 totalSellBackAmount = totalSellBackAmount.add(diffTokenBal);
 
                 // test for a single trade
                 let sellRate = await reserveInst.getConversionRate(token.address, ethAddress, diffTokenBal, currentBlock);
-                let tradeBackAmount = calcDstQty(diffTokenBal, newTokenDecimals[id], ethDecimals, sellRate);
+                let tradeBackAmount = Helper.calcDstQty(diffTokenBal, newTokenDecimals[id], ethDecimals, sellRate);
                 if (printLogs) {
-                    console.log("Source buy amount wei: " + srcBuyAmount.valueOf() + ", eth: " + srcBuyAmount.div(ethPrecission).valueOf());
-                    console.log("Dest amount twei: " + expectedDestToken.valueOf() + ", tokens: " + expectedDestToken.div(tokenPrecision).valueOf());
-                    console.log("Trade back amount wei: " + tradeBackAmount.valueOf() + ", eth: " + tradeBackAmount.div(ethPrecission).valueOf());
-                    console.log("Different src amount and traded back amount: " + srcBuyAmount.sub(tradeBackAmount).valueOf() + " at loop: " + id + " and tx: " + tx);
+                    console.log("Source buy amount wei: " + srcBuyAmount.toString(10) + ", eth: " + srcBuyAmount.div(ethPrecission).toString(10));
+                    console.log("Dest amount twei: " + expectedDestToken.toString(10) + ", tokens: " + expectedDestToken.div(tokenPrecision).toString(10));
+                    console.log("Trade back amount wei: " + tradeBackAmount.toString(10) + ", eth: " + tradeBackAmount.div(ethPrecission).toString(10));
+                    console.log("Different src amount and traded back amount: " + srcBuyAmount.sub(tradeBackAmount).toString(10) + " at loop: " + id + " and tx: " + tx);
                 }
-                assert(srcBuyAmount * 1.0 >= tradeBackAmount * 1.0, "Trade back amount should be lower than src buy amount, loop: " + id);
-                assert(srcBuyAmount.sub(tradeBackAmount) * 1.0 <= srcBuyAmount.div(BigNumber(10).pow(ethDecimals/2)).floor() * 1.0, "Different between trade back amount and src buy amount should be very small, loop: " + id);
+                assert(srcBuyAmount.gte(tradeBackAmount), "Trade back amount should be lower than src buy amount, loop: " + id);
+                assert(srcBuyAmount.sub(tradeBackAmount).lte(srcBuyAmount.div(new BN(10).pow(new BN(ethDecimals/2)))), "Different between trade back amount and src buy amount should be very small, loop: " + id);
 
                 // Test for total src buy and sell back amounts
                 sellRate = await reserveInst.getConversionRate(token.address, ethAddress, totalSellBackAmount, currentBlock);
-                tradeBackAmount = calcDstQty(totalSellBackAmount, newTokenDecimals[id], ethDecimals, sellRate);
+                tradeBackAmount = Helper.calcDstQty(totalSellBackAmount, newTokenDecimals[id], ethDecimals, sellRate);
                 if (printLogs) {
-                    console.log("Different total src amount and total traded back amount: " + totalSrcBuyAmount.sub(tradeBackAmount).valueOf() + " at loop: " + id + " and tx: " + tx);
+                    console.log("Different total src amount and total traded back amount: " + totalSrcBuyAmount.sub(tradeBackAmount).toString(10) + " at loop: " + id + " and tx: " + tx);
                 }
-                assert(totalSrcBuyAmount * 1.0 >= tradeBackAmount * 1.0, "Trade back amount should be lower than total src buy amount, loop: " + id);
-                assert(totalSrcBuyAmount.sub(tradeBackAmount) * 1.0 <= totalSrcBuyAmount.div(BigNumber(10).pow(ethDecimals/2)).floor() * 1.0, "Different between trade back amount and total src buy amount should be very small, loop: " + id);
+                assert(totalSrcBuyAmount.gte(tradeBackAmount), "Trade back amount should be lower than total src buy amount, loop: " + id);
+                assert(totalSrcBuyAmount.sub(tradeBackAmount).lte(totalSrcBuyAmount.div(new BN(10).pow(new BN(ethDecimals/2)))), "Different between trade back amount and total src buy amount should be very small, loop: " + id);
             }
         }
     });
@@ -1025,44 +1009,44 @@ contract('kyberReserve for Liquidity', function(accounts) {
             let pMin = newP0s[id] * newpMinRatios[id];
             let pMax = newP0s[id] * newpMaxRatios[id];
 
-            let rInFp = BigNumber(newRs[id]).mul(formulaPrecision);
-            let pMinInFp = BigNumber(pMin).mul(formulaPrecision);
-            let maxCapBuyInWei = BigNumber(newMaxCapBuyInEth[id]).mul(precision);
-            let maxCapSellInWei = BigNumber(newMaxCapSellInEth[id]).mul(precision);
-            let maxSellRateInPrecision = BigNumber(pMax).mul(precision);
-            let minSellRateInPrecision = BigNumber(pMin).mul(precision);
+            let rInFp = new BN(newRs[id] * baseNumber).mul(formulaPrecision).div(new BN(baseNumber));
+            let pMinInFp = new BN(pMin * baseNumber).mul(formulaPrecision).div(new BN(baseNumber));
+            let maxCapBuyInWei = new BN(newMaxCapBuyInEth[id]).mul(precision);
+            let maxCapSellInWei = new BN(newMaxCapSellInEth[id]).mul(precision);
+            let maxSellRateInPrecision = new BN(pMax * baseNumber).mul(precision).div(new BN(baseNumber));
+            let minSellRateInPrecision = new BN(pMin * baseNumber).mul(precision).div(new BN(baseNumber));
 
             await newLiqConvRatesInst.setLiquidityParams(
                 rInFp,
                 pMinInFp,
                 formulaPrecisionBits,
-                maxCapBuyInWei.mul(100), // set higher cap to prevent fail big tx
-                maxCapSellInWei.mul(100), // set higher cap to prevent fail big tx
+                maxCapBuyInWei.mul(new BN(100)), // set higher cap to prevent fail big tx
+                maxCapSellInWei.mul(new BN(100)), // set higher cap to prevent fail big tx
                 feeInBps,
                 maxSellRateInPrecision,
                 minSellRateInPrecision
             );
 
             let reserveInst = await Reserve.new(network, newLiqConvRatesInst.address, admin);
-            await reserveInst.setContracts(network, newLiqConvRatesInst.address, 0);
+            await reserveInst.setContracts(network, newLiqConvRatesInst.address, zeroAddress);
 
             await newLiqConvRatesInst.setReserveAddress(reserveInst.address);
 
             //set reserve balance.
-            let reserveEtherInit = ethPrecission.mul(newE0s[id]);
+            let reserveEtherInit = ethPrecission.mul(new BN(newE0s[id] * baseNumber)).div(new BN(baseNumber));
             await Helper.sendEtherWithPromise(accounts[8], reserveInst.address, reserveEtherInit);
 
             await reserveInst.approveWithdrawAddress(token.address, accounts[0], true);
 
             //transfer tokens to reserve.
-            let amount = (BigNumber(10).pow(newTokenDecimals[id])).mul(newT0s[id]);
-            await token.transfer(reserveInst.address, amount.valueOf());
+            let amount = (new BN(10).pow(new BN(newTokenDecimals[id]))).mul(new BN(newT0s[id] * baseNumber)).div(new BN(baseNumber));
+            await token.transfer(reserveInst.address, amount);
 
             // sell then check buy rate
-            let totalSrcSellAmount = BigNumber(0);
-            let totalBuyBackAmount = BigNumber(0);
+            let totalSrcSellAmount = new BN(0);
+            let totalBuyBackAmount = new BN(0);
             for(let tx = 0; tx <= 5; tx++) {
-                let srcSellAmount = maxCapBuyInWei.mul(newT0s[id]).div(newE0s[id]).div(BigNumber(10).pow(ethDecimals - newTokenDecimals[id])).div(tx + 2).floor(); // 1 token
+                let srcSellAmount = maxCapBuyInWei.mul(new BN(newT0s[id] * baseNumber)).div(new BN(newE0s[id] * baseNumber)).div(new BN(10).pow(new BN(ethDecimals - newTokenDecimals[id]))).div(new BN(tx + 2)); // 1 token
                 totalSrcSellAmount = totalSrcSellAmount.add(srcSellAmount);
 
                 if (printLogs) {
@@ -1070,39 +1054,39 @@ contract('kyberReserve for Liquidity', function(accounts) {
                 }
 
                 let sellRate = await reserveInst.getConversionRate(token.address, ethAddress, srcSellAmount, currentBlock);
-                assert.notEqual(sellRate.valueOf(), 0, "sell rate should be greater than 0, loop: " + id);
+                assert.notEqual(sellRate, 0, "sell rate should be greater than 0, loop: " + id);
 
-                let expectedDest = calcDstQty(srcSellAmount, newTokenDecimals[id], ethDecimals, sellRate);
+                let expectedDest = Helper.calcDstQty(srcSellAmount, newTokenDecimals[id], ethDecimals, sellRate);
 
-                await token.transfer(network, srcSellAmount.valueOf());
+                await token.transfer(network, srcSellAmount);
                 await token.approve(reserveInst.address, srcSellAmount, {from: network});
                 await reserveInst.trade(token.address, srcSellAmount, ethAddress, user1, sellRate, true, {from: network});
                 let newReserveEthBal = await Helper.getBalancePromise(reserveInst.address);
 
                 let diffEthBal = reserveEtherInit.sub(newReserveEthBal);
                 reserveEtherInit = newReserveEthBal;
-                assert.equal(diffEthBal.valueOf(), expectedDest.valueOf(),  "balance changed should be as expected, loop: " + id);
+                Helper.assertEqual(diffEthBal, expectedDest,  "balance changed should be as expected, loop: " + id);
 
                 totalBuyBackAmount = totalBuyBackAmount.add(diffEthBal);
 
                 let buyRate = await reserveInst.getConversionRate(ethAddress, token.address, diffEthBal, currentBlock);
-                let tradeBackAmount = calcDstQty(diffEthBal, ethDecimals, newTokenDecimals[id], buyRate);
+                let tradeBackAmount = Helper.calcDstQty(diffEthBal, ethDecimals, newTokenDecimals[id], buyRate);
                 if (printLogs) {
-                    console.log("Source sell amount twei: " + srcSellAmount.valueOf() + ", tokens: " + srcSellAmount.div(tokenPrecision).valueOf());
-                    console.log("Dest amount wei: " + expectedDest.valueOf() + ", eth: " + expectedDest.div(ethPrecission).valueOf());
-                    console.log("Trade back amount twei: " + tradeBackAmount.valueOf() + ", tokens: " + tradeBackAmount.div(tokenPrecision).valueOf());
-                    console.log("Different traded back amount and src sell amount: " + srcSellAmount.sub(tradeBackAmount).valueOf() + " at loop: " + id + " and tx: " + tx);
+                    console.log("Source sell amount twei: " + srcSellAmount + ", tokens: " + srcSellAmount.div(tokenPrecision));
+                    console.log("Dest amount wei: " + expectedDest + ", eth: " + expectedDest.div(ethPrecission));
+                    console.log("Trade back amount twei: " + tradeBackAmount + ", tokens: " + tradeBackAmount.div(tokenPrecision));
+                    console.log("Different traded back amount and src sell amount: " + srcSellAmount.sub(tradeBackAmount) + " at loop: " + id + " and tx: " + tx);
                 }
                 assert(tradeBackAmount * 1.0 <= srcSellAmount * 1.0, "Trade back amount should be lower than src sell amount, loop: " + id);
-                assert(srcSellAmount.sub(tradeBackAmount) * 1.0 <= srcSellAmount.div(BigNumber(10).pow(newTokenDecimals[id]/2)).floor() * 1.0, "Different between trade back amount and src sell amount should be very small, loop: " + id);
+                assert(srcSellAmount.sub(tradeBackAmount) * 1.0 <= srcSellAmount.div(new BN(10).pow(new BN(newTokenDecimals[id]/2))) * 1.0, "Different between trade back amount and src sell amount should be very small, loop: " + id);
 
                 buyRate = await reserveInst.getConversionRate(ethAddress, token.address, totalBuyBackAmount, currentBlock);
-                tradeBackAmount = calcDstQty(totalBuyBackAmount, ethDecimals, newTokenDecimals[id], buyRate);
+                tradeBackAmount = Helper.calcDstQty(totalBuyBackAmount, ethDecimals, newTokenDecimals[id], buyRate);
                 if (printLogs) {
-                    console.log("Different expected dest and total src sell amount: " + totalSrcSellAmount.sub(expectedDest).valueOf() + " at loop: " + id + " and tx: " + tx);
+                    console.log("Different expected dest and total src sell amount: " + totalSrcSellAmount.sub(expectedDest) + " at loop: " + id + " and tx: " + tx);
                 }
                 assert(tradeBackAmount * 1.0 <= totalSrcSellAmount * 1.0, "Trade back amount should be lower than total src sell amount, loop: " + id);
-                assert(totalSrcSellAmount.sub(tradeBackAmount) * 1.0 <= totalSrcSellAmount.div(BigNumber(10).pow(newTokenDecimals[id]/2)).floor() * 1.0, "Different between trade back amount and total src sell amount should be very small, loop: " + id);
+                assert(totalSrcSellAmount.sub(tradeBackAmount) * 1.0 <= totalSrcSellAmount.div(new BN(10).pow(new BN(newTokenDecimals[id]/2))) * 1.0, "Different between trade back amount and total src sell amount should be very small, loop: " + id);
             }
         }
     });
@@ -1130,12 +1114,12 @@ contract('kyberReserve for Liquidity', function(accounts) {
             let pMin = newP0s[id] * newpMinRatios[id];
             let pMax = newP0s[id] * newpMaxRatios[id];
 
-            let rInFp = BigNumber(newRs[id]).mul(formulaPrecision);
-            let pMinInFp = BigNumber(pMin).mul(formulaPrecision);
-            let maxCapBuyInWei = BigNumber(newMaxCapBuyInEth[id]).mul(precision);
-            let maxCapSellInWei = BigNumber(newMaxCapSellInEth[id]).mul(precision);
-            let maxSellRateInPrecision = BigNumber(pMax).mul(precision);
-            let minSellRateInPrecision = BigNumber(pMin).mul(precision);
+            let rInFp = new BN(newRs[id] * baseNumber).mul(formulaPrecision).div(new BN(baseNumber));
+            let pMinInFp = new BN(pMin * baseNumber).mul(formulaPrecision).div(new BN(baseNumber));
+            let maxCapBuyInWei = new BN(newMaxCapBuyInEth[id]).mul(precision);
+            let maxCapSellInWei = new BN(newMaxCapSellInEth[id]).mul(precision);
+            let maxSellRateInPrecision = new BN(pMax * baseNumber).mul(precision).div(new BN(baseNumber));
+            let minSellRateInPrecision = new BN(pMin * baseNumber).mul(precision).div(new BN(baseNumber));
 
             await newLiqConvRatesInst.setLiquidityParams(
                 rInFp,
@@ -1149,93 +1133,93 @@ contract('kyberReserve for Liquidity', function(accounts) {
             );
 
             let reserveInst = await Reserve.new(network, newLiqConvRatesInst.address, admin);
-            await reserveInst.setContracts(network, newLiqConvRatesInst.address, 0);
+            await reserveInst.setContracts(network, newLiqConvRatesInst.address, zeroAddress);
 
             await newLiqConvRatesInst.setReserveAddress(reserveInst.address);
 
             //set reserve balance.
-            let reserveEtherInit = ethPrecission.mul(newE0s[id]);
+            let reserveEtherInit = ethPrecission.mul(new BN(newE0s[id] * baseNumber)).div(new BN(baseNumber));
             await Helper.sendEtherWithPromise(accounts[9], reserveInst.address, reserveEtherInit);
 
             await reserveInst.approveWithdrawAddress(token.address, accounts[0], true);
 
             //transfer tokens to reserve.
-            let amount = (BigNumber(10).pow(newTokenDecimals[id])).mul(newT0s[id]);
-            await token.transfer(reserveInst.address, amount.valueOf());
+            let amount = (new BN(10).pow(new BN(newTokenDecimals[id]))).mul(new BN(newT0s[id] * baseNumber)).div(new BN(baseNumber));
+            await token.transfer(reserveInst.address, amount);
 
             if (i < newRs.length) {
                 // buy then check sell rate
-                let lastBuyRate = BigNumber(precision).div(newP0s[id]).floor();
+                let lastBuyRate = new BN(precision).div((new BN(newP0s[id] * baseNumber))).mul(new BN(baseNumber));
                 let srcAmount = maxCapBuyInWei;
                 while (true) {
                     let bal = await token.balanceOf(reserveInst.address);
-                    if (bal * 1.0 <= BigNumber(10).pow(newTokenDecimals[id]) * 1.0) { break; }
+                    if (bal * 1.0 <= new BN(10).pow(new BN(newTokenDecimals[id])) * 1.0) { break; }
                     let buyRate = await reserveInst.getConversionRate(ethAddress, token.address, srcAmount, currentBlock);
-                    if (buyRate.valueOf() == 0) {
+                    if (buyRate == 0) {
                         while (true) {
-                            srcAmount = srcAmount.div(2).floor();
-                            if (srcAmount.valueOf() == 0) { break; }
+                            srcAmount = srcAmount.div(new BN(2));
+                            if (srcAmount == 0) { break; }
                             buyRate = await reserveInst.getConversionRate(ethAddress, token.address, srcAmount, currentBlock);
-                            if (buyRate.valueOf() != 0) { break; }
+                            if (buyRate != 0) { break; }
                         }
-                        if (buyRate.valueOf() == 0) { break; }
+                        if (buyRate == 0) { break; }
                     }
                     lastBuyRate = buyRate;
 
                     await reserveInst.trade(ethAddress, srcAmount, token.address, user1, buyRate, true, {from:network, value: srcAmount});
                 }
                 // min sell rate is 1/max buy rate
-                let minBuyRate = BigNumber(precision).div(pMax).floor();
+                let minBuyRate = new BN(precision).mul(new BN(baseNumber)).div(new BN(pMax*baseNumber));
                 if (printLogs) {
-                    console.log("Last buy rate found: " + lastBuyRate.valueOf());
-                    console.log("Min supported buy rate: " + minBuyRate.valueOf());
-                    console.log("Different last buy rate and min support buy rate: " + lastBuyRate.sub(minBuyRate).valueOf() + " at loop: " + i);
+                    console.log("Last buy rate found: " + lastBuyRate.toString(10));
+                    console.log("Min supported buy rate: " + minBuyRate.toString(10));
+                    console.log("Different last buy rate and min support buy rate: " + lastBuyRate.sub(minBuyRate).toString(10) + " at loop: " + i);
                 }
-                assert(lastBuyRate * 1.0 >= minBuyRate * 1.0, "buy rate must be greater or equal than min buy rate, loop: " + i);
+                assert(lastBuyRate.gte(minBuyRate), "buy rate must be greater or equal than min buy rate, loop: " + i);
 
                 let tokenBal = await token.balanceOf(reserveInst.address);
-                let amountEth = tokenBal.mul(precision).div(tokenBal).floor();
+                let amountEth = tokenBal.mul(precision).div(tokenBal);
                 // if rate is lower than minBuyRate, buying amountEth of ETH should get less than tokenBal of token
                 // so balance of reserve is enough for transaction, but rate should be 0 as it is lower than minBuyRate
                 let buyRate = await reserveInst.getConversionRate(ethAddress, token.address, amountEth, currentBlock);
-                assert.equal(buyRate.valueOf(), 0, "buy rate should equal 0 as it falls under min sell rate");
+                Helper.assertEqual(buyRate, 0, "buy rate should equal 0 as it falls under min sell rate");
             } else {
                 // sell then check buy rate
-                let lastSellRate = BigNumber(precision).mul(newP0s[id]).floor();
-                let srcAmount = maxCapSellInWei.div(newP0s[id]).floor();
+                let lastSellRate = new BN(precision).mul(new BN(newP0s[id] * baseNumber)).div(new BN(baseNumber));
+                let srcAmount = maxCapSellInWei.mul(new BN(baseNumber)).div(new BN(newP0s[id]*baseNumber));
                 while (true) {
                     let ethBal = await Helper.getBalancePromise(reserveInst.address);
-                    let oneEth = BigNumber(10).pow(18);
-                    if (ethBal * 1.0 < oneEth.div(100) * 1.0) { break; } // less than 0.001 ether
+                    let oneEth = new BN(10).pow(new BN(18));
+                    if (ethBal * 1.0 < oneEth.div(new BN(100)) * 1.0) { break; } // less than 0.001 ether
                     let sellRate = await reserveInst.getConversionRate(token.address, ethAddress, srcAmount, currentBlock);
-                    if (sellRate.valueOf() == 0) {
+                    if (sellRate == 0) {
                         while (true) {
-                            srcAmount = srcAmount.div(2).floor();
+                            srcAmount = srcAmount.div(new BN(2));
                             sellRate = await reserveInst.getConversionRate(token.address, ethAddress, srcAmount, currentBlock);
-                            if (sellRate.valueOf() != 0) { break; }
+                            if (sellRate != 0) { break; }
                         }
-                        if (sellRate.valueOf() == 0) { break; }
+                        if (sellRate == 0) { break; }
                     }
                     lastSellRate = sellRate;
 
-                    await token.transfer(network, srcAmount.valueOf());
+                    await token.transfer(network, srcAmount);
                     await token.approve(reserveInst.address, srcAmount, {from: network});
                     await reserveInst.trade(token.address, srcAmount, ethAddress, user1, sellRate, true, {from: network});
                 }
-                let minSellRate = BigNumber(precision).mul(pMin).floor();
+                let minSellRate = new BN(precision).mul(new BN(pMin * baseNumber)).div(new BN(baseNumber));
                 if (printLogs) {
-                    console.log("Last sell rate found: " + lastSellRate.valueOf());
-                    console.log("Min supported sell rate: " + minSellRate.valueOf());
-                    console.log("Different last sell rate and min support sell rate: " + lastSellRate.sub(minSellRate).valueOf() + " at loop: " + i);
+                    console.log("Last sell rate found: " + lastSellRate.toString(10));
+                    console.log("Min supported sell rate: " + minSellRate.toString(10));
+                    console.log("Different last sell rate and min support sell rate: " + lastSellRate.sub(minSellRate).toString(10) + " at loop: " + i);
                 }
-                assert(lastSellRate * 1.0 >= minSellRate * 1.0, "sell rate must be greater or equal than min sell rate, loop: " + i);
+                assert(lastSellRate.gte(minSellRate), "sell rate must be greater or equal than min sell rate, loop: " + i);
 
                 let ethBal = await Helper.getBalancePromise(reserveInst.address);
-                let amountToken = ethBal.mul(precision).div(minSellRate).floor();
+                let amountToken = ethBal.mul(precision).div(minSellRate);
                 // if rate is lower than minSellRate, sell amountToken of token should get less than ethBal of ETH
                 // so balance of reserve is enough for transaction, but rate should be 0 as it is lower than minSellRate
                 let sellRate = await reserveInst.getConversionRate(token.address, ethAddress, amountToken, currentBlock);
-                assert.equal(sellRate.valueOf(), 0, "sell rate should equal 0 as it falls under min sell rate");
+                Helper.assertEqual(sellRate, 0, "sell rate should equal 0 as it falls under min sell rate");
             }
         }
     });
@@ -1261,23 +1245,24 @@ contract('kyberReserve for Liquidity', function(accounts) {
 
                             let randE0 = 69.315
                             let randT0 = 2329916.12
-                            let randFormulaPrecision = BigNumber(2).pow(randFormulaPrecisionBits)
-                            let randMaxCapBuyInEth = 11.0
-                            let randMaxCapSellInEth = 11.0
+                            let randFormulaPrecision = new BN(2).pow(new BN(randFormulaPrecisionBits))
+                            let randMaxCapBuyInEth = 11
+                            let randMaxCapSellInEth = 11
                             let randFeePercent = feePercent
+
+                            let exp = Helper.exp(e, randR * randE0)
+                            let randPmin = randP0/exp;
+                            let randPmax = randP0 / (1 - randR * randP0 * randT0);
     
-                            let randPmin = BigNumber(randP0).div((Helper.exp(e, BigNumber(randR).mul(randE0))))
-                            let randPmax = BigNumber((randP0 / (1 - randR * randP0 * randT0)).toString()) 
-    
-                            let randDeltaEInFp = BigNumber(randDeltaE).mul(formulaPrecision);
-                            let randEInFp = BigNumber(randE0).mul(randFormulaPrecision);
-                            let randRInFp = BigNumber(randR).mul(randFormulaPrecision);
-                            let randPminInFp = BigNumber(randPmin).mul(randFormulaPrecision);
-                            let randMaxCapBuyInWei = BigNumber(randMaxCapBuyInEth).mul(precision);
-                            let randMaxCapSellInWei = BigNumber(randMaxCapSellInEth).mul(precision);
+                            let randDeltaEInFp = new BN(randDeltaE).mul(formulaPrecision);
+                            let randEInFp = new BN(randE0*baseNumber).mul(randFormulaPrecision).div(new BN(baseNumber));
+                            let randRInFp = new BN(randR*baseNumber).mul(randFormulaPrecision).div(new BN(baseNumber));
+                            let randPminInFp = new BN(randPmin*baseNumber).mul(randFormulaPrecision).div(new BN(baseNumber));
+                            let randMaxCapBuyInWei = new BN(randMaxCapBuyInEth).mul(precision);
+                            let randMaxCapSellInWei = new BN(randMaxCapSellInEth).mul(precision);
                             let randFeeInBps = randFeePercent * 100
-                            let randMaxSellRateInPrecision = BigNumber(randPmax).mul(precision);
-                            let randMinSellRateInPrecision = BigNumber(randPmin).mul(precision);
+                            let randMaxSellRateInPrecision = new BN(randPmax*baseNumber).mul(precision).div(new BN(baseNumber));
+                            let randMinSellRateInPrecision = new BN(randPmin*baseNumber).mul(precision).div(new BN(baseNumber));
 
                             let randToken = await TestToken.new("test", "tst", randTokenDecimals);
                             liqConvRatesInst = await LiquidityConversionRates.new(admin, randToken.address);
@@ -1291,9 +1276,10 @@ contract('kyberReserve for Liquidity', function(accounts) {
                                     randMaxCapSellInWei,
                                     randFeeInBps,
                                     randMaxSellRateInPrecision,
-                                    randMinSellRateInPrecision)
+                                    randMinSellRateInPrecision
+                            )
 
-                            let randQtyInSrcWei = BigNumber(randDeltaE).mul(precision)
+                            let randQtyInSrcWei = new BN(randDeltaE).mul(precision)
 
                             let result = await liqConvRatesInst.getRateWithE(
                                     randToken.address,
@@ -1301,12 +1287,12 @@ contract('kyberReserve for Liquidity', function(accounts) {
                                     randQtyInSrcWei,
                                     randEInFp);
 
-                            let expectedResult = priceForDeltaE(
-                                    randFeePercent,
-                                    randR,
-                                    randPmin,
-                                    randDeltaE,
-                                    randE0).mul(precision).valueOf()
+                            let expectedResult = new BN(priceForDeltaE(
+                                randFeePercent,
+                                randR,
+                                randPmin,
+                                randDeltaE,
+                                randE0) * baseNumber).mul(precision).div(new BN(baseNumber));
                             Helper.assertAbsDiff(result, expectedResult, expectedDiffInPct)
                         }
                     }
@@ -1315,14 +1301,3 @@ contract('kyberReserve for Liquidity', function(accounts) {
         }
     });
 });
-
-function calcDstQty(srcQty, srcDecimals, dstDecimals, rate) {
-    rate = new BigNumber(rate);
-    if (dstDecimals >= srcDecimals) {
-        let decimalDiff = (new BigNumber(10)).pow(dstDecimals - srcDecimals);
-        return (rate.mul(srcQty).mul(decimalDiff).div(precision)).floor();
-    } else {
-        let decimalDiff = (new BigNumber(10)).pow(srcDecimals - dstDecimals);
-        return (rate.mul(srcQty).div(decimalDiff.mul(precision))).floor();
-    }
-}
