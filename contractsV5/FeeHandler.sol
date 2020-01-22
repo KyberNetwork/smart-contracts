@@ -3,17 +3,18 @@ pragma solidity 0.5.11;
 import "./IKyberDAO.sol";
 import "./IFeeHandler.sol";
 import "./PermissionGroupsV5.sol";
-import "./KyberNetworkProxy.sol";
+import "./IKyberNetworkProxy.sol";
 import "./UtilsV5.sol";
 import "./IERC20.sol";
+import "./IBurnableToken.sol";
 
 contract FeeHandler is IFeeHandler, Utils {
 
     IKyberDAO public kyberDAOContract;
     // if I use the interface, I am not able to get the KyberNetwork internal contract from the proxy..
-    KyberNetworkProxy public kyberNetworkProxyContract;
+    IKyberNetworkProxy public kyberNetworkProxyContract;
+    address public kyberNetworkContract;
     address public knc;
-    address payable public burnAddress;
     uint public burnBlockInterval;
     uint public lastBurnBlock;
     uint constant ETH_TO_BURN = 10**19;
@@ -21,6 +22,7 @@ contract FeeHandler is IFeeHandler, Utils {
     uint public brrAndEpochData;
     uint constant BITS_PER_PARAM = 64;
 
+    // Todo: combine totalRebates and totalRewards into one variable
     uint public totalRebates;
     mapping(address => uint) public totalRebatesPerRebateWallet;
     uint public totalRewards;
@@ -30,15 +32,20 @@ contract FeeHandler is IFeeHandler, Utils {
     constructor(
         IKyberDAO _kyberDAOContract,
         KyberNetworkProxy _kyberNetworkProxyContract,
+        address _kyberNetworkContract,
         address _knc,
-        address payable _burnAddress,
         uint _burnBlockInterval
     ) public
     {
+        require(_kyberDAOContract != address(0), "The KyberDAO contract cannot be the null address");
+        require(_kyberNetworkProxyContract != address(0), "The KyberNetworkProxy contract cannot be the null address");
+        require(_kyberNetworkContract != address(0), "The KyberNetwork contract cannot be the null address");
+        require(_knc != address(0), "The KNC token contract cannot be the null address");
+
         kyberDAOContract = _kyberDAOContract;
         kyberNetworkProxyContract = _kyberNetworkProxyContract;
+        kyberNetworkContract = _kyberNetworkContract;
         knc = _knc;
-        burnAddress = _burnAddress;
         burnBlockInterval = _burnBlockInterval;
         lastBurnBlock = block.number;
     }
@@ -59,34 +66,27 @@ contract FeeHandler is IFeeHandler, Utils {
         _;
     }
 
-
-    function encodeData(uint _burn, uint _reward, uint _epoch, uint _expiryBlock) public pure returns (uint) {
-        return (((((_burn << BITS_PER_PARAM) + _reward) << BITS_PER_PARAM) + _epoch) << BITS_PER_PARAM) + _expiryBlock;
-    }
-
-    function decodeData() public view returns(uint, uint, uint, uint) {
-        uint expiryBlock = brrAndEpochData & (1 << BITS_PER_PARAM) - 1;
-        uint epoch = (brrAndEpochData / (1 << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        uint rewardInBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        uint burnInBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        return (burnInBPS, rewardInBPS, epoch, expiryBlock);
-    }
-
-    event AccumulateReserveRebate(address rebateWallet, uint rebateAmountWei);
+    event AccumulateReserveRebate(
+        address[] eligibleWallets,
+        uint[] rebatePercentages,
+        uint rebateAmtWei,
+        uint rewardAmtWei,
+        uint burnAmtWei
+    );
 
     // Todo: future optimisation to accumulate rebates for 2 rebate wallet
     // encode totals, 128 bits per reward / rebate
     function handleFees(address[] calldata eligibleWallets, uint[] calldata rebatePercentages) external payable onlyKyberNetwork returns(bool) {
         // Decoding BRR data
-        (uint burnInBPS, uint rewardInBPS, uint epoch, uint expiryBlock) = decodeData();
-        uint rebateInBPS = BPS - rewardInBPS - burnInBPS;
+        (uint rewardInBPS, uint rebateInBPS, uint epoch, uint expiryBlock) = decodeData();
+        uint burnInBPS = BPS - rewardInBPS - rebateInBPS;
 
         // Check current block number
         if(block.number > expiryBlock) {
             (burnInBPS, rewardInBPS, rebateInBPS, epoch, expiryBlock) = kyberDAOContract.getLatestBRRData();
 
             // Update brrAndEpochData
-            brrAndEpochData = encodeData(burnInBPS, rewardInBPS, epoch, expiryBlock);
+            brrAndEpochData = encodeData(rewardInBPS, rebateInBPS, epoch, expiryBlock);
         }
 
         uint rebateWei = rebateInBPS * msg.value / BPS;
@@ -94,15 +94,17 @@ contract FeeHandler is IFeeHandler, Utils {
         for(uint i = 0; i < eligibleWallets.length; i ++) {
             // Internal accounting for rebates per reserve wallet (totalRebatesPerRebateWallet)
             totalRebatesPerRebateWallet[eligibleWallets[i]] = rebateWei * rebatePercentages[i] / 100;
-            // Internal accounting for total rebates (totalRebates)
-            totalRebates += rebateWei * rebatePercentages[i] / 100;
-            // Internal accounting for reward per epoch (totalRewardsPerEpoch)
-            totalRewardsPerEpoch[epoch] += rewardWei;
-            // Internal accounting for total rewards (totalRewards)
-            totalRewards += rewardWei;
-
-            emit AccumulateReserveRebate(eligibleWallets[i], rebateWei * rebatePercentages[i] / 100);
         }
+
+        // Internal accounting for total rebates (totalRebates)
+        totalRebates += rebateWei;
+        // Internal accounting for reward per epoch (totalRewardsPerEpoch)
+        totalRewardsPerEpoch[epoch] += rewardWei;
+        // Internal accounting for total rewards (totalRewards)
+        totalRewards += rewardWei;
+
+        emit AccumulateReserveRebate(eligibleWallets, rebatePercentages, rebateWei, rewardWei, msg.value - rebateWei - rewardWei);
+
         return true;
     }
 
@@ -110,7 +112,7 @@ contract FeeHandler is IFeeHandler, Utils {
 
     function claimStakerReward(address staker, uint percentageInPrecision, uint epoch) public onlyDAO returns(uint) {
         // Amount of reward to be sent to staker
-        uint amount = totalRewardsPerEpoch[epoch] * percentageInPrecision / 10**18;
+        uint amount = totalRewardsPerEpoch[epoch] * percentageInPrecision / PRECISION;
 
         // Update total rewards and total rewards per epoch
         totalRewardsPerEpoch[epoch] -= amount;
@@ -123,7 +125,6 @@ contract FeeHandler is IFeeHandler, Utils {
         emit DistributeRewards(staker, amount);
 
         return amount;
-
     }
 
     event DistributeRebate(address rebateWallet, uint amountWei);
@@ -135,7 +136,7 @@ contract FeeHandler is IFeeHandler, Utils {
 
         // Update total rebate and rebate per rebate wallet amounts
         totalRebates -= amount;
-        totalRebatesPerRebateWallet[rebateWallet] = 1; // Do not use 0 to avoid potential issues with div by 0
+        totalRebatesPerRebateWallet[rebateWallet] = 1; // Do not use 0 to avoid paying high gas when setting back from 0 to non zero.
 
         // send rebate to rebate wallet
         (bool success, ) = rebateWallet.call.value(amount)("");
@@ -146,36 +147,33 @@ contract FeeHandler is IFeeHandler, Utils {
         return amount;
     }
 
-    event BurnKNC(address burnAddress, uint amountWei);
-
     // we will have to limit amounts. per burn.
     // and create some block delay between burns.
+    // Todo: include arbitrage check https://github.com/KyberNetwork/smart-contracts/pull/433/files
     function burnKNC() public returns(uint) {
         // check if current block > last buy block number + num block interval
         require(
             block.number < lastBurnBlock + burnBlockInterval,
-            "Unable to burn as burnBlockInterval has not passed since lastBurnBlock"
+            "Unable to buy as burnBlockInterval has not passed since lastBurnBlock"
         );
 
         // update last buy block number
         lastBurnBlock = block.number;
 
-        // Get srcQty to burn, if greater than 10 ETH, burn only 10 ETH per function call.
+        // Get srcQty to burn, if greater than ETH_TO_BURN, burn only ETH_TO_BURN per function call.
         uint srcQty = address(this).balance - totalRebates - totalRewards;
-
         srcQty = srcQty > ETH_TO_BURN ? ETH_TO_BURN : srcQty;
 
         // Get the slippage rate
         // If srcQty is too big, get expected rate will return 0 so maybe we should limit how much can be bought at one time.
         uint expectedRate = kyberNetworkProxyContract.getExpectedRateAfterCustomFee(IERC20(ETH_TOKEN_ADDRESS), IERC20(knc), srcQty, 0, "");
 
-        // Buy some KNC and send to burn address
-        // Swap the ERC20 token and send to destAddress
+        // Buy some KNC and burn
         uint destQty = kyberNetworkProxyContract.tradeWithHintAndPlatformFee(
             ETH_TOKEN_ADDRESS,
             srcQty,
             IERC20(knc),
-            burnAddress,
+            address(this),
             MAX_QTY,
             expectedRate * 97 / 100,
             address(0), // platform wallet
@@ -183,7 +181,20 @@ contract FeeHandler is IFeeHandler, Utils {
             "" // hint
         );
 
-        // emit event
-        emit BurnKNC(burnAddress, destQty);
+        // Burn KNC
+        require(IBurnableToken(knc).burn(destQty), "KNC burn failed");
+    }
+
+
+    function encodeData(uint _reward, uint _rebate, uint _epoch, uint _expiryBlock) public pure returns (uint) {
+        return (((((_reward << BITS_PER_PARAM) + _rebate) << BITS_PER_PARAM) + _epoch) << BITS_PER_PARAM) + _expiryBlock;
+    }
+
+    function decodeData() public view returns(uint, uint, uint, uint) {
+        uint expiryBlock = brrAndEpochData & (1 << BITS_PER_PARAM) - 1;
+        uint epoch = (brrAndEpochData / (1 << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
+        uint rebateInBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
+        uint rewardInBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
+        return (rewardInBPS, rebateInBPS, epoch, expiryBlock);
     }
 }
