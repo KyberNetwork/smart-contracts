@@ -6,12 +6,8 @@ import "./IKyberReserve.sol";
 
 interface IKyberHint {
 
-    enum HintType {
-        None,
-        MaskIn,
-        MaskOut,
-        Split
-    }
+    // function parseEthToTokenHint(bytes calldata hint) external view
+    // returns(HintType hintType, address[] memory reserves, uint[] memory splits, uint failureHint);
 
     function parseEthToTokenHint(bytes calldata hint) external view
         returns(HintType hintType, IKyberReserve[] memory reserves, uint[] memory splits, uint failureHint);
