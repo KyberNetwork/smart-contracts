@@ -209,3 +209,4 @@ module.exports.calcRateFromQty = function(srcQty, dstQty, srcDecimals, dstDecima
         return (precisionUnits.mul(new BN(dstQty)).mul(decimals)).div(new BN(srcQty));
     }
 }
+

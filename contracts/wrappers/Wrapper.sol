@@ -1,11 +1,33 @@
 pragma solidity ^0.4.18;
 
 import "../ERC20Interface.sol";
-import "../KyberNetwork.sol";
 import "../Utils.sol";
 import "../reserves/fprConversionRate/ConversionRates.sol";
 import "../KyberNetworkProxy.sol";
 import "../reserves/orderBookReserve/permissionless/OrderbookReserve.sol";
+
+
+contract NetworkInterface {
+
+    enum ReserveType {NONE, PERMISSIONED, PERMISSIONLESS}
+
+    KyberReserveInterface[] public reserves;
+    mapping(address=>ReserveType) public reserveType;
+    
+    function maxGasPrice() public view returns(uint);
+    function getUserCapInWei(address user) public view returns(uint);
+    function getUserCapInTokenWei(address user, ERC20 token) public view returns(uint);
+    function enabled() public view returns(bool);
+    function info(bytes32 id) public view returns(uint);
+
+    function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) public view
+        returns (uint expectedRate, uint slippageRate);
+
+    function tradeWithHint(address trader, ERC20 src, uint srcAmount, ERC20 dest, address destAddress,
+        uint maxDestAmount, uint minConversionRate, address walletId, bytes hint) public payable returns(uint);
+    function getNumReserves() public returns(uint);
+}
+
 
 contract Wrapper is Utils {
 
@@ -101,7 +123,7 @@ contract Wrapper is Utils {
     }
 
 
-    function getExpectedRates( KyberNetwork network, ERC20[] srcs, ERC20[] dests, uint[] qty )
+    function getExpectedRates( NetworkInterface network, ERC20[] srcs, ERC20[] dests, uint[] qty )
         public view returns(uint[], uint[])
     {
         require( srcs.length == dests.length );
@@ -126,7 +148,7 @@ contract Wrapper is Utils {
       view
       returns (ERC20[] memory permissionlessTokens, uint[] memory decimals, bool isEnded)
     {
-        KyberNetwork network = KyberNetwork(networkProxy.kyberNetworkContract());
+        NetworkInterface network = NetworkInterface(networkProxy.kyberNetworkContract());
         uint numReserves = network.getNumReserves();
         if (startIndex >= numReserves || startIndex > endIndex) {
             // no need to iterate
@@ -144,7 +166,7 @@ contract Wrapper is Utils {
         for(rID = startIndex; rID <= endIterator; rID++) {
             reserve = network.reserves(rID);
             if ( reserve != address(0)
-              && network.reserveType(reserve) == KyberNetwork.ReserveType.PERMISSIONLESS)
+              && network.reserveType(reserve) == NetworkInterface.ReserveType.PERMISSIONLESS)
             {
                 // permissionless reserve
                 (, token , , , ,) = OrderbookReserve(reserve).contracts();
@@ -158,7 +180,7 @@ contract Wrapper is Utils {
         for(rID = startIndex; rID <= endIterator; rID++) {
             reserve = network.reserves(rID);
             if ( reserve != address(0)
-              && network.reserveType(reserve) == KyberNetwork.ReserveType.PERMISSIONLESS)
+              && network.reserveType(reserve) == NetworkInterface.ReserveType.PERMISSIONLESS)
             {
                 // permissionless reserve
                 (, token , , , ,) = OrderbookReserve(reserve).contracts();

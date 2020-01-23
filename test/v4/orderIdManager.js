@@ -1,5 +1,5 @@
-const OrderIdManager = artifacts.require("./permissionless/mock/MockOrderIdManager.sol");
-const TestToken = artifacts.require("./mockContracts/TestToken.sol");
+const OrderIdManager = artifacts.require("MockOrderIdManager.sol");
+const TestToken = artifacts.require("TestToken.sol");
 
 const Helper = require("./helper.js");
 
@@ -19,36 +19,36 @@ contract("OrderIdManager", async(accounts) => {
         howMany = await orderIdManager.NUM_ORDERS();
 
         let rxFirstId = await orderIdManager.getFirstOrderId();
-        assert.equal (rxFirstId.valueOf(), firstOrderId);
+        Helper.assertEqual (rxFirstId, firstOrderId);
 
         let takenBitMap = await orderIdManager.getTakenOrdersBitMap();
-        assert.equal(takenBitMap, 0);
+        Helper.assertEqual(takenBitMap, 0);
     });
 
     it("verify taken bitmap reflects new allocations", async() => {
         let takenBitMap = await orderIdManager.getTakenOrdersBitMap();
-        assert.equal(takenBitMap, 0);
+        Helper.assertEqual(takenBitMap, 0);
 
         await orderIdManager.fetchNewOrderId();
         takenBitMap = await orderIdManager.getTakenOrdersBitMap();
 //        log("taken bit map: " + takenBitMap)
-        assert.equal(takenBitMap, 1);
+        Helper.assertEqual(takenBitMap, 1);
 
         await orderIdManager.fetchNewOrderId();
         takenBitMap = await orderIdManager.getTakenOrdersBitMap();
 //        log("taken bit map: " + takenBitMap)
-        assert.equal(takenBitMap, 3);
+        Helper.assertEqual(takenBitMap, 3);
 
         await orderIdManager.fetchNewOrderId();
         takenBitMap = await orderIdManager.getTakenOrdersBitMap();
 //        log("taken bit map: " + takenBitMap)
-        assert.equal(takenBitMap, 7);
+        Helper.assertEqual(takenBitMap, 7);
 
 
         await orderIdManager.fetchNewOrderId();
         takenBitMap = await orderIdManager.getTakenOrdersBitMap();
 //        log("taken bit map: " + takenBitMap)
-        assert.equal(takenBitMap, 15);
+        Helper.assertEqual(takenBitMap, 15);
     })
 
     it("verify taken bitmap reflects releasing IDs", async() => {
@@ -57,25 +57,25 @@ contract("OrderIdManager", async(accounts) => {
         }
 
         let takenBitMap = await orderIdManager.getTakenOrdersBitMap();
-        assert.equal(takenBitMap, 15);
+        Helper.assertEqual(takenBitMap, 15);
 
         let orderToRelease = firstOrderId;
 
         await orderIdManager.releaseOrderId(orderToRelease);
         takenBitMap = await orderIdManager.getTakenOrdersBitMap();
-        assert.equal(takenBitMap, 14);
+        Helper.assertEqual(takenBitMap, 14);
 
         await orderIdManager.releaseOrderId(++orderToRelease);
         takenBitMap = await orderIdManager.getTakenOrdersBitMap();
-        assert.equal(takenBitMap, 12);
+        Helper.assertEqual(takenBitMap, 12);
 
         await orderIdManager.releaseOrderId(++orderToRelease);
         takenBitMap = await orderIdManager.getTakenOrdersBitMap();
-        assert.equal(takenBitMap, 8);
+        Helper.assertEqual(takenBitMap, 8);
 
         await orderIdManager.releaseOrderId(++orderToRelease);
         takenBitMap = await orderIdManager.getTakenOrdersBitMap();
-        assert.equal(takenBitMap, 0);
+        Helper.assertEqual(takenBitMap, 0);
     })
 
 
@@ -85,62 +85,62 @@ contract("OrderIdManager", async(accounts) => {
         }
 
         let takenBitMap = await orderIdManager.getTakenOrdersBitMap();
-        assert.equal(takenBitMap, 15);
+        Helper.assertEqual(takenBitMap, 15);
 
         let orderToRelease = firstOrderId;
 
         await orderIdManager.releaseOrderId(orderToRelease);
         takenBitMap = await orderIdManager.getTakenOrdersBitMap();
-        assert.equal(takenBitMap, 14);
+        Helper.assertEqual(takenBitMap, 14);
 
         await orderIdManager.fetchNewOrderId();
         takenBitMap = await orderIdManager.getTakenOrdersBitMap();
-        assert.equal(takenBitMap, 15);
+        Helper.assertEqual(takenBitMap, 15);
 
         await orderIdManager.releaseOrderId(orderToRelease);
         takenBitMap = await orderIdManager.getTakenOrdersBitMap();
-        assert.equal(takenBitMap, 14);
+        Helper.assertEqual(takenBitMap, 14);
 
         await orderIdManager.releaseOrderId(++orderToRelease);
         takenBitMap = await orderIdManager.getTakenOrdersBitMap();
-        assert.equal(takenBitMap, 12);
+        Helper.assertEqual(takenBitMap, 12);
 
         await orderIdManager.fetchNewOrderId();
         takenBitMap = await orderIdManager.getTakenOrdersBitMap();
-        assert.equal(takenBitMap, 13);
+        Helper.assertEqual(takenBitMap, 13);
 
         await orderIdManager.fetchNewOrderId();
         takenBitMap = await orderIdManager.getTakenOrdersBitMap();
-        assert.equal(takenBitMap, 15);
+        Helper.assertEqual(takenBitMap, 15);
     })
 
     it("verify allocated ID as expected for fresh new (not reused) orders", async() => {
         let rc = await orderIdManager.fetchNewOrderId();
-//        console.log(rc.logs[0].args.orderId.valueOf())
-        let rxOrderId = rc.logs[0].args.orderId.valueOf();
-        assert.equal(rxOrderId, firstOrderId);
+//        console.log(rc.logs[0].args.orderId)
+        let rxOrderId = rc.logs[0].args.orderId;
+        Helper.assertEqual(rxOrderId, firstOrderId);
 
         rc = await orderIdManager.fetchNewOrderId();
-//        console.log(rc.logs[0].args.orderId.valueOf())
-        rxOrderId = rc.logs[0].args.orderId.valueOf();
-        assert.equal(rxOrderId, (firstOrderId + 1));
+//        console.log(rc.logs[0].args.orderId)
+        rxOrderId = rc.logs[0].args.orderId;
+        Helper.assertEqual(rxOrderId, (firstOrderId + 1));
 
         rc = await orderIdManager.fetchNewOrderId();
-//        console.log(rc.logs[0].args.orderId.valueOf())
-        rxOrderId = rc.logs[0].args.orderId.valueOf();
-        assert.equal(rxOrderId, (firstOrderId + 2));
+//        console.log(rc.logs[0].args.orderId)
+        rxOrderId = rc.logs[0].args.orderId;
+        Helper.assertEqual(rxOrderId, (firstOrderId + 2));
     })
 
     it("check orderAllocationRequired API", async() => {
         let IdManager = await OrderIdManager.new();
 
         let rc = await IdManager.isOrderAllocationRequired();
-        assert.equal(rc.valueOf(), true);
+        Helper.assertEqual(rc, true);
 
         await IdManager.allocatOrderIds(firstOrderId);
 
         rc = await IdManager.isOrderAllocationRequired();
-        assert.equal(rc.valueOf(), false);
+        Helper.assertEqual(rc, false);
     })
 
     it("verify allocated reused ID as expected (from start)", async() => {
@@ -153,26 +153,26 @@ contract("OrderIdManager", async(accounts) => {
         let rc = await orderIdManager.releaseOrderId(orderToRelease);
 
         rc = await orderIdManager.fetchNewOrderId();
-        rxOrderId = rc.logs[0].args.orderId.valueOf();
-        assert.equal(rxOrderId, orderToRelease);
+        rxOrderId = rc.logs[0].args.orderId;
+        Helper.assertEqual(rxOrderId, orderToRelease);
 
         await orderIdManager.releaseOrderId(orderToRelease);
         await orderIdManager.releaseOrderId(++orderToRelease);
 
         rc = await orderIdManager.fetchNewOrderId();
-        rxOrderId = rc.logs[0].args.orderId.valueOf();
-        assert.equal(rxOrderId, firstOrderId);
+        rxOrderId = rc.logs[0].args.orderId;
+        Helper.assertEqual(rxOrderId, firstOrderId);
 
         rc = await orderIdManager.fetchNewOrderId();
-        rxOrderId = rc.logs[0].args.orderId.valueOf();
-        assert.equal(rxOrderId, orderToRelease);
+        rxOrderId = rc.logs[0].args.orderId;
+        Helper.assertEqual(rxOrderId, orderToRelease);
     })
 
     it("verify can allocate all Ids without revert", async() => {
         for (let i = 0; i < howMany; i++) {
             let rc =  await orderIdManager.fetchNewOrderId();
-            rxOrderId = rc.logs[0].args.orderId.valueOf();
-            assert.equal(rxOrderId.valueOf(), (firstOrderId * 1 + i * 1));
+            rxOrderId = rc.logs[0].args.orderId;
+            Helper.assertEqual(rxOrderId, (firstOrderId * 1 + i * 1));
         }
     })
 
@@ -188,8 +188,8 @@ contract("OrderIdManager", async(accounts) => {
     it("verify when allocating ID after all are used, reverts", async() => {
         for (let i = 0; i < howMany; i++) {
             let rc =  await orderIdManager.fetchNewOrderId();
-            rxOrderId = rc.logs[0].args.orderId.valueOf();
-            assert.equal(rxOrderId.valueOf(), (firstOrderId * 1 + i * 1));
+            rxOrderId = rc.logs[0].args.orderId;
+            Helper.assertEqual(rxOrderId, (firstOrderId * 1 + i * 1));
         }
 
         try {
@@ -202,12 +202,12 @@ contract("OrderIdManager", async(accounts) => {
 
     it("verify when releasing order ID that wan't allocated -> reverts", async() => {
         let rc =  await orderIdManager.fetchNewOrderId();
-        rxOrderId = rc.logs[0].args.orderId.valueOf();
+        rxOrderId = rc.logs[0].args.orderId;
 
-        await orderIdManager.releaseOrderId(rxOrderId.valueOf());
+        await orderIdManager.releaseOrderId(rxOrderId);
 
         try {
-            await orderIdManager.releaseOrderId(rxOrderId.valueOf());
+            await orderIdManager.releaseOrderId(rxOrderId);
             assert(false, "throw was expected in line above.")
         } catch(e){
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -222,8 +222,8 @@ contract("OrderIdManager", async(accounts) => {
 
         for (let i = 0; i < howMany; i++) {
             let rc =  await orderIdManager.fetchNewOrderId();
-            rxOrderId = rc.logs[0].args.orderId.valueOf();
-            assert.equal(rxOrderId.valueOf(), (firstOrderId * 1 + i * 1));
+            rxOrderId = rc.logs[0].args.orderId;
+            Helper.assertEqual(rxOrderId, (firstOrderId * 1 + i * 1));
         }
 
         try {

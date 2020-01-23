@@ -11,6 +11,9 @@ let mainAdmin;
 let secondAdmin;
 let user;
 
+const zeroAddress = '0x0000000000000000000000000000000000000000';
+const thousandAddress = '0x0000000000000000000000000000000000001000';
+
 contract('PermissionGroups', function(accounts) {
     it("should test request admin change is rejected for non admin.", async function () {
         // global inits in first test
@@ -76,7 +79,7 @@ contract('PermissionGroups', function(accounts) {
 
     it("should test quick admin transfer rejected for address 0.", async function () {
         try {
-            await permissionsInst.transferAdminQuickly(0, {from: mainAdmin});
+            await permissionsInst.transferAdminQuickly(zeroAddress, {from: mainAdmin});
             assert(false, "throw was expected in line above.")
         }
         catch(e){
@@ -154,13 +157,13 @@ contract('PermissionGroups', function(accounts) {
         }
 
         let rate = await mockPermissionsInst.rate();
-        assert.equal(rate.valueOf(), 0, "rate should be as initialized.")
+        assert.equal(rate, 0, "rate should be as initialized.")
     });
 
     it("should test set rate success for operator.", async function () {
         await mockPermissionsInst.setRate(9, {from:accounts[2]});
         let rate = await mockPermissionsInst.rate();
-        assert.equal(rate.valueOf(), 9, "rate should be as initialized.")
+        assert.equal(rate, 9, "rate should be as initialized.")
     });
 
     it("should test stop trade is rejected for non alerter.", async function () {
@@ -263,7 +266,7 @@ contract('PermissionGroups', function(accounts) {
         let someAdmin = accounts[9];
 
         try {
-            await permissionsInst.transferAdmin(0);
+            await permissionsInst.transferAdmin(zeroAddress);
             assert(false, "throw was expected in line above.")
         }
         catch(e){
@@ -315,11 +318,13 @@ contract('PermissionGroups', function(accounts) {
         let operators = await permissionsInst.getOperators();
 
         for (let i = (operators.length); i < 50; i++) {
-            await permissionsInst.addOperator(i);
+            intLength = i.toString().length;
+            addressToAdd = zeroAddress.substring(0,zeroAddress.length - intLength) + i.toString();
+            await permissionsInst.addOperator(addressToAdd);
         }
 
         try {
-            await permissionsInst.addOperator(100);
+            await permissionsInst.addOperator(thousandAddress);
             assert(false, "throw was expected in line above.")
         }
         catch(e){
@@ -331,11 +336,13 @@ contract('PermissionGroups', function(accounts) {
         let alerters = await permissionsInst.getAlerters();
 
         for (let i = (alerters.length); i < 50; i++) {
-            await permissionsInst.addAlerter(i);
+            intLength = i.toString().length;
+            addressToAdd = zeroAddress.substring(0,zeroAddress.length - intLength) + i.toString();
+            await permissionsInst.addAlerter(addressToAdd);
         }
 
         try {
-            await permissionsInst.addAlerter(100);
+            await permissionsInst.addAlerter(thousandAddress);
             assert(false, "throw was expected in line above.")
         }
         catch(e){

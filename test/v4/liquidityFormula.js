@@ -1,10 +1,10 @@
 const Liquidity = artifacts.require("./LiquidityFormula.sol");
 
 const Helper = require("./helper.js");
-const BigNumber = require('bignumber.js');
+const BN = web3.utils.BN;
 
-const e = new BigNumber("2.7182818284590452353602874713527");
-const expectedDiffInPct = new BigNumber(1/100);
+const e = 2.7182818284590452353602874713527;
+const expectedDiffInPct = 0.01;
 
 let liquidityContract;
 
@@ -14,8 +14,8 @@ contract('FeeBurner', function(accounts) {
     });
 
     it("check checkMultOverflow", async function () {
-        const big = new BigNumber(2).pow(128);
-        const small = new BigNumber(2).pow(100);
+        const big = new BN(2).pow(new BN(128));
+        const small = new BN(2).pow(new BN(100));
 
         let overflow;
 
@@ -34,11 +34,11 @@ contract('FeeBurner', function(accounts) {
 
     it("check exp with fixed input", async function () {
         const precisionBits = 20;
-        const precision = new BigNumber(2).pow(precisionBits);
+        const precision = new BN(2).pow(new BN(precisionBits));
         const q = precision.mul(precision);
-        const p = new BigNumber("121").mul(q.div(2**3));
+        const p = new BN(121).mul(q.div(new BN(2**3)));
 
-        const expectedResult = Helper.exp(e,new BigNumber(p).div(q)).mul(precision);
+        const expectedResult = new BN(Helper.exp(e,new BN(p).div(q)) * 10**9).mul(precision).div(new BN(10**9));
         const result = await liquidityContract.exp(p,q,precision);
 
         Helper.assertAbsDiff(expectedResult,result,expectedDiffInPct);
@@ -46,11 +46,11 @@ contract('FeeBurner', function(accounts) {
 
     it("check ln with fixed input", async function () {
         const precisionBits = 20;
-        const precision = new BigNumber(2).pow(precisionBits);
+        const precision = new BN(2).pow(new BN(precisionBits));
         const q = precision.mul(precision);
-        const p = new BigNumber("1245651").mul(q.div(2**3));
+        const p = new BN(1245651).mul(q.div(new BN(2**3)));
 
-        const expectedResult = Helper.ln(new BigNumber(p).div(q)).mul(precision);
+        const expectedResult = new BN(Helper.ln(new BN(p).div(q)) * 10**9).mul(precision).div(new BN(10**9));
         const result = await liquidityContract.ln(p,q,precisionBits);
 
         Helper.assertAbsDiff(expectedResult,result,expectedDiffInPct);
@@ -58,16 +58,16 @@ contract('FeeBurner', function(accounts) {
 
     it("check P(E) with fixed input", async function () {
         const precisionBits = 30;
-        const precision = new BigNumber(2).pow(precisionBits);
-        const E = new BigNumber("45.2352");
-        const r = new BigNumber("0.02");
-        const Pmin = new BigNumber("0.0123");
+        const precision = new BN(2).pow(new BN(precisionBits));
+        const E = 45.2352;
+        const r = 0.02;
+        const Pmin = 0.0123;
 
         // P(E) = Pmin * e^(rE)
-        const expectedResult = Helper.exp(e,r.mul(E)).mul(Pmin).mul(precision);
-        const result = await liquidityContract.pE(r.mul(precision),
-                                                  Pmin.mul(precision),
-                                                  E.mul(precision),
+        const expectedResult = new BN(Helper.exp(e, r * E) * 10**9).mul(new BN(Pmin * 10**4)).mul(precision).div(new BN(10**4)).div(new BN(10**9));
+        const result = await liquidityContract.pE(new BN(r * 100).mul(precision).div(new BN(100)),
+                                                  new BN(Pmin * 10**4).mul(precision).div(new BN(10**4)),
+                                                  new BN(E * 10**4).mul(precision).div(new BN(10**4)),
                                                   precision);
 
         Helper.assertAbsDiff(expectedResult,result,expectedDiffInPct);
@@ -75,26 +75,20 @@ contract('FeeBurner', function(accounts) {
 
     it("check deltaT with fixed input", async function () {
         const precisionBits = 30;
-        const precision = new BigNumber(2).pow(precisionBits);
-        const E = new BigNumber("69.3147180559");
-        const deltaE = new BigNumber("10");
-        const r = new BigNumber("0.01");
-        const Pmin = new BigNumber("0.000025");
+        const precision = new BN(2).pow(new BN(precisionBits));
+        const E = 69.3147180559
+        const deltaE = 10
+        const r = 0.01
+        const Pmin = 0.000025
 
-
-        const pe = Helper.exp(e,r.mul(E)).mul(Pmin).mul(precision);
-        const pdelta = (Helper.exp(e,r.mul(deltaE).mul(-1)).sub(1)).mul(precision);
-
-
-        const expectedResult = pdelta.div(pe.mul(r)).mul(precision).mul(-1);
-        const result = await liquidityContract.deltaTFunc(r.mul(precision),
-                                                          Pmin.mul(precision),
-                                                          E.mul(precision),
-                                                          deltaE.mul(precision),
+        const pe = (new BN(Helper.exp(e, r * E) * Pmin * 10**9)).mul(precision).div(new BN(10**9));
+        const pdelta = (new BN((Helper.exp(e, r * deltaE * -1) - 1) * 10**9)).mul(precision).div(new BN(10**9));
+        const expectedResult = new BN(pdelta/(pe * r) * 10**9).mul(precision).div(new BN(10**9)).mul(new BN(-1));
+        const result = await liquidityContract.deltaTFunc((new BN(r * 100)).mul(precision).div(new BN(100)),
+                                                          new BN(Pmin * 10**6).mul(precision).div(new BN(10**6)),
+                                                          new BN(E * 10**9).mul(precision).div(new BN(10**9)),
+                                                          new BN(deltaE).mul(precision),
                                                           precision);
-
-        console.log(result.div(precision).toString(10));
-        console.log(expectedResult.div(precision).toString(10));
 
         Helper.assertAbsDiff(expectedResult,result,expectedDiffInPct);
 
@@ -103,25 +97,22 @@ contract('FeeBurner', function(accounts) {
 
     it("check deltaE with fixed input", async function () {
         const precisionBits = 30;
-        const precision = new BigNumber(2).pow(precisionBits);
-        const E = new BigNumber("69.3147180559");
-        const deltaT = new BigNumber("10.123").mul(10000);
-        const r = new BigNumber("0.01");
-        const Pmin = new BigNumber("0.000025");
+        const precision = new BN(2).pow(new BN(precisionBits));
+        const E = 69.3147180559;
+        const deltaT = 10.123 * 10000;
+        const r = 0.01;
+        const Pmin = 0.000025;
 
+        const pe = Helper.exp(e, r * E) * Pmin;
+        const lnPart = Helper.ln(r * deltaT * pe + 1);
+        const expectedResult = (new BN(lnPart / r * 10**9)).mul(precision).div(new BN(10**9));
 
-        const pe = Helper.exp(e,r.mul(E)).mul(Pmin);
-        const lnPart = Helper.ln((r.mul(deltaT).mul(pe)).add(1));
-        const expectedResult = (lnPart.div(r)).mul(precision);
-        const result = await liquidityContract.deltaEFunc(r.mul(precision),
-                                                          Pmin.mul(precision),
-                                                          E.mul(precision),
-                                                          deltaT.mul(precision),
+        const result = await liquidityContract.deltaEFunc(new BN(r * 100).mul(precision).div(new BN(100)),
+                                                          new BN(Pmin * 10**6).mul(precision).div(new BN(10**6)),
+                                                          new BN(E * 10**9).mul(precision).div(new BN(10**9)),
+                                                          new BN(deltaT).mul(precision),
                                                           precision,
                                                           precisionBits);
-
-        console.log(result.div(precision).toString(10));
-        console.log(expectedResult.div(precision).toString(10));
 
         Helper.assertAbsDiff(expectedResult,result,expectedDiffInPct);
 
