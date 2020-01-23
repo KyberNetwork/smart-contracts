@@ -29,6 +29,11 @@ contract MockBancorNetwork is IBancorNetwork, Utils {
         rateBntToETh = _rateBntToEth;
     }
 
+    function setNewEthBntPath(IERC20[] memory _ethToBntPath, IERC20[] memory _bntToEthPath) public {
+        ethToBntPath = _ethToBntPath;
+        bntToEthPath = _bntToEthPath;
+    }
+
     function getReturnByPath(IERC20[] calldata _path, uint256 _amount) external view returns (uint256, uint256) {
         require(_amount > 0);
         // verify if path is ethToBntPath

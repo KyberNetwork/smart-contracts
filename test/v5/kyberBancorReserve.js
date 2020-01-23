@@ -9,7 +9,7 @@ const BN = web3.utils.BN;
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
 const precision = new BN(10).pow(new BN(18));
-const feeBps = new BN(0);
+const feeBps = new BN(1);
 
 const initEthBalance = new BN(50).mul(new BN(10).pow(new BN(18)));
 const initBntBalance = new BN(1000000).mul(new BN(10).pow(new BN(18)));
@@ -58,7 +58,6 @@ contract('KyberBancorNetwork', function(accounts) {
             bancorBntToken.address,
             admin
         );
-        reserve.setNewEthBntPath(ethToBntPath, bntToEthPath, {from: admin});
 
         await reserve.addAlerter(alerter);
         await reserve.addOperator(operator);
@@ -71,6 +70,26 @@ contract('KyberBancorNetwork', function(accounts) {
         await bancorNetwork.setExchangeRate(ethToBntRate, bntToEthRate);
     });
 
+    it("Should test correct data set after init", async function() {
+        let curNetwork = await reserve.kyberNetwork();
+        assert.equal(network, curNetwork, "network is not set correctly");
+
+        let curBancorContract = await reserve.bancorNetwork();
+        assert.equal(bancorNetwork.address, curBancorContract, "bancor network is not set correctly");
+
+        let curBancorToken = await reserve.bancorToken();
+        assert.equal(bancorBntToken.address, curBancorToken, "bancor token is not set correctly");
+
+        let curAdmin = await reserve.admin();
+        assert.equal(curAdmin, admin, "admin is not set correctly");
+
+        let curFeeBps = await reserve.feeBps();
+        Helper.assertEqual(curFeeBps, feeBps, "fee bps is not set correctly");
+
+        let curTradeEnable = await reserve.tradeEnabled();
+        Helper.assertEqual(curTradeEnable, true, "tradeEnabled is not set correctly");
+    });
+
     it("Test transfer tokens to bancor network, reserve and user", async function() {
         // transfer weth and dai to contracts
         await bancorBntToken.transfer(bancorNetwork.address, initBntBalance);
@@ -80,6 +99,8 @@ contract('KyberBancorNetwork', function(accounts) {
         await Helper.sendEtherWithPromise(user, bancorNetwork.address, initEthBalance);
         balance = await Helper.getBalancePromise(bancorNetwork.address);
         Helper.assertEqual(balance, initEthBalance, "init balance eth is not correct");
+
+        await reserve.setNewEthBntPath(ethToBntPath, bntToEthPath, {from: admin});
     });
 
     it("Should test getConversionRate returns 0 when token is not bnt", async function() {
@@ -92,10 +113,10 @@ contract('KyberBancorNetwork', function(accounts) {
         Helper.assertEqual(result, 0, "rate should be 0 as token is not bnt");
 
         result = await reserve.getConversionRate(ethAddress, bancorBntToken.address, precision, 0);
-        Helper.assertEqual(result, ethToBntRate, "should have eth -> bnt rate as token is bnt");
+        Helper.assertEqual(result, Helper.addBps(ethToBntRate, -feeBps), "should have eth -> bnt rate as token is bnt");
 
         result = await reserve.getConversionRate(bancorBntToken.address, ethAddress, precision.mul(new BN(20)), 0);
-        Helper.assertEqual(result, bntToEthRate, "should have bnt -> eth as token is bnt");
+        Helper.assertEqual(result, Helper.addBps(bntToEthRate, -feeBps), "should have bnt -> eth as token is bnt");
     });
 
     it("Should test getConversionRate returns 0 when trade not enable", async function() {
@@ -110,7 +131,7 @@ contract('KyberBancorNetwork', function(accounts) {
 
         await reserve.enableTrade({from: admin});
         result = await reserve.getConversionRate(ethAddress, bancorBntToken.address, precision, 0);
-        assert.notEqual(result, 0, "should have rate as trade is enable");
+        Helper.assertGreater(result, 0, "should have rate as trade is enable");
     });
 
     it("Should test getConversionRate returns 0 when srcQty is 0", async function() {
@@ -129,10 +150,10 @@ contract('KyberBancorNetwork', function(accounts) {
         let result;
 
         result = await reserve.getConversionRate(ethAddress, bancorBntToken.address, amountETH, 0);
-        Helper.assertEqual(result, ethToBntRate, "should return correct eth to bnt rate");
+        Helper.assertEqual(result, Helper.addBps(ethToBntRate, -feeBps), "should return correct eth to bnt rate");
 
         result = await reserve.getConversionRate(bancorBntToken.address, ethAddress, amountBNT, 0);
-        Helper.assertEqual(result, bntToEthRate, "should return correct bnt to eth rate");
+        Helper.assertEqual(result, Helper.addBps(bntToEthRate, -feeBps), "should return correct bnt to eth rate");
 
         let newEthToBntRate = new BN(10).pow(new BN(18)).mul(new BN(100));
         let newBntToEthRate = new BN(10).pow(new BN(18)).div(new BN(100));
@@ -140,17 +161,39 @@ contract('KyberBancorNetwork', function(accounts) {
         await bancorNetwork.setExchangeRate(newEthToBntRate, newBntToEthRate);
 
         result = await reserve.getConversionRate(ethAddress, bancorBntToken.address, amountETH, 0);
-        Helper.assertEqual(result, newEthToBntRate, "should return correct eth to bnt rate");
+        Helper.assertEqual(result, Helper.addBps(newEthToBntRate, -feeBps), "should return correct eth to bnt rate");
 
         result = await reserve.getConversionRate(bancorBntToken.address, ethAddress, amountBNT, 0);
-        Helper.assertEqual(result, newBntToEthRate, "should return correct bnt to eth rate");
+        Helper.assertEqual(result, Helper.addBps(newBntToEthRate, -feeBps), "should return correct bnt to eth rate");
+    });
+
+    it("Should test getConversionRate returns correct rate after setting new fee", async function() {
+        let amountETH = new BN(10).pow(new BN(18));
+        let amountBNT = new BN(10).pow(new BN(18));
+
+        await bancorNetwork.setExchangeRate(ethToBntRate, bntToEthRate);
+        let result;
+
+        result = await reserve.getConversionRate(ethAddress, bancorBntToken.address, amountETH, 0);
+        Helper.assertEqual(result, Helper.addBps(ethToBntRate, -feeBps), "should return correct eth to bnt rate");
+
+        result = await reserve.getConversionRate(bancorBntToken.address, ethAddress, amountBNT, 0);
+        Helper.assertEqual(result, Helper.addBps(bntToEthRate, -feeBps), "should return correct bnt to eth rate");
+
+        let newFeeBps = 10;
+        await reserve.setFeeBps(newFeeBps, {from: admin});
+        result = await reserve.getConversionRate(ethAddress, bancorBntToken.address, amountETH, 0);
+        Helper.assertEqual(result, Helper.addBps(ethToBntRate, -newFeeBps), "should return correct eth to bnt rate");
+
+        result = await reserve.getConversionRate(bancorBntToken.address, ethAddress, amountBNT, 0);
+        Helper.assertEqual(result, Helper.addBps(bntToEthRate, -newFeeBps), "should return correct bnt to eth rate");
     });
 
     it("Should test getConversionRate returns 0 when path is not correct", async function() {
         let testNewToken = await TestToken.new("Test token", "TST", tokenDecimal);
         let newEthToBnt = [bancorEthToken.address, testNewToken.address, bancorBntToken.address];
         let newBntToEth = [bancorBntToken.address, testNewToken.address, bancorEthToken.address];
-        let testBancorNetwork = await MockBancorNetwork.new(testNewToken.address, newEthToBnt, newBntToEth);
+        let testBancorNetwork = await MockBancorNetwork.new(bancorBntToken.address, newEthToBnt, newBntToEth);
         let testReserve = await KyberBancorReserve.new(
             testBancorNetwork.address,
             network,
@@ -159,29 +202,28 @@ contract('KyberBancorNetwork', function(accounts) {
             bancorBntToken.address,
             admin
         );
-        testReserve.setNewEthBntPath(ethToBntPath, bntToEthPath, {from: admin});
         await testBancorNetwork.setExchangeRate(ethToBntRate, bntToEthRate);
         await Helper.sendEtherWithPromise(user, testBancorNetwork.address, initEthBalance);
         await bancorBntToken.transfer(testBancorNetwork.address, initBntBalance);
         let amount = new BN(10).pow(new BN(tokenDecimal));
+        await testReserve.setNewEthBntPath(newEthToBnt, newBntToEth, {from: admin});
+
         let rate = await testReserve.getConversionRate(ethAddress, bancorBntToken.address, amount, 0);
+        Helper.assertGreater(rate, 0, "should have rate for correct setup");
+        rate = await testReserve.getConversionRate(bancorBntToken.address, ethAddress, amount, 0);
+        Helper.assertGreater(rate, 0, "should have rate for correct setup");
+
+        await testBancorNetwork.setNewEthBntPath(ethToBntPath, bntToEthPath);
+
+        rate = await testReserve.getConversionRate(ethAddress, bancorBntToken.address, amount, 0);
         Helper.assertEqual(rate, 0, "rate should be 0 as path is incorrect");
         rate = await testReserve.getConversionRate(bancorBntToken.address, ethAddress, amount, 0);
         Helper.assertEqual(rate, 0, "rate should be 0 as path is incorrect");
 
         newEthToBnt = [bancorEthToken.address, bancorBntToken.address];
         newBntToEth = [bancorBntToken.address, bancorEthToken.address];
-        testReserve.setNewEthBntPath(newEthToBnt, newBntToEth, {from: admin});
+        await testBancorNetwork.setNewEthBntPath(newEthToBnt, newBntToEth);
 
-        newEthToBnt = [bancorEthToken.address, bancorBntToken.address];
-        newBntToEth = [bancorBntToken.address, bancorEthToken.address];
-        testBancorNetwork = await MockBancorNetwork.new(bancorEthToken.address, newEthToBnt, newBntToEth);
-        testReserve.setNewEthBntPath(ethToBntPath, bntToEthPath, {from: admin});
-        await testBancorNetwork.setExchangeRate(ethToBntRate, bntToEthRate);
-        await testBancorNetwork.setExchangeRate(ethToBntRate, bntToEthRate);
-        await Helper.sendEtherWithPromise(user, testBancorNetwork.address, initEthBalance);
-        await bancorBntToken.transfer(testBancorNetwork.address, initBntBalance);
-        amount = new BN(10).pow(new BN(tokenDecimal));
         rate = await testReserve.getConversionRate(ethAddress, bancorBntToken.address, amount, 0);
         Helper.assertEqual(rate, 0, "rate should be 0 as path is incorrect");
         rate = await testReserve.getConversionRate(bancorBntToken.address, ethAddress, amount, 0);
@@ -286,6 +328,27 @@ contract('KyberBancorNetwork', function(accounts) {
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
+        await reserve.setNewEthBntPath(ethToBntPath, bntToEthPath, {from: admin});
+    });
+
+    it("Should test can not set new paths when rate returns 0", async function() {
+        await bancorNetwork.setExchangeRate(0, bntToEthRate);
+        try {
+            await reserve.setNewEthBntPath(ethToBntPath, bntToEthPath, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        await bancorNetwork.setExchangeRate(ethToBntRate, 0);
+        try {
+            await reserve.setNewEthBntPath(ethToBntPath, bntToEthPath, {from: operator});
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        await bancorNetwork.setExchangeRate(ethToBntRate, bntToEthRate);
         await reserve.setNewEthBntPath(ethToBntPath, bntToEthPath, {from: admin});
     });
 

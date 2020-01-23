@@ -15,10 +15,10 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
     bool public tradeEnabled;
     uint public feeBps;
 
-    IBancorNetwork public bancorNetwork; // 0x3ab6564d5c214bc416ee8421e05219960504eead
+    IBancorNetwork public bancorNetwork;
 
-    IERC20 public bancorEth; // 0xc0829421C1d260BD3cB3E0F06cfE2D52db2cE315
-    IERC20 public bancorToken; // 0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C
+    IERC20 public bancorEth;
+    IERC20 public bancorToken;
     IERC20[] public ethToBntPath;
     IERC20[] public bntToEthPath;
 
@@ -155,6 +155,16 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
     function setNewEthBntPath(IERC20[] memory _ethToBntPath, IERC20[] memory _bntToEthPath) public onlyAdmin {
         require(_ethToBntPath.length != 0, "setNewEthBntPath: path should have some elements");
         require(_bntToEthPath.length != 0, "setNewEthBntPath: path should have some elements");
+        if (address(bancorNetwork) != address(0)) {
+            // verify if path returns value for rate
+            // both ETH + BNT has same decimals of 18, using 1 ETH/BNT to get rate
+            uint amount = PRECISION;
+            uint destQty;
+            (destQty, ) = bancorNetwork.getReturnByPath(_ethToBntPath, amount);
+            require(destQty > 0, "setNewEthBntPath: no rate from eth to bnt with this path");
+            (destQty, ) = bancorNetwork.getReturnByPath(_bntToEthPath, amount);
+            require(destQty > 0, "setNewEthBntPath: no rate from bnt to eth with this path");
+        }
         ethToBntPath = _ethToBntPath;
         bntToEthPath = _bntToEthPath;
         emit NewPathsSet(_ethToBntPath, _bntToEthPath);
