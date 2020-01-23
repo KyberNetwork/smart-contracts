@@ -986,7 +986,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         returns(bool)
     {
         require(isEnabled, "network disabled");
-        require(kyberProxyContracts[msg.sender], "msg.sender is not proxy");
+        require(kyberProxyContracts[msg.sender], "msg.sender not proxy");
         require(tx.gasprice <= maxGasPriceValue, "max gas price exceeded");
         require(srcAmount <= MAX_QTY, "srcAmt > MAX_QTY");
         require(srcAmount != 0, "0 srcAmt");
