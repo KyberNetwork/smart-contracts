@@ -42,9 +42,17 @@ contract('FeeHandler', function(accounts) {
     it("Test encode function", async function() {
         let expectedEncodedData = rewardInBPS.shln(BITS_PER_PARAM).add(rebateInBPS).shln(BITS_PER_PARAM).add(epoch).shln(BITS_PER_PARAM).add(expiryBlockNumber);
         let actualEncodedData = await feeHandler.brrAndEpochData();
-        Helper.assertEqual(expectedEncodedData, actualEncodedData, "Actual encoded data is not correct");
+        Helper.assertEqual(actualEncodedData, expectedEncodedData, "Actual encoded data is not correct");
     });
     // Test decode
+    it("Test decode function", async function() {
+        let results = await feeHandler.decodeData();
+        console.log(results);
+        Helper.assertEqual(results['0'], rewardInBPS, "Actual decoded rewardInBPS is not correct");
+        Helper.assertEqual(results['1'], rebateInBPS, "Actual decoded rebateInBPS is not correct");
+        Helper.assertEqual(results['2'], epoch, "Actual decoded epoch is not correct");
+        Helper.assertEqual(results['3'], expiryBlockNumber, "Actual decoded expiryBlockNumber is not correct");
+    });
 
     // Test handleFees
     // Test claimStakerReward

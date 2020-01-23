@@ -196,10 +196,10 @@ contract FeeHandler is IFeeHandler, Utils {
     }
 
     function decodeData() public view returns(uint, uint, uint, uint) {
-        uint expiryBlock = brrAndEpochData & (1 << BITS_PER_PARAM) - 1;
+        uint expiryBlockNumber = brrAndEpochData & (1 << BITS_PER_PARAM) - 1;
         uint epoch = (brrAndEpochData / (1 << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
         uint rebateInBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
         uint rewardInBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        return (rewardInBPS, rebateInBPS, epoch, expiryBlock);
+        return (rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
     }
 }
