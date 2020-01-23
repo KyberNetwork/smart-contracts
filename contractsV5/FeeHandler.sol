@@ -5,11 +5,11 @@ import "./IFeeHandler.sol";
 import "./PermissionGroupsV5.sol";
 import "./IKyberNetworkProxy.sol";
 import "./UtilsV5.sol";
-import "./IERC20.sol";
 import "./IBurnableToken.sol";
+import "./IERC20.sol";
 
 contract FeeHandler is IFeeHandler, Utils {
-    
+
     uint constant ETH_TO_BURN = 10**19;
     uint constant BITS_PER_PARAM = 64;
 
@@ -28,15 +28,15 @@ contract FeeHandler is IFeeHandler, Utils {
 
     constructor(
         IKyberDAO _kyberDAOContract,
-        KyberNetworkProxy _kyberNetworkProxyContract,
+        IKyberNetworkProxy _kyberNetworkProxyContract,
         address _kyberNetworkContract,
         IBurnableToken _knc,
         uint _burnBlockInterval
     ) public
     {
-        require(_kyberDAOContract != address(0), "The KyberDAO contract cannot be the null address");
-        require(_kyberNetworkProxyContract != address(0), "The KyberNetworkProxy contract cannot be the null address");
-        require(_kyberNetworkContract != address(0), "The KyberNetwork contract cannot be the null address");
+        require(address(_kyberDAOContract) != address(0), "The KyberDAO contract cannot be the null address");
+        require(address(_kyberNetworkProxyContract) != address(0), "The KyberNetworkProxy contract cannot be the null address");
+        require(address(_kyberNetworkContract) != address(0), "The KyberNetwork contract cannot be the null address");
         require(address(_knc) != address(0), "The KNC token contract cannot be the null address");
 
         kyberDAOContract = _kyberDAOContract;
@@ -45,6 +45,8 @@ contract FeeHandler is IFeeHandler, Utils {
         knc = _knc;
         burnBlockInterval = _burnBlockInterval;
         lastBurnBlock = block.number;
+        (, uint rewardInBPS, uint rebateInBPS, uint epoch, uint expiryBlock) = kyberDAOContract.getLatestBRRData();
+        brrAndEpochData = encodeData(rewardInBPS, rebateInBPS, epoch, expiryBlock);
     }
 
     modifier onlyDAO {
@@ -57,7 +59,7 @@ contract FeeHandler is IFeeHandler, Utils {
 
     modifier onlyKyberNetwork {
         require(
-            msg.sender == address(kyberNetworkProxyContract.kyberNetworkContract()),
+            msg.sender == address(kyberNetworkContract),
             "Only the internal KyberNetwork contract can call this function."
         );
         _;
@@ -163,14 +165,20 @@ contract FeeHandler is IFeeHandler, Utils {
 
         // Get the slippage rate
         // If srcQty is too big, get expected rate will return 0 so maybe we should limit how much can be bought at one time.
-        uint expectedRate = kyberNetworkProxyContract.getExpectedRateAfterCustomFee(IERC20(ETH_TOKEN_ADDRESS), IERC20(knc), srcQty, 0, "");
+        uint expectedRate = kyberNetworkProxyContract.getExpectedRateAfterCustomFee(
+            IERC20(ETH_TOKEN_ADDRESS),
+            IERC20(address(knc)),
+            srcQty,
+            0,
+            ""
+        );
 
         // Buy some KNC and burn
         uint destQty = kyberNetworkProxyContract.tradeWithHintAndPlatformFee(
             ETH_TOKEN_ADDRESS,
             srcQty,
-            IERC20(knc),
-            address(this),
+            IERC20(address(knc)),
+            address(uint160(address(this))), // Convert this address into address payable
             MAX_QTY,
             expectedRate * 97 / 100,
             address(0), // platform wallet

@@ -1,41 +1,39 @@
 pragma solidity 0.5.11;
 
 import "../IKyberDAO.sol";
+import "../UtilsV5.sol";
 
-contract MockDAO is IKyberDAO {
+contract MockDAO is IKyberDAO, Utils {
 
-    uint public feeInBPS;
-    uint public expiryBlockNumber;
-    uint public burnInBPS;
     uint public rewardInBPS;
     uint public rebateInBPS;
+    uint public epoch;
+    uint public expiryBlockNumber;
 
-    constructor(uint _feeInBPS, uint _expiryBlockNumber, uint _burnInBPS, uint _rewardInBPS, uint _rebateInBPS) public {
-        feeInBPS = _feeInBPS;
-        expiryBlockNumber = _expiryBlockNumber;
-        burnInBPS = _burnInBPS;
+    constructor(uint _rewardInBPS, uint _rebateInBPS, uint _epoch, uint _expiryBlockNumber) public {
         rewardInBPS = _rewardInBPS;
         rebateInBPS = _rebateInBPS;
+        epoch = _epoch;
+        expiryBlockNumber = _expiryBlockNumber;
     }
 
-    function setMockValues(uint _feeInBPS, uint _expiryBlockNumber, uint _burnInBPS, uint _rewardInBPS, uint _rebateInBPS) public {
-        feeInBPS = _feeInBPS;
-        expiryBlockNumber = _expiryBlockNumber;
-        burnInBPS = _burnInBPS;
+    function setMockValues(uint _rewardInBPS, uint _rebateInBPS, uint _epoch, uint _expiryBlockNumber) public {
         rewardInBPS = _rewardInBPS;
         rebateInBPS = _rebateInBPS;
+        epoch = _epoch;
+        expiryBlockNumber = _expiryBlockNumber;
     }
 
-    function getLatestNetworkFeeData() external view returns(uint feeInBps, uint expiryBlockNumber) {
-        return (feeInBps, expiryBlockNumber);
+    function getLatestNetworkFeeData() external view returns(uint, uint) {
+        return (1, expiryBlockNumber);
     }
-    function getLatestBRRData() external view returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber) {
-        return (burnInBps, rewardInBps, rebateInBps, epoch, expiryBlockNumber);
+    function getLatestBRRData() external view returns(uint, uint, uint, uint, uint) {
+        return (BPS - rewardInBPS - rebateInBPS, rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
     }
-    function claimStakerReward(uint epoch) external returns(uint) {
+    function claimStakerReward(uint _epoch) external returns(uint) {
         return 1;
     }
-    function claimReserveRebate(uint epoch) external returns(uint) {
+    function claimReserveRebate(uint _epoch) external returns(uint) {
         return 1;
     }
 }
