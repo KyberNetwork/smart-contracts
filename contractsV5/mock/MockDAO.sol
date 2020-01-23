@@ -38,8 +38,4 @@ contract MockDAO is IKyberDAO {
     function claimReserveRebate(uint epoch) external returns(uint) {
         return 1;
     }
-    function burnKNC() external returns(uint) {
-        return 1;
-    }
-
 }

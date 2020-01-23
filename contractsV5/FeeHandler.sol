@@ -9,38 +9,35 @@ import "./IERC20.sol";
 import "./IBurnableToken.sol";
 
 contract FeeHandler is IFeeHandler, Utils {
-
-    IKyberDAO public kyberDAOContract;
-    // if I use the interface, I am not able to get the KyberNetwork internal contract from the proxy..
-    IKyberNetworkProxy public kyberNetworkProxyContract;
-    address public kyberNetworkContract;
-    address public knc;
-    uint public burnBlockInterval;
-    uint public lastBurnBlock;
+    
     uint constant ETH_TO_BURN = 10**19;
-
-    uint public brrAndEpochData;
     uint constant BITS_PER_PARAM = 64;
 
+    IKyberDAO public kyberDAOContract;
+    IKyberNetworkProxy public kyberNetworkProxyContract;
+    address public kyberNetworkContract;
+    IBurnableToken public knc;
+    uint public burnBlockInterval;
+    uint public lastBurnBlock;
+    uint public brrAndEpochData;
     // Todo: combine totalRebates and totalRewards into one variable
     uint public totalRebates;
     mapping(address => uint) public totalRebatesPerRebateWallet;
     uint public totalRewards;
     mapping(uint => uint) public totalRewardsPerEpoch;
 
-
     constructor(
         IKyberDAO _kyberDAOContract,
         KyberNetworkProxy _kyberNetworkProxyContract,
         address _kyberNetworkContract,
-        address _knc,
+        IBurnableToken _knc,
         uint _burnBlockInterval
     ) public
     {
         require(_kyberDAOContract != address(0), "The KyberDAO contract cannot be the null address");
         require(_kyberNetworkProxyContract != address(0), "The KyberNetworkProxy contract cannot be the null address");
         require(_kyberNetworkContract != address(0), "The KyberNetwork contract cannot be the null address");
-        require(_knc != address(0), "The KNC token contract cannot be the null address");
+        require(address(_knc) != address(0), "The KNC token contract cannot be the null address");
 
         kyberDAOContract = _kyberDAOContract;
         kyberNetworkProxyContract = _kyberNetworkProxyContract;
@@ -69,9 +66,9 @@ contract FeeHandler is IFeeHandler, Utils {
     event AccumulateReserveRebate(
         address[] eligibleWallets,
         uint[] rebatePercentages,
-        uint rebateAmtWei,
-        uint rewardAmtWei,
-        uint burnAmtWei
+        uint totalRebateAmtWei,
+        uint totalRewardAmtWei,
+        uint totalBurnAmtWei
     );
 
     // Todo: future optimisation to accumulate rebates for 2 rebate wallet
@@ -182,7 +179,7 @@ contract FeeHandler is IFeeHandler, Utils {
         );
 
         // Burn KNC
-        require(IBurnableToken(knc).burn(destQty), "KNC burn failed");
+        require(knc.burn(destQty), "KNC burn failed");
     }
 
 

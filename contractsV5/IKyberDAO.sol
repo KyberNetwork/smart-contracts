@@ -5,5 +5,4 @@ interface IKyberDAO {
     function getLatestBRRData() external view returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber);
     function claimStakerReward(uint epoch) external returns(uint);
     function claimReserveRebate(uint epoch) external returns(uint);
-    function burnKNC() external returns(uint);
 }
