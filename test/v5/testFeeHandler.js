@@ -38,6 +38,13 @@ contract('FeeHandler', function(accounts) {
         knc = await Token.new("KyberNetworkCrystal", "KNC", 18);
         feeHandler = await FeeHandler.new(mockDAO.address, kyberNetworkProxy, kyberNetwork, knc.address, 5);
     });
+    
+    beforeEach("Update epoch and expiry block before each test", async() => {
+        // epoch and expiry block will probably update as test proceeds.
+        // so before each could update it to current block + x
+        // or something like this.
+    });
+
     // Test encode
     it("Test encode function", async function() {
         let expectedEncodedData = rewardInBPS.shln(BITS_PER_PARAM).add(rebateInBPS).shln(BITS_PER_PARAM).add(epoch).shln(BITS_PER_PARAM).add(expiryBlockNumber);

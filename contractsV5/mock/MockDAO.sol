@@ -17,11 +17,14 @@ contract MockDAO is IKyberDAO, Utils {
         expiryBlockNumber = _expiryBlockNumber;
     }
 
-    function setMockValues(uint _rewardInBPS, uint _rebateInBPS, uint _epoch, uint _expiryBlockNumber) public {
-        rewardInBPS = _rewardInBPS;
-        rebateInBPS = _rebateInBPS;
+    function setMockEpochAndExpiryBlock(uint _epoch, uint _expiryBlockNumber) public {
         epoch = _epoch;
         expiryBlockNumber = _expiryBlockNumber;
+    }
+
+    function setMockBRR(uint _rewardInBPS, uint _rebateInBPS) public {
+        rewardInBPS = _rewardInBPS;
+        rebateInBPS = _rebateInBPS;
     }
 
     function getLatestNetworkFeeData() external view returns(uint, uint) {
@@ -30,10 +33,7 @@ contract MockDAO is IKyberDAO, Utils {
     function getLatestBRRData() external view returns(uint, uint, uint, uint, uint) {
         return (BPS - rewardInBPS - rebateInBPS, rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
     }
-    function claimStakerReward(uint _epoch) external returns(uint) {
-        return 1;
-    }
-    function claimReserveRebate(uint _epoch) external returns(uint) {
+    function claimStakerReward(address staker, uint percentageInPrecision, uint epoch) external returns(uint) {
         return 1;
     }
 }
