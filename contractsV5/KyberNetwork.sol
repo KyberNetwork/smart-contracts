@@ -101,13 +101,13 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
     function addReserve(address reserve, uint reserveId, bool isFeePaying, address wallet) public onlyOperator returns(bool) {
-        require(reserveAddressToId[reserve] == uint(0), "reserve has an existing id");
-        require(reserveId != 0, "reserve id cannot be zero");
+        require(reserveAddressToId[reserve] == uint(0), "reserve has existing id");
+        require(reserveId != 0, "reserveId = 0");
 
         if (reserveIdToAddresses[reserveId].length == 0) {
             reserveIdToAddresses[reserveId].push(reserve);
         } else {
-            require(reserveIdToAddresses[reserveId][0] == address(0), "reserveId points to existing reserve");
+            require(reserveIdToAddresses[reserveId][0] == address(0), "reserveId already taken");
             reserveIdToAddresses[reserveId][0] = reserve;
         }
 
@@ -131,7 +131,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @param startIndex to search in reserve array.
     function removeReserveWithIndex(IKyberReserve reserve, uint startIndex) public onlyOperator returns(bool) {
 
-        require(reserveAddressToId[address(reserve)] != uint(0), "corresponding reserve id is zero");
+        require(reserveAddressToId[address(reserve)] != uint(0), "reserve -> 0 reserveId");
         
         uint reserveIndex = 2 ** 255;
         uint reserveId = reserveAddressToId[address(reserve)];
@@ -172,7 +172,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         onlyOperator
         returns(bool)
     {
-        require(reserveAddressToId[reserve] != uint(0));
+        require(reserveAddressToId[reserve] != uint(0), "reserve -> 0 reserveId");
 
         if (ethToToken) {
             listPairs(IKyberReserve(reserve), token, false, add);
@@ -184,9 +184,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             listPairs(IKyberReserve(reserve), token, true, add);
 
             if (add) {
-                require(token.approve(reserve, 2**255)); // approve infinity
+                require(token.approve(reserve, 2**255), "approve max token amt failed"); // approve infinity
             } else {
-                require(token.approve(reserve, 0));
+                require(token.approve(reserve, 0), "approve 0 token amt failed");
             }
 
             emit ListReservePairs(reserve, token, ETH_TOKEN_ADDRESS, add);
@@ -200,7 +200,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     event FeeHandlerContractSet(IFeeHandler newContract, IFeeHandler currentContract);
 
     function setFeeHandler(IFeeHandler feeHandler) public onlyAdmin {
-        require(feeHandler != IFeeHandler(0));
+        require(feeHandler != IFeeHandler(0), "0 feeHandler address");
 
         emit FeeHandlerContractSet(feeHandler, feeHandlerContract);
         feeHandlerContract = feeHandler;
@@ -215,7 +215,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         public
         onlyAdmin
     {
-        require(_negligibleRateDiffBps <= BPS); // at most 100%
+        require(_negligibleRateDiffBps <= BPS, "rateDiffBps > BPS"); // at most 100%
 
         maxGasPriceValue = _maxGasPrice;
         negligibleRateDiffBps = _negligibleRateDiffBps;
@@ -226,8 +226,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     function setEnable(bool _enable) public onlyAdmin {
         if (_enable) {
-            require(feeHandlerContract != IFeeHandler(0));
-            require(kyberProxyArray.length > 0);
+            require(feeHandlerContract != IFeeHandler(0), "no feeHandler set");
+            require(kyberProxyArray.length > 0, "no proxy set");
         }
         isEnabled = _enable;
 
@@ -242,8 +242,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     event KyberProxyRemoved(address proxy);
     
     function addKyberProxy(address networkProxy) public onlyAdmin {
-        require(networkProxy != address(0));
-        require(!kyberProxyContracts[networkProxy]);
+        require(networkProxy != address(0), "0 networkProxy address");
+        require(!kyberProxyContracts[networkProxy], "networkProxy exists");
         
         kyberProxyArray.push(networkProxy);
         
@@ -252,7 +252,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     }
     
     function removeKyberProxy(address networkProxy) public onlyAdmin {
-        require(kyberProxyContracts[networkProxy]);
+        require(kyberProxyContracts[networkProxy], "networkProxy not found");
         
         uint proxyIndex = 2 ** 255;
         
@@ -682,7 +682,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             uint ethToTokenNetworkFeeWei = tradeData.tradeWei * tradeData.takerFeeBps / BPS;
             // search best reserve and its corresponding dest amount
             // Have to search with tradeWei minus fees, because that is the actual src amount for ETH -> token trade
-            require(actualTradeWei >= (ethToTokenNetworkFeeWei), "ETH->token network fee exceeds remaining trade wei amt");
+            require(actualTradeWei >= (ethToTokenNetworkFeeWei), "actualTradeWei < E2T network fee");
             (reserve, rate, isFeePaying) = searchBestRate(
                 tradeData.ethToToken.addresses,
                 ETH_TOKEN_ADDRESS,
@@ -724,7 +724,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         (bool success, ) = tradeData.platformFeeWei != 0 ?
             tradeData.input.platformWallet.call.value(tradeData.platformFeeWei)("") :
             (true, bytes(""));
-        require(success, "Transfer platform fee to taker platform failed");
+        require(success, "Fail fee trf (platformWallet)");
         emit HandlePlatformFee(tradeData.input.platformWallet, tradeData.platformFeeWei);
 
         //no need to handle fees if no fee paying reserves
@@ -741,7 +741,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // Send total fee amount to fee handler with reserve data.
         require(
             feeHandlerContract.handleFees.value(tradeData.networkFeeWei)(eligibleWallets, rebatePercentages),
-            "Transfer network fee to FeeHandler failed"
+            "Fail fee trf (FeeHandler)"
         );
         return true;
     }
@@ -831,7 +831,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             actualSrcAmount = tradeData.tradeWei;
         }
     
-        require(actualSrcAmount <= tradeData.input.srcAmount);
+        require(actualSrcAmount <= tradeData.input.srcAmount, "actualSrcAmt > given srcAmt");
     }
 
     event KyberTrade(address indexed trader, IERC20 src, IERC20 dest, uint srcAmount, uint dstAmount,
@@ -852,9 +852,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // amounts excluding fees
         calcRatesAndAmounts(tradeData.input.src, tradeData.input.dest, tradeData.input.srcAmount, tradeData);
 
-        require(tradeData.rateWithNetworkFee > 0);
-        require(tradeData.rateWithNetworkFee < MAX_RATE);
-        require(tradeData.rateWithNetworkFee >= tradeData.input.minConversionRate);
+        require(tradeData.rateWithNetworkFee > 0, "0 rate");
+        require(tradeData.rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
+        require(tradeData.rateWithNetworkFee >= tradeData.input.minConversionRate, "rate < minConvRate");
 
         uint actualSrcAmount;
 
@@ -985,20 +985,20 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         view
         returns(bool)
     {
-        require(isEnabled);
-        require(kyberProxyContracts[msg.sender]);
-        require(tx.gasprice <= maxGasPriceValue);
-        require(srcAmount <= MAX_QTY);
-        require(srcAmount != 0);
-        require(destAddress != address(0));
-        require(src != dest);
+        require(isEnabled, "network disabled");
+        require(kyberProxyContracts[msg.sender], "msg.sender is not proxy");
+        require(tx.gasprice <= maxGasPriceValue, "max gas price exceeded");
+        require(srcAmount <= MAX_QTY, "srcAmt > MAX_QTY");
+        require(srcAmount != 0, "0 srcAmt");
+        require(destAddress != address(0), "0 destAddress");
+        require(src != dest, "src == dest");
 
         if (src == ETH_TOKEN_ADDRESS) {
-            require(msg.value == srcAmount);
+            require(msg.value == srcAmount, "not enough ETH sent with trade");
         } else {
-            require(msg.value == 0);
+            require(msg.value == 0, "ETH sent for token trade");
             //funds should have been moved to this contract already.
-            require(src.balanceOf(address(this)) >= srcAmount);
+            require(src.balanceOf(address(this)) >= srcAmount, "srcToken not sent here");
         }
 
         return true;
