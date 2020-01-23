@@ -730,7 +730,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         //no need to handle fees if no fee paying reserves
         if (tradeData.numFeePayingReserves == 0) return true;
 
-        // create array of reserves receiving fees + fee percent per reserve
+        // create array of rebate wallets + fee percent per reserve
         // fees should add up to 100%.
         address[] memory eligibleWallets = new address[](tradeData.numFeePayingReserves);
         uint[] memory rebatePercentages = new uint[](tradeData.numFeePayingReserves);
@@ -738,11 +738,11 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // Updates reserve eligibility and rebate percentages
         updateEligibilityAndRebates(eligibleWallets, rebatePercentages, tradeData);
 
-        // // Send total fee amount to fee handler with reserve data.
-        // require(
-        //     feeHandlerContract.handleFees.value(tradeData.networkFeeWei)(eligibleWallets, rebatePercentages),
-        //     "Transfer network fee to FeeHandler failed"
-        // );
+        // Send total fee amount to fee handler with reserve data.
+        require(
+            feeHandlerContract.handleFees.value(tradeData.networkFeeWei)(eligibleWallets, rebatePercentages),
+            "Transfer network fee to FeeHandler failed"
+        );
         return true;
     }
 
@@ -776,17 +776,17 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function parseReserveList(
         address[] memory eligibleWallets,
         uint[] memory rebatePercentages,
-        TradingReserves memory reserves,
+        TradingReserves memory resList,
         uint index,
         uint feePayingReservesBps
     ) internal view returns(uint) {
         uint i;
         uint _index = index;
 
-        for(i = 0; i < reserves.isFeePaying.length; i ++) {
-            if(reserves.isFeePaying[i]) {
-                eligibleWallets[_index] = reserveRebateWallet[address(reserves.addresses[i])];
-                rebatePercentages[_index] = getRebatePercentage(reserves.splitValuesBps[i], feePayingReservesBps);
+        for(i = 0; i < resList.isFeePaying.length; i ++) {
+            if(resList.isFeePaying[i]) {
+                eligibleWallets[_index] = reserveRebateWallet[address(resList.addresses[i])];
+                rebatePercentages[_index] = getRebatePercentage(resList.splitValuesBps[i], feePayingReservesBps);
                 _index ++;
             }
         }
