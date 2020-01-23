@@ -724,7 +724,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         (bool success, ) = tradeData.platformFeeWei != 0 ?
             tradeData.input.platformWallet.call.value(tradeData.platformFeeWei)("") :
             (true, bytes(""));
-        require(success, "Fail fee trf (platformWallet)");
+        require(success, "Fail fee transfer: platform");
         emit HandlePlatformFee(tradeData.input.platformWallet, tradeData.platformFeeWei);
 
         //no need to handle fees if no fee paying reserves
@@ -741,7 +741,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // Send total fee amount to fee handler with reserve data.
         require(
             feeHandlerContract.handleFees.value(tradeData.networkFeeWei)(eligibleWallets, rebatePercentages),
-            "Fail fee trf (FeeHandler)"
+            "Fail fee transfer: FeeHandler"
         );
         return true;
     }
