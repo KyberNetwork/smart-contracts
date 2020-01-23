@@ -201,6 +201,7 @@ contract KyberHintParser is IKyberHint, Utils {
         }
 
         indexToContinueFrom += 1;
+
         if (opcodeHash == keccak256(END_OPCODE)) {
             return;
         } else if (opcodeHash == keccak256(SEPARATOR)) {
