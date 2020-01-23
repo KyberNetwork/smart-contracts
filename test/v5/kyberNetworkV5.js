@@ -2,16 +2,18 @@ const Web3 = require('web3');
 const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
+const FeeHandler = artifacts.require("FeeHandler.sol");
 const Helper = require("../v4/helper.js");
 
 const BN = web3.utils.BN;
+const { constants, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
 //global variables
 //////////////////
 const precisionUnits = (new BN(10).pow(new BN(18)));
 const ethDecimals = new BN(18);
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
-const zeroAddress = '0x0000000000000000000000000000000000000000';
+const zeroAddress = constants.ZERO_ADDRESS;
 const gasPrice = (new BN(10).pow(new BN(9)).mul(new BN(50)));
 const negligibleRateDiffBps = new BN(50); //0.05% 
 const BPS = new BN(10000);
@@ -21,6 +23,7 @@ const emptyHint = '0x';
 let takerFeesBps = new BN(25);
 let platformFeeBps = new BN(0);
 let takerFeeAmount;
+let txResult;
 
 let admin;
 let alerter;
@@ -66,10 +69,12 @@ contract('KyberNetwork', function(accounts) {
         alerter = accounts[2];
         user = accounts[3];
         platformWallet = accounts[4];
-        feeHandler = accounts[5]; // to change to actual fee burner
 
         //init network
         network = await KyberNetwork.new(admin);
+
+        //init feeHandler
+        feeHandler = await FeeHandler.new();
 
         //init tokens
         for (let i = 0; i < numTokens; i++) {
@@ -109,7 +114,7 @@ contract('KyberNetwork', function(accounts) {
         //setup network
         await network.addOperator(operator);
         await network.addKyberProxy(networkProxy);
-        await network.setFeeHandler(feeHandler);
+        await network.setFeeHandler(feeHandler.address);
 
         for (let i = 0; i < numReserves; i++) {
             reserve = reserves[i];
@@ -137,6 +142,41 @@ contract('KyberNetwork', function(accounts) {
 
         srcQty = new BN(100).mul(new BN(10).pow(srcDecimals));
     })
+
+    it("should test set contract events", async() => {
+        let tempNetwork = await KyberNetwork.new(admin);
+        let ethSender = accounts[9];
+        txResult = await tempNetwork.send(ethSrcQty, {from: ethSender});
+        expectEvent(txResult, 'EtherReceival', {
+            sender: ethSender,
+            amount: ethSrcQty
+        });
+        
+        txResult = await tempNetwork.addOperator(operator);
+        expectEvent(txResult, 'OperatorAdded', {
+            newOperator: operator,
+            isAdd: true
+        });
+
+        txResult = await tempNetwork.addReserve(reserve.address, new BN(1), true, user, {from: operator});
+        expectEvent(txResult, 'AddReserveToNetwork', {
+            reserve: reserve.address,
+            reserveId: new BN(1),
+            isFeePaying: true,
+            rebateWallet: user,
+            add: true
+        });
+
+        //TODO: RemoveReserveFromNetwork
+        //TODO: ListReservePairs
+        //TODO: FeeHandlerContractSet
+        //TODO: KyberNetworkParamsSet
+        //TODO: KyberNetworkSetEnable
+        //TODO: KyberProxyAdded
+        //TODO: KyberProxyRemoved
+        //TODO: HandlePlatformFee
+        //TODO: KyberTrade
+    });
 
     it("should test enable API", async() => {
         let isEnabled = await network.enabled();
