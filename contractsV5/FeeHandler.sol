@@ -78,11 +78,10 @@ contract FeeHandler is IFeeHandler, Utils {
     function handleFees(address[] calldata eligibleWallets, uint[] calldata rebatePercentages) external payable onlyKyberNetwork returns(bool) {
         // Decoding BRR data
         (uint rewardInBPS, uint rebateInBPS, uint epoch, uint expiryBlock) = decodeData();
-        uint burnInBPS = BPS - rewardInBPS - rebateInBPS;
 
         // Check current block number
         if(block.number > expiryBlock) {
-            (burnInBPS, rewardInBPS, rebateInBPS, epoch, expiryBlock) = kyberDAOContract.getLatestBRRData();
+            (, rewardInBPS, rebateInBPS, epoch, expiryBlock) = kyberDAOContract.getLatestBRRData();
 
             // Update brrAndEpochData
             brrAndEpochData = encodeData(rewardInBPS, rebateInBPS, epoch, expiryBlock);
@@ -114,16 +113,19 @@ contract FeeHandler is IFeeHandler, Utils {
         uint amount = totalRewardsPerEpoch[epoch] * percentageInPrecision / PRECISION;
 
         // Update total rewards and total rewards per epoch
-        totalRewardsPerEpoch[epoch] -= amount;
-        totalRewards -= amount;
+        require(totalRewardsPerEpoch[epoch] >= amount, "Integer underflow on totalRewardsPerEpoch[epoch]");
+        require(totalRewards >= amount, "Integer underflow on totalRewards");
+        // Do not use 0 to avoid paying high gas when setting back from 0 to non zero
+        totalRewardsPerEpoch[epoch] = totalRewardsPerEpoch[epoch] - amount == 0 ? 1 : totalRewardsPerEpoch[epoch] - amount;
+        totalRewards = totalRewards - amount == 0 ? 1 : totalRewards - amount;
 
         // send reward to staker
-        (bool success, ) = staker.call.value(amount)("");
+        (bool success, ) = staker.call.value(amount - 1)("");
         require(success, "Transfer of rewards to staker failed.");
 
-        emit DistributeRewards(staker, amount);
+        emit DistributeRewards(staker, amount - 1);
 
-        return amount;
+        return amount - 1;
     }
 
     event DistributeRebate(address rebateWallet, uint amountWei);
@@ -156,14 +158,14 @@ contract FeeHandler is IFeeHandler, Utils {
             "Unable to buy as burnBlockInterval has not passed since lastBurnBlock"
         );
 
-        // update last buy block number
+        // update last burn block number
         lastBurnBlock = block.number;
 
         // Get srcQty to burn, if greater than ETH_TO_BURN, burn only ETH_TO_BURN per function call.
         uint srcQty = address(this).balance - totalRebates - totalRewards;
         srcQty = srcQty > ETH_TO_BURN ? ETH_TO_BURN : srcQty;
 
-        // Get the slippage rate
+        // Get the rate
         // If srcQty is too big, get expected rate will return 0 so maybe we should limit how much can be bought at one time.
         uint expectedRate = kyberNetworkProxyContract.getExpectedRateAfterCustomFee(
             IERC20(ETH_TOKEN_ADDRESS),
