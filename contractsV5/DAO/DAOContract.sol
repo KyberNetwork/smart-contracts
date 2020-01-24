@@ -6,6 +6,7 @@ import "../staking/IKyberStaking.sol";
 import "./IKyberDAO.sol";
 import "../PermissionGroupsV5.sol";
 import "../ReentrancyGuard.sol";
+import "../UtilsV5.sol";
 
 
 interface IFeeHandler {
@@ -16,13 +17,14 @@ interface IFeeHandler {
 // - Network fee camp: options are fee in bps
 // - BRR fee handler camp: options are conbimed of rebate (first 128 bits) + reward (last 128 bits)
 // - General camp: options are from 1 to num_options
-contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard {
+contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard, Utils {
 
     // Constants
     uint internal constant BPS = 10000;
     uint internal constant MAX_CAMP_OPTIONS = 4; // TODO: Finalise the value
     uint internal constant MIN_CAMP_DURATION = 75000; // around 2 weeks time. TODO: Finalise the value
     uint internal constant POWER_128 = 2 ** 128;
+    uint internal constant POWER_84 = 2 ** 84;
 
     // Variables: Should only be inited once when deploying contract
     uint public EPOCH_PERIOD;
@@ -32,6 +34,12 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
     IFeeHandler public feeHandler;
 
     enum CampaignType { GENERAL, NETWORK_FEE, FEE_HANDLER_BRR }
+
+    struct FormulaData {
+        uint minPercentageInPrecision;
+        uint cInPrecision;
+        uint tInPrecision;
+    }
 
     struct Campaign {
         CampaignType campType;
@@ -353,10 +361,33 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         if (totalSupply == 0) { return (0, 0); }
 
         uint[] memory voteCounts = campaignOptionPoints[campID];
+
+        // Finding option with most votes
+        uint winningOption = 0;
+        uint maxVotedCount = 0;
+        for(uint i = 1; i < voteCounts.length; i++) {
+            if (voteCounts[i] > maxVotedCount) {
+                winningOption = i;
+                maxVotedCount = voteCounts[i];
+            } else if (voteCounts[i] == maxVotedCount) {
+                winningOption = 0;
+            }
+        }
+        // more than 1 options have same vote count
+        if (winningOption == 0) { return (0, 0); }
+
+        FormulaData memory formulaData = decodeFormulaParams(camp.formulaParams);
+
         uint totalVotes = voteCounts[0];
+        uint votedPercentageInPrecision = totalVotes * PRECISION / camp.totalKNCSupply;
 
+        if (formulaData.minPercentageInPrecision < votedPercentageInPrecision) { return (0, 0); }
+        // as check for formula params, this value shouldn't be negative
+        uint Y = formulaData.cInPrecision - formulaData.tInPrecision * votedPercentageInPrecision / PRECISION;
 
-        // TODO: Using formula to compute winning option
+        if (maxVotedCount * PRECISION < Y * totalVotes) { return (0, 0); }
+        optionID = winningOption;
+        value = camp.options[optionID - 1];
     }
 
     // return latest network fee with expiry block number
@@ -491,7 +522,10 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
             }
         }
 
-        // TODO: Verify formula params
+        FormulaData memory data = decodeFormulaParams(formulaParams);
+        // percentage should be smaller than 100%
+        if (data.minPercentageInPrecision > PRECISION) { return false; }
+        if (data.cInPrecision < data.tInPrecision * 100) { return false; }
 
         return true;
     }
@@ -506,5 +540,19 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         if (hasConcluded) {
             data += 1 * POWER_128;
         }
+    }
+
+    function decodeFormulaParams(uint data) internal pure returns(FormulaData memory formulaData) {
+        formulaData.minPercentageInPrecision = data & (POWER_84 - 1);
+        formulaData.cInPrecision = (data / POWER_84) & (POWER_84 - 1);
+        formulaData.tInPrecision = (data / (POWER_84 * POWER_84)) & (POWER_84 - 1);
+    }
+
+    function encodeFormulaParams(
+        uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision
+    ) public pure returns(uint data) {
+        data = minPercentageInPrecision & (POWER_84 - 1);
+        data |= (cInPrecision & (POWER_84 - 1)) * POWER_84;
+        data |= (tInPrecision & (POWER_84 - 1)) * POWER_84 * POWER_84;
     }
 }
