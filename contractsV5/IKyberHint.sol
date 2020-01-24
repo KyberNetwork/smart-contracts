@@ -6,26 +6,82 @@ import "./IKyberReserve.sol";
 
 interface IKyberHint {
 
-    // function parseEthToTokenHint(bytes calldata hint) external view
-    // returns(HintType hintType, address[] memory reserves, uint[] memory splits, uint failureHint);
+    enum HintType {
+        MaskIn,
+        MaskOut,
+        Split
+    }
 
-    function parseEthToTokenHint(bytes calldata hint) external view
-        returns(HintType hintType, IKyberReserve[] memory reserves, uint[] memory splits, uint failureHint);
+    function parseEthToTokenHint(bytes calldata hint)
+        external
+        view
+        returns(
+            HintType hintType,
+            bytes3[] memory reserveIds,
+            uint[] memory splits,
+            uint failingIndex
+        );
 
-    function parseTokenToEthHint(bytes calldata hint) external view
-        returns(HintType hintType, IKyberReserve[] memory reserves, uint[] memory splits, uint failureHint);
+    function parseTokenToEthHint(bytes calldata hint)
+        external
+        view
+        returns(
+            HintType hintType,
+            bytes3[] memory reserveIds,
+            uint[] memory splits,
+            uint failingIndex
+        );
 
-    function parseTokenToTokenHint(bytes calldata hint) external view
-        returns(HintType tokenToEthType, IKyberReserve[] memory tokenToEthReserves, uint[] memory tokenToEthSplits,
-            HintType ethToTokenType, IKyberReserve[] memory ethToTokenReserves, uint[] memory ethToTokenSplits, uint failureHint);
+    function parseTokenToTokenHint(bytes calldata hint)
+        external
+        view
+        returns(
+            HintType tokenToEthType,
+            bytes3[] memory tokenToEthReserveIds,
+            uint[] memory tokenToEthSplits,
+            HintType ethToTokenType,
+            bytes3[] memory ethToTokenReserveIds,
+            uint[] memory ethToTokenSplits,
+            uint failingIndex
+        );
 
-    function buildEthToTokenHint(HintType hintType, address[] calldata reserves, uint[] calldata splits)
-        external view returns(bytes memory hint);
+    function buildEthToTokenHint(
+        HintType hintType,
+        bytes3[] calldata reserveIds,
+        uint[] calldata splits
+    )
+        external
+        view
+        returns(bytes memory hint);
 
-    function buildTokenToEthHint(HintType hintType, address[] calldata reserves, uint[] calldata splits)
-        external view returns(bytes memory hint);
+    function buildTokenToEthHint(
+        HintType tokenToEthType,
+        bytes3[] calldata tokenToEthReserveIds,
+        uint[] calldata tokenToEthSplits
+    )
+        external
+        view
+        returns(bytes memory hint);
 
-    function buildTokenToTokenHint(HintType tokenToEthType, address[] calldata tokenToEthReserves, uint[] calldata tokenToEthSplits,
-            HintType ethToTokenType, address[] calldata ethToTokenReserves, uint[] calldata ethToTokenSplits)
-        external view returns(bytes memory hint);
+    function buildTokenToTokenHint(
+        HintType tokenToEthType,
+        bytes3[] calldata tokenToEthReserveIds,
+        uint[] calldata tokenToEthSplits,
+        HintType ethToTokenType,
+        bytes3[] calldata ethToTokenReserveIds,
+        uint[] calldata ethToTokenSplits
+    )
+        external
+        pure
+        returns(bytes memory hint);
+
+    function reserveAddressToReserveId(address reserveAddress)
+        external
+        view
+        returns (bytes3 reserveId);
+
+    function reserveIdToReserveAddress(bytes3 reserveId)
+        external
+        view
+        returns (address reserveAddress);
 }
