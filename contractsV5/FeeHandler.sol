@@ -46,7 +46,7 @@ contract FeeHandler is IFeeHandler, Utils {
         burnBlockInterval = _burnBlockInterval;
         lastBurnBlock = block.number;
         (, uint rewardInBPS, uint rebateInBPS, uint epoch, uint expiryBlock) = kyberDAOContract.getLatestBRRData();
-        brrAndEpochData = encodeData(rewardInBPS, rebateInBPS, epoch, expiryBlock);
+        brrAndEpochData = encodeBRRData(rewardInBPS, rebateInBPS, epoch, expiryBlock);
     }
 
     modifier onlyDAO {
@@ -77,15 +77,7 @@ contract FeeHandler is IFeeHandler, Utils {
     // encode totals, 128 bits per reward / rebate
     function handleFees(address[] calldata eligibleWallets, uint[] calldata rebatePercentages) external payable onlyKyberNetwork returns(bool) {
         // Decoding BRR data
-        (uint rewardInBPS, uint rebateInBPS, uint epoch, uint expiryBlock) = decodeData();
-
-        // Check current block number
-        if(block.number > expiryBlock) {
-            (, rewardInBPS, rebateInBPS, epoch, expiryBlock) = kyberDAOContract.getLatestBRRData();
-
-            // Update brrAndEpochData
-            brrAndEpochData = encodeData(rewardInBPS, rebateInBPS, epoch, expiryBlock);
-        }
+        (uint rewardInBPS, uint rebateInBPS, uint epoch, uint expiryBlock) = getBRR();
 
         uint rebateWei = rebateInBPS * msg.value / BPS;
         uint rewardWei = rewardInBPS * msg.value / BPS;
@@ -192,16 +184,36 @@ contract FeeHandler is IFeeHandler, Utils {
         require(knc.burn(destQty), "KNC burn failed");
     }
 
+    event BRRUpdated(uint rewardBPS, uint rebateBPS, uint burnBPS, uint expiryBlock, uint epoch);
 
-    function encodeData(uint _reward, uint _rebate, uint _epoch, uint _expiryBlock) public pure returns (uint) {
+    function getBRR() internal returns(uint rewardBPS, uint rebateBPS, uint expiryBlock, uint epoch) {
+        (rewardBPS, rebateBPS, expiryBlock, epoch) = decodeBRRData();
+
+          // Check current block number
+        if(block.number > expiryBlock) {
+            uint burnBPS;
+
+            (burnBPS, rewardBPS, rebateBPS, epoch, expiryBlock) = kyberDAOContract.getLatestBRRData();
+
+            emit BRRUpdated(rewardBPS, rebateBPS, burnBPS, expiryBlock, epoch);
+
+            // TODO: for testing. need another logic for production.
+            require(expiryBlock > block.number, "Expiry block not valid");
+
+            // Update brrAndEpochData
+            brrAndEpochData = encodeBRRData(rewardBPS, rebateBPS, epoch, expiryBlock);
+        }
+    }
+
+    function encodeBRRData(uint _reward, uint _rebate, uint _epoch, uint _expiryBlock) public pure returns (uint) {
         return (((((_reward << BITS_PER_PARAM) + _rebate) << BITS_PER_PARAM) + _epoch) << BITS_PER_PARAM) + _expiryBlock;
     }
 
-    function decodeData() public view returns(uint, uint, uint, uint) {
-        uint expiryBlockNumber = brrAndEpochData & (1 << BITS_PER_PARAM) - 1;
-        uint epoch = (brrAndEpochData / (1 << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        uint rebateInBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        uint rewardInBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        return (rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+    function decodeBRRData() public view returns(uint rewardBPS, uint rebateBPS, uint expiryBlock, uint epoch) {
+        expiryBlock = brrAndEpochData & (1 << BITS_PER_PARAM) - 1;
+        epoch = (brrAndEpochData / (1 << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
+        rebateBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
+        rewardBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
+        return (rewardBPS, rebateBPS, epoch, expiryBlock);
     }
 }

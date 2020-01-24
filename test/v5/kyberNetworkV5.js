@@ -1,6 +1,7 @@
 const Web3 = require('web3');
 const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
+const MockDao = artifacts.require("MockDAO.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const FeeHandler = artifacts.require("FeeHandler.sol");
 const Helper = require("../v4/helper.js");
@@ -28,11 +29,23 @@ let txResult;
 let admin;
 let alerter;
 let network;
+let DAO;
 let networkProxy;
 let feeHandler;
 let operator;
 let user;
 let platformWallet;
+
+//DAO related data
+let rewardInBPS;
+let rebateInBPS;
+let epoch;
+let expiryBlockNumber;
+
+//fee hanlder related
+let KNC;
+let burnBlockInterval = new BN(30);
+
 
 //reserve data
 //////////////
@@ -63,19 +76,31 @@ let sellRates = [];
 contract('KyberNetwork', function(accounts) {
     before("one time init", async() => {
         //init accounts
-        admin = accounts[0];
-        networkProxy = accounts[0];
+        
+        networkProxy = accounts[0];  // when using account 0 can avoid string ({from: proxy}) in trade call;
         operator = accounts[1];
         alerter = accounts[2];
         user = accounts[3];
         platformWallet = accounts[4];
-
+        admin = accounts[5]; // we don't want admin as account 0.
+        
+        //DAO related init.
+        rebateInBPS = 1000;
+        rewardInBPS = 7000;
+        epoch = 5;
+        expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
+        DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+        
         //init network
         network = await KyberNetwork.new(admin);
+        // set proxy same as network
+        proxyForFeeHandler = network;
 
         //init feeHandler
-        feeHandler = await FeeHandler.new();
+        KNC = await TestToken.new("kyber network crystal", "KNC", 18);
 
+        feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+        
         //init tokens
         for (let i = 0; i < numTokens; i++) {
             tokenDecimals[i] = new BN(15).add(new BN(i));
@@ -112,9 +137,9 @@ contract('KyberNetwork', function(accounts) {
         }
 
         //setup network
-        await network.addOperator(operator);
-        await network.addKyberProxy(networkProxy);
-        await network.setFeeHandler(feeHandler.address);
+        await network.addOperator(operator, {from: admin});
+        await network.addKyberProxy(networkProxy, {from: admin});
+        await network.setFeeHandler(feeHandler.address, {from: admin});
 
         for (let i = 0; i < numReserves; i++) {
             reserve = reserves[i];
@@ -123,8 +148,8 @@ contract('KyberNetwork', function(accounts) {
                 network.listPairForReserve(reserve.address, tokens[j].address, true, true, true, {from: operator});
             }
         }
-        await network.setParams(gasPrice, negligibleRateDiffBps);
-        await network.setEnable(true);
+        await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
+        await network.setEnable(true, {from: admin});
     });
 
     beforeEach("randomly select tokens before each test", async() => {
@@ -152,7 +177,7 @@ contract('KyberNetwork', function(accounts) {
             amount: ethSrcQty
         });
         
-        txResult = await tempNetwork.addOperator(operator);
+        txResult = await tempNetwork.addOperator(operator, {from: admin});
         expectEvent(txResult, 'OperatorAdded', {
             newOperator: operator,
             isAdd: true
@@ -182,12 +207,12 @@ contract('KyberNetwork', function(accounts) {
         let isEnabled = await network.enabled();
         assert.equal(isEnabled, true);
 
-        await network.setEnable(false);
+        await network.setEnable(false, {from: admin});
 
         isEnabled = await network.enabled();
         assert.equal(isEnabled, false);
 
-        await network.setEnable(true);
+        await network.setEnable(true, {from: admin});
     });
 
     it("should get best rate for T2E and E2T for small taker fee bps", async() => {
@@ -343,4 +368,8 @@ function getBestReserve(rateArr) {
         }
     }
     return bestReserve;
+}
+
+function log(str) {
+    console.log(str);
 }
