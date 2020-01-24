@@ -145,8 +145,24 @@ contract KyberHintParser is IKyberHint, Utils {
         hint = hint.concat(END_OPCODE);
     }
 
+    function reserveAddressToReserveId(address reserveAddress)
+        external
+        view
+        returns (bytes3 reserveId)
+    {
+        // return reserveAddressToId[reserveAddress];
+    }
+
+    function reserveIdToReserveAddress(bytes3 reserveId)
+        external
+        view
+        returns (address reserveAddress)
+    {
+        // return reserveIdToAddresses[reserveId];
+    }
+
     function getBytes(bytes memory _hint, uint _start, uint _length) public pure returns (bytes memory) {
-        return _hint.slice(_start,_length);
+        return _hint.slice(_start, _length);
     }
 
     function getSingleByte(bytes memory _hint, uint _index) public pure returns (bytes memory) {
