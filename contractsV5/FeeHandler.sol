@@ -21,10 +21,9 @@ contract FeeHandler is IFeeHandler, Utils {
     uint public lastBurnBlock;
     uint public brrAndEpochData;
     // Todo: combine totalRebates and totalRewards into one variable
-    uint public totalRebates;
-    mapping(address => uint) public totalRebatesPerRebateWallet;
-    uint public totalRewards;
-    mapping(uint => uint) public totalRewardsPerEpoch;
+    mapping(address => uint) public rebatePerWallet;
+    mapping(uint => uint) public rewardsPerEpoch;
+    uint public totalValues; // total rebates, total rewards
 
     constructor(
         IKyberDAO _kyberDAOContract,
@@ -34,19 +33,17 @@ contract FeeHandler is IFeeHandler, Utils {
         uint _burnBlockInterval
     ) public
     {
-        require(address(_kyberDAOContract) != address(0), "The KyberDAO contract cannot be the null address");
-        require(address(_kyberNetworkProxyContract) != address(0), "The KyberNetworkProxy contract cannot be the null address");
-        require(address(_kyberNetworkContract) != address(0), "The KyberNetwork contract cannot be the null address");
-        require(address(_knc) != address(0), "The KNC token contract cannot be the null address");
+        require(address(_kyberDAOContract) != address(0), "FeeHandler: KyberDAO address 0");
+        require(address(_kyberNetworkProxyContract) != address(0), "FeeHandler: KyberNetworkProxy address 0");
+        require(address(_kyberNetworkContract) != address(0), "FeeHandler: KyberNetwork address 0");
+        require(address(_knc) != address(0), "FeeHandler: KNC address 0");
+        require(_burnBlockInterval != 0, "FeeHandler: _burnBlockInterval 0");
 
         kyberDAOContract = _kyberDAOContract;
         kyberNetworkProxyContract = _kyberNetworkProxyContract;
         kyberNetworkContract = _kyberNetworkContract;
         knc = _knc;
         burnBlockInterval = _burnBlockInterval;
-        lastBurnBlock = block.number;
-        (, uint rewardInBPS, uint rebateInBPS, uint epoch, uint expiryBlock) = kyberDAOContract.getLatestBRRData();
-        brrAndEpochData = encodeBRRData(rewardInBPS, rebateInBPS, epoch, expiryBlock);
     }
 
     modifier onlyDAO {
@@ -60,7 +57,7 @@ contract FeeHandler is IFeeHandler, Utils {
     modifier onlyKyberNetwork {
         require(
             msg.sender == address(kyberNetworkContract),
-            "Only the internal KyberNetwork contract can call this function."
+            "Only the internal KyberNetwork can call this function."
         );
         _;
     }
@@ -82,16 +79,19 @@ contract FeeHandler is IFeeHandler, Utils {
         uint rebateWei = rebateInBPS * msg.value / BPS;
         uint rewardWei = rewardInBPS * msg.value / BPS;
         for(uint i = 0; i < eligibleWallets.length; i ++) {
-            // Internal accounting for rebates per reserve wallet (totalRebatesPerRebateWallet)
-            totalRebatesPerRebateWallet[eligibleWallets[i]] = rebateWei * rebatePercentages[i] / 100;
+            // Internal accounting for rebates per reserve wallet (rebatePerWallet)
+            rebatePerWallet[eligibleWallets[i]] = rebateWei * rebatePercentages[i] / 100;
         }
 
+        (uint totalRewards , uint totalRebates) = decodeTotalValues(totalValues);
         // Internal accounting for total rebates (totalRebates)
         totalRebates += rebateWei;
-        // Internal accounting for reward per epoch (totalRewardsPerEpoch)
-        totalRewardsPerEpoch[epoch] += rewardWei;
+        // Internal accounting for reward per epoch (rewardsPerEpoch)
+        rewardsPerEpoch[epoch] += rewardWei;
         // Internal accounting for total rewards (totalRewards)
         totalRewards += rewardWei;
+
+        totalValues = encodeTotalValues(totalRewards, totalRebates);
 
         emit AccumulateReserveRebate(eligibleWallets, rebatePercentages, rebateWei, rewardWei, msg.value - rebateWei - rewardWei);
 
@@ -102,15 +102,17 @@ contract FeeHandler is IFeeHandler, Utils {
 
     function claimStakerReward(address staker, uint percentageInPrecision, uint epoch) public onlyDAO returns(uint) {
         // Amount of reward to be sent to staker
-        uint amount = totalRewardsPerEpoch[epoch] * percentageInPrecision / PRECISION;
+        uint amount = rewardsPerEpoch[epoch] * percentageInPrecision / PRECISION;
 
         // Update total rewards and total rewards per epoch
-        require(totalRewardsPerEpoch[epoch] >= amount, "Integer underflow on totalRewardsPerEpoch[epoch]");
+        require(rewardsPerEpoch[epoch] >= amount, "Integer underflow on rewardsPerEpoch[epoch]");
+        (uint totalRewards , uint totalRebates) = decodeTotalValues(totalValues);
         require(totalRewards >= amount, "Integer underflow on totalRewards");
         // Do not use 0 to avoid paying high gas when setting back from 0 to non zero
-        totalRewardsPerEpoch[epoch] = totalRewardsPerEpoch[epoch] - amount == 0 ? 1 : totalRewardsPerEpoch[epoch] - amount;
+        rewardsPerEpoch[epoch] = rewardsPerEpoch[epoch] - amount == 0 ? 1 : rewardsPerEpoch[epoch] - amount;
         totalRewards = totalRewards - amount == 0 ? 1 : totalRewards - amount;
 
+        totalValues = encodeTotalValues(totalRewards, totalRebates);
         // send reward to staker
         (bool success, ) = staker.call.value(amount - 1)("");
         require(success, "Transfer of rewards to staker failed.");
@@ -125,12 +127,16 @@ contract FeeHandler is IFeeHandler, Utils {
     // Using rebateWallet instead of reserve so I don't have to store KyberNetwork variable.
     function claimReserveRebate(address rebateWallet) public returns (uint){
         // Get total amount of rebate accumulated
-        uint amount = totalRebatesPerRebateWallet[rebateWallet] - 1;
+        uint amount = rebatePerWallet[rebateWallet] - 1;
 
         // Update total rebate and rebate per rebate wallet amounts
+        (uint totalRewards , uint totalRebates) = decodeTotalValues(totalValues);
+        
         totalRebates -= amount;
-        totalRebatesPerRebateWallet[rebateWallet] = 1; // Do not use 0 to avoid paying high gas when setting back from 0 to non zero.
+        rebatePerWallet[rebateWallet] = 1; // Do not use 0 to avoid paying high gas when setting back from 0 to non zero.
 
+        totalValues = encodeTotalValues(totalRewards, totalRebates);
+        
         // send rebate to rebate wallet
         (bool success, ) = rebateWallet.call.value(amount)("");
         require(success, "Transfer of rebates to rebate wallet failed.");
@@ -140,6 +146,10 @@ contract FeeHandler is IFeeHandler, Utils {
         return amount;
     }
 
+    function getBRRData () public {
+        getBRR();
+    }
+    
     // we will have to limit amounts. per burn.
     // and create some block delay between burns.
     // Todo: include arbitrage check https://github.com/KyberNetwork/smart-contracts/pull/433/files
@@ -147,13 +157,14 @@ contract FeeHandler is IFeeHandler, Utils {
         // check if current block > last buy block number + num block interval
         require(
             block.number < lastBurnBlock + burnBlockInterval,
-            "Unable to buy as burnBlockInterval has not passed since lastBurnBlock"
+            "Burn blocked up to block: lastBurnBlock + burnBlockInterval"
         );
 
         // update last burn block number
         lastBurnBlock = block.number;
 
         // Get srcQty to burn, if greater than ETH_TO_BURN, burn only ETH_TO_BURN per function call.
+        (uint totalRewards , uint totalRebates) = decodeTotalValues(totalValues);
         uint srcQty = address(this).balance - totalRebates - totalRewards;
         srcQty = srcQty > ETH_TO_BURN ? ETH_TO_BURN : srcQty;
 
@@ -184,6 +195,29 @@ contract FeeHandler is IFeeHandler, Utils {
         require(knc.burn(destQty), "KNC burn failed");
     }
 
+    function encodeBRRData(uint _reward, uint _rebate, uint _epoch, uint _expiryBlock) public pure returns (uint) {
+        return (((((_reward << BITS_PER_PARAM) + _rebate) << BITS_PER_PARAM) + _epoch) << BITS_PER_PARAM) + _expiryBlock;
+    }
+
+    function decodeBRRData() public view returns(uint rewardBPS, uint rebateBPS, uint expiryBlock, uint epoch) {
+        expiryBlock = brrAndEpochData & (1 << BITS_PER_PARAM) - 1;
+        epoch = (brrAndEpochData / (1 << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
+        rebateBPS = (brrAndEpochData / (1 << (2 * BITS_PER_PARAM))) & (1 << BITS_PER_PARAM) - 1;
+        rewardBPS = (brrAndEpochData / (1 << (3 * BITS_PER_PARAM))) & (1 << BITS_PER_PARAM) - 1;
+        return (rewardBPS, rebateBPS, epoch, expiryBlock);
+    }
+
+    function encodeTotalValues(uint totalRewards, uint totalRebates) public pure returns (uint) {
+        return ((totalRewards << 128) + totalRebates);
+    }
+
+    function decodeTotalValues(uint encodedValues) public pure 
+        returns(uint totalRewardWei, uint totalRebateWei) 
+    {
+        totalRebateWei = encodedValues & ((1 << 128) - 1);
+        totalRewardWei = (encodedValues / (1 << 128)) & ((1 << 128) - 1);
+    }
+
     event BRRUpdated(uint rewardBPS, uint rebateBPS, uint burnBPS, uint expiryBlock, uint epoch);
 
     function getBRR() internal returns(uint rewardBPS, uint rebateBPS, uint expiryBlock, uint epoch) {
@@ -197,23 +231,8 @@ contract FeeHandler is IFeeHandler, Utils {
 
             emit BRRUpdated(rewardBPS, rebateBPS, burnBPS, expiryBlock, epoch);
 
-            // TODO: for testing. need another logic for production.
-            require(expiryBlock > block.number, "Expiry block not valid");
-
             // Update brrAndEpochData
             brrAndEpochData = encodeBRRData(rewardBPS, rebateBPS, epoch, expiryBlock);
         }
-    }
-
-    function encodeBRRData(uint _reward, uint _rebate, uint _epoch, uint _expiryBlock) public pure returns (uint) {
-        return (((((_reward << BITS_PER_PARAM) + _rebate) << BITS_PER_PARAM) + _epoch) << BITS_PER_PARAM) + _expiryBlock;
-    }
-
-    function decodeBRRData() public view returns(uint rewardBPS, uint rebateBPS, uint expiryBlock, uint epoch) {
-        expiryBlock = brrAndEpochData & (1 << BITS_PER_PARAM) - 1;
-        epoch = (brrAndEpochData / (1 << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        rebateBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        rewardBPS = (brrAndEpochData / (1 << BITS_PER_PARAM << BITS_PER_PARAM << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        return (rewardBPS, rebateBPS, epoch, expiryBlock);
     }
 }
