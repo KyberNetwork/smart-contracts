@@ -12,7 +12,7 @@ contract PermissionGroups {
     uint constant internal MAX_GROUP_SIZE = 50;
 
     constructor(address _admin) public {
-        require(_admin != address(0), "PermissionGroups, admin address 0 blocked.");
+        require(_admin != address(0), "PermissionGroups: admin address 0");
         admin = _admin;
     }
 
@@ -46,7 +46,7 @@ contract PermissionGroups {
      * @param newAdmin The address to transfer ownership to.
      */
     function transferAdmin(address newAdmin) public onlyAdmin {
-        require(newAdmin != address(0), "Admin address is 0");
+        require(newAdmin != address(0), "transferAdmin: address 0");
         emit TransferAdminPending(pendingAdmin);
         pendingAdmin = newAdmin;
     }
