@@ -12,22 +12,22 @@ contract PermissionGroups {
     uint constant internal MAX_GROUP_SIZE = 50;
 
     constructor(address _admin) public {
-        require(_admin != address(0), "PermissionGroups: admin address 0");
+        require(_admin != address(0), "0 address");
         admin = _admin;
     }
 
     modifier onlyAdmin() {
-        require(msg.sender == admin, "only Admin can call");
+        require(msg.sender == admin, "ONLY_ADMIN");
         _;
     }
 
     modifier onlyOperator() {
-        require(operators[msg.sender], "Only Operator can call");
+        require(operators[msg.sender], "ONLY_OPRTR");
         _;
     }
 
     modifier onlyAlerter() {
-        require(alerters[msg.sender], "Only Alerter can call");
+        require(alerters[msg.sender], "ONLY_ALRTR");
         _;
     }
 
@@ -46,7 +46,7 @@ contract PermissionGroups {
      * @param newAdmin The address to transfer ownership to.
      */
     function transferAdmin(address newAdmin) public onlyAdmin {
-        require(newAdmin != address(0), "transferAdmin: address 0");
+        require(newAdmin != address(0), "TRANS_ADD_0");
         emit TransferAdminPending(pendingAdmin);
         pendingAdmin = newAdmin;
     }
@@ -56,7 +56,7 @@ contract PermissionGroups {
      * @param newAdmin The address to transfer ownership to.
      */
     function transferAdminQuickly(address newAdmin) public onlyAdmin {
-        require(newAdmin != address(0), "transferAdminQuickly: address 0");
+        require(newAdmin != address(0), "TRANSQ_ADD_0");
         emit TransferAdminPending(newAdmin);
         emit AdminClaimed(newAdmin, admin);
         admin = newAdmin;
@@ -68,7 +68,7 @@ contract PermissionGroups {
      * @dev Allows the pendingAdmin address to finalize the change admin process.
      */
     function claimAdmin() public {
-        require(pendingAdmin == msg.sender, "Only pending admin");
+        require(pendingAdmin == msg.sender, "NOT_PENDING");
         emit AdminClaimed(pendingAdmin, admin);
         admin = pendingAdmin;
         pendingAdmin = address(0);
@@ -77,7 +77,7 @@ contract PermissionGroups {
     event AlerterAdded (address newAlerter, bool isAdd);
 
     function addAlerter(address newAlerter) public onlyAdmin {
-        require(!alerters[newAlerter], "Alerter exists"); // prevent duplicates.
+        require(!alerters[newAlerter], "ALRTR_EXIST"); // prevent duplicates.
         require(alertersGroup.length < MAX_GROUP_SIZE);
 
         emit AlerterAdded(newAlerter, true);
@@ -86,7 +86,7 @@ contract PermissionGroups {
     }
 
     function removeAlerter (address alerter) public onlyAdmin {
-        require(alerters[alerter], "Alerter doesn't exist");
+        require(alerters[alerter], "ALRTR_NONE");
         alerters[alerter] = false;
 
         for (uint i = 0; i < alertersGroup.length; ++i) {
@@ -102,7 +102,7 @@ contract PermissionGroups {
     event OperatorAdded(address newOperator, bool isAdd);
 
     function addOperator(address newOperator) public onlyAdmin {
-        require(!operators[newOperator], "Operator exists"); // prevent duplicates.
+        require(!operators[newOperator], "OPRTR_EXIS"); // prevent duplicates.
         require(operatorsGroup.length < MAX_GROUP_SIZE);
 
         emit OperatorAdded(newOperator, true);
@@ -111,7 +111,7 @@ contract PermissionGroups {
     }
 
     function removeOperator (address operator) public onlyAdmin {
-        require(operators[operator], "Operator doesn't exist");
+        require(operators[operator], "OPRTR_NONE");
         operators[operator] = false;
 
         for (uint i = 0; i < operatorsGroup.length; ++i) {

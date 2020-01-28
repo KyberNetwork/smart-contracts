@@ -3,6 +3,7 @@ const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const MockDao = artifacts.require("MockDAO.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
+const MockNetwork = artifacts.require("MockNetwork.sol");
 const FeeHandler = artifacts.require("FeeHandler.sol");
 const Helper = require("../v4/helper.js");
 
@@ -16,12 +17,13 @@ const ethDecimals = new BN(18);
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 const zeroAddress = constants.ZERO_ADDRESS;
 const gasPrice = (new BN(10).pow(new BN(9)).mul(new BN(50)));
-const negligibleRateDiffBps = new BN(50); //0.05% 
+const negligibleRateDiffBps = new BN(10); //0.01% 
 const BPS = new BN(10000);
 const maxDestAmt = new BN(2).pow(new BN(255));
 const minConversionRate = new BN(0);
 const emptyHint = '0x';
-let takerFeesBps = new BN(25);
+
+let takerFeesBps = new BN(20);
 let platformFeeBps = new BN(0);
 let takerFeeAmount;
 let txResult;
@@ -37,9 +39,9 @@ let user;
 let platformWallet;
 
 //DAO related data
-let rewardInBPS;
-let rebateInBPS;
-let epoch;
+let rewardInBPS = new BN(7000);
+let rebateInBPS = new BN(2000);
+let epoch = new BN(3);
 let expiryBlockNumber;
 
 //fee hanlder related
@@ -85,11 +87,9 @@ contract('KyberNetwork', function(accounts) {
         admin = accounts[5]; // we don't want admin as account 0.
         
         //DAO related init.
-        rebateInBPS = 1000;
-        rewardInBPS = 7000;
-        epoch = 5;
         expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
         DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+        await DAO.setTakerFeeBps(takerFeesBps);
         
         //init network
         network = await KyberNetwork.new(admin);
@@ -139,8 +139,8 @@ contract('KyberNetwork', function(accounts) {
         //setup network
         await network.addOperator(operator, {from: admin});
         await network.addKyberProxy(networkProxy, {from: admin});
-        await network.setFeeHandler(feeHandler.address, {from: admin});
-
+        await network.setContracts(feeHandler.address, DAO.address, {from: admin});
+        
         for (let i = 0; i < numReserves; i++) {
             reserve = reserves[i];
             network.addReserve(reserve.address, new BN(i+1), isFeePaying[i], reserve.address, {from: operator});
@@ -330,6 +330,39 @@ contract('KyberNetwork', function(accounts) {
         //check sell reserve eth bal down
         //check buy reserve eth bal up
     });
+
+    it("test contract addresses for fee hanlder and DAO", async() => {
+        let contracts = await network.getContracts();
+        Helper.assertEqual(contracts[0], DAO.address)
+        Helper.assertEqual(contracts[1], feeHandler.address)
+    });
+
+    it("test encode decode taker fee data with mock setter getter", async() => {
+        let tempNetwork = await MockNetwork.new(admin);
+        await tempNetwork.setContracts(feeHandler.address, DAO.address, {from: admin});
+
+        let networkData = await tempNetwork.getNetworkData();
+     
+        await tempNetwork.getAndUpdateTakerFee();
+        networkData = await tempNetwork.getNetworkData();
+        Helper.assertEqual(networkData[3], takerFeesBps);
+        
+        let newFee = new BN(35);
+        let newExpiryBlock = new BN(723);
+        await tempNetwork.setTakerFeeData(newFee, newExpiryBlock);
+
+        networkData = await tempNetwork.getNetworkData();
+        Helper.assertEqual(networkData[3], newFee);
+        
+        let takerFeeData = await tempNetwork.getTakerFeeData();
+        Helper.assertEqual(takerFeeData[0], newFee);
+        Helper.assertEqual(takerFeeData[1], newExpiryBlock);
+    });
+    
+    it("update fee in DAO and see updated in netwrok on correct block", async() => {
+        //TODO:
+    });
+
 })
 
 async function assertSameEtherBalance(accountAddress, expectedBalance) {
