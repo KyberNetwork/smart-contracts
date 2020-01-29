@@ -551,7 +551,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // uint rateWithAllFees;
     }
 
-  // accumulate fee wei
+    // accumulate fee wei
     function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, TradeData memory tradeData)
         internal view
     // function should set all TradeData so it can later be used without any ambiguity
@@ -820,7 +820,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     }
 
     event KyberTrade(address indexed trader, IERC20 src, IERC20 dest, uint srcAmount, uint dstAmount,
-        address destAddress, uint ethWeiValue, address reserve1, address reserve2, bytes hint);
+        address destAddress, uint ethWeiValue, uint networkFeeWei, uint customPlatformFeeWei, 
+        IKyberReserve[] e2tReserves, IKyberReserve[] t2eReserves);
 
     /* solhint-disable function-max-lines */
     //  Most of the lines here are functions calls spread over multiple lines. We find this function readable enough
@@ -876,19 +877,20 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         require(handleFees(tradeData));
 
-        //todo: update trade event
-        // KyberTrade({
-        //     trader: tradeData.input.trader,
-        //     src: tradeData.input.src,
-        //     dest: tradeData.input.dest,
-        //     srcAmount: actualSrcAmount,
-        //     dstAmount: actualDestAmount,
-        //     destAddress: tradeData.input.destAddress,
-        //     ethWeiValue: weiAmount,
-        //     reserve1: (tradeData.input.src == ETH_TOKEN_ADDRESS) ? address(0) : rateResult.reserve1,
-        //     reserve2:  (tradeData.input.dest == ETH_TOKEN_ADDRESS) ? address(0) : rateResult.reserve2,
-        //     hint: tradeData.input.hint
-        // });
+        // todo: splits to trade event?
+        emit KyberTrade({
+            trader: tradeData.input.trader,
+            src: tradeData.input.src,
+            dest: tradeData.input.dest,
+            srcAmount: actualSrcAmount,
+            dstAmount: tradeData.actualDestAmount,
+            destAddress: tradeData.input.destAddress,
+            ethWeiValue: tradeData.tradeWei,
+            networkFeeWei: tradeData.networkFeeWei,
+            customPlatformFeeWei: tradeData.platformFeeWei,
+            e2tReserves: tradeData.ethToToken.addresses,
+            t2eReserves: tradeData.tokenToEth.addresses
+        });
 
         return (tradeData.actualDestAmount);
     }
