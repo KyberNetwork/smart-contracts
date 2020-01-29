@@ -198,15 +198,22 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         return true;
     }
 
-    event ContractsUpdated(IFeeHandler newContract, IFeeHandler currentContract, IKyberDAO oldDAO, IKyberDAO newDAO);
+    event FeeHandlerUpdated(IFeeHandler newHandler, IFeeHandler previous);
+    event KyberDAOUpdated(IKyberDAO newDao, IKyberDAO previous);
 
     function setContracts(IFeeHandler _feeHandler, IKyberDAO _kyberDAO) public onlyAdmin {
-        require(_feeHandler != IFeeHandler(0), "feeHandler address 0");
-        require(_kyberDAO != IKyberDAO(0), "kyberDAO address 0");
+        require(_feeHandler != IFeeHandler(0), "feeHandler 0");
+        require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
 
-        emit ContractsUpdated(_feeHandler, feeHandler, kyberDAO, _kyberDAO);
-        feeHandler = _feeHandler;
-        kyberDAO = _kyberDAO;
+        if(_feeHandler != feeHandler) {
+            emit FeeHandlerUpdated(_feeHandler, feeHandler);
+            feeHandler = _feeHandler;
+        }
+        
+        if(_kyberDAO != kyberDAO) {
+            emit KyberDAOUpdated(_kyberDAO, kyberDAO);
+            kyberDAO = _kyberDAO;
+        }
     }
 
     event KyberNetworkParamsSet(uint maxGasPrice, uint negligibleRateDiffBps);
