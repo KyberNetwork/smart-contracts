@@ -50,7 +50,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         external payable
         returns(uint destAmount)
     {
-        TradeData memory tradeData = initTradeData({
+        TradeData memory tradeData = prepareTradeData({
             trader: trader,
             src: src,
             dest: dest,
@@ -59,10 +59,11 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             maxDestAmount: maxDestAmount,
             minConversionRate: minConversionRate,
             platformWallet: platformWallet,
-            platformFeeBps: platformFeeBps
+            platformFeeBps: platformFeeBps,
+            hint: hint
             });
         
-        return trade(tradeData, hint);
+        return trade(tradeData);
     }
 
      // backward compatible
@@ -70,7 +71,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint maxDestAmount, uint minConversionRate, address walletId, bytes calldata hint)
         external payable returns(uint destAmount)
     {
-        TradeData memory tradeData = initTradeData({
+        TradeData memory tradeData = prepareTradeData({
             trader: address(uint160(trader)),
             src: src,
             dest: dest,
@@ -79,10 +80,11 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             maxDestAmount: maxDestAmount,
             minConversionRate: minConversionRate,
             platformWallet: address(uint160(walletId)),
-            platformFeeBps: 0
+            platformFeeBps: 0,
+            hint: hint
             });
 
-        return trade(tradeData, hint);
+        return trade(tradeData);
     }
 
     event AddReserveToNetwork (
@@ -275,7 +277,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         if (src == dest) return (0, 0);
         uint qty = srcQty & ~PERM_HINT_GET_RATE;
 
-        TradeData memory tradeData = initTradeData({
+        TradeData memory tradeData = prepareTradeData({
             trader: address(uint160(0)),
             src: src,
             dest: dest,
@@ -284,12 +286,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             maxDestAmount: 2 ** 255,
             minConversionRate: 0,
             platformWallet: address(uint160(0)),
-            platformFeeBps: 0
+            platformFeeBps: 0,
+            hint: ("")
         });
         
-        bytes memory hint;
-
-        parseTradeDataHint(tradeData, hint);
         tradeData.takerFeeBps = getTakerFee();
 
         calcRatesAndAmounts(src, dest, qty, tradeData);
@@ -305,7 +305,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     {
         if (src == dest) return (0, 0, 0);
         
-        TradeData memory tradeData = initTradeData({
+        TradeData memory tradeData = prepareTradeData({
             trader: address(uint160(0)),
             src: src,
             dest: dest,
@@ -314,10 +314,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             maxDestAmount: 2 ** 255,
             minConversionRate: 0,
             platformWallet: address(uint160(0)),
-            platformFeeBps: platformFeeBps
+            platformFeeBps: platformFeeBps,
+            hint: hint
         });
         
-        parseTradeDataHint(tradeData, hint);
         tradeData.takerFeeBps = getTakerFee();
         
         calcRatesAndAmounts(src, dest, srcQty, tradeData);
@@ -327,7 +327,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         expectedRateAfterAllFees = calcRateFromQty(srcQty, tradeData.actualDestAmount, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
     }
 
-    function initTradeData(
+    function prepareTradeData(
         address payable trader,
         IERC20 src,
         IERC20 dest,
@@ -336,7 +336,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint maxDestAmount,
         uint minConversionRate,
         address payable platformWallet,
-        uint platformFeeBps
+        uint platformFeeBps,
+        bytes memory hint
         ) 
     internal view returns (TradeData memory tradeData)
     {
@@ -352,6 +353,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         tradeData.tokenToEth.decimals = getDecimals(src);
         tradeData.ethToToken.decimals = getDecimals(dest);
+
+        parseTradeDataHint(tradeData, hint);
     }
     
     function enabled() external view returns(bool) {
@@ -828,15 +831,14 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev trade api for kyber network.
     /// @param tradeData.input structure of trade inputs
-    function trade(TradeData memory tradeData, bytes memory hint) 
+    function trade(TradeData memory tradeData) 
         internal
         nonReentrant
         returns(uint destAmount) 
     {
         require(verifyTradeValid(tradeData.input.src, tradeData.input.srcAmount, 
             tradeData.input.dest, tradeData.input.destAddress), "invalid");
-
-        parseTradeDataHint(tradeData, hint);
+        
         tradeData.takerFeeBps = getAndUpdateTakerFee();
         
         // amounts excluding fees
