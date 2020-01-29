@@ -6,22 +6,23 @@ import "./ReentrancyGuard.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberReserve.sol";
 import "./IFeeHandler.sol";
+import "./IKyberDAO.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
+    IFeeHandler     internal feeHandler;
+    IKyberDAO       internal kyberDAO;
+
     uint  constant PERM_HINT_GET_RATE = 1 << 255; //for backwards compatibility
-    uint            public negligibleRateDiffBps = 10; // bps is 0.01%
-    IFeeHandler     public feeHandlerContract;
+    uint            negligibleRateDiffBps = 10; // bps is 0.01%
 
     uint            public takerFeeData; // will include feeBps and expiry block
     uint            maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool            isEnabled = false; // network is enabled
     
-    mapping(bytes32=>uint) public infoFields; // this is only a UI field for external app.
-
     mapping(address=>bool) public kyberProxyContracts;
     address[] public kyberProxyArray;
     
@@ -197,13 +198,22 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         return true;
     }
 
-    event FeeHandlerContractSet(IFeeHandler newContract, IFeeHandler currentContract);
+    event FeeHandlerUpdated(IFeeHandler newHandler, IFeeHandler previous);
+    event KyberDAOUpdated(IKyberDAO newDao, IKyberDAO previous);
 
-    function setFeeHandler(IFeeHandler feeHandler) public onlyAdmin {
-        require(feeHandler != IFeeHandler(0), "0 feeHandler address");
+    function setContracts(IFeeHandler _feeHandler, IKyberDAO _kyberDAO) public onlyAdmin {
+        require(_feeHandler != IFeeHandler(0), "feeHandler 0");
+        require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
 
-        emit FeeHandlerContractSet(feeHandler, feeHandlerContract);
-        feeHandlerContract = feeHandler;
+        if(_feeHandler != feeHandler) {
+            emit FeeHandlerUpdated(_feeHandler, feeHandler);
+            feeHandler = _feeHandler;
+        }
+        
+        if(_kyberDAO != kyberDAO) {
+            emit KyberDAOUpdated(_kyberDAO, kyberDAO);
+            kyberDAO = _kyberDAO;
+        }
     }
 
     event KyberNetworkParamsSet(uint maxGasPrice, uint negligibleRateDiffBps);
@@ -226,16 +236,12 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     function setEnable(bool _enable) public onlyAdmin {
         if (_enable) {
-            require(feeHandlerContract != IFeeHandler(0), "no feeHandler set");
+            require(feeHandler != IFeeHandler(0), "no feeHandler set");
             require(kyberProxyArray.length > 0, "no proxy set");
         }
         isEnabled = _enable;
 
         emit KyberNetworkSetEnable(isEnabled);
-    }
-
-    function setInfo(bytes32 field, uint value) public onlyOperator {
-        infoFields[field] = value;
     }
 
     event KyberProxyAdded(address proxy, address sender);
@@ -282,10 +288,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @return An array of all reserves
     function getReserves() public view returns(IKyberReserve[] memory) {
         return reserves;
-    }
-
-    function maxGasPrice() public view returns(uint) {
-        return maxGasPriceValue;
     }
 
     function updateTakerFee() public returns(uint takerFeeBps) {
@@ -382,8 +384,17 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         return isEnabled;
     }
 
-    function info(bytes32 field) public view returns(uint) {
-        return infoFields[field];
+    function getContracts() external view returns(address kyberDaoAddress, address feeHandlerAddress) {
+        return(address(kyberDAO), address(feeHandler));
+    }
+
+    function getNetworkData() external view returns(
+        bool networkEnabled, 
+        uint negligibleDiffBps, 
+        uint maximumGasPrice,
+        uint takerFeeBps) 
+    {
+        return(isEnabled, negligibleRateDiffBps, maxGasPriceValue, getTakerFee());
     }
 
     function getAllRatesForToken(IERC20 token, uint optionalAmount) public view
@@ -564,7 +575,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // uint rateWithAllFees;
     }
 
-  // accumulate fee wei
+    // accumulate fee wei
     function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, TradeData memory tradeData) 
         internal view
     // function should set all TradeData so it can later be used without any ambiguity
@@ -724,7 +735,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         (bool success, ) = tradeData.platformFeeWei != 0 ?
             tradeData.input.platformWallet.call.value(tradeData.platformFeeWei)("") :
             (true, bytes(""));
-        require(success, "Fail fee transfer: platform");
+        require(success, "FEE_TX_FAIL_PLAT");
         emit HandlePlatformFee(tradeData.input.platformWallet, tradeData.platformFeeWei);
 
         //no need to handle fees if no fee paying reserves
@@ -740,8 +751,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         // Send total fee amount to fee handler with reserve data.
         require(
-            feeHandlerContract.handleFees.value(tradeData.networkFeeWei)(eligibleWallets, rebatePercentages),
-            "Fail fee transfer: FeeHandler"
+            feeHandler.handleFees.value(tradeData.networkFeeWei)(eligibleWallets, rebatePercentages),
+            "FEE_TX_FAIL"
         );
         return true;
     }
@@ -1006,28 +1017,35 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     
     // get fee view function. for get expected rate
     function getTakerFee() internal view returns(uint takerFeeBps) {
-        return 25;
+        uint expiryBlock;
+        (takerFeeBps, expiryBlock) = decodeTakerFee(takerFeeData);
 
-         // todo: read data. decode. read from DAO if expired; on DAO read from view function.
+        if (expiryBlock <= block.number) {
+            (takerFeeBps, expiryBlock) = kyberDAO.getLatestNetworkFeeData();
+        }
         // todo: don't revert if DAO reverts. just return exsiting value.
     }
     
     // get fee function for trade. get fee and update data if expired.
-    function getAndUpdateTakerFee() internal returns(uint takerFeeBps) {
-        return 25;
+    // can be triggered from outside. to avoid extra gas cost on one taker.
+    function getAndUpdateTakerFee() public returns(uint takerFeeBps) {
+        uint expiryBlock;
 
-        // todo: read data. decode. 
-        // todo: if expired read from DAO and encode
-        // todo: don't revert if DAO reverts. just return exsiting value.
-        // handle situation where DAO doesn't exist
+        (takerFeeBps, expiryBlock) = decodeTakerFee(takerFeeData);
+
+        if (expiryBlock <= block.number) {
+            (takerFeeBps, expiryBlock) = kyberDAO.getLatestNetworkFeeData();
+            takerFeeData = encodeTakerFee(expiryBlock, takerFeeBps);
+        }
     }
     
-    function decodeTakerFee(uint feeData) internal pure returns(uint expiryBlock, uint takerFeeDataDecoded) {
-        
+    function decodeTakerFee(uint feeData) internal pure returns(uint feeBps, uint expiryBlock) {
+        feeBps = feeData & ((1 << 128) - 1);
+        expiryBlock = (feeData / (1 << 128)) & ((1 << 128) - 1);
     }
     
     function encodeTakerFee(uint expiryBlock, uint feeBps) internal pure returns(uint feeData) {
-        
+        return ((expiryBlock << 128) + feeBps);
     }
     
     function parseTradeDataHint(TradeData memory tradeData,  bytes memory hint) internal view {

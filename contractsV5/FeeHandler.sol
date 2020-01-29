@@ -74,7 +74,7 @@ contract FeeHandler is IFeeHandler, Utils {
     // encode totals, 128 bits per reward / rebate
     function handleFees(address[] calldata eligibleWallets, uint[] calldata rebatePercentages) external payable onlyKyberNetwork returns(bool) {
         // Decoding BRR data
-        (uint rewardInBPS, uint rebateInBPS, uint epoch, uint expiryBlock) = getBRR();
+        (uint rewardInBPS, uint rebateInBPS, uint epoch) = getBRR();
 
         uint rebateWei = rebateInBPS * msg.value / BPS;
         uint rewardWei = rewardInBPS * msg.value / BPS;
@@ -100,7 +100,7 @@ contract FeeHandler is IFeeHandler, Utils {
 
     event DistributeRewards(address staker, uint amountWei);
 
-    function claimStakerReward(address staker, uint percentageInPrecision, uint epoch) public onlyDAO returns(uint) {
+    function claimStakerReward(address staker, uint percentageInPrecision, uint epoch) external onlyDAO returns(uint) {
         // Amount of reward to be sent to staker
         uint amount = rewardsPerEpoch[epoch] * percentageInPrecision / PRECISION;
 
@@ -125,7 +125,7 @@ contract FeeHandler is IFeeHandler, Utils {
     event DistributeRebate(address rebateWallet, uint amountWei);
 
     // Using rebateWallet instead of reserve so I don't have to store KyberNetwork variable.
-    function claimReserveRebate(address rebateWallet) public returns (uint){
+    function claimReserveRebate(address rebateWallet) external returns (uint){
         // Get total amount of rebate accumulated
         uint amount = rebatePerWallet[rebateWallet] - 1;
 
@@ -220,7 +220,8 @@ contract FeeHandler is IFeeHandler, Utils {
 
     event BRRUpdated(uint rewardBPS, uint rebateBPS, uint burnBPS, uint expiryBlock, uint epoch);
 
-    function getBRR() internal returns(uint rewardBPS, uint rebateBPS, uint expiryBlock, uint epoch) {
+    function getBRR() internal returns(uint rewardBPS, uint rebateBPS, uint epoch) {
+        uint expiryBlock;
         (rewardBPS, rebateBPS, expiryBlock, epoch) = decodeBRRData();
 
           // Check current block number
