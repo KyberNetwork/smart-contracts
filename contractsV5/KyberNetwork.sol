@@ -575,8 +575,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // uint rateWithAllFees;
     }
 
-    // accumulate fee wei
-    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, TradeData memory tradeData) 
+  // accumulate fee wei
+    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, TradeData memory tradeData)
         internal view
     // function should set all TradeData so it can later be used without any ambiguity
     {
@@ -590,7 +590,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         }
 
         //if split reserves, add bps for ETH -> token
-        if (tradeData.tokenToEth.splitValuesBps.length > 1) {
+        if (tradeData.ethToToken.splitValuesBps.length > 1) {
             for (uint i = 0; i < tradeData.ethToToken.addresses.length; i++) {
                 if (tradeData.ethToToken.isFeePaying[i]) {
                     tradeData.feePayingReservesBps += tradeData.ethToToken.splitValuesBps[i];
@@ -614,8 +614,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     function calcRatesAndAmountsTokenToEth(IERC20 src, uint srcAmount, TradeData memory tradeData) internal view {
         IKyberReserve reserve;
-        uint splitAmount;
-        uint srcAmountSoFar;
         bool isFeePaying;
 
         // token to Eth
@@ -623,29 +621,13 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // if split reserves, find rates
         // can consider parsing enum hint type into tradeData for easy identification of splitHint. Or maybe just boolean flag
         if (tradeData.tokenToEth.splitValuesBps.length > 1) {
-            for (uint i = 0; i < tradeData.tokenToEth.addresses.length; i++) {
-                reserve = tradeData.tokenToEth.addresses[i];
-                //calculate split and corresponding trade amounts
-                splitAmount = (i == tradeData.tokenToEth.splitValuesBps.length - 1) ? (srcAmount - srcAmountSoFar) : tradeData.tokenToEth.splitValuesBps[i] * srcAmount / BPS;
-                srcAmountSoFar += splitAmount;
-                tradeData.tokenToEth.rates[i] = reserve.getConversionRate(src, ETH_TOKEN_ADDRESS, splitAmount, block.number);
-                tradeData.tradeWei += calcDstQty(splitAmount, tradeData.tokenToEth.decimals, ETH_DECIMALS, tradeData.tokenToEth.rates[i]);
-
-                //account for fees
-                if (tradeData.tokenToEth.isFeePaying[i]) {
-                    tradeData.feePayingReservesBps += tradeData.tokenToEth.splitValuesBps[i];
-                    tradeData.numFeePayingReserves ++;
-                }
-            }
+            (tradeData.tradeWei, tradeData.feePayingReservesBps, tradeData.numFeePayingReserves) = getDestQtyAndFeeDataFromSplits(tradeData.tokenToEth, src, srcAmount, true);
         } else {
             // else find best rate
             (reserve, tradeData.tokenToEth.rates[0], isFeePaying) = searchBestRate(tradeData.tokenToEth.addresses, src, ETH_TOKEN_ADDRESS, srcAmount, tradeData.takerFeeBps);
             //save into tradeData
-            tradeData.tokenToEth.addresses = new IKyberReserve[](1);
-            tradeData.tokenToEth.addresses[0] = reserve;
+            storeTradeReserveData(tradeData.tokenToEth, reserve, tradeData.tokenToEth.rates[0], isFeePaying);
             tradeData.tradeWei = calcDstQty(srcAmount, tradeData.tokenToEth.decimals, ETH_DECIMALS, tradeData.tokenToEth.rates[0]);
-            tradeData.tokenToEth.splitValuesBps[0] = BPS; //max percentage amount
-            tradeData.tokenToEth.isFeePaying[0] = isFeePaying;
 
             //account for fees
             if (isFeePaying) {
@@ -655,37 +637,57 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         }
     }
 
-    function calcRatesAndAmountsEthToToken(
-        IERC20 dest,
-        uint actualTradeWei,
-        TradeData memory tradeData
+    function getDestQtyAndFeeDataFromSplits(
+        TradingReserves memory tradingReserves,
+        IERC20 token,
+        uint tradeAmt,
+        bool isTokenToEth
     )
         internal
         view
+        returns (uint destQty, uint feePayingReservesBps, uint numFeePayingReserves)
     {
         IKyberReserve reserve;
-        uint rate;
-        uint amountSoFar;
         uint splitAmount;
+        uint amountSoFar;
+
+        for (uint i = 0; i < tradingReserves.addresses.length; i++) {
+            reserve = tradingReserves.addresses[i];
+            //calculate split and corresponding trade amounts
+            splitAmount = (i == tradingReserves.splitValuesBps.length - 1) ? (tradeAmt - amountSoFar) : tradingReserves.splitValuesBps[i] * tradeAmt / BPS;
+            amountSoFar += splitAmount;
+            if (isTokenToEth) {
+                tradingReserves.rates[i] = reserve.getConversionRate(token, ETH_TOKEN_ADDRESS, splitAmount, block.number);
+                destQty += calcDstQty(splitAmount, tradingReserves.decimals, ETH_DECIMALS, tradingReserves.rates[i]);
+                if (tradingReserves.isFeePaying[i]) {
+                    feePayingReservesBps += tradingReserves.splitValuesBps[i];
+                    numFeePayingReserves ++;
+                }
+            } else {
+                tradingReserves.rates[i] = reserve.getConversionRate(ETH_TOKEN_ADDRESS, token, splitAmount, block.number);
+                destQty += calcDstQty(splitAmount, ETH_DECIMALS, tradingReserves.decimals, tradingReserves.rates[i]);
+            }
+        }
+    }
+
+    function storeTradeReserveData(TradingReserves memory tradingReserves, IKyberReserve reserve, uint rate, bool isFeePaying) internal pure {
+        tradingReserves.addresses = new IKyberReserve[](1);
+        tradingReserves.addresses[0] = reserve;
+        tradingReserves.rates[0] = rate;
+        tradingReserves.splitValuesBps[0] = BPS; //max percentage amount
+        tradingReserves.isFeePaying[0] = isFeePaying;
+    }
+
+    function calcRatesAndAmountsEthToToken(IERC20 dest, uint actualTradeWei, TradeData memory tradeData) internal view {
+        IKyberReserve reserve;
+        uint rate;
         bool isFeePaying;
         
         // Eth to token
         ///////////////
         // if hinted reserves, find rates and save.
         if (tradeData.ethToToken.splitValuesBps.length > 1) {
-            for (uint i = 0; i < tradeData.ethToToken.addresses.length; i++) {
-                reserve = tradeData.ethToToken.addresses[i];
-
-                //calculate split amount with fees
-                splitAmount = (i == tradeData.ethToToken.splitValuesBps.length - 1) ? (actualTradeWei - amountSoFar) : tradeData.ethToToken.splitValuesBps[i] * actualTradeWei / BPS;
-                amountSoFar += splitAmount;
-                //to save gas, we make just 1 conversion rate call with splitAmount
-                rate = reserve.getConversionRate(ETH_TOKEN_ADDRESS, dest, splitAmount, block.number);
-                //save rate data
-                tradeData.ethToToken.rates[i] = rate;
-                //add to actualDestAmount
-                tradeData.actualDestAmount += calcDstQty(splitAmount, ETH_DECIMALS, tradeData.ethToToken.decimals, rate);
-            }
+            (tradeData.actualDestAmount, , ) = getDestQtyAndFeeDataFromSplits(tradeData.tokenToEth, dest, actualTradeWei, false);
             //calculate actual rate
             rate = calcRateFromQty(actualTradeWei, tradeData.actualDestAmount, ETH_DECIMALS, tradeData.ethToToken.decimals);
         } else {
@@ -703,11 +705,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             );
 
             //save into tradeData
-            tradeData.ethToToken.addresses = new IKyberReserve[](1);
-            tradeData.ethToToken.addresses[0] = reserve;
-            tradeData.ethToToken.rates[0] = rate;
-            tradeData.ethToToken.isFeePaying[0] = isFeePaying;
-            tradeData.ethToToken.splitValuesBps[0] = BPS;
+            storeTradeReserveData(tradeData.ethToToken, reserve, rate, isFeePaying);
 
             // add to feePayingReservesBps if reserve is fee paying
             if (isFeePaying) {
