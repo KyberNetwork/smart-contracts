@@ -15,18 +15,18 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     IFeeHandler     internal feeHandler;
     IKyberDAO       internal kyberDAO;
-
-    uint  constant PERM_HINT_GET_RATE = 1 << 255; //for backwards compatibility
     uint            negligibleRateDiffBps = 10; // bps is 0.01%
 
-    uint            public takerFeeData; // will include feeBps and expiry block
+    uint            takerFeeData; // will include feeBps and expiry block
     uint            maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool            isEnabled = false; // network is enabled
+
+    uint  constant PERM_HINT_GET_RATE = 1 << 255; //for backwards compatibility
     
-    mapping(address=>bool) public kyberProxyContracts;
+    mapping(address=>bool) internal kyberProxyContracts;
     address[] public kyberProxyArray;
     
-    IKyberReserve[] public reserves;
+    IKyberReserve[] internal reserves;
     mapping(address=>uint) public reserveAddressToId;
     mapping(uint=>address[]) public reserveIdToAddresses;
     mapping(address=>bool) public isFeePayingReserve;
@@ -61,11 +61,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             platformWallet: platformWallet,
             platformFeeBps: platformFeeBps
             });
-
-        parseTradeDataHint(tradeData, hint);
-        tradeData.takerFeeBps = getAndUpdateTakerFee();
         
-        return trade(tradeData);
+        return trade(tradeData, hint);
     }
 
      // backward compatible
@@ -85,10 +82,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             platformFeeBps: 0
             });
 
-        parseTradeDataHint(tradeData, hint);
-        tradeData.takerFeeBps = getAndUpdateTakerFee();
-        
-        return trade(tradeData);
+        return trade(tradeData, hint);
     }
 
     event AddReserveToNetwork (
@@ -101,7 +95,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @notice can be called only by operator
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
-    function addReserve(address reserve, uint reserveId, bool isFeePaying, address wallet) public onlyOperator returns(bool) {
+    function addReserve(address reserve, uint reserveId, bool isFeePaying, address wallet) external onlyOperator returns(bool) {
         require(reserveAddressToId[reserve] == uint(0), "reserve has existing id");
         require(reserveId != 0, "reserveId = 0");
 
@@ -130,7 +124,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @dev removes a reserve from Kyber network.
     /// @param reserve The reserve address.
     /// @param startIndex to search in reserve array.
-    function removeReserveWithIndex(IKyberReserve reserve, uint startIndex) public onlyOperator returns(bool) {
+    function removeReserveWithIndex(IKyberReserve reserve, uint startIndex) external onlyOperator returns(bool) {
 
         require(reserveAddressToId[address(reserve)] != uint(0), "reserve -> 0 reserveId");
         
@@ -154,10 +148,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         return true;
     }
-
-    function removeReserve(IKyberReserve reserve) public onlyOperator returns(bool) {
-        return removeReserveWithIndex(reserve, 0);
-    }
     
     event ListReservePairs(address indexed reserve, IERC20 src, IERC20 dest, bool add);
 
@@ -169,7 +159,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @param tokenToEth will it support token to ether trade
     /// @param add If true then list this pair, otherwise unlist it.
     function listPairForReserve(address reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add)
-        public
+        external
         onlyOperator
         returns(bool)
     {
@@ -201,7 +191,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     event FeeHandlerUpdated(IFeeHandler newHandler, IFeeHandler previous);
     event KyberDAOUpdated(IKyberDAO newDao, IKyberDAO previous);
 
-    function setContracts(IFeeHandler _feeHandler, IKyberDAO _kyberDAO) public onlyAdmin {
+    function setContracts(IFeeHandler _feeHandler, IKyberDAO _kyberDAO) external onlyAdmin {
         require(_feeHandler != IFeeHandler(0), "feeHandler 0");
         require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
 
@@ -218,13 +208,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     event KyberNetworkParamsSet(uint maxGasPrice, uint negligibleRateDiffBps);
 
-    function setParams(
-        uint                  _maxGasPrice,
-        uint                  _negligibleRateDiffBps
-    )
-        public
-        onlyAdmin
-    {
+    function setParams(uint _maxGasPrice, uint _negligibleRateDiffBps) external onlyAdmin {
         require(_negligibleRateDiffBps <= BPS, "rateDiffBps > BPS"); // at most 100%
 
         maxGasPriceValue = _maxGasPrice;
@@ -234,7 +218,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     event KyberNetworkSetEnable(bool isEnabled);
 
-    function setEnable(bool _enable) public onlyAdmin {
+    function setEnable(bool _enable) external onlyAdmin {
         if (_enable) {
             require(feeHandler != IFeeHandler(0), "no feeHandler set");
             require(kyberProxyArray.length > 0, "no proxy set");
@@ -247,9 +231,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     event KyberProxyAdded(address proxy, address sender);
     event KyberProxyRemoved(address proxy);
     
-    function addKyberProxy(address networkProxy) public onlyAdmin {
-        require(networkProxy != address(0), "0 networkProxy address");
-        require(!kyberProxyContracts[networkProxy], "networkProxy exists");
+    function addKyberProxy(address networkProxy) external onlyAdmin {
+        require(networkProxy != address(0), "proxy 0");
+        require(!kyberProxyContracts[networkProxy], "proxy exist");
         
         kyberProxyArray.push(networkProxy);
         
@@ -257,8 +241,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         emit KyberProxyAdded(networkProxy, msg.sender);
     }
     
-    function removeKyberProxy(address networkProxy) public onlyAdmin {
-        require(kyberProxyContracts[networkProxy], "networkProxy not found");
+    function removeKyberProxy(address networkProxy) external onlyAdmin {
+        require(kyberProxyContracts[networkProxy], "proxy not found");
         
         uint proxyIndex = 2 ** 255;
         
@@ -276,22 +260,12 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         kyberProxyContracts[networkProxy] = false;
         emit KyberProxyRemoved(networkProxy);
     }
-    
-    /// @dev returns number of reserves
-    /// @return number of reserves
-    function getNumReserves() public view returns(uint) {
-        return reserves.length;
-    }
 
     /// @notice should be called off chain
     /// @dev get an array of all reserves
     /// @return An array of all reserves
-    function getReserves() public view returns(IKyberReserve[] memory) {
+    function getReserves() external view returns(IKyberReserve[] memory) {
         return reserves;
-    }
-
-    function updateTakerFee() public returns(uint takerFeeBps) {
-        takerFeeBps = getAndUpdateTakerFee();
     }
     
     //backward compatible
@@ -380,7 +354,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tradeData.ethToToken.decimals = getDecimals(dest);
     }
     
-    function enabled() public view returns(bool) {
+    function enabled() external view returns(bool) {
         return isEnabled;
     }
 
@@ -392,12 +366,14 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         bool networkEnabled, 
         uint negligibleDiffBps, 
         uint maximumGasPrice,
-        uint takerFeeBps) 
+        uint takerFeeBps,        
+        uint expiryBlock) 
     {
-        return(isEnabled, negligibleRateDiffBps, maxGasPriceValue, getTakerFee());
+        (takerFeeBps, expiryBlock) = decodeTakerFee(takerFeeData);
+        return(isEnabled, negligibleRateDiffBps, maxGasPriceValue, takerFeeBps, expiryBlock);
     }
 
-    function getAllRatesForToken(IERC20 token, uint optionalAmount) public view
+    function getAllRatesForToken(IERC20 token, uint optionalAmount) external view
         returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, uint[] memory sellRates)
     {
         uint amount = optionalAmount > 0 ? optionalAmount : 1000;
@@ -851,13 +827,17 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev trade api for kyber network.
     /// @param tradeData.input structure of trade inputs
-    function trade(TradeData memory tradeData) 
+    function trade(TradeData memory tradeData, bytes memory hint) 
         internal
         nonReentrant
         returns(uint destAmount) 
     {
-        require(verifyTradeValid(tradeData.input.src, tradeData.input.srcAmount, tradeData.input.dest, tradeData.input.destAddress));
+        require(verifyTradeValid(tradeData.input.src, tradeData.input.srcAmount, 
+            tradeData.input.dest, tradeData.input.destAddress), "invalid");
 
+        parseTradeDataHint(tradeData, hint);
+        tradeData.takerFeeBps = getAndUpdateTakerFee();
+        
         // amounts excluding fees
         calcRatesAndAmounts(tradeData.input.src, tradeData.input.dest, tradeData.input.srcAmount, tradeData);
 
@@ -995,19 +975,19 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         returns(bool)
     {
         require(isEnabled, "network disabled");
-        require(kyberProxyContracts[msg.sender], "msg.sender not proxy");
-        require(tx.gasprice <= maxGasPriceValue, "max gas price exceeded");
+        require(kyberProxyContracts[msg.sender], "bad sender");
+        require(tx.gasprice <= maxGasPriceValue, "gas price");
         require(srcAmount <= MAX_QTY, "srcAmt > MAX_QTY");
         require(srcAmount != 0, "0 srcAmt");
-        require(destAddress != address(0), "0 destAddress");
-        require(src != dest, "src == dest");
+        require(destAddress != address(0), "dest 0");
+        require(src != dest, "src = dest");
 
         if (src == ETH_TOKEN_ADDRESS) {
-            require(msg.value == srcAmount, "not enough ETH sent with trade");
+            require(msg.value == srcAmount, "ETH low");
         } else {
-            require(msg.value == 0, "ETH sent for token trade");
+            require(msg.value == 0, "ETH sent");
             //funds should have been moved to this contract already.
-            require(src.balanceOf(address(this)) >= srcAmount, "srcToken not sent here");
+            require(src.balanceOf(address(this)) >= srcAmount, "srcToke low");
         }
 
         return true;

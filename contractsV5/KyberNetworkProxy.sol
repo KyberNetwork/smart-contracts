@@ -278,11 +278,11 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     }
     
     function maxGasPrice() public view returns(uint gasPrice) {
-        ( , , gasPrice, ) = kyberNetworkContract.getNetworkData();
+        ( , , gasPrice, , ) = kyberNetworkContract.getNetworkData();
     }
 
     function enabled() public view returns(bool isEnabled) {
-        ( isEnabled, , , ) = kyberNetworkContract.getNetworkData();
+        ( isEnabled, , , , ) = kyberNetworkContract.getNetworkData();
     }
 
     struct TradeOutcome {
