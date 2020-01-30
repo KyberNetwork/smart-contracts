@@ -24,7 +24,7 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable, Utils {
     bool public tradeEnabled;
     uint public feeBps;
 
-    IOtc public otc;// = IOtc(0x39755357759cE0d7f32dC8dC45414CCa409AE24e);
+    IOtc public otc;
     IWeth public wethToken;// = IWeth(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     mapping(address => bool) public isTokenListed;
@@ -237,7 +237,13 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable, Utils {
         require(_otc != address(0), "setContracts: otc's address is missing");
 
         kyberNetwork = _kyberNetwork;
-        otc = IOtc(_otc);
+
+        if (_otc != address(otc)) {
+            // new otc address
+            require(wethToken.approve(address(otc), 0), "setContracts: failed to reset allowance for old otc (wethToken)");
+            otc = IOtc(_otc);
+            require(wethToken.approve(_otc, 2**255), "setContracts: failed to approve otc (wethToken)");
+        }
 
         emit ContractsSet(_kyberNetwork, _otc);
     }
@@ -645,13 +651,7 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable, Utils {
 
         if (!isEthToToken) {
             // only need to use median when token -> eth trade
-            // rate eth/dai: order0Buy / order0Pay
             order0Pay = ask.payAmount;
-            // sell eth rate        : ask.buyAmount / ask.payAmount
-            // buy eth rate         : bid.payAmount / bid.buyAmount
-            // median rate (eth/dai): (ask.buyAmount / ask.payAmount + bid.payAmount / bid.buyAmount) / 2;
-            // take amt dai         : ask.payAmount
-            // -> amt eth           : ask.payAmount * (ask.buyAmount / ask.payAmount + bid.payAmount / bid.buyAmount) / 2;
             order0Buy = (ask.buyAmount + ask.payAmount * bid.payAmount / bid.buyAmount) / 2;
         }
 
@@ -709,13 +709,6 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable, Utils {
         if (bid.id == 0 || ask.id == 0 || bid.buyAmount > MAX_QTY || bid.payAmount > MAX_QTY || ask.buyAmount > MAX_QTY || ask.payAmount > MAX_QTY) {
             return false;
         }
-
-        // sell eth rate : ask.payAmount / ask.buyAmount
-        // buy eth rate  : bid.buyAmount / bid.payAmount
-        // sell > buy   -> ask.payAmount / ask.buyAmount > bid.buyAmount / bid.payAmount
-        //              -> ask.payAmount * bid.payA mount > ask.buyAmount * bid.buyAmount;
-        // slippage  : (sell - buy) / buy
-        //          -> (ask.payAmount / ask.buyAmount - bid.buyAmount / bid.payAmount) / (bid.buyAmount / bid.payAmount);
 
         uint x1 = ask.payAmount * bid.payAmount;
         uint x2 = ask.buyAmount * bid.buyAmount;
