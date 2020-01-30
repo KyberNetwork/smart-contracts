@@ -1,5 +1,5 @@
 
-let MockConversionRateEnhancedSteps = artifacts.require("./mockContracts/MockConversionRateEnhancedSteps.sol");
+let MockEnhancedStepFunctions = artifacts.require("./mockContracts/MockEnhancedStepFunctions.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 
 let Helper = require("./helper.js");
@@ -58,7 +58,7 @@ contract('ConversionRateEnhancedSteps', function(accounts) {
 
     it("should init ConversionRateEnhancedSteps Inst and set general parameters.", async function () {
         //init contracts
-        convRatesInst = await MockConversionRateEnhancedSteps.new(admin);
+        convRatesInst = await MockEnhancedStepFunctions.new(admin);
 
         //set pricing general parameters
         convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);

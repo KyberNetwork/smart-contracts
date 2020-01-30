@@ -600,4 +600,4 @@ contract('KyberBancorNetwork', function(accounts) {
             Helper.assertEqual(expectedUserBalance, userBalanceAfter, "user balance must change as expected")
         }
     });
-  });
+});
