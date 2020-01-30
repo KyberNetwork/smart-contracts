@@ -10,7 +10,7 @@ const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
 const precision = new BN(10).pow(new BN(18));
 
-const initEthBalance = new BN(50).mul(new BN(10).pow(new BN(18)));
+const initEthBalance = new BN(100).mul(new BN(10).pow(new BN(18)));
 const initBntBalance = new BN(1000000).mul(new BN(10).pow(new BN(18)));
 
 // 1 ETH = 500 BNT
@@ -48,7 +48,7 @@ contract('KyberBancorNetwork', function(accounts) {
         bancorBntToken = await TestToken.new("BancorBNT", "BBNT", tokenDecimal);
         ethToBntPath = [bancorEthToken.address, bancorETHBNTToken.address, bancorBntToken.address];
         bntToEthPath = [bancorBntToken.address, bancorETHBNTToken.address, bancorEthToken.address];
-        bancorNetwork = await MockBancorNetwork.new(bancorBntToken.address, ethToBntPath, bntToEthPath);
+        bancorNetwork = await MockBancorNetwork.new(bancorEthToken.address, bancorBntToken.address, ethToBntPath, bntToEthPath);
         reserve = await KyberBancorReserve.new(
             bancorNetwork.address,
             network,
@@ -166,7 +166,7 @@ contract('KyberBancorNetwork', function(accounts) {
         let testNewToken = await TestToken.new("Test token", "TST", tokenDecimal);
         let newEthToBnt = [bancorEthToken.address, testNewToken.address, bancorBntToken.address];
         let newBntToEth = [bancorBntToken.address, testNewToken.address, bancorEthToken.address];
-        let testBancorNetwork = await MockBancorNetwork.new(bancorBntToken.address, newEthToBnt, newBntToEth);
+        let testBancorNetwork = await MockBancorNetwork.new(bancorEthToken.address, bancorBntToken.address, newEthToBnt, newBntToEth);
         let testReserve = await KyberBancorReserve.new(
             testBancorNetwork.address,
             network,
@@ -585,5 +585,94 @@ contract('KyberBancorNetwork', function(accounts) {
             let userBalanceAfter = await Helper.getBalancePromise(user);
             Helper.assertEqual(expectedUserBalance, userBalanceAfter, "user balance must change as expected")
         }
+    });
+
+    it("Should test few buys and sells with after changing bancor network", async function() {
+        let newBancorNetwork = await MockBancorNetwork.new(bancorEthToken.address, bancorBntToken.address, ethToBntPath, bntToEthPath);
+
+        await bancorBntToken.transfer(newBancorNetwork.address, initBntBalance);
+        await Helper.sendEtherWithPromise(user, newBancorNetwork.address, initEthBalance);
+
+        await reserve.setBancorContract(newBancorNetwork.address, {from: admin});
+
+        for(let id = 1; id <= 15; id++) {
+            let amountEth = (new BN(10)).pow(new BN(18)).div(new BN(id + 1));
+            let newEthToBntRate = (new BN(10)).pow(new BN(18)).mul(new BN(2 * id + 10));
+            await newBancorNetwork.setExchangeRate(newEthToBntRate, 0);
+
+            let ethToBntRate = await reserve.getConversionRate(ethAddress, bancorBntToken.address, amountEth, 0);
+            Helper.assertEqual(newEthToBntRate, ethToBntRate, "new rate should be correct");
+
+            let destAmount = Helper.calcDstQty(amountEth, tokenDecimal, tokenDecimal, ethToBntRate);
+
+            let expectedUserBalance = await bancorBntToken.balanceOf(user);
+            expectedUserBalance = expectedUserBalance.add(new BN(destAmount));
+            await reserve.trade(ethAddress, amountEth, bancorBntToken.address, user, ethToBntRate, true, {from: network, value: amountEth});
+            let userBalanceAfter = await bancorBntToken.balanceOf(user);
+            Helper.assertEqual(expectedUserBalance, userBalanceAfter, "user balance must change as expected")
+        }
+        for(let id = 1; id <= 15; id++) {
+            let amountBnt = (new BN(10)).pow(new BN(18)).mul(new BN(id * 2 + 10));
+
+            let newBntToEthRate = (new BN(10)).pow(new BN(18)).div(new BN(2 * id));
+            await newBancorNetwork.setExchangeRate(0, newBntToEthRate);
+            let bntToEthRate = await reserve.getConversionRate(bancorBntToken.address, ethAddress, amountBnt, 0);
+            Helper.assertEqual(newBntToEthRate, bntToEthRate, "new rate should be correct");
+
+            let destAmount = Helper.calcDstQty(amountBnt, tokenDecimal, tokenDecimal, bntToEthRate);
+
+            let expectedUserBalance = await Helper.getBalancePromise(user);
+            expectedUserBalance = expectedUserBalance.add(new BN(destAmount));
+            await bancorBntToken.transfer(network, amountBnt);
+            await reserve.trade(bancorBntToken.address, amountBnt, ethAddress, user, bntToEthRate, true, {from: network});
+            let userBalanceAfter = await Helper.getBalancePromise(user);
+            Helper.assertEqual(expectedUserBalance, userBalanceAfter, "user balance must change as expected")
+        }
+        await reserve.setBancorContract(bancorNetwork.address, {from: admin});
+    });
+
+    it("Should test few buys and sells with after changing kyber network", async function() {
+        let newNetwork = accounts[8];
+        await reserve.setKyberNetwork(newNetwork, {from: admin});
+        await bancorBntToken.approve(reserve.address, new BN(2).pow(new BN(255)), {from: newNetwork});
+        await bancorBntToken.approve(reserve.address, 0, {from: network});
+
+        for(let id = 1; id <= 15; id++) {
+            let amountEth = (new BN(10)).pow(new BN(18)).div(new BN(id + 1));
+            let newEthToBntRate = (new BN(10)).pow(new BN(18)).mul(new BN(2 * id + 10));
+            await bancorNetwork.setExchangeRate(newEthToBntRate, 0);
+
+            let ethToBntRate = await reserve.getConversionRate(ethAddress, bancorBntToken.address, amountEth, 0);
+            Helper.assertEqual(newEthToBntRate, ethToBntRate, "new rate should be correct");
+
+            let destAmount = Helper.calcDstQty(amountEth, tokenDecimal, tokenDecimal, ethToBntRate);
+
+            let expectedUserBalance = await bancorBntToken.balanceOf(user);
+            expectedUserBalance = expectedUserBalance.add(new BN(destAmount));
+            await reserve.trade(ethAddress, amountEth, bancorBntToken.address, user, ethToBntRate, true, {from: newNetwork, value: amountEth});
+            let userBalanceAfter = await bancorBntToken.balanceOf(user);
+            Helper.assertEqual(expectedUserBalance, userBalanceAfter, "user balance must change as expected")
+        }
+        for(let id = 1; id <= 15; id++) {
+            let amountBnt = (new BN(10)).pow(new BN(18)).mul(new BN(id * 2 + 10));
+
+            let newBntToEthRate = (new BN(10)).pow(new BN(18)).div(new BN(2 * id));
+            await bancorNetwork.setExchangeRate(0, newBntToEthRate);
+
+            let bntToEthRate = await reserve.getConversionRate(bancorBntToken.address, ethAddress, amountBnt, 0);
+            Helper.assertEqual(newBntToEthRate, bntToEthRate, "new rate should be correct");
+
+            let destAmount = Helper.calcDstQty(amountBnt, tokenDecimal, tokenDecimal, bntToEthRate);
+
+            let expectedUserBalance = await Helper.getBalancePromise(user);
+            expectedUserBalance = expectedUserBalance.add(new BN(destAmount));
+            await bancorBntToken.transfer(newNetwork, amountBnt);
+            await reserve.trade(bancorBntToken.address, amountBnt, ethAddress, user, bntToEthRate, true, {from: newNetwork});
+            let userBalanceAfter = await Helper.getBalancePromise(user);
+            Helper.assertEqual(expectedUserBalance, userBalanceAfter, "user balance must change as expected")
+        }
+        await reserve.setKyberNetwork(network, {from: admin});
+        await bancorBntToken.approve(reserve.address, 0, {from: newNetwork});
+        await bancorBntToken.approve(reserve.address, new BN(2).pow(new BN(255)), {from: network});
     });
 });

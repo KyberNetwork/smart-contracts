@@ -116,11 +116,10 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
     function setBancorContract(address _bancorNetwork) public onlyAdmin {
         require(_bancorNetwork != address(0), "setBancorContract: bancorNetwork address is missing");
 
-        if (address(bancorNetwork) != address(0)) {
-            require(bancorToken.approve(address(bancorNetwork), 0), "setBancorContract: can not reset approve token");
-        }
+        require(bancorToken.approve(address(bancorNetwork), 0), "setBancorContract: can not reset allowance");
+
         bancorNetwork = IBancorNetwork(_bancorNetwork);
-        require(bancorToken.approve(address(bancorNetwork), 2 ** 255), "setBancorContract: can not approve token");
+        require(bancorToken.approve(_bancorNetwork, 2 ** 255), "setBancorContract: can not approve token");
 
         emit BancorNetworkSet(_bancorNetwork);
     }
