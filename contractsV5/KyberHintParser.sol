@@ -4,7 +4,6 @@ import "./IERC20.sol";
 import "./BytesLib.sol";
 import "./IKyberHint.sol";
 import "./UtilsV5.sol";
-import "@nomiclabs/buidler/console.sol";
 
 contract KyberHintParser is IKyberHint, Utils {
     bytes public constant SEPARATOR = "\x00";
