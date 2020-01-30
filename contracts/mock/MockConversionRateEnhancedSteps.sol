@@ -3,9 +3,9 @@ pragma solidity ^0.4.18;
 import "../reserves/fprConversionRate/ConversionRateEnhancedSteps.sol";
 
 
-contract MockEnhancedStepFunctions is ConversionRateEnhancedSteps {
+contract MockConversionRateEnhancedSteps is ConversionRateEnhancedSteps {
 
-    function MockEnhancedStepFunctions(address admin) ConversionRateEnhancedSteps(admin) public {
+    function MockConversionRateEnhancedSteps(address admin) ConversionRateEnhancedSteps(admin) public {
 
     }
 
