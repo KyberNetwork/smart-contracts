@@ -8,12 +8,10 @@ import "./mock/IBancorNetwork.sol";
 
 contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
 
-    uint constant internal BPS = 10000; // 10^4
     uint constant ETH_BNT_DECIMALS = 18;
 
     address public kyberNetwork;
     bool public tradeEnabled;
-    uint public feeBps;
 
     IBancorNetwork public bancorNetwork;
 
@@ -25,7 +23,6 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
     constructor(
         address _bancorNetwork,
         address _kyberNetwork,
-        uint _feeBps,
         address _bancorEth,
         address _bancorToken,
         address _admin
@@ -37,14 +34,12 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
         require(_bancorEth != address(0), "constructor: bancorEth address is missing");
         require(_bancorToken != address(0), "constructor: bancorToken address is missing");
         require(_admin != address(0), "constructor: admin address is missing");
-        require(_feeBps < BPS, "constructor: fee is too big");
 
         bancorNetwork = IBancorNetwork(_bancorNetwork);
         bancorToken = IERC20(_bancorToken);
         bancorEth = IERC20(_bancorEth);
 
         kyberNetwork = _kyberNetwork;
-        feeBps = _feeBps;
         admin = _admin;
         tradeEnabled = true;
 
@@ -70,8 +65,6 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
 
         // src and dest can be only BNT or ETH
         uint rate = calcRateFromQty(srcQty, destQty, ETH_BNT_DECIMALS, ETH_BNT_DECIMALS);
-
-        rate = valueAfterReducingFee(rate);
 
         return rate;
     }
@@ -132,15 +125,6 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
         emit BancorNetworkSet(_bancorNetwork);
     }
 
-    event FeeBpsSet(uint feeBps);
-
-    function setFeeBps(uint _feeBps) public onlyAdmin {
-        require(_feeBps < BPS, "setFeeBps: feeBps >= BPS");
-
-        feeBps = _feeBps;
-        emit FeeBpsSet(feeBps);
-    }
-
     event TradeEnabled(bool enable);
 
     function enableTrade() public onlyAdmin returns(bool) {
@@ -155,18 +139,21 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
     function setNewEthBntPath(IERC20[] memory _ethToBntPath, IERC20[] memory _bntToEthPath) public onlyAdmin {
         require(_ethToBntPath.length != 0, "setNewEthBntPath: path should have some elements");
         require(_bntToEthPath.length != 0, "setNewEthBntPath: path should have some elements");
-        if (address(bancorNetwork) != address(0)) {
-            // verify if path returns value for rate
-            // both ETH + BNT has same decimals of 18, using 1 ETH/BNT to get rate
-            uint amount = PRECISION;
-            uint destQty;
-            (destQty, ) = bancorNetwork.getReturnByPath(_ethToBntPath, amount);
-            require(destQty > 0, "setNewEthBntPath: no rate from eth to bnt with this path");
-            (destQty, ) = bancorNetwork.getReturnByPath(_bntToEthPath, amount);
-            require(destQty > 0, "setNewEthBntPath: no rate from bnt to eth with this path");
-        }
+
+        // verify if path returns value for rate
+        // both ETH + BNT has same decimals of 18, using 1 ETH/BNT to get rate
+        uint amount = PRECISION;
+        uint destQty;
+
+        (destQty, ) = bancorNetwork.getReturnByPath(_ethToBntPath, amount);
+        require(destQty > 0, "setNewEthBntPath: no rate from eth to bnt with this path");
+
+        (destQty, ) = bancorNetwork.getReturnByPath(_bntToEthPath, amount);
+        require(destQty > 0, "setNewEthBntPath: no rate from bnt to eth with this path");
+
         ethToBntPath = _ethToBntPath;
         bntToEthPath = _bntToEthPath;
+
         emit NewPathsSet(_ethToBntPath, _bntToEthPath);
     }
 
@@ -236,10 +223,5 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
             path = ethToBntPath;
         }
         return path;
-    }
-
-    function valueAfterReducingFee(uint val) internal view returns(uint) {
-        require(val <= MAX_QTY, "valueAfterReducingFee: val > MAX_QTY");
-        return ((BPS - feeBps) * val) / BPS;
     }
 }
