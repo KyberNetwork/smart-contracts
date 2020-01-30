@@ -34,6 +34,7 @@ let network;
 let DAO;
 let networkProxy;
 let feeHandler;
+let hintParser;
 let operator;
 let user;
 let platformWallet;
@@ -75,6 +76,8 @@ let ethSrcQty = precisionUnits;
 let buyRates = [];
 let sellRates = [];
 
+let tempNetwork;
+
 contract('KyberNetwork', function(accounts) {
     before("one time init", async() => {
         //init accounts
@@ -85,7 +88,8 @@ contract('KyberNetwork', function(accounts) {
         user = accounts[3];
         platformWallet = accounts[4];
         admin = accounts[5]; // we don't want admin as account 0.
-        
+        hintParser = accounts[6];
+
         //DAO related init.
         expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
         DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
@@ -135,11 +139,11 @@ contract('KyberNetwork', function(accounts) {
             //first half are fee paying, other half aren't
             isFeePaying[i] = (i >= (numReserves / 2));
         }
-
+        
         //setup network
         await network.addOperator(operator, {from: admin});
         await network.addKyberProxy(networkProxy, {from: admin});
-        await network.setContracts(feeHandler.address, DAO.address, {from: admin});
+        await network.setContracts(feeHandler.address, DAO.address, hintParser, {from: admin});
         
         for (let i = 0; i < numReserves; i++) {
             reserve = reserves[i];
@@ -168,49 +172,48 @@ contract('KyberNetwork', function(accounts) {
         srcQty = new BN(100).mul(new BN(10).pow(srcDecimals));
     })
 
-    it("should test set contract events", async() => {
-        let tempNetwork = await KyberNetwork.new(admin);
-        let ethSender = accounts[9];
-        txResult = await tempNetwork.send(ethSrcQty, {from: ethSender});
-        expectEvent(txResult, 'EtherReceival', {
-            sender: ethSender,
-            amount: ethSrcQty
-        });
-        
-        txResult = await tempNetwork.addOperator(operator, {from: admin});
-        expectEvent(txResult, 'OperatorAdded', {
-            newOperator: operator,
-            isAdd: true
+    describe("test network events", async() => {
+        it("should test ether recieval event", async() => {    
+            tempNetwork = await KyberNetwork.new(admin);
+            await tempNetwork.addOperator(operator, {from: admin});
+            let ethSender = accounts[9];
+            txResult = await tempNetwork.send(ethSrcQty, {from: ethSender});
+            expectEvent(txResult, 'EtherReceival', {
+                sender: ethSender,
+                amount: ethSrcQty
+            });
         });
 
-        txResult = await tempNetwork.addReserve(reserve.address, new BN(1), true, user, {from: operator});
-        expectEvent(txResult, 'AddReserveToNetwork', {
-            reserve: reserve.address,
-            reserveId: new BN(1),
-            isFeePaying: true,
-            rebateWallet: user,
-            add: true
+        it("should test add reserve event", async() => {
+            txResult = await tempNetwork.addReserve(reserve.address, new BN(1), true, user, {from: operator});
+            expectEvent(txResult, 'AddReserveToNetwork', {
+                reserve: reserve.address,
+                reserveId: new BN(1),
+                isFeePaying: true,
+                rebateWallet: user,
+                add: true
+            });
         });
 
-        //TODO: RemoveReserveFromNetwork
-        //TODO: ListReservePairs
-        //TODO: FeeHandlerContractSet
-        //TODO: KyberNetworkParamsSet
-        //TODO: KyberNetworkSetEnable
-        //TODO: KyberProxyAdded
-        //TODO: KyberProxyRemoved
-        //TODO: HandlePlatformFee
-        //TODO: KyberTrade
+            //TODO: RemoveReserveFromNetwork
+            //TODO: ListReservePairs
+            //TODO: FeeHandlerContractSet
+            //TODO: KyberNetworkParamsSet
+            //TODO: KyberNetworkSetEnable
+            //TODO: KyberProxyAdded
+            //TODO: KyberProxyRemoved
+            //TODO: HandlePlatformFee
+            //TODO: KyberTrade
     });
 
     it("should test enable API", async() => {
-        let isEnabled = await network.enabled();
-        assert.equal(isEnabled, true);
+        let networkData = await network.getNetworkData();
+        assert.equal(networkData.networkEnabled, true);
 
         await network.setEnable(false, {from: admin});
 
-        isEnabled = await network.enabled();
-        assert.equal(isEnabled, false);
+        networkData = await network.getNetworkData();;
+        assert.equal(networkData.networkEnabled, false);
 
         await network.setEnable(true, {from: admin});
     });
@@ -339,7 +342,7 @@ contract('KyberNetwork', function(accounts) {
 
     it("test encode decode taker fee data with mock setter getter", async() => {
         let tempNetwork = await MockNetwork.new(admin);
-        await tempNetwork.setContracts(feeHandler.address, DAO.address, {from: admin});
+        await tempNetwork.setContracts(feeHandler.address, DAO.address, hintParser, {from: admin});
 
         let networkData = await tempNetwork.getNetworkData();
      
