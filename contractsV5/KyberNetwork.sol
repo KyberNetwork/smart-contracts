@@ -7,18 +7,16 @@ import "./IKyberNetwork.sol";
 import "./IKyberReserve.sol";
 import "./IFeeHandler.sol";
 import "./IKyberDAO.sol";
-import "./IKyberHint.sol";
+import "./IKyberTradeLogic.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
-    IFeeHandler     internal feeHandler;
-    IKyberDAO       internal kyberDAO;
-    IKyberHint      internal hintParser;
-
-    uint            negligibleRateDiffBps = 10; // bps is 0.01%
+    IFeeHandler       internal feeHandler;
+    IKyberDAO         internal kyberDAO;
+    IKyberTradeLogic  internal tradeLogic;
 
     uint            takerFeeData; // data is feeBps and expiry block
     uint            maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
@@ -53,7 +51,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         external payable
         returns(uint destAmount)
     {
-        TradeData memory tradeData = prepareTradeData({
+        TradeData memory tradeData = initTradeInput({
             trader: trader,
             src: src,
             dest: dest,
@@ -63,7 +61,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             minConversionRate: minConversionRate,
             platformWallet: platformWallet,
             platformFeeBps: platformFeeBps,
-            hint: hint
             });
         
         return trade(tradeData);
@@ -74,7 +71,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint maxDestAmount, uint minConversionRate, address walletId, bytes calldata hint)
         external payable returns(uint destAmount)
     {
-        TradeData memory tradeData = prepareTradeData({
+        TradeData memory tradeData = initTradeInput({
             trader: address(uint160(trader)),
             src: src,
             dest: dest,
@@ -84,7 +81,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             minConversionRate: minConversionRate,
             platformWallet: address(uint160(walletId)),
             platformFeeBps: 0,
-            hint: hint
             });
 
         return trade(tradeData);
@@ -101,19 +97,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
     function addReserve(address reserve, uint reserveId, bool isFeePaying, address wallet) external onlyOperator returns(bool) {
-        require(reserveAddressToId[reserve] == uint(0), "reserve has id");
-        require(reserveId != 0, "reserveId = 0");
-
-        if (reserveIdToAddresses[reserveId].length == 0) {
-            reserveIdToAddresses[reserveId].push(reserve);
-        } else {
-            require(reserveIdToAddresses[reserveId][0] == address(0), "reserveId taken");
-            reserveIdToAddresses[reserveId][0] = reserve;
-        }
-
-        reserveAddressToId[reserve] = reserveId;
-        isFeePayingReserve[reserve] = isFeePaying;
-
+        //TODO: call TradeLogic.addReserve
+        require(tradeLogic.addReserve(reserve, reserveId, isFeePaying));
         reserves.push(IKyberReserve(reserve));
 
         reserveRebateWallet[reserve] = wallet;
@@ -129,12 +114,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @dev removes a reserve from Kyber network.
     /// @param reserve The reserve address.
     /// @param startIndex to search in reserve array.
-    function removeReserve(IKyberReserve reserve, uint startIndex) external onlyOperator returns(bool) {
+    function removeReserve(address reserve, uint startIndex) external onlyOperator returns(bool) {
+        require(tradeLogic.removeReserve(reserve));
 
-        require(reserveAddressToId[address(reserve)] != uint(0), "reserve -> 0 reserveId");
-        
         uint reserveIndex = 2 ** 255;
-        uint reserveId = reserveAddressToId[address(reserve)];
         
         for (uint i = startIndex; i < reserves.length; i++) {
             if(reserves[i] == reserve) {
@@ -145,15 +128,12 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         
         reserves[reserveIndex] = reserves[reserves.length - 1];
         reserves.length--;
-
-        reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
-        reserveIdToAddresses[reserveId][0] = address(0);
         
         emit RemoveReserveFromNetwork(reserve, reserveId);
 
         return true;
     }
-    
+
     event ListReservePairs(address indexed reserve, IERC20 src, IERC20 dest, bool add);
 
     /// @notice can be called only by operator
@@ -168,27 +148,20 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         onlyOperator
         returns(bool)
     {
-        require(reserveAddressToId[reserve] != uint(0), "reserve -> 0 reserveId");
+        require(tradeLogic.listPairForReserve(IKyberReserve(reserve), token, ethToToken, tokenToEth, add));
 
         if (ethToToken) {
-            listPairs(IKyberReserve(reserve), token, false, add);
-
             emit ListReservePairs(reserve, ETH_TOKEN_ADDRESS, token, add);
         }
 
         if (tokenToEth) {
-            listPairs(IKyberReserve(reserve), token, true, add);
-
             if (add) {
                 require(token.approve(reserve, 2**255), "approve max token amt failed"); // approve infinity
             } else {
                 require(token.approve(reserve, 0), "approve 0 token amt failed");
             }
-
             emit ListReservePairs(reserve, token, ETH_TOKEN_ADDRESS, add);
         }
-
-        setDecimals(token);
 
         return true;
     }
@@ -196,16 +169,16 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     // event FeeHandlerUpdated(IFeeHandler newHandler);
     // event KyberDAOUpdated(IKyberDAO newDao);
     // event HintParserUpdated(IKyberHint newParser);
-    event ContractsUpdate(IFeeHandler newHandler, IKyberDAO newDAO, IKyberHint newHintParser);
-    function setContracts(IFeeHandler _feeHandler, IKyberDAO _kyberDAO, IKyberHint _hintParser) external onlyAdmin {
+    event ContractsUpdate(IFeeHandler newHandler, IKyberDAO newDAO, IKyberTradeLogic newTradeLogic);
+    function setContracts(IFeeHandler _feeHandler, IKyberDAO _kyberDAO, IKyberTradeLogic _tradeLogic) external onlyAdmin {
         require(_feeHandler != IFeeHandler(0), "feeHandler 0");
         require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
-        require(_hintParser != IKyberHint(0), "kyberHint 0");
+        require(_tradeLogic != IKyberTradeLogic(0), "tradeLogic 0");
 
-        emit ContractsUpdate(_feeHandler, _kyberDAO, _hintParser);
+        emit ContractsUpdate(_feeHandler, _kyberDAO, _tradeLogic);
         feeHandler = _feeHandler;
         kyberDAO = _kyberDAO;
-        hintParser = _hintParser;
+        tradeLogic = _tradeLogic;
         
 
         // if(_feeHandler != feeHandler) {
@@ -224,14 +197,11 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // }
     }
 
-    event KyberNetworkParamsSet(uint maxGasPrice, uint negligibleRateDiffBps);
+    event MaxGasPriceSet(uint maxGasPrice);
 
-    function setParams(uint _maxGasPrice, uint _negligibleRateDiffBps) external onlyAdmin {
-        require(_negligibleRateDiffBps <= BPS, "rateDiffBps > BPS"); // at most 100%
-
+    function setParams(uint _maxGasPrice) external onlyAdmin {
         maxGasPriceValue = _maxGasPrice;
-        negligibleRateDiffBps = _negligibleRateDiffBps;
-        emit KyberNetworkParamsSet(maxGasPriceValue, negligibleRateDiffBps);
+        emit MaxGasPriceSet(maxGasPriceValue);
     }
 
     event KyberNetworkSetEnable(bool isEnabled);
@@ -293,7 +263,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         if (src == dest) return (0, 0);
         uint qty = srcQty & ~PERM_HINT_GET_RATE;
 
-        TradeData memory tradeData = prepareTradeData({
+        TradeData memory tradeData = initTradeInput({
             trader: address(uint160(0)),
             src: src,
             dest: dest,
@@ -303,12 +273,11 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             minConversionRate: 0,
             platformWallet: address(uint160(0)),
             platformFeeBps: 0,
-            hint: ("")
         });
         
         tradeData.takerFeeBps = getTakerFee();
 
-        calcRatesAndAmounts(src, dest, qty, tradeData);
+        calcRatesAndAmounts(src, dest, qty, tradeData, hint);
         
         expectedRate = tradeData.rateWithNetworkFee;
         worstRate = expectedRate * 97 / 100; // backward compatible formula
@@ -321,7 +290,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     {
         if (src == dest) return (0, 0, 0);
         
-        TradeData memory tradeData = prepareTradeData({
+        TradeData memory tradeData = initTradeInput({
             trader: address(uint160(0)),
             src: src,
             dest: dest,
@@ -331,7 +300,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             minConversionRate: 0,
             platformWallet: address(uint160(0)),
             platformFeeBps: platformFeeBps,
-            hint: hint
         });
         
         tradeData.takerFeeBps = getTakerFee();
@@ -343,7 +311,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         expectedRateAfterAllFees = calcRateFromQty(srcQty, tradeData.actualDestAmount, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
     }
 
-    function prepareTradeData(
+    function initTradeInput(
         address payable trader,
         IERC20 src,
         IERC20 dest,
@@ -353,8 +321,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint minConversionRate,
         address payable platformWallet,
         uint platformFeeBps,
-        bytes memory hint
-        ) 
+        )
     internal view returns (TradeData memory tradeData)
     {
         tradeData.input.trader = trader;
@@ -369,14 +336,12 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         tradeData.tokenToEth.decimals = getDecimals(src);
         tradeData.ethToToken.decimals = getDecimals(dest);
-
-        parseTradeDataHint(tradeData, hint);
     }
 
     function getContracts() external view 
-        returns(address kyberDaoAddress, address feeHandlerAddress, address hintParserAddress) 
+        returns(address kyberDaoAddress, address feeHandlerAddress, address tradeLogicAddress) 
     {
-        return(address(kyberDAO), address(feeHandler), address(hintParser));
+        return(address(kyberDAO), address(feeHandler), address(tradeLogic));
     }
 
     function getNetworkData() external view returns(
@@ -411,33 +376,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     //         sellRates[i] = (IKyberReserve(sellReserves[i])).getConversionRate(token, ETH, amount, block.number);
     //     }
     // }
-   
-    function listPairs(IKyberReserve reserve, IERC20 token, bool isTokenToEth, bool add) internal {
-        uint i;
-        IKyberReserve[] storage reserveArr = reservesPerTokenDest[address(token)];
-
-        if (isTokenToEth) {
-            reserveArr = reservesPerTokenSrc[address(token)];
-        }
-
-        for (i = 0; i < reserveArr.length; i++) {
-            if (reserve == reserveArr[i]) {
-                if (add) {
-                    break; //already added
-                } else {
-                    //remove
-                    reserveArr[i] = reserveArr[reserveArr.length - 1];
-                    reserveArr.length--;
-                    break;
-                }
-            }
-        }
-
-        if (add && i == reserveArr.length) {
-            //if reserve wasn't found add it
-            reserveArr.push(reserve);
-        }
-    }
 
     struct BestReserveInfo {
         uint index;
