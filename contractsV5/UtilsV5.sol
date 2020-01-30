@@ -19,7 +19,7 @@ contract Utils {
     /// @dev get the balance of a user.
     /// @param token The token type
     /// @return The balance
-    function getBalance(IERC20 token, address user) public view returns(uint) {
+    function getBalance(IERC20 token, address user) internal view returns(uint) {
         if (token == ETH_TOKEN_ADDRESS)
             return user.balance;
         else
@@ -55,7 +55,6 @@ contract Utils {
 
         return tokenDecimals;
     }
-
 
     function calcDstQty(uint srcQty, uint srcDecimals, uint dstDecimals, uint rate) internal pure returns(uint) {
         require(srcQty <= MAX_QTY, "srcQty > MAX_QTY");

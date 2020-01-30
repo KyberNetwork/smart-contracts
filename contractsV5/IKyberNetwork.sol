@@ -10,7 +10,8 @@ interface IKyberNetwork {
         bool networkEnabled, 
         uint negligibleDiffBps, 
         uint maximumGasPrice,
-        uint takerFeeBps);
+        uint takerFeeBps,
+        uint expiryBlock);
 
     // backward compatible: don't modify
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
