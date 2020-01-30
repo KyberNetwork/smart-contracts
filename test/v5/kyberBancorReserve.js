@@ -1,11 +1,9 @@
-const Web3 = require('web3');
-
 let TestToken = artifacts.require("Token.sol");
 let MockBancorNetwork = artifacts.require("MockBancorNetwork.sol");
 let KyberBancorReserve = artifacts.require("KyberBancorReserve.sol");
 
 let Helper = require("../v4/helper.js");
-let BN = require('BN.js');
+const BN = web3.utils.BN;
 
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
