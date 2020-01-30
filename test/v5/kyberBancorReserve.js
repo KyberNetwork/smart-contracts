@@ -5,9 +5,10 @@ let MockBancorNetwork = artifacts.require("MockBancorNetwork.sol");
 let KyberBancorReserve = artifacts.require("KyberBancorReserve.sol");
 
 let Helper = require("../v4/helper.js");
-const BN = web3.utils.BN;
+let BN = require('BN.js');
 
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+
 const precision = new BN(10).pow(new BN(18));
 const feeBps = new BN(0);
 
@@ -18,7 +19,7 @@ const initBntBalance = new BN(1000000).mul(new BN(10).pow(new BN(18)));
 const ethToBntRate = new BN(10).pow(new BN(18)).mul(new BN(500));
 const bntToEthRate = new BN(10).pow(new BN(18)).div(new BN(500));
 
-const zeroAddress = "0x0000000000000000000000000000000000000000";
+const zeroAddress = '0x0000000000000000000000000000000000000000';
 
 const tokenDecimal = 18;
 
@@ -71,7 +72,6 @@ contract('KyberBancorNetwork', function(accounts) {
         await bancorBntToken.transfer(bancorNetwork.address, initBntBalance);
         let balance;
         balance = await bancorBntToken.balanceOf(bancorNetwork.address);
-        Helper.assertEqual(balance, initBntBalance, "init balance bnt is not correct");
 
         await Helper.sendEtherWithPromise(user, bancorNetwork.address, initEthBalance);
         balance = await Helper.getBalancePromise(bancorNetwork.address);
@@ -79,8 +79,8 @@ contract('KyberBancorNetwork', function(accounts) {
     });
 
     it("Should test getConversionRate returns 0 when token is not bnt", async function() {
-        let token = await TestToken.new("test token", "tes", 18);
         let result;
+        let token = await TestToken.new("test token", "TST", 18);
         result = await reserve.getConversionRate(ethAddress, token.address, precision, 0);
         Helper.assertEqual(result, 0, "rate should be 0 as token is not bnt");
 
@@ -144,13 +144,13 @@ contract('KyberBancorNetwork', function(accounts) {
 
     it("Should test getConversionRate returns 0 when path is not correct", async function() {
         let testNewToken = await TestToken.new("Test token", "TST", tokenDecimal);
-        let testBancorNetwork = await MockBancorNetwork.new(testNewToken.address, bancorETHBNTToken.address, bancorBntToken.address);
+        let testBancorNetwork = await MockBancorNetwork.new(testNewToken.address, bancorBntToken.address, bancorBntToken.address);
         let testReserve = await KyberBancorReserve.new(
             testBancorNetwork.address,
             network,
             feeBps,
             bancorEthToken.address,
-            bancorETHBNTToken.address,
+            bancorBntToken.address,
             bancorBntToken.address,
             admin
         );
@@ -163,13 +163,13 @@ contract('KyberBancorNetwork', function(accounts) {
         rate = await testReserve.getConversionRate(bancorBntToken.address, ethAddress, amount, 0);
         Helper.assertEqual(rate, 0, "rate should be 0 as path is incorrect");
 
-        testBancorNetwork = await MockBancorNetwork.new(bancorEthToken.address, bancorETHBNTToken.address, testNewToken.address);
+        testBancorNetwork = await MockBancorNetwork.new(bancorEthToken.address, testNewToken.address, testNewToken.address);
         testReserve = await KyberBancorReserve.new(
             testBancorNetwork.address,
             network,
             feeBps,
             bancorEthToken.address,
-            bancorETHBNTToken.address,
+            testNewToken.address,
             bancorBntToken.address,
             admin
         );
@@ -233,9 +233,23 @@ contract('KyberBancorNetwork', function(accounts) {
                 network,
                 feeBps,
                 bancorEthToken.address,
+                bancorETHBNTToken.address,
                 zeroAddress,
+                admin
+            );
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+        try {
+            _ = await KyberBancorReserve.new(
+                bancorNetwork.address,
+                network,
+                feeBps,
+                bancorEthToken.address,
+                bancorETHBNTToken.address,
                 bancorBntToken.address,
-                admin
+                zeroAddress
             );
             assert(false, "throw was expected in line above.")
         } catch (e) {
@@ -247,21 +261,7 @@ contract('KyberBancorNetwork', function(accounts) {
                 network,
                 feeBps,
                 bancorEthToken.address,
-                bancorETHBNTToken.address,
                 zeroAddress,
-                admin
-            );
-            assert(false, "throw was expected in line above.")
-        } catch (e) {
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
-        try {
-            _ = await KyberBancorReserve.new(
-                bancorNetwork.address,
-                network,
-                feeBps,
-                bancorEthToken.address,
-                bancorETHBNTToken.address,
                 bancorBntToken.address,
                 zeroAddress
             );
@@ -537,7 +537,7 @@ contract('KyberBancorNetwork', function(accounts) {
         let destAmount = Helper.calcDstQty(amountEth, tokenDecimal, tokenDecimal, ethToBntRate);
 
         let expectedUserBalance = await bancorBntToken.balanceOf(user);
-        expectedUserBalance = expectedUserBalance.add(destAmount);
+        expectedUserBalance = expectedUserBalance.add(new BN(destAmount));
         await reserve.trade(ethAddress, amountEth, bancorBntToken.address, user, ethToBntRate, true, {from: network, value: amountEth});
         let userBalanceAfter = await bancorBntToken.balanceOf(user);
         Helper.assertEqual(expectedUserBalance, userBalanceAfter, "user balance must change as expected")
