@@ -240,6 +240,7 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable, Utils {
 
         if (_otc != address(otc)) {
             // new otc address
+            require(wethToken.approve(address(otc), 0), "setContracts: failed to reset allowance for old otc (wethToken)");
             otc = IOtc(_otc);
             require(wethToken.approve(_otc, 2**255), "setContracts: failed to approve otc (wethToken)");
         }
