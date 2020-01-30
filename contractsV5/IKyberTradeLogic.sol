@@ -22,8 +22,8 @@ interface IKyberTradeLogic {
     }
     
     enum FeesIndex {
-        takerFee,
-        customFee
+        takerFeeBps,
+        platformFeeBps
     }
 
     function addReserve(address reserve, uint reserveId, bool isFeePaying) external returns (bool);
@@ -35,5 +35,6 @@ interface IKyberTradeLogic {
     
     function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, uint[] calldata fees, bytes calldata hint)
         external view
-        returns (uint[] memory results, IKyberReserve[] memory reserveAddresses, uint[] rates, uint[] splitValuesBps, bool[] isFeePaying);
+        returns (uint[] memory results, IKyberReserve[] memory reserveAddresses,
+            uint[] memory rates, uint[] memory splitValuesBps, bool[] memory isFeePaying);
 }
