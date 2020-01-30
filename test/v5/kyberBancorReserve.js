@@ -5,6 +5,7 @@ let KyberBancorReserve = artifacts.require("KyberBancorReserve.sol");
 let Helper = require("../v4/helper.js");
 const BN = web3.utils.BN;
 
+
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 
 const precision = new BN(10).pow(new BN(18));
