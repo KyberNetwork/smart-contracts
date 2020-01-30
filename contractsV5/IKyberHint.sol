@@ -6,7 +6,7 @@ import "./IKyberReserve.sol";
 
 interface IKyberHint {
 
-    enum HintType {
+    enum TradeType {
         MaskIn,
         MaskOut,
         Split
@@ -16,8 +16,8 @@ interface IKyberHint {
         external
         view
         returns(
-            HintType hintType,
-            bytes3[] memory reserveIds,
+            TradeType tradeType,
+            bytes5[] memory reserveIds,
             uint[] memory splits,
             uint failingIndex
         );
@@ -26,8 +26,8 @@ interface IKyberHint {
         external
         view
         returns(
-            HintType hintType,
-            bytes3[] memory reserveIds,
+            TradeType tradeType,
+            bytes5[] memory reserveIds,
             uint[] memory splits,
             uint failingIndex
         );
@@ -36,18 +36,18 @@ interface IKyberHint {
         external
         view
         returns(
-            HintType tokenToEthType,
-            bytes3[] memory tokenToEthReserveIds,
+            TradeType tokenToEthType,
+            bytes5[] memory tokenToEthReserveIds,
             uint[] memory tokenToEthSplits,
-            HintType ethToTokenType,
-            bytes3[] memory ethToTokenReserveIds,
+            TradeType ethToTokenType,
+            bytes5[] memory ethToTokenReserveIds,
             uint[] memory ethToTokenSplits,
             uint failingIndex
         );
 
     function buildEthToTokenHint(
-        HintType hintType,
-        bytes3[] calldata reserveIds,
+        TradeType tradeType,
+        bytes5[] calldata reserveIds,
         uint[] calldata splits
     )
         external
@@ -55,8 +55,8 @@ interface IKyberHint {
         returns(bytes memory hint);
 
     function buildTokenToEthHint(
-        HintType tokenToEthType,
-        bytes3[] calldata tokenToEthReserveIds,
+        TradeType tokenToEthType,
+        bytes5[] calldata tokenToEthReserveIds,
         uint[] calldata tokenToEthSplits
     )
         external
@@ -64,11 +64,11 @@ interface IKyberHint {
         returns(bytes memory hint);
 
     function buildTokenToTokenHint(
-        HintType tokenToEthType,
-        bytes3[] calldata tokenToEthReserveIds,
+        TradeType tokenToEthType,
+        bytes5[] calldata tokenToEthReserveIds,
         uint[] calldata tokenToEthSplits,
-        HintType ethToTokenType,
-        bytes3[] calldata ethToTokenReserveIds,
+        TradeType ethToTokenType,
+        bytes5[] calldata ethToTokenReserveIds,
         uint[] calldata ethToTokenSplits
     )
         external
@@ -78,9 +78,9 @@ interface IKyberHint {
     function reserveAddressToReserveId(address reserveAddress)
         external
         view
-        returns (bytes3 reserveId);
+        returns (bytes5 reserveId);
 
-    function reserveIdToReserveAddress(bytes3 reserveId)
+    function reserveIdToReserveAddress(bytes5 reserveId)
         external
         view
         returns (address reserveAddress);
