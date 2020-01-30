@@ -72,7 +72,11 @@ async function sendTx(txObject) {
   // don't wait for confirmation
   signedTxs.push(signedTx.rawTransaction)
   if (!dontSendTx) {
-    web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
+    try {
+      web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
+    } catch (e) {
+      console.error(e);
+    }
   }
 }
 
@@ -105,9 +109,9 @@ const input = {
   "Utils.sol" : fs.readFileSync(contractPath + 'Utils.sol', 'utf8'),
   "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
   "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
-  "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
-  "LiquidityConversionRates.sol" : fs.readFileSync(contractPath + 'LiquidityConversionRates.sol', 'utf8'),
-  "LiquidityFormula.sol" : fs.readFileSync(contractPath + 'LiquidityFormula.sol', 'utf8'),
+  "KyberReserve.sol" : fs.readFileSync(contractPath + 'reserves/KyberReserve.sol', 'utf8'),
+  "LiquidityConversionRates.sol" : fs.readFileSync(contractPath + '/reserves/aprConversionRate/LiquidityConversionRates.sol', 'utf8'),
+  "LiquidityFormula.sol" : fs.readFileSync(contractPath + '/reserves/aprConversionRate/LiquidityFormula.sol', 'utf8'),
 };
 
 let reserveAddress;
