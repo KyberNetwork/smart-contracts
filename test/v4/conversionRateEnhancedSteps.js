@@ -1,8 +1,6 @@
 
-//let ConversionRates = artifacts.require("./ConversionRates.sol");
-let MockEnhancedStepFunctions = artifacts.require("./mockContracts/MockEnhancedStepFunctions.sol");
+let MockConversionRateEnhancedSteps = artifacts.require("./mockContracts/MockConversionRateEnhancedSteps.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
 
 let Helper = require("./helper.js");
 const BN = web3.utils.BN;
@@ -50,7 +48,7 @@ let comID_SellRateStpImbalanceParamY = 15;
 
 let convRatesInst;
 
-contract('EnhancedStepFunctions', function(accounts) {
+contract('ConversionRateEnhancedSteps', function(accounts) {
     it("should init globals", function() {
         admin = accounts[0];
         alerter = accounts[1];
@@ -58,9 +56,9 @@ contract('EnhancedStepFunctions', function(accounts) {
         reserveAddress = accounts[3];
     })
 
-    it("should init EnhancedStepFunctions Inst and set general parameters.", async function () {
+    it("should init ConversionRateEnhancedSteps Inst and set general parameters.", async function () {
         //init contracts
-        convRatesInst = await MockEnhancedStepFunctions.new(admin);
+        convRatesInst = await MockConversionRateEnhancedSteps.new(admin);
 
         //set pricing general parameters
         convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);

@@ -1,11 +1,11 @@
 pragma solidity ^0.4.18;
 
-import "../reserves/fprConversionRate/EnhancedStepFunctions.sol";
+import "../reserves/fprConversionRate/ConversionRateEnhancedSteps.sol";
 
 
-contract MockEnhancedStepFunctions is EnhancedStepFunctions {
+contract MockConversionRateEnhancedSteps is ConversionRateEnhancedSteps {
 
-    function MockEnhancedStepFunctions(address admin) EnhancedStepFunctions(admin) public {
+    function MockConversionRateEnhancedSteps(address admin) ConversionRateEnhancedSteps(admin) public {
 
     }
 
