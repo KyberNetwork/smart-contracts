@@ -1,14 +1,12 @@
 
-//let ConversionRates = artifacts.require("./ConversionRates.sol");
 let MockEnhancedStepFunctions = artifacts.require("./mockContracts/MockEnhancedStepFunctions.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let Wrapper = artifacts.require("./mockContracts/Wrapper.sol");
 
 let Helper = require("./helper.js");
-let BigNumber = require('bignumber.js');
+const BN = web3.utils.BN;
 
 //global variables
-let precisionUnits = (new BigNumber(10).pow(18));
+let precisionUnits = (new BN(10).pow(new BN(18)));
 let token;
 let minimalRecordResolution = 2; //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
 let maxPerBlockImbalance = 4000;
@@ -50,7 +48,7 @@ let comID_SellRateStpImbalanceParamY = 15;
 
 let convRatesInst;
 
-contract('EnhancedStepFunctions', function(accounts) {
+contract('ConversionRateEnhancedSteps', function(accounts) {
     it("should init globals", function() {
         admin = accounts[0];
         alerter = accounts[1];
@@ -58,7 +56,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         reserveAddress = accounts[3];
     })
 
-    it("should init EnhancedStepFunctions Inst and set general parameters.", async function () {
+    it("should init ConversionRateEnhancedSteps Inst and set general parameters.", async function () {
         //init contracts
         convRatesInst = await MockEnhancedStepFunctions.new(admin);
 
@@ -89,7 +87,7 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         for (i = 0; i < numTokens; ++i) {
             ethToTokenRate = convertRateToPricingRate((i + 1) * 10);
-            tokenToEthRate = convertRateToPricingRate(Number((1 / ((i + 1) * 10)).toFixed(13)));
+            tokenToEthRate = (new BN(10).pow(new BN(18))).div(new BN((i + 1) * 10));
             baseBuy.push(ethToTokenRate);
             baseSell.push(tokenToEthRate);
         }
@@ -109,8 +107,8 @@ contract('EnhancedStepFunctions', function(accounts) {
         for (i = 0; i < numTokens; ++i) {
             thisBuy = await convRatesInst.getBasicRate(tokens[i], true);
             thisSell = await convRatesInst.getBasicRate(tokens[i], false);
-            assert.deepEqual(thisBuy.valueOf(), baseBuy[i].valueOf(), "wrong base buy rate.");
-            assert.deepEqual(thisSell.valueOf(), baseSell[i].valueOf(), "wrong base sell rate.");
+            Helper.assertEqual(thisBuy, baseBuy[i], "wrong base buy rate.");
+            Helper.assertEqual(thisSell, baseSell[i], "wrong base sell rate.");
         }
     });
 
@@ -147,8 +145,8 @@ contract('EnhancedStepFunctions', function(accounts) {
             let compactBuy;
             let compactSell;
 
-            assert.equal(compactResArr[0].valueOf(), arrIndex.valueOf(), "wrong array " + i);
-            assert.equal(compactResArr[1].valueOf(), fieldIndex.valueOf(), "wrong field index " + i);
+            assert.equal(compactResArr[0], arrIndex, "wrong array " + i);
+            assert.equal(compactResArr[1], fieldIndex, "wrong field index " + i);
             if (arrIndex == 0) {
                 compactBuy = compactBuyArr1;
                 compactSell = compactSellArr1;
@@ -158,18 +156,18 @@ contract('EnhancedStepFunctions', function(accounts) {
                 compactBuy = compactBuyArr2;
                 compactSell = compactSellArr2;
             }
-            assert.equal(compactResArr[2].valueOf(), compactBuy[fieldIndex].valueOf(), "wrong buy: " + i);
-            assert.equal(compactResArr[3].valueOf(), compactSell[fieldIndex].valueOf(), "wrong sell: " + i);
+            assert.equal(compactResArr[2], compactBuy[fieldIndex], "wrong buy: " + i);
+            assert.equal(compactResArr[3], compactSell[fieldIndex], "wrong sell: " + i);
         }
 
         //get block number from compact data and verify
         let blockNum = await convRatesInst.getRateUpdateBlock(tokens[3]);
 
-        assert.equal(blockNum.valueOf(), currentBlock.valueOf(), "bad block number returned");
+        Helper.assertEqual(blockNum, currentBlock, "bad block number returned");
 
         blockNum = await convRatesInst.getRateUpdateBlock(tokens[11]);
 
-        assert.equal(blockNum.valueOf(), currentBlock.valueOf(), "bad block number returned");
+        Helper.assertEqual(blockNum, currentBlock, "bad block number returned");
     });
 
     it("should revert when setting qty step functions.", async function () {
@@ -204,18 +202,18 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         // x axis
         let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceXLength, 0); //get length
-        assert.equal(received.valueOf(), imbalanceBuyStepX.length, "length don't match");
+        Helper.assertEqual(received, imbalanceBuyStepX.length, "length don't match");
 
         // now y axis
         received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceYLength, 0); //get length
-        assert.equal(received.valueOf(), imbalanceBuyStepY.length, "length don't match"); //x and y must match.
+        Helper.assertEqual(received, imbalanceBuyStepY.length, "length don't match");
 
         //iterate x and y values and compare
         for (let i = 0; i < imbalanceBuyStepX.length; ++i) {
             received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceParamX, i); //get x value in cell i
-            assert.equal(received.valueOf(), imbalanceBuyStepX[i], "mismatch for x value in cell: " + i);
+            Helper.assertEqual(received, imbalanceBuyStepX[i], "mismatch for x value in cell: " + i);
             received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_BuyRateStpImbalanceParamY, i); //get x value in cell i
-            assert.equal(received.valueOf(), imbalanceBuyStepY[i], "mismatch for y value in cell: " + i);
+            Helper.assertEqual(received, imbalanceBuyStepY[i], "mismatch for y value in cell: " + i);
         }
     });
 
@@ -224,18 +222,18 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         // x axis
         let received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceXLength, 0); //get length
-        assert.equal(received.valueOf(), imbalanceSellStepX.length, "length don't match");
+        Helper.assertEqual(received, imbalanceSellStepX.length, "length don't match");
 
         // now y axis
         received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceYLength, 0); //get length
-        assert.equal(received.valueOf(), imbalanceSellStepY.length, "length don't match"); //x and y must match.
+        Helper.assertEqual(received, imbalanceSellStepY.length, "length don't match");
 
         //iterate x and y values and compare
         for (let i = 0; i < imbalanceSellStepX.length; ++i) {
             received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceParamX, i); //get x value in cell i
-            assert.equal(received.valueOf(), imbalanceSellStepX[i], "mismatch for x value in cell: " + i);
+            Helper.assertEqual(received, imbalanceSellStepX[i], "mismatch for x value in cell: " + i);
             received = await convRatesInst.getStepFunctionData(tokens[tokenId], comID_SellRateStpImbalanceParamY, i); //get x value in cell i
-            assert.equal(received.valueOf(), imbalanceSellStepY[i], "mismatch for y value in cell: " + i);
+            Helper.assertEqual(received, imbalanceSellStepY[i], "mismatch for y value in cell: " + i);
         }
     });
 
@@ -263,68 +261,68 @@ contract('EnhancedStepFunctions', function(accounts) {
         let y = 100;
         let val = await convRatesInst.mockEncodeStepData(x, y);
         let decode = await convRatesInst.mockDecodeStepData(val);
-        assert.equal(decode[0].valueOf(), x, "decode x wrong value");
-        assert.equal(decode[1].valueOf(), y, "decode y wrong value");
+        Helper.assertEqual(decode[0], x, "decode x wrong value");
+        Helper.assertEqual(decode[1], y, "decode y wrong value");
         y = 0;
         val = await convRatesInst.mockEncodeStepData(x, y);
         decode = await convRatesInst.mockDecodeStepData(val);
-        assert.equal(decode[0].valueOf(), x, "decode x wrong value");
-        assert.equal(decode[1].valueOf(), y, "decode y wrong value");
+        Helper.assertEqual(decode[0], x, "decode x wrong value");
+        Helper.assertEqual(decode[1], y, "decode y wrong value");
         x = 100;
         y = -100;
         val = await convRatesInst.mockEncodeStepData(x, y);
         decode = await convRatesInst.mockDecodeStepData(val);
-        assert.equal(decode[0].valueOf(), x, "decode x wrong value");
-        assert.equal(decode[1].valueOf(), y, "decode y wrong value");
+        Helper.assertEqual(decode[0], x, "decode x wrong value");
+        Helper.assertEqual(decode[1], y, "decode y wrong value");
         y = 0;
         val = await convRatesInst.mockEncodeStepData(x, y);
         decode = await convRatesInst.mockDecodeStepData(val);
-        assert.equal(decode[0].valueOf(), x, "decode x wrong value");
-        assert.equal(decode[1].valueOf(), y, "decode y wrong value");
+        Helper.assertEqual(decode[0], x, "decode x wrong value");
+        Helper.assertEqual(decode[1], y, "decode y wrong value");
         x = -10;
         y = -123;
         val = await convRatesInst.mockEncodeStepData(x, y);
         decode = await convRatesInst.mockDecodeStepData(val);
-        assert.equal(decode[0].valueOf(), x, "decode x wrong value");
-        assert.equal(decode[1].valueOf(), y, "decode y wrong value");
+        Helper.assertEqual(decode[0], x, "decode x wrong value");
+        Helper.assertEqual(decode[1], y, "decode y wrong value");
         x = 10;
         y = 123;
         val = await convRatesInst.mockEncodeStepData(x, y);
         decode = await convRatesInst.mockDecodeStepData(val);
-        assert.equal(decode[0].valueOf(), x, "decode x wrong value");
-        assert.equal(decode[1].valueOf(), y, "decode y wrong value");
+        Helper.assertEqual(decode[0], x, "decode x wrong value");
+        Helper.assertEqual(decode[1], y, "decode y wrong value");
     });
 
     it("should return MAX value for X with special value of step X", async function() {
         // checking for overflow
-        let x = (new BigNumber(2)).pow(127).sub(1);
+        let x = (new BN(2)).pow(new BN(127)).sub(new BN(1));
         let y = 0;
-        let val = await convRatesInst.mockEncodeStepData(x.valueOf(), y);
+        let val = await convRatesInst.mockEncodeStepData(x, y);
         let decode = await convRatesInst.mockDecodeStepData(val);
         x = await convRatesInst.mockGetImbalanceMax();
-        assert.equal(decode[0].valueOf(), x.valueOf(), "decode x1 wrong value");
-        assert.equal(decode[1].valueOf(), y, "decode y wrong value");
+        Helper.assertEqual(decode[0], x, "decode x1 wrong value");
+        Helper.assertEqual(decode[1], y, "decode y wrong value");
 
-        x = (new BigNumber(2)).pow(127).sub(2);
-        val = await convRatesInst.mockEncodeStepData(x.valueOf(), y);
+        x = (new BN(2)).pow(new BN(127)).sub(new BN(2));
+        val = await convRatesInst.mockEncodeStepData(x, y);
         decode = await convRatesInst.mockDecodeStepData(val);
-        assert.equal(decode[0].valueOf(), x.valueOf(), "decode x2 wrong value");
+        Helper.assertEqual(decode[0], x, "decode x2 wrong value");
     });
 
 
     it("should revert encode data when x overflows", async function() {
         // checking for overflow
-        let x = (new BigNumber(2)).pow(127);
+        let x = (new BN(2)).pow(new BN(127));
         let y = 0;
         try {
-            _ = await convRatesInst.mockEncodeStepData(x.valueOf(), y);
+            _ = await convRatesInst.mockEncodeStepData(x, y);
             assert(false, "Should revert at line above")
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
-        x = (new BigNumber(2)).pow(127).add(1).mul(-1);
+        x = (new BN(2)).pow(new BN(127)).add(new BN(1)).mul(new BN(-1));
         try {
-            _ = await convRatesInst.mockEncodeStepData(x.valueOf(), y);
+            _ = await convRatesInst.mockEncodeStepData(x, y);
             assert(false, "Should revert at line above")
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -334,16 +332,16 @@ contract('EnhancedStepFunctions', function(accounts) {
     it("should revert encode data when y overflows", async function() {
         // checking for overflow
         let x = 0;
-        let y = (new BigNumber(2)).pow(127);
+        let y = (new BN(2)).pow(new BN(127));
         try {
-            _ = await convRatesInst.mockEncodeStepData(x, y.valueOf());
+            _ = await convRatesInst.mockEncodeStepData(x, y);
             assert(false, "Should revert at line above")
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
-        y = (new BigNumber(2)).pow(127).add(1).mul(-1);
+        y = (new BN(2)).pow(new BN(127)).add(new BN(1)).mul(new BN(-1));
         try {
-            _ = await convRatesInst.mockEncodeStepData(x, y.valueOf());
+            _ = await convRatesInst.mockEncodeStepData(x, y);
             assert(false, "Should revert at line above")
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -351,9 +349,9 @@ contract('EnhancedStepFunctions', function(accounts) {
     });
 
     it("check checkMultOverflow", async function () {
-        const big = new BigNumber(2).pow(128);
-        const small = new BigNumber(2).pow(100);
-        const negativeBig = new BigNumber(2).pow(128).mul(-1);
+        const big = new BN(2).pow(new BN(128));
+        const small = new BN(2).pow(new BN(100));
+        const negativeBig = new BN(2).pow(new BN(128)).mul(new BN(-1));
 
         let overflow;
         overflow = await convRatesInst.mockCheckMultiOverflow(big, big);
@@ -379,12 +377,12 @@ contract('EnhancedStepFunctions', function(accounts) {
     });
 
     it("check value of MAX_IMBALANCE is correct", async function () {
-        let value = new BigNumber(2).pow(255).sub(1);
+        let value = new BN(2).pow(new BN(255)).sub(new BN(1));
 
         let isEqual = await convRatesInst.mockCheckValueMaxImbalance(value);
         assert( isEqual, "value of max imbalance should be correct");
 
-        value = value.sub(1);
+        value = value.sub(new BN(1));
         isEqual = await convRatesInst.mockCheckValueMaxImbalance(value);
         assert( !isEqual, "value of max imbalance should be correct");
     });
@@ -396,16 +394,16 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         // get rate without activating quantity step function (small amount).
         let srcQty = 2;
-        let expectedRate = (new BigNumber(baseBuyRate));
+        let expectedRate = (new BN(baseBuyRate));
         let extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
-        let dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
-        dstQty = dstQty.floor();
+        expectedRate = Helper.addBps(expectedRate, extraBps);
+        let dstQty = new BN(srcQty).mul(expectedRate).div(precisionUnits);
+        dstQty = dstQty;
         extraBps = getExtraBpsForImbalanceBuyQuantity(0, dstQty * 1);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
+        Helper.assertEqual(receivedRate, expectedRate, "bad rate");
     });
 
     it("should get buy rate when compact data has boundary values (-128, 127).", async function () {
@@ -428,17 +426,17 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         // get rate with the updated compact data.
         let srcQty = 5;
-        let expectedRate = (new BigNumber(baseBuyRate));
+        let expectedRate = (new BN(baseBuyRate));
         let extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
-        let dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
-        dstQty = dstQty.floor();
+        expectedRate = Helper.addBps(expectedRate, extraBps);
+        let dstQty = new BN(srcQty).mul(expectedRate).div(precisionUnits);
+        dstQty = dstQty;
         extraBps = getExtraBpsForImbalanceBuyQuantity(0, dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
+        Helper.assertEqual(receivedRate, expectedRate, "bad rate");
 
         //update compact data
         compactBuyArr1[tokenInd] = 127;
@@ -450,17 +448,17 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         // get rate without activating quantity step function (small amount).
         srcQty = 11;
-        expectedRate = (new BigNumber(baseBuyRate));
+        expectedRate = (new BN(baseBuyRate));
         extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
-        dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
-        dstQty = dstQty.floor();
+        expectedRate = Helper.addBps(expectedRate, extraBps);
+        dstQty = new BN(srcQty).mul(expectedRate).div(precisionUnits);
+        dstQty = dstQty;
         extraBps = getExtraBpsForImbalanceBuyQuantity(0, dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
 
         receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
+        Helper.assertEqual(receivedRate, expectedRate, "bad rate");
     });
 
 
@@ -486,17 +484,17 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         // calculate expected rate
         let srcQty = 21;
-        let expectedRate = (new BigNumber(baseBuyRate));
+        let expectedRate = (new BN(baseBuyRate));
         let extraBps = compactBuyArr2[tokenInd - 14] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
-        let dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
-        dstQty = dstQty.floor();
+        expectedRate = Helper.addBps(expectedRate, extraBps);
+        let dstQty = new BN(srcQty).mul(expectedRate).div(precisionUnits);
+        dstQty = dstQty;
         extraBps = getExtraBpsForImbalanceBuyQuantity(0, dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
+        Helper.assertEqual(receivedRate, expectedRate, "bad rate");
     });
 
     it("should get buy rate with compact data and quantity step.", async function () {
@@ -506,17 +504,17 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         // calculate expected rate
         let srcQty = 17;
-        let expectedRate = (new BigNumber(baseBuyRate));
+        let expectedRate = (new BN(baseBuyRate));
         let extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
-        let dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
-        dstQty = dstQty.floor();
+        expectedRate = Helper.addBps(expectedRate, extraBps);
+        let dstQty = new BN(srcQty).mul(expectedRate).div(precisionUnits);
+        dstQty = dstQty;
         extraBps = getExtraBpsForImbalanceBuyQuantity(0, dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
+        Helper.assertEqual(receivedRate, expectedRate, "bad rate");
     });
 
     it("should get buy rate quantity step and compact data update with token index > 14.", async function () {
@@ -526,17 +524,17 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         // get rate
         let srcQty = 24;
-        let expectedRate = (new BigNumber(baseBuyRate));
+        let expectedRate = (new BN(baseBuyRate));
         let extraBps = compactBuyArr2[tokenInd - 14] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
-        let dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
-        dstQty = dstQty.floor();
+        expectedRate = Helper.addBps(expectedRate, extraBps);
+        let dstQty = new BN(srcQty).mul(expectedRate).div(precisionUnits);
+        dstQty = dstQty;
         extraBps = getExtraBpsForImbalanceBuyQuantity(0, dstQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
 
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, srcQty);
 
-        assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
+        Helper.assertEqual(receivedRate, expectedRate, "bad rate");
     });
 
     it("should add imbalance. get buy rate with with compact data + quantity step + imbalance step.", async function () {
@@ -547,19 +545,19 @@ contract('EnhancedStepFunctions', function(accounts) {
         // get rate
         let buyQty = 15;
         let imbalance = 96;
-        let expectedRate = (new BigNumber(baseBuyRate));
+        let expectedRate = (new BN(baseBuyRate));
         let extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
-        let dstQty = new BigNumber(buyQty).mul(expectedRate).div(precisionUnits);
-        dstQty = dstQty.floor();
+        expectedRate = Helper.addBps(expectedRate, extraBps);
+        let dstQty = new BN(buyQty).mul(expectedRate).div(precisionUnits);
+        dstQty = dstQty;
         //imbalance bps
         extraBps = getExtraBpsForImbalanceBuyQuantity(imbalance, dstQty * 1.0);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
 
         //record imbalance
         await convRatesInst.recordImbalance(token, imbalance, currentBlock, currentBlock, {from: reserveAddress});
         let receivedRate = await convRatesInst.getRate(token, currentBlock, true, buyQty);
-        assert.deepEqual(expectedRate.valueOf(), receivedRate.valueOf(), "bad rate");
+        Helper.assertEqual(receivedRate, expectedRate, "bad rate");
     });
 
     it("should add imbalance and get sell rate with with compact data + quantity step + imbalance step.", async function () {
@@ -570,13 +568,13 @@ contract('EnhancedStepFunctions', function(accounts) {
         // get rate
         let sellQty = 500;
         let imbalance = 1800;
-        let expectedRate = (new BigNumber(baseSellRate));
+        let expectedRate = (new BN(baseSellRate));
         //calc compact data
         let extraBps = compactSellArr2[tokenInd - 14] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
         //calc imbalance steps
         extraBps = getExtraBpsForImbalanceSellQuantity(imbalance, sellQty);
-        expectedRate = addBps(expectedRate, extraBps);
+        expectedRate = Helper.addBps(expectedRate, extraBps);
 
         //record imbalance
         await convRatesInst.recordImbalance(token, imbalance, currentBlock, currentBlock, {from: reserveAddress});
@@ -584,7 +582,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         let receivedRate = await convRatesInst.getRate(token, currentBlock, false, sellQty);
 
         //round rates a bit
-        compareRates(receivedRate, expectedRate);
+        Helper.assertEqual(receivedRate, expectedRate, "bad rate");
     });
 
     it("should verify set imbalance step reverted when input arrays lengths don't match.", async function () {
@@ -651,11 +649,11 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         let rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
 
-        assert(rate > 0, "unexpected rate");
+        Helper.assertGreater(rate, 0, "unexpected rate");
 
         await convRatesInst.disableTokenTrade(tokens[index], {from: alerter});
         rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
-        assert(rate == 0, "unexpected rate");
+        Helper.assertEqual(rate, 0, "unexpected rate");
 
         await convRatesInst.enableTokenTrade(tokens[index]);
     });
@@ -666,11 +664,11 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         let rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
 
-        assert(rate > 0, "unexpected rate");
+        Helper.assertGreater(rate, 0, "unexpected rate");
 
         await convRatesInst.setTokenControlInfo(tokens[index], 0, 0, 0);
         rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
-        assert(rate == 0, "unexpected rate");
+        Helper.assertEqual(rate, 0, "unexpected rate");
 
         await convRatesInst.setTokenControlInfo(tokens[index], minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
     });
@@ -681,10 +679,10 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         let rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
 
-        assert(rate > 0, "unexpected rate");
+        Helper.assertGreater(rate, 0, "unexpected rate");
 
         rate = await convRatesInst.getRate(tokens[index], currentBlock*1 + 2000, false, qty);
-        assert(rate == 0, "unexpected rate");
+        Helper.assertEqual(rate, 0, "unexpected rate");
     });
 
     it("should verify get rate returns 0 when qty above block imbalance.", async function () {
@@ -693,11 +691,11 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         let rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
 
-        assert(rate > 0, "unexpected rate");
+        Helper.assertGreater(rate, 0, "unexpected rate");
 
         qty = qty * 1 + 2;
         rate = await convRatesInst.getRate(tokens[index], currentBlock, false, qty);
-        assert(rate == 0, "unexpected rate");
+        Helper.assertEqual(rate, 0, "unexpected rate");
     });
 
     it("should verify get rate returns 0 when qty + total imbalance are above maxTotalImbalance.", async function () {
@@ -708,7 +706,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         let imbalance = qty;
 
         let lastSetBlock = await convRatesInst.getUpdateRateBlockFromCompact(token);
-        assert.equal(lastSetBlock.valueOf(), lastSetCompactBlock, "unexpected block");
+        Helper.assertEqual(lastSetBlock, lastSetCompactBlock, "unexpected block");
 
         while ((totalImbalance + imbalance) > (-maxTotalImbalance)) {
             await convRatesInst.recordImbalance(token, imbalance, lastSetCompactBlock, currentBlock++, {from: reserveAddress});
@@ -717,20 +715,20 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         qty = maxTotalImbalance + totalImbalance - 1;
         let rximbalance = await convRatesInst.getImbalancePerToken(token, currentBlock);
-        assert.equal(rximbalance[0].valueOf(), totalImbalance, "bad imbalance");
+        Helper.assertEqual(rximbalance[0], totalImbalance, "bad imbalance");
 
         let maxTotal = await convRatesInst.mockGetMaxTotalImbalance(token);
-        assert.equal(maxTotalImbalance, maxTotal.valueOf(), "unexpected max total imbalance.");
+        Helper.assertEqual(maxTotal, maxTotalImbalance, "unexpected max total imbalance.");
 
         //we are near total imbalance so small getRate will get legal rate.
         let rate = await convRatesInst.getRate(token, currentBlock, false, qty);
 
-        assert(rate > 0, "expected rate > 0, received: " + rate);
+        Helper.assertGreater(rate, 0, "expected rate > 0, received: " + rate);
 
         //high get rate should get 0.
         rate = await convRatesInst.getRate(token, currentBlock, false, (qty + 1));
 
-        assert.equal(rate.valueOf(), 0, "unexpected rate");
+        Helper.assertEqual(rate, 0, "unexpected rate");
     });
 
     it("should verify get rate returns 0 when qty + total imbalance are above step with y = -10000", async function () {
@@ -742,33 +740,31 @@ contract('EnhancedStepFunctions', function(accounts) {
         imbalanceSellStepY = [-10000, -500, -200, -50, 0];
         await convRatesInst.setImbalanceStepFunction(tokens[tokenInd], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
         // reset imbalance to 0
-        await convRatesInst.recordImbalance(tokens[tokenInd], curImbalance[0].mul(-1).valueOf(), 0, currentBlock, {from: reserveAddress});
+        await convRatesInst.recordImbalance(tokens[tokenInd], new BN(curImbalance[0]).mul(new BN(-1)), 0, currentBlock, {from: reserveAddress});
         // amount sell above 500 should return 0 rate
         let sellRate = await convRatesInst.getRate(tokens[tokenInd], currentBlock, false, 501);
-        assert(sellRate.valueOf() == 0, "unexpected rate: should be 0");
-        sellRate = convRatesInst.getRate(tokens[tokenInd], currentBlock, false, 200);
-        assert(sellRate.valueOf() != 0, "unexpected rate: should not be 0");
 
+        Helper.assertEqual(sellRate, 0, "unexpected rate: should be 0");
+        sellRate = await convRatesInst.getRate(tokens[tokenInd], currentBlock, false, 200);
+        Helper.assertGreater(sellRate, 0, "unexpected rate: should not be 0");
         // buy
         imbalanceBuyStepX = [0, 200, 300, 500];
         imbalanceBuyStepY = [0, -100, -200, -500, -10000];
         let srcQty = 2;
         let baseBuyRate = await convRatesInst.getBasicRate(tokens[tokenInd], true);
-        let expectedRate = (new BigNumber(baseBuyRate));
+        let expectedRate = (new BN(baseBuyRate));
         let extraBps = compactBuyArr1[tokenInd] * 10;
-        expectedRate = addBps(expectedRate, extraBps);
-        let dstQty = new BigNumber(srcQty).mul(expectedRate).div(precisionUnits);
-        dstQty = dstQty.floor();
-
+        expectedRate = Helper.addBps(expectedRate, extraBps);
+        let dstQty = new BN(srcQty).mul(expectedRate).div(precisionUnits);
         await convRatesInst.setImbalanceStepFunction(tokens[tokenInd], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
         await convRatesInst.recordImbalance(tokens[tokenInd], 400, 0, currentBlock, {from: reserveAddress});
         let buyRate = await convRatesInst.getRate(tokens[tokenInd], currentBlock, true, srcQty);
-        assert(buyRate.valueOf() != 0, "unexpected rate: should not be 0");
+        Helper.assertGreater(buyRate, 0, "unexpected rate: should not be 0");
         // dstQty + cur_imbal > 500
         await convRatesInst.recordImbalance(tokens[tokenInd], 110, 0, currentBlock, {from: reserveAddress});
         curImbalance = await convRatesInst.getImbalancePerToken(tokens[tokenInd], currentBlock);
         buyRate = await convRatesInst.getRate(tokens[tokenInd], currentBlock, true, srcQty);
-        assert(buyRate.valueOf() == 0, "unexpected rate: should be 0");
+        Helper.assertEqual(buyRate, 0, "unexpected rate: should be 0");
     });
 
     it("should verify set step functions for imbalance reverted when more them max steps (16).", async function () {
@@ -947,7 +943,7 @@ contract('EnhancedStepFunctions', function(accounts) {
 
         await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
 
-        imbalanceBuyStepX = [15, 30, 70, 100, (new BigNumber(2)).pow(127).sub(1).valueOf()];
+        imbalanceBuyStepX = [15, 30, 70, 100, (new BN(2)).pow(new BN(127)).sub(new BN(1))];
         try {
             await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
             assert(false, "throw was expected in line above.")
@@ -956,7 +952,7 @@ contract('EnhancedStepFunctions', function(accounts) {
         }
 
         imbalanceBuyStepX = [15, 30, 70, 100, 200];
-        imbalanceSellStepX = [15, 30, 70, 100, (new BigNumber(2)).pow(127).sub(1).valueOf()];
+        imbalanceSellStepX = [15, 30, 70, 100, (new BN(2)).pow(new BN(127)).sub(new BN(1))];
         try {
             await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
             assert(false, "throw was expected in line above.")
@@ -964,8 +960,8 @@ contract('EnhancedStepFunctions', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        imbalanceSellStepX = [15, 30, 70, 100, (new BigNumber(2)).pow(127).sub(2).valueOf()];
-        imbalanceBuyStepX = [15, 30, 70, 100, (new BigNumber(2)).pow(127).sub(2).valueOf()];
+        imbalanceSellStepX = [15, 30, 70, 100, (new BN(2)).pow(new BN(127)).sub(new BN(2))];
+        imbalanceBuyStepX = [15, 30, 70, 100, (new BN(2)).pow(new BN(127)).sub(new BN(2))];
         await convRatesInst.setImbalanceStepFunction(tokens[index], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
     });
 
@@ -992,49 +988,49 @@ contract('EnhancedStepFunctions', function(accounts) {
         //now the same from reserve address
         await convRatesInst.recordImbalance(tokens[tokenInd], 30, 0, currentBlock, {from: reserveAddress});
         let newImbalance = await convRatesInst.getImbalancePerToken(tokens[tokenInd], currentBlock);
-        let expectedImbalance = curImbalance[0].add(30);
-        assert.equal(expectedImbalance.valueOf(), newImbalance[0].valueOf(), "total imbalance does not match");
-        let expectedBlockImbalance = curImbalance[1].add(30);
-        assert.equal(expectedBlockImbalance.valueOf(), newImbalance[1].valueOf(), "block imbalance does not match");
+        let expectedImbalance = curImbalance[0].add(new BN(30));
+        Helper.assertEqual(expectedImbalance, newImbalance[0], "total imbalance does not match");
+        let expectedBlockImbalance = curImbalance[1].add(new BN(30));
+        Helper.assertEqual(expectedBlockImbalance, newImbalance[1], "block imbalance does not match");
 
         // Getting imbalance after sub
         await convRatesInst.recordImbalance(tokens[tokenInd], -30, 0, currentBlock, {from: reserveAddress});
         newImbalance = await convRatesInst.getImbalancePerToken(tokens[tokenInd], currentBlock);
-        expectedImbalance = expectedImbalance.sub(30);
-        assert.equal(expectedImbalance.valueOf(), newImbalance[0].valueOf(), "total imbalance does not match");
-        expectedBlockImbalance = expectedBlockImbalance.sub(30);
-        assert.equal(expectedBlockImbalance.valueOf(), newImbalance[1].valueOf(), "block imbalance does not match");
+        expectedImbalance = expectedImbalance.sub(new BN(30));
+        Helper.assertEqual(expectedImbalance, newImbalance[0], "total imbalance does not match");
+        expectedBlockImbalance = expectedBlockImbalance.sub(new BN(30));
+        Helper.assertEqual(expectedBlockImbalance, newImbalance[1], "block imbalance does not match");
 
         newImbalance = await convRatesInst.getImbalancePerToken(tokens[tokenInd], currentBlock);
         let imbalanceBlock0 = await convRatesInst.getImbalancePerToken(tokens[tokenInd], 0);
-        assert.equal(newImbalance[0].valueOf(), imbalanceBlock0[0].valueOf(), "imbalance must be the same when sending 0 as current block");
-        assert.equal(newImbalance[1].valueOf(), imbalanceBlock0[1].valueOf(), "imbalance must be the same when sending 0 as current block");
+        Helper.assertEqual(newImbalance[0], imbalanceBlock0[0], "imbalance must be the same when sending 0 as current block");
+        Helper.assertEqual(newImbalance[1], imbalanceBlock0[1], "imbalance must be the same when sending 0 as current block");
 
         // Getting imbalance + block imbal overflow
-        let maxValue = (new BigNumber(2)).pow(255).sub(1); // 2^255 - 1
-        let newAddImbalAmount = (new BigNumber(2).pow(10)).sub(expectedImbalance);
+        let maxValue = (new BN(2)).pow(new BN(255)).sub(new BN(1)); // 2^255 - 1
+        let newAddImbalAmount = (new BN(2).pow(new BN(10))).sub(expectedImbalance);
         try {
             // set big resolution so it will overflow and return default max value
             await convRatesInst.recordImbalance(tokens[tokenInd], newAddImbalAmount, 0, currentBlock, {from: reserveAddress});
-            await convRatesInst.setTokenControlInfo(tokens[tokenInd], maxValue.valueOf(), maxPerBlockImbalance, maxTotalImbalance);
+            await convRatesInst.setTokenControlInfo(tokens[tokenInd], maxValue, maxPerBlockImbalance, maxTotalImbalance);
             newImbalance = await convRatesInst.getImbalancePerToken(tokens[tokenInd], currentBlock);
             let imbalanceMax = await convRatesInst.mockGetImbalanceMax();
-            assert.equal(imbalanceMax.valueOf(), newImbalance[1].valueOf(), "block imbalance does not match");
-            assert.equal(imbalanceMax.valueOf(), newImbalance[0].valueOf(), "total imbalance does not match");
+            Helper.assertEqual(imbalanceMax, newImbalance[1], "block imbalance does not match");
+            Helper.assertEqual(imbalanceMax, newImbalance[0], "total imbalance does not match");
 
             expectedBlockImbalance = expectedBlockImbalance.add(newAddImbalAmount);
-            expectedBlockImbalance = expectedBlockImbalance.div(minimalRecordResolution);
+            expectedBlockImbalance = expectedBlockImbalance.div(new BN(minimalRecordResolution));
             expectedImbalance = expectedImbalance.add(newAddImbalAmount);
-            expectedImbalance = expectedImbalance.div(minimalRecordResolution);
+            expectedImbalance = expectedImbalance.div(new BN(minimalRecordResolution));
 
             // set smaller resolution so it won't overflow
             let newResolution = 10;
             await convRatesInst.setTokenControlInfo(tokens[tokenInd], newResolution, maxPerBlockImbalance, maxTotalImbalance);
-            expectedBlockImbalance = expectedBlockImbalance.mul(newResolution);
-            expectedImbalance = expectedImbalance.mul(newResolution);
+            expectedBlockImbalance = expectedBlockImbalance.mul(new BN(newResolution));
+            expectedImbalance = expectedImbalance.mul(new BN(newResolution));
             newImbalance = await convRatesInst.getImbalancePerToken(tokens[tokenInd], currentBlock);
-            assert.equal(expectedBlockImbalance.valueOf(), newImbalance[1].valueOf(), "block imbalance does not match");
-            assert.equal(expectedImbalance.valueOf(), newImbalance[0].valueOf(), "total imbalance does not match");
+            Helper.assertEqual(expectedBlockImbalance, newImbalance[1], "block imbalance does not match");
+            Helper.assertEqual(expectedImbalance, newImbalance[0], "total imbalance does not match");
 
             // fallback to default config
             await convRatesInst.setTokenControlInfo(tokens[tokenInd], minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
@@ -1054,196 +1050,196 @@ contract('EnhancedStepFunctions', function(accounts) {
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         let bps = getExtraBpsForQuantity(-400, -300, stepX, stepY);
         // 100 * -20
-        assert.equal(-20, bps, "bad bps");
+        Helper.assertEqual(-20, bps, "bad bps");
         let contractBps = await convRatesInst.mockExecuteStepFunction(token, -400, -300);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         // Case2: qty negative, all steps < qty < 0
         stepX = [-200, -100, -50];
         stepY = [-20, -10, -5, -2];
         bps = getExtraBpsForQuantity(-25, 0, stepX, stepY);
         // 25 * -2
-        assert.equal(-2, bps, "bad bps");
+        Helper.assertEqual(-2, bps, "bad bps");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -25, 0);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         // Case2: first step < from < last step < to
         stepX = [-200, -100, -50];
         stepY = [-20, -10, -5, -2];
         bps = getExtraBpsForQuantity(-75, 10, stepX, stepY);
         // 25 * (-5) + 60 * (-2)
-        assert.equal(divSolidity(-245, 85), bps, "bad bps");
+        Helper.assertEqual(divSolidity(-245, 85), bps, "bad bps");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -75, 10);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         // Case3: from < first step < second last step < to < last step
         stepX = [-200, -100, -50, 0];
         stepY = [-20, -10, -5, 1, 5];
         // 100 * (-20) + 100 * (-10) + 50 * (-5) + 20 * 1 = -3230
         bps = getExtraBpsForQuantity(-300, -25, stepX, stepY);
-        assert.equal(divSolidity(-3230, 275), bps, "bad bps 1");
+        Helper.assertEqual(divSolidity(-3230, 275), bps, "bad bps 1");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -300, -25);
-        assert.equal(contractBps.valueOf(), bps, "bad bps 2");
+        Helper.assertEqual(contractBps, bps, "bad bps 2");
 
         // Case4: from < first step < last step < to
         stepX = [-200, -100, -50, 10];
         stepY = [-20, -10, -5, 2, 5];
         // 100 * (-20) + 100 * (-10) + 50 * (-5) + 60 * 2 + 5 * 5 = -3105
         bps = getExtraBpsForQuantity(-300, 15, stepX, stepY);
-        assert.equal(divSolidity(-3105, 315), bps, "bad bps 1");
+        Helper.assertEqual(divSolidity(-3105, 315), bps, "bad bps 1");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -300, 15);
-        assert.equal(contractBps.valueOf(), bps, "bad bps 2");
+        Helper.assertEqual(contractBps, bps, "bad bps 2");
 
         // Case5: first step < from < last step < to
         // 50 * (-10) + 50 * (-5) + 60 * 2  + 10 * 5 = -580
         bps = getExtraBpsForQuantity(-150, 20, stepX, stepY);
-        assert.equal(divSolidity(-580, 170), bps, "bad bps");
+        Helper.assertEqual(divSolidity(-580, 170), bps, "bad bps");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -150, 20);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         // Case6: from < 0 = first step = to
         stepX = [0, 10, 20, 30];
         stepY = [0, 20, 50, 100, 120];
         bps = getExtraBpsForQuantity(-100, 0, stepX, stepY);
-        assert.equal(0, bps, "bad bps for negative qty with all non-negative qty");
+        Helper.assertEqual(0, bps, "bad bps for negative qty with all non-negative qty");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -100, 0);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         // Case7: from < 0 < first step < to < last step
         stepX = [10, 20, 30];
         stepY = [20, 50, 100, 120];
         bps = getExtraBpsForQuantity(-100, 5, stepX, stepY);
-        assert.equal(20, bps, "bad bps for negative qty with all non-negative qty");
+        Helper.assertEqual(20, bps, "bad bps for negative qty with all non-negative qty");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -100, 5);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         // Case8: from = to
         stepX = [10, 20, 30];
         stepY = [20, 50, 100, 120];
         bps = getExtraBpsForQuantity(0, 0, stepX, stepY);
-        assert.equal(0, bps, "bad bps for 0 qty");
+        Helper.assertEqual(0, bps, "bad bps for 0 qty");
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 0);
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         stepX = [-100, -50, -30];
         stepY = [20, 50, 100, 120];
         bps = getExtraBpsForQuantity(120, 120, stepX, stepY);
-        assert.equal(0, bps, "bad bps for 0 qty");
+        Helper.assertEqual(0, bps, "bad bps for 0 qty");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 120, 120);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         // Case9: last step < 0 < from < to
         stepX = [-100, -50, -30];
         stepY = [20, 50, 100, 120];
         bps = getExtraBpsForQuantity(0, 20, stepX, stepY);
-        assert.equal(120, bps, "bad bps for 0 qty");
+        Helper.assertEqual(120, bps, "bad bps for 0 qty");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 20);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         // Case10: from = 0 < first step < to < last step
         stepX = [10, 30, 50];
         stepY = [20, 50, 100, 120];
         bps = getExtraBpsForQuantity(0, 40, stepX, stepY);
         // (10 * 20 + 20 * 50 + 10 * 100) = 2200
-        assert.equal(divSolidity(2200, 40), bps, "bad bps for positive qty not all steps");
+        Helper.assertEqual(divSolidity(2200, 40), bps, "bad bps for positive qty not all steps");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 40);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         // Case11: from = 0 < all step < to
         stepX = [10, 30, 50];
         stepY = [20, 50, 100, 120];
         bps = getExtraBpsForQuantity(0, 120, stepX, stepY);
         // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 120) = 11600
-        assert.equal(divSolidity(11600, 120), bps, "bad bps for positive qty all steps");
+        Helper.assertEqual(divSolidity(11600, 120), bps, "bad bps for positive qty all steps");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 120);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         // Case12: first step < 0 = from < to < last step
         stepX = [-100, -50, 10, 30, 150];
         stepY = [-30, -15, 20, 50, 100, 120];
         bps = getExtraBpsForQuantity(0, 120, stepX, stepY);
         // (10 * 20 + 20 * 50 + 20 * 100 + 70 * 100) = 10200
-        assert.equal(divSolidity(10200, 120), bps, "bad bps for positive qty all steps");
+        Helper.assertEqual(divSolidity(10200, 120), bps, "bad bps for positive qty all steps");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 120);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         // Case13: X is empty
         stepX = [];
         stepY = [2];
         bps = getExtraBpsForQuantity(0, 120, stepX, stepY);
-        assert.equal(2, bps, "bad bps: should be 0 when step is empty");
+        Helper.assertEqual(2, bps, "bad bps: should be 0 when step is empty");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 120);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         // Case14: Step fall into step with y = -10000
         stepX = [-100, 100, 200, 300];
         stepY = [0, -100, -200, -300, -10000];
         bps = getExtraBpsForQuantity(0, 301, stepX, stepY);
-        assert.equal(-10000, bps, "bad bps: should be -10000 when fall into step with y = -10000");
+        Helper.assertEqual(-10000, bps, "bad bps: should be -10000 when fall into step with y = -10000");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 301);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         bps = getExtraBpsForQuantity(301, 1000, stepX, stepY);
-        assert.equal(-10000, bps, "bad bps: should be -10000 when fall into step with y = -10000");
+        Helper.assertEqual(-10000, bps, "bad bps: should be -10000 when fall into step with y = -10000");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 301, 10000);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         stepY = [-10000, -100, -200, -300, -500];
         bps = getExtraBpsForQuantity(-101, 0, stepX, stepY);
-        assert.equal(-10000, bps, "bad bps: should be -10000 when fall into step with y = -10000");
+        Helper.assertEqual(-10000, bps, "bad bps: should be -10000 when fall into step with y = -10000");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -101, 0);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         bps = getExtraBpsForQuantity(-200, -101, stepX, stepY);
-        assert.equal(-10000, bps, "bad bps: should be -10000 when fall into step with y = -10000");
+        Helper.assertEqual(-10000, bps, "bad bps: should be -10000 when fall into step with y = -10000");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, -200, -101);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
 
         // Spyros tests, current imbalance = 0
         stepX = [10, 20, 30];
         stepY = [0,-10,-20,-10000];
         // amount 10, bps is 0
         bps = getExtraBpsForQuantity(0, 10, stepX, stepY);
-        assert.equal(0, bps, "bad bps: should be 0");
+        Helper.assertEqual(0, bps, "bad bps: should be 0");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 10);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
         // amount 11, bps is (0 * 10 + -10 * 1) / 11
         bps = getExtraBpsForQuantity(0, 11, stepX, stepY);
-        assert.equal(divSolidity(-10, 11), bps, "bad bps");
+        Helper.assertEqual(divSolidity(-10, 11), bps, "bad bps");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 11);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
         // amount 29, bps is (0 * 10 + -10 * 10 + -20 * 9) / 29 = -10
         bps = getExtraBpsForQuantity(0, 29, stepX, stepY);
-        assert.equal(divSolidity(-280, 29), bps, "bad bps");
+        Helper.assertEqual(divSolidity(-280, 29), bps, "bad bps");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 29);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
         // amount 31, bps is -10000, rate is 0
         bps = getExtraBpsForQuantity(0, 31, stepX, stepY);
-        assert.equal(-10000, bps, "bad bps: should be -10000");
+        Helper.assertEqual(-10000, bps, "bad bps: should be -10000");
         await convRatesInst.setImbalanceStepFunction(token, stepX, stepY, stepX, stepY, {from:operator});
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 31);
-        assert.equal(contractBps.valueOf(), bps, "bad bps");
+        Helper.assertEqual(contractBps, bps, "bad bps");
     });
 });
 
@@ -1251,7 +1247,7 @@ function convertRateToPricingRate (baseRate) {
 // conversion rate in pricing is in precision units (10 ** 18) so
 // rate 1 to 50 is 50 * 10 ** 18
 // rate 50 to 1 is 1 / 50 * 10 ** 18
-    return ((new BigNumber(10).pow(18)).mul(baseRate).floor());
+    return (new BN(10).pow(new BN(18))).mul(new BN(baseRate));
 };
 
 function getExtraBpsForImbalanceBuyQuantity(current, qty) {
@@ -1288,16 +1284,6 @@ function getExtraBpsForQuantity(from, to, stepX, stepY) {
     }
     return divSolidity(change, qty);
 }
-
-function addBps (rate, bps) {
-    return (rate.mul(10000 + bps).div(10000));
-};
-
-function compareRates (receivedRate, expectedRate) {
-    expectedRate = expectedRate - (expectedRate % 10);
-    receivedRate = receivedRate - (receivedRate % 10);
-    assert.deepEqual(expectedRate, receivedRate, "different rates");
-};
 
 function divSolidity(a, b) {
     let c = a / b;
