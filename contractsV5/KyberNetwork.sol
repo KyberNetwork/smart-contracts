@@ -569,7 +569,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // uint rateWithAllFees;
     }
 
-    // accumulate fee wei
     function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, TradeData memory tradeData)
         internal view
     // function should set all TradeData so it can later be used without any ambiguity
