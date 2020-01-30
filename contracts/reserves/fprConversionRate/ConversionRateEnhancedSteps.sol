@@ -2,7 +2,7 @@ pragma solidity 0.4.18;
 
 import "./ConversionRates.sol";
 
-/// @title ConversionRateEnhancedSteps contract - new ConversionRates contract with step function enhancement
+/// @title EnhancedStepFunctions contract - new ConversionRates contract with step function enhancement
 /// Removed qty step function overhead
 /// Also fixed following issues:
 /// https://github.com/KyberNetwork/smart-contracts/issues/291
