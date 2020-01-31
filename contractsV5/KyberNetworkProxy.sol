@@ -15,8 +15,6 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     IKyberNetwork public kyberNetworkContract;
     IKyberHint kyberHintHandler;
     
-    mapping(address=>uint) platformWalletFeeBps;    
-
     constructor(address _admin) public Withdrawable(_admin) 
         {/*empty body*/}
     
@@ -351,10 +349,5 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         require(tradeOutcome.actualRate >= minConversionRate);
 
         emit ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcToken, tradeOutcome.userDeltaDestToken);
-    }
-    
-    // TODO: should we keep below funciton. TBD
-    function setPlatformWalletFee(address platformWallet, uint feeBps) public {
-        platformWalletFeeBps[platformWallet] = feeBps;
     }
 }
