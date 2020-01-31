@@ -1,4 +1,5 @@
 const KyberHintParser = artifacts.require('KyberHintParser.sol');
+const MockTradeLogic = artifacts.require('KyberTradeLogic.sol');
 const Helper = require('../v4/helper.js');
 const BN = web3.utils.BN;
 
@@ -18,6 +19,8 @@ const MASK_OUT_HINTTYPE = 1;
 const SPLIT_HINTTYPE = 2;
 
 let hintParser;
+let mockTradeLogic;
+let admin;
 let e2tOpcode;
 let e2tReserves;
 let e2tSplits;
@@ -30,8 +33,12 @@ let failingIndex;
 let hint;
 
 contract('KyberHintParser', function(accounts) {
+    before('one time init, admin account', async() => {
+        admin = accounts[0];
+    });
+
     it('should init hint parser', async function () {
-        hintParser = await KyberHintParser.new();
+        hintParser = new MockTradeLogic.new(admin);
     });
 
     it('test globals', async() => {

@@ -1,11 +1,11 @@
 pragma solidity 0.5.11;
 
-import "./IERC20.sol";
 import "./BytesLib.sol";
-import "./IKyberHint.sol";
 import "./UtilsV5.sol";
+import "./IERC20.sol";
+import "./IKyberReserve.sol";
 
-contract KyberHintParser is IKyberHint, Utils {
+contract KyberHintParser is Utils {
     bytes public constant SEPARATOR = "\x00";
     bytes public constant MASK_IN_OPCODE = "\x01";
     bytes public constant MASK_OUT_OPCODE = "\x02";
@@ -15,9 +15,15 @@ contract KyberHintParser is IKyberHint, Utils {
 
     using BytesLib for bytes;
 
+    enum TradeType {
+        MaskIn,
+        MaskOut,
+        Split
+    }
+
     struct ReservesHint {
         TradeType tradeType;
-        bytes5[] reserveIds;
+        IKyberReserve[] addresses;
         uint[] splitValuesBps;
     }
 
@@ -31,7 +37,7 @@ contract KyberHintParser is IKyberHint, Utils {
         view
         returns(
             TradeType ethToTokenType,
-            bytes5[] memory ethToTokenReserveIds,
+            IKyberReserve[] memory ethToTokenAddresses,
             uint[] memory ethToTokenSplits
         )
     {
@@ -41,7 +47,7 @@ contract KyberHintParser is IKyberHint, Utils {
         decodeOperation(hint, tradeHint, indexToContinueFrom, false);
 
         ethToTokenType = tradeHint.ethToTokenReserves.tradeType;
-        ethToTokenReserveIds = tradeHint.ethToTokenReserves.reserveIds;
+        ethToTokenAddresses = tradeHint.ethToTokenReserves.addresses;
         ethToTokenSplits = tradeHint.ethToTokenReserves.splitValuesBps;
     }
 
@@ -50,7 +56,7 @@ contract KyberHintParser is IKyberHint, Utils {
         view
         returns(
             TradeType tokenToEthType,
-            bytes5[] memory tokenToEthReserveIds,
+            IKyberReserve[] memory tokenToEthAddresses,
             uint[] memory tokenToEthSplits
         )
     {
@@ -60,7 +66,7 @@ contract KyberHintParser is IKyberHint, Utils {
         decodeOperation(hint, tradeHint, indexToContinueFrom, true);
 
         tokenToEthType = tradeHint.tokenToEthReserves.tradeType;
-        tokenToEthReserveIds = tradeHint.tokenToEthReserves.reserveIds;
+        tokenToEthAddresses = tradeHint.tokenToEthReserves.addresses;
         tokenToEthSplits = tradeHint.tokenToEthReserves.splitValuesBps;
     }
 
@@ -69,10 +75,10 @@ contract KyberHintParser is IKyberHint, Utils {
         view
         returns(
             TradeType tokenToEthType,
-            bytes5[] memory tokenToEthReserveIds,
+            IKyberReserve[] memory tokenToEthAddresses,
             uint[] memory tokenToEthSplits,
             TradeType ethToTokenType,
-            bytes5[] memory ethToTokenReserveIds,
+            IKyberReserve[] memory ethToTokenAddresses,
             uint[] memory ethToTokenSplits
         )
     {
@@ -82,91 +88,63 @@ contract KyberHintParser is IKyberHint, Utils {
         decodeOperation(hint, tradeHint, indexToContinueFrom, true);
 
         ethToTokenType = tradeHint.ethToTokenReserves.tradeType;
-        ethToTokenReserveIds = tradeHint.ethToTokenReserves.reserveIds;
+        ethToTokenAddresses = tradeHint.ethToTokenReserves.addresses;
         ethToTokenSplits = tradeHint.ethToTokenReserves.splitValuesBps;
 
         tokenToEthType = tradeHint.tokenToEthReserves.tradeType;
-        tokenToEthReserveIds = tradeHint.tokenToEthReserves.reserveIds;
+        tokenToEthAddresses = tradeHint.tokenToEthReserves.addresses;
         tokenToEthSplits = tradeHint.tokenToEthReserves.splitValuesBps;
     }
 
     function buildEthToTokenHint(
         TradeType ethToTokenType,
-        bytes5[] memory ethToTokenReserveIds,
-        uint[] memory ethToTokenSplits
-    )
-        public
-        view
-        returns(bytes memory hint)
-    {
-        hint = hint.concat(SEPARATOR);
-        hint = hint.concat(encodeReserveInfo(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits));
-        hint = hint.concat(END_OPCODE);
-    }
-
-    function buildTokenToEthHint(
-        TradeType tokenToEthType,
-        bytes5[] memory tokenToEthReserveIds,
-        uint[] memory tokenToEthSplits
-    )
-        public
-        view
-        returns(bytes memory hint)
-    {
-        hint = hint.concat(encodeReserveInfo(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits));
-        hint = hint.concat(SEPARATOR);
-        hint = hint.concat(END_OPCODE);
-    }
-
-    function buildTokenToTokenHint(
-        TradeType tokenToEthType,
-        bytes5[] memory tokenToEthReserveIds,
-        uint[] memory tokenToEthSplits,
-        TradeType ethToTokenType,
-        bytes5[] memory ethToTokenReserveIds,
+        address[] memory ethToTokenAddresses,
         uint[] memory ethToTokenSplits
     )
         public
         pure
         returns(bytes memory hint)
     {
-        hint = hint.concat(encodeReserveInfo(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits));
         hint = hint.concat(SEPARATOR);
-        hint = hint.concat(encodeReserveInfo(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits));
+        hint = hint.concat(encodeReserveInfo(ethToTokenType, ethToTokenAddresses, ethToTokenSplits));
         hint = hint.concat(END_OPCODE);
     }
 
-    function reserveAddressToReserveId(address reserveAddress)
-        external
-        view
-        returns (bytes5 reserveId)
+    function buildTokenToEthHint(
+        TradeType tokenToEthType,
+        address[] memory tokenToEthAddresses,
+        uint[] memory tokenToEthSplits
+    )
+        public
+        pure
+        returns(bytes memory hint)
     {
-        // return reserveAddressToId[reserveAddress];
+        hint = hint.concat(encodeReserveInfo(tokenToEthType, tokenToEthAddresses, tokenToEthSplits));
+        hint = hint.concat(SEPARATOR);
+        hint = hint.concat(END_OPCODE);
     }
 
-    function reserveIdToReserveAddress(bytes5 reserveId)
-        external
-        view
-        returns (address reserveAddress)
+    function buildTokenToTokenHint(
+        TradeType tokenToEthType,
+        address[] memory tokenToEthAddresses,
+        uint[] memory tokenToEthSplits,
+        TradeType ethToTokenType,
+        address[] memory ethToTokenAddresses,
+        uint[] memory ethToTokenSplits
+    )
+        public
+        pure
+        returns(bytes memory hint)
     {
-        // return reserveIdToAddresses[reserveId];
-    }
-
-    function getBytes(bytes memory _hint, uint _start, uint _length) public pure returns (bytes memory) {
-        return _hint.slice(_start, _length);
-    }
-
-    function getSingleByte(bytes memory _hint, uint _index) public pure returns (bytes memory) {
-        return abi.encodePacked(_hint[_index]);
-    }
-
-    function encodeUint(uint num) public pure returns (bytes memory hint) {
-        return hint.concat(abi.encodePacked(uint16(num)));
+        hint = hint.concat(encodeReserveInfo(tokenToEthType, tokenToEthAddresses, tokenToEthSplits));
+        hint = hint.concat(SEPARATOR);
+        hint = hint.concat(encodeReserveInfo(ethToTokenType, ethToTokenAddresses, ethToTokenSplits));
+        hint = hint.concat(END_OPCODE);
     }
 
     function encodeReserveInfo(
         TradeType opcode,
-        bytes5[] memory reserveIds,
+        address[] memory addresses,
         uint[] memory bps
     )
         internal
@@ -174,11 +152,11 @@ contract KyberHintParser is IKyberHint, Utils {
         returns (bytes memory hint)
     {
         uint bpsSoFar;
-        if (reserveIds.length > 0) {
+        if (addresses.length > 0) {
             hint = hint.concat(parseOpcode(opcode));
-            hint = hint.concat(abi.encodePacked(uint8(reserveIds.length)));
-            for (uint i = 0; i < reserveIds.length; i++) {
-                hint = hint.concat(abi.encodePacked(reserveIds[i]));
+            hint = hint.concat(abi.encodePacked(uint8(addresses.length)));
+            for (uint i = 0; i < addresses.length; i++) {
+                hint = hint.concat(abi.encodePacked(addresses[i]));
                 if (keccak256(parseOpcode(opcode)) == keccak256(parseOpcode(TradeType.Split))) {
                     hint = hint.concat(abi.encodePacked(uint16(bps[i])));
                     bpsSoFar += bps[i];
@@ -215,15 +193,15 @@ contract KyberHintParser is IKyberHint, Utils {
             decodeOperation(hint, tradeHint, indexToContinueFrom, false);
         } else if (opcodeHash == keccak256(parseOpcode(TradeType.MaskIn))) {
             reserves.tradeType = TradeType.MaskIn;
-            (reserves.reserveIds, reserves.splitValuesBps, indexToContinueFrom) = decodeReservesFromHint(false, hint, indexToContinueFrom);
+            (reserves.addresses, reserves.splitValuesBps, indexToContinueFrom) = decodeReservesFromHint(false, hint, indexToContinueFrom);
             decodeOperation(hint, tradeHint, indexToContinueFrom, isTokenToEth);
         } else if (opcodeHash == keccak256(parseOpcode(TradeType.MaskOut))) {
             reserves.tradeType = TradeType.MaskOut;
-            (reserves.reserveIds, reserves.splitValuesBps, indexToContinueFrom) = decodeReservesFromHint(false, hint, indexToContinueFrom);
+            (reserves.addresses, reserves.splitValuesBps, indexToContinueFrom) = decodeReservesFromHint(false, hint, indexToContinueFrom);
             decodeOperation(hint, tradeHint, indexToContinueFrom, isTokenToEth);
         } else if (opcodeHash == keccak256(parseOpcode(TradeType.Split))) {
             reserves.tradeType = TradeType.Split;
-            (reserves.reserveIds, reserves.splitValuesBps, indexToContinueFrom) = decodeReservesFromHint(true, hint, indexToContinueFrom);
+            (reserves.addresses, reserves.splitValuesBps, indexToContinueFrom) = decodeReservesFromHint(true, hint, indexToContinueFrom);
             decodeOperation(hint, tradeHint, indexToContinueFrom, isTokenToEth);
         } else {
             revert("Invalid hint opcode");
@@ -236,9 +214,9 @@ contract KyberHintParser is IKyberHint, Utils {
         uint indexToContinueFrom
     )
         internal
-        pure
+        view
         returns (
-            bytes5[] memory,
+            IKyberReserve[] memory,
             uint[] memory,
             uint
         )
@@ -247,7 +225,7 @@ contract KyberHintParser is IKyberHint, Utils {
        uint bpsSoFar;
        uint[] memory splitValuesBps;
 
-       bytes5[] memory reserveIds = new bytes5[](reservesLength);
+       IKyberReserve[] memory addresses = new IKyberReserve[](reservesLength);
        if (isTokenSplit) {
            splitValuesBps = new uint[](reservesLength);
        } else {
@@ -257,7 +235,7 @@ contract KyberHintParser is IKyberHint, Utils {
        indexToContinueFrom++;
 
        for (uint i = 0; i < reservesLength; i++) {
-           reserveIds[i] = hint.slice(indexToContinueFrom, RESERVE_ID_LENGTH).toBytes5(0);
+           addresses[i] = IKyberReserve(convertReserveIdToAddress(hint.slice(indexToContinueFrom, RESERVE_ID_LENGTH).toBytes5(0)));
            indexToContinueFrom += RESERVE_ID_LENGTH;
            if (isTokenSplit) {
                splitValuesBps[i] = uint(hint.toUint16(indexToContinueFrom));
@@ -266,7 +244,7 @@ contract KyberHintParser is IKyberHint, Utils {
            }
        }
        require((bpsSoFar == BPS) || (bpsSoFar == 0), "bps do not sum to 10000");
-       return (reserveIds, splitValuesBps, indexToContinueFrom);
+       return (addresses, splitValuesBps, indexToContinueFrom);
     }
 
     function parseOpcode(TradeType h) internal pure returns (bytes memory) {
@@ -278,4 +256,6 @@ contract KyberHintParser is IKyberHint, Utils {
             return SPLIT_TRADE_OPCODE;
         }
     }
+
+    function convertReserveIdToAddress(bytes5 reserveId) internal view returns (address) {}
 }

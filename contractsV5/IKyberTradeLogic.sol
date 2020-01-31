@@ -30,7 +30,7 @@ interface IKyberTradeLogic {
 
     function addReserve(address reserve, uint reserveId, bool isFeePaying) external returns (bool);
 
-    function removeReserve(address reserve) external returns (uint);
+    function removeReserve(address reserve) external returns (bytes5);
 
     function listPairForReserve(IKyberReserve reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add)
         external
