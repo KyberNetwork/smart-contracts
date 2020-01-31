@@ -12,7 +12,6 @@ interface IKyberTradeLogic {
         tradeWei,
         networkFeeWei,
         platformFeeWei,
-        rateWithNetworkFee,
         numFeePayingReserves,
         feePayingReservesBps,
         destAmountNoFee,
@@ -23,12 +22,15 @@ interface IKyberTradeLogic {
     
     enum FeesIndex {
         takerFeeBps,
-        platformFeeBps
+        platformFeeBps,
+        feesLength
     }
+
+    function negligibleRateDiffBps() external view returns (uint);
 
     function addReserve(address reserve, uint reserveId, bool isFeePaying) external returns (bool);
 
-    function removeReserve(address reserve) external returns (bool);
+    function removeReserve(address reserve) external returns (uint);
 
     function listPairForReserve(IKyberReserve reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add)
         external
