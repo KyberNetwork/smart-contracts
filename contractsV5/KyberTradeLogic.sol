@@ -5,11 +5,11 @@ import "./KyberHintParser.sol";
 import "./IKyberReserve.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberTradeLogic.sol";
-
+import "./KyberHintParser.sol";
 
 contract KyberTradelogic is KyberHintParser, IKyberTradeLogic, PermissionGroups {
     uint            public negligibleRateDiffBps = 10; // bps is 0.01%
-    
+
     IKyberNetwork   public networkContract;
 
     mapping(address=>bytes5) public reserveAddressToId;
@@ -27,11 +27,10 @@ contract KyberTradelogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
         _;
     }
 
-    event NegligbleRateDiffBpsSet(uint negligibleRateDiffBps);
-    function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external onlyAdmin {
+    function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external onlyNetwork returns (bool) {
         require(_negligibleRateDiffBps <= BPS, "rateDiffBps > BPS"); // at most 100%
         negligibleRateDiffBps = _negligibleRateDiffBps;
-        emit NegligbleRateDiffBpsSet(negligibleRateDiffBps);
+        return true;
     }
 
     event NetworkContractUpdate(IKyberNetwork newNetwork);
@@ -305,14 +304,15 @@ contract KyberTradelogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
         bool[] memory isFeePaying
         )
     {
-        uint totalNumReserves = tradeData.tokenToEth.addresses.length + tradeData.ethToToken.addresses.length;
+        uint tokenToEthNumReserves = tradeData.tokenToEth.addresses.length;
+        uint totalNumReserves = tokenToEthNumReserves + tradeData.ethToToken.addresses.length;
         reserveAddresses = new IKyberReserve[](totalNumReserves);
         rates = new uint[](totalNumReserves);
         splitValuesBps = new uint[](totalNumReserves);
         isFeePaying = new bool[](totalNumReserves);
 
         results = new uint[](uint(ResultIndex.resultLength));
-        results[uint(ResultIndex.t2eNumReserves)] = tradeData.tokenToEth.addresses.length;
+        results[uint(ResultIndex.t2eNumReserves)] = tokenToEthNumReserves;
         results[uint(ResultIndex.e2tNumReserves)] = tradeData.ethToToken.addresses.length;
         results[uint(ResultIndex.tradeWei)] = tradeData.tradeWei;
         results[uint(ResultIndex.networkFeeWei)] = tradeData.networkFeeWei;
@@ -323,18 +323,20 @@ contract KyberTradelogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
         results[uint(ResultIndex.actualDestAmount)] = tradeData.actualDestAmount;
         results[uint(ResultIndex.destAmountWithNetworkFee)] = tradeData.destAmountWithNetworkFee;
 
-        for (uint i=0; i < results[uint(ResultIndex.t2eNumReserves)]; i++) {
+        //store token to ETH information
+        for (uint i=0; i < tokenToEthNumReserves; i++) {
             reserveAddresses[i] = tradeData.tokenToEth.addresses[i];
             rates[i] = tradeData.tokenToEth.rates[i];
             splitValuesBps[i] = tradeData.tokenToEth.splitValuesBps[i];
             isFeePaying[i] = tradeData.tokenToEth.isFeePaying[i];
         }
         
-        for (uint i = results[uint(ResultIndex.t2eNumReserves)]; i < totalNumReserves; i++) {
-            reserveAddresses[i] = tradeData.ethToToken.addresses[i];
-            rates[i] = tradeData.ethToToken.rates[i];
-            splitValuesBps[i] = tradeData.ethToToken.splitValuesBps[i];
-            isFeePaying[i] = tradeData.ethToToken.isFeePaying[i];
+        //then store ETH to token information, but need to offset when accessing tradeData
+        for (uint i = tokenToEthNumReserves; i < totalNumReserves; i++) {
+            reserveAddresses[i] = tradeData.ethToToken.addresses[i - tokenToEthNumReserves];
+            rates[i] = tradeData.ethToToken.rates[i - tokenToEthNumReserves];
+            splitValuesBps[i] = tradeData.ethToToken.splitValuesBps[i - tokenToEthNumReserves];
+            isFeePaying[i] = tradeData.ethToToken.isFeePaying[i - tokenToEthNumReserves];
         }
     }
     
@@ -472,4 +474,3 @@ contract KyberTradelogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
         return reserveIdToAddresses[reserveId][0];
     }
 }
-

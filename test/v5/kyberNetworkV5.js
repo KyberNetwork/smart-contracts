@@ -5,6 +5,7 @@ const MockDao = artifacts.require("MockDAO.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const MockNetwork = artifacts.require("MockNetwork.sol");
 const FeeHandler = artifacts.require("FeeHandler.sol");
+const TradeLogic = artifacts.require("KyberTradeLogic.sol");
 const Helper = require("../v4/helper.js");
 
 const BN = web3.utils.BN;
@@ -34,6 +35,7 @@ let network;
 let DAO;
 let networkProxy;
 let feeHandler;
+let tradeLogic;
 let operator;
 let user;
 let platformWallet;
@@ -101,6 +103,10 @@ contract('KyberNetwork', function(accounts) {
 
         feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
         
+        //init tradeLogic
+        tradeLogic = await TradeLogic.new(admin);
+        await tradeLogic.setNetworkContract(network.address, {from: admin});
+
         //init tokens
         for (let i = 0; i < numTokens; i++) {
             tokenDecimals[i] = new BN(15).add(new BN(i));
@@ -139,7 +145,7 @@ contract('KyberNetwork', function(accounts) {
         //setup network
         await network.addOperator(operator, {from: admin});
         await network.addKyberProxy(networkProxy, {from: admin});
-        await network.setContracts(feeHandler.address, DAO.address, {from: admin});
+        await network.setContracts(feeHandler.address, DAO.address, tradeLogic.address, {from: admin});
         
         for (let i = 0; i < numReserves; i++) {
             reserve = reserves[i];
@@ -170,17 +176,23 @@ contract('KyberNetwork', function(accounts) {
 
     it("should test set contract events", async() => {
         let tempNetwork = await KyberNetwork.new(admin);
+        let tempTradeLogic = await TradeLogic.new(admin);
+        await tempTradeLogic.setNetworkContract(tempNetwork.address, {from: admin});
+
         let ethSender = accounts[9];
         txResult = await tempNetwork.send(ethSrcQty, {from: ethSender});
         expectEvent(txResult, 'EtherReceival', {
             sender: ethSender,
             amount: ethSrcQty
         });
-        
-        txResult = await tempNetwork.addOperator(operator, {from: admin});
-        expectEvent(txResult, 'OperatorAdded', {
-            newOperator: operator,
-            isAdd: true
+
+        await tempNetwork.addOperator(operator, {from: admin});
+
+        txResult = await tempNetwork.setContracts(feeHandler.address, DAO.address, tempTradeLogic.address, {from: admin})
+        expectEvent(txResult, 'ContractsUpdate', {
+            newHandler: feeHandler.address,
+            newDAO: DAO.address,
+            newTradeLogic: tempTradeLogic.address
         });
 
         txResult = await tempNetwork.addReserve(reserve.address, new BN(1), true, user, {from: operator});
@@ -203,13 +215,15 @@ contract('KyberNetwork', function(accounts) {
         //TODO: KyberTrade
     });
 
-    it("should test enable API", async() => {
-        let isEnabled = await network.enabled();
+    it("should test enabling network", async() => {
+        let result = await network.getNetworkData();
+        let isEnabled = result.networkEnabled;
         assert.equal(isEnabled, true);
 
         await network.setEnable(false, {from: admin});
 
-        isEnabled = await network.enabled();
+        result = await network.getNetworkData();
+        isEnabled = result.networkEnabled;
         assert.equal(isEnabled, false);
 
         await network.setEnable(true, {from: admin});
@@ -331,7 +345,7 @@ contract('KyberNetwork', function(accounts) {
         //check buy reserve eth bal up
     });
 
-    it("test contract addresses for fee hanlder and DAO", async() => {
+    it("test contract addresses for fee handler and DAO", async() => {
         let contracts = await network.getContracts();
         Helper.assertEqual(contracts[0], DAO.address)
         Helper.assertEqual(contracts[1], feeHandler.address)
