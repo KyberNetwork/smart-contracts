@@ -83,7 +83,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     event AddReserveToNetwork (
         address indexed reserve,
-        bytes5 indexed reserveId,
+        bytes8 indexed reserveId,
         bool isFeePaying,
         address indexed rebateWallet,
         bool add);
@@ -91,7 +91,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @notice can be called only by operator
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
-    function addReserve(address reserve, bytes5 reserveId, bool isFeePaying, address wallet) external onlyOperator returns(bool) {
+    function addReserve(address reserve, bytes8 reserveId, bool isFeePaying, address wallet) external onlyOperator returns(bool) {
         //TODO: call TradeLogic.addReserve
         require(tradeLogic.addReserve(reserve, reserveId, isFeePaying));
         reserves.push(IKyberReserve(reserve));
@@ -103,14 +103,14 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         return true;
     }
 
-    event RemoveReserveFromNetwork(address reserve, bytes5 indexed reserveId);
+    event RemoveReserveFromNetwork(address reserve, bytes8 indexed reserveId);
 
     /// @notice can be called only by operator
     /// @dev removes a reserve from Kyber network.
     /// @param reserve The reserve address.
     /// @param startIndex to search in reserve array.
     function removeReserve(address reserve, uint startIndex) external onlyOperator returns(bool) {
-        bytes5 reserveId = tradeLogic.removeReserve(reserve);
+        bytes8 reserveId = tradeLogic.removeReserve(reserve);
 
         uint reserveIndex = 2 ** 255;
         

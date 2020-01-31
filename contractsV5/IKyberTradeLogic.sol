@@ -30,9 +30,9 @@ interface IKyberTradeLogic {
 
     function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external returns (bool);
 
-    function addReserve(address reserve, bytes5 reserveId, bool isFeePaying) external returns (bool);
+    function addReserve(address reserve, bytes8 reserveId, bool isFeePaying) external returns (bool);
 
-    function removeReserve(address reserve) external returns (bytes5);
+    function removeReserve(address reserve) external returns (bytes8);
 
     function listPairForReserve(IKyberReserve reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add)
         external

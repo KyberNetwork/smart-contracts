@@ -389,15 +389,15 @@ library BytesLib {
         return tempBytes32;
     }
 
-    function toBytes5(bytes memory _bytes, uint _start) internal  pure returns (bytes5) {
-        require(_bytes.length >= (_start + 5), "toBytes5: insufficient byte length");
-        bytes5 tempBytes5;
+    function toBytes8(bytes memory _bytes, uint _start) internal  pure returns (bytes8) {
+        require(_bytes.length >= (_start + 8), "toBytes8: insufficient byte length");
+        bytes8 tempBytes8;
 
         assembly {
-            tempBytes5 := mload(add(add(_bytes, 0x20), _start))
+            tempBytes8 := mload(add(add(_bytes, 0x20), _start))
         }
 
-        return tempBytes5;
+        return tempBytes8;
     }
 
     function equal(bytes memory _preBytes, bytes memory _postBytes) internal pure returns (bool) {

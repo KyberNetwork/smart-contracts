@@ -7,13 +7,13 @@ import "./IKyberNetwork.sol";
 import "./IKyberTradeLogic.sol";
 import "./KyberHintParser.sol";
 
-contract KyberTradelogic is KyberHintParser, IKyberTradeLogic, PermissionGroups {
+contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups {
     uint            public negligibleRateDiffBps = 10; // bps is 0.01%
 
     IKyberNetwork   public networkContract;
 
-    mapping(address=>bytes5) public reserveAddressToId;
-    mapping(bytes5=>address[]) public reserveIdToAddresses;
+    mapping(address=>bytes8) public reserveAddressToId;
+    mapping(bytes8=>address[]) public reserveIdToAddresses;
     mapping(address=>bool) internal isFeePayingReserve;
     mapping(address=>IKyberReserve[]) public reservesPerTokenSrc; // reserves supporting token to eth
     mapping(address=>IKyberReserve[]) public reservesPerTokenDest;// reserves support eth to token
@@ -40,8 +40,8 @@ contract KyberTradelogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
         networkContract = _networkContract;
     }
 
-     function addReserve(address reserve, bytes5 reserveId, bool isFeePaying) external onlyNetwork returns (bool) {
-        require(reserveAddressToId[reserve] == bytes5(0), "reserve has id");
+     function addReserve(address reserve, bytes8 reserveId, bool isFeePaying) external onlyNetwork returns (bool) {
+        require(reserveAddressToId[reserve] == bytes8(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
 
         if (reserveIdToAddresses[reserveId].length == 0) {
@@ -56,9 +56,9 @@ contract KyberTradelogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
         return true;
     }
 
-    function removeReserve(address reserve) external onlyNetwork returns (bytes5) {
-        require(reserveAddressToId[reserve] != bytes5(0), "reserve -> 0 reserveId");
-        bytes5 reserveId = reserveAddressToId[reserve];
+    function removeReserve(address reserve) external onlyNetwork returns (bytes8) {
+        require(reserveAddressToId[reserve] != bytes8(0), "reserve -> 0 reserveId");
+        bytes8 reserveId = reserveAddressToId[reserve];
 
         reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
         reserveIdToAddresses[reserveId][0] = address(0);
@@ -68,7 +68,7 @@ contract KyberTradelogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
 
     
     function listPairForReserve(IKyberReserve reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add) onlyNetwork external returns (bool) {
-        require(reserveAddressToId[address(reserve)] != bytes5(0), "reserve -> 0 reserveId");
+        require(reserveAddressToId[address(reserve)] != bytes8(0), "reserve -> 0 reserveId");
         if (ethToToken) {
             listPairs(IKyberReserve(reserve), token, false, add);
         }
@@ -183,6 +183,8 @@ contract KyberTradelogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
 
     // TODO: Anton, complete this function
     function parseTradeDataHint(IERC20 src, IERC20 dest, uint[] memory fees, TradeData memory tradeData, bytes memory hint) internal view {
+        uint failingIndex;
+    
         tradeData.tokenToEth.addresses = (src == ETH_TOKEN_ADDRESS) ?
             new IKyberReserve[](1) : reservesPerTokenSrc[address(src)];
         tradeData.ethToToken.addresses = (dest == ETH_TOKEN_ADDRESS) ?
@@ -203,13 +205,15 @@ contract KyberTradelogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
                 (
                     tradeData.ethToToken.tradeType,
                     tradeData.ethToToken.addresses,
-                    tradeData.ethToToken.splitValuesBps
+                    tradeData.ethToToken.splitValuesBps,
+                    failingIndex
                 ) = parseEthToTokenHint(hint);
             } else if (dest == ETH_TOKEN_ADDRESS) {
                 (
                     tradeData.tokenToEth.tradeType,
                     tradeData.tokenToEth.addresses,
-                    tradeData.tokenToEth.splitValuesBps
+                    tradeData.tokenToEth.splitValuesBps,
+                    failingIndex
                 ) = parseTokenToEthHint(hint);
             } else {
                 (
@@ -218,9 +222,12 @@ contract KyberTradelogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
                     tradeData.tokenToEth.splitValuesBps,
                     tradeData.ethToToken.tradeType,
                     tradeData.ethToToken.addresses,
-                    tradeData.ethToToken.splitValuesBps
+                    tradeData.ethToToken.splitValuesBps,
+                    failingIndex
                 ) = parseTokenToTokenHint(hint);
             }
+
+            require(failingIndex > 0);
         }
     }
 
@@ -466,7 +473,7 @@ contract KyberTradelogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
         return (reserveArr[bestReserve.index], rates[bestReserve.index], isFeePaying);
     }
 
-    function convertReserveIdToAddresses(bytes5 reserveId)
+    function convertReserveIdToAddresses(bytes8 reserveId)
         internal
         view
         returns (address)
