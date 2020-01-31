@@ -6,7 +6,6 @@ import "../../../UtilsV5.sol";
 
 contract MockBancorNetwork is IBancorNetwork, Utils {
 
-    IERC20 public bancorETH;
     IERC20 public bancorBNT;
 
     IERC20[] public ethToBntPath;
@@ -15,8 +14,7 @@ contract MockBancorNetwork is IBancorNetwork, Utils {
     uint public rateEthToBnt;
     uint public rateBntToETh;
 
-    constructor(IERC20 _bancorETH, IERC20 _bancorBNT, IERC20[] memory _ethToBntPath, IERC20[] memory _bntToEthPath) public {
-        bancorETH = _bancorETH;
+    constructor(IERC20 _bancorBNT, IERC20[] memory _ethToBntPath, IERC20[] memory _bntToEthPath) public {
         bancorBNT = _bancorBNT;
         ethToBntPath = _ethToBntPath;
         bntToEthPath = _bntToEthPath;
