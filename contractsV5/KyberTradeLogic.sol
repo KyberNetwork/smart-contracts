@@ -4,16 +4,14 @@ pragma  solidity 0.5.11;
 import "./PermissionGroupsV5.sol";
 import "./UtilsV5.sol";
 import "./IKyberReserve.sol";
-import "./IKyberHint.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberTradeLogic.sol";
+import "./KyberHintParser.sol";
 
-
-contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
+contract KyberTradelogic is KyberHintParser, IKyberTradeLogic, PermissionGroups {
     uint            public negligibleRateDiffBps = 10; // bps is 0.01%
-    
+
     IKyberNetwork   public networkContract;
-    IKyberHint      public hintParser;
 
     mapping(address=>uint) public reserveAddressToId;
     mapping(uint=>address[]) public reserveIdToAddresses;
@@ -30,11 +28,10 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         _;
     }
 
-    event NegligbleRateDiffBpsSet(uint negligibleRateDiffBps);
-    function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external onlyAdmin {
+    function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external onlyNetwork returns (bool) {
         require(_negligibleRateDiffBps <= BPS, "rateDiffBps > BPS"); // at most 100%
         negligibleRateDiffBps = _negligibleRateDiffBps;
-        emit NegligbleRateDiffBpsSet(negligibleRateDiffBps);
+        return true;
     }
 
     event NetworkContractUpdate(IKyberNetwork newNetwork);
@@ -42,13 +39,6 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         require(_networkContract != IKyberNetwork(0), "network 0");
         emit NetworkContractUpdate(_networkContract);
         networkContract = _networkContract;
-    }
-
-    event HintContractUpdate(IKyberHint newHintParser);
-    function setHintParser(IKyberHint _hintParser) external onlyAdmin {
-        require(_hintParser != IKyberHint(0), "hint parser 0");
-        emit HintContractUpdate(_hintParser);
-        hintParser = _hintParser;
     }
 
     function addReserve(address reserve, uint reserveId, bool isFeePaying) external onlyNetwork returns (bool) {
@@ -207,17 +197,17 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
             tradeData.ethToToken.splitValuesBps = new uint[](1);
             tradeData.ethToToken.rates = new uint[](1);
         } else {
-            if (src == ETH_TOKEN_ADDRESS) {
-                (/*tradeData.ethToToken.tradeType*/, tradeData.ethToToken.addresses, tradeData.ethToToken.splitValuesBps, ) = 
-                    hintParser.parseEthToTokenHint(hint);
-            } else if (dest == ETH_TOKEN_ADDRESS) {
-                (/*tradeData.tokenToEth.tradeType*/, tradeData.tokenToEth.addresses, tradeData.tokenToEth.splitValuesBps, ) = 
-                hintParser.parseTokenToEthHint(hint);
-            } else {
-                (/*tradeData.tokenToEth.tradeType*/, tradeData.tokenToEth.addresses, tradeData.tokenToEth.splitValuesBps, 
-                 /*tradeData.ethToToken.tradeType*/, tradeData.ethToToken.addresses, tradeData.ethToToken.splitValuesBps, ) = 
-                 hintParser.parseTokenToTokenHint(hint);
-            }
+            // if (src == ETH_TOKEN_ADDRESS) {
+            //     (/*tradeData.ethToToken.tradeType*/, tradeData.ethToToken.addresses, tradeData.ethToToken.splitValuesBps, ) = 
+            //     parseEthToTokenHint(hint);
+            // } else if (dest == ETH_TOKEN_ADDRESS) {
+            //     (/*tradeData.tokenToEth.tradeType*/, tradeData.tokenToEth.addresses, tradeData.tokenToEth.splitValuesBps, ) = 
+            //     parseTokenToEthHint(hint);
+            // } else {
+            //     (/*tradeData.tokenToEth.tradeType*/, tradeData.tokenToEth.addresses, tradeData.tokenToEth.splitValuesBps, 
+            //      /*tradeData.ethToToken.tradeType*/, tradeData.ethToToken.addresses, tradeData.ethToToken.splitValuesBps, ) = 
+            //      parseTokenToTokenHint(hint);
+            // }
         }
     }
 
@@ -293,7 +283,7 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         tradingReserves.isFeePaying[0] = isFeePaying;
     }
 
-    function packResults(TradeData memory tradeData) internal pure returns (
+    function packResults(TradeData memory tradeData) internal view returns (
         uint[] memory results,
         IKyberReserve[] memory reserveAddresses,
         uint[] memory rates,
@@ -301,14 +291,15 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         bool[] memory isFeePaying
         )
     {
-        uint totalNumReserves = tradeData.tokenToEth.addresses.length + tradeData.ethToToken.addresses.length;
+        uint tokenToEthNumReserves = tradeData.tokenToEth.addresses.length;
+        uint totalNumReserves = tokenToEthNumReserves + tradeData.ethToToken.addresses.length;
         reserveAddresses = new IKyberReserve[](totalNumReserves);
         rates = new uint[](totalNumReserves);
         splitValuesBps = new uint[](totalNumReserves);
         isFeePaying = new bool[](totalNumReserves);
 
         results = new uint[](uint(ResultIndex.resultLength));
-        results[uint(ResultIndex.t2eNumReserves)] = tradeData.tokenToEth.addresses.length;
+        results[uint(ResultIndex.t2eNumReserves)] = tokenToEthNumReserves;
         results[uint(ResultIndex.e2tNumReserves)] = tradeData.ethToToken.addresses.length;
         results[uint(ResultIndex.tradeWei)] = tradeData.tradeWei;
         results[uint(ResultIndex.networkFeeWei)] = tradeData.networkFeeWei;
@@ -319,18 +310,20 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         results[uint(ResultIndex.actualDestAmount)] = tradeData.actualDestAmount;
         results[uint(ResultIndex.destAmountWithNetworkFee)] = tradeData.destAmountWithNetworkFee;
 
-        for (uint i=0; i < results[uint(ResultIndex.t2eNumReserves)]; i++) {
+        //store token to ETH information
+        for (uint i=0; i < tokenToEthNumReserves; i++) {
             reserveAddresses[i] = tradeData.tokenToEth.addresses[i];
             rates[i] = tradeData.tokenToEth.rates[i];
             splitValuesBps[i] = tradeData.tokenToEth.splitValuesBps[i];
             isFeePaying[i] = tradeData.tokenToEth.isFeePaying[i];
         }
         
-        for (uint i = results[uint(ResultIndex.t2eNumReserves)]; i < totalNumReserves; i++) {
-            reserveAddresses[i] = tradeData.ethToToken.addresses[i];
-            rates[i] = tradeData.ethToToken.rates[i];
-            splitValuesBps[i] = tradeData.ethToToken.splitValuesBps[i];
-            isFeePaying[i] = tradeData.ethToToken.isFeePaying[i];
+        //then store ETH to token information, but need to offset when accessing tradeData
+        for (uint i = tokenToEthNumReserves; i < totalNumReserves; i++) {
+            reserveAddresses[i] = tradeData.ethToToken.addresses[i - tokenToEthNumReserves];
+            rates[i] = tradeData.ethToToken.rates[i - tokenToEthNumReserves];
+            splitValuesBps[i] = tradeData.ethToToken.splitValuesBps[i - tokenToEthNumReserves];
+            isFeePaying[i] = tradeData.ethToToken.isFeePaying[i - tokenToEthNumReserves];
         }
     }
     
@@ -460,4 +453,3 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         return (reserveArr[bestReserve.index], rates[bestReserve.index], isFeePaying);
     }
 }
-

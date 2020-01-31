@@ -28,6 +28,8 @@ interface IKyberTradeLogic {
 
     function negligibleRateDiffBps() external view returns (uint);
 
+    function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external returns (bool);
+
     function addReserve(address reserve, uint reserveId, bool isFeePaying) external returns (bool);
 
     function removeReserve(address reserve) external returns (uint);
