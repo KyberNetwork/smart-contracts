@@ -32,8 +32,7 @@ contract KyberHintParser is IKyberHint, Utils {
         returns(
             TradeType ethToTokenType,
             bytes5[] memory ethToTokenReserveIds,
-            uint[] memory ethToTokenSplits,
-            uint failingIndex
+            uint[] memory ethToTokenSplits
         )
     {
         TradeHint memory tradeHint;
@@ -44,8 +43,6 @@ contract KyberHintParser is IKyberHint, Utils {
         ethToTokenType = tradeHint.ethToTokenReserves.tradeType;
         ethToTokenReserveIds = tradeHint.ethToTokenReserves.reserveIds;
         ethToTokenSplits = tradeHint.ethToTokenReserves.splitValuesBps;
-
-        failingIndex = indexToContinueFrom;
     }
 
     function parseTokenToEthHint(bytes memory hint)
@@ -54,8 +51,7 @@ contract KyberHintParser is IKyberHint, Utils {
         returns(
             TradeType tokenToEthType,
             bytes5[] memory tokenToEthReserveIds,
-            uint[] memory tokenToEthSplits,
-            uint failingIndex
+            uint[] memory tokenToEthSplits
         )
     {
         TradeHint memory tradeHint;
@@ -66,8 +62,6 @@ contract KyberHintParser is IKyberHint, Utils {
         tokenToEthType = tradeHint.tokenToEthReserves.tradeType;
         tokenToEthReserveIds = tradeHint.tokenToEthReserves.reserveIds;
         tokenToEthSplits = tradeHint.tokenToEthReserves.splitValuesBps;
-
-        failingIndex = indexToContinueFrom;
     }
 
     function parseTokenToTokenHint(bytes memory hint)
@@ -79,8 +73,7 @@ contract KyberHintParser is IKyberHint, Utils {
             uint[] memory tokenToEthSplits,
             TradeType ethToTokenType,
             bytes5[] memory ethToTokenReserveIds,
-            uint[] memory ethToTokenSplits, 
-            uint failingIndex
+            uint[] memory ethToTokenSplits
         )
     {
         TradeHint memory tradeHint;
@@ -95,8 +88,6 @@ contract KyberHintParser is IKyberHint, Utils {
         tokenToEthType = tradeHint.tokenToEthReserves.tradeType;
         tokenToEthReserveIds = tradeHint.tokenToEthReserves.reserveIds;
         tokenToEthSplits = tradeHint.tokenToEthReserves.splitValuesBps;
-
-        failingIndex = indexToContinueFrom;
     }
 
     function buildEthToTokenHint(
