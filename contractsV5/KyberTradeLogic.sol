@@ -51,7 +51,7 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         hintParser = _hintParser;
     }
 
-    function addReserve(address reserve, uint reserveId, bool isFeePaying) onlyNetwork external returns (bool) {
+    function addReserve(address reserve, uint reserveId, bool isFeePaying) external onlyNetwork returns (bool) {
         require(reserveAddressToId[reserve] == uint(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
 
@@ -67,13 +67,13 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         return true;
     }
 
-    function removeReserve(address reserve) onlyNetwork external returns (bool) {
+    function removeReserve(address reserve) external onlyNetwork returns (uint) {
         require(reserveAddressToId[reserve] != uint(0), "reserve -> 0 reserveId");
         uint reserveId = reserveAddressToId[reserve];
 
         reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
         reserveIdToAddresses[reserveId][0] = address(0);
-        return true;
+        return reserveId;
     }
 
     
@@ -144,8 +144,6 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         uint destAmountNoFee;
         uint destAmountWithNetworkFee;
         uint actualDestAmount; // all fees
-        
-        uint rateWithNetworkFee;
     }
 
     function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, uint[] calldata fees, bytes calldata hint)
@@ -167,8 +165,7 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
 
         //TODO: see if this need to be shifted below instead
         if (tradeData.tradeWei == 0) {
-            tradeData.rateWithNetworkFee = 0;
-            return packageResults(tradeData);
+            return packResults(tradeData);
         }
 
         //if split reserves, add bps for ETH -> token
@@ -190,8 +187,7 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         require(tradeData.tradeWei >= (tradeData.networkFeeWei + tradeData.platformFeeWei), "fees exceed trade amount");
         calcRatesAndAmountsEthToToken(dest, tradeData.tradeWei - tradeData.networkFeeWei - tradeData.platformFeeWei, tradeData);
 
-        // calc final rate
-        tradeData.rateWithNetworkFee = calcRateFromQty(srcAmount, tradeData.destAmountWithNetworkFee, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
+        return packResults(tradeData);
     }
 
     function parseTradeDataHint(IERC20 src, IERC20 dest, uint[] memory fees, TradeData memory tradeData, bytes memory hint) internal view {
@@ -297,7 +293,7 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         tradingReserves.isFeePaying[0] = isFeePaying;
     }
 
-    function packageResults(TradeData memory tradeData) internal pure returns (
+    function packResults(TradeData memory tradeData) internal pure returns (
         uint[] memory results,
         IKyberReserve[] memory reserveAddresses,
         uint[] memory rates,
@@ -317,14 +313,13 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         results[uint(ResultIndex.tradeWei)] = tradeData.tradeWei;
         results[uint(ResultIndex.networkFeeWei)] = tradeData.networkFeeWei;
         results[uint(ResultIndex.platformFeeWei)] = tradeData.platformFeeWei;
-        results[uint(ResultIndex.rateWithNetworkFee)] = tradeData.rateWithNetworkFee;
         results[uint(ResultIndex.numFeePayingReserves)] = tradeData.numFeePayingReserves;
         results[uint(ResultIndex.feePayingReservesBps)] = tradeData.feePayingReservesBps;
         results[uint(ResultIndex.destAmountNoFee)] = tradeData.destAmountNoFee;
         results[uint(ResultIndex.actualDestAmount)] = tradeData.actualDestAmount;
         results[uint(ResultIndex.destAmountWithNetworkFee)] = tradeData.destAmountWithNetworkFee;
 
-        for (uint i=0; i < results[uint(ResultIndex.t2eNumReserves)] - 1; i++) {
+        for (uint i=0; i < results[uint(ResultIndex.t2eNumReserves)]; i++) {
             reserveAddresses[i] = tradeData.tokenToEth.addresses[i];
             rates[i] = tradeData.tokenToEth.rates[i];
             splitValuesBps[i] = tradeData.tokenToEth.splitValuesBps[i];
@@ -370,15 +365,13 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
 
             // add to feePayingReservesBps if reserve is fee paying
             if (isFeePaying) {
-                actualTradeWei -= ethToTokenNetworkFeeWei;
-
                 tradeData.networkFeeWei += ethToTokenNetworkFeeWei;
                 tradeData.feePayingReservesBps += BPS; //max percentage amount for ETH -> token
                 tradeData.numFeePayingReserves ++;
             }
 
-            //actualTradeWei has all fees deducted (including possible ETH -> token network fee)
-            tradeData.actualDestAmount = calcDstQty(actualTradeWei, ETH_DECIMALS, tradeData.ethToToken.decimals, rate);
+            //take into account possible additional networkFee
+            tradeData.actualDestAmount = calcDstQty(tradeData.tradeWei - tradeData.networkFeeWei - tradeData.platformFeeWei, ETH_DECIMALS, tradeData.ethToToken.decimals, rate);
         }
 
         //finally, in both cases, we calculate destAmountWithNetworkFee and destAmountNoFee
