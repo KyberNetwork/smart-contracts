@@ -587,7 +587,7 @@ contract('KyberBancorNetwork', function(accounts) {
         }
     });
 
-    it("Should test few buys and sells with after changing bancor network", async function() {
+    it("Should test few buys and sells after changing bancor network", async function() {
         let newBancorNetwork = await MockBancorNetwork.new(bancorEthToken.address, bancorBntToken.address, ethToBntPath, bntToEthPath);
 
         await bancorBntToken.transfer(newBancorNetwork.address, initBntBalance);
@@ -631,7 +631,7 @@ contract('KyberBancorNetwork', function(accounts) {
         await reserve.setBancorContract(bancorNetwork.address, {from: admin});
     });
 
-    it("Should test few buys and sells with after changing kyber network", async function() {
+    it("Should test few buys and sells after changing kyber network", async function() {
         let newNetwork = accounts[8];
         await reserve.setKyberNetwork(newNetwork, {from: admin});
         await bancorBntToken.approve(reserve.address, new BN(2).pow(new BN(255)), {from: newNetwork});
