@@ -60,7 +60,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             maxDestAmount: maxDestAmount,
             minConversionRate: minConversionRate,
             platformWallet: platformWallet,
-            platformFeeBps: platformFeeBps,
+            platformFeeBps: platformFeeBps
             });
         
         return trade(tradeData);
@@ -80,7 +80,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             maxDestAmount: maxDestAmount,
             minConversionRate: minConversionRate,
             platformWallet: address(uint160(walletId)),
-            platformFeeBps: 0,
+            platformFeeBps: 0
             });
 
         return trade(tradeData);
@@ -272,7 +272,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             maxDestAmount: 2 ** 255,
             minConversionRate: 0,
             platformWallet: address(uint160(0)),
-            platformFeeBps: 0,
+            platformFeeBps: 0
         });
         
         tradeData.takerFeeBps = getTakerFee();
@@ -299,7 +299,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             maxDestAmount: 2 ** 255,
             minConversionRate: 0,
             platformWallet: address(uint160(0)),
-            platformFeeBps: platformFeeBps,
+            platformFeeBps: platformFeeBps
         });
         
         tradeData.takerFeeBps = getTakerFee();
@@ -320,7 +320,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint maxDestAmount,
         uint minConversionRate,
         address payable platformWallet,
-        uint platformFeeBps,
+        uint platformFeeBps
         )
     internal view returns (TradeData memory tradeData)
     {

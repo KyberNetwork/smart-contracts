@@ -1,7 +1,6 @@
 pragma solidity 0.5.11;
 
 import "./IERC20.sol";
-import "./IKyberReserve.sol";
 
 
 interface IKyberHint {
@@ -18,8 +17,7 @@ interface IKyberHint {
         returns(
             TradeType tradeType,
             bytes5[] memory reserveIds,
-            uint[] memory splits,
-            uint failingIndex
+            uint[] memory splits
         );
 
     function parseTokenToEthHint(bytes calldata hint)
@@ -28,8 +26,7 @@ interface IKyberHint {
         returns(
             TradeType tradeType,
             bytes5[] memory reserveIds,
-            uint[] memory splits,
-            uint failingIndex
+            uint[] memory splits
         );
 
     function parseTokenToTokenHint(bytes calldata hint)
@@ -41,8 +38,7 @@ interface IKyberHint {
             uint[] memory tokenToEthSplits,
             TradeType ethToTokenType,
             bytes5[] memory ethToTokenReserveIds,
-            uint[] memory ethToTokenSplits,
-            uint failingIndex
+            uint[] memory ethToTokenSplits
         );
 
     function buildEthToTokenHint(
@@ -74,14 +70,4 @@ interface IKyberHint {
         external
         pure
         returns(bytes memory hint);
-
-    function reserveAddressToReserveId(address reserveAddress)
-        external
-        view
-        returns (bytes5 reserveId);
-
-    function reserveIdToReserveAddress(bytes5 reserveId)
-        external
-        view
-        returns (address reserveAddress);
 }

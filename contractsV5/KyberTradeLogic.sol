@@ -1,4 +1,3 @@
-  
 pragma  solidity 0.5.11;
 
 import "./PermissionGroupsV5.sol";
@@ -15,11 +14,11 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
     IKyberNetwork   public networkContract;
     IKyberHint      public hintParser;
 
-    mapping(address=>uint) public reserveAddressToId;
-    mapping(uint=>address[]) public reserveIdToAddresses;
+    mapping(address=>bytes5) public reserveAddressToId;
+    mapping(bytes5=>address[]) public reserveIdToAddresses;
     mapping(address=>bool) internal isFeePayingReserve;
-    mapping(address=>IKyberReserve[]) public reservesPerTokenSrc; //reserves supporting token to eth
-    mapping(address=>IKyberReserve[]) public reservesPerTokenDest;//reserves support eth to token
+    mapping(address=>IKyberReserve[]) public reservesPerTokenSrc; // reserves supporting token to eth
+    mapping(address=>IKyberReserve[]) public reservesPerTokenDest;// reserves support eth to token
 
     constructor(address _admin) public
         PermissionGroups(_admin)
@@ -51,6 +50,7 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         hintParser = _hintParser;
     }
 
+    // TODO: Anton, complete this function
     function addReserve(address reserve, uint reserveId, bool isFeePaying) onlyNetwork external returns (bool) {
         require(reserveAddressToId[reserve] == uint(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
@@ -67,6 +67,7 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         return true;
     }
 
+    // TODO: Anton, complete this function
     function removeReserve(address reserve) onlyNetwork external returns (bool) {
         require(reserveAddressToId[reserve] != uint(0), "reserve -> 0 reserveId");
         uint reserveId = reserveAddressToId[reserve];
@@ -119,7 +120,8 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
     }
 
     struct TradingReserves {
-        IKyberReserve[] addresses;
+        IKyberHint.TradeType tradeType;
+        bytes5[] reserveIds;
         uint[] rates;
         uint[] splitValuesBps;
         bool[] isFeePaying;
@@ -173,7 +175,7 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
 
         //if split reserves, add bps for ETH -> token
         if (tradeData.ethToToken.splitValuesBps.length > 1) {
-            for (uint i = 0; i < tradeData.ethToToken.addresses.length; i++) {
+            for (uint i = 0; i < tradeData.ethToToken.reserveIds.length; i++) {
                 if (tradeData.ethToToken.isFeePaying[i]) {
                     tradeData.feePayingReservesBps += tradeData.ethToToken.splitValuesBps[i];
                     tradeData.numFeePayingReserves ++;
@@ -194,15 +196,19 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         tradeData.rateWithNetworkFee = calcRateFromQty(srcAmount, tradeData.destAmountWithNetworkFee, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
     }
 
+    // TODO: Anton, complete this function
     function parseTradeDataHint(IERC20 src, IERC20 dest, uint[] memory fees, TradeData memory tradeData, bytes memory hint) internal view {
-        tradeData.tokenToEth.addresses = (src == ETH_TOKEN_ADDRESS) ?
+        bytes5[] memory tokenToEthReserveIds;
+        bytes5[] memory ethToTokenReserveIds;
+
+        tradeData.tokenToEth.reserveIds = (src == ETH_TOKEN_ADDRESS) ?
             new IKyberReserve[](1) : reservesPerTokenSrc[address(src)];
-        tradeData.ethToToken.addresses = (dest == ETH_TOKEN_ADDRESS) ?
+        tradeData.ethToToken.reserveIds = (dest == ETH_TOKEN_ADDRESS) ?
             new IKyberReserve[](1) :reservesPerTokenDest[address(dest)];
 
         tradeData.fees = fees;
         
-        //PERM is treated as no hint, so we just return
+        // PERM is treated as no hint, so we just return
         if (hint.length == 0 || hint.length == 4) {
             tradeData.tokenToEth.isFeePaying = new bool[](1);
             tradeData.tokenToEth.splitValuesBps = new uint[](1);
@@ -212,15 +218,28 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
             tradeData.ethToToken.rates = new uint[](1);
         } else {
             if (src == ETH_TOKEN_ADDRESS) {
-                (/*tradeData.ethToToken.tradeType*/, tradeData.ethToToken.addresses, tradeData.ethToToken.splitValuesBps, ) = 
-                    hintParser.parseEthToTokenHint(hint);
+                (
+                    tradeData.ethToToken.tradeType,
+                    tradeData.ethToToken.reserveIds,
+                    tradeData.ethToToken.splitValuesBps
+                ) = hintParser.parseEthToTokenHint(hint);
+
+
             } else if (dest == ETH_TOKEN_ADDRESS) {
-                (/*tradeData.tokenToEth.tradeType*/, tradeData.tokenToEth.addresses, tradeData.tokenToEth.splitValuesBps, ) = 
-                hintParser.parseTokenToEthHint(hint);
+                (
+                    tradeData.tokenToEth.tradeType,
+                    tradeData.tokenToEth.reserveIds,
+                    tradeData.tokenToEth.splitValuesBps
+                ) = hintParser.parseTokenToEthHint(hint);
             } else {
-                (/*tradeData.tokenToEth.tradeType*/, tradeData.tokenToEth.addresses, tradeData.tokenToEth.splitValuesBps, 
-                 /*tradeData.ethToToken.tradeType*/, tradeData.ethToToken.addresses, tradeData.ethToToken.splitValuesBps, ) = 
-                 hintParser.parseTokenToTokenHint(hint);
+                (
+                    tradeData.tokenToEth.tradeType,
+                    tradeData.tokenToEth.reserveIds,
+                    tradeData.tokenToEth.splitValuesBps,
+                    tradeData.ethToToken.tradeType,
+                    tradeData.ethToToken.reserveIds,
+                    tradeData.ethToToken.splitValuesBps
+                ) = hintParser.parseTokenToTokenHint(hint);
             }
         }
     }
@@ -228,6 +247,13 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
     function calcRatesAndAmountsTokenToEth(IERC20 src, uint srcAmount, TradeData memory tradeData) internal view {
         IKyberReserve reserve;
         bool isFeePaying;
+        IKyberReserve[] storage t2eAddresses;
+
+        // TODO: Have to do translation of reserveIds to addresses here as it makes more sense
+        // Translate reserveIds to addresses
+        for (uint i = 0; i < tradeData.tokenToEth.reserveIds.length; i++) {
+            t2eAddresses.push(reserveIdToAddresses[tradeData.tokenToEth.reserveIds[i]]);
+        }
 
         // token to Eth
         ///////////////
@@ -238,7 +264,7 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         } else {
             // else find best rate
             (reserve, tradeData.tokenToEth.rates[0], isFeePaying) = searchBestRate(
-                tradeData.tokenToEth.addresses,
+                t2eAddresses,
                 src,
                 ETH_TOKEN_ADDRESS,
                 srcAmount,
@@ -270,8 +296,8 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         uint splitAmount;
         uint amountSoFar;
 
-        for (uint i = 0; i < tradingReserves.addresses.length; i++) {
-            reserve = tradingReserves.addresses[i];
+        for (uint i = 0; i < tradingReserves.reserveIds.length; i++) {
+            reserve = IKyberReserve(reserveIdToAddresses[tradingReserves.reserveIds[i]][0]);
             //calculate split and corresponding trade amounts
             splitAmount = (i == tradingReserves.splitValuesBps.length - 1) ? (tradeAmt - amountSoFar) : tradingReserves.splitValuesBps[i] * tradeAmt / BPS;
             amountSoFar += splitAmount;
@@ -290,7 +316,7 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
     }
 
     function storeTradeReserveData(TradingReserves memory tradingReserves, IKyberReserve reserve, uint rate, bool isFeePaying) internal pure {
-        tradingReserves.addresses = new IKyberReserve[](1);
+        tradingReserves.reserveIds = new IKyberReserve[](1);
         tradingReserves.addresses[0] = reserve;
         tradingReserves.rates[0] = rate;
         tradingReserves.splitValuesBps[0] = BPS; //max percentage amount
@@ -305,15 +331,15 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         bool[] memory isFeePaying
         )
     {
-        uint totalNumReserves = tradeData.tokenToEth.addresses.length + tradeData.ethToToken.addresses.length;
+        uint totalNumReserves = tradeData.tokenToEth.reserveIds.length + tradeData.ethToToken.reserveIds.length;
         reserveAddresses = new IKyberReserve[](totalNumReserves);
         rates = new uint[](totalNumReserves);
         splitValuesBps = new uint[](totalNumReserves);
         isFeePaying = new bool[](totalNumReserves);
 
         results = new uint[](uint(ResultIndex.resultLength));
-        results[uint(ResultIndex.t2eNumReserves)] = tradeData.tokenToEth.addresses.length;
-        results[uint(ResultIndex.e2tNumReserves)] = tradeData.ethToToken.addresses.length;
+        results[uint(ResultIndex.t2eNumReserves)] = tradeData.tokenToEth.reserveIds.length;
+        results[uint(ResultIndex.e2tNumReserves)] = tradeData.ethToToken.reserveIds.length;
         results[uint(ResultIndex.tradeWei)] = tradeData.tradeWei;
         results[uint(ResultIndex.networkFeeWei)] = tradeData.networkFeeWei;
         results[uint(ResultIndex.platformFeeWei)] = tradeData.platformFeeWei;
@@ -325,14 +351,14 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         results[uint(ResultIndex.destAmountWithNetworkFee)] = tradeData.destAmountWithNetworkFee;
 
         for (uint i=0; i < results[uint(ResultIndex.t2eNumReserves)] - 1; i++) {
-            reserveAddresses[i] = tradeData.tokenToEth.addresses[i];
+            reserveAddresses[i] = reserveIdToAddresses[tradeData.tokenToEth.reserveIds[i][0]];
             rates[i] = tradeData.tokenToEth.rates[i];
             splitValuesBps[i] = tradeData.tokenToEth.splitValuesBps[i];
             isFeePaying[i] = tradeData.tokenToEth.isFeePaying[i];
         }
         
         for (uint i = results[uint(ResultIndex.t2eNumReserves)]; i < totalNumReserves; i++) {
-            reserveAddresses[i] = tradeData.ethToToken.addresses[i];
+            reserveAddresses[i] = reserveIdToAddresses[tradeData.ethToToken.reserveIds[i][0]];
             rates[i] = tradeData.ethToToken.rates[i];
             splitValuesBps[i] = tradeData.ethToToken.splitValuesBps[i];
             isFeePaying[i] = tradeData.ethToToken.isFeePaying[i];
@@ -343,6 +369,12 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
         IKyberReserve reserve;
         uint rate;
         bool isFeePaying;
+        IKyberReserve[] storage e2tAddresses;
+
+        // Translate reserveIds to addresses
+        for (uint i = 0; i < tradeData.EthToToken.reserveIds.length; i++) {
+            e2tAddresses.push(reserveIdToAddresses[tradeData.EthToToken.reserveIds[i]]);
+        }
         
         // Eth to token
         ///////////////
@@ -358,7 +390,7 @@ contract KyberTradelogic is IKyberTradeLogic, PermissionGroups, Utils {
             // Have to search with tradeWei minus fees, because that is the actual src amount for ETH -> token trade
             require(actualTradeWei >= (ethToTokenNetworkFeeWei), "actualTradeWei < E2T network fee");
             (reserve, rate, isFeePaying) = searchBestRate(
-                tradeData.ethToToken.addresses,
+                e2tAddresses,
                 ETH_TOKEN_ADDRESS,
                 dest,
                 actualTradeWei,
