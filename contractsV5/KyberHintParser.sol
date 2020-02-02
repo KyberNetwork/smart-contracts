@@ -2,10 +2,10 @@ pragma solidity 0.5.11;
 
 import "./BytesLib.sol";
 import "./UtilsV5.sol";
-import "./IERC20.sol";
-import "./IKyberReserve.sol";
+import "./IKyberHint.sol";
 
-contract KyberHintParser is Utils {
+
+contract KyberHintParser is IKyberHint, Utils {
     bytes public constant SEPARATOR = "\x00";
     bytes public constant MASK_IN_OPCODE = "\x01";
     bytes public constant MASK_OUT_OPCODE = "\x02";
@@ -14,12 +14,6 @@ contract KyberHintParser is Utils {
     uint8 public constant RESERVE_ID_LENGTH = 8;
 
     using BytesLib for bytes;
-
-    enum TradeType {
-        MaskIn,
-        MaskOut,
-        Split
-    }
 
     struct ReservesHint {
         TradeType tradeType;

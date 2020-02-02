@@ -6,12 +6,6 @@ import "./IERC20.sol";
 /// @title Kyber Network interface
 interface IKyberNetworkProxy {
 
-    enum TradeType {
-        MaskIn,
-        MaskOut,
-        Split
-    }
-
     // backward compatible - don't modify
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
         returns (uint expectedRate, uint worsteRate);

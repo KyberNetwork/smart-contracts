@@ -230,7 +230,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         internal
         returns(uint)
     {
-        (uint feeBps, UserBalance memory userBalanceBefore) = 
+        (UserBalance memory userBalanceBefore) = 
             preapareTrade(src, dest, srcAmount, destAddress);
 
         (uint destAmount) = kyberNetworkContract.tradeWithHintAndFee.value(msg.value)(
@@ -247,7 +247,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         );
 
         TradeOutcome memory tradeOutcome = finalizeTradeValidateOutcome(src, dest, destAddress, maxDestAmount, minConversionRate,
-            feeBps, userBalanceBefore, destAmount);
+            platformFeeBps, userBalanceBefore, destAmount);
 
         return tradeOutcome.userDeltaDestToken;
             
@@ -308,7 +308,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     
     function preapareTrade(IERC20 src, IERC20 dest, uint srcAmount, address destAddress) 
         internal returns
-        (uint platformFeeBps, UserBalance memory userBalanceBefore) 
+        (UserBalance memory userBalanceBefore) 
     {
         require(src == ETH_TOKEN_ADDRESS || msg.value == 0);
 
