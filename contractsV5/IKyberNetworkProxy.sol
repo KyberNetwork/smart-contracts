@@ -36,10 +36,4 @@ interface IKyberNetworkProxy {
         uint minConversionRate, address payable platformWallet, uint platformFeeBps, bytes calldata hint) 
         external payable 
         returns(uint destAmount);
-
-    // TODO: will we save bps per platform?
-    // below API not finalized. TBD
-    function setPlatformFeeBps(address platformWallet, uint platformFeeBps) external returns(bool);
-    
-    function getPlatformFeeBps(address platformWallet) external returns(uint platformFeeBps);
 }
