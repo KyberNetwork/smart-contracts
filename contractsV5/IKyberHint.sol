@@ -1,7 +1,5 @@
 pragma solidity 0.5.11;
 
-import "./IKyberReserve.sol";
-
 
 interface IKyberHint {
 
@@ -16,7 +14,7 @@ interface IKyberHint {
         view
         returns(
             TradeType tradeType,
-            IKyberReserve[] memory reserveIds,
+            bytes8[] memory reserveIds,
             uint[] memory splits,
             uint failingIndex
         );
@@ -26,7 +24,7 @@ interface IKyberHint {
         view
         returns(
             TradeType tradeType,
-            IKyberReserve[] memory reserveIds,
+            bytes8[] memory reserveIds,
             uint[] memory splits,
             uint failingIndex
         );
@@ -36,10 +34,10 @@ interface IKyberHint {
         view
         returns(
             TradeType tokenToEthType,
-            IKyberReserve[] memory tokenToEthReserveIds,
+            bytes8[] memory tokenToEthReserveIds,
             uint[] memory tokenToEthSplits,
             TradeType ethToTokenType,
-            IKyberReserve[] memory ethToTokenReserveIds,
+            bytes8[] memory ethToTokenReserveIds,
             uint[] memory ethToTokenSplits,
             uint failingIndex
         );
