@@ -5,7 +5,6 @@ import "./UtilsV5.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberNetworkProxy.sol";
 import "./ISimpleKyberProxy.sol";
-import "./IKyberHint.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -13,7 +12,6 @@ import "./IKyberHint.sol";
 contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawable, Utils {
 
     IKyberNetwork public kyberNetworkContract;
-    IKyberHint kyberHintHandler;
     
     mapping(address=>uint) platformWalletFeeBps;    
 
@@ -232,8 +230,8 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         internal
         returns(uint)
     {
-        (uint feeBps, UserBalance memory userBalanceBefore) = 
-            preapareTrade(src, dest, srcAmount, destAddress, platformWallet, platformFeeBps);
+        (UserBalance memory userBalanceBefore) = 
+            preapareTrade(src, dest, srcAmount, destAddress);
 
         (uint destAmount) = kyberNetworkContract.tradeWithHintAndFee.value(msg.value)(
             msg.sender,
@@ -244,12 +242,12 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
             maxDestAmount,
             minConversionRate,
             platformWallet,
-            feeBps,
+            platformFeeBps,
             hint
         );
 
         TradeOutcome memory tradeOutcome = finalizeTradeValidateOutcome(src, dest, destAddress, maxDestAmount, minConversionRate,
-            feeBps, userBalanceBefore, destAmount);
+            platformFeeBps, userBalanceBefore, destAmount);
 
         return tradeOutcome.userDeltaDestToken;
             
@@ -264,17 +262,6 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         emit KyberNetworkSet(_kyberNetworkContract, kyberNetworkContract);
 
         kyberNetworkContract = _kyberNetworkContract;
-    }
-    
-    event kyberHintHandlerSet(IKyberHint newHandler, IKyberHint oldHandler);
-
-    function setHintHandlerContract(IKyberHint _hintHandler) public onlyAdmin {
-
-        require(_hintHandler != IKyberHint(0));
-
-        emit kyberHintHandlerSet(_hintHandler, kyberHintHandler);
-
-        kyberHintHandler = _hintHandler;
     }
     
     function maxGasPrice() public view returns(uint gasPrice) {
@@ -319,9 +306,9 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         );
     }
     
-    function preapareTrade(IERC20 src, IERC20 dest, uint srcAmount, address destAddress, address platformWallet, uint feeInputBps) 
+    function preapareTrade(IERC20 src, IERC20 dest, uint srcAmount, address destAddress) 
         internal returns
-        (uint platformFeeBps, UserBalance memory userBalanceBefore) 
+        (UserBalance memory userBalanceBefore) 
     {
         require(src == ETH_TOKEN_ADDRESS || msg.value == 0);
 
@@ -332,10 +319,6 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
             userBalanceBefore.srcBalance += msg.value;
         } else {
             require(src.transferFrom(msg.sender, address(kyberNetworkContract), srcAmount));
-        }
-        
-        if(feeInputBps == 0 && platformWallet != address(0)) {
-            platformFeeBps = platformWalletFeeBps[platformWallet];
         }
     }
     
@@ -351,10 +334,5 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         require(tradeOutcome.actualRate >= minConversionRate);
 
         emit ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcToken, tradeOutcome.userDeltaDestToken);
-    }
-    
-    // TODO: should we keep below funciton. TBD
-    function setPlatformWalletFee(address platformWallet, uint feeBps) public {
-        platformWalletFeeBps[platformWallet] = feeBps;
     }
 }

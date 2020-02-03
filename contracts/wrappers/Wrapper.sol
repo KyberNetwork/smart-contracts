@@ -25,7 +25,7 @@ contract NetworkInterface {
 
     function tradeWithHint(address trader, ERC20 src, uint srcAmount, ERC20 dest, address destAddress,
         uint maxDestAmount, uint minConversionRate, address walletId, bytes hint) public payable returns(uint);
-    function getNumReserves() public returns(uint);
+    function getNumReserves() public view returns(uint);
 }
 
 
