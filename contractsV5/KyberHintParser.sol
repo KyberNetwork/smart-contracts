@@ -2,10 +2,11 @@ pragma solidity 0.5.11;
 
 import "./BytesLib.sol";
 import "./UtilsV5.sol";
-import "./IERC20.sol";
+import "./IKyberHint.sol";
 import "./IKyberReserve.sol";
 
-contract KyberHintParser is Utils {
+
+contract KyberHintParser is IKyberHint, Utils {
     bytes public constant SEPARATOR = "\x00";
     bytes public constant MASK_IN_OPCODE = "\x01";
     bytes public constant MASK_OUT_OPCODE = "\x02";
@@ -14,12 +15,6 @@ contract KyberHintParser is Utils {
     uint8 public constant RESERVE_ID_LENGTH = 8;
 
     using BytesLib for bytes;
-
-    enum TradeType {
-        MaskIn,
-        MaskOut,
-        Split
-    }
 
     struct ReservesHint {
         TradeType tradeType;
@@ -32,8 +27,21 @@ contract KyberHintParser is Utils {
         ReservesHint tokenToEthReserves;
     }
 
-    function parseEthToTokenHint(bytes memory hint)
-        public
+    function parseEthToTokenHint(bytes calldata hint)
+        external
+        view
+        returns(
+            TradeType ethToTokenType,
+            bytes8[] memory ethToTokenReserveIDs,
+            uint[] memory ethToTokenSplits,
+            uint failingIndex
+        )
+    {
+
+    }
+
+    function parseE2tHint(bytes memory hint)
+        internal
         view
         returns(
             TradeType ethToTokenType,
@@ -54,8 +62,21 @@ contract KyberHintParser is Utils {
         failingIndex = indexToContinueFrom;
     }
 
-    function parseTokenToEthHint(bytes memory hint)
-        public
+    function parseTokenToEthHint(bytes calldata hint)
+        external
+        view
+        returns(
+            TradeType tokenToEthType,
+            bytes8[] memory tokenToEthReserveIDs,
+            uint[] memory tokenToEthSplits,
+            uint failingIndex
+        )
+    {
+
+    }
+
+    function parseT2eHint(bytes memory hint)
+        internal
         view
         returns(
             TradeType tokenToEthType,
@@ -76,8 +97,24 @@ contract KyberHintParser is Utils {
         failingIndex = indexToContinueFrom;
     }
 
-    function parseTokenToTokenHint(bytes memory hint)
-        public
+    function parseTokenToTokenHint(bytes calldata hint)
+        external
+        view
+        returns(
+            TradeType tokenToEthType,
+            bytes8[] memory tokenToEthReserveIDs,
+            uint[] memory tokenToEthSplits,
+            TradeType ethToTokenType,
+            bytes8[] memory ethToTokenReserveIDs,
+            uint[] memory ethToTokenSplits,
+            uint failingIndex
+        )
+    {
+
+    }
+
+    function parseT2tHint(bytes memory hint)
+        internal
         view
         returns(
             TradeType tokenToEthType,
