@@ -1,13 +1,12 @@
 pragma  solidity 0.5.11;
 
 import "./PermissionGroupsV5.sol";
-import "./KyberHintParser.sol";
 import "./IKyberReserve.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberTradeLogic.sol";
-import "./KyberHintParser.sol";
+import "./KyberHintHandler.sol";
 
-contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups {
+contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups {
     uint            public negligibleRateDiffBps = 10; // bps is 0.01%
 
     IKyberNetwork   public networkContract;
@@ -205,16 +204,14 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
                 (
                     tradeData.ethToToken.tradeType,
                     tradeData.ethToToken.addresses,
-                    tradeData.ethToToken.splitValuesBps,
-                    failingIndex
-                ) = parseE2tHint(hint);
+                    tradeData.ethToToken.splitValuesBps
+                ) = parseHintE2T(hint);
             } else if (dest == ETH_TOKEN_ADDRESS) {
                 (
                     tradeData.tokenToEth.tradeType,
                     tradeData.tokenToEth.addresses,
-                    tradeData.tokenToEth.splitValuesBps,
-                    failingIndex
-                ) = parseT2eHint(hint);
+                    tradeData.tokenToEth.splitValuesBps
+                ) = parseHintT2E(hint);
             } else {
                 (
                     tradeData.tokenToEth.tradeType,
@@ -222,9 +219,8 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
                     tradeData.tokenToEth.splitValuesBps,
                     tradeData.ethToToken.tradeType,
                     tradeData.ethToToken.addresses,
-                    tradeData.ethToToken.splitValuesBps,
-                    failingIndex
-                ) = parseT2tHint(hint);
+                    tradeData.ethToToken.splitValuesBps
+                ) = parseHintT2T(hint);
             }
 
             require(failingIndex > 0);

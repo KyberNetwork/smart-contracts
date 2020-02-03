@@ -1,9 +1,9 @@
 pragma solidity 0.5.11;
 
-import "../KyberHintParser.sol";
+import "../KyberHintHandler.sol";
 
 
-contract MockHintParser is KyberHintParser {
+contract MockHintHandler is KyberHintHandler {
 
     mapping(address=>bytes8) public reserveAddressToId;
     mapping(bytes8=>address[]) public reserveIdToAddresses;
