@@ -74,15 +74,15 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
     // whether a staker has claimed reward for an epoch (address => camp => has claimed)
     mapping(address => mapping(uint => bool)) public hasClaimedReward;
     // staker's voted option for a camp, vote option must start from 1 (address => campID => option ID)
-    mapping(address => mapping(uint => uint)) internal stakerVotedOption;
+    mapping(address => mapping(uint => uint)) public stakerVotedOption;
 
     /* Configuration Campaign Data */
     // epoch => campID for network fee campaign
-    uint public latestNetworkFeeResult = 25; // 0.25%
-    mapping(uint => uint) internal networkFeeCampaign;
+    uint internal latestNetworkFeeResult = 25; // 0.25%
+    mapping(uint => uint) public networkFeeCampaign;
     // epoch => campID for brr campaign
-    uint public latestBrrResult = 0; // 0: 0% reward + 0% rebate
-    mapping(uint => uint) internal brrCampaign;
+    uint internal latestBrrResult = 0; // 0: 0% reward + 0% rebate
+    mapping(uint => uint) public brrCampaign;
 
     constructor(uint _epochPeriod, uint _startBlock, address _staking, address _feeHandler, address _knc, address _admin) public {
         require(_epochPeriod > 0, "constructor: epoch period must be positive");

@@ -24,7 +24,7 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
     mapping(address => address) internal latestDelegatedAddress;
 
     // bool for control if we have init data for an epoch + an address
-    mapping(uint => mapping(address => bool)) public hasInited;
+    mapping(uint => mapping(address => bool)) internal hasInited;
 
     IERC20 public KNC_TOKEN;
     IKyberDAO public DAO;
@@ -32,15 +32,13 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
 
     constructor(address _kncToken, uint _epochPeriod, uint _startBlock, address _admin) public {
         require(_epochPeriod > 0, "constructor: epoch duration must be positive");
-        EPOCH_PERIOD = _epochPeriod;
-
         require(_startBlock >= block.number, "constructor: start block should not be in the past");
-        START_BLOCK = _startBlock;
-
         require(_kncToken != address(0), "constructor: KNC address is missing");
-        KNC_TOKEN = IERC20(_kncToken);
-
         require(_admin != address(0), "constructor: admin address is missing");
+
+        EPOCH_PERIOD = _epochPeriod;
+        START_BLOCK = _startBlock;
+        KNC_TOKEN = IERC20(_kncToken);
         admin = _admin;
     }
 
@@ -59,7 +57,7 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     // init data if it has not been init
-    function initDataIfNeeded(address S) public {
+    function initDataIfNeeded(address S) internal {
         uint N = getCurrentEpochNumber();
 
         address latestDelegatedAddr = latestDelegatedAddress[S];

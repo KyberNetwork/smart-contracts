@@ -210,3 +210,13 @@ module.exports.calcRateFromQty = function(srcQty, dstQty, srcDecimals, dstDecima
     }
 }
 
+module.exports.increaseBlockNumberBySendingEther = async function(sender, recv, blocks) {
+    for(let id = 0; id < blocks; id++) {
+        await this.sendEtherWithPromise(sender, recv, 0);
+    }
+}
+
+module.exports.getEpochNumber = function(blockNumber, epochPeriod, startBlock) {
+    if (blockNumber < startBlock || epochPeriod == 0) { return 0; }
+    return (blockNumber - startBlock) / epochPeriod + 1;
+}
