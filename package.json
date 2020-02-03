@@ -37,8 +37,8 @@
     "yargs": "11.1.1"
   },
   "devDependencies": {
-    "@nomiclabs/buidler": "1.0.2",
-    "@nomiclabs/buidler-web3": "1.0.2",
+    "@nomiclabs/buidler": "1.1.2",
+    "@nomiclabs/buidler-web3": "1.1.2",
     "@openzeppelin/test-helpers": "0.5.4",
     "chai": "4.2.0",
     "chai-bn": "0.2.0",
