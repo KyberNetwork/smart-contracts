@@ -82,6 +82,8 @@ let ethSrcQty = precisionUnits;
 let buyRates = [];
 let sellRates = [];
 
+let tempNetwork;
+
 contract('KyberNetwork', function(accounts) {
     before("one time global init", async() => {
         //init accounts
@@ -91,6 +93,17 @@ contract('KyberNetwork', function(accounts) {
         user = accounts[3];
         platformWallet = accounts[4];
         admin = accounts[5]; // we don't want admin as account 0.
+        hintParser = accounts[6];
+
+        //DAO related init.
+        expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
+        DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+        await DAO.setTakerFeeBps(takerFeesBps);
+        
+        //init network
+        network = await KyberNetwork.new(admin);
+        // set proxy same as network
+        proxyForFeeHandler = network;
 
         //init tokens
         for (let i = 0; i < numTokens; i++) {
