@@ -66,6 +66,27 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
         return reserveId;
     }
 
+    function getRatesForToken(IERC20 token, uint optionalAmount) external view
+        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, uint[] memory sellRates)
+    {
+        uint amount = optionalAmount > 0 ? optionalAmount : 1000;
+        IERC20 ETH = ETH_TOKEN_ADDRESS;
+
+        buyReserves = reservesPerTokenDest[address(token)];
+        buyRates = new uint[](buyReserves.length);
+
+        uint i;
+        for (i = 0; i < buyReserves.length; i++) {
+            buyRates[i] = (IKyberReserve(buyReserves[i])).getConversionRate(ETH, token, amount, block.number);
+        }
+
+        sellReserves = reservesPerTokenSrc[address(token)];
+        sellRates = new uint[](sellReserves.length);
+
+        for (i = 0; i < sellReserves.length; i++) {
+            sellRates[i] = (IKyberReserve(sellReserves[i])).getConversionRate(token, ETH, amount, block.number);
+        }
+    }
     
     function listPairForReserve(IKyberReserve reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add) onlyNetwork external returns (bool) {
         require(reserveAddressToId[address(reserve)] != bytes8(0), "reserve -> 0 reserveId");

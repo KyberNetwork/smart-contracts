@@ -169,10 +169,15 @@ contract('KyberNetwork', function(accounts) {
             });
 
             txResult = await tempNetwork.setContracts(feeHandler.address, DAO.address, tempTradeLogic.address, {from: admin});
-            expectEvent(txResult, 'ContractsUpdate', {
-                newHandler: feeHandler.address,
-                newDAO: DAO.address,
-                newTradeLogic: tempTradeLogic.address
+            expectEvent(txResult, 'FeeHandlerUpdated', {
+                newHandler: feeHandler.address
+            });
+            //TODO: set new DAO. and see event.
+            expectEvent(txResult, 'KyberDAOUpdated', {
+                newDAO: DAO.address
+            });
+            expectEvent(txResult, 'TradeLogicUpdated', {
+                tradeLogic: tempTradeLogic.address
             });
 
             txResult = await tempNetwork.addReserve(reserve.address, genReserveID(MOCK_ID, reserve.address), true, user, {from: operator});
