@@ -62,7 +62,7 @@ contract('KyberHintHandler', function(accounts) {
     });
 
     it('test globals', async() => {
-        const separator = await hintHandler.SEPARATOR();
+        const separator = await hintHandler.SEPARATOR_OPCODE();
         Helper.assertEqual(separator, SEPARATOR_OPCODE);
 
         const maskIn = await hintHandler.MASK_IN_OPCODE();
@@ -114,7 +114,7 @@ contract('KyberHintHandler', function(accounts) {
                 Helper.assertEqual(hintResult, expectedResult);
             });
     
-            it('should revert the e2t hint for splits due to >100bps', async() => {
+            it('should revert the e2t hint for splits due to >10000bps', async() => {
                 e2tOpcode = SPLIT_HINTTYPE;
                 e2tSplits = [new BN(5000), new BN(6000)]; // more than 100bps
         
@@ -162,7 +162,7 @@ contract('KyberHintHandler', function(accounts) {
                 Helper.assertEqual(hintResult, expectedResult);
             });
     
-            it('should revert the t2e hint for splits due to >100bps', async() => {
+            it('should revert the t2e hint for splits due to >10000bps', async() => {
                 t2eOpcode = SPLIT_HINTTYPE;
                 t2eSplits = [new BN(5000), new BN(6000)]; // more than 100bps
         
@@ -259,7 +259,7 @@ contract('KyberHintHandler', function(accounts) {
                 Helper.assertEqual(hintResult, expectedResult);
             });
     
-            it('should revert the t2t hint for mask in, splits due to >100bps', async() => {
+            it('should revert the t2t hint for mask in, splits due to >10000bps', async() => {
                 e2tOpcode = MASK_IN_HINTTYPE;
                 e2tSplits = [];
                 t2eOpcode = SPLIT_HINTTYPE;
@@ -358,7 +358,7 @@ contract('KyberHintHandler', function(accounts) {
                 Helper.assertEqual(hintResult, expectedResult);
             });
     
-            it('should revert the t2t hint for mask out, splits due to >100bps', async() => {
+            it('should revert the t2t hint for mask out, splits due to >10000bps', async() => {
                 e2tOpcode = MASK_OUT_HINTTYPE;
                 e2tSplits = [];
                 t2eOpcode = SPLIT_HINTTYPE;
@@ -457,7 +457,7 @@ contract('KyberHintHandler', function(accounts) {
                 Helper.assertEqual(hintResult, expectedResult);
             });
     
-            it('should revert the t2t hint for both splits due to >100bps', async() => {
+            it('should revert the t2t hint for both splits due to >10000bps', async() => {
                 e2tOpcode = SPLIT_HINTTYPE;
                 e2tSplits = [new BN(5000), new BN(5000)];
                 t2eOpcode = SPLIT_HINTTYPE;
@@ -535,7 +535,7 @@ contract('KyberHintHandler', function(accounts) {
                 Helper.assertEqual(parseResult.failingIndex, failingIndex);
             });
 
-            it('should revert parsing the e2t hint for splits due to >100bps', async() => {
+            it('should revert parsing the e2t hint for splits due to >10000bps', async() => {
                 hint = '0x000302ff00000063820d8f1388aa00000016709a5d1770ee';
     
                 try {
@@ -589,7 +589,7 @@ contract('KyberHintHandler', function(accounts) {
                 Helper.assertEqual(parseResult.failingIndex, failingIndex);
             });
     
-            it('should revert parsing the t2e hint for splits due to >100bps', async() => {
+            it('should revert parsing the t2e hint for splits due to >10000bps', async() => {
                 hint = '0x0302ff0000007a334f7d1388cc00000075fff057177000ee';
     
                 try {
@@ -659,7 +659,7 @@ contract('KyberHintHandler', function(accounts) {
                 Helper.assertEqual(parseResult.failingIndex, failingIndex);
             });
     
-            it('should revert parsing the t2t hint for mask in, splits due to >100bps', async() => {
+            it('should revert parsing the t2t hint for mask in, splits due to >10000bps', async() => {
                 hint = '0x0302ff0000007a334f7d1388cc00000075fff0571770000102ff00000063820d8faa00000016709a5dee';
                 
                 try {
@@ -721,7 +721,7 @@ contract('KyberHintHandler', function(accounts) {
                 Helper.assertEqual(parseResult.failingIndex, failingIndex);        
             });
     
-            it('should revert parsing the t2t hint for mask out, splits due to >100bps', async() => {
+            it('should revert parsing the t2t hint for mask out, splits due to >10000bps', async() => {
                 hint = '0x0302ff0000007a334f7d1388cc00000075fff0571770000202ff00000063820d8faa00000016709a5dee';
                 
                 try {
@@ -783,7 +783,7 @@ contract('KyberHintHandler', function(accounts) {
                 Helper.assertEqual(parseResult.failingIndex, failingIndex);
             });
     
-            it('should revert parsing the t2t hint for both splits due to >100bps', async() => {
+            it('should revert parsing the t2t hint for both splits due to >10000bps', async() => {
                 hint = '0x0302ff0000007a334f7d1338cc00000075fff0571770000302ff00000063820d8f1388aa00000016709a5d1388ee';
 
                 try {

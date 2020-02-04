@@ -4,15 +4,19 @@ import "./BytesLib.sol";
 import "./UtilsV5.sol";
 import "./IKyberHint.sol";
 import "./IKyberReserve.sol";
-import "@nomiclabs/buidler/console.sol";
 
 
 contract KyberHintHandler is IKyberHint, Utils {
-    bytes public constant SEPARATOR = "\x00";
+    bytes public constant SEPARATOR_OPCODE = "\x00";
     bytes public constant MASK_IN_OPCODE = "\x01";
     bytes public constant MASK_OUT_OPCODE = "\x02";
     bytes public constant SPLIT_TRADE_OPCODE = "\x03";
     bytes public constant END_OPCODE = "\xee";
+    bytes32 public constant SEPARATOR_KECCAK = keccak256(SEPARATOR_OPCODE);
+    bytes32 public constant MASK_IN_KECCAK = keccak256(MASK_IN_OPCODE);
+    bytes32 public constant MASK_OUT_KECCAK = keccak256(MASK_OUT_OPCODE);
+    bytes32 public constant SPLIT_TRADE_KECCAK = keccak256(SPLIT_TRADE_OPCODE);
+    bytes32 public constant END_KECCAK = keccak256(END_OPCODE);
     uint8 public constant RESERVE_ID_LENGTH = 8;
 
     using BytesLib for bytes;
@@ -182,7 +186,7 @@ contract KyberHintHandler is IKyberHint, Utils {
         pure
         returns(bytes memory hint)
     {
-        hint = hint.concat(SEPARATOR);
+        hint = hint.concat(SEPARATOR_OPCODE);
         hint = hint.concat(encodeReserveInfo(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits));
         hint = hint.concat(END_OPCODE);
     }
@@ -197,7 +201,7 @@ contract KyberHintHandler is IKyberHint, Utils {
         returns(bytes memory hint)
     {
         hint = hint.concat(encodeReserveInfo(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits));
-        hint = hint.concat(SEPARATOR);
+        hint = hint.concat(SEPARATOR_OPCODE);
         hint = hint.concat(END_OPCODE);
     }
 
@@ -214,7 +218,7 @@ contract KyberHintHandler is IKyberHint, Utils {
         returns(bytes memory hint)
     {
         hint = hint.concat(encodeReserveInfo(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits));
-        hint = hint.concat(SEPARATOR);
+        hint = hint.concat(SEPARATOR_OPCODE);
         hint = hint.concat(encodeReserveInfo(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits));
         hint = hint.concat(END_OPCODE);
     }
@@ -266,19 +270,19 @@ contract KyberHintHandler is IKyberHint, Utils {
         indexToContinueFrom += 1;
         reservesHint.invalidHint = false;
 
-        if (opcodeHash == keccak256(END_OPCODE)) {
+        if (opcodeHash == END_KECCAK) {
             return;
-        } else if (opcodeHash == keccak256(SEPARATOR)) {
+        } else if (opcodeHash == SEPARATOR_KECCAK) {
             decodeOperation(hint, tradeHint, indexToContinueFrom, false, isExternal);
-        } else if (opcodeHash == keccak256(encodeOpcode(TradeType.MaskIn))) {
+        } else if (opcodeHash == MASK_IN_KECCAK) {
             reservesHint.tradeType = TradeType.MaskIn;
             (indexToContinueFrom) = decodeReservesFromHint(false, hint, reservesHint, isExternal, indexToContinueFrom);
             decodeOperation(hint, tradeHint, indexToContinueFrom, isTokenToEth, isExternal);
-        } else if (opcodeHash == keccak256(encodeOpcode(TradeType.MaskOut))) {
+        } else if (opcodeHash == MASK_OUT_KECCAK) {
             reservesHint.tradeType = TradeType.MaskOut;
             (indexToContinueFrom) = decodeReservesFromHint(false, hint, reservesHint, isExternal, indexToContinueFrom);
             decodeOperation(hint, tradeHint, indexToContinueFrom, isTokenToEth, isExternal);
-        } else if (opcodeHash == keccak256(encodeOpcode(TradeType.Split))) {
+        } else if (opcodeHash == SPLIT_TRADE_KECCAK) {
             reservesHint.tradeType = TradeType.Split;
             (indexToContinueFrom) = decodeReservesFromHint(true, hint, reservesHint, isExternal, indexToContinueFrom);
             decodeOperation(hint, tradeHint, indexToContinueFrom, isTokenToEth, isExternal);
