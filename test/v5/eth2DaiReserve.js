@@ -47,7 +47,7 @@ let myDaiToken;
 
 contract('Eth2DaiReserve', function(accounts) {
     before("one time init", async() => {
-        admin = accounts[0];
+        admin = accounts[6];
         network = accounts[1];
         alerter = accounts[2];
         operator = accounts[3];
@@ -58,15 +58,16 @@ contract('Eth2DaiReserve', function(accounts) {
         otc = await MockOtcOrderbook.new(myWethToken.address, myDaiToken.address);
         reserve = await Eth2DaiReserve.new(network, feeBps, otc.address, myWethToken.address, admin);
 
-        await reserve.listToken(myDaiToken.address);
+        await reserve.listToken(myDaiToken.address, {from: admin});
         await reserve.setTokenConfigData(
             myDaiToken.address,
             maxTraverse, maxTraverseX, maxTraverseY,
             maxTake, maxTakeX, maxTakeY,
-            minSupportX, minSupportY, minSupport
+            minSupportX, minSupportY, minSupport,
+            {from: admin}
         )
-        reserve.addAlerter(alerter);
-        reserve.addOperator(operator);
+        reserve.addAlerter(alerter, {from: admin});
+        reserve.addOperator(operator, {from: admin});
 
         await myDaiToken.approve(reserve.address, (new BN(2)).pow(new BN(255)), {from: network});
     });
@@ -845,7 +846,11 @@ contract('Eth2DaiReserve', function(accounts) {
 
     it("Should test can not list empty token", async function() {
         try {
+<<<<<<< HEAD
             await reserve.listToken(zeroAddress);
+=======
+            await reserve.listToken(zeroAddress, {from: admin});
+>>>>>>> development
             assert(false, "throw was expected in line above.")
         } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -854,20 +859,20 @@ contract('Eth2DaiReserve', function(accounts) {
 
     it("Should test can not list token if it is already listed", async function() {
         let newToken = await TestToken.new("test token", "test", 18);
-        await reserve.listToken(newToken.address);
+        await reserve.listToken(newToken.address, {from: admin});
         try {
-            await reserve.listToken(newToken.address);
+            await reserve.listToken(newToken.address, {from: admin});
             assert(false, "throw was expected in line above.")
         } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
-        await reserve.delistToken(newToken.address);
+        await reserve.delistToken(newToken.address, {from: admin});
     });
 
     it("Should test can not list token with decimals is not 18", async function() {
         let newToken = await TestToken.new("test token", "test", 10);
         try {
-            await reserve.listToken(newToken.address);
+            await reserve.listToken(newToken.address, {from: admin});
             assert(false, "throw was expected in line above.")
         } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -877,13 +882,13 @@ contract('Eth2DaiReserve', function(accounts) {
     it("Should test can not delist token if it not listed", async function() {
         let newToken = await TestToken.new("test token", "test", 18);
         try {
-            await reserve.delistToken(newToken.address);
+            await reserve.delistToken(newToken.address, {from: admin});
             assert(false, "throw was expected in line above.")
         } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
-        await reserve.listToken(newToken.address);
-        await reserve.delistToken(newToken.address);
+        await reserve.listToken(newToken.address, {from: admin});
+        await reserve.delistToken(newToken.address, {from: admin});
     });
 
     it("Should test can not set fee of 10000", async function() {
@@ -913,20 +918,22 @@ contract('Eth2DaiReserve', function(accounts) {
                 newToken.address,
                 maxTraverse, maxTraverseX, maxTraverseY,
                 maxTake, maxTakeX, maxTakeY,
-                minSupportX, minSupportY, minSupport
+                minSupportX, minSupportY, minSupport,
+                {from: admin}
             )
             assert(false, "throw was expected in line above.")
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
-        await reserve.listToken(newToken.address);
+        await reserve.listToken(newToken.address, {from: admin});
         await reserve.setTokenConfigData(
             newToken.address,
             maxTraverse, maxTraverseX, maxTraverseY,
             maxTake, maxTakeX, maxTakeY,
-            minSupportX, minSupportY, minSupport
+            minSupportX, minSupportY, minSupport,
+            {from: admin}
         )
-        await reserve.delistToken(newToken.address);
+        await reserve.delistToken(newToken.address, {from: admin});
     });
 
     it("Should test can not set token info sender is not admin", async function() {
@@ -952,7 +959,8 @@ contract('Eth2DaiReserve', function(accounts) {
                 myDaiToken.address,
                 BN32, maxTraverseX, maxTraverseY,
                 maxTake, maxTakeX, maxTakeY,
-                minSupportX, minSupportY, minSupport
+                minSupportX, minSupportY, minSupport,
+                {from: admin}
             )
             assert(false, "throw was expected in line above.")
         } catch (e) {
@@ -964,7 +972,8 @@ contract('Eth2DaiReserve', function(accounts) {
                 myDaiToken.address,
                 maxTraverse, BN32, maxTraverseY,
                 maxTake, maxTakeX, maxTakeY,
-                minSupportX, minSupportY, minSupport
+                minSupportX, minSupportY, minSupport,
+                {from: admin}
             )
             assert(false, "throw was expected in line above.")
         } catch (e) {
@@ -976,7 +985,8 @@ contract('Eth2DaiReserve', function(accounts) {
                 myDaiToken.address,
                 maxTraverse, maxTraverseX, BN32,
                 maxTake, maxTakeX, maxTakeY,
-                minSupportX, minSupportY, minSupport
+                minSupportX, minSupportY, minSupport,
+                {from: admin}
             )
             assert(false, "throw was expected in line above.")
         } catch (e) {
@@ -988,7 +998,12 @@ contract('Eth2DaiReserve', function(accounts) {
                 myDaiToken.address,
                 maxTraverse, maxTraverseX, maxTraverseY,
                 BN32, maxTakeX, maxTakeY,
+<<<<<<< HEAD
                 minSupportX, minSupportY, minSupport
+=======
+                minSupportX, minSupportY, minSupport,
+                {from: admin}
+>>>>>>> development
             )
             assert(false, "throw was expected in line above.")
         } catch (e) {
@@ -1000,7 +1015,12 @@ contract('Eth2DaiReserve', function(accounts) {
                 myDaiToken.address,
                 maxTraverse, maxTraverseX, maxTraverseY,
                 maxTake, BN32, maxTakeY,
+<<<<<<< HEAD
                 minSupportX, minSupportY, minSupport
+=======
+                minSupportX, minSupportY, minSupport,
+                {from: admin}
+>>>>>>> development
             )
             assert(false, "throw was expected in line above.")
         } catch (e) {
@@ -1012,7 +1032,12 @@ contract('Eth2DaiReserve', function(accounts) {
                 myDaiToken.address,
                 maxTraverse, maxTraverseX, maxTraverseY,
                 maxTake, maxTakeX, BN32,
+<<<<<<< HEAD
                 minSupportX, minSupportY, minSupport
+=======
+                minSupportX, minSupportY, minSupport,
+                {from: admin}
+>>>>>>> development
             )
             assert(false, "throw was expected in line above.")
         } catch (e) {
@@ -1024,7 +1049,12 @@ contract('Eth2DaiReserve', function(accounts) {
                 myDaiToken.address,
                 maxTraverse, maxTraverseX, maxTraverseY,
                 maxTake, maxTakeX, maxTakeY,
+<<<<<<< HEAD
                 BN32, minSupportY, minSupport
+=======
+                BN32, minSupportY, minSupport,
+                {from: admin}
+>>>>>>> development
             )
             assert(false, "throw was expected in line above.")
         } catch (e) {
@@ -1036,7 +1066,12 @@ contract('Eth2DaiReserve', function(accounts) {
                 myDaiToken.address,
                 maxTraverse, maxTraverseX, maxTraverseY,
                 maxTake, maxTakeX, maxTakeY,
+<<<<<<< HEAD
                 minSupportX, BN32, minSupport
+=======
+                minSupportX, BN32, minSupport,
+                {from: admin}
+>>>>>>> development
             )
             assert(false, "throw was expected in line above.")
         } catch (e) {
@@ -1050,38 +1085,56 @@ contract('Eth2DaiReserve', function(accounts) {
             myDaiToken.address,
             BN32, BN32, BN32,
             BN32, BN32, BN32,
+<<<<<<< HEAD
             BN32, BN32, BN96
+=======
+            BN32, BN32, BN96,
+            {from: admin}
+>>>>>>> development
         )
 
         await reserve.setTokenConfigData(
             myDaiToken.address,
             maxTraverse, maxTraverseX, maxTraverseY,
             maxTake, maxTakeX, maxTakeY,
-            minSupportX, minSupportY, minSupport
+            minSupportX, minSupportY, minSupport,
+            {from: admin}
         )
     });
 
     // test setting contracts
     it("Should test can not set contracts with invalid network or otc", async function() {
         try {
+<<<<<<< HEAD
             await reserve.setContracts(zeroAddress, otc.address);
+=======
+            await reserve.setContracts(zeroAddress, otc.address, {from: admin});
+>>>>>>> development
             assert(false, "throw was expected in line above.")
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
         try {
+<<<<<<< HEAD
             await reserve.setContracts(network, zeroAddress);
+=======
+            await reserve.setContracts(network, zeroAddress, {from: admin});
+>>>>>>> development
             assert(false, "throw was expected in line above.")
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
         try {
+<<<<<<< HEAD
             await reserve.setContracts(zeroAddress, zeroAddress);
+=======
+            await reserve.setContracts(zeroAddress, zeroAddress, {from: admin});
+>>>>>>> development
             assert(false, "throw was expected in line above.")
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
-        await reserve.setContracts(network, otc.address);
+        await reserve.setContracts(network, otc.address, {from: admin});
     });
 
     it("Should test trade with trade is not enable", async function() {
@@ -1987,8 +2040,166 @@ contract('Eth2DaiReserve', function(accounts) {
         Helper.assertEqual(expectedEthBalAfter, ethBal, "eth balance is not correct after trade");
         Helper.assertEqual(expectedDaiBalAfter, tokenBal, "dai balance is not correct after trade");
     });
+
+<<<<<<< HEAD
+=======
+    it("Should test few buy and sell trades after setting new otc contract", async function() {
+        let newOTC = await MockOtcOrderbook.new(myWethToken.address, myDaiToken.address);
+        await myWethToken.transfer(newOTC.address, initOTCWethBalance);
+        await myDaiToken.transfer(newOTC.address, initOTCDaiBalance);
+
+        // delist dai first
+        await reserve.delistToken(myDaiToken.address, {from: admin});
+        // set new otc contract
+        await reserve.setContracts(network, newOTC.address, {from: admin});
+        // list dai + set config data again
+        await reserve.listToken(myDaiToken.address, {from: admin});
+        await reserve.setTokenConfigData(
+            myDaiToken.address,
+            maxTraverse, maxTraverseX, maxTraverseY,
+            maxTake, maxTakeX, maxTakeY,
+            minSupportX, minSupportY, minSupport,
+            {from: admin}
+        )
+
+        let recordedOTC = await reserve.otc();
+        assert.equal(recordedOTC, newOTC.address, "otc is not set correctly");
+
+        // making median rate is 200
+        await newOTC.setBuyOffer(1, myDaiToken.address, precision.mul(new BN(2 * 190)), myWethToken.address, precision.mul(new BN(2)));
+        await newOTC.setBuyOffer(2, myDaiToken.address, precision.mul(new BN(4 * 188)), myWethToken.address, precision.mul(new BN(4)));
+        await newOTC.setBuyOffer(3, myDaiToken.address, precision.mul(new BN(6 * 185)), myWethToken.address, precision.mul(new BN(6)));
+        await newOTC.setBuyOffer(4, myDaiToken.address, precision.mul(new BN(8 * 180)), myWethToken.address, precision.mul(new BN(8)));
+        await newOTC.setBuyOffer(5, myDaiToken.address, precision.mul(new BN(12 * 178)), myWethToken.address, precision.mul(new BN(12)));
+
+        await newOTC.setSellOffer(6, myWethToken.address, precision.mul(new BN(2)), myDaiToken.address, precision.mul(new BN(210 * 2)));
+        await newOTC.setSellOffer(7, myWethToken.address, precision.mul(new BN(3)), myDaiToken.address, precision.mul(new BN(212 * 3)));
+        await newOTC.setSellOffer(8, myWethToken.address, precision.mul(new BN(4)), myDaiToken.address, precision.mul(new BN(216 * 4)));
+        await newOTC.setSellOffer(9, myWethToken.address, precision.mul(new BN(5)), myDaiToken.address, precision.mul(new BN(220 * 5)));
+        await newOTC.setSellOffer(10, myWethToken.address, precision.mul(new BN(12)), myDaiToken.address, precision.mul(new BN(225 * 12)));
+
+        for(let i = 1; i <= 10; i++) {
+            let amountEth = (new BN(i)).mul(precision).mul(new BN(2));
+            let amountDai = (new BN(i)).mul(precision).mul(new BN(200 + i * 2)).mul(new BN(2));
+
+            await Helper.sendEtherWithPromise(user, network, amountEth);
+            await myDaiToken.transfer(network, amountDai);
+
+            let expectedUserETHBal = await Helper.getBalancePromise(user);
+            let expectedUserDaiBal = await myDaiToken.balanceOf(user);
+
+            let offersEthToken = await reserve.showBestOffers(myDaiToken.address, true, amountEth.div(precision));
+            let offersTokenEth = await reserve.showBestOffers(myDaiToken.address, false, amountDai.div(precision));
+
+            let eth2daiRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, amountEth, 0);
+            let dai2ethRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, amountDai, 0);
+
+            let rate = Helper.calcRateFromQty(amountEth, offersEthToken[0], 18, 18);
+            rate = Helper.addBps(rate, -1 * feeBps);
+            rate = applyInternalInventory(rate, false);
+            Helper.assertEqual(rate, eth2daiRate, "eth to dai rate should be correct, loop: " + i);
+
+            rate = Helper.calcRateFromQty(amountDai, offersTokenEth[0], 18, 18);
+            rate = Helper.addBps(rate, -1 * feeBps);
+            rate = applyInternalInventory(rate, false);
+            Helper.assertEqual(rate, dai2ethRate, "dai to eth rate should be correct, loop: " + i);
+
+            expectedUserDaiBal = expectedUserDaiBal.add(Helper.calcDstQty(amountEth, 18, 18, eth2daiRate));
+            await reserve.trade(ethAddress, amountEth, myDaiToken.address, user, eth2daiRate, true, {from: network, value: amountEth});
+
+            let newUserEthBal = await Helper.getBalancePromise(user);
+            let newUserDaiBal = await myDaiToken.balanceOf(user);
+
+            Helper.assertEqual(expectedUserETHBal, newUserEthBal, "eth balance should be correct after traded, loop: " + i);
+            Helper.assertEqual(expectedUserDaiBal, newUserDaiBal, "dai balance should be correct after traded, loop: " + i);
+
+            expectedUserETHBal = expectedUserETHBal.add(Helper.calcDstQty(amountDai, 18, 18, dai2ethRate));
+            await reserve.trade(myDaiToken.address, amountDai, ethAddress, user, dai2ethRate, true, {from: network});
+
+            newUserEthBal = await Helper.getBalancePromise(user);
+            newUserDaiBal = await myDaiToken.balanceOf(user);
+
+            Helper.assertEqual(expectedUserDaiBal, newUserDaiBal, "dai balance should be correct after traded, loop: " + i);
+            Helper.assertEqual(expectedUserETHBal, newUserEthBal, "eth balance should be correct after traded, loop: " + i);
+        }
+        await reserve.delistToken(myDaiToken.address, {from: admin});
+        await reserve.setContracts(network, otc.address, {from: admin});
+        await reserve.listToken(myDaiToken.address, {from: admin});
+        await reserve.setTokenConfigData(
+            myDaiToken.address,
+            maxTraverse, maxTraverseX, maxTraverseY,
+            maxTake, maxTakeX, maxTakeY,
+            minSupportX, minSupportY, minSupport,
+            {from: admin}
+        )
+    });
+
+    it("Should test few buy and sell trades after setting new network contract", async function() {
+        let newNetwork = accounts[8];
+        await reserve.setContracts(newNetwork, otc.address, {from: admin});
+        await myDaiToken.approve(reserve.address, (new BN(2)).pow(new BN(255)), {from: newNetwork});
+        // making median rate is 200
+        await otc.setBuyOffer(1, myDaiToken.address, precision.mul(new BN(2 * 190)), myWethToken.address, precision.mul(new BN(2)));
+        await otc.setBuyOffer(2, myDaiToken.address, precision.mul(new BN(4 * 188)), myWethToken.address, precision.mul(new BN(4)));
+        await otc.setBuyOffer(3, myDaiToken.address, precision.mul(new BN(6 * 185)), myWethToken.address, precision.mul(new BN(6)));
+        await otc.setBuyOffer(4, myDaiToken.address, precision.mul(new BN(8 * 180)), myWethToken.address, precision.mul(new BN(8)));
+        await otc.setBuyOffer(5, myDaiToken.address, precision.mul(new BN(12 * 178)), myWethToken.address, precision.mul(new BN(12)));
+
+        await otc.setSellOffer(6, myWethToken.address, precision.mul(new BN(2)), myDaiToken.address, precision.mul(new BN(210 * 2)));
+        await otc.setSellOffer(7, myWethToken.address, precision.mul(new BN(3)), myDaiToken.address, precision.mul(new BN(212 * 3)));
+        await otc.setSellOffer(8, myWethToken.address, precision.mul(new BN(4)), myDaiToken.address, precision.mul(new BN(216 * 4)));
+        await otc.setSellOffer(9, myWethToken.address, precision.mul(new BN(5)), myDaiToken.address, precision.mul(new BN(220 * 5)));
+        await otc.setSellOffer(10, myWethToken.address, precision.mul(new BN(12)), myDaiToken.address, precision.mul(new BN(225 * 12)));
+
+        for(let i = 1; i <= 10; i++) {
+            let amountEth = (new BN(i)).mul(precision).mul(new BN(2));
+            let amountDai = (new BN(i)).mul(precision).mul(new BN(200 + i * 2)).mul(new BN(2));
+
+            await Helper.sendEtherWithPromise(user, newNetwork, amountEth);
+            await myDaiToken.transfer(newNetwork, amountDai);
+
+            let expectedUserETHBal = await Helper.getBalancePromise(user);
+            let expectedUserDaiBal = await myDaiToken.balanceOf(user);
+
+            let offersEthToken = await reserve.showBestOffers(myDaiToken.address, true, amountEth.div(precision));
+            let offersTokenEth = await reserve.showBestOffers(myDaiToken.address, false, amountDai.div(precision));
+
+            let eth2daiRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, amountEth, 0);
+            let dai2ethRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, amountDai, 0);
+
+            let rate = Helper.calcRateFromQty(amountEth, offersEthToken[0], 18, 18);
+            rate = Helper.addBps(rate, -1 * feeBps);
+            rate = applyInternalInventory(rate, false);
+            Helper.assertEqual(rate, eth2daiRate, "eth to dai rate should be correct, loop: " + i);
+
+            rate = Helper.calcRateFromQty(amountDai, offersTokenEth[0], 18, 18);
+            rate = Helper.addBps(rate, -1 * feeBps);
+            rate = applyInternalInventory(rate, false);
+            Helper.assertEqual(rate, dai2ethRate, "dai to eth rate should be correct, loop: " + i);
+
+            expectedUserDaiBal = expectedUserDaiBal.add(Helper.calcDstQty(amountEth, 18, 18, eth2daiRate));
+            await reserve.trade(ethAddress, amountEth, myDaiToken.address, user, eth2daiRate, true, {from: newNetwork, value: amountEth});
+
+            let newUserEthBal = await Helper.getBalancePromise(user);
+            let newUserDaiBal = await myDaiToken.balanceOf(user);
+
+            Helper.assertEqual(expectedUserETHBal, newUserEthBal, "eth balance should be correct after traded, loop: " + i);
+            Helper.assertEqual(expectedUserDaiBal, newUserDaiBal, "dai balance should be correct after traded, loop: " + i);
+
+            expectedUserETHBal = expectedUserETHBal.add(Helper.calcDstQty(amountDai, 18, 18, dai2ethRate));
+            await reserve.trade(myDaiToken.address, amountDai, ethAddress, user, dai2ethRate, true, {from: newNetwork});
+
+            newUserEthBal = await Helper.getBalancePromise(user);
+            newUserDaiBal = await myDaiToken.balanceOf(user);
+
+            Helper.assertEqual(expectedUserDaiBal, newUserDaiBal, "dai balance should be correct after traded, loop: " + i);
+            Helper.assertEqual(expectedUserETHBal, newUserEthBal, "eth balance should be correct after traded, loop: " + i);
+        }
+        await reserve.setContracts(network, otc.address, {from: admin});
+    });
   });
 
+>>>>>>> development
 function applyInternalInventory(rate, useInternalInventory) {
     if (useInternalInventory) {
         if (rate.mod(new BN(2)).eq(new BN(1))) return rate;

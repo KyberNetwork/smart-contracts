@@ -4,7 +4,11 @@ const solc = require('solc');
 const contractPath = path.join(__dirname, "../contracts/");
 const input = {
     "ConversionRates.sol" : fs.readFileSync(contractPath + 'reserves/fprConversionRate/ConversionRates.sol','utf8'),
+    "ConversionRateEnhancedSteps.sol" : fs.readFileSync(contractPath + 'reserves/fprConversionRate/ConversionRateEnhancedSteps.sol', 'utf8'),
     "ConversionRatesInterface.sol" : fs.readFileSync(contractPath + 'ConversionRatesInterface.sol', 'utf8'),
+    "reserves/fprConversionRate/ConversionRates.sol" : fs.readFileSync(contractPath + 'reserves/fprConversionRate/ConversionRates.sol','utf8'),
+    "reserves/VolumeImbalanceRecorder.sol" : fs.readFileSync(contractPath + 'reserves/VolumeImbalanceRecorder.sol', 'utf8'),
+    "VolumeImbalanceRecorder.sol" : fs.readFileSync(contractPath + 'reserves/VolumeImbalanceRecorder.sol', 'utf8'),
     "PermissionGroups.sol" : fs.readFileSync(contractPath + 'PermissionGroups.sol', 'utf8'),
     "ERC20Interface.sol" : fs.readFileSync(contractPath + 'ERC20Interface.sol', 'utf8'),
     "ExpectedRate.sol" : fs.readFileSync(contractPath + 'ExpectedRate.sol', 'utf8'),
@@ -35,13 +39,15 @@ const input = {
     "Utils.sol" : fs.readFileSync(contractPath + 'Utils.sol', 'utf8'),
     "Utils2.sol" : fs.readFileSync(contractPath + 'Utils2.sol', 'utf8'),
     "Utils3.sol" : fs.readFileSync(contractPath + 'Utils3.sol', 'utf8'),
-    "VolumeImbalanceRecorder.sol" : fs.readFileSync(contractPath + 'reserves/VolumeImbalanceRecorder.sol', 'utf8'),
     "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
     "WhiteList.sol" : fs.readFileSync(contractPath + 'WhiteList.sol', 'utf8'),
     "WhiteListInterface.sol" : fs.readFileSync(contractPath + 'WhiteListInterface.sol', 'utf8'),
     "WrapFeeBurner.sol" : fs.readFileSync(contractPath + 'wrappers/WrapFeeBurner.sol', 'utf8'),
     "KyberUniswapReserve.sol" : fs.readFileSync(contractPath + 'reserves/bridgeReserves/uniswap/KyberUniswapReserve.sol', 'utf8'),
-    "WrapperBase.sol" : fs.readFileSync(contractPath + 'wrappers/WrapperBase.sol', 'utf8')
+    "WrapperBase.sol" : fs.readFileSync(contractPath + 'wrappers/WrapperBase.sol', 'utf8'),
+    "SetStepFunctionWrapper.sol" : fs.readFileSync(contractPath + 'wrappers/SetStepFunctionWrapper.sol', 'utf8'),
+    "WrapConversionRate.sol" : fs.readFileSync(contractPath + 'wrappers/WrapConversionRate.sol', 'utf8'),
+    "WrapReadTokenData.sol" : fs.readFileSync(contractPath + 'wrappers/WrapReadTokenData.sol', 'utf8')
   };
 
 module.exports.compileContracts = async function() {
