@@ -3,8 +3,8 @@ pragma solidity ^0.4.18;
 import "../ERC20Interface.sol";
 import "../Utils.sol";
 import "../reserves/fprConversionRate/ConversionRates.sol";
-import "../KyberNetworkProxy.sol";
 import "../reserves/orderBookReserve/permissionless/OrderbookReserve.sol";
+import "../KyberNetworkInterface.sol";
 
 
 contract NetworkInterface {
@@ -26,6 +26,11 @@ contract NetworkInterface {
     function tradeWithHint(address trader, ERC20 src, uint srcAmount, ERC20 dest, address destAddress,
         uint maxDestAmount, uint minConversionRate, address walletId, bytes hint) public payable returns(uint);
     function getNumReserves() public view returns(uint);
+}
+
+
+contract proxyInterface {
+    KyberNetworkInterface public kyberNetworkContract;
 }
 
 
@@ -140,7 +145,7 @@ contract Wrapper is Utils {
 
     // iterate from startIndex to endIndex inclusive
     function getListPermissionlessTokensAndDecimals(
-      KyberNetworkProxy networkProxy,
+      proxyInterface networkProxy,
       uint startIndex,
       uint endIndex
     )

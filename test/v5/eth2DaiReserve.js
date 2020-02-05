@@ -846,11 +846,7 @@ contract('Eth2DaiReserve', function(accounts) {
 
     it("Should test can not list empty token", async function() {
         try {
-<<<<<<< HEAD
-            await reserve.listToken(zeroAddress);
-=======
             await reserve.listToken(zeroAddress, {from: admin});
->>>>>>> development
             assert(false, "throw was expected in line above.")
         } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -998,12 +994,8 @@ contract('Eth2DaiReserve', function(accounts) {
                 myDaiToken.address,
                 maxTraverse, maxTraverseX, maxTraverseY,
                 BN32, maxTakeX, maxTakeY,
-<<<<<<< HEAD
-                minSupportX, minSupportY, minSupport
-=======
                 minSupportX, minSupportY, minSupport,
                 {from: admin}
->>>>>>> development
             )
             assert(false, "throw was expected in line above.")
         } catch (e) {
@@ -1015,12 +1007,8 @@ contract('Eth2DaiReserve', function(accounts) {
                 myDaiToken.address,
                 maxTraverse, maxTraverseX, maxTraverseY,
                 maxTake, BN32, maxTakeY,
-<<<<<<< HEAD
-                minSupportX, minSupportY, minSupport
-=======
                 minSupportX, minSupportY, minSupport,
                 {from: admin}
->>>>>>> development
             )
             assert(false, "throw was expected in line above.")
         } catch (e) {
@@ -1032,12 +1020,8 @@ contract('Eth2DaiReserve', function(accounts) {
                 myDaiToken.address,
                 maxTraverse, maxTraverseX, maxTraverseY,
                 maxTake, maxTakeX, BN32,
-<<<<<<< HEAD
-                minSupportX, minSupportY, minSupport
-=======
                 minSupportX, minSupportY, minSupport,
                 {from: admin}
->>>>>>> development
             )
             assert(false, "throw was expected in line above.")
         } catch (e) {
@@ -1048,13 +1032,8 @@ contract('Eth2DaiReserve', function(accounts) {
             await reserve.setTokenConfigData(
                 myDaiToken.address,
                 maxTraverse, maxTraverseX, maxTraverseY,
-                maxTake, maxTakeX, maxTakeY,
-<<<<<<< HEAD
-                BN32, minSupportY, minSupport
-=======
-                BN32, minSupportY, minSupport,
+                maxTake, maxTakeX, maxTakeY,             BN32, minSupportY, minSupport,
                 {from: admin}
->>>>>>> development
             )
             assert(false, "throw was expected in line above.")
         } catch (e) {
@@ -1066,12 +1045,8 @@ contract('Eth2DaiReserve', function(accounts) {
                 myDaiToken.address,
                 maxTraverse, maxTraverseX, maxTraverseY,
                 maxTake, maxTakeX, maxTakeY,
-<<<<<<< HEAD
-                minSupportX, BN32, minSupport
-=======
                 minSupportX, BN32, minSupport,
                 {from: admin}
->>>>>>> development
             )
             assert(false, "throw was expected in line above.")
         } catch (e) {
@@ -1085,12 +1060,8 @@ contract('Eth2DaiReserve', function(accounts) {
             myDaiToken.address,
             BN32, BN32, BN32,
             BN32, BN32, BN32,
-<<<<<<< HEAD
-            BN32, BN32, BN96
-=======
             BN32, BN32, BN96,
             {from: admin}
->>>>>>> development
         )
 
         await reserve.setTokenConfigData(
@@ -1105,31 +1076,19 @@ contract('Eth2DaiReserve', function(accounts) {
     // test setting contracts
     it("Should test can not set contracts with invalid network or otc", async function() {
         try {
-<<<<<<< HEAD
-            await reserve.setContracts(zeroAddress, otc.address);
-=======
             await reserve.setContracts(zeroAddress, otc.address, {from: admin});
->>>>>>> development
             assert(false, "throw was expected in line above.")
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
         try {
-<<<<<<< HEAD
-            await reserve.setContracts(network, zeroAddress);
-=======
             await reserve.setContracts(network, zeroAddress, {from: admin});
->>>>>>> development
             assert(false, "throw was expected in line above.")
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
         try {
-<<<<<<< HEAD
-            await reserve.setContracts(zeroAddress, zeroAddress);
-=======
             await reserve.setContracts(zeroAddress, zeroAddress, {from: admin});
->>>>>>> development
             assert(false, "throw was expected in line above.")
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -2041,8 +2000,6 @@ contract('Eth2DaiReserve', function(accounts) {
         Helper.assertEqual(expectedDaiBalAfter, tokenBal, "dai balance is not correct after trade");
     });
 
-<<<<<<< HEAD
-=======
     it("Should test few buy and sell trades after setting new otc contract", async function() {
         let newOTC = await MockOtcOrderbook.new(myWethToken.address, myDaiToken.address);
         await myWethToken.transfer(newOTC.address, initOTCWethBalance);
@@ -2199,7 +2156,6 @@ contract('Eth2DaiReserve', function(accounts) {
     });
   });
 
->>>>>>> development
 function applyInternalInventory(rate, useInternalInventory) {
     if (useInternalInventory) {
         if (rate.mod(new BN(2)).eq(new BN(1))) return rate;
