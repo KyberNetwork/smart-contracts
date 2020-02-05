@@ -6,15 +6,18 @@ import "../../../UtilsV5.sol";
 
 contract MockBancorNetwork is IBancorNetwork, Utils {
 
-    IERC20 public bancorETH;
     IERC20 public bancorBNT;
+
+    IERC20[] public ethToBntPath;
+    IERC20[] public bntToEthPath;
 
     uint public rateEthToBnt;
     uint public rateBntToETh;
 
-    constructor(address _bancorETH, address _bancorBNT) public {
-        bancorETH = IERC20(_bancorETH);
-        bancorBNT = IERC20(_bancorBNT);
+    constructor(IERC20 _bancorBNT, IERC20[] memory _ethToBntPath, IERC20[] memory _bntToEthPath) public {
+        bancorBNT = _bancorBNT;
+        ethToBntPath = _ethToBntPath;
+        bntToEthPath = _bntToEthPath;
     }
 
     function() external payable { }
@@ -24,24 +27,48 @@ contract MockBancorNetwork is IBancorNetwork, Utils {
         rateBntToETh = _rateBntToEth;
     }
 
+    function setNewEthBntPath(IERC20[] memory _ethToBntPath, IERC20[] memory _bntToEthPath) public {
+        ethToBntPath = _ethToBntPath;
+        bntToEthPath = _bntToEthPath;
+    }
+
     function getReturnByPath(IERC20[] calldata _path, uint256 _amount) external view returns (uint256, uint256) {
         require(_amount > 0);
-        if (_path.length != 3) { return (0, 0); }
-        if (_path[0] == bancorBNT && _path[1] == bancorBNT && _path[2] == bancorETH) {
-            // rate btn to eth
-            uint destAmount = calcDstQty(_amount, getDecimals(bancorBNT), ETH_DECIMALS, rateBntToETh);
-            if (destAmount > address(this).balance) {
-                return (0, 0);
+        // verify if path is ethToBntPath
+        if (_path.length == ethToBntPath.length) {
+            bool isPathOk = true;
+            for(uint i = 0; i < _path.length; i++) {
+                if (_path[i] != ethToBntPath[i]) {
+                    isPathOk = false;
+                    break;
+                }
             }
-            return (destAmount, 0);
+            if (isPathOk) {
+                // rate eth to bnt
+                uint destAmount = calcDstQty(_amount, ETH_DECIMALS, getDecimals(bancorBNT), rateEthToBnt);
+                if (destAmount > bancorBNT.balanceOf(address(this))) {
+                    return (0, 0);
+                }
+                return (destAmount, 0);
+            }
         }
-        if (_path[0] == bancorETH && _path[1] == bancorBNT && _path[2] == bancorBNT) {
-            // rate eth to bnt
-            uint destAmount = calcDstQty(_amount, ETH_DECIMALS, getDecimals(bancorBNT), rateEthToBnt);
-            if (destAmount > bancorBNT.balanceOf(address(this))) {
-                return (0, 0);
+        // verify if path is from bnt to eth
+        if (_path.length == bntToEthPath.length) {
+            bool isPathOk = true;
+            for(uint i = 0; i < _path.length; i++) {
+                if (_path[i] != bntToEthPath[i]) {
+                    isPathOk = false;
+                    break;
+                }
             }
-            return (destAmount, 0);
+            if (isPathOk) {
+                // rate btn to eth
+                uint destAmount = calcDstQty(_amount, getDecimals(bancorBNT), ETH_DECIMALS, rateBntToETh);
+                if (destAmount > address(this).balance) {
+                    return (0, 0);
+                }
+                return (destAmount, 0);
+            }
         }
         return (0, 0);
     }
@@ -53,9 +80,11 @@ contract MockBancorNetwork is IBancorNetwork, Utils {
         address,
         uint256
     ) external payable returns (uint256) {
-        require(_path.length == 3);
         // trade eth to bnt
-        require(_path[0] == bancorETH && _path[1] == bancorBNT && _path[2] == bancorBNT);
+        require(_path.length == ethToBntPath.length);
+        for(uint i = 0; i < _path.length; i++) {
+            require(_path[i] == ethToBntPath[i]);
+        }
         require(msg.value == _amount && _amount > 0);
         require(rateEthToBnt > 0);
         uint destAmount = calcDstQty(_amount, ETH_DECIMALS, getDecimals(bancorBNT), rateEthToBnt);
@@ -72,9 +101,10 @@ contract MockBancorNetwork is IBancorNetwork, Utils {
         address,
         uint256
     ) external returns (uint256) {
-        require(_path.length == 3);
-        // trade eth to bnt
-        require(_path[0] == bancorBNT && _path[1] == bancorBNT && _path[2] == bancorETH);
+        require(_path.length == bntToEthPath.length);
+        for(uint i = 0; i < _path.length; i++) {
+            require(_path[i] == bntToEthPath[i]);
+        }
         // collect bnt
         require(_amount > 0);
         require(bancorBNT.transferFrom(msg.sender, address(this), _amount));
