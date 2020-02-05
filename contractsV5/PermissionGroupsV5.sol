@@ -12,7 +12,7 @@ contract PermissionGroups {
     uint constant internal MAX_GROUP_SIZE = 50;
 
     constructor(address _admin) public {
-        require(_admin != address(0), "0 address");
+        require(_admin != address(0), "Admin 0");
         admin = _admin;
     }
 
