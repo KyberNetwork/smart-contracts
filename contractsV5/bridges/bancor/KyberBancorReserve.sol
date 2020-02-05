@@ -25,13 +25,12 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
         address _bancorToken,
         address _admin
     )
-        public
+        public Withdrawable(_admin)
     {
         require(_bancorNetwork != address(0), "constructor: bancorNetwork address is missing");
         require(_kyberNetwork != address(0), "constructor: kyberNetwork address is missing");
         require(_bancorToken != address(0), "constructor: bancorToken address is missing");
-        require(_admin != address(0), "constructor: admin address is missing");
-
+        
         bancorNetwork = IBancorNetwork(_bancorNetwork);
         bancorToken = IERC20(_bancorToken);
 

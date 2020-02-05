@@ -66,13 +66,14 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable, Utils {
         uint id;
     }
 
-    constructor(address _kyberNetwork, uint _feeBps, address _otc, address _weth, address _admin) public {
+    constructor(address _kyberNetwork, uint _feeBps, address _otc, address _weth, address _admin) 
+        public Withdrawable(_admin)
+    {
         require(_kyberNetwork != address(0), "constructor: kyberNetwork's address is missing");
         require(_otc != address(0), "constructor: otc's address is missing");
         require(_weth != address(0), "constructor: weth's address is missing");
         require(_feeBps < BPS, "constructor: fee >= bps");
-        require(_admin != address(0), "constructor: admin is missing");
-
+        
         wethToken = IWeth(_weth);
         require(getDecimals(wethToken) == MAX_DECIMALS, "constructor: wethToken's decimals is not MAX_DECIMALS");
         require(wethToken.approve(_otc, 2**255), "constructor: failed to approve otc (wethToken)");
