@@ -449,7 +449,7 @@ contract('StakingContract', function(accounts) {
         });
 
         it("Test deposit should revert when not enough balance or allowance", async function() {
-            await deployStakingContract(10, currentBlock + 20);
+            await deployStakingContract(10, currentBlock + 10);
 
             // has 100 tokens, approve enough but try to deposit more
             await kncToken.transfer(victor, precision.mul(new BN(100)));
@@ -543,7 +543,7 @@ contract('StakingContract', function(accounts) {
         });
 
         it("Test withdraw should revert when no stakes but has delegated stake", async function() {
-            await deployStakingContract(10, currentBlock + 20);
+            await deployStakingContract(10, currentBlock + 10);
 
             await kncToken.transfer(victor, precision.mul(new BN(500)));
             await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: victor});
@@ -564,7 +564,7 @@ contract('StakingContract', function(accounts) {
         });
 
         it("Test withdraw (partial + full), stakes change as expected - no delegation", async function() {
-            await deployStakingContract(10, currentBlock + 20);
+            await deployStakingContract(10, currentBlock + 10);
 
             await kncToken.transfer(victor, precision.mul(new BN(500)));
             await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: victor});
@@ -609,7 +609,7 @@ contract('StakingContract', function(accounts) {
         });
 
         it("Test withdraw (partial + full), stakes change as expected - with delegation", async function() {
-            await deployStakingContract(10, currentBlock + 20);
+            await deployStakingContract(10, currentBlock + 10);
 
             await kncToken.transfer(victor, precision.mul(new BN(500)));
             await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: victor});
@@ -657,7 +657,7 @@ contract('StakingContract', function(accounts) {
 
 
         it("Test withdraw more than current epoch stake, but less than total stake", async function() {
-            await deployStakingContract(10, currentBlock + 20);
+            await deployStakingContract(6, currentBlock + 10);
 
             await kncToken.transfer(victor, precision.mul(new BN(500)));
             await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: victor});
@@ -675,6 +675,142 @@ contract('StakingContract', function(accounts) {
             Helper.assertEqual(precision.mul(new BN(50)), await stakingContract.getStakesValue(victor, 1), "stake at epoch 1 should be correct");
             Helper.assertEqual(precision.mul(new BN(50)), await stakingContract.getStakesValue(victor, 2), "stake at epoch 2 should be correct");
             Helper.assertEqual(precision.mul(new BN(50)), await stakingContract.getLatestStakeBalance(victor), "latest stake balance should be correct");
+        });
+
+        it("Test withdraw before new deposit, stakes change as expected", async function() {
+            await deployStakingContract(6, currentBlock + 10);
+
+            await kncToken.transfer(victor, precision.mul(new BN(500)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: victor});
+            await stakingContract.deposit(precision.mul(new BN(400)), {from: victor});
+            await stakingContract.delegate(mike, {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            // delay to epoch 1
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock + 1);
+
+            await stakingContract.withdraw(precision.mul(new BN(200)), {from: victor});
+
+            // check stake of victor
+            Helper.assertEqual(precision.mul(new BN(200)), await stakingContract.getStakesValue(victor, 1), "stake at epoch 1 should be correct");
+            Helper.assertEqual(precision.mul(new BN(200)), await stakingContract.getStakesValue(victor, 2), "stake at epoch 2 should be correct");
+            Helper.assertEqual(precision.mul(new BN(200)), await stakingContract.getLatestStakeBalance(victor), "latest stake balance should be correct");
+            // check delegated stake of mike
+            Helper.assertEqual(precision.mul(new BN(200)), await stakingContract.getDelegatedStakesValue(mike, 1), "delegated stake at epoch 1 should be correct");
+            Helper.assertEqual(precision.mul(new BN(200)), await stakingContract.getDelegatedStakesValue(mike, 2), "delegated stake at epoch 2 should be correct");
+            Helper.assertEqual(precision.mul(new BN(200)), await stakingContract.getLatestDelegatedStake(mike), "latest delegated stake should be correct");
+
+            // deposit again
+            await stakingContract.deposit(precision.mul(new BN(100)), {from: victor});
+            // check stake of victor
+            Helper.assertEqual(precision.mul(new BN(200)), await stakingContract.getStakesValue(victor, 1), "stake at epoch 1 should be correct");
+            Helper.assertEqual(precision.mul(new BN(300)), await stakingContract.getStakesValue(victor, 2), "stake at epoch 2 should be correct");
+            Helper.assertEqual(precision.mul(new BN(300)), await stakingContract.getLatestStakeBalance(victor), "latest stake balance should be correct");
+            // check delegated stake of mike
+            Helper.assertEqual(precision.mul(new BN(200)), await stakingContract.getDelegatedStakesValue(mike, 1), "delegated stake at epoch 1 should be correct");
+            Helper.assertEqual(precision.mul(new BN(300)), await stakingContract.getDelegatedStakesValue(mike, 2), "delegated stake at epoch 2 should be correct");
+            Helper.assertEqual(precision.mul(new BN(300)), await stakingContract.getLatestDelegatedStake(mike), "latest delegated stake should be correct");
+        });
+
+        it("Test withdraw less than new deposit, stakes change as expected", async function() {
+            await deployStakingContract(6, currentBlock + 10);
+
+            await kncToken.transfer(victor, precision.mul(new BN(500)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: victor});
+            await stakingContract.deposit(precision.mul(new BN(400)), {from: victor});
+            await stakingContract.delegate(mike, {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            // delay to epoch 1
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock + 1);
+
+            await stakingContract.deposit(precision.mul(new BN(100)), {from: victor});
+            await stakingContract.withdraw(precision.mul(new BN(50)), {from: victor});
+
+            // check stake of victor
+            Helper.assertEqual(precision.mul(new BN(400)), await stakingContract.getStakesValue(victor, 1), "stake at epoch 1 should be correct");
+            Helper.assertEqual(precision.mul(new BN(450)), await stakingContract.getStakesValue(victor, 2), "stake at epoch 2 should be correct");
+            Helper.assertEqual(precision.mul(new BN(450)), await stakingContract.getLatestStakeBalance(victor), "latest stake balance should be correct");
+            // check delegated stake of mike
+            Helper.assertEqual(precision.mul(new BN(400)), await stakingContract.getDelegatedStakesValue(mike, 1), "delegated stake at epoch 1 should be correct");
+            Helper.assertEqual(precision.mul(new BN(450)), await stakingContract.getDelegatedStakesValue(mike, 2), "delegated stake at epoch 2 should be correct");
+            Helper.assertEqual(precision.mul(new BN(450)), await stakingContract.getLatestDelegatedStake(mike), "latest delegated stake should be correct");
+        });
+
+        it("Test withdraw total more than new deposit, stakes change as expected", async function() {
+            await deployStakingContract(6, currentBlock + 10);
+
+            await kncToken.transfer(victor, precision.mul(new BN(500)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: victor});
+            await stakingContract.deposit(precision.mul(new BN(400)), {from: victor});
+            await stakingContract.delegate(mike, {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            // delay to epoch 1
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock + 1);
+
+            await stakingContract.deposit(precision.mul(new BN(100)), {from: victor});
+            await stakingContract.withdraw(precision.mul(new BN(50)), {from: victor});
+            await stakingContract.withdraw(precision.mul(new BN(150)), {from: victor});
+
+            // check stake of victor
+            Helper.assertEqual(precision.mul(new BN(300)), await stakingContract.getStakesValue(victor, 1), "stake at epoch 1 should be correct");
+            Helper.assertEqual(precision.mul(new BN(300)), await stakingContract.getStakesValue(victor, 2), "stake at epoch 2 should be correct");
+            Helper.assertEqual(precision.mul(new BN(300)), await stakingContract.getLatestStakeBalance(victor), "latest stake balance should be correct");
+            // check delegated stake of mike
+            Helper.assertEqual(precision.mul(new BN(300)), await stakingContract.getDelegatedStakesValue(mike, 1), "delegated stake at epoch 1 should be correct");
+            Helper.assertEqual(precision.mul(new BN(300)), await stakingContract.getDelegatedStakesValue(mike, 2), "delegated stake at epoch 2 should be correct");
+            Helper.assertEqual(precision.mul(new BN(300)), await stakingContract.getLatestDelegatedStake(mike), "latest delegated stake should be correct");
+        });
+
+        it("Test withdraw tal more than new deposit, then deposit again stakes change as expected", async function() {
+            await deployStakingContract(6, currentBlock + 10);
+
+            await kncToken.transfer(victor, precision.mul(new BN(1000)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(1000)), {from: victor});
+            await stakingContract.deposit(precision.mul(new BN(400)), {from: victor});
+            await stakingContract.delegate(mike, {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            // delay to epoch 1
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock + 1);
+
+            await stakingContract.deposit(precision.mul(new BN(100)), {from: victor});
+            await stakingContract.withdraw(precision.mul(new BN(150)), {from: victor});
+            await stakingContract.deposit(precision.mul(new BN(200)), {from: victor});
+
+            // check stake of victor
+            Helper.assertEqual(precision.mul(new BN(350)), await stakingContract.getStakesValue(victor, 1), "stake at epoch 1 should be correct");
+            Helper.assertEqual(precision.mul(new BN(550)), await stakingContract.getStakesValue(victor, 2), "stake at epoch 2 should be correct");
+            Helper.assertEqual(precision.mul(new BN(550)), await stakingContract.getLatestStakeBalance(victor), "latest stake balance should be correct");
+            // check delegated stake of mike
+            Helper.assertEqual(precision.mul(new BN(350)), await stakingContract.getDelegatedStakesValue(mike, 1), "delegated stake at epoch 1 should be correct");
+            Helper.assertEqual(precision.mul(new BN(550)), await stakingContract.getDelegatedStakesValue(mike, 2), "delegated stake at epoch 2 should be correct");
+            Helper.assertEqual(precision.mul(new BN(550)), await stakingContract.getLatestDelegatedStake(mike), "latest delegated stake should be correct");
+        });
+
+        it("Test withdraw at starting of an epoch", async function() {
+            await deployStakingContract(6, currentBlock + 10);
+
+            await kncToken.transfer(victor, precision.mul(new BN(1000)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(1000)), {from: victor});
+            await stakingContract.deposit(precision.mul(new BN(400)), {from: victor});
+            await stakingContract.delegate(mike, {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            // delay to end of epoch 2
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock - 1);
+            // withdraw should be for epoch 3
+            await stakingContract.withdraw(precision.mul(new BN(150)), {from: victor});
+
+            // check stake of victor
+            Helper.assertEqual(precision.mul(new BN(400)), await stakingContract.getStakes(victor, 2), "stake at epoch 2 should be correct");
+            Helper.assertEqual(precision.mul(new BN(250)), await stakingContract.getStakesValue(victor, 3), "stake at epoch 3 should be correct");
+            Helper.assertEqual(precision.mul(new BN(250)), await stakingContract.getLatestStakeBalance(victor), "latest stake balance should be correct");
+            // check delegated stake of mike
+            Helper.assertEqual(precision.mul(new BN(400)), await stakingContract.getDelegatedStakes(mike, 2), "delegated stake at epoch 2 should be correct");
+            Helper.assertEqual(precision.mul(new BN(250)), await stakingContract.getDelegatedStakesValue(mike, 3), "delegated stake at epoch 3 should be correct");
+            Helper.assertEqual(precision.mul(new BN(250)), await stakingContract.getLatestDelegatedStake(mike), "latest delegated stake should be correct");
         });
 
         it("Test withdraw right before starting new epoch", async function() {
