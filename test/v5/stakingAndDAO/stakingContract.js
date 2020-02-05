@@ -1395,5 +1395,136 @@ contract('StakingContract', function(accounts) {
             Helper.assertEqual(true, await stakingContract.getHasInitedValue(loi, 13), "should be inited data");
         });
     });
-});
 
+    describe("#GetFunctions Tests", () => {
+        it("Test get functions return 0 when calling epoch > current epoch + 1", async function() {
+            await deployStakingContract(10, currentBlock + 10);
+
+            await kncToken.transfer(victor, precision.mul(new BN(100)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(100)), {from: victor});
+            await stakingContract.deposit(precision.mul(new BN(50)), {from: victor});
+
+            Helper.assertEqual(0, await stakingContract.getStakes(victor, 100), "get stakes should return 0");
+            Helper.assertEqual(0, await stakingContract.getDelegatedStakes(victor, 100), "get stakes should return 0");
+            Helper.assertEqual(zeroAddress, await stakingContract.getDelegatedAddress(victor, 100), "get stakes should return 0");
+        });
+
+        it("Test getStakes return correct data", async function() {
+            await deployStakingContract(10, currentBlock + 10);
+
+            await kncToken.transfer(victor, precision.mul(new BN(200)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(200)), {from: victor});
+            await stakingContract.deposit(precision.mul(new BN(50)), {from: victor});
+
+            Helper.assertEqual(0, await stakingContract.getStakes(victor, 0), "get stakes should return 0");
+            Helper.assertEqual(precision.mul(new BN(50)), await stakingContract.getStakes(victor, 1), "get stakes should return correct data");
+
+            await stakingContract.deposit(precision.mul(new BN(20)), {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+
+            // get data current + next epoch
+            Helper.assertEqual(precision.mul(new BN(70)), await stakingContract.getStakes(victor, 4), "get stakes should return correct data");
+            Helper.assertEqual(precision.mul(new BN(70)), await stakingContract.getStakes(victor, 5), "get stakes should return correct data");
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 6 * epochPeriod);
+
+            // get data for pass epoch
+            Helper.assertEqual(precision.mul(new BN(70)), await stakingContract.getStakes(victor, 7), "get stakes should return correct data");
+            Helper.assertEqual(precision.mul(new BN(70)), await stakingContract.getStakes(victor, 8), "get stakes should return correct data");
+
+            await stakingContract.deposit(precision.mul(new BN(30)), {from: victor});
+
+            // get data for past epoch
+            Helper.assertEqual(precision.mul(new BN(70)), await stakingContract.getStakes(victor, 7), "get stakes should return correct data");
+            Helper.assertEqual(precision.mul(new BN(70)), await stakingContract.getStakes(victor, 8), "get stakes should return correct data");
+
+            // get data for current epoch
+            Helper.assertEqual(precision.mul(new BN(70)), await stakingContract.getStakes(victor, 10), "get stakes should return correct data");
+            Helper.assertEqual(precision.mul(new BN(100)), await stakingContract.getStakes(victor, 11), "get stakes should return correct data");
+        });
+
+        it("Test getDelegatedStakes return correct data", async function() {
+            await deployStakingContract(10, currentBlock + 10);
+
+            await kncToken.transfer(victor, precision.mul(new BN(200)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(200)), {from: victor});
+            await stakingContract.deposit(precision.mul(new BN(50)), {from: victor});
+            await stakingContract.delegate(mike, {from: victor});
+
+            Helper.assertEqual(0, await stakingContract.getDelegatedStakes(victor, 0), "get delegated stakes should return 0");
+            Helper.assertEqual(0, await stakingContract.getDelegatedStakes(victor, 1), "get delegated stakes should return correct data");
+            Helper.assertEqual(0, await stakingContract.getDelegatedStakes(mike, 0), "get delegated stakes should return 0");
+            Helper.assertEqual(precision.mul(new BN(50)), await stakingContract.getDelegatedStakes(mike, 1), "get delegated stakes should return correct data");
+
+            await stakingContract.deposit(precision.mul(new BN(20)), {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+
+            // get data current + next epoch
+            Helper.assertEqual(precision.mul(new BN(70)), await stakingContract.getDelegatedStakes(mike, 4), "get delegated stakes should return correct data");
+            Helper.assertEqual(precision.mul(new BN(70)), await stakingContract.getDelegatedStakes(mike, 5), "get delegated stakes should return correct data");
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 6 * epochPeriod - 2);
+
+            // get data for past epoch
+            Helper.assertEqual(precision.mul(new BN(70)), await stakingContract.getDelegatedStakes(mike, 8), "get delegated stakes should return correct data");
+
+            await stakingContract.deposit(precision.mul(new BN(30)), {from: victor});
+
+            // get data for pass epoch
+            Helper.assertEqual(precision.mul(new BN(70)), await stakingContract.getDelegatedStakes(mike, 8), "get delegated stakes should return correct data");
+
+            // get data for current + next epoch
+            Helper.assertEqual(precision.mul(new BN(70)), await stakingContract.getDelegatedStakes(mike, 9), "get delegated stakes should return correct data");
+            Helper.assertEqual(precision.mul(new BN(100)), await stakingContract.getDelegatedStakes(mike, 10), "get delegated stakes should return correct data");
+
+            await stakingContract.delegate(loi, {from: victor});
+            // get data for pass epoch
+            Helper.assertEqual(0, await stakingContract.getDelegatedStakes(loi, 8), "get delegated stakes should return correct data");
+            Helper.assertEqual(precision.mul(new BN(70)), await stakingContract.getDelegatedStakes(mike, 8), "get delegated stakes should return correct data");
+
+            // get data for current epoch
+            Helper.assertEqual(precision.mul(new BN(100)), await stakingContract.getDelegatedStakes(mike, 10), "get delegatedstakes should return correct data");
+            Helper.assertEqual(0, await stakingContract.getDelegatedStakes(mike, 11), "get delegatedstakes should return correct data");
+            Helper.assertEqual(0, await stakingContract.getDelegatedStakes(loi, 10), "get delegated stakes should return correct data");
+            Helper.assertEqual(precision.mul(new BN(100)), await stakingContract.getDelegatedStakes(loi, 11), "get delegated stakes should return correct data");
+        });
+
+        it("Test getDelegatedAddress return correct data", async function() {
+            await deployStakingContract(10, currentBlock + 10);
+
+            await kncToken.transfer(victor, precision.mul(new BN(200)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(200)), {from: victor});
+            await stakingContract.delegate(mike, {from: victor});
+
+            Helper.assertEqual(victor, await stakingContract.getDelegatedAddress(victor, 0), "get delegated address should return correct data");
+            Helper.assertEqual(mike, await stakingContract.getDelegatedAddress(victor, 1), "get delegated address should return correct data");
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+
+            // get data current + next epoch
+            Helper.assertEqual(mike, await stakingContract.getDelegatedAddress(victor, 4), "get delegated address should return correct data");
+            Helper.assertEqual(mike, await stakingContract.getDelegatedAddress(victor, 5), "get delegated address should return correct data");
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 6 * epochPeriod);
+
+            // get data for past epoch
+            Helper.assertEqual(mike, await stakingContract.getDelegatedAddress(mike, 7), "get delegated address should return correct data");
+
+            await stakingContract.delegate(loi, {from: victor});
+            // get data for pass epoch
+            Helper.assertEqual(mike, await stakingContract.getDelegatedAddress(victor, 7), "get delegated address should return correct data");
+
+            // get data for current epoch
+            Helper.assertEqual(mike, await stakingContract.getDelegatedAddress(victor, 10), "get delegated address should return correct data");
+            Helper.assertEqual(loi, await stakingContract.getDelegatedAddress(victor, 11), "get delegated address should return correct data");
+        });
+    });
+});
