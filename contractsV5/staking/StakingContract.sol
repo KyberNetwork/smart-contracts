@@ -206,10 +206,10 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
         emit Withdrew(N, S, amount);
     }
 
-    // init data if needed, then retrieve staker's data for current epoch
+    // init data if needed, then true staker's data for current epoch
     // for safe, only allow calling this func from DAO address
     // Note: should only call when staker voted
-    function getStakerDataForCurrentEpoch(address staker)
+    function initAndReturnStakerDataForCurrentEpoch(address staker)
         public
         returns(uint _stake, uint _delegatedStake, address _delegatedAddress)
     {

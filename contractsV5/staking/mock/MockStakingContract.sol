@@ -23,4 +23,15 @@ contract MockStakingContract is StakingContract {
     function getDelegatedAddressValue(address staker, uint epoch) public view returns(address) {
         return delegatedAddress[epoch][staker];
     }
+
+    function checkInitAndReturnStakerDataForCurrentEpoch(
+        address staker, uint expectedStake,
+        uint expectedDelegatedStake, address expectedDelegatedAddress)
+        public
+    {
+        (uint stake, uint delegatedStake, address delegatedAddr) = initAndReturnStakerDataForCurrentEpoch(staker);
+        require(stake == expectedStake, "stake is incorrect");
+        require(delegatedStake == expectedDelegatedStake, "delegated stake is incorrect");
+        require(delegatedAddr == expectedDelegatedAddress, "delegated stake is incorrect");
+    }
 }

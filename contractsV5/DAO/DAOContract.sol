@@ -84,7 +84,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
     uint internal latestBrrResult = 0; // 0: 0% reward + 0% rebate
     mapping(uint => uint) public brrCampaign;
 
-    constructor(uint _epochPeriod, uint _startBlock, address _staking, address _feeHandler, address _knc, address _admin) public {
+    constructor(uint _epochPeriod, uint _startBlock, address _staking, address _feeHandler, address _knc, address _admin) PermissionGroups(_admin) public {
         require(_epochPeriod > 0, "constructor: epoch period must be positive");
         require(_startBlock >= block.number, "constructor: startBlock shouldn't be in the past");
         require(_staking != address(0), "constructor: staking address is missing");
@@ -210,7 +210,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         address staker = msg.sender;
 
         uint curEpoch = getCurrentEpochNumber();
-        (uint stake, uint delegatedStake, address delegatedAddr) = staking.getStakerDataForCurrentEpoch(staker);
+        (uint stake, uint delegatedStake, address delegatedAddr) = staking.initAndReturnStakerDataForCurrentEpoch(staker);
 
         uint totalStake = delegatedAddr == staker ? stake + delegatedStake : delegatedStake;
         uint lastVotedOption = stakerVotedOption[staker][campID];
@@ -244,7 +244,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         // no votes, no rewards
         if (numVotes == 0) { return false; }
 
-        (uint stake, uint delegatedStake, address delegatedAddr) = staking.getStakerDataForCurrentEpoch(staker);
+        (uint stake, uint delegatedStake, address delegatedAddr) = staking.initAndReturnStakerDataForCurrentEpoch(staker);
         uint totalStake = delegatedAddr == msg.sender ? stake + delegatedStake : delegatedStake;
         if (totalStake == 0) { return false; }
 

@@ -1,5 +1,6 @@
 const TestToken = artifacts.require("Token.sol");
 const MockKyberDAO = artifacts.require("MockKyberDAO.sol");
+const MockDAOWithdrawFailed = artifacts.require("MockDAOWithdrawFailed.sol");
 const StakingContract = artifacts.require("MockStakingContract.sol");
 const Helper = require("../../v4/helper.js");
 
@@ -54,6 +55,13 @@ contract('StakingContract', function(accounts) {
 
         assert.equal(zeroAddress, await stakingContract.admin(), "admin address is wrong");
         assert.equal(daoContract.address, await stakingContract.DAO(), "admin address is wrong");
+
+        try {
+            await stakingContract.updateDAOAddressAndRemoveAdmin(daoContract.address, {from: admin});
+            assert(false, "throw was expected in line above.")
+        } catch (e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
     });
 
     it("Test get epoch number returns correct data", async function() {
@@ -347,8 +355,8 @@ contract('StakingContract', function(accounts) {
             await kncToken.transfer(victor, precision.mul(new BN(1000)));
             await kncToken.approve(stakingContract.address, precision.mul(new BN(1000)), {from: victor});
 
-            await stakingContract.deposit(precision.mul(new BN(100)), {from: victor});
             await stakingContract.delegate(mike, {from: victor});
+            await stakingContract.deposit(precision.mul(new BN(100)), {from: victor});
 
             Helper.assertEqual(0, await stakingContract.getDelegatedStakesValue(mike, 0), "delegated stake is wrong");
             Helper.assertEqual(precision.mul(new BN(100)), await stakingContract.getDelegatedStakesValue(mike, 1), "delegated stake is wrong");
@@ -576,6 +584,60 @@ contract('StakingContract', function(accounts) {
 
             Helper.assertEqual(expectedUserBal, await kncToken.balanceOf(victor), "user balance is not changed as expected");
             Helper.assertEqual(expectedStakingBal, await kncToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
+        });
+
+        it("Test deposit large amount of tokens, check for overflow", async function() {
+            await deployStakingContract(4, currentBlock + 20);
+
+            let totalAmount = precision.mul(new BN(10).pow(new BN(8))).mul(new BN(2)); // 200M tokens
+            await kncToken.transfer(victor, totalAmount);
+            await kncToken.approve(stakingContract.address, totalAmount, {from: victor});
+            await stakingContract.deposit(totalAmount, {from: victor});
+
+            Helper.assertEqual(totalAmount, await stakingContract.getLatestStakeBalance(victor), "latest stake balance is wrong");
+            Helper.assertEqual(totalAmount, await stakingContract.getStakes(victor, 1), "stake is wrong");
+
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 17);
+
+            let withdrawAmount = precision.mul(new BN(10).pow(new BN(8))); // 100M tokens
+            await stakingContract.withdraw(withdrawAmount, {from: victor});
+            totalAmount.isub(withdrawAmount);
+
+            Helper.assertEqual(totalAmount, await stakingContract.getLatestStakeBalance(victor), "latest stake balance is wrong");
+            Helper.assertEqual(totalAmount, await stakingContract.getStakes(victor, 1), "stake is wrong");
+            Helper.assertEqual(totalAmount, await stakingContract.getStakes(victor, 2), "stake is wrong");
+
+            await stakingContract.delegate(mike, {from: victor});
+            Helper.assertEqual(totalAmount, await stakingContract.getLatestDelegatedStake(mike), "latest delegated stake is wrong");
+            Helper.assertEqual(totalAmount, await stakingContract.getDelegatedStakes(mike, 2), "delegated stake is wrong");
+        });
+
+        it("Test deposit gas usages", async function() {
+            await deployStakingContract(6, currentBlock + 10);
+
+            await kncToken.transfer(victor, precision.mul(new BN(1000)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(1000)), {from: victor});
+
+            let tx = await stakingContract.deposit(precision.mul(new BN(100)), {from: victor});
+            logInfo("Deposit no delegation: init 2 epochs data, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            tx = await stakingContract.deposit(precision.mul(new BN(50)), {from: victor});
+            logInfo("Deposit no delegation: init 1 epoch data, gas used: " + tx.receipt.cumulativeGasUsed);
+            tx = await stakingContract.deposit(precision.mul(new BN(50)), {from: victor});
+            logInfo("Deposit no delegation: no init epoch data, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            await stakingContract.delegate(mike, {from: victor});
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+            tx = await stakingContract.deposit(precision.mul(new BN(100)), {from: victor});
+            logInfo("Deposit has delegation: init 2 epochs data, gas used: " + tx.receipt.cumulativeGasUsed);
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod - 1);
+            tx = await stakingContract.deposit(precision.mul(new BN(50)), {from: victor});
+            logInfo("Deposit has delegation: init 1 epoch data, gas used: " + tx.receipt.cumulativeGasUsed);
+            tx = await stakingContract.deposit(precision.mul(new BN(50)), {from: victor});
+            logInfo("Deposit has delegation: no init epoch data, gas used: " + tx.receipt.cumulativeGasUsed);
         });
     });
 
@@ -847,7 +909,7 @@ contract('StakingContract', function(accounts) {
             Helper.assertEqual(precision.mul(new BN(300)), await stakingContract.getLatestDelegatedStake(mike), "latest delegated stake should be correct");
         });
 
-        it("Test withdraw tal more than new deposit, then deposit again stakes change as expected", async function() {
+        it("Test withdraw total more than new deposit, then deposit again stakes change as expected", async function() {
             await deployStakingContract(6, currentBlock + 10);
 
             await kncToken.transfer(victor, precision.mul(new BN(1000)));
@@ -1005,6 +1067,101 @@ contract('StakingContract', function(accounts) {
 
             Helper.assertEqual(expectedUserBal, await kncToken.balanceOf(victor), "user balance is not changed as expected");
             Helper.assertEqual(expectedStakingBal, await kncToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
+        });
+
+        it("Test withdraw should call DAO handleWithdrawal as expected", async function() {
+            await deployStakingContract(6, currentBlock + 10);
+            let dao = await MockKyberDAO.new();
+            await stakingContract.updateDAOAddressAndRemoveAdmin(dao.address, {from: admin});
+
+            await kncToken.transfer(victor, precision.mul(new BN(500)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: victor});
+
+            await stakingContract.deposit(precision.mul(new BN(400)), {from: victor});
+            await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
+            Helper.assertEqual(0, await dao.value(), "shouldn't call dao withdrawal func");
+
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod);
+            await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
+            Helper.assertEqual(1, await dao.value(), "should call dao withdrawal func");
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod * 2 + startBlock - currentBlock);
+
+            await stakingContract.deposit(precision.mul(new BN(20)), {from: victor});
+            await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
+            Helper.assertEqual(1, await dao.value(), "shouldn't call dao withdrawal func");
+            await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
+            Helper.assertEqual(1, await dao.value(), "shouldn't call dao withdrawal func");
+            await stakingContract.withdraw(precision.mul(new BN(20)), {from: victor});
+            Helper.assertEqual(2, await dao.value(), "should call dao withdrawal func");
+        });
+
+        it("Test withdraw gas usages", async function() {
+            await deployStakingContract(10, currentBlock + 10);
+
+            await kncToken.transfer(victor, precision.mul(new BN(500)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: victor});
+
+            await stakingContract.deposit(precision.mul(new BN(300)), {from: victor});
+            let tx = await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
+            logInfo("Withdraw no delegation, no DAO : no init epoch data + no penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            tx = await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
+            logInfo("Withdraw no delegation, no DAO : init 1 epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+            tx = await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
+            logInfo("Withdraw no delegation, no DAO : init 2 epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            await stakingContract.deposit(precision.mul(new BN(20)), {from: victor});
+            tx = await stakingContract.withdraw(precision.mul(new BN(30)), {from: victor});
+            logInfo("Withdraw no delegation, no DAO : without init epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            await stakingContract.delegate(mike, {from: victor});
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 6 * epochPeriod + startBlock - currentBlock);
+            tx = await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
+            logInfo("Withdraw has delegation, no DAO: init 2 epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod - 1);
+            tx = await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
+            logInfo("Withdraw has delegation, no DAO: init 1 epoch data+ has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+            tx = await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
+            logInfo("Withdraw has delegation, no DAO: without init epoch data, has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            await stakingContract.deposit(precision.mul(new BN(20)), {from: victor});
+            tx = await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
+            logInfo("Withdraw has delegation, no DAO: without init epoch data + no penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            // Setting dao address
+            let dao = await MockKyberDAO.new();
+            await stakingContract.updateDAOAddressAndRemoveAdmin(dao.address, {from: admin});
+
+            tx = await stakingContract.withdraw(precision.mul(new BN(20)), {from: victor});
+            logInfo("Withdraw has delegation, has DAO: without init epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 9 * epochPeriod + startBlock - currentBlock);
+            tx = await stakingContract.withdraw(precision.mul(new BN(20)), {from: victor});
+            logInfo("Withdraw has delegation, has DAO: init 2 epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod - 1);
+            tx = await stakingContract.withdraw(precision.mul(new BN(20)), {from: victor});
+            logInfo("Withdraw has delegation, has DAO: init 1 epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            await stakingContract.delegate(victor, {from: victor});
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 12 * epochPeriod + startBlock - currentBlock);
+            tx = await stakingContract.withdraw(precision.mul(new BN(20)), {from: victor});
+            logInfo("Withdraw no delegation, has DAO: init 2 epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod - 1);
+            tx = await stakingContract.withdraw(precision.mul(new BN(20)), {from: victor});
+            logInfo("Withdraw no delegation, has DAO: init 1 epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+            tx = await stakingContract.withdraw(precision.mul(new BN(20)), {from: victor});
+            logInfo("Withdraw no delegation, has DAO: no init epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
         });
     });
 
@@ -1467,7 +1624,7 @@ contract('StakingContract', function(accounts) {
         });
 
         it("Test getStakes return correct data", async function() {
-            await deployStakingContract(160, currentBlock + 10);
+            await deployStakingContract(6, currentBlock + 10);
 
             await kncToken.transfer(victor, precision.mul(new BN(200)));
             await kncToken.approve(stakingContract.address, precision.mul(new BN(200)), {from: victor});
@@ -1737,6 +1894,100 @@ contract('StakingContract', function(accounts) {
             Helper.assertEqual(mike, await stakingContract.getLatestDelegatedAddress(victor), "latest delegated address is wrong");
             Helper.assertEqual(mike, await stakingContract.getLatestDelegatedAddress(loi), "latest delegated address is wrong");
         });
+
+        it("Test get staker data for current epoch called by DAO", async function() {
+            await deployStakingContract(15, currentBlock + 15);
+            let dao = accounts[8];
+            await stakingContract.updateDAOAddressAndRemoveAdmin(dao, {from: admin});
+
+            await kncToken.transfer(victor, precision.mul(new BN(500)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: victor});
+
+            await kncToken.transfer(mike, precision.mul(new BN(500)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: mike});
+
+            await kncToken.transfer(loi, precision.mul(new BN(500)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: loi});
+
+            await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, {from: dao});
+
+            await stakingContract.deposit(precision.mul(new BN(100)), {from: victor});
+            await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, {from: dao});
+
+            currentBlock = await Helper.getCurrentBlock();
+            // delay to epoch 2
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            Helper.assertEqual(false, await stakingContract.getHasInitedValue(victor, 2), "shouldn't inited value for epoch 2");
+
+            // victor: stake (100), delegated stake (0), delegated address (victor)
+            await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
+                victor, precision.mul(new BN(100)), 0, victor, {from: dao}
+            );
+            Helper.assertEqual(true, await stakingContract.getHasInitedValue(victor, 2), "should inited value for epoch 2");
+            Helper.assertEqual(true, await stakingContract.getHasInitedValue(victor, 3), "should inited value for epoch 3");
+
+            await stakingContract.delegate(mike, {from: victor});
+            // victor: stake (100), delegated stake (0), delegated address (victor)
+            await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
+                victor, precision.mul(new BN(100)), 0, victor, {from: dao}
+            );
+
+            // mike: stake (0), delegated stake (0), delegated address (mike)
+            await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
+                mike, 0, 0, mike, {from: dao}
+            );
+
+            await stakingContract.deposit(precision.mul(new BN(200)), {from: mike});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
+
+            // victor: stake (100), delegated stake (0), delegated address (mike)
+            await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
+                victor, precision.mul(new BN(100)), 0, mike, {from: dao}
+            );
+
+            // mike: stake (200), delegated stake (100), delegated address (mike)
+            await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
+                mike, precision.mul(new BN(200)), precision.mul(new BN(100)), mike, {from: dao}
+            );
+
+            await stakingContract.delegate(loi, {from: victor});
+
+            // mike: stake (200), delegated stake (100), delegated address (mike)
+            await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
+                mike, precision.mul(new BN(200)), precision.mul(new BN(100)), mike, {from: dao}
+            );
+            // loi: stake (0), delegated stake (0), delegated address (loi)
+            await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
+                loi, 0, 0, loi, {from: dao}
+            );
+
+            await stakingContract.deposit(precision.mul(new BN(10)), {from: victor});
+            // loi: stake (0), delegated stake (0), delegated address (loi)
+            stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
+                loi, 0, 0, loi, {from: dao}
+            );
+
+            // mike: stake (200), delegated stake (100), delegated address (mike)
+            await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
+                mike, precision.mul(new BN(200)), precision.mul(new BN(100)), mike, {from: dao}
+            );
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+
+            // mike: stake (200), delegated stake (0), delegated address (mike)
+            await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
+                mike, precision.mul(new BN(200)), 0, mike, {from: dao}
+            );
+
+            // loi: stake (0), delegated stake (90), delegated address (loi)
+            await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
+                loi, 0, precision.mul(new BN(110)), loi, {from: dao}
+            );
+        });
     });
 
     describe("#Revert Tests", () => {
@@ -1756,6 +2007,12 @@ contract('StakingContract', function(accounts) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
             await stakingContract.updateDAOAddressAndRemoveAdmin(dao.address, {from: admin});
+            try {
+                await stakingContract.updateDAOAddressAndRemoveAdmin(dao.address, {from: admin});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
         });
 
         it("Test constructor should revert with invalid arguments", async function() {
@@ -1789,25 +2046,72 @@ contract('StakingContract', function(accounts) {
         it("Test get staker data for current epoch should revert when sender is not dao", async function() {
             await deployStakingContract(10, currentBlock + 10);
             try {
-                _ = await stakingContract.getStakerDataForCurrentEpoch(mike, {from: mike});
+                await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: mike});
                 assert(false, "throw was expected in line above.")
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
             try {
-                _ = await stakingContract.getStakerDataForCurrentEpoch(mike, {from: admin});
+                await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: admin});
                 assert(false, "throw was expected in line above.")
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
             await stakingContract.updateDAOAddressAndRemoveAdmin(mike, {from: admin});
             try {
-                _ = await stakingContract.getStakerDataForCurrentEpoch(mike, {from: admin});
+                await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: admin});
                 assert(false, "throw was expected in line above.")
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
-            _ = await stakingContract.getStakerDataForCurrentEpoch(mike, {from: mike});
+            await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: mike});
+        });
+
+        it("Test withdraw should revert when handleWithdrawal in DAO reverted", async function() {
+            await deployStakingContract(10, currentBlock + 10);
+            let dao = await MockDAOWithdrawFailed.new();
+            await stakingContract.updateDAOAddressAndRemoveAdmin(dao.address, {from: admin});
+
+            await kncToken.transfer(victor, precision.mul(new BN(500)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: victor});
+
+            await stakingContract.deposit(precision.mul(new BN(500)), {from: victor});
+
+            // shouldn't call withdraw from dao
+            await stakingContract.withdraw(precision.mul(new BN(100)), {from: victor});
+
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod);
+            try {
+                await stakingContract.withdraw(precision.mul(new BN(100)), {from: victor});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        });
+
+        it("Test withdraw should revert when DAO does not have handleWithdrawl func", async function() {
+            await deployStakingContract(10, currentBlock + 10);
+            await stakingContract.updateDAOAddressAndRemoveAdmin(accounts[8], {from: admin});
+
+            await kncToken.transfer(victor, precision.mul(new BN(500)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: victor});
+
+            await stakingContract.deposit(precision.mul(new BN(500)), {from: victor});
+
+            // shouldn't call withdraw from dao
+            await stakingContract.withdraw(precision.mul(new BN(100)), {from: victor});
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod);
+
+            try {
+                await stakingContract.withdraw(precision.mul(new BN(100)), {from: victor});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
         });
     });
 });
+
+function logInfo(message) {
+    console.log("           " + message);
+}
