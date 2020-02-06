@@ -7,6 +7,7 @@ import "./IKyberNetwork.sol";
 import "./IKyberTradeLogic.sol";
 import "./KyberHintParser.sol";
 
+
 contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups {
     uint            public negligibleRateDiffBps = 10; // bps is 0.01%
 
@@ -40,7 +41,7 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
         networkContract = _networkContract;
     }
 
-     function addReserve(address reserve, bytes8 reserveId, bool isFeePaying) external onlyNetwork returns (bool) {
+    function addReserve(address reserve, bytes8 reserveId, bool isFeePaying) external onlyNetwork returns (bool) {
         require(reserveAddressToId[reserve] == bytes8(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
 
@@ -66,28 +67,41 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
         return reserveId;
     }
 
-    function getRatesForToken(IERC20 token, uint optionalAmount) external view
+    function getRatesForToken(IERC20 token, uint optionalAmount, uint takerFeeBps) external view
         returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, uint[] memory sellRates)
     {
         uint amount = optionalAmount > 0 ? optionalAmount : 1000;
-        IERC20 ETH = ETH_TOKEN_ADDRESS;
 
         buyReserves = reservesPerTokenDest[address(token)];
         buyRates = new uint[](buyReserves.length);
 
         uint i;
+        uint destAmount;
         for (i = 0; i < buyReserves.length; i++) {
-            buyRates[i] = (IKyberReserve(buyReserves[i])).getConversionRate(ETH, token, amount, block.number);
+            if (takerFeeBps == 0 || (!isFeePayingReserve[address(buyReserves[i])])) {
+                buyRates[i] = (IKyberReserve(buyReserves[i])).getConversionRate(ETH_TOKEN_ADDRESS, token, amount, block.number);
+                continue;
+            }
+
+            uint ethSrcAmount = amount - (amount * takerFeeBps / BPS);
+            buyRates[i] = (IKyberReserve(buyReserves[i])).getConversionRate(ETH_TOKEN_ADDRESS, token, ethSrcAmount, block.number);
+            destAmount = ethSrcAmount * buyRates[i] / PRECISION;
+            buyRates[i] = calcRateFromQty(ethSrcAmount, destAmount, ETH_DECIMALS, getDecimals(token)); 
         }
 
         sellReserves = reservesPerTokenSrc[address(token)];
         sellRates = new uint[](sellReserves.length);
 
         for (i = 0; i < sellReserves.length; i++) {
-            sellRates[i] = (IKyberReserve(sellReserves[i])).getConversionRate(token, ETH, amount, block.number);
+            sellRates[i] = (IKyberReserve(sellReserves[i])).getConversionRate(token, ETH_TOKEN_ADDRESS, amount, block.number);
+            if (takerFeeBps == 0 || (!isFeePayingReserve[address(sellReserves[i])])) {
+                continue;
+            }
+            destAmount = amount * sellRates[i] / PRECISION;
+            sellRates[i] = calcRateFromQty(amount, destAmount, getDecimals(token), ETH_DECIMALS); 
         }
     }
-    
+
     function listPairForReserve(IKyberReserve reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add) onlyNetwork external returns (bool) {
         require(reserveAddressToId[address(reserve)] != bytes8(0), "reserve -> 0 reserveId");
         if (ethToToken) {
