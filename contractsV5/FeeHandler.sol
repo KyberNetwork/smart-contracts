@@ -170,7 +170,7 @@ contract FeeHandler is IFeeHandler, Utils {
 
         // Get the rate
         // If srcQty is too big, get expected rate will return 0 so maybe we should limit how much can be bought at one time.
-        uint expectedRate = kyberNetworkProxyContract.getExpectedRateAfterCustomFee(
+        uint expectedRate = kyberNetworkProxyContract.getExpectedRateAfterFee(
             IERC20(ETH_TOKEN_ADDRESS),
             IERC20(address(knc)),
             srcQty,
@@ -179,7 +179,7 @@ contract FeeHandler is IFeeHandler, Utils {
         );
 
         // Buy some KNC and burn
-        uint destQty = kyberNetworkProxyContract.tradeWithHintAndPlatformFee(
+        uint destQty = kyberNetworkProxyContract.tradeWithHintAndFee(
             ETH_TOKEN_ADDRESS,
             srcQty,
             IERC20(address(knc)),

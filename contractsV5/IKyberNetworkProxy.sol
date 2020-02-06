@@ -23,7 +23,7 @@ interface IKyberNetworkProxy {
         
     function getPriceData(IERC20 src, IERC20 dest, uint srcQty) external view returns (uint priceNoFees);
     
-    function tradeWithHintAndPlatformFee(IERC20 src, uint srcAmount, IERC20 dest, address payable destAddress, uint maxDestAmount,
+    function tradeWithHintAndFee(IERC20 src, uint srcAmount, IERC20 dest, address payable destAddress, uint maxDestAmount,
         uint minConversionRate, address payable platformWallet, uint platformFeeBps, bytes calldata hint) 
         external payable 
         returns(uint destAmount);

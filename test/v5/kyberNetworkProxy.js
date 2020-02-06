@@ -207,7 +207,7 @@ contract('KyberNetworkProxy', function(accounts) {
         it("should perform a token -> ETH trade and check balances change as expected, empty hint", async() => {
             let srcToken = tokens[4]; 
             let srcDecimals = tokenDecimals[4];
-            let srcQty = (new BN(7)).mul((new BN(10)).pow(srcDecimals));           
+            let srcQty = (new BN(10)).mul((new BN(10)).pow(srcDecimals));           
 
             expectedResult = await fetchReservesAndRatesFromNetwork(tradeLogic, srcToken.address, true, srcQty);
             bestReserve = getBestReserve(expectedResult.rates, expectedResult.reserves);
@@ -219,12 +219,12 @@ contract('KyberNetworkProxy', function(accounts) {
             initialEtherUserBalance = await Helper.getBalancePromise(user);
     
             rate = await networkProxy.getExpectedRateAfterFee(srcToken.address, ethAddress, srcQty, 0, emptyHint);
-            expectedDestAmt = Helper.calcDstQty(srcQty, srcDecimals, ethDecimals, rate[0]);
+            expectedDestAmt = Helper.calcDstQty(srcQty, srcDecimals, ethDecimals, rate);
     
             //perform trade, give ETH to user
             await srcToken.transfer(user, srcQty); 
             await srcToken.approve(networkProxy.address, srcQty, {from: user})
-            txResult = await networkProxy.tradeWithHintAndPlatformFee(srcToken.address, srcQty, ethAddress, user, 
+            txResult = await networkProxy.tradeWithHintAndFee(srcToken.address, srcQty, ethAddress, user, 
                 maxDestAmt, minConversionRate, platformWallet, 0, emptyHint, {from: user});
             console.log(`token -> ETH: ${txResult.receipt.gasUsed} gas used`);
     
@@ -249,12 +249,12 @@ contract('KyberNetworkProxy', function(accounts) {
             initialEtherReserveBalance = await Helper.getBalancePromise(bestReserve.address);
      
             rate = await networkProxy.getExpectedRateAfterFee(ethAddress, destToken.address, ethSrcQty, platformFeeBps, emptyHint);
-            expectedDestAmt = Helper.calcDstQty(ethSrcQty, ethDecimals, destDecimals, rate.expectedRateAfterNetworkFees);
+            expectedDestAmt = Helper.calcDstQty(ethSrcQty, ethDecimals, destDecimals, rate);
             //reserve gets ETH minus network fee (if applicable)
             expectedAddedEthForReserve = Helper.calcSrcQty(expectedDestAmt, ethDecimals, destDecimals, rate);
             
             //perform trade, give dest tokens to user
-            txResult = await networkProxy.tradeWithHintAndPlatformFee(ethAddress, ethSrcQty, destToken.address, user, 
+            txResult = await networkProxy.tradeWithHintAndFee(ethAddress, ethSrcQty, destToken.address, user, 
                 maxDestAmt, minConversionRate, platformWallet, 0, emptyHint, {value: ethSrcQty});
                 console.log(`ETH -> token: ${txResult.receipt.gasUsed} gas used`);
     
@@ -272,33 +272,36 @@ contract('KyberNetworkProxy', function(accounts) {
             let srcDecimals = tokenDecimals[1];
             let destToken = tokens[2];
             let destDecimals = tokenDecimals[2];
-            let srcQty = (new BN(7)).mul((new BN(10)).pow(tokenDecimals[i]));
+            let srcQty = (new BN(20)).mul((new BN(10)).pow(tokenDecimals[1]));
 
             expectedResult = await fetchReservesAndRatesFromNetwork(tradeLogic, srcToken.address, true, srcQty);
             bestSellReserve = getBestReserve(expectedResult.rates, expectedResult.reserves);
             expectedResult = await fetchReservesAndRatesFromNetwork(tradeLogic, destToken.address, false, ethSrcQty);
             bestBuyReserve = getBestReserve(expectedResult.rates, expectedResult.reserves);
-    
+       
+            //give tokens to user
+            await srcToken.transfer(user, srcQty);
+
             //initial balances
-            initialSrcTokenUserBalance = await srcToken.balanceOf(network.address); //assume user gave funds to proxy already
+            initialSrcTokenUserBalance = await srcToken.balanceOf(user); //assume user gave funds to proxy already
             initialDestTokenUserBalance = await destToken.balanceOf(user);
             initialEtherSellReserveBalance = await Helper.getBalancePromise(bestSellReserve.address);
             initialSrcTokenSellReserveBalance = await srcToken.balanceOf(bestSellReserve.address);
             initialEtherBuyReserveBalance = await Helper.getBalancePromise(bestBuyReserve.address);
             initialDestTokenBuyReserveBalance = await destToken.balanceOf(bestBuyReserve.address);
     
-            overallRate = await networkProxy.getExpectedRateAfterFee(srcToken.address, destToken.address, srcQty, platformFeeBps, emptyHint);
-            expectedDestTokenDeltaAmount = Helper.calcDstQty(srcQty, srcDecimals, destDecimals, overallRate.expectedRateAfterNetworkFees);
+            overallRate = await networkProxy.getExpectedRateAfterFee(srcToken.address, destToken.address, srcQty, 0, emptyHint);
+            expectedDestTokenDeltaAmount = Helper.calcDstQty(srcQty, srcDecimals, destDecimals, overallRate);
             expectedSrcTokenDeltaAmount = srcQty;
-            // //perform trade, give dest tokens to user
-            await srcToken.transfer(user, srcQty);
+            // perform trade, src token from user. dest token to user
+            
             await srcToken.approve(networkProxy.address, srcQty, {from: user})
-            txResult = await networkProxy.tradeWithHintAndPlatformFee(srcToken.address, srcQty, destToken.address, user, 
+            txResult = await networkProxy.tradeWithHintAndFee(srcToken.address, srcQty, destToken.address, user, 
                 maxDestAmt, minConversionRate, platformWallet, 0, emptyHint, {from: user});
             console.log(`token -> token: ${txResult.receipt.gasUsed} gas used`);
             
             //compare balances
-            await assertSameTokenBalance(network.address, srcToken, initialSrcTokenUserBalance.sub(expectedSrcTokenDeltaAmount));
+            await assertSameTokenBalance(user, srcToken, initialSrcTokenUserBalance.sub(expectedSrcTokenDeltaAmount));
             await assertSameTokenBalance(bestSellReserve.address, srcToken, initialSrcTokenSellReserveBalance.add(expectedSrcTokenDeltaAmount));
             await assertSameTokenBalance(bestBuyReserve.address, destToken, initialDestTokenBuyReserveBalance.sub(expectedDestTokenDeltaAmount));
             await assertSameTokenBalance(user, destToken, initialDestTokenUserBalance.add(expectedDestTokenDeltaAmount));

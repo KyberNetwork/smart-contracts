@@ -49,7 +49,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         external payable 
         returns(uint)
     {
-        return tradeWithHintAndFee(src, srcAmount, dest, address(uint160(destAddress)), maxDestAmount, minConversionRate, 
+        return doTrade(src, srcAmount, dest, address(uint160(destAddress)), maxDestAmount, minConversionRate, 
             address(uint160(walletId)), 0, hint);
     }
 
@@ -78,7 +78,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     {
         bytes memory hint;
 
-        return tradeWithHintAndFee(
+        return doTrade(
             src,
             srcAmount,
             dest,
@@ -108,7 +108,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     {
         bytes memory hint;
 
-        return tradeWithHintAndFee(
+        return doTrade(
             src,
             srcAmount,
             dest,
@@ -128,7 +128,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     function swapEtherToToken(IERC20 token, uint minConversionRate) public payable returns(uint) {
         bytes memory hint;
 
-        return tradeWithHintAndFee(
+        return doTrade(
             ETH_TOKEN_ADDRESS,
             msg.value,
             token,
@@ -149,7 +149,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     function swapTokenToEther(IERC20 token, uint srcAmount, uint minConversionRate) public returns(uint) {
         bytes memory hint;
 
-        return tradeWithHintAndFee(
+        return doTrade(
             token,
             srcAmount,
             ETH_TOKEN_ADDRESS,
@@ -187,7 +187,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     /// @param platformWallet is the wallet ID to send part of the fees
     /// @param hint will give hints for the trade.
     /// @return amount of actual dest tokens
-    function tradeWithHintAndPlatformFee(
+    function tradeWithHintAndFee(
         IERC20 src,
         uint srcAmount,
         IERC20 dest,
@@ -202,7 +202,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         payable
         returns(uint destAmount)
     {
-        return tradeWithHintAndFee(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, platformWallet, platformFeeBps, hint);
+        return doTrade(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, platformWallet, platformFeeBps, hint);
     }
     
     struct UserBalance {
@@ -212,7 +212,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
 
     event ExecuteTrade(address indexed trader, IERC20 src, IERC20 dest, uint actualSrcAmount, uint actualDestAmount);
 
-    function tradeWithHintAndFee(
+    function doTrade(
         IERC20 src,
         uint srcAmount,
         IERC20 dest,
