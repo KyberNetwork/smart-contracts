@@ -87,7 +87,6 @@ let tempNetwork;
 contract('KyberNetworkProxy', function(accounts) {
     before("one time global init", async() => {
         //init accounts
-        networkProxy = accounts[0];  // when using account 0 can avoid string ({from: proxy}) in trade call;
         operator = accounts[1];
         alerter = accounts[2];
         user = accounts[3];
