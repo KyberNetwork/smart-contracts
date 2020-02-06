@@ -6,6 +6,10 @@ import "./PermissionGroupsV5.sol";
 
 contract Withdrawable is PermissionGroups {
 
+    constructor(address _admin) public 
+        PermissionGroups(_admin) 
+        {}
+        
     event TokenWithdraw(IERC20 token, uint amount, address sendTo);
 
     /**

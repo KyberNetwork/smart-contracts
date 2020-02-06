@@ -8,45 +8,33 @@ import "./mock/IBancorNetwork.sol";
 
 contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
 
-    uint constant internal BPS = 10000; // 10^4
     uint constant ETH_BNT_DECIMALS = 18;
 
     address public kyberNetwork;
     bool public tradeEnabled;
-    uint public feeBps;
 
-    IBancorNetwork public bancorNetwork; // 0x0e936B11c2e7b601055e58c7E32417187aF4de4a
+    IBancorNetwork public bancorNetwork;
 
-    IERC20 public bancorEth; // 0xc0829421C1d260BD3cB3E0F06cfE2D52db2cE315
-    IERC20 public bancorETHBNT; // 0xb1CD6e4153B2a390Cf00A6556b0fC1458C4A5533
-    IERC20 public bancorToken; // 0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C
+    IERC20 public bancorToken;
+    IERC20[] public ethToBntPath;
+    IERC20[] public bntToEthPath;
 
     constructor(
         address _bancorNetwork,
         address _kyberNetwork,
-        uint _feeBps,
-        address _bancorEth,
-        address _bancorETHBNT,
         address _bancorToken,
         address _admin
     )
-        public
+        public Withdrawable(_admin)
     {
         require(_bancorNetwork != address(0), "constructor: bancorNetwork address is missing");
         require(_kyberNetwork != address(0), "constructor: kyberNetwork address is missing");
-        require(_bancorEth != address(0), "constructor: bancorEth address is missing");
-        require(_bancorETHBNT != address(0), "constructor: bancorETHBNT address is missing");
         require(_bancorToken != address(0), "constructor: bancorToken address is missing");
-        require(_admin != address(0), "constructor: admin address is missing");
-        require(_feeBps < BPS, "constructor: fee is too big");
-
+        
         bancorNetwork = IBancorNetwork(_bancorNetwork);
         bancorToken = IERC20(_bancorToken);
-        bancorEth = IERC20(_bancorEth);
-        bancorETHBNT = IERC20(_bancorETHBNT);
 
         kyberNetwork = _kyberNetwork;
-        feeBps = _feeBps;
         admin = _admin;
         tradeEnabled = true;
 
@@ -72,8 +60,6 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
 
         // src and dest can be only BNT or ETH
         uint rate = calcRateFromQty(srcQty, destQty, ETH_BNT_DECIMALS, ETH_BNT_DECIMALS);
-
-        rate = valueAfterReducingFee(rate);
 
         return rate;
     }
@@ -125,22 +111,12 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
     function setBancorContract(address _bancorNetwork) public onlyAdmin {
         require(_bancorNetwork != address(0), "setBancorContract: bancorNetwork address is missing");
 
-        if (address(bancorNetwork) != address(0)) {
-            require(bancorToken.approve(address(bancorNetwork), 0), "setBancorContract: can not reset approve token");
-        }
+        require(bancorToken.approve(address(bancorNetwork), 0), "setBancorContract: can not reset allowance");
+
         bancorNetwork = IBancorNetwork(_bancorNetwork);
-        require(bancorToken.approve(address(bancorNetwork), 2 ** 255), "setBancorContract: can not approve token");
+        require(bancorToken.approve(_bancorNetwork, 2 ** 255), "setBancorContract: can not approve token");
 
         emit BancorNetworkSet(_bancorNetwork);
-    }
-
-    event FeeBpsSet(uint feeBps);
-
-    function setFeeBps(uint _feeBps) public onlyAdmin {
-        require(_feeBps < BPS, "setFeeBps: feeBps >= BPS");
-
-        feeBps = _feeBps;
-        emit FeeBpsSet(feeBps);
     }
 
     event TradeEnabled(bool enable);
@@ -150,6 +126,29 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
         emit TradeEnabled(true);
 
         return true;
+    }
+
+    event NewPathsSet(IERC20[] ethToBntPath, IERC20[] bntToEthPath);
+
+    function setNewEthBntPath(IERC20[] memory _ethToBntPath, IERC20[] memory _bntToEthPath) public onlyAdmin {
+        require(_ethToBntPath.length != 0, "setNewEthBntPath: path should have some elements");
+        require(_bntToEthPath.length != 0, "setNewEthBntPath: path should have some elements");
+
+        // verify if path returns value for rate
+        // both ETH + BNT has same decimals of 18, using 1 ETH/BNT to get rate
+        uint amount = PRECISION;
+        uint destQty;
+
+        (destQty, ) = bancorNetwork.getReturnByPath(_ethToBntPath, amount);
+        require(destQty > 0, "setNewEthBntPath: no rate from eth to bnt with this path");
+
+        (destQty, ) = bancorNetwork.getReturnByPath(_bntToEthPath, amount);
+        require(destQty > 0, "setNewEthBntPath: no rate from bnt to eth with this path");
+
+        ethToBntPath = _ethToBntPath;
+        bntToEthPath = _bntToEthPath;
+
+        emit NewPathsSet(_ethToBntPath, _bntToEthPath);
     }
 
     function disableTrade() public onlyAlerter returns(bool) {
@@ -213,24 +212,10 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable, Utils {
 
     function getConversionPath(IERC20 src, IERC20 dest) public view returns(IERC20[] memory path) {
         if (src == bancorToken) {
-            // trade from BNT to ETH
-            path = new IERC20[](3);
-            path[0] = bancorToken;
-            path[1] = bancorETHBNT;
-            path[2] = bancorEth;
-            return path;
+            path = bntToEthPath;
         } else if (dest == bancorToken) {
-            // trade from ETH to BNT
-            path = new IERC20[](3);
-            path[0] = bancorEth;
-            path[1] = bancorETHBNT;
-            path[2] = bancorToken;
-            return path;
+            path = ethToBntPath;
         }
-    }
-
-    function valueAfterReducingFee(uint val) internal view returns(uint) {
-        require(val <= MAX_QTY, "valueAfterReducingFee: val > MAX_QTY");
-        return ((BPS - feeBps) * val) / BPS;
+        return path;
     }
 }
