@@ -441,67 +441,6 @@ contract('StakingContract', function(accounts) {
             Helper.assertEqual(precision.mul(new BN(700)), await stakingContract.getLatestStakeBalance(loi), "latest stake value is wrong");
         });
 
-        it("Test deposit should revert when amount is 0", async function() {
-            await deployStakingContract(6, currentBlock + 6);
-
-            await kncToken.transfer(victor, precision.mul(new BN(100)));
-            await kncToken.approve(stakingContract.address, precision.mul(new BN(100)), {from: victor});
-
-            try {
-                await stakingContract.deposit(0, {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
-            await stakingContract.deposit(precision.mul(new BN(90)), {from: victor});
-        });
-
-        it("Test deposit should revert when not enough balance or allowance", async function() {
-            await deployStakingContract(10, currentBlock + 10);
-
-            // has 100 tokens, approve enough but try to deposit more
-            await kncToken.transfer(victor, precision.mul(new BN(100)));
-            await kncToken.approve(stakingContract.address, precision.mul(new BN(100)), {from: victor});
-            try {
-                await stakingContract.deposit(precision.mul(new BN(200)), {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
-            await stakingContract.deposit(precision.mul(new BN(90)), {from: victor});
-            await stakingContract.deposit(precision.mul(new BN(10)), {from: victor});
-
-            // has more tokens, approve small amounts and try to deposit more than allowances
-            await kncToken.transfer(mike, precision.mul(new BN(1000)));
-            // not approve yet, should revert
-            try {
-                await stakingContract.deposit(precision.mul(new BN(100)), {from: mike});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
-
-            // approve and deposit more than allowance
-            await kncToken.approve(stakingContract.address, precision.mul(new BN(100)), {from: mike});
-            try {
-                await stakingContract.deposit(precision.mul(new BN(200)), {from: mike});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
-
-            // total deposit more than allowances
-            await stakingContract.deposit(precision.mul(new BN(50)), {from: mike});
-            try {
-                await stakingContract.deposit(precision.mul(new BN(51)), {from: mike});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
-
-            await stakingContract.deposit(precision.mul(new BN(50)), {from: mike});
-        });
-
         it("Test deposit data is inited correctly", async function() {
             await deployStakingContract(10, currentBlock + 10);
 
@@ -642,73 +581,6 @@ contract('StakingContract', function(accounts) {
     });
 
     describe("#Withdrawal Tests", () => {
-        it("Test withdraw should revert when amount more than current deposited amount", async function() {
-            await deployStakingContract(10, currentBlock + 20);
-
-            await kncToken.transfer(victor, precision.mul(new BN(100)));
-            await kncToken.approve(stakingContract.address, precision.mul(new BN(100)), {from: victor});
-            await stakingContract.deposit(precision.mul(new BN(100)), {from: victor});
-
-            await kncToken.transfer(mike, precision.mul(new BN(100)));
-            await kncToken.approve(stakingContract.address, precision.mul(new BN(100)), {from: mike});
-            await stakingContract.deposit(precision.mul(new BN(100)), {from: mike});
-
-            await kncToken.transfer(loi, precision.mul(new BN(800)));
-            await kncToken.approve(stakingContract.address, precision.mul(new BN(800)), {from: loi});
-            await stakingContract.deposit(precision.mul(new BN(800)), {from: loi});
-
-            Helper.assertEqual(0, await stakingContract.getStakes(victor, 0), "stake at epoch 0 is wrong");
-            Helper.assertEqual(precision.mul(new BN(100)), await stakingContract.getStakes(victor, 1), "stake at epoch 0 is wrong");
-            Helper.assertEqual(precision.mul(new BN(800)), await stakingContract.getStakes(loi, 1), "stake at epoch 1 is wrong");
-
-            try {
-                await stakingContract.withdraw(precision.mul(new BN(900)), {from: loi});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
-        
-            await stakingContract.withdraw(precision.mul(new BN(100)), {from: victor});
-
-            Helper.assertEqual(0, await stakingContract.getStakes(victor, 0), "stake at epoch 0 is wrong");
-            Helper.assertEqual(0, await stakingContract.getStakes(loi, 0), "stake at epoch 0 is wrong");
-            Helper.assertEqual(0, await stakingContract.getStakes(victor, 1), "stake at epoch 1 is wrong");
-
-            Helper.assertEqual(precision.mul(new BN(800)), await stakingContract.getStakes(loi, 1), "stake at epoch 1 is wrong");
-            Helper.assertEqual(precision.mul(new BN(100)), await stakingContract.getStakes(mike, 1), "stake at epoch 1 is wrong");
-
-            Helper.assertEqual(
-                0, await stakingContract.getLatestStakeBalance(victor), "latest stake is incorrect"
-            );
-            Helper.assertEqual(
-                precision.mul(new BN(800)), await stakingContract.getLatestStakeBalance(loi), "latest stake is incorrect"
-            );
-            Helper.assertEqual(
-                precision.mul(new BN(100)), await stakingContract.getLatestStakeBalance(mike), "latest stake is incorrect"
-            );
-        });
-
-        it("Test withdraw should revert when no stakes but has delegated stake", async function() {
-            await deployStakingContract(10, currentBlock + 10);
-
-            await kncToken.transfer(victor, precision.mul(new BN(500)));
-            await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: victor});
-            await stakingContract.deposit(precision.mul(new BN(100)), {from: victor});
-
-            await stakingContract.delegate(mike, {from: victor});
-            await stakingContract.deposit(precision.mul(new BN(200)), {from: victor});
-
-            // mike can not withdraw
-            try {
-                await stakingContract.withdraw(precision.mul(new BN(100)), {from: mike});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
-            // victor can withdraw
-            await stakingContract.withdraw(precision.mul(new BN(100)), {from: victor});
-        });
-
         it("Test withdraw (partial + full), stakes change as expected - no delegation", async function() {
             await deployStakingContract(10, currentBlock + 10);
 
@@ -1608,6 +1480,68 @@ contract('StakingContract', function(accounts) {
             Helper.assertEqual(true, await stakingContract.getHasInitedValue(loi, 12), "should be inited data");
             Helper.assertEqual(true, await stakingContract.getHasInitedValue(loi, 13), "should be inited data");
         });
+
+        it("Test delegate gas usages", async function() {
+            await deployStakingContract(5, currentBlock + 5);
+
+            let tx = await stakingContract.delegate(mike, {from: victor});
+            logInfo("Delegate no stake: init 2 epochs data + from self to mike, gas used: " + tx.receipt.cumulativeGasUsed);
+            await stakingContract.delegate(victor, {from: victor});
+            // jump to epoch 1
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            tx = await stakingContract.delegate(mike, {from: victor});
+            logInfo("Delegate no stake: init 1 epoch data + from self to mike, gas used: " + tx.receipt.cumulativeGasUsed);
+            await stakingContract.delegate(victor, {from: victor});
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod - 1);
+            // to make init 2 epochs data
+            await stakingContract.delegate(victor, {from: victor});
+            tx = await stakingContract.delegate(loi, {from: victor});
+            logInfo("Delegate no stake: no init epoch data + from self to mike, gas used: " + tx.receipt.cumulativeGasUsed);
+            tx = await stakingContract.delegate(loi, {from: victor});
+            logInfo("Delegate no stake: no init epoch data + same delegated, gas used: " + tx.receipt.cumulativeGasUsed);
+            tx = await stakingContract.delegate(loi, {from: victor});
+            logInfo("Delegate no stake: no init epoch data + back to self, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            await stakingContract.delegate(victor, {from: victor});
+
+            // make deposit
+            await kncToken.transfer(victor, precision.mul(new BN(100)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(100)), {from: victor});
+            await stakingContract.deposit(precision.mul(new BN(10)), {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+            tx = await stakingContract.delegate(mike, {from: victor});
+            logInfo("Delegate has stake: init 2 epochs data + from self to mike, gas used: " + tx.receipt.cumulativeGasUsed);
+            await stakingContract.delegate(victor, {from: victor});
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod - 1);
+            tx = await stakingContract.delegate(mike, {from: victor});
+            logInfo("Delegate has stake: init 1 epoch data + from self to mike, gas used: " + tx.receipt.cumulativeGasUsed);
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod - 1);
+            // to make init 2 epochs data
+            await stakingContract.delegate(victor, {from: victor});
+            tx = await stakingContract.delegate(loi, {from: victor});
+            logInfo("Delegate has stake: no init epoch data + from self to mike, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 8 * epochPeriod + startBlock - currentBlock);
+            tx = await stakingContract.delegate(mike, {from: victor});
+            logInfo("Delegate has stake: init 2 epochs data + from mike to loi, gas used: " + tx.receipt.cumulativeGasUsed);
+            await stakingContract.delegate(victor, {from: victor});
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod - 1);
+            tx = await stakingContract.delegate(mike, {from: victor});
+            logInfo("Delegate has stake: init 1 epoch data + from mike to loi, gas used: " + tx.receipt.cumulativeGasUsed);
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod - 1);
+            // to make init 2 epochs data
+            await stakingContract.delegate(victor, {from: victor});
+            tx = await stakingContract.delegate(loi, {from: victor});
+            logInfo("Delegate has stake: no init epoch data + from mike to loi, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            tx = await stakingContract.delegate(loi, {from: victor});
+            logInfo("Delegate has stake: same delegated address, gas used: " + tx.receipt.cumulativeGasUsed);
+            tx = await stakingContract.delegate(victor, {from: victor});
+            logInfo("Delegate has stake: back to self, gas used: " + tx.receipt.cumulativeGasUsed);
+        });
     });
 
     describe("#GetFunctions Tests", () => {
@@ -2043,6 +1977,67 @@ contract('StakingContract', function(accounts) {
             stakingContract = await StakingContract.new(kncToken.address, 20, currentBlock + 10, admin)
         });
 
+        it("Test deposit should revert when amount is 0", async function() {
+            await deployStakingContract(6, currentBlock + 6);
+
+            await kncToken.transfer(victor, precision.mul(new BN(100)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(100)), {from: victor});
+
+            try {
+                await stakingContract.deposit(0, {from: victor});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            await stakingContract.deposit(precision.mul(new BN(90)), {from: victor});
+        });
+
+        it("Test deposit should revert when not enough balance or allowance", async function() {
+            await deployStakingContract(10, currentBlock + 10);
+
+            // has 100 tokens, approve enough but try to deposit more
+            await kncToken.transfer(victor, precision.mul(new BN(100)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(100)), {from: victor});
+            try {
+                await stakingContract.deposit(precision.mul(new BN(200)), {from: victor});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            await stakingContract.deposit(precision.mul(new BN(90)), {from: victor});
+            await stakingContract.deposit(precision.mul(new BN(10)), {from: victor});
+
+            // has more tokens, approve small amounts and try to deposit more than allowances
+            await kncToken.transfer(mike, precision.mul(new BN(1000)));
+            // not approve yet, should revert
+            try {
+                await stakingContract.deposit(precision.mul(new BN(100)), {from: mike});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            // approve and deposit more than allowance
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(100)), {from: mike});
+            try {
+                await stakingContract.deposit(precision.mul(new BN(200)), {from: mike});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            // total deposit more than allowances
+            await stakingContract.deposit(precision.mul(new BN(50)), {from: mike});
+            try {
+                await stakingContract.deposit(precision.mul(new BN(51)), {from: mike});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            await stakingContract.deposit(precision.mul(new BN(50)), {from: mike});
+        });
+
         it("Test get staker data for current epoch should revert when sender is not dao", async function() {
             await deployStakingContract(10, currentBlock + 10);
             try {
@@ -2065,6 +2060,73 @@ contract('StakingContract', function(accounts) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
             await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: mike});
+        });
+
+        it("Test withdraw should revert when amount more than current deposited amount", async function() {
+            await deployStakingContract(10, currentBlock + 20);
+
+            await kncToken.transfer(victor, precision.mul(new BN(100)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(100)), {from: victor});
+            await stakingContract.deposit(precision.mul(new BN(100)), {from: victor});
+
+            await kncToken.transfer(mike, precision.mul(new BN(100)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(100)), {from: mike});
+            await stakingContract.deposit(precision.mul(new BN(100)), {from: mike});
+
+            await kncToken.transfer(loi, precision.mul(new BN(800)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(800)), {from: loi});
+            await stakingContract.deposit(precision.mul(new BN(800)), {from: loi});
+
+            Helper.assertEqual(0, await stakingContract.getStakes(victor, 0), "stake at epoch 0 is wrong");
+            Helper.assertEqual(precision.mul(new BN(100)), await stakingContract.getStakes(victor, 1), "stake at epoch 0 is wrong");
+            Helper.assertEqual(precision.mul(new BN(800)), await stakingContract.getStakes(loi, 1), "stake at epoch 1 is wrong");
+
+            try {
+                await stakingContract.withdraw(precision.mul(new BN(900)), {from: loi});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            await stakingContract.withdraw(precision.mul(new BN(100)), {from: victor});
+
+            Helper.assertEqual(0, await stakingContract.getStakes(victor, 0), "stake at epoch 0 is wrong");
+            Helper.assertEqual(0, await stakingContract.getStakes(loi, 0), "stake at epoch 0 is wrong");
+            Helper.assertEqual(0, await stakingContract.getStakes(victor, 1), "stake at epoch 1 is wrong");
+
+            Helper.assertEqual(precision.mul(new BN(800)), await stakingContract.getStakes(loi, 1), "stake at epoch 1 is wrong");
+            Helper.assertEqual(precision.mul(new BN(100)), await stakingContract.getStakes(mike, 1), "stake at epoch 1 is wrong");
+
+            Helper.assertEqual(
+                0, await stakingContract.getLatestStakeBalance(victor), "latest stake is incorrect"
+            );
+            Helper.assertEqual(
+                precision.mul(new BN(800)), await stakingContract.getLatestStakeBalance(loi), "latest stake is incorrect"
+            );
+            Helper.assertEqual(
+                precision.mul(new BN(100)), await stakingContract.getLatestStakeBalance(mike), "latest stake is incorrect"
+            );
+        });
+
+        it("Test withdraw should revert when no stakes but has delegated stake", async function() {
+            await deployStakingContract(10, currentBlock + 10);
+
+            await kncToken.transfer(victor, precision.mul(new BN(500)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(500)), {from: victor});
+            await stakingContract.deposit(precision.mul(new BN(100)), {from: victor});
+
+            await stakingContract.delegate(mike, {from: victor});
+            await stakingContract.deposit(precision.mul(new BN(200)), {from: victor});
+
+            // mike can not withdraw
+            try {
+                await stakingContract.withdraw(precision.mul(new BN(100)), {from: mike});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            // victor can withdraw
+            await stakingContract.withdraw(precision.mul(new BN(100)), {from: victor});
         });
 
         it("Test withdraw should revert when handleWithdrawal in DAO reverted", async function() {
@@ -2108,6 +2170,19 @@ contract('StakingContract', function(accounts) {
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
+        });
+
+        it("Test delegate should revert when delegate to address 0", async function() {
+            await deployStakingContract(2, currentBlock + 2);
+            await stakingContract.updateDAOAddressAndRemoveAdmin(accounts[8], {from: admin});
+
+            try {
+                await stakingContract.delegate(zeroAddress, {from: victor});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            await stakingContract.delegate(mike, {from: victor});
         });
     });
 });
