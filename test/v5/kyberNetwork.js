@@ -109,7 +109,7 @@ contract('KyberNetwork', function(accounts) {
         }
     });
 
-    beforeEach("randomly select tokens before each test", async() => {
+    beforeEach("randomly select tokens before each test, reset takerFeeBps and platformFeeBps", async() => {
         srcTokenId = 0;
         destTokenId = 0;
         while (srcTokenId == destTokenId) {
@@ -123,6 +123,10 @@ contract('KyberNetwork', function(accounts) {
         destDecimals = tokenDecimals[destTokenId];
 
         srcQty = new BN(100).mul(new BN(10).pow(srcDecimals));
+
+        //fees
+        takerFeeBps = new BN(20);
+        platformFeeBps = new BN(0);
     });
 
     describe("test with MockDAO and Mock reserves", async() => {
@@ -234,16 +238,15 @@ contract('KyberNetwork', function(accounts) {
         });
     
         it("should get expected rate (no hint, with network fee) for T2E, E2T & T2T", async() => {
-            reserveCandidates = await fetchReservesFromNetwork(tradeLogic, srcToken.address, true);
+            reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
             bestReserve = await getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
             bestSellRateNoFee = bestReserve.rateNoFee;
             bestSellReserveFeePaying = bestReserve.isFeePaying;
             actualResult = await network.getExpectedRate(srcToken.address, ethAddress, srcQty);
             Helper.assertEqual(bestReserve.rateWithNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2E");
     
-            reserveCandidates = await fetchReservesFromNetwork(tradeLogic, destToken.address, false);
-            ethToTokenNetworkFeeWei = ethSrcQty.mul(takerFeeBps).div(BPS);
-            bestReserve = await getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, ethToTokenNetworkFeeWei);
+            reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
+            bestReserve = await getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
             bestBuyRateNoFee = bestReserve.rateNoFee;
             bestBuyReserveFeePaying = bestReserve.isFeePaying;
             actualResult = await network.getExpectedRate(ethAddress, destToken.address, ethSrcQty);
@@ -272,7 +275,7 @@ contract('KyberNetwork', function(accounts) {
    
         it("should get expected rate (with mask in hint & 0 platform fees) for T2E, E2T & T2T", async() => {
             //T2E
-            reserveCandidates = await fetchReservesFromNetwork(tradeLogic, srcToken.address, true);
+            reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
             hintedReservesT2E = applyHintToReserves(MASK_IN_HINTTYPE, reserveCandidates);
             bestReserve = await getBestReserveAndRate(hintedReservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
             bestSellRateNoFee = bestReserve.rateNoFee;
@@ -285,10 +288,9 @@ contract('KyberNetwork', function(accounts) {
             Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, actualResult.expectedRateAfterAllFees, "platform fee should be 0 bps");
 
             //E2T
-            reserveCandidates = await fetchReservesFromNetwork(tradeLogic, destToken.address, false);
+            reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
             hintedReservesE2T = applyHintToReserves(MASK_IN_HINTTYPE, reserveCandidates);
-            ethToTokenNetworkFeeWei = ethSrcQty.mul(takerFeeBps).div(BPS);
-            bestReserve = await getBestReserveAndRate(hintedReservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, ethToTokenNetworkFeeWei);
+            bestReserve = await getBestReserveAndRate(hintedReservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
             bestBuyRateNoFee = bestReserve.rateNoFee;
             bestBuyReserveFeePaying = bestReserve.isFeePaying;
 
@@ -331,7 +333,7 @@ contract('KyberNetwork', function(accounts) {
             platformFeeBps = new BN(100); //BPS should be 1%
 
             //T2E
-            reserveCandidates = await fetchReservesFromNetwork(tradeLogic, srcToken.address, true);
+            reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
             hintedReservesT2E = applyHintToReserves(MASK_IN_HINTTYPE, reserveCandidates);
             bestReserve = await getBestReserveAndRate(hintedReservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
             bestSellRateNoFee = bestReserve.rateNoFee;
@@ -344,10 +346,9 @@ contract('KyberNetwork', function(accounts) {
             //TODO: Fix this Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, actualResult.expectedRateAfterAllFees, "platform fee should be 0 bps");
 
             //E2T
-            reserveCandidates = await fetchReservesFromNetwork(tradeLogic, destToken.address, false);
+            reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
             hintedReservesE2T = applyHintToReserves(MASK_IN_HINTTYPE, reserveCandidates);
-            ethToTokenNetworkFeeWei = ethSrcQty.mul(takerFeeBps).div(BPS);
-            bestReserve = await getBestReserveAndRate(hintedReservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, ethToTokenNetworkFeeWei);
+            bestReserve = await getBestReserveAndRate(hintedReservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
             bestBuyRateNoFee = bestReserve.rateNoFee;
             bestBuyReserveFeePaying = bestReserve.isFeePaying;
 
@@ -386,9 +387,118 @@ contract('KyberNetwork', function(accounts) {
             Helper.assertEqual(actualResult.expectedRateAfterAllFees, expectedRateAfterAllFees, "expected rate with all fees != actual rate for T2T");
         });
 
-        it("should get expected rate (with split hint & 0 fees) for T2E, E2T & T2T", async() => {
-            //get reserves and rates
-            //randomly select a few, split hint
+        it("should get expected rate (with mask out hint & 0 platform fees) for T2E, E2T & T2T", async() => {
+            //T2E
+            reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
+            hintedReservesT2E = applyHintToReserves(MASK_OUT_HINTTYPE, reserveCandidates);
+            bestReserve = await getBestReserveAndRate(hintedReservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
+            bestSellRateNoFee = bestReserve.rateNoFee;
+            bestSellReserveFeePaying = bestReserve.isFeePaying;
+
+            hint = await tradeLogic.buildTokenToEthHint(hintedReservesT2E.tradeType, hintedReservesT2E.reservesForHint, hintedReservesT2E.splits);
+            actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, ethAddress, srcQty, platformFeeBps, hint);
+            Helper.assertEqual(actualResult.expectedRateNoFees, bestReserve.rateNoFee, "expected rate no fee != actual rate for T2E");
+            Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, bestReserve.rateWithNetworkFee, "expected rate with network fee != actual rate for T2E")
+            Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, actualResult.expectedRateAfterAllFees, "platform fee should be 0 bps");
+
+            //E2T
+            reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
+            hintedReservesE2T = applyHintToReserves(MASK_OUT_HINTTYPE, reserveCandidates);
+            bestReserve = await getBestReserveAndRate(hintedReservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+            bestBuyRateNoFee = bestReserve.rateNoFee;
+            bestBuyReserveFeePaying = bestReserve.isFeePaying;
+
+            hint = await tradeLogic.buildEthToTokenHint(hintedReservesE2T.tradeType, hintedReservesE2T.reservesForHint, hintedReservesE2T.splits);
+            actualResult = await network.getExpectedRateWithHintAndFee(ethAddress, destToken.address, ethSrcQty, platformFeeBps, hint);
+            Helper.assertEqual(actualResult.expectedRateNoFees, bestReserve.rateNoFee, "expected rate no fee != actual rate for E2T");
+            Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, bestReserve.rateWithNetworkFee, "expected rate with network fee != actual rate for E2T")
+            Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, actualResult.expectedRateAfterAllFees, "platform fee should be 0 bps");
+            
+            //T2T
+            hint = await tradeLogic.buildTokenToTokenHint(
+                hintedReservesT2E.tradeType, hintedReservesT2E.reservesForHint, hintedReservesT2E.splits,
+                hintedReservesE2T.tradeType, hintedReservesE2T.reservesForHint, hintedReservesE2T.splits
+            );
+            actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, destToken.address, srcQty, platformFeeBps, hint);
+
+            //No Fee
+            expectedWeiAmt = Helper.calcDstQty(srcQty, srcDecimals, ethDecimals, bestSellRateNoFee);
+            platformFeeWei = expectedWeiAmt.mul(platformFeeBps).div(BPS);
+            expectedDestAmt = Helper.calcDstQty(expectedWeiAmt, ethDecimals, destDecimals, bestBuyRateNoFee);
+            expectedRateNoFees = Helper.calcRateFromQty(srcQty, expectedDestAmt, srcDecimals, destDecimals);
+
+            //With network fee
+            expectedWeiAmt = minusNetworkFees(expectedWeiAmt, bestSellReserveFeePaying, bestBuyReserveFeePaying, takerFeeBps, platformFeeBps);
+            expectedDestAmt = Helper.calcDstQty(expectedWeiAmt, ethDecimals, destDecimals, bestBuyRateNoFee);
+            expectedRateAfterNetworkFees = Helper.calcRateFromQty(srcQty, expectedDestAmt, srcDecimals, destDecimals);
+
+            //With network and platform fee
+            expectedWeiAmt = expectedWeiAmt.sub(platformFeeWei);
+            expectedDestAmt = Helper.calcDstQty(expectedWeiAmt, ethDecimals, destDecimals, bestBuyRateNoFee);
+            expectedRateAfterAllFees = Helper.calcRateFromQty(srcQty, expectedDestAmt, srcDecimals, destDecimals);
+            
+            //compare expected rates
+            Helper.assertEqual(actualResult.expectedRateNoFees, expectedRateNoFees, "expected rate no fee != actual rate for T2T");
+            Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, expectedRateAfterNetworkFees, "expected rate with network fee != actual rate for T2T")
+            Helper.assertEqual(actualResult.expectedRateAfterAllFees, expectedRateAfterAllFees, "expected rate with all fees != actual rate for T2T");
+        });
+
+        it("should get expected rate (with mask out hint, network & platform fees) for T2E, E2T & T2T", async() => {
+            platformFeeBps = new BN(100); //BPS should be 1%
+
+            //T2E
+            reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
+            hintedReservesT2E = applyHintToReserves(MASK_OUT_HINTTYPE, reserveCandidates);
+            bestReserve = await getBestReserveAndRate(hintedReservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
+            bestSellRateNoFee = bestReserve.rateNoFee;
+            bestSellReserveFeePaying = bestReserve.isFeePaying;
+
+            hint = await tradeLogic.buildTokenToEthHint(hintedReservesT2E.tradeType, hintedReservesT2E.reservesForHint, hintedReservesT2E.splits);
+            actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, ethAddress, srcQty, platformFeeBps, hint);
+            Helper.assertEqual(actualResult.expectedRateNoFees, bestReserve.rateNoFee, "expected rate no fee != actual rate for T2E");
+            Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, bestReserve.rateWithNetworkFee, "expected rate with network fee != actual rate for T2E")
+            //TODO: Fix this Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, actualResult.expectedRateAfterAllFees, "platform fee should be 0 bps");
+
+            //E2T
+            reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
+            hintedReservesE2T = applyHintToReserves(MASK_OUT_HINTTYPE, reserveCandidates);
+            bestReserve = await getBestReserveAndRate(hintedReservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+            bestBuyRateNoFee = bestReserve.rateNoFee;
+            bestBuyReserveFeePaying = bestReserve.isFeePaying;
+
+            hint = await tradeLogic.buildEthToTokenHint(hintedReservesE2T.tradeType, hintedReservesE2T.reservesForHint, hintedReservesE2T.splits);
+            actualResult = await network.getExpectedRateWithHintAndFee(ethAddress, destToken.address, ethSrcQty, platformFeeBps, hint);
+            Helper.assertEqual(actualResult.expectedRateNoFees, bestReserve.rateNoFee, "expected rate no fee != actual rate for E2T");
+            Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, bestReserve.rateWithNetworkFee, "expected rate with network fee != actual rate for E2T")
+            // TODO: fix this Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, actualResult.expectedRateAfterAllFees, "platform fee should be 0 bps");
+            
+            //T2T
+            hint = await tradeLogic.buildTokenToTokenHint(
+                hintedReservesT2E.tradeType, hintedReservesT2E.reservesForHint, hintedReservesT2E.splits,
+                hintedReservesE2T.tradeType, hintedReservesE2T.reservesForHint, hintedReservesE2T.splits
+            );
+            actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, destToken.address, srcQty, platformFeeBps, hint);
+
+            //No Fee
+            expectedWeiAmt = Helper.calcDstQty(srcQty, srcDecimals, ethDecimals, bestSellRateNoFee);
+            platformFeeWei = expectedWeiAmt.mul(platformFeeBps).div(BPS);
+            expectedDestAmt = Helper.calcDstQty(expectedWeiAmt, ethDecimals, destDecimals, bestBuyRateNoFee);
+            expectedRateNoFees = Helper.calcRateFromQty(srcQty, expectedDestAmt, srcDecimals, destDecimals);
+
+            //With network fee
+            expectedWeiAmt = minusNetworkFees(expectedWeiAmt, bestSellReserveFeePaying, bestBuyReserveFeePaying, takerFeeBps, platformFeeBps);
+            expectedDestAmt = Helper.calcDstQty(expectedWeiAmt, ethDecimals, destDecimals, bestBuyRateNoFee);
+            expectedRateAfterNetworkFees = Helper.calcRateFromQty(srcQty, expectedDestAmt, srcDecimals, destDecimals);
+
+            //With network and platform fee
+            expectedWeiAmt = expectedWeiAmt.sub(platformFeeWei);
+            expectedDestAmt = Helper.calcDstQty(expectedWeiAmt, ethDecimals, destDecimals, bestBuyRateNoFee);
+            expectedRateAfterAllFees = Helper.calcRateFromQty(srcQty, expectedDestAmt, srcDecimals, destDecimals);
+            
+            //compare expected rates
+            Helper.assertEqual(actualResult.expectedRateNoFees, expectedRateNoFees, "expected rate no fee != actual rate for T2T");
+            Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, expectedRateAfterNetworkFees, "expected rate with network fee != actual rate for T2T")
+            Helper.assertEqual(actualResult.expectedRateAfterAllFees, expectedRateAfterAllFees, "expected rate with all fees != actual rate for T2T");
         });
 
         it("should get expected rate (with split hint, network & platform fees) for T2E, E2T & T2T", async() => {
@@ -600,32 +710,21 @@ function genReserveID(reserveID, reserveAddress) {
     return reserveID + reserveAddress.substring(2,10);
 }
 
-async function fetchReservesFromNetwork(tradeLogicInstance, tokenAddress, isTokenToEth) {
+async function fetchReservesRatesFromNetwork(networkInstance, tokenAddress, qty, isTokenToEth) {
     reservesArray = [];
+    result = await networkInstance.getPricesForToken(tokenAddress, qty);
     if (isTokenToEth) {
-        i = 0;
-        while (true) {
-            try {
-                reserveAddress = await tradeLogicInstance.reservesPerTokenSrc(tokenAddress,i);
-                reserve = reserveInstances[reserveAddress];
-                reservesArray.push(reserve);
-                i ++;
-            } catch(e) {
-                break;
-            }
-        }
+        reserves = result.sellReserves;
+        rates = result.sellRates;
     } else {
-        i = 0;
-        while (true) {
-            try {
-                reserveAddress = await tradeLogicInstance.reservesPerTokenDest(tokenAddress,i);
-                reserve = reserveInstances[reserveAddress];
-                reservesArray.push(reserve);
-                i ++;
-            } catch(e) {
-                break;
-            }
-        }
+        reserves = result.buyReserves;
+        rates = result.buyRates;
+    }
+    for (i=0; i<reserves.length; i++) {
+        reserveAddress = reserves[i];
+        reserve = reserveInstances[reserveAddress];
+        reserve.rate = rates[i];
+        reservesArray.push(reserve);
     }
     return reservesArray;
 }
@@ -647,13 +746,11 @@ function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-async function getBestReserveAndRate(reserves, src, dest, srcAmount, takerFee) {
+async function getBestReserveAndRate(reserves, src, dest, srcAmount, takerFeeBps) {
     bestReserveData = {
-        destAmount: new BN(0),
         address: zeroAddress,
         rateNoFee: new BN(0),
-        rateWithNetworkFee: new BN(0),
-        isFeePaying: false
+        rateWithNetworkFee: new BN(0)
     }
 
     reserveArr = Object.values(reserves);
@@ -662,19 +759,11 @@ async function getBestReserveAndRate(reserves, src, dest, srcAmount, takerFee) {
     }
     for (let i=0; i < reserveArr.length; i++) {
         reserve = reserveArr[i];
-        //ETH -> token, fee amount is in e2tNetworkFeeWei
-        srcAmount = (reserve.isFeePaying && src == ethAddress) ? srcAmount.sub(takerFee) : srcAmount;
-        rate = await reserve.instance.getConversionRate(src, dest, srcAmount, 0);
-        destAmount = srcAmount.mul(rate).div(precisionUnits);
-        //token -> ETH, fee amount is in bps
-        destAmount = (dest == ethAddress && reserve.isFeePaying) ? destAmount.mul(BPS.sub(takerFee)).div(BPS) : destAmount;
-        if (destAmount.gt(bestReserveData.destAmount)) {
-            //best rate is highest rate
-            bestReserveData.destAmount = destAmount;
+        if (reserve.rate.gt(bestReserveData.rateWithNetworkFee)) {
             bestReserveData.address = reserve.address;
-            bestReserveData.rateNoFee = rate;
-            bestReserveData.rateWithNetworkFee = (reserve.isFeePaying) ? rate.mul(BPS.sub(takerFeeBps)).div(BPS) : rate;
+            bestReserveData.rateNoFee = reserve.rate;
             bestReserveData.isFeePaying = reserve.isFeePaying;
+            bestReserveData.rateWithNetworkFee = (reserve.isFeePaying) ? reserve.rate.mul(BPS.sub(takerFeeBps)).div(BPS) : reserve.rate;
         }
     }
     return bestReserveData;
@@ -691,18 +780,18 @@ function applyHintToReserves(tradeType, reserves) {
     }
 
     if (tradeType == MASK_IN_HINTTYPE) {
-        for (var i=0; i<reserves.length/2; i++) {
+        for (var i=0; i<Math.floor(reserves.length/2); i++) {
             reserve = reserves[i];
             result.reservesForHint.push(reserve.reserveId);
             result.reservesForFetchRate.push(reserve);
         }
     } else if (tradeType == MASK_OUT_HINTTYPE) {
-        for (var i=0; i<reserves.length/2; i++) {
+        for (var i=0; i<Math.floor(reserves.length/2); i++) {
             reserve = reserves[i];
             result.reservesForHint.push(reserve.reserveId);
         }
 
-        for (var i=reserves.length/2; i < reserves.length; i++) {
+        for (var i=Math.floor(reserves.length/2); i < reserves.length; i++) {
             reserve = reserves[i];
             result.reservesForFetchRate.push(reserve);
         }
