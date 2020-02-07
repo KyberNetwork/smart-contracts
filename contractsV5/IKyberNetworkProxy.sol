@@ -17,16 +17,13 @@ interface IKyberNetworkProxy {
         uint minConversionRate, address payable platformWallet) external payable returns(uint);
 
     // new APIs
-     function getExpectedRateWithHint(IERC20 src, IERC20 dest, uint srcQty, bytes calldata hint) external view
-        returns (uint expectedRate);
-
-    function getExpectedRateAfterCustomFee(IERC20 src, IERC20 dest, uint srcQty, uint customFeeBps, bytes calldata hint) 
+    function getExpectedRateAfterFee(IERC20 src, IERC20 dest, uint srcQty, uint customFeeBps, bytes calldata hint) 
         external view
         returns (uint expectedRate);
         
     function getPriceData(IERC20 src, IERC20 dest, uint srcQty) external view returns (uint priceNoFees);
     
-    function tradeWithHintAndPlatformFee(IERC20 src, uint srcAmount, IERC20 dest, address payable destAddress, uint maxDestAmount,
+    function tradeWithHintAndFee(IERC20 src, uint srcAmount, IERC20 dest, address payable destAddress, uint maxDestAmount,
         uint minConversionRate, address payable platformWallet, uint platformFeeBps, bytes calldata hint) 
         external payable 
         returns(uint destAmount);
