@@ -75,7 +75,6 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
         buyRates = new uint[](buyReserves.length);
 
         uint i;
-        uint destAmount;
         for (i = 0; i < buyReserves.length; i++) {
             if (takerFeeBps == 0 || (!isFeePayingReserve[address(buyReserves[i])])) {
                 buyRates[i] = (IKyberReserve(buyReserves[i])).getConversionRate(ETH_TOKEN_ADDRESS, token, amount, block.number);
@@ -84,8 +83,7 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
 
             uint ethSrcAmount = amount - (amount * takerFeeBps / BPS);
             buyRates[i] = (IKyberReserve(buyReserves[i])).getConversionRate(ETH_TOKEN_ADDRESS, token, ethSrcAmount, block.number);
-            destAmount = ethSrcAmount * buyRates[i] / PRECISION;
-            buyRates[i] = calcRateFromQty(ethSrcAmount, destAmount, ETH_DECIMALS, getDecimals(token)); 
+            buyRates[i] -= (buyRates[i] * takerFeeBps / BPS);
         }
 
         sellReserves = reservesPerTokenSrc[address(token)];
@@ -96,8 +94,7 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
             if (takerFeeBps == 0 || (!isFeePayingReserve[address(sellReserves[i])])) {
                 continue;
             }
-            destAmount = amount * sellRates[i] / PRECISION;
-            sellRates[i] = calcRateFromQty(amount, destAmount, getDecimals(token), ETH_DECIMALS); 
+            sellRates[i] -= (sellRates[i] * takerFeeBps / BPS);
         }
     }
 
@@ -274,15 +271,16 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
         // require(failingIndex > 0);
     }
 
-    function maskOutReserves(IKyberReserve[] memory allReservesPerToken, IKyberReserve[] memory maskedOutReserves) 
+    function maskOutReserves(IKyberReserve[] memory allReservesPerToken, IKyberReserve[] memory maskedOutReserves)
         internal pure returns (IKyberReserve[] memory filteredReserves)
     {
         require(allReservesPerToken.length > maskedOutReserves.length, "MASK_OUT_TOO_LONG");
         filteredReserves = new IKyberReserve[](allReservesPerToken.length - maskedOutReserves.length);
+        uint currentResultIndex = 0;
+
         for (uint i = 0; i < allReservesPerToken.length; i++) {
             IKyberReserve reserve = allReservesPerToken[i];
             bool notMaskedOut = true;
-            uint currentResultIndex = 0;
             for (uint j = 0; j < maskedOutReserves.length; j++) {
                 IKyberReserve maskedOutReserve = maskedOutReserves[j];
                 if (reserve == maskedOutReserve) notMaskedOut = false;
