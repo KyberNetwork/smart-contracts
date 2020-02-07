@@ -283,8 +283,12 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
             bool notMaskedOut = true;
             for (uint j = 0; j < maskedOutReserves.length; j++) {
                 IKyberReserve maskedOutReserve = maskedOutReserves[j];
-                if (reserve == maskedOutReserve) notMaskedOut = false;
+                if (reserve == maskedOutReserve) {
+                    notMaskedOut = false;
+                    break;
+                }
             }
+
             if (notMaskedOut) {
                 filteredReserves[currentResultIndex] = reserve;
                 currentResultIndex ++;
