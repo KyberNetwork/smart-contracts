@@ -1675,6 +1675,105 @@ contract('StakingContract', function(accounts) {
             Helper.assertEqual(loi, await stakingContract.getDelegatedAddress(victor, 11), "get delegated address should return correct data");
         });
 
+        it("Test getStakes return correct data", async function() {
+            await deployStakingContract(6, currentBlock + 10);
+
+            await kncToken.transfer(victor, precision.mul(new BN(200)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(200)), {from: victor});
+            await kncToken.transfer(mike, precision.mul(new BN(200)));
+            await kncToken.approve(stakingContract.address, precision.mul(new BN(200)), {from: mike});
+
+            let data = await stakingContract.getStakerDataForPastEpoch(victor, 0);
+            Helper.assertEqual(0, data[0], "stake is wrong");
+            Helper.assertEqual(0, data[1], "delegated stake is wrong");
+            Helper.assertEqual(zeroAddress, data[2], "delegated address is wrong");
+
+            await stakingContract.deposit(precision.mul(new BN(50)), {from: victor});
+
+            data = await stakingContract.getStakerDataForPastEpoch(victor, 0);
+            Helper.assertEqual(0, data[0], "stake is wrong");
+            Helper.assertEqual(0, data[1], "delegated stake is wrong");
+            Helper.assertEqual(victor, data[2], "delegated address is wrong");
+
+            data = await stakingContract.getStakerDataForPastEpoch(victor, 1);
+            Helper.assertEqual(precision.mul(new BN(50)), data[0], "stake is wrong");
+            Helper.assertEqual(0, data[1], "delegated stake is wrong");
+            Helper.assertEqual(victor, data[2], "delegated address is wrong");
+
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 6);
+            await stakingContract.deposit(precision.mul(new BN(20)), {from: victor});
+
+            data = await stakingContract.getStakerDataForPastEpoch(victor, 1);
+            Helper.assertEqual(precision.mul(new BN(50)), data[0], "stake is wrong");
+            data = await stakingContract.getStakerDataForPastEpoch(victor, 2);
+            Helper.assertEqual(precision.mul(new BN(70)), data[0], "stake is wrong");
+
+            data = await stakingContract.getStakerDataForPastEpoch(victor, 3);
+            // not inited yet
+            Helper.assertEqual(0, data[0], "stake is wrong");
+            Helper.assertEqual(0, data[1], "delegated stake is wrong");
+            Helper.assertEqual(zeroAddress, data[2], "delegated address is wrong");
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 6 * epochPeriod + startBlock - currentBlock);
+
+            data = await stakingContract.getStakerDataForPastEpoch(victor, 4);
+            // not inited yet
+            Helper.assertEqual(0, data[0], "stake is wrong");
+            Helper.assertEqual(0, data[1], "delegated stake is wrong");
+            Helper.assertEqual(zeroAddress, data[2], "delegated address is wrong");
+
+            await stakingContract.delegate(mike, {from: victor});
+            data = await stakingContract.getStakerDataForPastEpoch(mike, 7);
+            Helper.assertEqual(0, data[0], "stake is wrong");
+            Helper.assertEqual(0, data[1], "delegated stake is wrong");
+            Helper.assertEqual(mike, data[2], "delegated address is wrong");
+            data = await stakingContract.getStakerDataForPastEpoch(mike, 8);
+            Helper.assertEqual(0, data[0], "stake is wrong");
+            Helper.assertEqual(precision.mul(new BN(70)), data[1], "delegated stake is wrong");
+            Helper.assertEqual(mike, data[2], "delegated address is wrong");
+
+            await stakingContract.deposit(precision.mul(new BN(100)), {from: mike});
+            data = await stakingContract.getStakerDataForPastEpoch(mike, 8);
+            Helper.assertEqual(precision.mul(new BN(100)), data[0], "stake is wrong");
+            Helper.assertEqual(precision.mul(new BN(70)), data[1], "delegated stake is wrong");
+            Helper.assertEqual(mike, data[2], "delegated address is wrong");
+
+            data = await stakingContract.getStakerDataForPastEpoch(victor, 8);
+            Helper.assertEqual(precision.mul(new BN(70)), data[0], "stake is wrong");
+            Helper.assertEqual(0, data[1], "delegated stake is wrong");
+            Helper.assertEqual(mike, data[2], "delegated address is wrong");
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 7 * epochPeriod + startBlock - currentBlock);
+
+            await stakingContract.delegate(loi, {from: victor});
+
+            data = await stakingContract.getStakerDataForPastEpoch(mike, 8);
+            Helper.assertEqual(precision.mul(new BN(100)), data[0], "stake is wrong");
+            Helper.assertEqual(precision.mul(new BN(70)), data[1], "delegated stake is wrong");
+            Helper.assertEqual(mike, data[2], "delegated address is wrong");
+
+            data = await stakingContract.getStakerDataForPastEpoch(mike, 9);
+            Helper.assertEqual(precision.mul(new BN(100)), data[0], "stake is wrong");
+            Helper.assertEqual(0, data[1], "delegated stake is wrong");
+            Helper.assertEqual(mike, data[2], "delegated address is wrong");
+
+            data = await stakingContract.getStakerDataForPastEpoch(loi, 8);
+            Helper.assertEqual(0, data[1], "delegated stake is wrong");
+
+            data = await stakingContract.getStakerDataForPastEpoch(loi, 9);
+            Helper.assertEqual(precision.mul(new BN(70)), data[1], "delegated stake is wrong");
+
+            data = await stakingContract.getStakerDataForPastEpoch(victor, 8);
+            Helper.assertEqual(0, data[1], "delegated stake is wrong");
+            Helper.assertEqual(mike, data[2], "delegated address is wrong");
+
+            data = await stakingContract.getStakerDataForPastEpoch(victor, 9);
+            Helper.assertEqual(0, data[1], "delegated stake is wrong");
+            Helper.assertEqual(loi, data[2], "delegated address is wrong");
+        });
+
         it("Test get latest stakes returns correct data", async function() {
             await deployStakingContract(6, currentBlock + 10);
 

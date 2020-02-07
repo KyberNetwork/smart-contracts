@@ -223,6 +223,15 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
         _delegatedAddress = delegatedAddress[curEpoch][staker];
     }
 
+    function getStakerDataForPastEpoch(address staker, uint epoch)
+        public view
+        returns(uint _stake, uint _delegatedStake, address _delegatedAddress)
+    {
+        _stake = stakes[epoch][staker];
+        _delegatedStake = delegatedStakes[epoch][staker];
+        _delegatedAddress = delegatedAddress[epoch][staker];
+    }
+
     // allow to get data up to current epoch + 1
     function getStakes(address S, uint N) public view returns(uint) {
         uint curEpoch = getCurrentEpochNumber();

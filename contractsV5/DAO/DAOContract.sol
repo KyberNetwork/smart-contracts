@@ -21,12 +21,13 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
 
     // Constants
     uint internal constant BPS = 10000;
-    uint internal constant MAX_CAMP_OPTIONS = 4; // TODO: Finalise the value
-    uint internal constant MIN_CAMP_DURATION = 75000; // around 2 weeks time. TODO: Finalise the value
     uint internal constant POWER_128 = 2 ** 128;
     uint internal constant POWER_84 = 2 ** 84;
 
     // Variables: Should only be inited once when deploying contract
+    uint public MAX_CAMP_OPTIONS = 4; // TODO: Finalise the value
+    uint public MIN_CAMP_DURATION = 75000; // around 2 weeks time. TODO: Finalise the value
+
     uint public EPOCH_PERIOD;
     uint public START_BLOCK;
     IERC20 public KNC_TOKEN;
@@ -84,20 +85,37 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
     uint internal latestBrrResult = 0; // 0: 0% reward + 0% rebate
     mapping(uint => uint) public brrCampaign;
 
-    constructor(uint _epochPeriod, uint _startBlock, address _staking, address _feeHandler, address _knc, address _admin) PermissionGroups(_admin) public {
+    constructor(
+        uint _epochPeriod, uint _startBlock,
+        address _staking, address _feeHandler, address _knc,
+        uint _maxNumOptions, uint _minCampDuration,
+        uint _defaultNetworkFee, uint _defaultBrrData,
+        address _admin
+    )
+        PermissionGroups(_admin) public
+    {
         require(_epochPeriod > 0, "constructor: epoch period must be positive");
         require(_startBlock >= block.number, "constructor: startBlock shouldn't be in the past");
         require(_staking != address(0), "constructor: staking address is missing");
         require(_feeHandler != address(0), "constructor: feeHandler address is missing");
         require(_knc != address(0), "constructor: knc address is missing");
         require(_admin != address(0), "constructor: admin address is missing");
+        require(_maxNumOptions > 1, "constructor: max number options should be greater than 1");
+        require(_minCampDuration > 0, "constructor: min camp duration should be positive");
+        require(_defaultNetworkFee <= BPS, "constructor: default network fee must not be greater than 100%");
+
+        (uint rebateBps, uint rewardBps) = getRebateAndRewardFromData(_defaultBrrData);
+        require(rebateBps + rewardBps <= BPS, "constructor: default rebate + reward must not be greater than 100%");
 
         EPOCH_PERIOD = _epochPeriod;
         START_BLOCK = _startBlock;
         staking = IKyberStaking(_staking);
         feeHandler = IFeeHandler(_feeHandler);
         KNC_TOKEN = IERC20(_knc);
-        admin = _admin;
+        MAX_CAMP_OPTIONS = _maxNumOptions;
+        MIN_CAMP_DURATION = _minCampDuration;
+        latestNetworkFeeResult = _defaultNetworkFee;
+        latestBrrResult = _defaultBrrData;
     }
 
     event StakerWithdrew(address staker, uint penaltyAmount, uint penaltyPoint);
@@ -146,7 +164,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
 
         campaignData[campID] = Campaign({
             campID: campID,
-            campType: CampaignType.NETWORK_FEE,
+            campType: campType,
             startBlock: startBlock,
             endBlock: endBlock,
             totalKNCSupply: KNC_TOKEN.totalSupply(),
@@ -221,10 +239,16 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
 
             totalEpochPoints[curEpoch] += totalStake;
 
+            // increase voted points for this option
             campaignOptionPoints[campID][option] += totalStake;
+            // increase total voted points
             campaignOptionPoints[campID][0] += totalStake;
         } else if (lastVotedOption != option) {
-            require(campaignOptionPoints[campID][lastVotedOption] >= totalStake, "vote: points of previous voted option must NOT be less than total stake");
+            require(
+                campaignOptionPoints[campID][lastVotedOption] >= totalStake,
+                "vote: points of previous voted option must NOT be less than total stake"
+            );
+            // update voted points for previous + new options
             campaignOptionPoints[campID][lastVotedOption] -= totalStake;
             campaignOptionPoints[campID][option] += totalStake;
         }
@@ -233,7 +257,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
     }
 
     event RewardClaimed(address staker, uint epoch, uint percentageInBps);
-    function claimReward(address staker, uint epoch) public nonReentrant returns(bool) {
+    function claimReward(address staker, uint epoch) public nonReentrant {
         require(address(feeHandler) != address(0), "claimReward: feeHandler address is missing");
 
         uint curEpoch = getCurrentEpochNumber();
@@ -242,26 +266,22 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
 
         uint numVotes = numberVotes[staker][epoch];
         // no votes, no rewards
-        if (numVotes == 0) { return false; }
+        require(numVotes > 0, "claimReward: no votes, no rewards");
 
-        (uint stake, uint delegatedStake, address delegatedAddr) = staking.initAndReturnStakerDataForCurrentEpoch(staker);
+        (uint stake, uint delegatedStake, address delegatedAddr) = staking.getStakerDataForPastEpoch(staker, epoch);
         uint totalStake = delegatedAddr == msg.sender ? stake + delegatedStake : delegatedStake;
-        if (totalStake == 0) { return false; }
+        require(totalStake > 0, "claimReward: total stakes is 0, no reward");
 
         uint points = numVotes * totalStake;
         uint totalPts = totalEpochPoints[epoch];
-        if (totalPts == 0) { return false; }
+        require(totalPts > 0, "claimReward: total points is 0, can not claim reward");
 
         uint percentageInBps = points * BPS / totalPts;
 
-        if (feeHandler.claimReward(staker, epoch, percentageInBps)) {
-            hasClaimedReward[staker][epoch] = true;
+        require(feeHandler.claimReward(staker, epoch, percentageInBps), "claimReward: feeHandle failed to claim reward");
 
-            emit RewardClaimed(staker, epoch, percentageInBps);
-            return true;
-        }
-
-        return false;
+        hasClaimedReward[staker][epoch] = true;
+        emit RewardClaimed(staker, epoch, percentageInBps);
     }
 
     function getLatestNetworkFeeDataWithCache() public returns(uint feeInBps, uint expiryBlockNumber) {
