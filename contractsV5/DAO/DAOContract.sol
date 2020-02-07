@@ -79,10 +79,10 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
 
     /* Configuration Campaign Data */
     // epoch => campID for network fee campaign
-    uint internal latestNetworkFeeResult = 25; // 0.25%
+    uint public latestNetworkFeeResult = 25; // 0.25%
     mapping(uint => uint) public networkFeeCampaign;
     // epoch => campID for brr campaign
-    uint internal latestBrrResult = 0; // 0: 0% reward + 0% rebate
+    uint public latestBrrResult = 0; // 0: 0% reward + 0% rebate
     mapping(uint => uint) public brrCampaign;
 
     constructor(
@@ -176,14 +176,12 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         isCampExisted[campID] = true;
 
         if (campType == CampaignType.NETWORK_FEE) {
-            require(networkFeeCampaign[curEpoch] == 0, "submitNewCampaign: already had another network fee camp for this epoch");
             networkFeeCampaign[curEpoch] = campID;
         } else if (campType == CampaignType.FEE_HANDLER_BRR) {
-            require(brrCampaign[curEpoch] == 0, "submitNewCampaign: already had another brr camp for this epoch");
             brrCampaign[curEpoch] = campID;
         }
 
-        // index 0 for total votes
+        // index 0 for total votes, index 1 -> options.length for each option
         campaignOptionPoints[campID] = new uint[](options.length + 1);
     
         emit NewCampaignCreated(CampaignType.NETWORK_FEE, campID, startBlock, endBlock, formulaParams, options, link);
@@ -213,8 +211,10 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         uint[] storage campIDs = epochCampaigns[curEpoch];
         for(uint i = 0; i < campIDs.length; i++) {
             if (campIDs[i] == campID) {
+                // remove this camp id out of list
                 campIDs[i] = campIDs[campIDs.length - 1];
                 delete campIDs[campIDs.length - 1];
+                campIDs.length--;
                 break;
             }
         }
@@ -238,7 +238,6 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
             stakerVotedOption[staker][campID] = option;
 
             totalEpochPoints[curEpoch] += totalStake;
-
             // increase voted points for this option
             campaignOptionPoints[campID][option] += totalStake;
             // increase total voted points
@@ -256,7 +255,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         emit Voted(staker, curEpoch, campID, option);
     }
 
-    event RewardClaimed(address staker, uint epoch, uint percentageInBps);
+    event RewardClaimed(address staker, uint epoch, uint percentageInPrecision);
     function claimReward(address staker, uint epoch) public nonReentrant {
         require(address(feeHandler) != address(0), "claimReward: feeHandler address is missing");
 
@@ -276,12 +275,13 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         uint totalPts = totalEpochPoints[epoch];
         require(totalPts > 0, "claimReward: total points is 0, can not claim reward");
 
-        uint percentageInBps = points * BPS / totalPts;
+        require(points <= totalPts, "claimReward: points should not be greater than total points");
+        uint percentageInPrecision = points * PRECISION / totalPts;
 
-        require(feeHandler.claimReward(staker, epoch, percentageInBps), "claimReward: feeHandle failed to claim reward");
+        require(feeHandler.claimReward(staker, epoch, percentageInPrecision), "claimReward: feeHandle failed to claim reward");
 
         hasClaimedReward[staker][epoch] = true;
-        emit RewardClaimed(staker, epoch, percentageInBps);
+        emit RewardClaimed(staker, epoch, percentageInPrecision);
     }
 
     function getLatestNetworkFeeDataWithCache() public returns(uint feeInBps, uint expiryBlockNumber) {
@@ -290,9 +290,11 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         feeInBps = latestNetworkFeeResult;
         expiryBlockNumber = START_BLOCK + curEpoch * EPOCH_PERIOD - 1;
 
+        // there is no camp for epoch 0
         if (curEpoch == 0) {
             return (feeInBps, expiryBlockNumber);
         }
+
         uint campID = networkFeeCampaign[curEpoch - 1];
         if (campID == 0) {
             // not have network fee campaign, return latest result
@@ -311,6 +313,35 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
             // update latest result based on new winning option
             latestNetworkFeeResult = feeInBps;
         }
+    }
+
+    // return latest burn/reward/rebate data, also affecting epoch + expiry block number
+    function getLatestBRRData()
+        public
+        returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber)
+    {
+        epoch = getCurrentEpochNumber();
+        expiryBlockNumber = START_BLOCK + epoch * EPOCH_PERIOD - 1;
+        uint brrData = latestBrrResult;
+        if (epoch > 0) {
+            uint campID = brrCampaign[epoch - 1];
+            if (campID != 0) {
+                uint winningOption;
+                (winningOption, brrData) = getCampaignWinningOptionAndValue(campID);
+                // save latest winning option data
+                winningOptionData[campID] = encodeWinningOptionData(winningOption, true);
+                if (winningOption == 0) {
+                    // no winning option, fallback to previous result
+                    brrData = latestBrrResult;
+                } else {
+                    // concluded campaign, updated new latest brr result
+                    latestBrrResult = brrData;
+                }
+            }
+        }
+
+        (rebateInBps, rewardInBps) = getRebateAndRewardFromData(brrData);
+        burnInBps = BPS - rebateInBps - rewardInBps;
     }
 
     // if total points for that epoch is 0, should burn all reward since no campaign or no one voted
@@ -432,33 +463,23 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         return (feeInBps, expiryBlockNumber);
     }
 
-    // return latest burn/reward/rebate data, also affecting epoch + expiry block number
-    function getLatestBRRData()
-        public
-        returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber)
-    {
-        epoch = getCurrentEpochNumber();
-        expiryBlockNumber = START_BLOCK + epoch * EPOCH_PERIOD - 1;
-        uint brrData = latestBrrResult;
-        if (epoch > 0) {
-            uint campID = brrCampaign[epoch - 1];
-            if (campID != 0) {
-                uint winningOption;
-                (winningOption, brrData) = getCampaignWinningOptionAndValue(campID);
-                // save latest winning option data
-                winningOptionData[campID] = encodeWinningOptionData(winningOption, true);
-                if (winningOption == 0) {
-                    // no winning option, fallback to previous result
-                    brrData = latestBrrResult;
-                } else {
-                    // concluded campaign, updated new latest brr result
-                    latestBrrResult = brrData;
-                }
-            }
-        }
+    function getStakerRewardPercentageInPrecision(address staker, uint epoch) public view returns(uint) {
+        uint curEpoch = getCurrentEpochNumber();
+        if (epoch >= curEpoch) { return 0; }
 
-        (rebateInBps, rewardInBps) = getRebateAndRewardFromData(brrData);
-        burnInBps = BPS - rebateInBps - rewardInBps;
+        uint numVotes = numberVotes[staker][epoch];
+        // no votes, no rewards
+        if (numVotes == 0) { return 0; }
+
+        (uint stake, uint delegatedStake, address delegatedAddr) = staking.getStakerDataForPastEpoch(staker, epoch);
+        uint totalStake = delegatedAddr == msg.sender ? stake + delegatedStake : delegatedStake;
+        if (totalStake == 0) { return 0; }
+
+        uint points = numVotes * totalStake;
+        uint totalPts = totalEpochPoints[epoch];
+        if (totalPts == 0) { return 0; }
+
+        return points * PRECISION / totalPts;
     }
 
     // return list campaign ids for epoch, excluding non-existed ones
@@ -543,7 +564,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         }
 
         FormulaData memory data = decodeFormulaParams(formulaParams);
-        // percentage should be smaller than 100%
+        // percentage should be smaller than or equal 100%
         if (data.minPercentageInPrecision > PRECISION) { return false; }
         if (data.cInPrecision < data.tInPrecision * 100) { return false; }
 
