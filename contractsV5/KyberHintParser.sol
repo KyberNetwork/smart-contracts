@@ -33,8 +33,7 @@ contract KyberHintParser is IKyberHint, Utils {
         returns(
             TradeType ethToTokenType,
             bytes8[] memory ethToTokenReserveIDs,
-            uint[] memory ethToTokenSplits,
-            uint failingIndex
+            uint[] memory ethToTokenSplits
         )
     {
 
@@ -46,8 +45,7 @@ contract KyberHintParser is IKyberHint, Utils {
         returns(
             TradeType ethToTokenType,
             IKyberReserve[] memory ethToTokenAddresses,
-            uint[] memory ethToTokenSplits,
-            uint failingIndex
+            uint[] memory ethToTokenSplits
         )
     {
         TradeHint memory tradeHint;
@@ -56,10 +54,8 @@ contract KyberHintParser is IKyberHint, Utils {
         decodeOperation(hint, tradeHint, indexToContinueFrom, false);
 
         ethToTokenType = tradeHint.ethToTokenReserves.tradeType;
-        ethToTokenAddresses = tradeHint.ethToTokenReserves.addresses;        
+        ethToTokenAddresses = tradeHint.ethToTokenReserves.addresses;
         ethToTokenSplits = tradeHint.ethToTokenReserves.splitValuesBps;
-
-        failingIndex = indexToContinueFrom;
     }
 
     function parseTokenToEthHint(bytes calldata hint)
@@ -68,8 +64,7 @@ contract KyberHintParser is IKyberHint, Utils {
         returns(
             TradeType tokenToEthType,
             bytes8[] memory tokenToEthReserveIDs,
-            uint[] memory tokenToEthSplits,
-            uint failingIndex
+            uint[] memory tokenToEthSplits
         )
     {
 
@@ -81,8 +76,7 @@ contract KyberHintParser is IKyberHint, Utils {
         returns(
             TradeType tokenToEthType,
             IKyberReserve[] memory tokenToEthAddresses,
-            uint[] memory tokenToEthSplits,
-            uint failingIndex
+            uint[] memory tokenToEthSplits
         )
     {
         TradeHint memory tradeHint;
@@ -93,8 +87,6 @@ contract KyberHintParser is IKyberHint, Utils {
         tokenToEthType = tradeHint.tokenToEthReserves.tradeType;
         tokenToEthAddresses = tradeHint.tokenToEthReserves.addresses;
         tokenToEthSplits = tradeHint.tokenToEthReserves.splitValuesBps;
-
-        failingIndex = indexToContinueFrom;
     }
 
     function parseTokenToTokenHint(bytes calldata hint)
@@ -106,8 +98,7 @@ contract KyberHintParser is IKyberHint, Utils {
             uint[] memory tokenToEthSplits,
             TradeType ethToTokenType,
             bytes8[] memory ethToTokenReserveIDs,
-            uint[] memory ethToTokenSplits,
-            uint failingIndex
+            uint[] memory ethToTokenSplits
         )
     {
 
@@ -122,8 +113,7 @@ contract KyberHintParser is IKyberHint, Utils {
             uint[] memory tokenToEthSplits,
             TradeType ethToTokenType,
             IKyberReserve[] memory ethToTokenAddresses,
-            uint[] memory ethToTokenSplits,
-            uint failingIndex
+            uint[] memory ethToTokenSplits
         )
     {
         TradeHint memory tradeHint;
@@ -138,8 +128,6 @@ contract KyberHintParser is IKyberHint, Utils {
         tokenToEthType = tradeHint.tokenToEthReserves.tradeType;
         tokenToEthAddresses = tradeHint.tokenToEthReserves.addresses;
         tokenToEthSplits = tradeHint.tokenToEthReserves.splitValuesBps;
-
-        failingIndex = indexToContinueFrom;
     }
 
     function buildEthToTokenHint(
