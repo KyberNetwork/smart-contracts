@@ -235,13 +235,13 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
                 tradeData.ethToToken.tradeType,
                 tradeData.ethToToken.addresses,
                 tradeData.ethToToken.splitValuesBps
-            ) = parseHintE2T(hint);
+            ) = parseE2tHint(hint);
         } else if (dest == ETH_TOKEN_ADDRESS) {
             (
                 tradeData.tokenToEth.tradeType,
                 tradeData.tokenToEth.addresses,
                 tradeData.tokenToEth.splitValuesBps
-            ) = parseHintT2E(hint);
+            ) = parseT2eHint(hint);
         } else {
             (
                 tradeData.tokenToEth.tradeType,
@@ -250,7 +250,7 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
                 tradeData.ethToToken.tradeType,
                 tradeData.ethToToken.addresses,
                 tradeData.ethToToken.splitValuesBps
-            ) = parseHintT2T(hint);
+            ) = parseT2tHint(hint);
         }
 
         if (tradeData.tokenToEth.tradeType == TradeType.MaskOut) {
