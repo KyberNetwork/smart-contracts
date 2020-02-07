@@ -501,14 +501,19 @@ contract('KyberNetwork', function(accounts) {
             Helper.assertEqual(actualResult.expectedRateAfterAllFees, expectedRateAfterAllFees, "expected rate with all fees != actual rate for T2T");
         });
 
-        it("should get expected rate (with split hint, network & platform fees) for T2E, E2T & T2T", async() => {
-            //get reserves and rates
-            //randomly select a few, split hint
+        it("should get expected rate (with split hint, network & 0 platform fees) for T2E, E2T & T2T", async() => {
+            //TODO: write function for getting aggregated rates
         });
 
-        it("=should perform a token -> ETH trade (no hint) and check balances change as expected", async() => {
-            expectedResult = await fetchReservesAndRatesFromNetwork(tradeLogic, srcToken.address, true, srcQty);
-            bestReserve = getBestReserve(expectedResult.rates, expectedResult.reserves);
+        it("should get expected rate (with split hint, network & platform fees) for T2E, E2T & T2T", async() => {
+            //TODO: write function for getting aggregated rates
+        });
+
+        it("should perform a token -> ETH trade (no hint) and check balances change as expected", async() => {
+            reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
+            bestReserve = await getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
+            bestSellRateNoFee = bestReserve.rateNoFee;
+            bestSellReserveFeePaying = bestReserve.isFeePaying;
 
             //get initial balances
             initialTokenReserveBalance = await srcToken.balanceOf(bestReserve.address);
@@ -523,8 +528,9 @@ contract('KyberNetwork', function(accounts) {
             txResult = await network.tradeWithHint(networkProxy, srcToken.address, srcQty, ethAddress, user, 
                 maxDestAmt, minConversionRate, platformWallet, emptyHint);
             console.log(`token -> ETH: ${txResult.receipt.gasUsed} gas used`);
-    
+
             //compare balances
+            //TODO: fix expected ether reserve balance, cos for token -> ETH, we take full amount from reserve, then keep some
             await assertSameEtherBalance(bestReserve.address, initialEtherReserveBalance.sub(expectedDestAmt));
             await assertSameEtherBalance(user, initialEtherUserBalance.add(expectedDestAmt));
             await assertSameTokenBalance(network.address, srcToken, initialTokenUserBalance.sub(srcQty));
