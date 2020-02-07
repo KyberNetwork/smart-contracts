@@ -75,6 +75,7 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
         buyRates = new uint[](buyReserves.length);
 
         uint i;
+        uint destAmount;
         for (i = 0; i < buyReserves.length; i++) {
             if (takerFeeBps == 0 || (!isFeePayingReserve[address(buyReserves[i])])) {
                 buyRates[i] = (IKyberReserve(buyReserves[i])).getConversionRate(ETH_TOKEN_ADDRESS, token, amount, block.number);
