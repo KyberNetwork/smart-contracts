@@ -6,6 +6,9 @@ const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const MockNetwork = artifacts.require("MockNetwork.sol");
 const FeeHandler = artifacts.require("FeeHandler.sol");
 const TradeLogic = artifacts.require("KyberTradeLogic.sol");
+const Reserve = artifacts.require("KyberReserve.sol");
+const ConversionRates = artifacts.require("ConversionRates.sol");
+
 const Helper = require("../v4/helper.js");
 
 const BN = web3.utils.BN;
@@ -59,9 +62,33 @@ let reserve;
 let reserveEtherInit = new BN(10).pow(new BN(18)).mul(new BN(2));
 //// reserve types
 let APR_ID = '0xaa000000';
-let MOCK_ID  = '0xbb000000';
+let BRIDGE_ID  = '0xbb000000';
+let MOCK_ID  = '0x22000000';
 let FPR_ID = '0xff000000';
 
+const type_apr = "TYPE_APR";
+const type_MOCK = "TYPE_MOCK";
+const type_fpr = "TYPE_FPR";
+
+let pricingFpr = [];
+let reserveFpr = [];
+let numFprReserves;
+
+let validRateDurationInBlocks = (new BN(9)).pow(new BN(21)); // some big number
+let minimalRecordResolution = 2; //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
+let maxPerBlockImbalance = precisionUnits.mul(new BN(1000)); // some big number
+let maxTotalImbalance = maxPerBlockImbalance.mul(new BN(3));
+
+
+//quantity buy steps. low values to simluate gas cost of steps.
+let qtyBuyStepX = [0, 1, 2, 3];
+let qtyBuyStepY = [0, -1, -2, -3];
+let imbalanceBuyStepX = [0, -1, -2, -3];
+let imbalanceBuyStepY = [0,  -1, -2, -3];
+let qtySellStepX =[0, 1, 2, 3];
+let qtySellStepY = [0, -1, -2, -3];
+let imbalanceSellStepX = [0, -1, -2, -3];
+let imbalanceSellStepY = [0, -1, -2, -3];;
 
 //tokens data
 ////////////
@@ -148,7 +175,7 @@ contract('KyberNetwork', function(accounts) {
             await tradeLogic.setNetworkContract(network.address, {from: admin});
 
             //init 3 mock reserves
-            await setupReserves(3,0,0,0, accounts[9]);
+            numReserves = await setupReserves(1,3,0,0, accounts);
         });
 
         it("should test events declared in network contract", async() => {
@@ -199,7 +226,7 @@ contract('KyberNetwork', function(accounts) {
             //TODO: KyberTrade
         });
 
-        it("should setup network and its params", async() => {
+        it.only("should setup network and its params", async() => {
             //setup network
             await network.addOperator(operator, {from: admin});
             await network.addKyberProxy(networkProxy, {from: admin});
@@ -208,6 +235,7 @@ contract('KyberNetwork', function(accounts) {
             //add and list pair for reserve
             for (const [key, value] of Object.entries(reserveInstances)) {
                 reserve = value;
+                console.log("adding reserve type: " + reserve.type + " address: " + reserve.address + " pricing: " + reserve.pricing);
                 network.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, reserve.address, {from: operator});
                 for (let j = 0; j < numTokens; j++) {
                     network.listPairForReserve(reserve.address, tokens[j].address, true, true, true, {from: operator});
@@ -233,7 +261,7 @@ contract('KyberNetwork', function(accounts) {
             await network.setEnable(true, {from: admin});
         });
     
-        it("should get expected rate (no hint, with network fee) for T2E, E2T & T2T", async() => {
+        it.only("should get expected rate (no hint, with network fee) for T2E, E2T & T2T", async() => {
             reserveCandidates = await fetchReservesFromNetwork(tradeLogic, srcToken.address, true);
             bestReserve = await getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
             bestSellRateNoFee = bestReserve.rateNoFee;
@@ -565,8 +593,8 @@ async function transferTokensToNetwork(networkInstance) {
     }
 }
 
-async function setupReserves(mockReserves, fprReserves, enhancedFprReserves, aprReserves, ethSender) {
-    numReserves = mockReserves + fprReserves + enhancedFprReserves + aprReserves;
+async function setupReserves(mockReserves, fprReserves, enhancedFprReserves, aprReserves, accounts) {
+    let totalReserves = mockReserves + fprReserves + enhancedFprReserves + aprReserves;
     for (i=0; i < mockReserves; i++) {
         reserve = await MockReserve.new();
         reserveInstances[reserve.address] = {
@@ -574,13 +602,16 @@ async function setupReserves(mockReserves, fprReserves, enhancedFprReserves, apr
             'instance': reserve,
             'reserveId': genReserveID(MOCK_ID, reserve.address),
             'isFeePaying': true,
-            'rate': new BN(0)
+            'rate': new BN(0),
+            'type': type_MOCK,
+            'pricing': "none"
         }
 
         tokensPerEther = precisionUnits.mul(new BN((i + 1) * 1000));
         ethersPerToken = precisionUnits.div(new BN((i + 1) * 1000));
 
         //send ETH
+        let ethSender = accounts[1];
         await Helper.sendEtherWithPromise(ethSender, reserve.address, reserveEtherInit);
         await assertSameEtherBalance(reserve.address, reserveEtherInit);
 
@@ -593,7 +624,108 @@ async function setupReserves(mockReserves, fprReserves, enhancedFprReserves, apr
             await assertSameTokenBalance(reserve.address, token, initialTokenAmount);
         }
     }
+
+    await setupFpr(fprReserves, accounts);
+
+    numFprReserves += fprReserves * 1;
     //TODO: implement logic for other reserve types
+
+    return totalReserves;
+}
+
+async function setupFpr (numReserves, accounts) {
+
+    for(let i = 0; i < numReserves; i++) {
+        let pricing;
+        let reserve;
+
+        let block = await web3.eth.getBlockNumber();
+
+        //setup pricing
+        pricing = await ConversionRates.new(admin);
+        await pricing.addOperator(operator, {from: admin})
+        await pricing.addAlerter(alerter, {from: admin})
+
+        await pricing.setValidRateDurationInBlocks(validRateDurationInBlocks, {from: admin});
+        
+        //setup reserve
+        reserve = await Reserve.new(network.address, pricing.address, admin);
+        await reserve.addOperator(operator, {from: admin});
+        await reserve.addAlerter(alerter, {from: admin});
+        
+        await pricing.setReserveAddress(reserve.address, {from: admin});
+        
+        //set reserve balance. 10**18 wei ether + per token 10**18 wei ether value according to base rate.
+        let reserveEtherInit = (new BN(10)).pow(new BN(19)).mul(new BN(2));
+        await Helper.sendEtherWithPromise(accounts[accounts.length - 1 - i], reserve.address, reserveEtherInit);
+
+        let buys = [];
+        let sells = [];
+        let indices = [];
+
+        for (let j = 0; j < numTokens; ++j) {
+            let token = tokens[j];
+            let tokenAddress = token.address;
+            
+            //reserve related setup
+            await reserve.approveWithdrawAddress(token.address, accounts[0], true, {from: admin});
+            
+            let tokensPerEther = precisionUnits.mul(new BN((i + 1) * 30));
+            let ethersPerToken = precisionUnits.div(new BN((i + 1) * 30));
+           
+            let initialTokenAmount = Helper.calcDstQty(reserveEtherInit, ethDecimals, tokenDecimals[j], tokensPerEther);
+            await token.transfer(reserve.address, initialTokenAmount);
+            await assertSameTokenBalance(reserve.address, token, initialTokenAmount);
+        
+
+            // pricing setup
+            await pricing.addToken(token.address, {from: admin});
+            await pricing.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance, {from: admin});
+            await pricing.enableTokenTrade(token.address, {from: admin});
+            
+            //update rates array
+            let baseBuyRate = [];
+            let baseSellRate = [];
+            baseBuyRate.push(tokensPerEther);
+            baseSellRate.push(ethersPerToken);
+    
+            buys.length = sells.length = indices.length = 0;
+
+            tokenAdd = [tokenAddress];
+            await pricing.setBaseRate(tokenAdd, baseBuyRate, baseSellRate, buys, sells, block, indices, {from: operator});      
+            await pricing.setQtyStepFunction(tokenAddress, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            await pricing.setImbalanceStepFunction(tokenAddress, imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+        }
+             
+        compactBuyArr = [0, 0, 0, 0, 0, 06, 07, 08, 09, 1, 0, 11, 12, 13, 14];
+        let compactBuyHex = Helper.bytesToHex(compactBuyArr);
+        buys.push(compactBuyHex);
+    
+        compactSellArr = [0, 0, 0, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34];
+        let compactSellHex = Helper.bytesToHex(compactSellArr);
+        sells.push(compactSellHex);
+    
+        indices[0] = 0;
+    
+        Helper.assertEqual(indices.length, sells.length, "bad sells array size");
+        Helper.assertEqual(indices.length, buys.length, "bad buys array size");
+    
+        await pricing.setCompactData(buys, sells, block, indices, {from: operator});
+
+        reserveInstances[reserve.address] = {
+            'address': reserve.address,
+            'instance': reserve,
+            'reserveId': genReserveID(FPR_ID, reserve.address),
+            'isFeePaying': true,
+            'rate': new BN(0),
+            'type': type_fpr,
+            'pricing': pricing.address
+        }
+
+        index = numFprReserves + i;
+        pricingFpr[index] = pricing;
+        reserveFpr[index] = reserve;
+    }
 }
 
 function genReserveID(reserveID, reserveAddress) {
