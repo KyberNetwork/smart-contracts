@@ -433,10 +433,14 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         uint votedPercentageInPrecision = totalVotes * PRECISION / camp.totalKNCSupply;
 
         if (formulaData.minPercentageInPrecision < votedPercentageInPrecision) { return (0, 0); }
-        // as check for formula params, this value shouldn't be negative
-        uint Y = formulaData.cInPrecision - formulaData.tInPrecision * votedPercentageInPrecision / PRECISION;
 
-        if (maxVotedCount * PRECISION < Y * totalVotes) { return (0, 0); }
+        uint X = formulaData.tInPrecision * votedPercentageInPrecision / PRECISION;
+        if (X <= formulaData.cInPrecision) {
+            // threshold is not negative, need to compare with voted count
+            uint Y = formulaData.cInPrecision - X;
+            if (maxVotedCount * PRECISION < Y * totalVotes) { return (0, 0); }
+        }
+
         optionID = winningOption;
         value = camp.options[optionID - 1];
     }
@@ -526,47 +530,73 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         CampaignType campType, uint startBlock, uint endBlock,
         uint currentEpoch, uint formulaParams, uint[] memory options
     ) 
-        internal view returns(bool)
+        public view returns(bool)
     {
         // block number < start block < end block
-        if (startBlock < block.number || endBlock < startBlock) return false;
+        require(
+            startBlock >= block.number,
+            "validateCampaignParams: can not start in the past"
+        );
         // camp duration must be at least min camp duration
-        if (endBlock - startBlock < MIN_CAMP_DURATION) return false;
+        // endBlock - startBlock + 1 >= MIN_CAMP_DURATION,
+        require(
+            endBlock + 1 >= startBlock + MIN_CAMP_DURATION,
+            "validateCampaignParams: camp duration is lower than min camp duration"
+        );
 
         uint startEpoch = getEpochNumber(startBlock);
         uint endEpoch = getEpochNumber(endBlock);
         // start + end blocks must be in the same current epoch
-        if (startEpoch != currentEpoch || endEpoch != currentEpoch) { return false; }
+        require(
+            startEpoch == currentEpoch || endEpoch == currentEpoch,
+            "validateCampaignParams: start and end block must be in current epoch"
+        );
 
         // verify number of options
         uint numOptions = options.length;
-        if (numOptions == 0 || numOptions > MAX_CAMP_OPTIONS) return false;
+        require(
+            numOptions > 1 && numOptions <= MAX_CAMP_OPTIONS,
+            "validateCampaignParams: number options is invalid"
+        );
 
         // Validate option values based on campaign type
         if (campType == CampaignType.GENERAL) {
             // option must be positive number
             for(uint i = 0; i < options.length; i++) {
-                if (options[i] == 0) { return false; }
+                require(
+                    options[i] > 0,
+                    "validateCampaignParams: general camp options must be positive"
+                );
             }
         } else if (campType == CampaignType.NETWORK_FEE) {
             // network fee campaign, option must be fee in bps
             for(uint i = 0; i < options.length; i++) {
                 // fee must <= 100%
-                if (options[i] > BPS) { return false; }
+                require(
+                    options[i] <= BPS,
+                    "validateCampaignParams: NetworkFee camp options must be smaller than or equal 100%"
+                );
             }
         } else if (campType == CampaignType.FEE_HANDLER_BRR) {
             // brr fee handler campaign, option must be combined for reward + rebate %
             for(uint i = 0; i < options.length; i++) {
                 // first 128 bits is rebate, last 128 bits is reward
                 (uint rebateInBps, uint rewardInBps) = getRebateAndRewardFromData(options[i]);
-                if (rewardInBps + rebateInBps > BPS) { return false; }
+                require(
+                    rewardInBps + rebateInBps <= BPS,
+                    "validateCampaignParams: BRR camp options must be smaller than or equal 100%"
+                );
             }
+        } else {
+            require(false, "validateCampaignParams: invalid camp type");
         }
 
         FormulaData memory data = decodeFormulaParams(formulaParams);
         // percentage should be smaller than or equal 100%
-        if (data.minPercentageInPrecision > PRECISION) { return false; }
-        if (data.cInPrecision < data.tInPrecision * 100) { return false; }
+        require(
+            data.minPercentageInPrecision <= PRECISION,
+            "validateCampaignParams: formula min percentage must not be greater than 100%"
+        );
 
         return true;
     }
