@@ -19,25 +19,25 @@ pragma solidity 0.5.11;
 library SafeMath {
     function mul(uint a, uint b) internal pure returns (uint) {
         uint c = a * b;
-        require(a == 0 || c / a == b);
+        require(a == 0 || c / a == b, "mul overflow");
         return c;
     }
 
     function div(uint a, uint b) internal pure returns (uint) {
-        require(b > 0);
+        require(b > 0, "divider <= 0");
         uint c = a / b;
-        require(a == b * c + a % b);
+        require(a == b * c + a % b, "div failed");
         return c;
     }
 
     function sub(uint a, uint b) internal pure returns (uint) {
-        require(b <= a);
+        require(b <= a, "sub underflow");
         return a - b;
     }
 
     function add(uint a, uint b) internal pure returns (uint) {
         uint c = a + b;
-        require(c >= a);
+        require(c >= a, "add overflow");
         return c;
     }
 
@@ -102,7 +102,7 @@ contract BasicToken is ERC20Basic {
      */
     modifier onlyPayloadSize(uint size) {
         if (msg.data.length < size + 4) {
-         revert();
+            revert("short address");
         }
         _;
     }
@@ -138,7 +138,7 @@ contract StandardToken is BasicToken, ERC20 {
         uint256 _allowance = allowed[_from][msg.sender];
 
         // Check is not needed because sub(_allowance, _value) will already revert if this condition is not met
-        if (_value <= _allowance) revert();
+        require(_value <= _allowance, "transfer more then allowed");
 
         balances[_to] = balances[_to].add(_value);
         balances[_from] = balances[_from].sub(_value);
