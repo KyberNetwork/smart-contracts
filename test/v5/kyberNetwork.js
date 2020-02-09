@@ -75,7 +75,7 @@ let reserveFpr = [];
 let numFprReserves;
 
 let validRateDurationInBlocks = (new BN(9)).pow(new BN(21)); // some big number
-let minimalRecordResolution = 2; //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
+let minimalRecordResolution = 1000000; //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
 let maxPerBlockImbalance = precisionUnits.mul(new BN(1000)); // some big number
 let maxTotalImbalance = maxPerBlockImbalance.mul(new BN(3));
 
@@ -179,7 +179,7 @@ contract('KyberNetwork', function(accounts) {
             await tradeLogic.setNetworkContract(network.address, {from: admin});
 
             //init 3 mock reserves
-            numReserves = await setupReserves(1,3,0,0, accounts);
+            numReserves = await setupReserves(1,2,0,0, accounts);
         });
 
         it("should test events declared in network contract", async() => {
@@ -230,7 +230,7 @@ contract('KyberNetwork', function(accounts) {
             //TODO: KyberTrade
         });
 
-        it.only("should setup network and its params", async() => {
+        it("should setup network and its params", async() => {
             //setup network
             await network.addOperator(operator, {from: admin});
             await network.addKyberProxy(networkProxy, {from: admin});
@@ -265,13 +265,8 @@ contract('KyberNetwork', function(accounts) {
             await network.setEnable(true, {from: admin});
         });
     
-<<<<<<< HEAD
-        it.only("should get expected rate (no hint, with network fee) for T2E, E2T & T2T", async() => {
-            reserveCandidates = await fetchReservesFromNetwork(tradeLogic, srcToken.address, true);
-=======
         it("should get expected rate (no hint, with network fee) for T2E, E2T & T2T", async() => {
             reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
->>>>>>> 40612b8ab904900320d7bc34b5537ad3b7390b53
             bestReserve = await getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
             bestSellRateNoFee = bestReserve.rateNoFee;
             bestSellReserveFeePaying = bestReserve.isFeePaying;
@@ -542,6 +537,22 @@ contract('KyberNetwork', function(accounts) {
             //TODO: write function for getting aggregated rates
         });
 
+        it("should test get all rates for token without fee", async() => {
+            let ratesForToken = await network.getPricesForToken(tokens[0].address, 0);
+
+            // console.log("rates for token: " + tokens[0].address);
+            // console.log(ratesForToken);
+
+            // console.log('ratesForToken.buyRates')
+
+            // console.log(ratesForToken.buyRates[0].valueOf().toString())
+            // console.log(ratesForToken.buyRates[1].valueOf().toString())
+            // console.log(ratesForToken.buyRates[2].valueOf().toString())
+            // console.log(ratesForToken.buyRates[3].valueOf().toString())
+            // TODO: get rates directly from reserves and compare with these returned rates.
+        });
+
+
         it("should perform a token -> ETH trade (no hint) and check balances change as expected", async() => {
             reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
             bestReserve = await getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
@@ -571,8 +582,8 @@ contract('KyberNetwork', function(accounts) {
         });
     
         it("should perform a ETH -> token trade (no hint) and check balances change as expected", async() => {
-            expectedResult = await fetchReservesAndRatesFromNetwork(tradeLogic, destToken.address, false, ethSrcQty);
-            bestReserve = getBestReserve(expectedResult.rates, expectedResult.reserves);
+            expectedResult = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
+            bestReserve = getBestReserveAndRate(expectedResult.rates, expectedResult.reserves);
     
             //get initial balances
             initialTokenReserveBalance = await destToken.balanceOf(bestReserve.address);
@@ -599,10 +610,10 @@ contract('KyberNetwork', function(accounts) {
         //ETH: (sell -> buy reserve) => sell reserve bal goes down, buy reserve bal goes up
         //destToken: (buy reserve -> user) => bal goes down, user bal goes up
         it("should perform a token -> token trade (no hint) and check balances change as expected", async() => {
-            expectedResult = await fetchReservesAndRatesFromNetwork(tradeLogic, srcToken.address, true, srcQty);
-            bestSellReserve = getBestReserve(expectedResult.rates, expectedResult.reserves);
-            expectedResult = await fetchReservesAndRatesFromNetwork(tradeLogic, destToken.address, false, ethSrcQty);
-            bestBuyReserve = getBestReserve(expectedResult.rates, expectedResult.reserves);
+            expectedResult = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
+            bestSellReserve = getBestReserveAndRate(expectedResult.rates, expectedResult.reserves);
+            expectedResult = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, true);
+            bestBuyReserve = getBestReserveAndRate(expectedResult.rates, expectedResult.reserves);
     
             //initial balances
             initialSrcTokenUserBalance = await srcToken.balanceOf(network.address); //assume user gave funds to proxy already
@@ -635,7 +646,7 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("should perform a simple T2E trade with split hint", async() => {
-            reserveCandidates = await fetchReservesFromNetwork(tradeLogic, srcToken.address, true);
+            reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
             hintedReserves = applyHintToReserves(SPLIT_HINTTYPE, reserveCandidates);
             hint = await tradeLogic.buildTokenToEthHint(
                 hintedReserves.tradeType, hintedReserves.reservesForHint, hintedReserves.splits
@@ -646,7 +657,7 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("should perform a simple E2T trade with split hint", async() => {
-            reserveCandidates = await fetchReservesFromNetwork(tradeLogic, destToken.address, false);
+            reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
             hintedReserves = applyHintToReserves(SPLIT_HINTTYPE, reserveCandidates);
             hint = await tradeLogic.buildEthToTokenHint(
                 hintedReserves.tradeType, hintedReserves.reservesForHint, hintedReserves.splits
@@ -657,9 +668,10 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("should perform a simple T2T trade with split hint", async() => {
-            reserveCandidates = await fetchReservesFromNetwork(tradeLogic, srcToken.address, true);
+            reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
             hintedReservesT2E = applyHintToReserves(SPLIT_HINTTYPE, reserveCandidates);
-            reserveCandidates = await fetchReservesFromNetwork(tradeLogic, destToken.address, false);
+            // todo: find estimated quantity
+            reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
             hintedReservesE2T = applyHintToReserves(SPLIT_HINTTYPE, reserveCandidates);
             hint = await tradeLogic.buildTokenToTokenHint(
                 hintedReservesT2E.tradeType, hintedReservesT2E.reservesForHint, hintedReservesT2E.splits,
