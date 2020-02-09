@@ -72,7 +72,7 @@ const type_fpr = "TYPE_FPR";
 
 let pricingFpr = [];
 let reserveFpr = [];
-let numFprReserves;
+let gNumFprReserves;
 
 let validRateDurationInBlocks = (new BN(9)).pow(new BN(21)); // some big number
 let minimalRecordResolution = 2; //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
@@ -709,8 +709,10 @@ async function transferTokensToNetwork(networkInstance) {
     }
 }
 
-async function setupReserves(mockReserves, fprReserves, enhancedFprReserves, aprReserves, accounts) {
+async function setupReserves(mockReserves, numFpr, enhancedFprReserves, aprReserves, accounts) {
     let totalReserves = mockReserves + fprReserves + enhancedFprReserves + aprReserves;
+    let i;
+    let ethSenderIndex = 1;
     for (i=0; i < mockReserves; i++) {
         reserve = await MockReserve.new();
         reserveInstances[reserve.address] = {
@@ -727,7 +729,7 @@ async function setupReserves(mockReserves, fprReserves, enhancedFprReserves, apr
         ethersPerToken = precisionUnits.div(new BN((i + 1) * 1000));
 
         //send ETH
-        let ethSender = accounts[1];
+        let ethSender = accounts[ethSenderIndex++];
         await Helper.sendEtherWithPromise(ethSender, reserve.address, reserveEtherInit);
         await assertSameEtherBalance(reserve.address, reserveEtherInit);
 
@@ -741,107 +743,113 @@ async function setupReserves(mockReserves, fprReserves, enhancedFprReserves, apr
         }
     }
 
-    await setupFpr(fprReserves, accounts);
+    for(i = 0; i < numFpr; i++) {
+        let reserve = await setupFpr(tokens, accounts[ethSenderIndex++]);
+        let pricing = await setupFprPricing(reserve.address, tokens, 4, 0)
 
-    numFprReserves += fprReserves * 1;
+    
+        
+        gNumFprReserves++;
+    }
     //TODO: implement logic for other reserve types
 
     return totalReserves;
 }
 
-async function setupFpr (numReserves, accounts) {
+async function setupFprReserve (whichTokens, ethSender) {
+    let reserve;
 
-    for(let i = 0; i < numReserves; i++) {
-        let pricing;
-        let reserve;
-
-        let block = await web3.eth.getBlockNumber();
-
-        //setup pricing
-        pricing = await ConversionRates.new(admin);
-        await pricing.addOperator(operator, {from: admin})
-        await pricing.addAlerter(alerter, {from: admin})
-
-        await pricing.setValidRateDurationInBlocks(validRateDurationInBlocks, {from: admin});
+    //setup reserve
+    reserve = await Reserve.new(network.address, pricing.address, admin);
+    await reserve.addOperator(operator, {from: admin});
+    await reserve.addAlerter(alerter, {from: admin});
         
-        //setup reserve
-        reserve = await Reserve.new(network.address, pricing.address, admin);
-        await reserve.addOperator(operator, {from: admin});
-        await reserve.addAlerter(alerter, {from: admin});
+    //set reserve balance. 10**18 wei ether + per token 10**18 wei ether value according to base rate.
+    let reserveEtherInit = (new BN(10)).pow(new BN(19)).mul(new BN(2));
+    await Helper.sendEtherWithPromise(ethSender, reserve.address, reserveEtherInit);
+    
+    for (let j = 0; j < whichTokens.length; ++j) {
+        let token = whichTokens[j];
+        let tokenAddress = token.address;
         
-        await pricing.setReserveAddress(reserve.address, {from: admin});
+        //reserve related setup
+        await reserve.approveWithdrawAddress(token.address, accounts[0], true, {from: admin});
         
-        //set reserve balance. 10**18 wei ether + per token 10**18 wei ether value according to base rate.
-        let reserveEtherInit = (new BN(10)).pow(new BN(19)).mul(new BN(2));
-        await Helper.sendEtherWithPromise(accounts[accounts.length - 1 - i], reserve.address, reserveEtherInit);
-
-        let buys = [];
-        let sells = [];
-        let indices = [];
-
-        for (let j = 0; j < numTokens; ++j) {
-            let token = tokens[j];
-            let tokenAddress = token.address;
-            
-            //reserve related setup
-            await reserve.approveWithdrawAddress(token.address, accounts[0], true, {from: admin});
-            
-            let tokensPerEther = precisionUnits.mul(new BN((i + 1) * 30));
-            let ethersPerToken = precisionUnits.div(new BN((i + 1) * 30));
-           
-            let initialTokenAmount = Helper.calcDstQty(reserveEtherInit, ethDecimals, tokenDecimals[j], tokensPerEther);
-            await token.transfer(reserve.address, initialTokenAmount);
-            await assertSameTokenBalance(reserve.address, token, initialTokenAmount);
+        let tokensPerEther = precisionUnits.mul(new BN((i + 1) * 30));
+        let ethersPerToken = precisionUnits.div(new BN((i + 1) * 30));
         
-
-            // pricing setup
-            await pricing.addToken(token.address, {from: admin});
-            await pricing.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance, {from: admin});
-            await pricing.enableTokenTrade(token.address, {from: admin});
-            
-            //update rates array
-            let baseBuyRate = [];
-            let baseSellRate = [];
-            baseBuyRate.push(tokensPerEther);
-            baseSellRate.push(ethersPerToken);
-    
-            buys.length = sells.length = indices.length = 0;
-
-            tokenAdd = [tokenAddress];
-            await pricing.setBaseRate(tokenAdd, baseBuyRate, baseSellRate, buys, sells, block, indices, {from: operator});      
-            await pricing.setQtyStepFunction(tokenAddress, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
-            await pricing.setImbalanceStepFunction(tokenAddress, imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
-        }
-             
-        compactBuyArr = [0, 0, 0, 0, 0, 06, 07, 08, 09, 1, 0, 11, 12, 13, 14];
-        let compactBuyHex = Helper.bytesToHex(compactBuyArr);
-        buys.push(compactBuyHex);
-    
-        compactSellArr = [0, 0, 0, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34];
-        let compactSellHex = Helper.bytesToHex(compactSellArr);
-        sells.push(compactSellHex);
-    
-        indices[0] = 0;
-    
-        Helper.assertEqual(indices.length, sells.length, "bad sells array size");
-        Helper.assertEqual(indices.length, buys.length, "bad buys array size");
-    
-        await pricing.setCompactData(buys, sells, block, indices, {from: operator});
-
-        reserveInstances[reserve.address] = {
-            'address': reserve.address,
-            'instance': reserve,
-            'reserveId': genReserveID(FPR_ID, reserve.address),
-            'isFeePaying': true,
-            'rate': new BN(0),
-            'type': type_fpr,
-            'pricing': pricing.address
-        }
-
-        index = numFprReserves + i;
-        pricingFpr[index] = pricing;
-        reserveFpr[index] = reserve;
+        let initialTokenAmount = Helper.calcDstQty(reserveEtherInit, ethDecimals, tokenDecimals[j], tokensPerEther);
+        await token.transfer(reserve.address, initialTokenAmount);
+        await assertSameTokenBalance(reserve.address, token, initialTokenAmount);
     }
+             
+    reserveFpr[index] = reserve;
+}
+
+async function setupFprPricing(reserveAdd, whichTokens, numImbalanceSteps, numQtySteps) {
+    let block = await web3.eth.getBlockNumber();
+    let pricing = await ConversionRates.new(admin);
+    await pricing.addOperator(operator, {from: admin})
+    await pricing.addAlerter(alerter, {from: admin})
+
+    await pricing.setValidRateDurationInBlocks(validRateDurationInBlocks, {from: admin});
+    
+    await pricing.setReserveAddress(reserveAdd, {from: admin});
+
+
+    let buys = [];
+    let sells = [];
+    let indices = [];
+
+    for (let j = 0; j < whichTokens.length; ++j) {
+        let token = whichTokens[j];
+        let tokenAddress = token.address;
+        
+        //reserve related setup
+        await reserve.approveWithdrawAddress(token.address, accounts[0], true, {from: admin});
+        
+        let tokensPerEther = precisionUnits.mul(new BN((i + 1) * 30));
+        let ethersPerToken = precisionUnits.div(new BN((i + 1) * 30));
+       
+        let initialTokenAmount = Helper.calcDstQty(reserveEtherInit, ethDecimals, tokenDecimals[j], tokensPerEther);
+        await token.transfer(reserve.address, initialTokenAmount);
+        await assertSameTokenBalance(reserve.address, token, initialTokenAmount);
+    
+
+        // pricing setup
+        await pricing.addToken(token.address, {from: admin});
+        await pricing.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance, {from: admin});
+        await pricing.enableTokenTrade(token.address, {from: admin});
+        
+        //update rates array
+        let baseBuyRate = [];
+        let baseSellRate = [];
+        baseBuyRate.push(tokensPerEther);
+        baseSellRate.push(ethersPerToken);
+
+        buys.length = sells.length = indices.length = 0;
+
+        tokenAdd = [tokenAddress];
+        await pricing.setBaseRate(tokenAdd, baseBuyRate, baseSellRate, buys, sells, block, indices, {from: operator});      
+        await pricing.setQtyStepFunction(tokenAddress, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+        await pricing.setImbalanceStepFunction(tokenAddress, imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+    }
+         
+    compactBuyArr = [0, 0, 0, 0, 0, 06, 07, 08, 09, 1, 0, 11, 12, 13, 14];
+    let compactBuyHex = Helper.bytesToHex(compactBuyArr);
+    buys.push(compactBuyHex);
+
+    compactSellArr = [0, 0, 0, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34];
+    let compactSellHex = Helper.bytesToHex(compactSellArr);
+    sells.push(compactSellHex);
+
+    indices[0] = 0;
+
+    Helper.assertEqual(indices.length, sells.length, "bad sells array size");
+    Helper.assertEqual(indices.length, buys.length, "bad buys array size");
+
+    await pricing.setCompactData(buys, sells, block, indices, {from: operator});
+    pricingFpr[index] = pricing;
 }
 
 function genReserveID(reserveID, reserveAddress) {
