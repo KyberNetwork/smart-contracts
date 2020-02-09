@@ -1,5 +1,5 @@
 const TestToken = artifacts.require("Token.sol");
-const MockKyberDAO = artifacts.require("MockKyberDAO.sol");
+const MockKyberDAO = artifacts.require("MockSimpleDAO.sol");
 const MockDAOWithdrawFailed = artifacts.require("MockDAOWithdrawFailed.sol");
 const StakingContract = artifacts.require("MockStakingContract.sol");
 const Helper = require("../../v4/helper.js");
@@ -942,7 +942,7 @@ contract('StakingContract', function(accounts) {
         });
 
         it("Test withdraw should call DAO handleWithdrawal as expected", async function() {
-            await deployStakingContract(6, currentBlock + 10);
+            await deployStakingContract(10, currentBlock + 10);
             let dao = await MockKyberDAO.new();
             await stakingContract.updateDAOAddressAndRemoveAdmin(dao.address, {from: admin});
 
@@ -951,22 +951,61 @@ contract('StakingContract', function(accounts) {
 
             await stakingContract.deposit(precision.mul(new BN(400)), {from: victor});
             await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
-            Helper.assertEqual(0, await dao.value(), "shouldn't call dao withdrawal func");
+            Helper.assertEqual(0, await dao.values(victor), "shouldn't call dao withdrawal func");
 
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod);
             await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
-            Helper.assertEqual(1, await dao.value(), "should call dao withdrawal func");
+            Helper.assertEqual(precision.mul(new BN(10)), await dao.values(victor), "should call dao withdrawal func");
 
             currentBlock = await Helper.getCurrentBlock();
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod * 2 + startBlock - currentBlock);
 
             await stakingContract.deposit(precision.mul(new BN(20)), {from: victor});
             await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
-            Helper.assertEqual(1, await dao.value(), "shouldn't call dao withdrawal func");
+            Helper.assertEqual(precision.mul(new BN(10)), await dao.values(victor), "shouldn't call dao withdrawal func");
             await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
-            Helper.assertEqual(1, await dao.value(), "shouldn't call dao withdrawal func");
+            Helper.assertEqual(precision.mul(new BN(10)), await dao.values(victor), "shouldn't call dao withdrawal func");
             await stakingContract.withdraw(precision.mul(new BN(20)), {from: victor});
-            Helper.assertEqual(2, await dao.value(), "should call dao withdrawal func");
+            Helper.assertEqual(precision.mul(new BN(30)), await dao.values(victor), "should call dao withdrawal func");
+
+            await stakingContract.delegate(mike, {from: victor});
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+
+            Helper.assertEqual(precision.mul(new BN(30)), await dao.values(victor), "dao values should be correct");
+            Helper.assertEqual(0, await dao.values(mike), "dao values should be correct");
+
+            await stakingContract.deposit(precision.mul(new BN(10)), {from: victor});
+            await stakingContract.withdraw(precision.mul(new BN(5)), {from: victor});
+
+            Helper.assertEqual(precision.mul(new BN(30)), await dao.values(victor), "dao values should be correct");
+            Helper.assertEqual(0, await dao.values(mike), "dao values should be correct");
+
+            await stakingContract.withdraw(precision.mul(new BN(20)), {from: victor});
+            Helper.assertEqual(precision.mul(new BN(30)), await dao.values(victor), "dao values should be correct");
+            Helper.assertEqual(precision.mul(new BN(15)), await dao.values(mike), "dao values should be correct");
+
+            await stakingContract.delegate(loi, {from: victor});
+            await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
+            Helper.assertEqual(precision.mul(new BN(30)), await dao.values(victor), "dao values should be correct");
+            Helper.assertEqual(precision.mul(new BN(25)), await dao.values(mike), "dao values should be correct");
+            Helper.assertEqual(0, await dao.values(loi), "dao values should be correct");
+
+            // move to next epoch
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod - 4);
+
+            await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
+            Helper.assertEqual(precision.mul(new BN(30)), await dao.values(victor), "dao values should be correct");
+            Helper.assertEqual(precision.mul(new BN(25)), await dao.values(mike), "dao values should be correct");
+            Helper.assertEqual(precision.mul(new BN(10)), await dao.values(loi), "dao values should be correct");
+
+            await stakingContract.delegate(victor, {from: victor});
+            // move to next epoch
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod - 4);
+            await stakingContract.withdraw(precision.mul(new BN(10)), {from: victor});
+            Helper.assertEqual(precision.mul(new BN(40)), await dao.values(victor), "dao values should be correct");
+            Helper.assertEqual(precision.mul(new BN(25)), await dao.values(mike), "dao values should be correct");
+            Helper.assertEqual(precision.mul(new BN(10)), await dao.values(loi), "dao values should be correct");
         });
 
         it("Test withdraw gas usages", async function() {

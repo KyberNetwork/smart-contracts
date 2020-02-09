@@ -23,13 +23,13 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
     uint internal constant BPS = 10000;
     uint internal constant POWER_128 = 2 ** 128;
     uint internal constant POWER_84 = 2 ** 84;
+    // max number of camps for each epoch
+    uint public constant MAX_EPOCH_CAMPS = 10;
 
     // Variables: Should only be inited once when deploying contract
     uint public MAX_CAMP_OPTIONS = 4; // TODO: Finalise the value
     uint public MIN_CAMP_DURATION = 75000; // around 2 weeks time. TODO: Finalise the value
 
-    uint public EPOCH_PERIOD;
-    uint public START_BLOCK;
     IERC20 public KNC_TOKEN;
     IKyberStaking public staking;
     IFeeHandler public feeHandler;
@@ -118,17 +118,28 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         latestBrrResult = _defaultBrrData;
     }
 
-    event StakerWithdrew(address staker, uint penaltyAmount, uint penaltyPoint);
     function handleWithdrawal(address staker, uint penaltyAmount) public {
         require(msg.sender == address(staking), "handleWithdrawal: only staking contract can call this func");
         if (penaltyAmount == 0) { return; }
         uint curEpoch = getCurrentEpochNumber();
+
+        // update total points for epoch
         uint numVotes = numberVotes[staker][curEpoch];
         if (numVotes > 0) {
             uint penaltyPoint = numVotes * penaltyAmount;
-            require(totalEpochPoints[curEpoch] >= penaltyPoint, "handleWithdrawal: total points must be greater than or equal penaltyPoint");
             totalEpochPoints[curEpoch] -= penaltyPoint;
-            emit StakerWithdrew(staker, penaltyAmount, penaltyPoint);
+        }
+
+        // update voted count for each camp staker has voted
+        uint[] storage campIDs = epochCampaigns[curEpoch];
+        for(uint i = 0; i < campIDs.length; i++) {
+            uint campID = campIDs[i];
+            uint votedOption = stakerVotedOption[staker][campID];
+            if (votedOption > 0 && campaignData[campID].endBlock >= block.number) {
+                // user voted and camp is not ended
+                campaignOptionPoints[campID][0] -= penaltyAmount;
+                campaignOptionPoints[campID][votedOption] -= penaltyAmount;
+            }
         }
     }
 
@@ -155,6 +166,8 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
             validateCampaignParams(campType, startBlock, endBlock, curEpoch, formulaParams, options),
             "submitNewCampaign: validate camp params failed"
         );
+
+        require(epochCampaigns[curEpoch].length < MAX_EPOCH_CAMPS, "submitNewCampaign: exceed max number camps for each epoch");
 
         numberCampaigns += 1;
         campID = numberCampaigns;

@@ -183,9 +183,10 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
             }
             stakes[N][S] = newStakes;
 
-            // call DAO to update data when user withdrew
             if (address(DAO) != address(0)) {
-                DAO.handleWithdrawal(S, penaltyAmount);
+                // note: DAO needs to know which address to penalise
+                // if staker has delegated, address to penalise is delegated address
+                DAO.handleWithdrawal(dAddr, penaltyAmount);
             }
         }
 
