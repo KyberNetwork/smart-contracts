@@ -612,7 +612,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         nonReentrant
         returns(uint destAmount) 
     {
-        printGas("start_tr", 0);
+        // printGas("start_tr", 0);
         require(verifyTradeValid(tradeData.input.src, tradeData.input.srcAmount, 
             tradeData.input.dest, tradeData.input.destAddress), "invalid");
         
@@ -671,7 +671,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             t2eReserves: tradeData.tokenToEth.addresses
         });
 
-        printGas("end_tr", 0);
+        // printGas("end_tr", 0);
         return (tradeData.actualDestAmount);
     }
     /* solhint-enable function-max-lines */
