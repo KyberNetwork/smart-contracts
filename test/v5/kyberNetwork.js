@@ -764,7 +764,7 @@ async function setupReserves(numMock, numFpr, enhancedFprReserves, aprReserves, 
     return totalReserves;
 }
 
-async function setupFprReserve (whichTokens, ethSender, pricingAdd, tokensPerEther, reserveEth) {
+async function setupFprReserve (whichTokens, ethSender, pricingAdd, tokensPerEther, reserveEtherInit) {
     let reserve;
 
     //setup reserve
