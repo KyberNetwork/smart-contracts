@@ -25,7 +25,6 @@ contract KyberHintHandler is IKyberHint, Utils {
         TradeType tradeType;
         IKyberReserve[] addresses;
         uint[] splitValuesBps;
-        bool invalidHint;
     }
 
     struct TradeHint {
@@ -47,8 +46,6 @@ contract KyberHintHandler is IKyberHint, Utils {
 
         decodeOperation(hint, tradeHint, indexToContinueFrom, false);
 
-        require(!tradeHint.ethToTokenReserves.invalidHint, "Invalid hint");
-
         e2tType = tradeHint.ethToTokenReserves.tradeType;
         e2tAddresses = tradeHint.ethToTokenReserves.addresses;
         e2tSplits = tradeHint.ethToTokenReserves.splitValuesBps;
@@ -67,8 +64,6 @@ contract KyberHintHandler is IKyberHint, Utils {
         uint indexToContinueFrom;
 
         decodeOperation(hint, tradeHint, indexToContinueFrom, true);
-
-        require(!tradeHint.tokenToEthReserves.invalidHint, "Invalid hint");
 
         t2eType = tradeHint.tokenToEthReserves.tradeType;
         t2eAddresses = tradeHint.tokenToEthReserves.addresses;
@@ -91,8 +86,6 @@ contract KyberHintHandler is IKyberHint, Utils {
         uint indexToContinueFrom;
 
         decodeOperation(hint, tradeHint, indexToContinueFrom, true);
-
-        require(!tradeHint.tokenToEthReserves.invalidHint || !tradeHint.ethToTokenReserves.invalidHint, "Invalid hint");
 
         t2eType = tradeHint.tokenToEthReserves.tradeType;
         t2eAddresses = tradeHint.tokenToEthReserves.addresses;
@@ -193,7 +186,6 @@ contract KyberHintHandler is IKyberHint, Utils {
         }
 
         indexToContinueFrom += 1;
-        reservesHint.invalidHint = false;
 
         if (opcodeKeccak == END_KECCAK) {
             return;
@@ -212,7 +204,7 @@ contract KyberHintHandler is IKyberHint, Utils {
             (indexToContinueFrom) = decodeReservesFromHint(true, hint, reservesHint, indexToContinueFrom);
             decodeOperation(hint, tradeHint, indexToContinueFrom, isTokenToEth);
         } else {
-            reservesHint.invalidHint = true;
+            revert("Invalid hint opcode");
         }
     }
 
@@ -347,6 +339,6 @@ contract KyberHintHandler is IKyberHint, Utils {
         }
     }
 
-    function convertReserveIdToAddress(bytes8 reserveId) internal view returns (address) {}
-    function convertAddressToReserveId(address reserveAddress) internal view returns (bytes8) {}
+    function convertReserveIdToAddress(bytes8 reserveId) internal view returns (address);
+    function convertAddressToReserveId(address reserveAddress) internal view returns (bytes8);
 }
