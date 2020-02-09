@@ -169,7 +169,7 @@ contract('KyberNetwork', function(accounts) {
             await tradeLogic.setNetworkContract(network.address, {from: admin});
 
             //init 3 mock reserves
-            numReserves = await setupReserves(1,2,0,0, accounts);
+            numReserves = await setupReserves(3,0,0,0, accounts);
         });
 
         it("should test events declared in network contract", async() => {
@@ -572,8 +572,9 @@ contract('KyberNetwork', function(accounts) {
         });
     
         it("should perform a ETH -> token trade (no hint) and check balances change as expected", async() => {
-            expectedResult = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
-            bestReserve = getBestReserveAndRate(expectedResult.rates, expectedResult.reserves);
+            console.log("eth qty : " + ethSrcQty)
+            expectedResult = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty.div(10000), false);
+            bestReserve = await getBestReserveAndRate(expectedResult.rates, expectedResult.reserves);
     
             //get initial balances
             initialTokenReserveBalance = await destToken.balanceOf(bestReserve.address);
@@ -601,9 +602,9 @@ contract('KyberNetwork', function(accounts) {
         //destToken: (buy reserve -> user) => bal goes down, user bal goes up
         it("should perform a token -> token trade (no hint) and check balances change as expected", async() => {
             expectedResult = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
-            bestSellReserve = getBestReserveAndRate(expectedResult.rates, expectedResult.reserves);
+            bestSellReserve = await getBestReserveAndRate(expectedResult.rates, expectedResult.reserves);
             expectedResult = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, true);
-            bestBuyReserve = getBestReserveAndRate(expectedResult.rates, expectedResult.reserves);
+            bestBuyReserve = await getBestReserveAndRate(expectedResult.rates, expectedResult.reserves);
     
             //initial balances
             initialSrcTokenUserBalance = await srcToken.balanceOf(network.address); //assume user gave funds to proxy already
