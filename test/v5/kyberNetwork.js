@@ -265,13 +265,8 @@ contract('KyberNetwork', function(accounts) {
             await network.setEnable(true, {from: admin});
         });
     
-<<<<<<< HEAD
-        it.only("should get expected rate (no hint, with network fee) for T2E, E2T & T2T", async() => {
-            reserveCandidates = await fetchReservesFromNetwork(tradeLogic, srcToken.address, true);
-=======
         it("should get expected rate (no hint, with network fee) for T2E, E2T & T2T", async() => {
             reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
->>>>>>> 40612b8ab904900320d7bc34b5537ad3b7390b53
             bestReserve = await getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
             bestSellRateNoFee = bestReserve.rateNoFee;
             bestSellReserveFeePaying = bestReserve.isFeePaying;
