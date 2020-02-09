@@ -36,9 +36,9 @@ contract KyberHintHandler is IKyberHint, Utils {
         internal
         view
         returns(
-            TradeType e2tType,
-            IKyberReserve[] memory e2tAddresses,
-            uint[] memory e2tSplits
+            TradeType tradeType,
+            IKyberReserve[] memory addresses,
+            uint[] memory splits
         )
     {
         TradeHint memory tradeHint;
@@ -46,18 +46,18 @@ contract KyberHintHandler is IKyberHint, Utils {
 
         decodeOperation(hint, tradeHint, indexToContinueFrom, false);
 
-        e2tType = tradeHint.ethToTokenReserves.tradeType;
-        e2tAddresses = tradeHint.ethToTokenReserves.addresses;
-        e2tSplits = tradeHint.ethToTokenReserves.splitValuesBps;
+        tradeType = tradeHint.ethToTokenReserves.tradeType;
+        addresses = tradeHint.ethToTokenReserves.addresses;
+        splits = tradeHint.ethToTokenReserves.splitValuesBps;
     }
 
     function parseHintT2E(bytes memory hint)
         internal
         view
         returns(
-            TradeType t2eType,
-            IKyberReserve[] memory t2eAddresses,
-            uint[] memory t2eSplits
+            TradeType tradeType,
+            IKyberReserve[] memory addresses,
+            uint[] memory splits
         )
     {
         TradeHint memory tradeHint;
@@ -65,9 +65,9 @@ contract KyberHintHandler is IKyberHint, Utils {
 
         decodeOperation(hint, tradeHint, indexToContinueFrom, true);
 
-        t2eType = tradeHint.tokenToEthReserves.tradeType;
-        t2eAddresses = tradeHint.tokenToEthReserves.addresses;
-        t2eSplits = tradeHint.tokenToEthReserves.splitValuesBps;
+        tradeType = tradeHint.tokenToEthReserves.tradeType;
+        addresses = tradeHint.tokenToEthReserves.addresses;
+        splits = tradeHint.tokenToEthReserves.splitValuesBps;
     }
 
     function parseHintT2T(bytes memory hint)
@@ -268,19 +268,19 @@ contract KyberHintHandler is IKyberHint, Utils {
         external
         view
         returns(
-            TradeType tradeType,
-            bytes8[] memory reserveIds,
-            uint[] memory splits
+            TradeType ethToTokenType,
+            bytes8[] memory ethToTokenReserveIds,
+            uint[] memory ethToTokenSplits
         )
     {
-        IKyberReserve[] memory addresses;
+        IKyberReserve[] memory ethToTokenAddresses;
 
-        (tradeType, addresses, splits) = parseHintE2T(hint);
+        (ethToTokenType, ethToTokenAddresses, ethToTokenSplits) = parseHintE2T(hint);
 
-        reserveIds = new bytes8[](addresses.length);
+        ethToTokenReserveIds = new bytes8[](ethToTokenAddresses.length);
 
-        for (uint i = 0; i < addresses.length; i++) {
-            reserveIds[i] = convertAddressToReserveId(address(addresses[i]));
+        for (uint i = 0; i < ethToTokenAddresses.length; i++) {
+            ethToTokenReserveIds[i] = convertAddressToReserveId(address(ethToTokenAddresses[i]));
         }
     }
         
@@ -288,19 +288,19 @@ contract KyberHintHandler is IKyberHint, Utils {
         external
         view
         returns(
-            TradeType tradeType,
-            bytes8[] memory reserveIds,
-            uint[] memory splits
+            TradeType tokenToEthType,
+            bytes8[] memory tokenToEthReserveIds,
+            uint[] memory tokenToEthSplits
         )
     {
-        IKyberReserve[] memory addresses;
+        IKyberReserve[] memory tokenToEthAddresses;
 
-        (tradeType, addresses, splits) = parseHintT2E(hint);
+        (tokenToEthType, tokenToEthAddresses, tokenToEthSplits) = parseHintT2E(hint);
 
-        reserveIds = new bytes8[](addresses.length);
+        tokenToEthReserveIds = new bytes8[](tokenToEthAddresses.length);
 
-        for (uint i = 0; i < addresses.length; i++) {
-            reserveIds[i] = convertAddressToReserveId(address(addresses[i]));
+        for (uint i = 0; i < tokenToEthAddresses.length; i++) {
+            tokenToEthReserveIds[i] = convertAddressToReserveId(address(tokenToEthAddresses[i]));
         }
     }
 
@@ -308,34 +308,34 @@ contract KyberHintHandler is IKyberHint, Utils {
         external
         view
         returns(
-            TradeType t2eType,
-            bytes8[] memory t2eReserveIds,
-            uint[] memory t2eSplits,
-            TradeType e2tType,
-            bytes8[] memory e2tReserveIds,
-            uint[] memory e2tSplits
+            TradeType tokenToEthType,
+            bytes8[] memory tokenToEthReserveIds,
+            uint[] memory tokenToEthSplits,
+            TradeType ethToTokenType,
+            bytes8[] memory ethToTokenReserveIds,
+            uint[] memory ethToTokenSplits
         )
     {
-        IKyberReserve[] memory t2eAddresses;
-        IKyberReserve[] memory e2tAddresses;
+        IKyberReserve[] memory tokenToEthAddresses;
+        IKyberReserve[] memory ethToTokenAddresses;
 
         (
-            t2eType,
-            t2eAddresses,
-            t2eSplits,
-            e2tType,
-            e2tAddresses,
-            e2tSplits
+            tokenToEthType,
+            tokenToEthAddresses,
+            tokenToEthSplits,
+            ethToTokenType,
+            ethToTokenAddresses,
+            ethToTokenSplits
         ) = parseHintT2T(hint);
 
-        t2eReserveIds = new bytes8[](t2eAddresses.length);
-        e2tReserveIds = new bytes8[](e2tAddresses.length);
+        tokenToEthReserveIds = new bytes8[](tokenToEthAddresses.length);
+        ethToTokenReserveIds = new bytes8[](ethToTokenAddresses.length);
 
-        for (uint i = 0; i < t2eAddresses.length; i++) {
-            t2eReserveIds[i] = convertAddressToReserveId(address(t2eAddresses[i]));
+        for (uint i = 0; i < tokenToEthAddresses.length; i++) {
+            tokenToEthReserveIds[i] = convertAddressToReserveId(address(tokenToEthAddresses[i]));
         }
-        for (uint i = 0; i < e2tAddresses.length; i++) {
-            e2tReserveIds[i] = convertAddressToReserveId(address(e2tAddresses[i]));
+        for (uint i = 0; i < ethToTokenAddresses.length; i++) {
+            ethToTokenReserveIds[i] = convertAddressToReserveId(address(ethToTokenAddresses[i]));
         }
     }
 

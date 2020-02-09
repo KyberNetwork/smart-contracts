@@ -28,7 +28,6 @@ let t2eOpcode;
 let t2eReserves;
 let t2eSplits;
 let t2eHintType;
-let failingIndex;
 let hint;
 
 contract('KyberHintHandler', function(accounts) {
@@ -484,7 +483,6 @@ contract('KyberHintHandler', function(accounts) {
         describe("e2t", function() {
             before('one time init of vars', async() => {
                 e2tReserves = ['0xff00000063820d8f', '0xaa00000016709a5d'];
-                failingIndex = new BN(0);
             });
 
             it('should parse the e2t hint for mask in', async() => {
@@ -493,10 +491,9 @@ contract('KyberHintHandler', function(accounts) {
                 hint = '0x000102ff00000063820D8Faa00000016709A5Dee';
         
                 const parseResult = await hintHandler.parseEthToTokenHint(hint);
-                Helper.assertEqual(parseResult.tradeType, e2tHintType);
-                assert.deepEqual(parseResult.reserveIds, e2tReserves);
-                Helper.assertEqual(parseResult.splits, e2tSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);
+                Helper.assertEqual(parseResult.ethToTokenType, e2tHintType);
+                assert.deepEqual(parseResult.ethToTokenReserveIds, e2tReserves);
+                Helper.assertEqual(parseResult.ethToTokenSplits, e2tSplits);
             });
     
             it('should parse the e2t hint for mask out', async() => {
@@ -505,10 +502,9 @@ contract('KyberHintHandler', function(accounts) {
                 hint = '0x000202ff00000063820d8faa00000016709a5dee';
         
                 const parseResult = await hintHandler.parseEthToTokenHint(hint);
-                Helper.assertEqual(parseResult.tradeType, e2tHintType);
-                assert.deepEqual(parseResult.reserveIds, e2tReserves);
-                Helper.assertEqual(parseResult.splits, e2tSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);
+                Helper.assertEqual(parseResult.ethToTokenType, e2tHintType);
+                assert.deepEqual(parseResult.ethToTokenReserveIds, e2tReserves);
+                Helper.assertEqual(parseResult.ethToTokenSplits, e2tSplits);
             });
     
             it('should parse the e2t hint for splits', async() => {
@@ -517,22 +513,9 @@ contract('KyberHintHandler', function(accounts) {
                 hint = '0x000302ff00000063820d8f0bb8aa00000016709a5d1b58ee';
         
                 const parseResult = await hintHandler.parseEthToTokenHint(hint);
-                Helper.assertEqual(parseResult.tradeType, e2tHintType);
-                assert.deepEqual(parseResult.reserveIds, e2tReserves);
-                Helper.assertEqual(parseResult.splits, e2tSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);
-            });
-
-            it('should return failingIndex for invalid e2t hint', async() => {
-                e2tHintType = SPLIT_HINTTYPE;
-                e2tSplits = [new BN(3000), new BN(7000)];
-                hint = '0x000302ff00000063820d8f0bb8aa00000016709a5d1b58ee';
-        
-                const parseResult = await hintHandler.parseEthToTokenHint(hint);
-                Helper.assertEqual(parseResult.tradeType, e2tHintType);
-                assert.deepEqual(parseResult.reserveIds, e2tReserves);
-                Helper.assertEqual(parseResult.splits, e2tSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);
+                Helper.assertEqual(parseResult.ethToTokenType, e2tHintType);
+                assert.deepEqual(parseResult.ethToTokenReserveIds, e2tReserves);
+                Helper.assertEqual(parseResult.ethToTokenSplits, e2tSplits);
             });
 
             it('should revert parsing the e2t hint for splits due to >10000bps', async() => {
@@ -550,7 +533,6 @@ contract('KyberHintHandler', function(accounts) {
         describe("t2e", function() {
             before('one time init of vars', async() => {
                 t2eReserves = ['0xff0000007a334f7d', '0xcc00000075fff057'];
-                failingIndex = new BN(0);
             });
 
             it('should parse the t2e hint for mask in', async() => {
@@ -559,10 +541,9 @@ contract('KyberHintHandler', function(accounts) {
                 hint = '0x0102ff0000007a334f7dcc00000075fff05700ee';
         
                 const parseResult = await hintHandler.parseTokenToEthHint(hint);
-                Helper.assertEqual(parseResult.tradeType, t2eHintType);
-                assert.deepEqual(parseResult.reserveIds, t2eReserves);
-                Helper.assertEqual(parseResult.splits, t2eSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);
+                Helper.assertEqual(parseResult.tokenToEthType, t2eHintType);
+                assert.deepEqual(parseResult.tokenToEthReserveIds, t2eReserves);
+                Helper.assertEqual(parseResult.tokenToEthSplits, t2eSplits);
             });
     
             it('should parse the t2e hint for mask out', async() => {
@@ -571,10 +552,9 @@ contract('KyberHintHandler', function(accounts) {
                 hint = '0x0202ff0000007a334f7dcc00000075fff05700ee';
         
                 const parseResult = await hintHandler.parseTokenToEthHint(hint);
-                Helper.assertEqual(parseResult.tradeType, t2eHintType);
-                assert.deepEqual(parseResult.reserveIds, t2eReserves);
-                Helper.assertEqual(parseResult.splits, t2eSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);
+                Helper.assertEqual(parseResult.tokenToEthType, t2eHintType);
+                assert.deepEqual(parseResult.tokenToEthReserveIds, t2eReserves);
+                Helper.assertEqual(parseResult.tokenToEthSplits, t2eSplits);
             });
     
             it('should parse the t2e hint for splits', async() => {
@@ -583,10 +563,9 @@ contract('KyberHintHandler', function(accounts) {
                 hint = '0x0302ff0000007a334f7d0bb8cc00000075fff0571b5800ee';
         
                 const parseResult = await hintHandler.parseTokenToEthHint(hint);
-                Helper.assertEqual(parseResult.tradeType, t2eHintType);
-                assert.deepEqual(parseResult.reserveIds, t2eReserves);
-                Helper.assertEqual(parseResult.splits, t2eSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);
+                Helper.assertEqual(parseResult.tokenToEthType, t2eHintType);
+                assert.deepEqual(parseResult.tokenToEthReserveIds, t2eReserves);
+                Helper.assertEqual(parseResult.tokenToEthSplits, t2eSplits);
             });
     
             it('should revert parsing the t2e hint for splits due to >10000bps', async() => {
@@ -605,7 +584,6 @@ contract('KyberHintHandler', function(accounts) {
             before('one time init of vars', async() => {
                 t2eReserves = ['0xff0000007a334f7d', '0xcc00000075fff057'];
                 e2tReserves = ['0xff00000063820d8f', '0xaa00000016709a5d'];
-                failingIndex = new BN(0);
             });
 
             it('should parse the t2t hint for both mask in', async() => {
@@ -616,13 +594,12 @@ contract('KyberHintHandler', function(accounts) {
                 hint = '0x0102ff0000007a334f7dcc00000075fff057000102ff00000063820d8faa00000016709a5dee';
 
                 const parseResult = await hintHandler.parseTokenToTokenHint(hint);
-                Helper.assertEqual(parseResult.t2eType, t2eHintType);
-                assert.deepEqual(parseResult.t2eReserveIds, t2eReserves);
-                Helper.assertEqual(parseResult.t2eSplits, t2eSplits);
-                Helper.assertEqual(parseResult.e2tType, e2tHintType);
-                assert.deepEqual(parseResult.e2tReserveIds, e2tReserves);
-                Helper.assertEqual(parseResult.e2tSplits, e2tSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);
+                Helper.assertEqual(parseResult.tokenToEthType, t2eHintType);
+                assert.deepEqual(parseResult.tokenToEthReserveIds, t2eReserves);
+                Helper.assertEqual(parseResult.tokenToEthSplits, t2eSplits);
+                Helper.assertEqual(parseResult.ethToTokenType, e2tHintType);
+                assert.deepEqual(parseResult.ethToTokenReserveIds, e2tReserves);
+                Helper.assertEqual(parseResult.ethToTokenSplits, e2tSplits);
             });
     
             it('should parse the t2t hint for mask in, mask out', async() => {
@@ -633,13 +610,12 @@ contract('KyberHintHandler', function(accounts) {
                 hint = '0x0202ff0000007a334f7dcc00000075fff057000102ff00000063820d8faa00000016709a5dee';
                 
                 const parseResult = await hintHandler.parseTokenToTokenHint(hint);                
-                Helper.assertEqual(parseResult.t2eType, t2eHintType);
-                assert.deepEqual(parseResult.t2eReserveIds, t2eReserves);
-                Helper.assertEqual(parseResult.t2eSplits, t2eSplits);
-                Helper.assertEqual(parseResult.e2tType, e2tHintType);
-                assert.deepEqual(parseResult.e2tReserveIds, e2tReserves);
-                Helper.assertEqual(parseResult.e2tSplits, e2tSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);
+                Helper.assertEqual(parseResult.tokenToEthType, t2eHintType);
+                assert.deepEqual(parseResult.tokenToEthReserveIds, t2eReserves);
+                Helper.assertEqual(parseResult.tokenToEthSplits, t2eSplits);
+                Helper.assertEqual(parseResult.ethToTokenType, e2tHintType);
+                assert.deepEqual(parseResult.ethToTokenReserveIds, e2tReserves);
+                Helper.assertEqual(parseResult.ethToTokenSplits, e2tSplits);
             });
     
             it('should parse the t2t hint for mask in, splits', async() => {
@@ -650,13 +626,12 @@ contract('KyberHintHandler', function(accounts) {
                 hint = '0x0302ff0000007a334f7d0bb8cc00000075fff0571b58000102ff00000063820d8faa00000016709a5dee';
                 
                 const parseResult = await hintHandler.parseTokenToTokenHint(hint);
-                Helper.assertEqual(parseResult.t2eType, t2eHintType);
-                assert.deepEqual(parseResult.t2eReserveIds, t2eReserves);
-                Helper.assertEqual(parseResult.t2eSplits, t2eSplits);
-                Helper.assertEqual(parseResult.e2tType, e2tHintType);
-                assert.deepEqual(parseResult.e2tReserveIds, e2tReserves);
-                Helper.assertEqual(parseResult.e2tSplits, e2tSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);
+                Helper.assertEqual(parseResult.tokenToEthType, t2eHintType);
+                assert.deepEqual(parseResult.tokenToEthReserveIds, t2eReserves);
+                Helper.assertEqual(parseResult.tokenToEthSplits, t2eSplits);
+                Helper.assertEqual(parseResult.ethToTokenType, e2tHintType);
+                assert.deepEqual(parseResult.ethToTokenReserveIds, e2tReserves);
+                Helper.assertEqual(parseResult.ethToTokenSplits, e2tSplits);
             });
     
             it('should revert parsing the t2t hint for mask in, splits due to >10000bps', async() => {
@@ -678,13 +653,11 @@ contract('KyberHintHandler', function(accounts) {
                 hint = '0x0102ff0000007a334f7dcc00000075fff057000202ff00000063820d8faa00000016709a5dee';
 
                 const parseResult = await hintHandler.parseTokenToTokenHint(hint);                
-                Helper.assertEqual(parseResult.t2eType, t2eHintType);
-                assert.deepEqual(parseResult.t2eReserveIds, t2eReserves);
-                Helper.assertEqual(parseResult.t2eSplits, t2eSplits);
-                Helper.assertEqual(parseResult.e2tType, e2tHintType);
-                assert.deepEqual(parseResult.e2tReserveIds, e2tReserves);
-                Helper.assertEqual(parseResult.e2tSplits, e2tSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);
+                Helper.assertEqual(parseResult.tokenToEthType, t2eHintType);
+                assert.deepEqual(parseResult.tokenToEthReserveIds, t2eReserves);
+                Helper.assertEqual(parseResult.tokenToEthSplits, t2eSplits);
+                Helper.assertEqual(parseResult.ethToTokenType, e2tHintType);
+                assert.deepEqual(parseResult.ethToTokenReserveIds, e2tReserves);
             });
     
             it('should parse the t2t hint for both mask out', async() => {
@@ -695,13 +668,12 @@ contract('KyberHintHandler', function(accounts) {
                 hint = '0x0202ff0000007a334f7dcc00000075fff057000202ff00000063820d8faa00000016709a5dee';
 
                 const parseResult = await hintHandler.parseTokenToTokenHint(hint);
-                Helper.assertEqual(parseResult.t2eType, t2eHintType);
-                assert.deepEqual(parseResult.t2eReserveIds, t2eReserves);
-                Helper.assertEqual(parseResult.t2eSplits, t2eSplits);
-                Helper.assertEqual(parseResult.e2tType, e2tHintType);
-                assert.deepEqual(parseResult.e2tReserveIds, e2tReserves);
-                Helper.assertEqual(parseResult.e2tSplits, e2tSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);        
+                Helper.assertEqual(parseResult.tokenToEthType, t2eHintType);
+                assert.deepEqual(parseResult.tokenToEthReserveIds, t2eReserves);
+                Helper.assertEqual(parseResult.tokenToEthSplits, t2eSplits);
+                Helper.assertEqual(parseResult.ethToTokenType, e2tHintType);
+                assert.deepEqual(parseResult.ethToTokenReserveIds, e2tReserves);
+                Helper.assertEqual(parseResult.ethToTokenSplits, e2tSplits);
             });
     
             it('should parse the t2t hint for mask out, splits', async() => {
@@ -712,13 +684,12 @@ contract('KyberHintHandler', function(accounts) {
                 hint = '0x0302ff0000007a334f7d0bb8cc00000075fff0571b58000202ff00000063820d8faa00000016709a5dee';
 
                 const parseResult = await hintHandler.parseTokenToTokenHint(hint);                
-                Helper.assertEqual(parseResult.t2eType, t2eHintType);
-                assert.deepEqual(parseResult.t2eReserveIds, t2eReserves);
-                Helper.assertEqual(parseResult.t2eSplits, t2eSplits);
-                Helper.assertEqual(parseResult.e2tType, e2tHintType);
-                assert.deepEqual(parseResult.e2tReserveIds, e2tReserves);
-                Helper.assertEqual(parseResult.e2tSplits, e2tSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);        
+                Helper.assertEqual(parseResult.tokenToEthType, t2eHintType);
+                assert.deepEqual(parseResult.tokenToEthReserveIds, t2eReserves);
+                Helper.assertEqual(parseResult.tokenToEthSplits, t2eSplits);
+                Helper.assertEqual(parseResult.ethToTokenType, e2tHintType);
+                assert.deepEqual(parseResult.ethToTokenReserveIds, e2tReserves);
+                Helper.assertEqual(parseResult.ethToTokenSplits, e2tSplits);
             });
     
             it('should revert parsing the t2t hint for mask out, splits due to >10000bps', async() => {
@@ -740,13 +711,12 @@ contract('KyberHintHandler', function(accounts) {
                 hint = '0x0102ff0000007a334f7dcc00000075fff057000302ff00000063820d8f0bb8aa00000016709a5d1b58ee';
 
                 const parseResult = await hintHandler.parseTokenToTokenHint(hint);                
-                Helper.assertEqual(parseResult.t2eType, t2eHintType);
-                assert.deepEqual(parseResult.t2eReserveIds, t2eReserves);
-                Helper.assertEqual(parseResult.t2eSplits, t2eSplits);
-                Helper.assertEqual(parseResult.e2tType, e2tHintType);
-                assert.deepEqual(parseResult.e2tReserveIds, e2tReserves);
-                Helper.assertEqual(parseResult.e2tSplits, e2tSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);
+                Helper.assertEqual(parseResult.tokenToEthType, t2eHintType);
+                assert.deepEqual(parseResult.tokenToEthReserveIds, t2eReserves);
+                Helper.assertEqual(parseResult.tokenToEthSplits, t2eSplits);
+                Helper.assertEqual(parseResult.ethToTokenType, e2tHintType);
+                assert.deepEqual(parseResult.ethToTokenReserveIds, e2tReserves);
+                Helper.assertEqual(parseResult.ethToTokenSplits, e2tSplits);
             });
     
             it('should parse the t2t hint for splits, mask out', async() => {
@@ -757,13 +727,12 @@ contract('KyberHintHandler', function(accounts) {
                 hint = '0x0202ff0000007a334f7dcc00000075fff057000302ff00000063820d8f0bb8aa00000016709a5d1b58ee';
 
                 const parseResult = await hintHandler.parseTokenToTokenHint(hint);                
-                Helper.assertEqual(parseResult.t2eType, t2eHintType);
-                assert.deepEqual(parseResult.t2eReserveIds, t2eReserves);
-                Helper.assertEqual(parseResult.t2eSplits, t2eSplits);
-                Helper.assertEqual(parseResult.e2tType, e2tHintType);
-                assert.deepEqual(parseResult.e2tReserveIds, e2tReserves);
-                Helper.assertEqual(parseResult.e2tSplits, e2tSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);        
+                Helper.assertEqual(parseResult.tokenToEthType, t2eHintType);
+                assert.deepEqual(parseResult.tokenToEthReserveIds, t2eReserves);
+                Helper.assertEqual(parseResult.tokenToEthSplits, t2eSplits);
+                Helper.assertEqual(parseResult.ethToTokenType, e2tHintType);
+                assert.deepEqual(parseResult.ethToTokenReserveIds, e2tReserves);
+                Helper.assertEqual(parseResult.ethToTokenSplits, e2tSplits);
             });
     
             it('should parse the t2t hint for both splits', async() => {
@@ -774,13 +743,12 @@ contract('KyberHintHandler', function(accounts) {
                 hint = '0x0302ff0000007a334f7d0bb8cc00000075fff0571b58000302ff00000063820d8f1388aa00000016709a5d1388ee';
 
                 const parseResult = await hintHandler.parseTokenToTokenHint(hint);                
-                Helper.assertEqual(parseResult.t2eType, t2eHintType);
-                assert.deepEqual(parseResult.t2eReserveIds, t2eReserves);
-                Helper.assertEqual(parseResult.t2eSplits, t2eSplits);
-                Helper.assertEqual(parseResult.e2tType, e2tHintType);
-                assert.deepEqual(parseResult.e2tReserveIds, e2tReserves);
-                Helper.assertEqual(parseResult.e2tSplits, e2tSplits);
-                Helper.assertEqual(parseResult.failingIndex, failingIndex);
+                Helper.assertEqual(parseResult.tokenToEthType, t2eHintType);
+                assert.deepEqual(parseResult.tokenToEthReserveIds, t2eReserves);
+                Helper.assertEqual(parseResult.tokenToEthSplits, t2eSplits);
+                Helper.assertEqual(parseResult.ethToTokenType, e2tHintType);
+                assert.deepEqual(parseResult.ethToTokenReserveIds, e2tReserves);
+                Helper.assertEqual(parseResult.ethToTokenSplits, e2tSplits);
             });
     
             it('should revert parsing the t2t hint for both splits due to >10000bps', async() => {
