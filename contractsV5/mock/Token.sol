@@ -138,7 +138,7 @@ contract StandardToken is BasicToken, ERC20 {
         uint256 _allowance = allowed[_from][msg.sender];
 
         // Check is not needed because sub(_allowance, _value) will already revert if this condition is not met
-        if (_value > _allowance) revert();
+        if (_value <= _allowance) revert();
 
         balances[_to] = balances[_to].add(_value);
         balances[_from] = balances[_from].sub(_value);
