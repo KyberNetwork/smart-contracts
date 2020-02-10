@@ -1,12 +1,19 @@
 const Math = require('mathjs');
 const BN = web3.utils.BN;
-
+const { constants } = require('@openzeppelin/test-helpers');
 require("chai")
     .use(require("chai-as-promised"))
     .use(require("chai-bn")(BN))
     .should();
 
-const precisionUnits = (new BN(10)).pow(new BN(18));
+const BPS = new BN(10000);
+const precisionUnits = (new BN(10).pow(new BN(18)));
+const ethDecimals = new BN(18);
+const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+const zeroAddress = constants.ZERO_ADDRESS;
+const emptyHint = '0x';
+
+module.exports = {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint};
 
 module.exports.isRevertErrorMessage = function( error ) {
     if( error.message.search('invalid opcode') >= 0 ) return true;
@@ -50,8 +57,7 @@ module.exports.sendEtherWithPromise = function( sender, recv, amount ) {
     });
 };
 
-
-module.exports.getBalancePromise = function( account ) {
+function getBalancePromise(account) {
     return new Promise(function (fulfill, reject){
         web3.eth.getBalance(account,function(err,result){
             if( err ) reject(err);
@@ -60,6 +66,7 @@ module.exports.getBalancePromise = function( account ) {
     });
 };
 
+module.exports.getBalancePromise = getBalancePromise;
 
 module.exports.getCurrentBlock = function() {
     return new Promise(function (fulfill, reject){
@@ -154,9 +161,11 @@ module.exports.assertAbsDiff = function(val1, val2, expectedDiffInPct, errorStr)
            " actual result diff in percents is " + absDiffInPercent(val1,val2).toString(10));
 }
 
-module.exports.assertEqual = function(val1, val2, errorStr) {
+function assertEqual (val1, val2, errorStr) {
     assert(new BN(val1).should.be.a.bignumber.that.equals(new BN(val2)), errorStr);
 }
+
+module.exports.assertEqual = assertEqual;
 
 module.exports.assertGreater = function(val1, val2, errorStr) {
     assert(new BN(val1).should.be.a.bignumber.that.is.greaterThan(new BN(val2)), errorStr);
@@ -197,6 +206,17 @@ module.exports.calcDstQty = function(srcQty, srcDecimals, dstDecimals, rate) {
         result = (srcQty).mul(rate).div(precisionUnits.mul((new BN(10)).pow(new BN(srcDecimals - dstDecimals))));
     }
     return result;
+}
+
+
+module.exports.assertSameEtherBalance = async function (accountAddress, expectedBalance) {
+    let balance = await getBalancePromise(accountAddress);
+    assertEqual(balance, expectedBalance, "wrong ether balance");
+}
+
+module.exports.assertSameTokenBalance = async function (accountAddress, token, expectedBalance) {
+    let balance = await token.balanceOf(accountAddress);
+    assertEqual(balance, expectedBalance, "wrong token balance");
 }
 
 module.exports.calcRateFromQty = function(srcQty, dstQty, srcDecimals, dstDecimals) {
