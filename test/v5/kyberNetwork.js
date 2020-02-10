@@ -13,6 +13,8 @@ const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint} = require("../v4/helper.js");
+const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, 
+    MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE}  = require('./networkHelper.js');
 
 //global variables
 //////////////////
@@ -54,8 +56,6 @@ let burnBlockInterval = new BN(30);
 let reserveInstances = {};
 let reserve;
 let numReserves;
-
-const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE}  = require('./networkHelper.js');
 
 let pricingFpr = [];
 let reserveFpr = [];
@@ -222,7 +222,7 @@ contract('KyberNetwork', function(accounts) {
         describe("test with 2 mock reserves, zero rate", async() => {
             before("setup, add and list mock reserves", async() => {
                 //init reserves
-                let result = await nwHelper.setupReserves(reserveInstances, tokens, 2,0,0,0, accounts);
+                let result = await nwHelper.setupReserves(network, reserveInstances, tokens, 2,0,0,0, accounts, admin, operator);
                 
                 reserveInstances = result['reserveInstances'];
                 numReserves += result['numAddedReserves'] * 1;
@@ -317,7 +317,7 @@ contract('KyberNetwork', function(accounts) {
         describe("test with 2 mock reserves and 2 fpr reserves", async() => {
             before("setup, add and list 1 mock reserve", async() => {
                 //init reserves
-                let result = await nwHelper.setupReserves(reserveInstances, tokens, 2,0,0,0, accounts);
+                let result = await nwHelper.setupReserves(network, reserveInstances, tokens, 2, 2, 0, 0, accounts, admin, operator);
                 
                 reserveInstances = result['reserveInstances'];
                 numReserves += result['numAddedReserves'] * 1;                

@@ -32,7 +32,7 @@ module.exports = {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_M
     
     
 module.exports.setupReserves = async function 
-    (reserveInstances, tokens, numMock, numFpr, numEnhancedFpr, numApr, accounts, admin, operator) {
+    (network, reserveInstances, tokens, numMock, numFpr, numEnhancedFpr, numApr, accounts, admin, operator) {
     let result = {
         'numAddedReserves': numMock * 1 + numFpr * 1 + numEnhancedFpr * 1 + numApr * 1,
         'reserveInstances': {} 
@@ -82,7 +82,7 @@ module.exports.setupReserves = async function
         ethersPerToken = precisionUnits.div(new BN((i + 1) * 30));
     
         let pricing = await setupFprPricing(tokens, 4, 0, tokensPerEther, ethersPerToken, admin, operator)
-        let reserve = await setupFprReserve(tokens, accounts[ethSenderIndex++], pricing.address, tokensPerEther, ethInit, admin, operator);
+        let reserve = await setupFprReserve(network, tokens, accounts[ethSenderIndex++], pricing.address, ethInit, admin, operator);
         await pricing.setReserveAddress(reserve.address, {from: admin});
         
         reserveInstances[reserve.address] = {
@@ -94,10 +94,6 @@ module.exports.setupReserves = async function
             'type': type_fpr,
             'pricing': pricing.address
         }
-
-        pricingFpr[i] = pricing;
-        reserveFpr[i] = reserve;
-        gNumFprReserves++;
     }
     //TODO: implement logic for other reserve types
 
@@ -106,13 +102,13 @@ module.exports.setupReserves = async function
 }
 
 module.exports.setupFprReserve = setupFprReserve;
-async function setupFprReserve(tokens, ethSender, pricingAdd, tokensPerEther, ethInit, admin, operator) {
+async function setupFprReserve(network, tokens, ethSender, pricingAdd, ethInit, admin, operator) {
     let reserve;
 
     //setup reserve
     reserve = await Reserve.new(network.address, pricingAdd, admin);
     await reserve.addOperator(operator, {from: admin});
-    await reserve.addAlerter(alerter, {from: admin});
+    await reserve.addAlerter(operator, {from: admin});
         
     //set reserve balance. 10**18 wei ether + per token 10**18 wei ether value according to base rate.
     await Helper.sendEtherWithPromise(ethSender, reserve.address, ethInit);
@@ -125,7 +121,7 @@ async function setupFprReserve(tokens, ethSender, pricingAdd, tokensPerEther, et
             
         let initialTokenAmount = new BN(200000).mul(new BN(10).pow(new BN(await token.decimals())));
         await token.transfer(reserve.address, initialTokenAmount);
-        await assertSameTokenBalance(reserve.address, token, initialTokenAmount);
+        await Helper.assertSameTokenBalance(reserve.address, token, initialTokenAmount);
     }
 
     return reserve;
@@ -152,7 +148,7 @@ async function setupFprPricing (tokens, numImbalanceSteps, numQtySteps, tokensPe
     let block = await web3.eth.getBlockNumber();
     let pricing = await ConversionRates.new(admin);
     await pricing.addOperator(operator, {from: admin})
-    await pricing.addAlerter(alerter, {from: admin})
+    await pricing.addAlerter(operator, {from: admin})
 
     await pricing.setValidRateDurationInBlocks(validRateDurationInBlocks, {from: admin});
     
