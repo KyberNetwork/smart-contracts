@@ -190,6 +190,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
 
         //TODO: see if this need to be shifted below instead
         if (tradeData.tradeWei == 0) {
+            //initialise ethToToken and store as zero
+            storeTradeReserveData(tradeData.ethToToken, IKyberReserve(0), 0, false);
             return packResults(tradeData);
         }
 
@@ -483,8 +485,10 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         BestReserveInfo memory bestReserve;
         uint numRelevantReserves = 1; // assume always best reserve will be relevant
 
-        //return 1 for ether to ether, or if empty reserve array is passed
-        if (src == dest || reserveArr.length == 0) return (IKyberReserve(0), PRECISION, false);
+        //return 1:1 for ether to ether
+        if (src == dest) return (IKyberReserve(0), PRECISION, false);
+        //return zero rate for empty reserve
+        if (reserveArr.length == 0) return (IKyberReserve(0), 0, false);
 
         uint[] memory rates = new uint[](reserveArr.length);
         uint[] memory reserveCandidates = new uint[](reserveArr.length);
