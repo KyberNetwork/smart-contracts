@@ -379,4 +379,3 @@ module.exports.randomSelectReserves = function (tradeType, reserves, splits) {
     }
     return result;
 }
-    
