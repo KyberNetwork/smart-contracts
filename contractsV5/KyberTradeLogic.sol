@@ -377,7 +377,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         tradingReserves.isFeePaying[0] = isFeePaying;
     }
 
-    function packResults(TradeData memory tradeData) internal view returns (
+    function packResults(TradeData memory tradeData) internal pure returns (
         uint[] memory results,
         IKyberReserve[] memory reserveAddresses,
         uint[] memory rates,
