@@ -6,6 +6,7 @@ import "./IKyberNetwork.sol";
 import "./IKyberTradeLogic.sol";
 import "./KyberHintHandler.sol";
 
+
 contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups {
     uint            public negligibleRateDiffBps = 10; // bps is 0.01%
 
@@ -39,7 +40,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         networkContract = _networkContract;
     }
 
-     function addReserve(address reserve, bytes8 reserveId, bool isFeePaying) external onlyNetwork returns (bool) {
+    function addReserve(address reserve, bytes8 reserveId, bool isFeePaying) external onlyNetwork returns (bool) {
         require(reserveAddressToId[reserve] == bytes8(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
 
@@ -65,7 +66,41 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         return reserveId;
     }
 
-    
+    function getRatesForToken(IERC20 token, uint optionalAmount, uint takerFeeBps) external view
+        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, uint[] memory sellRates)
+    {
+        uint amount = optionalAmount > 0 ? optionalAmount : 1000;
+        uint tokenDecimals = getDecimals(token);
+        buyReserves = reservesPerTokenDest[address(token)];
+        buyRates = new uint[](buyReserves.length);
+
+        uint i;
+        uint destAmount;
+        for (i = 0; i < buyReserves.length; i++) {
+            if (takerFeeBps == 0 || (!isFeePayingReserve[address(buyReserves[i])])) {
+                buyRates[i] = (IKyberReserve(buyReserves[i])).getConversionRate(ETH_TOKEN_ADDRESS, token, amount, block.number);
+                continue;
+            }
+
+            uint ethSrcAmount = amount - (amount * takerFeeBps / BPS);
+            buyRates[i] = (IKyberReserve(buyReserves[i])).getConversionRate(ETH_TOKEN_ADDRESS, token, ethSrcAmount, block.number);
+            destAmount = calcDstQty(ethSrcAmount, ETH_DECIMALS, tokenDecimals, buyRates[i]);
+            buyRates[i] = calcRateFromQty(ethSrcAmount, destAmount, ETH_DECIMALS, tokenDecimals);
+        }
+
+        sellReserves = reservesPerTokenSrc[address(token)];
+        sellRates = new uint[](sellReserves.length);
+
+        for (i = 0; i < sellReserves.length; i++) {
+            sellRates[i] = (IKyberReserve(sellReserves[i])).getConversionRate(token, ETH_TOKEN_ADDRESS, amount, block.number);
+            if (takerFeeBps == 0 || (!isFeePayingReserve[address(sellReserves[i])])) {
+                continue;
+            }
+            destAmount = calcDstQty(amount, tokenDecimals, ETH_DECIMALS, sellRates[i]);
+            sellRates[i] = calcRateFromQty(amount, destAmount, tokenDecimals, ETH_DECIMALS);
+        }
+    }
+
     function listPairForReserve(IKyberReserve reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add) onlyNetwork external returns (bool) {
         require(reserveAddressToId[address(reserve)] != bytes8(0), "reserve -> 0 reserveId");
         if (ethToToken) {
@@ -180,7 +215,6 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         return packResults(tradeData);
     }
 
-    // TODO: Anton, complete this function
     function parseTradeDataHint(IERC20 src, IERC20 dest, uint[] memory fees, TradeData memory tradeData, bytes memory hint) internal view {
         uint failingIndex;
     
@@ -190,46 +224,82 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             new IKyberReserve[](1) :reservesPerTokenDest[address(dest)];
 
         tradeData.fees = fees;
-        
+
         // PERM is treated as no hint, so we just return
-        if (hint.length == 0 || hint.length == 4) {
-            tradeData.tokenToEth.isFeePaying = new bool[](1);
-            tradeData.tokenToEth.splitValuesBps = new uint[](1);
-            tradeData.tokenToEth.rates = new uint[](1);
-            tradeData.ethToToken.isFeePaying = new bool[](1);
-            tradeData.ethToToken.splitValuesBps = new uint[](1);
-            tradeData.ethToToken.rates = new uint[](1);
+        // relevant arrays will be initialised when storing data
+        if (hint.length == 0 || hint.length == 4) return;
+
+        if (src == ETH_TOKEN_ADDRESS) {
+            (
+                tradeData.ethToToken.tradeType,
+                tradeData.ethToToken.addresses,
+                tradeData.ethToToken.splitValuesBps
+            ) = parseHintE2T(hint);
+        } else if (dest == ETH_TOKEN_ADDRESS) {
+            (
+                tradeData.tokenToEth.tradeType,
+                tradeData.tokenToEth.addresses,
+                tradeData.tokenToEth.splitValuesBps
+            ) = parseHintT2E(hint);
         } else {
-            if (src == ETH_TOKEN_ADDRESS) {
-                (
-                    tradeData.ethToToken.tradeType,
-                    tradeData.ethToToken.addresses,
-                    tradeData.ethToToken.splitValuesBps
-                ) = parseHintE2T(hint);
-            } else if (dest == ETH_TOKEN_ADDRESS) {
-                (
-                    tradeData.tokenToEth.tradeType,
-                    tradeData.tokenToEth.addresses,
-                    tradeData.tokenToEth.splitValuesBps
-                ) = parseHintT2E(hint);
-            } else {
-                (
-                    tradeData.tokenToEth.tradeType,
-                    tradeData.tokenToEth.addresses,
-                    tradeData.tokenToEth.splitValuesBps,
-                    tradeData.ethToToken.tradeType,
-                    tradeData.ethToToken.addresses,
-                    tradeData.ethToToken.splitValuesBps
-                ) = parseHintT2T(hint);
+            (
+                tradeData.tokenToEth.tradeType,
+                tradeData.tokenToEth.addresses,
+                tradeData.tokenToEth.splitValuesBps,
+                tradeData.ethToToken.tradeType,
+                tradeData.ethToToken.addresses,
+                tradeData.ethToToken.splitValuesBps
+            ) = parseHintT2T(hint);
+        }
+
+        // T2E: apply masking out logic if mask out
+        if (tradeData.tokenToEth.tradeType == TradeType.MaskOut) {
+            tradeData.tokenToEth.addresses = maskOutReserves(reservesPerTokenSrc[address(src)], tradeData.tokenToEth.addresses);
+        // initialise relevant arrays if split
+        } else if (tradeData.tokenToEth.tradeType == TradeType.Split) {
+            tradeData.tokenToEth.rates = new uint[](tradeData.tokenToEth.addresses.length);
+            tradeData.tokenToEth.isFeePaying = new bool[](tradeData.tokenToEth.addresses.length);
+        }
+
+        //E2T: apply masking out logic if mask out
+        if (tradeData.ethToToken.tradeType == TradeType.MaskOut) {
+            tradeData.ethToToken.addresses = maskOutReserves(reservesPerTokenDest[address(dest)], tradeData.ethToToken.addresses);
+        // initialise relevant arrays if split
+        } else if (tradeData.ethToToken.tradeType == TradeType.Split) {
+            tradeData.ethToToken.rates = new uint[](tradeData.ethToToken.addresses.length);
+            tradeData.ethToToken.isFeePaying = new bool[](tradeData.ethToToken.addresses.length);
+        }
+        // require(failingIndex > 0);
+    }
+
+    function maskOutReserves(IKyberReserve[] memory allReservesPerToken, IKyberReserve[] memory maskedOutReserves)
+        internal pure returns (IKyberReserve[] memory filteredReserves)
+    {
+        require(allReservesPerToken.length >= maskedOutReserves.length, "MASK_OUT_TOO_LONG");
+        filteredReserves = new IKyberReserve[](allReservesPerToken.length - maskedOutReserves.length);
+        uint currentResultIndex = 0;
+
+        //TODO: optimize mask out algo
+        for (uint i = 0; i < allReservesPerToken.length; i++) {
+            IKyberReserve reserve = allReservesPerToken[i];
+            bool notMaskedOut = true;
+
+            for (uint j = 0; j < maskedOutReserves.length; j++) {
+                IKyberReserve maskedOutReserve = maskedOutReserves[j];
+                if (reserve == maskedOutReserve) {
+                    notMaskedOut = false;
+                    break;
+                }
             }
 
-            require(failingIndex > 0);
+            if (notMaskedOut) filteredReserves[currentResultIndex++] = reserve;
         }
     }
 
     function calcRatesAndAmountsTokenToEth(IERC20 src, uint srcAmount, TradeData memory tradeData) internal view {
         IKyberReserve reserve;
         bool isFeePaying;
+        uint rate;
 
         // token to Eth
         ///////////////
@@ -239,7 +309,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             (tradeData.tradeWei, tradeData.feePayingReservesBps, tradeData.numFeePayingReserves) = getDestQtyAndFeeDataFromSplits(tradeData.tokenToEth, src, srcAmount, true);
         } else {
             // else find best rate
-            (reserve, tradeData.tokenToEth.rates[0], isFeePaying) = searchBestRate(
+            (reserve, rate, isFeePaying) = searchBestRate(
                 tradeData.tokenToEth.addresses,
                 src,
                 ETH_TOKEN_ADDRESS,
@@ -247,8 +317,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
                 tradeData.fees[uint(FeesIndex.takerFeeBps)]
             );
             //save into tradeData
-            storeTradeReserveData(tradeData.tokenToEth, reserve, tradeData.tokenToEth.rates[0], isFeePaying);
-            tradeData.tradeWei = calcDstQty(srcAmount, tradeData.tokenToEth.decimals, ETH_DECIMALS, tradeData.tokenToEth.rates[0]);
+            storeTradeReserveData(tradeData.tokenToEth, reserve, rate, isFeePaying);
+            tradeData.tradeWei = calcDstQty(srcAmount, tradeData.tokenToEth.decimals, ETH_DECIMALS, rate);
 
             //account for fees
             if (isFeePaying) {
@@ -292,7 +362,13 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
     }
 
     function storeTradeReserveData(TradingReserves memory tradingReserves, IKyberReserve reserve, uint rate, bool isFeePaying) internal pure {
+        //init arrays
         tradingReserves.addresses = new IKyberReserve[](1);
+        tradingReserves.rates = new uint[](1);
+        tradingReserves.splitValuesBps = new uint[](1);
+        tradingReserves.isFeePaying = new bool[](1);
+
+        //save information
         tradingReserves.addresses[0] = reserve;
         tradingReserves.rates[0] = rate;
         tradingReserves.splitValuesBps[0] = BPS; //max percentage amount
@@ -352,7 +428,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         ///////////////
         // if hinted reserves, find rates and save.
         if (tradeData.ethToToken.splitValuesBps.length > 1) {
-            (tradeData.actualDestAmount, , ) = getDestQtyAndFeeDataFromSplits(tradeData.tokenToEth, dest, actualTradeWei, false);
+            (tradeData.actualDestAmount, , ) = getDestQtyAndFeeDataFromSplits(tradeData.ethToToken, dest, actualTradeWei, false);
             //calculate actual rate
             rate = calcRateFromQty(actualTradeWei, tradeData.actualDestAmount, ETH_DECIMALS, tradeData.ethToToken.decimals);
         } else {
@@ -417,7 +493,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
 
         for (uint i = 0; i < reserveArr.length; i++) {
             reserve = reserveArr[i];
-            //list all reserves that support this token.
+            //get isFeePaying info
             isFeePaying = isFeePayingReserve[address(reserve)];
             //for ETH -> token paying reserve, takerFee is specified in amount
             srcAmountWithFee = ((src == ETH_TOKEN_ADDRESS) && isFeePaying) ? srcAmount - takerFee : srcAmount;

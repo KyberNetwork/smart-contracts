@@ -5,13 +5,15 @@ import "./UtilsV5.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberNetworkProxy.sol";
 import "./ISimpleKyberProxy.sol";
+import "./IKyberHint.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network proxy for main contract
 contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawable, Utils {
 
-    IKyberNetwork public kyberNetworkContract;
+    IKyberNetwork public kyberNetwork;
+    IKyberHint public hintHandler;
     
     mapping(address=>uint) platformWalletFeeBps;    
 
@@ -23,7 +25,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         returns (uint expectedRate, uint worstRate)
     {
         bytes memory hint;    
-        ( , expectedRate, ) = kyberNetworkContract.getExpectedRateWithHintAndFee(src, dest, srcQty, 0, hint);
+        ( , expectedRate, ) = kyberNetwork.getExpectedRateWithHintAndFee(src, dest, srcQty, 0, hint);
         // use simple backward compatible optoin.
         worstRate = expectedRate * 97 / 100;
     }
@@ -47,7 +49,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         external payable 
         returns(uint)
     {
-        return tradeWithHintAndFee(src, srcAmount, dest, address(uint160(destAddress)), maxDestAmount, minConversionRate, 
+        return doTrade(src, srcAmount, dest, address(uint160(destAddress)), maxDestAmount, minConversionRate, 
             address(uint160(walletId)), 0, hint);
     }
 
@@ -76,7 +78,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     {
         bytes memory hint;
 
-        return tradeWithHintAndFee(
+        return doTrade(
             src,
             srcAmount,
             dest,
@@ -106,7 +108,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     {
         bytes memory hint;
 
-        return tradeWithHintAndFee(
+        return doTrade(
             src,
             srcAmount,
             dest,
@@ -126,7 +128,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     function swapEtherToToken(IERC20 token, uint minConversionRate) public payable returns(uint) {
         bytes memory hint;
 
-        return tradeWithHintAndFee(
+        return doTrade(
             ETH_TOKEN_ADDRESS,
             msg.value,
             token,
@@ -147,7 +149,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     function swapTokenToEther(IERC20 token, uint srcAmount, uint minConversionRate) public returns(uint) {
         bytes memory hint;
 
-        return tradeWithHintAndFee(
+        return doTrade(
             token,
             srcAmount,
             ETH_TOKEN_ADDRESS,
@@ -161,23 +163,17 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     }
 
     // new APIs
-    function getExpectedRateWithHint(IERC20 src, IERC20 dest, uint srcQty, bytes calldata hint) external view
-        returns (uint expectedRate) 
-    {
-        ( ,expectedRate , ) = kyberNetworkContract.getExpectedRateWithHintAndFee(src, dest, srcQty, 0, hint);
-    }
-
-    function getExpectedRateAfterCustomFee(IERC20 src, IERC20 dest, uint srcQty, uint customFeeBps, bytes calldata hint) 
+    function getExpectedRateAfterFee(IERC20 src, IERC20 dest, uint srcQty, uint customFeeBps, bytes calldata hint) 
         external view
         returns (uint expectedRate)
     {
-        ( , , expectedRate) = kyberNetworkContract.getExpectedRateWithHintAndFee(src, dest, srcQty, customFeeBps, hint);
+        ( , , expectedRate) = kyberNetwork.getExpectedRateWithHintAndFee(src, dest, srcQty, customFeeBps, hint);
     }
     
     function getPriceData(IERC20 src, IERC20 dest, uint srcQty) external view returns (uint priceNoFees)
     {
         bytes memory hint;    
-        (priceNoFees, , ) = kyberNetworkContract.getExpectedRateWithHintAndFee(src, dest, srcQty, 0, hint);
+        (priceNoFees, , ) = kyberNetwork.getExpectedRateWithHintAndFee(src, dest, srcQty, 0, hint);
     }
     
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
@@ -191,7 +187,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     /// @param platformWallet is the wallet ID to send part of the fees
     /// @param hint will give hints for the trade.
     /// @return amount of actual dest tokens
-    function tradeWithHintAndPlatformFee(
+    function tradeWithHintAndFee(
         IERC20 src,
         uint srcAmount,
         IERC20 dest,
@@ -206,7 +202,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         payable
         returns(uint destAmount)
     {
-        return tradeWithHintAndFee(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, platformWallet, platformFeeBps, hint);
+        return doTrade(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, platformWallet, platformFeeBps, hint);
     }
     
     struct UserBalance {
@@ -216,7 +212,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
 
     event ExecuteTrade(address indexed trader, IERC20 src, IERC20 dest, uint actualSrcAmount, uint actualDestAmount);
 
-    function tradeWithHintAndFee(
+    function doTrade(
         IERC20 src,
         uint srcAmount,
         IERC20 dest,
@@ -233,7 +229,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         (UserBalance memory userBalanceBefore) = 
             preapareTrade(src, dest, srcAmount, destAddress);
 
-        (uint destAmount) = kyberNetworkContract.tradeWithHintAndFee.value(msg.value)(
+        (uint destAmount) = kyberNetwork.tradeWithHintAndFee.value(msg.value)(
             msg.sender,
             src,
             srcAmount,
@@ -253,23 +249,33 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
             
     }
     
-    event KyberNetworkSet(IKyberNetwork newNetworkContract, IKyberNetwork oldNetworkContract);
+    event KyberNetworkSet(IKyberNetwork newNetwork, IKyberNetwork oldNetwork);
 
-    function setKyberNetworkContract(IKyberNetwork _kyberNetworkContract) public onlyAdmin {
+    function setKyberNetwork(IKyberNetwork _kyberNetwork) public onlyAdmin {
 
-        require(_kyberNetworkContract != IKyberNetwork(0));
+        require(_kyberNetwork != IKyberNetwork(0));
 
-        emit KyberNetworkSet(_kyberNetworkContract, kyberNetworkContract);
+        emit KyberNetworkSet(_kyberNetwork, kyberNetwork);
 
-        kyberNetworkContract = _kyberNetworkContract;
+        kyberNetwork = _kyberNetwork;
+    }
+    
+    event HintHandlerSet(IKyberHint hintHandler);
+
+    function setHintHandler(IKyberHint _hintHandler) public onlyAdmin {
+        require(_hintHandler != IKyberHint(0), "Hint handler 0");
+
+        emit HintHandlerSet(_hintHandler);
+
+        hintHandler = _hintHandler;
     }
     
     function maxGasPrice() public view returns(uint gasPrice) {
-        ( , , gasPrice, , ) = kyberNetworkContract.getNetworkData();
+        ( , , gasPrice, , ) = kyberNetwork.getNetworkData();
     }
 
     function enabled() public view returns(bool isEnabled) {
-        ( isEnabled, , , , ) = kyberNetworkContract.getNetworkData();
+        ( isEnabled, , , , ) = kyberNetwork.getNetworkData();
     }
 
     struct TradeOutcome {
@@ -318,7 +324,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         if (src == ETH_TOKEN_ADDRESS) {
             userBalanceBefore.srcBalance += msg.value;
         } else {
-            require(src.transferFrom(msg.sender, address(kyberNetworkContract), srcAmount));
+            require(src.transferFrom(msg.sender, address(kyberNetwork), srcAmount), "allowance");
         }
     }
     

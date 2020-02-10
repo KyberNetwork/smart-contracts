@@ -8,7 +8,7 @@ import "./IKyberReserve.sol";
 import "./IFeeHandler.sol";
 import "./IKyberDAO.sol";
 import "./IKyberTradeLogic.sol";
-
+import "@nomiclabs/buidler/console.sol";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
@@ -109,7 +109,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @dev removes a reserve from Kyber network.
     /// @param reserve The reserve address.
     /// @param startIndex to search in reserve array.
-    function removeReserve(address reserve, uint startIndex) external onlyOperator returns(bool) {
+    function removeReserve(address reserve, uint startIndex) public onlyOperator returns(bool) {
+        //TODO: handle all db
         bytes8 reserveId = tradeLogic.removeReserve(reserve);
 
         uint reserveIndex = 2 ** 255;
@@ -127,6 +128,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         emit RemoveReserveFromNetwork(reserve, reserveId);
 
         return true;
+    }
+
+    function rmReserve(address reserve) external onlyOperator returns(bool) {
+        return removeReserve(reserve, 0);
     }
 
     event ListReservePairs(address indexed reserve, IERC20 src, IERC20 dest, bool add);
@@ -161,35 +166,29 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         return true;
     }
 
-    // event FeeHandlerUpdated(IFeeHandler newHandler);
-    // event KyberDAOUpdated(IKyberDAO newDao);
-    // event HintParserUpdated(IKyberHint newParser);
-    event ContractsUpdate(IFeeHandler newHandler, IKyberDAO newDAO, IKyberTradeLogic newTradeLogic);
+    event FeeHandlerUpdated(IFeeHandler newHandler);
+    event KyberDAOUpdated(IKyberDAO newDAO);
+    event TradeLogicUpdated(IKyberTradeLogic tradeLogic);
+    
     function setContracts(IFeeHandler _feeHandler, IKyberDAO _kyberDAO, IKyberTradeLogic _tradeLogic) external onlyAdmin {
         require(_feeHandler != IFeeHandler(0), "feeHandler 0");
         require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
         require(_tradeLogic != IKyberTradeLogic(0), "tradeLogic 0");
 
-        emit ContractsUpdate(_feeHandler, _kyberDAO, _tradeLogic);
-        feeHandler = _feeHandler;
-        kyberDAO = _kyberDAO;
-        tradeLogic = _tradeLogic;
-
-
-        // if(_feeHandler != feeHandler) {
-        //     emit FeeHandlerUpdated(_feeHandler);
-        //     feeHandler = _feeHandler;
-        // }
+        if(_feeHandler != feeHandler) {
+            emit FeeHandlerUpdated(_feeHandler);
+            feeHandler = _feeHandler;
+        }
         
-        // if(_kyberDAO != kyberDAO) {
-        //     emit KyberDAOUpdated(_kyberDAO);
-        //     kyberDAO = _kyberDAO;
-        // }
+        if(_kyberDAO != kyberDAO) {
+            emit KyberDAOUpdated(_kyberDAO);
+            kyberDAO = _kyberDAO;
+        }
 
-        // if(_hintParser != hintParser) {
-        //     emit HintParserUpdated(_hintParser);
-        //     hintParser = _hintParser;
-        // }
+        if(_tradeLogic != tradeLogic) {
+            emit TradeLogicUpdated(_tradeLogic);
+            tradeLogic = _tradeLogic;
+        }
     }
 
     event KyberNetworkParamsSet(uint maxGasPrice, uint negligibleRateDiffBps);
@@ -353,27 +352,19 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         return(isEnabled, negligibleDiffBps, maxGasPriceValue, takerFeeBps, expiryBlock);
     }
 
-    // function getAllRatesForToken(IERC20 token, uint optionalAmount) external view
-    //     returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, uint[] memory sellRates)
-    // {
-    //     uint amount = optionalAmount > 0 ? optionalAmount : 1000;
-    //     IERC20 ETH = ETH_TOKEN_ADDRESS;
+    function getRatesForToken(IERC20 token, uint optionalAmount) external view
+        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, 
+            IKyberReserve[] memory sellReserves, uint[] memory sellRates)
+    {
+        return tradeLogic.getRatesForToken(token, optionalAmount, getTakerFee());
+    }
 
-    //     buyReserves = reservesPerTokenDest[address(token)];
-    //     buyRates = new uint[](buyReserves.length);
-
-    //     uint i;
-    //     for (i = 0; i < buyReserves.length; i++) {
-    //         buyRates[i] = (IKyberReserve(buyReserves[i])).getConversionRate(ETH, token, amount, block.number);
-    //     }
-
-    //     sellReserves = reservesPerTokenSrc[address(token)];
-    //     sellRates = new uint[](sellReserves.length);
-
-    //     for (i = 0; i < sellReserves.length; i++) {
-    //         sellRates[i] = (IKyberReserve(sellReserves[i])).getConversionRate(token, ETH, amount, block.number);
-    //     }
-    // }
+    function getPricesForToken(IERC20 token, uint optionalAmount) external view
+        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, 
+            uint[] memory sellRates)
+    {
+        return tradeLogic.getRatesForToken(token, optionalAmount, 0);
+    }
 
     struct TradingReserves {
         IKyberReserve[] addresses;
@@ -621,6 +612,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         nonReentrant
         returns(uint destAmount) 
     {
+        printGas("start_tr", 0);
         require(verifyTradeValid(tradeData.input.src, tradeData.input.srcAmount, 
             tradeData.input.dest, tradeData.input.destAddress), "invalid");
         
@@ -679,6 +671,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             t2eReserves: tradeData.tokenToEth.addresses
         });
 
+        printGas("end_tr", 0);
         return (tradeData.actualDestAmount);
     }
     /* solhint-enable function-max-lines */
@@ -813,5 +806,13 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     
     function encodeTakerFee(uint expiryBlock, uint feeBps) internal pure returns(uint feeData) {
         return ((expiryBlock << 128) + feeBps);
+    }
+
+    function printGas(string memory str, uint refGas) internal view returns(uint currGas) {
+        assembly {
+            currGas := gas
+        }
+
+        console.log("gas '%d' in '%s' diff: %d", currGas, str, refGas > 0 ? refGas - currGas : 0);
     }
 }
