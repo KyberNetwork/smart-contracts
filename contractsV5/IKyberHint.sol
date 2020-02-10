@@ -13,18 +13,18 @@ interface IKyberHint {
         external
         view
         returns(
-            TradeType tradeType,
-            bytes8[] memory reserveIds,
-            uint[] memory splits
+            TradeType ethToTokenType,
+            bytes8[] memory ethToTokenReserveIds,
+            uint[] memory ethToTokenSplits
         );
 
     function parseTokenToEthHint(bytes calldata hint)
         external
         view
         returns(
-            TradeType tradeType,
-            bytes8[] memory reserveIds,
-            uint[] memory splits
+            TradeType tokenToEthType,
+            bytes8[] memory tokenToEthReserveIds,
+            uint[] memory tokenToEthSplits
         );
 
     function parseTokenToTokenHint(bytes calldata hint)
@@ -40,9 +40,9 @@ interface IKyberHint {
         );
 
     function buildEthToTokenHint(
-        TradeType tradeType,
-        bytes8[] calldata reserveIds,
-        uint[] calldata splits
+        TradeType ethToTokenType,
+        bytes8[] calldata ethToTokenReserveIds,
+        uint[] calldata ethToTokenSplits
     )
         external
         pure

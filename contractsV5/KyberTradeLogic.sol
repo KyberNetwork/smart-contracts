@@ -4,10 +4,10 @@ import "./PermissionGroupsV5.sol";
 import "./IKyberReserve.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberTradeLogic.sol";
-import "./KyberHintParser.sol";
-import "@nomiclabs/buidler/console.sol";
+import "./KyberHintHandler.sol";
 
-contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups {
+
+contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups {
     uint            public negligibleRateDiffBps = 10; // bps is 0.01%
 
     IKyberNetwork   public networkContract;
@@ -217,7 +217,6 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
         return packResults(tradeData);
     }
 
-    // TODO: Anton, complete this function
     function parseTradeDataHint(IERC20 src, IERC20 dest, uint[] memory fees, TradeData memory tradeData, bytes memory hint) internal view {
         uint failingIndex;
     
@@ -237,13 +236,13 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
                 tradeData.ethToToken.tradeType,
                 tradeData.ethToToken.addresses,
                 tradeData.ethToToken.splitValuesBps
-            ) = parseE2tHint(hint);
+            ) = parseHintE2T(hint);
         } else if (dest == ETH_TOKEN_ADDRESS) {
             (
                 tradeData.tokenToEth.tradeType,
                 tradeData.tokenToEth.addresses,
                 tradeData.tokenToEth.splitValuesBps
-            ) = parseT2eHint(hint);
+            ) = parseHintT2E(hint);
         } else {
             (
                 tradeData.tokenToEth.tradeType,
@@ -252,7 +251,7 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
                 tradeData.ethToToken.tradeType,
                 tradeData.ethToToken.addresses,
                 tradeData.ethToToken.splitValuesBps
-            ) = parseT2tHint(hint);
+            ) = parseHintT2T(hint);
         }
 
         // T2E: apply masking out logic if mask out
@@ -556,5 +555,13 @@ contract KyberTradeLogic is KyberHintParser, IKyberTradeLogic, PermissionGroups 
         returns (address)
     {
         return reserveIdToAddresses[reserveId][0];
+    }
+
+    function convertAddressToReserveId(address reserveAddress)
+        internal
+        view
+        returns (bytes8)
+    {
+        return reserveAddressToId[reserveAddress];
     }
 }
