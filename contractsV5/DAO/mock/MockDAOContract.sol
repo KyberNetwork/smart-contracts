@@ -13,9 +13,17 @@ contract MockDAOContract is DAOContract {
     ) DAOContract(
         _epochPeriod, _startBlock,
         _staking, _feeHandler, _knc,
-        _maxNumOptions, _minCampDuration,
         _defaultNetworkFee, _defaultBrrData, _admin
-    ) public {}
+    ) public {
+        MAX_CAMP_OPTIONS = _maxNumOptions;
+        MIN_CAMP_DURATION = _minCampDuration;
+    }
 
+    function getTotalPoints(uint epoch) public view returns(uint) {
+        return totalEpochPoints[epoch];
+    }
 
+    function getNumberVotes(address staker, uint epoch) public view returns(uint) {
+        return numberVotes[staker][epoch];
+    }
 }

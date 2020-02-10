@@ -158,12 +158,12 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
         uint N = getCurrentEpochNumber();
         address S = msg.sender;
 
-        require(latestStakeBalance[S] >= amount, "withdraw: amount staked is less than withdrawal amount");
+        require(latestStakeBalance[S] >= amount, "withdraw: latest amount staked is less than withdrawal amount");
 
         initDataIfNeeded(S);
 
         // actually not necessary, by right at here stakes[N+1][S] should be equal latestStake[S]
-        require(stakes[N + 1][S] >= amount, "withdraw: amount staked is less than withdrawal amount");
+        require(stakes[N + 1][S] >= amount, "withdraw: amount staked at next epoch is less than withdrawal amount");
 
         stakes[N + 1][S] -= amount;
         latestStakeBalance[S] -= amount;

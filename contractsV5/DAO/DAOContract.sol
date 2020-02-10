@@ -26,7 +26,6 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
     // max number of camps for each epoch
     uint public constant MAX_EPOCH_CAMPS = 10;
 
-    // Variables: Should only be inited once when deploying contract
     uint public MAX_CAMP_OPTIONS = 4; // TODO: Finalise the value
     uint public MIN_CAMP_DURATION = 75000; // around 2 weeks time. TODO: Finalise the value
 
@@ -88,7 +87,6 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
     constructor(
         uint _epochPeriod, uint _startBlock,
         address _staking, address _feeHandler, address _knc,
-        uint _maxNumOptions, uint _minCampDuration,
         uint _defaultNetworkFee, uint _defaultBrrData,
         address _admin
     )
@@ -100,8 +98,6 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         require(_feeHandler != address(0), "constructor: feeHandler address is missing");
         require(_knc != address(0), "constructor: knc address is missing");
         require(_admin != address(0), "constructor: admin address is missing");
-        require(_maxNumOptions > 1, "constructor: max number options should be greater than 1");
-        require(_minCampDuration > 0, "constructor: min camp duration should be positive");
         require(_defaultNetworkFee <= BPS, "constructor: default network fee must not be greater than 100%");
 
         (uint rebateBps, uint rewardBps) = getRebateAndRewardFromData(_defaultBrrData);
@@ -112,8 +108,6 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         staking = IKyberStaking(_staking);
         feeHandler = IFeeHandler(_feeHandler);
         KNC_TOKEN = IERC20(_knc);
-        MAX_CAMP_OPTIONS = _maxNumOptions;
-        MIN_CAMP_DURATION = _minCampDuration;
         latestNetworkFeeResult = _defaultNetworkFee;
         latestBrrResult = _defaultBrrData;
     }
@@ -126,8 +120,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         // update total points for epoch
         uint numVotes = numberVotes[staker][curEpoch];
         if (numVotes > 0) {
-            uint penaltyPoint = numVotes * penaltyAmount;
-            totalEpochPoints[curEpoch] -= penaltyPoint;
+            totalEpochPoints[curEpoch] -= numVotes * penaltyAmount;
         }
 
         // update voted count for each camp staker has voted
@@ -136,7 +129,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
             uint campID = campIDs[i];
             uint votedOption = stakerVotedOption[staker][campID];
             if (votedOption > 0 && campaignData[campID].endBlock >= block.number) {
-                // user voted and camp is not ended
+                // user already voted for this camp and the camp is not ended
                 campaignOptionPoints[campID][0] -= penaltyAmount;
                 campaignOptionPoints[campID][votedOption] -= penaltyAmount;
             }
@@ -156,18 +149,18 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
     {
         uint curEpoch = getCurrentEpochNumber();
 
-        if (campType == CampaignType.NETWORK_FEE) {
-            require(networkFeeCampaign[curEpoch] == 0, "submitNewCampaign: already had one camp for network fee at this epoch");
-        } else if (campType == CampaignType.FEE_HANDLER_BRR) {
-            require(brrCampaign[curEpoch] == 0, "submitNewCampaign: already had one camp for brr at this epoch");
-        }
+        require(epochCampaigns[curEpoch].length < MAX_EPOCH_CAMPS, "submitNewCampaign: exceed max number camps for each epoch");
 
         require(
             validateCampaignParams(campType, startBlock, endBlock, curEpoch, formulaParams, options),
             "submitNewCampaign: validate camp params failed"
         );
 
-        require(epochCampaigns[curEpoch].length < MAX_EPOCH_CAMPS, "submitNewCampaign: exceed max number camps for each epoch");
+        if (campType == CampaignType.NETWORK_FEE) {
+            require(networkFeeCampaign[curEpoch] == 0, "submitNewCampaign: already had one camp for network fee at this epoch");
+        } else if (campType == CampaignType.FEE_HANDLER_BRR) {
+            require(brrCampaign[curEpoch] == 0, "submitNewCampaign: already had one camp for brr at this epoch");
+        }
 
         numberCampaigns += 1;
         campID = numberCampaigns;
@@ -248,7 +241,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
 
         if (lastVotedOption == 0) {
             // first time vote for this camp
-            stakerVotedOption[staker][campID] = option;
+            numberVotes[staker][curEpoch]++;
 
             totalEpochPoints[curEpoch] += totalStake;
             // increase voted points for this option
@@ -264,6 +257,8 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
             campaignOptionPoints[campID][lastVotedOption] -= totalStake;
             campaignOptionPoints[campID][option] += totalStake;
         }
+
+        stakerVotedOption[staker][campID] = option;
 
         emit Voted(staker, curEpoch, campID, option);
     }
@@ -281,7 +276,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         require(numVotes > 0, "claimReward: no votes, no rewards");
 
         (uint stake, uint delegatedStake, address delegatedAddr) = staking.getStakerDataForPastEpoch(staker, epoch);
-        uint totalStake = delegatedAddr == msg.sender ? stake + delegatedStake : delegatedStake;
+        uint totalStake = delegatedAddr == staker ? stake + delegatedStake : delegatedStake;
         require(totalStake > 0, "claimReward: total stakes is 0, no reward");
 
         uint points = numVotes * totalStake;
@@ -489,7 +484,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         if (numVotes == 0) { return 0; }
 
         (uint stake, uint delegatedStake, address delegatedAddr) = staking.getStakerDataForPastEpoch(staker, epoch);
-        uint totalStake = delegatedAddr == msg.sender ? stake + delegatedStake : delegatedStake;
+        uint totalStake = delegatedAddr == staker ? stake + delegatedStake : delegatedStake;
         if (totalStake == 0) { return 0; }
 
         uint points = numVotes * totalStake;
