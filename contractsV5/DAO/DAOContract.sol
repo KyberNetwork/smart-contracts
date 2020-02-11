@@ -119,15 +119,16 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
 
         // update total points for epoch
         uint numVotes = numberVotes[staker][curEpoch];
-        if (numVotes > 0) {
-            totalEpochPoints[curEpoch] -= numVotes * penaltyAmount;
-        }
+        if (numVotes == 0) { return; }
+
+        totalEpochPoints[curEpoch] -= numVotes * penaltyAmount;
 
         // update voted count for each camp staker has voted
-        uint[] storage campIDs = epochCampaigns[curEpoch];
+        uint[] memory campIDs = epochCampaigns[curEpoch];
         for(uint i = 0; i < campIDs.length; i++) {
             uint campID = campIDs[i];
             uint votedOption = stakerVotedOption[staker][campID];
+            // deduce vote count for current running campaign that this staker has voted
             if (votedOption > 0 && campaignData[campID].endBlock >= block.number) {
                 // user already voted for this camp and the camp is not ended
                 campaignOptionPoints[campID][0] -= penaltyAmount;
@@ -240,7 +241,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         uint lastVotedOption = stakerVotedOption[staker][campID];
 
         if (lastVotedOption == 0) {
-            // first time vote for this camp
+            // increase number campaigns that the staker has voted for first time voted
             numberVotes[staker][curEpoch]++;
 
             totalEpochPoints[curEpoch] += totalStake;
@@ -249,12 +250,9 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
             // increase total voted points
             campaignOptionPoints[campID][0] += totalStake;
         } else if (lastVotedOption != option) {
-            require(
-                campaignOptionPoints[campID][lastVotedOption] >= totalStake,
-                "vote: points of previous voted option must NOT be less than total stake"
-            );
-            // update voted points for previous + new options
+            // deduce previous option voted count
             campaignOptionPoints[campID][lastVotedOption] -= totalStake;
+            // increase new option voted count
             campaignOptionPoints[campID][option] += totalStake;
         }
 
@@ -556,7 +554,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         uint endEpoch = getEpochNumber(endBlock);
         // start + end blocks must be in the same current epoch
         require(
-            startEpoch == currentEpoch || endEpoch == currentEpoch,
+            startEpoch == currentEpoch && endEpoch == currentEpoch,
             "validateCampaignParams: start and end block must be in current epoch"
         );
 
