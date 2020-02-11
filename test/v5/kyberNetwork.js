@@ -222,10 +222,10 @@ contract('KyberNetwork', function(accounts) {
         describe("test with 2 mock reserves, zero rate", async() => {
             before("setup, add and list mock reserves", async() => {
                 //init reserves
-                let result = await nwHelper.setupReserves(network, reserveInstances, tokens, 2,0,0,0, accounts, admin, operator);
+                let result = await nwHelper.setupReserves(network, tokens, 2,0,0,0, accounts, admin, operator);
                 
-                reserveInstances = result['reserveInstances'];
-                numReserves += result['numAddedReserves'] * 1;
+                reserveInstances = result.reserveInstances;
+                numReserves += result.numAddedReserves * 1;
 
                 //add and list pair for reserve
                 nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
@@ -317,10 +317,10 @@ contract('KyberNetwork', function(accounts) {
         describe("test with 2 mock reserves and 2 fpr reserves", async() => {
             before("setup, add and list 1 mock reserve", async() => {
                 //init reserves
-                let result = await nwHelper.setupReserves(network, reserveInstances, tokens, 2, 2, 0, 0, accounts, admin, operator);
+                let result = await nwHelper.setupReserves(network, tokens, 2, 2, 0, 0, accounts, admin, operator);
                 
-                reserveInstances = result['reserveInstances'];
-                numReserves += result['numAddedReserves'] * 1;                
+                reserveInstances = result.reserveInstances;
+                numReserves += result.numAddedReserves * 1;              
                 
                 //add and list pair for reserve
                 nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);

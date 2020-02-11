@@ -112,9 +112,9 @@ contract('KyberNetworkProxy', function(accounts) {
         await tradeLogic.setNetworkContract(network.address, {from: admin});
 
         // init and setup reserves
-        let result = await nwHelper.setupReserves(network, reserveInstances, tokens, 1,4,0,0, accounts, admin, operator);
-        reserveInstances = result['reserveInstances'];
-        numReserves = result['numAddedReserves'] * 1;
+        let result = await nwHelper.setupReserves(network, tokens, 1,4,0,0, accounts, admin, operator);
+        reserveInstances = result.reserveInstances;
+        numReserves += result.numAddedReserves * 1;
 
         //setup network
         ///////////////

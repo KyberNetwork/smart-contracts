@@ -184,7 +184,7 @@ module.exports.calcSrcQty = function(dstQty, srcDecimals, dstDecimals, rate) {
     let numerator;
     let denominator;
     let precisionUnits = (new BN(10).pow(new BN(18)));
-    if (srcDecimals >= dstDecimals) {
+    if (srcDecimals.gte(dstDecimals)) {
         numerator = precisionUnits.mul(dstQty).mul((new BN(10)).pow(new BN(srcDecimals - dstDecimals)));
         denominator = new BN(rate);
     } else {
@@ -200,7 +200,7 @@ module.exports.calcDstQty = function(srcQty, srcDecimals, dstDecimals, rate) {
     let precisionUnits = (new BN(10).pow(new BN(18)));
     let result;
 
-    if (dstDecimals >= srcDecimals) {
+    if (dstDecimals.gte(srcDecimals)) {
         result = ((srcQty.mul(rate).mul((new BN(10)).pow(new BN(dstDecimals - srcDecimals)))).div(precisionUnits));
     } else {
         result = (srcQty).mul(rate).div(precisionUnits.mul((new BN(10)).pow(new BN(srcDecimals - dstDecimals))));
@@ -221,7 +221,7 @@ module.exports.assertSameTokenBalance = async function (accountAddress, token, e
 
 module.exports.calcRateFromQty = function(srcQty, dstQty, srcDecimals, dstDecimals) {
     let decimals;
-    if (dstDecimals >= srcDecimals) {
+    if (dstDecimals.gte(srcDecimals)) {
         decimals = new BN(10).pow(new BN(dstDecimals - srcDecimals));
         return precisionUnits.mul(new BN(dstQty)).div((decimals).mul(new BN(srcQty)));
     } else {

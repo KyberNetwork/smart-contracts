@@ -66,10 +66,10 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         return reserveId;
     }
 
-    function getRatesForToken(IERC20 token, uint optionalAmount, uint takerFeeBps) external view
+    function getRatesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount, uint takerFeeBps) external view
         returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, uint[] memory sellRates)
     {
-        uint amount = optionalAmount > 0 ? optionalAmount : 1000;
+        uint amount = optionalBuyAmount > 0 ? optionalBuyAmount : 1000;
         uint tokenDecimals = getDecimals(token);
         buyReserves = reservesPerTokenDest[address(token)];
         buyRates = new uint[](buyReserves.length);
@@ -85,9 +85,11 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             uint ethSrcAmount = amount - (amount * takerFeeBps / BPS);
             buyRates[i] = (IKyberReserve(buyReserves[i])).getConversionRate(ETH_TOKEN_ADDRESS, token, ethSrcAmount, block.number);
             destAmount = calcDstQty(ethSrcAmount, ETH_DECIMALS, tokenDecimals, buyRates[i]);
-            buyRates[i] = calcRateFromQty(ethSrcAmount, destAmount, ETH_DECIMALS, tokenDecimals);
+            //use amount instead of ethSrcAmount to account for network fee
+            buyRates[i] = calcRateFromQty(amount, destAmount, ETH_DECIMALS, tokenDecimals);
         }
 
+        amount = optionalSellAmount > 0 ? optionalSellAmount : 1000;
         sellReserves = reservesPerTokenSrc[address(token)];
         sellRates = new uint[](sellReserves.length);
 
@@ -97,6 +99,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
                 continue;
             }
             destAmount = calcDstQty(amount, tokenDecimals, ETH_DECIMALS, sellRates[i]);
+            destAmount -= takerFeeBps * destAmount / BPS;
             sellRates[i] = calcRateFromQty(amount, destAmount, tokenDecimals, ETH_DECIMALS);
         }
     }
