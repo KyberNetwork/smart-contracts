@@ -85,7 +85,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             uint ethSrcAmount = amount - (amount * takerFeeBps / BPS);
             buyRates[i] = (IKyberReserve(buyReserves[i])).getConversionRate(ETH_TOKEN_ADDRESS, token, ethSrcAmount, block.number);
             destAmount = calcDstQty(ethSrcAmount, ETH_DECIMALS, tokenDecimals, buyRates[i]);
-            buyRates[i] = calcRateFromQty(ethSrcAmount, destAmount, ETH_DECIMALS, tokenDecimals);
+            //use amount instead of ethSrcAmount to account for network fee
+            buyRates[i] = calcRateFromQty(amount, destAmount, ETH_DECIMALS, tokenDecimals);
         }
 
         amount = optionalSellAmount > 0 ? optionalSellAmount : 1000;
@@ -98,6 +99,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
                 continue;
             }
             destAmount = calcDstQty(amount, tokenDecimals, ETH_DECIMALS, sellRates[i]);
+            destAmount -= takerFeeBps * destAmount / BPS;
             sellRates[i] = calcRateFromQty(amount, destAmount, tokenDecimals, ETH_DECIMALS);
         }
     }
