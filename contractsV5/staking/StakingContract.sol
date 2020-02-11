@@ -11,7 +11,7 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
     // amount KNC staked of an address for each epoch
     mapping(uint => mapping(address => uint)) internal stakes;
     // the latest KNC staked of an address
-    mapping(address => uint) internal latestStakeBalance;
+    mapping(address => uint) internal latestStake;
 
     // amount of KNC that other people has delegated to an address at each epoch
     mapping(uint => mapping(address => uint)) internal delegatedStakes;
@@ -57,9 +57,9 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     // init data if it has not been init
-    function initDataIfNeeded(address S) internal {
-        uint N = getCurrentEpochNumber();
-
+    // S: staker's address to init
+    // N: current epoch
+    function initDataIfNeeded(address S, uint N) internal {
         address latestDelegatedAddr = latestDelegatedAddress[S];
         if (latestDelegatedAddr == address(0)) {
             // not delegate to anyone, consider as delegate to yourself
@@ -67,7 +67,7 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
             latestDelegatedAddr = S;
         }
         uint latestDelegatedStake = latestDelegatedStakes[S];
-        uint latestStakeBal = latestStakeBalance[S];
+        uint latestStakeBal = latestStake[S];
 
         if (!hasInited[N][S]) {
             hasInited[N][S] = true;
@@ -76,6 +76,8 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
             stakes[N][S] = latestStakeBal;
         }
 
+        // whenever users deposit/withdraw/delegate, the current and next epoch data need to be updated
+        // as the result, we will also need to init data for staker at the next epoch
         if (!hasInited[N + 1][S]) {
             hasInited[N + 1][S] = true;
             delegatedAddress[N + 1][S] = latestDelegatedAddr;
@@ -88,10 +90,9 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
     function delegate(address dAddr) public returns(bool) {
         require(dAddr != address(0), "delegate: delegated address should not be 0x0");
         address S = msg.sender;
-
-        initDataIfNeeded(S);
-
         uint N = getCurrentEpochNumber();
+
+        initDataIfNeeded(S, N);
 
         address curDelegatedAddr = delegatedAddress[N + 1][S];
         // nothing changes here
@@ -101,13 +102,13 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
 
         // reduce delegatedStakes for curDelegatedAddr if needed
         if (curDelegatedAddr != S) {
-            initDataIfNeeded(curDelegatedAddr);
+            initDataIfNeeded(curDelegatedAddr, N);
             // by right we don't need to check if delegatedStakes >= stakes
             require(delegatedStakes[N + 1][curDelegatedAddr] >= updatedStake, "delegate: delegated stake is smaller than next epoch stake");
             require(latestDelegatedStakes[curDelegatedAddr] >= updatedStake, "delegate: latest delegated stake is smaller than next epoch stake");
 
-            delegatedStakes[N + 1][curDelegatedAddr] -= updatedStake;
-            latestDelegatedStakes[curDelegatedAddr] -= updatedStake;
+            delegatedStakes[N + 1][curDelegatedAddr] = delegatedStakes[N + 1][curDelegatedAddr].sub(updatedStake);
+            latestDelegatedStakes[curDelegatedAddr] = latestDelegatedStakes[curDelegatedAddr].sub(updatedStake);
 
             emit Delegated(S, curDelegatedAddr, false);
         }
@@ -117,9 +118,9 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
 
         // ignore if S delegated back to himself
         if (dAddr != S) {
-            initDataIfNeeded(dAddr);
-            delegatedStakes[N + 1][dAddr] += updatedStake;
-            latestDelegatedStakes[dAddr] += updatedStake;
+            initDataIfNeeded(dAddr, N);
+            delegatedStakes[N + 1][dAddr] = delegatedStakes[N + 1][dAddr].add(updatedStake);
+            latestDelegatedStakes[dAddr] = latestDelegatedStakes[dAddr].add(updatedStake);
         }
 
         emit Delegated(S, dAddr, true);
@@ -133,19 +134,19 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
         address S = msg.sender;
 
         // collect KNC token from sender
-        require(KNC_TOKEN.transferFrom(msg.sender, address(this), amount), "deposit: can not get token");
+        require(KNC_TOKEN.transferFrom(S, address(this), amount), "deposit: can not get token");
 
-        initDataIfNeeded(S);
+        initDataIfNeeded(S, N);
         
-        stakes[N+1][S] += amount;
-        latestStakeBalance[S] += amount;
+        stakes[N+1][S] = stakes[N+1][S].add(amount);
+        latestStake[S] = latestStake[S].add(amount);
 
         // increase delegated stakes for address that S has delegated to (if it is not S)
         address dAddr = delegatedAddress[N + 1][S];
         if (dAddr != S) {
-            initDataIfNeeded(dAddr);
-            delegatedStakes[N + 1][dAddr] += amount;
-            latestDelegatedStakes[dAddr] += amount;
+            initDataIfNeeded(dAddr, N);
+            delegatedStakes[N + 1][dAddr] = delegatedStakes[N + 1][dAddr].add(amount);
+            latestDelegatedStakes[dAddr] = latestDelegatedStakes[dAddr].add(amount);
         }
         
         emit Deposited(N, S, amount);
@@ -158,26 +159,26 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
         uint N = getCurrentEpochNumber();
         address S = msg.sender;
 
-        require(latestStakeBalance[S] >= amount, "withdraw: latest amount staked is less than withdrawal amount");
+        require(latestStake[S] >= amount, "withdraw: latest amount staked is less than withdrawal amount");
 
-        initDataIfNeeded(S);
+        initDataIfNeeded(S, N);
 
         // actually not necessary, by right at here stakes[N+1][S] should be equal latestStake[S]
         require(stakes[N + 1][S] >= amount, "withdraw: amount staked at next epoch is less than withdrawal amount");
 
-        stakes[N + 1][S] -= amount;
-        latestStakeBalance[S] -= amount;
+        stakes[N + 1][S] = stakes[N + 1][S].sub(amount);
+        latestStake[S] = latestStake[S].sub(amount);
 
         address dAddr = delegatedAddress[N][S];
 
         uint curStakes = stakes[N][S];
-        uint latestStakeBal = latestStakeBalance[S];
-        uint newStakes = curStakes <= latestStakeBal ? curStakes : latestStakeBal;
-        uint penaltyAmount = curStakes - newStakes; // newStakes is always <= curStakes
+        uint latestStakeBal = latestStake[S];
+        uint newStakes = curStakes.min(latestStakeBal);
+        uint penaltyAmount = curStakes.sub(newStakes); // newStakes is always <= curStakes
 
         if (penaltyAmount > 0) {
             if (dAddr != S) {
-                initDataIfNeeded(dAddr);
+                initDataIfNeeded(dAddr, N);
                 // S has delegated to dAddr, withdraw will affect his stakes + dAddr's delegated stakes
                 delegatedStakes[N][dAddr] -= penaltyAmount;
             }
@@ -192,13 +193,13 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
 
         dAddr = delegatedAddress[N + 1][S];
         if (dAddr != S) {
-            initDataIfNeeded(dAddr);
+            initDataIfNeeded(dAddr, N);
 
             require(delegatedStakes[N + 1][dAddr] >= amount, "withdraw: delegated stake is smaller than next epoch stake");
             require(latestDelegatedStakes[dAddr] >= amount, "withdraw: latest delegated stake is smaller than next epoch stake");
 
-            delegatedStakes[N + 1][dAddr] -= amount;
-            latestDelegatedStakes[dAddr] -= amount;
+            delegatedStakes[N + 1][dAddr] = delegatedStakes[N + 1][dAddr].sub(amount);
+            latestDelegatedStakes[dAddr] = latestDelegatedStakes[dAddr].sub(amount);
         }
 
         // transfer KNC back to user
@@ -216,14 +217,16 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
     {
         require(msg.sender == address(DAO), "getStakerDataForCurrentEpoch: sender is not DAO address");
 
-        initDataIfNeeded(staker);
-
         uint curEpoch = getCurrentEpochNumber();
+        initDataIfNeeded(staker, curEpoch);
+
         _stake = stakes[curEpoch][staker];
         _delegatedStake = delegatedStakes[curEpoch][staker];
         _delegatedAddress = delegatedAddress[curEpoch][staker];
     }
 
+    // in DAO contract, if user wants to claim reward for past epoch, we must know the staker's data for that epoch
+    // if the data has not been inited, it means user hasn't done any action -> no reward
     function getStakerDataForPastEpoch(address staker, uint epoch)
         public view
         returns(uint _stake, uint _delegatedStake, address _delegatedAddress)
@@ -281,6 +284,6 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     function getLatestStakeBalance(address S) public view returns(uint) {
-        return latestStakeBalance[S];
+        return latestStake[S];
     }
 }
