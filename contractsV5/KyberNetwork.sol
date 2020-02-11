@@ -352,18 +352,18 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         return(isEnabled, negligibleDiffBps, maxGasPriceValue, takerFeeBps, expiryBlock);
     }
 
-    function getRatesForToken(IERC20 token, uint optionalAmount) external view
+    function getRatesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount) external view
         returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates,
             IKyberReserve[] memory sellReserves, uint[] memory sellRates)
     {
-        return tradeLogic.getRatesForToken(token, optionalAmount, getTakerFee());
+        return tradeLogic.getRatesForToken(token, optionalBuyAmount, optionalSellAmount, getTakerFee());
     }
 
-    function getPricesForToken(IERC20 token, uint optionalAmount) external view
+    function getPricesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount) external view
         returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, 
             uint[] memory sellRates)
     {
-        return tradeLogic.getRatesForToken(token, optionalAmount, 0);
+        return tradeLogic.getRatesForToken(token, optionalBuyAmount, optionalSellAmount, 0);
     }
 
     struct TradingReserves {

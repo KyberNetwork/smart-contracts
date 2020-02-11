@@ -66,10 +66,10 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         return reserveId;
     }
 
-    function getRatesForToken(IERC20 token, uint optionalAmount, uint takerFeeBps) external view
+    function getRatesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount, uint takerFeeBps) external view
         returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, uint[] memory sellRates)
     {
-        uint amount = optionalAmount > 0 ? optionalAmount : 1000;
+        uint amount = optionalBuyAmount > 0 ? optionalBuyAmount : 1000;
         uint tokenDecimals = getDecimals(token);
         buyReserves = reservesPerTokenDest[address(token)];
         buyRates = new uint[](buyReserves.length);
@@ -88,6 +88,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             buyRates[i] = calcRateFromQty(ethSrcAmount, destAmount, ETH_DECIMALS, tokenDecimals);
         }
 
+        amount = optionalSellAmount > 0 ? optionalSellAmount : 1000;
         sellReserves = reservesPerTokenSrc[address(token)];
         sellRates = new uint[](sellReserves.length);
 
