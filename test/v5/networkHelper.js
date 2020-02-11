@@ -32,7 +32,7 @@ module.exports = {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_M
     
     
 module.exports.setupReserves = async function 
-    (network, reserveInstances, tokens, numMock, numFpr, numEnhancedFpr, numApr, accounts, admin, operator) {
+    (network, tokens, numMock, numFpr, numEnhancedFpr, numApr, accounts, admin, operator) {
     let result = {
         'numAddedReserves': numMock * 1 + numFpr * 1 + numEnhancedFpr * 1 + numApr * 1,
         'reserveInstances': {} 
@@ -46,7 +46,7 @@ module.exports.setupReserves = async function
     //////////////////////
     for (i=0; i < numMock; i++) {
         reserve = await MockReserve.new();
-        reserveInstances[reserve.address] = {
+        result.reserveInstances[reserve.address] = {
             'address': reserve.address,
             'instance': reserve,
             'reserveId': genReserveID(MOCK_ID, reserve.address),
@@ -85,7 +85,7 @@ module.exports.setupReserves = async function
         let reserve = await setupFprReserve(network, tokens, accounts[ethSenderIndex++], pricing.address, ethInit, admin, operator);
         await pricing.setReserveAddress(reserve.address, {from: admin});
         
-        reserveInstances[reserve.address] = {
+        result.reserveInstances[reserve.address] = {
             'address': reserve.address,
             'instance': reserve,
             'reserveId': genReserveID(FPR_ID, reserve.address),
@@ -96,8 +96,6 @@ module.exports.setupReserves = async function
         }
     }
     //TODO: implement logic for other reserve types
-
-    result['reserveInstances'] = reserveInstances;
     return result;
 }
 
