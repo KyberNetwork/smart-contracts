@@ -523,7 +523,16 @@ contract('KyberTradeLogic', function(accounts) {
 
             });
         })
-    })
+    });
+
+    describe("test calcRatesAndAmounts very small and very big numbers", async() => {
+    });
+
+    describe("test edge cases for fee. very big / small network fee and very / big small custom fee", async() => {
+        //todo: check what happens if fee combination is above 100% or equal 100% or very near 100%
+
+    });
+
 });
 
 async function fetchReservesRatesFromTradeLogic(tradeLogicInstance, reserveInstances, tokenAddress, qty, takerFeeBps, isTokenToEth) {

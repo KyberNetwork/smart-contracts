@@ -11,7 +11,7 @@ require("chai")
     .should();
 
 
-const {BPS, precisionUnits, zeroAddress}  = require("../v4/helper.js")
+const {BPS, precisionUnits, ethAddress, zeroAddress, emptyHint}  = require("../v4/helper.js")
 
 //// reserve types
 const APR_ID = '0xaa000000';
@@ -26,9 +26,10 @@ const type_fpr = "TYPE_FPR";
 const MASK_IN_HINTTYPE = 0;
 const MASK_OUT_HINTTYPE = 1;
 const SPLIT_HINTTYPE = 2;
+const EMPTY_HINTTYPE = 3;
 
 module.exports = {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, 
-    MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE};
+    MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE};
     
     
 module.exports.setupReserves = async function 
@@ -81,7 +82,7 @@ module.exports.setupReserves = async function
         tokensPerEther = precisionUnits.mul(new BN((i + 1) * 30));
         ethersPerToken = precisionUnits.div(new BN((i + 1) * 30));
     
-        let pricing = await setupFprPricing(tokens, 4, 0, tokensPerEther, ethersPerToken, admin, operator)
+        let pricing = await setupFprPricing(tokens, 3, 0, tokensPerEther, ethersPerToken, admin, operator)
         let reserve = await setupFprReserve(network, tokens, accounts[ethSenderIndex++], pricing.address, ethInit, admin, operator);
         await pricing.setReserveAddress(reserve.address, {from: admin});
         
@@ -212,7 +213,7 @@ async function setupFprPricing (tokens, numImbalanceSteps, numQtySteps, tokensPe
 module.exports.addReservesToNetwork = async function (networkInstance, reserveInstances, tokens, operator) {
     for (const [key, value] of Object.entries(reserveInstances)) {
         reserve = value;
-        console.log("adding reserve type: " + reserve.type + " address: " + reserve.address + " pricing: " + reserve.pricing);
+        console.log("add reserve type: " + reserve.type + " ID: " + reserve.reserveId + " address: " + reserve.address + " pricing: " + reserve.pricing);
         networkInstance.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, reserve.address, {from: operator});
         for (let j = 0; j < tokens.length; j++) {
             networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, true, {from: operator});
@@ -231,13 +232,15 @@ module.exports.removeReservesFromNetwork = async function (networkInstance, rese
     }
 }
 
+module.exports.genReserveID = genReserveID; 
+
 function genReserveID(reserveID, reserveAddress) {
     return reserveID + reserveAddress.substring(2,10);
 }
 
-module.exports.genReserveID = genReserveID; 
 
-module.exports.fetchReservesRatesFromNetwork = async function (networkInstance, reserveInstances, tokenAddress, qty, isTokenToEth) {
+module.exports.fetchReservesRatesFromNetwork = fetchReservesRatesFromNetwork;
+async function fetchReservesRatesFromNetwork(networkInstance, reserveInstances, tokenAddress, qty, isTokenToEth) {
     reservesArray = [];
     //sell
     if (isTokenToEth) {
@@ -283,9 +286,10 @@ module.exports.getBestReserveAndRate = async function (reserves, src, dest, srcA
     return bestReserveData;
 }
 
-//masking will select half
-//split will divide BPS equally
-module.exports.applyHintToReserves = function (tradeType, reserves, numReserves, splitValues) {
+//masking will select half if number not specified
+//split will divide BPS equally if values not specified.
+module.exports.applyHintToReserves = applyHintToReserves;
+function applyHintToReserves(tradeType, reserves, numReserves, splitValues) {
     let result = {
         'tradeType': tradeType,
         'reservesForHint': [],
@@ -341,6 +345,43 @@ module.exports.applyHintToReserves = function (tradeType, reserves, numReserves,
 
     return result;
 }
+
+async function getHint(network, tradeLogic, reserveInstances, hintType, numReserves, srcAdd, destAdd, qty) {
+    if (hintType == EMPTY_HINTTYPE) return emptyHint;
+    
+    let reserveCandidates;
+    let hintedReservese2t;
+    let hintedReservest2e;
+    let hint;
+
+    if(srcAdd != ethAddress) {
+        reserveCandidates = await fetchReservesRatesFromNetwork(network, reserveInstances, srcAdd, qty, true);
+        hintedReservest2e = applyHintToReserves(hintType, reserveCandidates, numReserves);
+        if(destAdd == ethAddress) {
+            return (await tradeLogic.buildTokenToEthHint(
+                hintedReservest2e.tradeType, hintedReservest2e.reservesForHint, hintedReservest2e.splits));
+        }
+    }
+    
+    if(destAdd != ethAddress) {
+        reserveCandidates = await fetchReservesRatesFromNetwork(network, reserveInstances, destAdd, qty, false);
+        hintedReservese2t = applyHintToReserves(hintType, reserveCandidates, numReserves);
+
+        if(srcAdd == ethAddress) {
+            return (await tradeLogic.buildEthToTokenHint(
+                hintedReservese2t.tradeType, hintedReservese2t.reservesForHint, hintedReservese2t.splits));
+        }
+    }
+
+    hint = await tradeLogic.buildTokenToTokenHint(
+        hintedReservest2e.tradeType, hintedReservest2e.reservesForHint, hintedReservest2e.splits,
+        hintedReservese2t.tradeType, hintedReservese2t.reservesForHint, hintedReservese2t.splits
+    );
+    
+    return hint;
+}
+
+module.exports.getHint = getHint;
 
 module.exports.minusNetworkFees = function (weiAmt, buyReserveFeePaying, sellReserveFeePaying, takerFeeBps) {
     result = weiAmt;
