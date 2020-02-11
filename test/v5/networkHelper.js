@@ -239,11 +239,14 @@ module.exports.genReserveID = genReserveID;
 
 module.exports.fetchReservesRatesFromNetwork = async function (networkInstance, reserveInstances, tokenAddress, qty, isTokenToEth) {
     reservesArray = [];
-    result = await networkInstance.getPricesForToken(tokenAddress, qty);
+    //sell
     if (isTokenToEth) {
+        result = await networkInstance.getPricesForToken(tokenAddress, 0, qty);
         reserves = result.sellReserves;
         rates = result.sellRates;
+    //buy
     } else {
+        result = await networkInstance.getPricesForToken(tokenAddress, qty, 0);
         reserves = result.buyReserves;
         rates = result.buyRates;
     }
