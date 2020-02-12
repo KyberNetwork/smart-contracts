@@ -234,6 +234,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         // relevant arrays will be initialised when storing data
         if (hint.length == 0 || hint.length == 4) return;
 
+        //uint start = printGas("hint Start", 0);
         if (src == ETH_TOKEN_ADDRESS) {
             (
                 tradeData.ethToToken.tradeType,
@@ -256,6 +257,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
                 tradeData.ethToToken.splitValuesBps
             ) = parseHintT2T(hint);
         }
+
+        //printGas("hint end, t2e: %d e2t: %d", start);
 
         // T2E: apply masking out logic if mask out
         if (tradeData.tokenToEth.tradeType == TradeType.MaskOut) {
@@ -380,7 +383,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         tradingReserves.isFeePaying[0] = isFeePaying;
     }
 
-    function packResults(TradeData memory tradeData) internal pure returns (
+    function packResults(TradeData memory tradeData) internal view returns (
         uint[] memory results,
         IKyberReserve[] memory reserveAddresses,
         uint[] memory rates,
@@ -388,6 +391,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         bool[] memory isFeePaying
         )
     {
+        //uint start = printGas("pack result Start", 0);
         uint tokenToEthNumReserves = tradeData.tokenToEth.addresses.length;
         uint totalNumReserves = tokenToEthNumReserves + tradeData.ethToToken.addresses.length;
         reserveAddresses = new IKyberReserve[](totalNumReserves);
@@ -422,6 +426,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             splitValuesBps[i] = tradeData.ethToToken.splitValuesBps[i - tokenToEthNumReserves];
             isFeePaying[i] = tradeData.ethToToken.isFeePaying[i - tokenToEthNumReserves];
         }
+        //printGas("pack result end", start);
     }
     
     function calcRatesAndAmountsEthToToken(IERC20 dest, uint actualTradeWei, TradeData memory tradeData) internal view {
