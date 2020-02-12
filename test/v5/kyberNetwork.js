@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 const Web3 = require('web3');
+=======
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
 const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const MockDao = artifacts.require("MockDAO.sol");
@@ -6,6 +9,7 @@ const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const MockNetwork = artifacts.require("MockNetwork.sol");
 const FeeHandler = artifacts.require("FeeHandler.sol");
 const TradeLogic = artifacts.require("KyberTradeLogic.sol");
+<<<<<<< HEAD
 const Reserve = artifacts.require("KyberReserve.sol");
 const ConversionRates = artifacts.require("ConversionRates.sol");
 
@@ -26,6 +30,25 @@ const BPS = new BN(10000);
 const maxDestAmt = new BN(2).pow(new BN(255));
 const minConversionRate = new BN(0);
 const emptyHint = '0x';
+=======
+
+const Helper = require("../v4/helper.js");
+const nwHelper = require("./networkHelper.js");
+
+const BN = web3.utils.BN;
+const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
+
+const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint} = require("../v4/helper.js");
+const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, 
+    MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE}  = require('./networkHelper.js');
+
+//global variables
+//////////////////
+const gasPrice = (new BN(10).pow(new BN(9)).mul(new BN(50)));
+const negligibleRateDiffBps = new BN(10); //0.01% 
+const maxDestAmt = new BN(2).pow(new BN(255));
+const minConversionRate = new BN(0);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
 
 let takerFeeBps = new BN(20);
 let platformFeeBps = new BN(0);
@@ -59,6 +82,7 @@ let burnBlockInterval = new BN(30);
 //////////////
 let reserveInstances = {};
 let reserve;
+<<<<<<< HEAD
 let reserveEtherInit = new BN(10).pow(new BN(18)).mul(new BN(2));
 //// reserve types
 let APR_ID = '0xaa000000';
@@ -69,17 +93,23 @@ let FPR_ID = '0xff000000';
 const type_apr = "TYPE_APR";
 const type_MOCK = "TYPE_MOCK";
 const type_fpr = "TYPE_FPR";
+=======
+let numReserves;
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
 
 let pricingFpr = [];
 let reserveFpr = [];
 let gNumFprReserves;
 
+<<<<<<< HEAD
 let validRateDurationInBlocks = (new BN(9)).pow(new BN(21)); // some big number
 let minimalRecordResolution = 1000000; //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
 let maxPerBlockImbalance = precisionUnits.mul(new BN(10000)); // some big number
 let maxTotalImbalance = maxPerBlockImbalance.mul(new BN(3));
 
 
+=======
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
 //tokens data
 ////////////
 let numTokens = 5;
@@ -93,11 +123,14 @@ let srcQty;
 let ethSrcQty = precisionUnits;
 let zeroBN = new BN(0);
 
+<<<<<<< HEAD
 //hint data
 const MASK_IN_HINTTYPE = 0;
 const MASK_OUT_HINTTYPE = 1;
 const SPLIT_HINTTYPE = 2;
 
+=======
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
 contract('KyberNetwork', function(accounts) {
     before("one time global init", async() => {
         //init accounts
@@ -206,13 +239,21 @@ contract('KyberNetwork', function(accounts) {
                 tradeLogic: tempTradeLogic.address
             });
 
+<<<<<<< HEAD
             txResult = await tempNetwork.addReserve(mockReserve.address, genReserveID(MOCK_ID, mockReserve.address), true, user, {from: operator});
+=======
+            txResult = await tempNetwork.addReserve(mockReserve.address, nwHelper.genReserveID(MOCK_ID, mockReserve.address), true, user, {from: operator});
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
             //TODO: reserveId returned by txResult has additional zeroes appended
             txResult.logs[0].args[1] = txResult.logs[0].args['1'].substring(0,18);
             txResult.logs[0].args['reserveId'] = txResult.logs[0].args['reserveId'].substring(0,18);
             expectEvent(txResult, 'AddReserveToNetwork', {
                 reserve: mockReserve.address,
+<<<<<<< HEAD
                 reserveId: genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
+=======
+                reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 isFeePaying: true,
                 rebateWallet: user,
                 add: true
@@ -246,10 +287,20 @@ contract('KyberNetwork', function(accounts) {
         describe("test with 2 mock reserves, zero rate", async() => {
             before("setup, add and list mock reserves", async() => {
                 //init reserves
+<<<<<<< HEAD
                 numReserves = await setupReserves(2,0,0,0, accounts);
                 
                 //add and list pair for reserve
                 addReservesToNetwork(network, reserveInstances);
+=======
+                let result = await nwHelper.setupReserves(network, tokens, 2,0,0,0, accounts, admin, operator);
+                
+                reserveInstances = result.reserveInstances;
+                numReserves += result.numAddedReserves * 1;
+
+                //add and list pair for reserve
+                nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
 
                 //set zero rates
                 for (const [key, value] of Object.entries(reserveInstances)) {
@@ -262,7 +313,11 @@ contract('KyberNetwork', function(accounts) {
             });
 
             after("unlist and remove reserve", async() => {
+<<<<<<< HEAD
                 removeReservesFromNetwork(network, reserveInstances);
+=======
+                nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 reserveInstances = {};
             });
 
@@ -338,6 +393,7 @@ contract('KyberNetwork', function(accounts) {
         describe("test with 2 mock reserves and 2 fpr reserves", async() => {
             before("setup, add and list 1 mock reserve", async() => {
                 //init reserves
+<<<<<<< HEAD
                 numReserves = await setupReserves(2,2,0,0, accounts);
                 
                 //add and list pair for reserve
@@ -346,6 +402,19 @@ contract('KyberNetwork', function(accounts) {
 
             after("unlist and remove reserve", async() => {
                 removeReservesFromNetwork(network, reserveInstances);
+=======
+                let result = await nwHelper.setupReserves(network, tokens, 2, 2, 0, 0, accounts, admin, operator);
+                
+                reserveInstances = result.reserveInstances;
+                numReserves += result.numAddedReserves * 1;              
+                
+                //add and list pair for reserve
+                nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+            })
+
+            after("unlist and remove reserve", async() => {
+                nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 reserveInstances = {};
             });
 
@@ -397,15 +466,25 @@ contract('KyberNetwork', function(accounts) {
             });
 
             it("should get expected rate (no hint, with network fee) for T2E, E2T & T2T", async() => {
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
                 bestReserve = await getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, srcToken.address, srcQty, true);
+                bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 bestSellRateNoFee = bestReserve.rateNoFee;
                 bestSellReserveFeePaying = bestReserve.isFeePaying;
                 actualResult = await network.getExpectedRate(srcToken.address, ethAddress, srcQty);
                 Helper.assertEqual(bestReserve.rateWithNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2E");
         
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
                 bestReserve = await getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, destToken.address, ethSrcQty, false);
+                bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 bestBuyRateNoFee = bestReserve.rateNoFee;
                 bestBuyReserveFeePaying = bestReserve.isFeePaying;
                 actualResult = await network.getExpectedRate(ethAddress, destToken.address, ethSrcQty);
@@ -426,7 +505,11 @@ contract('KyberNetwork', function(accounts) {
                 //receive 298.80 destTokens
                 actualResult = await network.getExpectedRate(srcToken.address, destToken.address, srcQty);
                 expectedWeiAmt = Helper.calcDstQty(srcQty, srcDecimals, ethDecimals, bestSellRateNoFee);
+<<<<<<< HEAD
                 expectedWeiAmt = minusNetworkFees(expectedWeiAmt, bestSellReserveFeePaying, bestBuyReserveFeePaying, takerFeeBps);
+=======
+                expectedWeiAmt = nwHelper.minusNetworkFees(expectedWeiAmt, bestSellReserveFeePaying, bestBuyReserveFeePaying, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 expectedDestAmt = Helper.calcDstQty(expectedWeiAmt, ethDecimals, destDecimals, bestBuyRateNoFee);
                 expectedRate = Helper.calcRateFromQty(srcQty, expectedDestAmt, srcDecimals, destDecimals);
                 Helper.assertEqual(expectedRate, actualResult.expectedRate, "expected rate with network fee != actual rate for T2T");
@@ -434,9 +517,15 @@ contract('KyberNetwork', function(accounts) {
     
             it("should get expected rate (with mask in hint & 0 platform fees) for T2E, E2T & T2T", async() => {
                 //T2E
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
                 hintedReservesT2E = applyHintToReserves(MASK_IN_HINTTYPE, reserveCandidates);
                 bestReserve = await getBestReserveAndRate(hintedReservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, srcToken.address, srcQty, true);
+                hintedReservesT2E = nwHelper.applyHintToReserves(MASK_IN_HINTTYPE, reserveCandidates);
+                bestReserve = await nwHelper.getBestReserveAndRate(hintedReservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 bestSellRateNoFee = bestReserve.rateNoFee;
                 bestSellReserveFeePaying = bestReserve.isFeePaying;
 
@@ -447,9 +536,15 @@ contract('KyberNetwork', function(accounts) {
                 Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, actualResult.expectedRateAfterAllFees, "platform fee should be 0 bps");
 
                 //E2T
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
                 hintedReservesE2T = applyHintToReserves(MASK_IN_HINTTYPE, reserveCandidates);
                 bestReserve = await getBestReserveAndRate(hintedReservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, destToken.address, ethSrcQty, false);
+                hintedReservesE2T = nwHelper.applyHintToReserves(MASK_IN_HINTTYPE, reserveCandidates);
+                bestReserve = await nwHelper.getBestReserveAndRate(hintedReservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 bestBuyRateNoFee = bestReserve.rateNoFee;
                 bestBuyReserveFeePaying = bestReserve.isFeePaying;
 
@@ -473,7 +568,11 @@ contract('KyberNetwork', function(accounts) {
                 expectedRateNoFees = Helper.calcRateFromQty(srcQty, expectedDestAmt, srcDecimals, destDecimals);
 
                 //With network fee
+<<<<<<< HEAD
                 expectedWeiAmt = minusNetworkFees(expectedWeiAmt, bestSellReserveFeePaying, bestBuyReserveFeePaying, takerFeeBps);
+=======
+                expectedWeiAmt = nwHelper.minusNetworkFees(expectedWeiAmt, bestSellReserveFeePaying, bestBuyReserveFeePaying, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 expectedDestAmt = Helper.calcDstQty(expectedWeiAmt, ethDecimals, destDecimals, bestBuyRateNoFee);
                 expectedRateAfterNetworkFees = Helper.calcRateFromQty(srcQty, expectedDestAmt, srcDecimals, destDecimals);
 
@@ -492,9 +591,15 @@ contract('KyberNetwork', function(accounts) {
                 platformFeeBps = new BN(100); //BPS should be 1%
 
                 //T2E
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
                 hintedReservesT2E = applyHintToReserves(MASK_IN_HINTTYPE, reserveCandidates);
                 bestReserve = await getBestReserveAndRate(hintedReservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, srcToken.address, srcQty, true);
+                hintedReservesT2E = nwHelper.applyHintToReserves(MASK_IN_HINTTYPE, reserveCandidates);
+                bestReserve = await nwHelper.getBestReserveAndRate(hintedReservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 bestSellRateNoFee = bestReserve.rateNoFee;
                 bestSellReserveFeePaying = bestReserve.isFeePaying;
 
@@ -505,9 +610,15 @@ contract('KyberNetwork', function(accounts) {
                 //TODO: Fix this Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, actualResult.expectedRateAfterAllFees, "platform fee should be 0 bps");
 
                 //E2T
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
                 hintedReservesE2T = applyHintToReserves(MASK_IN_HINTTYPE, reserveCandidates);
                 bestReserve = await getBestReserveAndRate(hintedReservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, destToken.address, ethSrcQty, false);
+                hintedReservesE2T = nwHelper.applyHintToReserves(MASK_IN_HINTTYPE, reserveCandidates);
+                bestReserve = await nwHelper.getBestReserveAndRate(hintedReservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 bestBuyRateNoFee = bestReserve.rateNoFee;
                 bestBuyReserveFeePaying = bestReserve.isFeePaying;
 
@@ -531,7 +642,11 @@ contract('KyberNetwork', function(accounts) {
                 expectedRateNoFees = Helper.calcRateFromQty(srcQty, expectedDestAmt, srcDecimals, destDecimals);
 
                 //With network fee
+<<<<<<< HEAD
                 expectedWeiAmt = minusNetworkFees(expectedWeiAmt, bestSellReserveFeePaying, bestBuyReserveFeePaying, takerFeeBps);
+=======
+                expectedWeiAmt = nwHelper.minusNetworkFees(expectedWeiAmt, bestSellReserveFeePaying, bestBuyReserveFeePaying, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 expectedDestAmt = Helper.calcDstQty(expectedWeiAmt, ethDecimals, destDecimals, bestBuyRateNoFee);
                 expectedRateAfterNetworkFees = Helper.calcRateFromQty(srcQty, expectedDestAmt, srcDecimals, destDecimals);
 
@@ -548,9 +663,15 @@ contract('KyberNetwork', function(accounts) {
 
             it("should get expected rate (with mask out hint & 0 platform fees) for T2E, E2T & T2T", async() => {
                 //T2E
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
                 hintedReservesT2E = applyHintToReserves(MASK_OUT_HINTTYPE, reserveCandidates);
                 bestReserve = await getBestReserveAndRate(hintedReservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, srcToken.address, srcQty, true);
+                hintedReservesT2E = nwHelper.applyHintToReserves(MASK_OUT_HINTTYPE, reserveCandidates);
+                bestReserve = await nwHelper.getBestReserveAndRate(hintedReservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 bestSellRateNoFee = bestReserve.rateNoFee;
                 bestSellReserveFeePaying = bestReserve.isFeePaying;
 
@@ -561,9 +682,15 @@ contract('KyberNetwork', function(accounts) {
                 Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, actualResult.expectedRateAfterAllFees, "platform fee should be 0 bps");
 
                 //E2T
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
                 hintedReservesE2T = applyHintToReserves(MASK_OUT_HINTTYPE, reserveCandidates);
                 bestReserve = await getBestReserveAndRate(hintedReservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, destToken.address, ethSrcQty, false);
+                hintedReservesE2T = nwHelper.applyHintToReserves(MASK_OUT_HINTTYPE, reserveCandidates);
+                bestReserve = await nwHelper.getBestReserveAndRate(hintedReservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 bestBuyRateNoFee = bestReserve.rateNoFee;
                 bestBuyReserveFeePaying = bestReserve.isFeePaying;
 
@@ -587,7 +714,11 @@ contract('KyberNetwork', function(accounts) {
                 expectedRateNoFees = Helper.calcRateFromQty(srcQty, expectedDestAmt, srcDecimals, destDecimals);
 
                 //With network fee
+<<<<<<< HEAD
                 expectedWeiAmt = minusNetworkFees(expectedWeiAmt, bestSellReserveFeePaying, bestBuyReserveFeePaying, takerFeeBps);
+=======
+                expectedWeiAmt = nwHelper.minusNetworkFees(expectedWeiAmt, bestSellReserveFeePaying, bestBuyReserveFeePaying, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 expectedDestAmt = Helper.calcDstQty(expectedWeiAmt, ethDecimals, destDecimals, bestBuyRateNoFee);
                 expectedRateAfterNetworkFees = Helper.calcRateFromQty(srcQty, expectedDestAmt, srcDecimals, destDecimals);
 
@@ -606,9 +737,15 @@ contract('KyberNetwork', function(accounts) {
                 platformFeeBps = new BN(100); //BPS should be 1%
 
                 //T2E
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
                 hintedReservesT2E = applyHintToReserves(MASK_OUT_HINTTYPE, reserveCandidates);
                 bestReserve = await getBestReserveAndRate(hintedReservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, srcToken.address, srcQty, true);
+                hintedReservesT2E = nwHelper.applyHintToReserves(MASK_OUT_HINTTYPE, reserveCandidates);
+                bestReserve = await nwHelper.getBestReserveAndRate(hintedReservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 bestSellRateNoFee = bestReserve.rateNoFee;
                 bestSellReserveFeePaying = bestReserve.isFeePaying;
 
@@ -619,9 +756,15 @@ contract('KyberNetwork', function(accounts) {
                 //TODO: Fix this Helper.assertEqual(actualResult.expectedRateAfterNetworkFees, actualResult.expectedRateAfterAllFees, "platform fee should be 0 bps");
 
                 //E2T
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
                 hintedReservesE2T = applyHintToReserves(MASK_OUT_HINTTYPE, reserveCandidates);
                 bestReserve = await getBestReserveAndRate(hintedReservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, destToken.address, ethSrcQty, false);
+                hintedReservesE2T = nwHelper.applyHintToReserves(MASK_OUT_HINTTYPE, reserveCandidates);
+                bestReserve = await nwHelper.getBestReserveAndRate(hintedReservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 bestBuyRateNoFee = bestReserve.rateNoFee;
                 bestBuyReserveFeePaying = bestReserve.isFeePaying;
 
@@ -645,7 +788,11 @@ contract('KyberNetwork', function(accounts) {
                 expectedRateNoFees = Helper.calcRateFromQty(srcQty, expectedDestAmt, srcDecimals, destDecimals);
 
                 //With network fee
+<<<<<<< HEAD
                 expectedWeiAmt = minusNetworkFees(expectedWeiAmt, bestSellReserveFeePaying, bestBuyReserveFeePaying, takerFeeBps);
+=======
+                expectedWeiAmt = nwHelper.minusNetworkFees(expectedWeiAmt, bestSellReserveFeePaying, bestBuyReserveFeePaying, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 expectedDestAmt = Helper.calcDstQty(expectedWeiAmt, ethDecimals, destDecimals, bestBuyRateNoFee);
                 expectedRateAfterNetworkFees = Helper.calcRateFromQty(srcQty, expectedDestAmt, srcDecimals, destDecimals);
 
@@ -668,25 +815,43 @@ contract('KyberNetwork', function(accounts) {
                 //TODO: write function for getting aggregated rates
             });
 
+<<<<<<< HEAD
             it("should test get all rates for token without fee", async() => {
                 let ratesForToken = await network.getPricesForToken(tokens[0].address, 0);
 
                 // console.log("rates for token: " + tokens[0].address);
                 // console.log(ratesForToken);
+=======
+            xit("should test get all rates for token without fee", async() => {
+                let ratesForToken = await network.getPricesForToken(tokens[0].address, 0);
+
+                console.log("rates for token: " + tokens[0].address);
+                console.log('ratesForToken');
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
 
                 console.log('ratesForToken.buyRates')
 
                 console.log(ratesForToken.buyRates[0].valueOf().toString())
                 console.log(ratesForToken.buyRates[1].valueOf().toString())
+<<<<<<< HEAD
                 // console.log(ratesForToken.buyRates[2].valueOf().toString())
                 // console.log(ratesForToken.buyRates[3].valueOf().toString())
+=======
+                console.log(ratesForToken.buyRates[2].valueOf().toString())
+                console.log(ratesForToken.buyRates[3].valueOf().toString())
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 // TODO: get rates directly from reserves and compare with these returned rates.
             });
 
 
             it("should perform a token -> ETH trade (no hint) and check balances change as expected", async() => {
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
                 bestReserve = await getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, srcToken.address, srcQty, true);
+                bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 bestSellRateNoFee = bestReserve.rateNoFee;
                 bestSellReserveFeePaying = bestReserve.isFeePaying;
 
@@ -707,19 +872,33 @@ contract('KyberNetwork', function(accounts) {
 
                 //compare balances
                 //User: minus srcQty, plus expectedDestAmtAfterAllFees
+<<<<<<< HEAD
                 await assertSameTokenBalance(network.address, srcToken, initialTokenUserBalance.sub(srcQty));
                 // await assertSameEtherBalance(user, initialEtherUserBalance.add(expectedDestAmtAfterAllFees));
 
                 //Reserve: plus srcQty, minus expectedDestAmtNoFee
                 await assertSameTokenBalance(bestReserve.address, srcToken, initialTokenReserveBalance.add(srcQty));
                 await assertSameEtherBalance(bestReserve.address, initialEtherReserveBalance.sub(expectedDestAmtNoFee));
+=======
+                await Helper.assertSameTokenBalance(network.address, srcToken, initialTokenUserBalance.sub(srcQty));
+                // await Helper.assertSameEtherBalance(user, initialEtherUserBalance.add(expectedDestAmtAfterAllFees));
+
+                //Reserve: plus srcQty, minus expectedDestAmtNoFee
+                await Helper.assertSameTokenBalance(bestReserve.address, srcToken, initialTokenReserveBalance.add(srcQty));
+                await Helper.assertSameEtherBalance(bestReserve.address, initialEtherReserveBalance.sub(expectedDestAmtNoFee));
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 //Platform wallet: plus platformFeeWei
                 //Fee Burner: plus network fee wei
             });
         
             it("should perform a ETH -> token trade (no hint) and check balances change as expected", async() => {
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
                 bestReserve = await getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, destToken.address, ethSrcQty, false);
+                bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
         
                 //get initial balances
                 initialTokenReserveBalance = await destToken.balanceOf(bestReserve.address);
@@ -738,20 +917,34 @@ contract('KyberNetwork', function(accounts) {
         
                 //compare balances
                 //User: Minus ethSrcQty, plus expectedDestAmtAfterAllFees
+<<<<<<< HEAD
                 await assertSameTokenBalance(user, destToken, initialTokenUserBalance.add(expectedDestAmtAfterAllFees));
                 //Reserve: Minus expectedDestAmtAfterNetworkFee, plus ethAfterNetworkFee (if fees apply)
                 await assertSameEtherBalance(bestReserve.address, initialEtherReserveBalance.add(expectedAddedEthForReserve));
                 await assertSameTokenBalance(bestReserve.address, destToken, initialTokenReserveBalance.sub(expectedDestAmtAfterNetworkFees));
+=======
+                await Helper.assertSameTokenBalance(user, destToken, initialTokenUserBalance.add(expectedDestAmtAfterAllFees));
+                //Reserve: Minus expectedDestAmtAfterNetworkFee, plus ethAfterNetworkFee (if fees apply)
+                await Helper.assertSameEtherBalance(bestReserve.address, initialEtherReserveBalance.add(expectedAddedEthForReserve));
+                await Helper.assertSameTokenBalance(bestReserve.address, destToken, initialTokenReserveBalance.sub(expectedDestAmtAfterNetworkFees));
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
             });
         
             //srcToken: (user -> sell reserve) => user bal goes down, sell reserve bal goes up
             //ETH: (sell -> buy reserve) => sell reserve bal goes down, buy reserve bal goes up
             //destToken: (buy reserve -> user) => bal goes down, user bal goes up
             it("should perform a token -> token trade (no hint) and check balances change as expected", async() => {
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
                 bestSellReserve = await getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
                 bestBuyReserve = await getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, srcToken.address, srcQty, true);
+                bestSellReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, destToken.address, ethSrcQty, false);
+                bestBuyReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
 
                 //initial balances
                 initialSrcTokenUserBalance = await srcToken.balanceOf(network.address); //assume user gave funds to proxy already
@@ -763,7 +956,11 @@ contract('KyberNetwork', function(accounts) {
         
                 expectedWeiAmountNoFees = Helper.calcDstQty(srcQty, srcDecimals, ethDecimals, bestSellReserve.rateNoFee);
                 platformFeeWei = expectedWeiAmt.mul(platformFeeBps).div(BPS);
+<<<<<<< HEAD
                 expectedWeiAmtAfterAllFees = minusNetworkFees(expectedWeiAmountNoFees.sub(platformFeeWei), bestSellReserve.isFeePaying, bestBuyReserve.isFeePaying, takerFeeBps);
+=======
+                expectedWeiAmtAfterAllFees = nwHelper.minusNetworkFees(expectedWeiAmountNoFees.sub(platformFeeWei), bestSellReserve.isFeePaying, bestBuyReserve.isFeePaying, takerFeeBps);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
 
                 overallRate = await network.getExpectedRateWithHintAndFee(srcToken.address, destToken.address, srcQty, platformFeeBps, emptyHint);
                 expectedDestAmountAfterAllFees = Helper.calcDstQty(srcQty, srcDecimals, destDecimals, overallRate.expectedRateAfterAllFees);
@@ -775,6 +972,7 @@ contract('KyberNetwork', function(accounts) {
                 
                 //compare balances
                 //User: Minus srcQty, plus expectedDestAmtAfterAllFees
+<<<<<<< HEAD
                 await assertSameTokenBalance(network.address, srcToken, initialSrcTokenUserBalance.sub(srcQty));
                 await assertSameTokenBalance(user, destToken, initialDestTokenUserBalance.add(expectedDestAmountAfterAllFees));
                 
@@ -785,6 +983,18 @@ contract('KyberNetwork', function(accounts) {
                 //Buy reserve: Plus expectedWeiAmtAfterAllFees, minus expectedDestAmtAfterAllFees (both sides taken into account)
                 await assertSameEtherBalance(bestBuyReserve.address, initialEtherBuyReserveBalance.add(expectedWeiAmtAfterAllFees));
                 await assertSameTokenBalance(bestBuyReserve.address, destToken, initialDestTokenBuyReserveBalance.sub(expectedDestAmountAfterAllFees));
+=======
+                await Helper.assertSameTokenBalance(network.address, srcToken, initialSrcTokenUserBalance.sub(srcQty));
+                await Helper.assertSameTokenBalance(user, destToken, initialDestTokenUserBalance.add(expectedDestAmountAfterAllFees));
+                
+                //Sell reserve: Plus srcQty, minus expectedWeiAmountNoFee
+                await Helper.assertSameEtherBalance(bestSellReserve.address, initialEtherSellReserveBalance.sub(expectedWeiAmountNoFees));
+                await Helper.assertSameTokenBalance(bestSellReserve.address, srcToken, initialSrcTokenSellReserveBalance.add(srcQty));
+
+                //Buy reserve: Plus expectedWeiAmtAfterAllFees, minus expectedDestAmtAfterAllFees (both sides taken into account)
+                await Helper.assertSameEtherBalance(bestBuyReserve.address, initialEtherBuyReserveBalance.add(expectedWeiAmtAfterAllFees));
+                await Helper.assertSameTokenBalance(bestBuyReserve.address, destToken, initialDestTokenBuyReserveBalance.sub(expectedDestAmountAfterAllFees));
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
             });
 
             it("should perform a simple T2E trade with mask in hint", async() => {
@@ -792,8 +1002,13 @@ contract('KyberNetwork', function(accounts) {
             });
 
             it("should perform a simple T2E trade with split hint", async() => {
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
                 hintedReserves = applyHintToReserves(SPLIT_HINTTYPE, reserveCandidates);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, srcToken.address, srcQty, true);
+                hintedReserves = nwHelper.applyHintToReserves(SPLIT_HINTTYPE, reserveCandidates);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 hint = await tradeLogic.buildTokenToEthHint(
                     hintedReserves.tradeType, hintedReserves.reservesForHint, hintedReserves.splits
                 );
@@ -804,8 +1019,13 @@ contract('KyberNetwork', function(accounts) {
             });
 
             it("should perform a simple E2T trade with split hint", async() => {
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
                 hintedReserves = applyHintToReserves(SPLIT_HINTTYPE, reserveCandidates);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, destToken.address, ethSrcQty, false);
+                hintedReserves = nwHelper.applyHintToReserves(SPLIT_HINTTYPE, reserveCandidates);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 hint = await tradeLogic.buildEthToTokenHint(
                     hintedReserves.tradeType, hintedReserves.reservesForHint, hintedReserves.splits
                 );
@@ -815,11 +1035,19 @@ contract('KyberNetwork', function(accounts) {
             });
 
             it("should perform a simple T2T trade with split hint", async() => {
+<<<<<<< HEAD
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, srcToken.address, srcQty, true);
                 hintedReservesT2E = applyHintToReserves(SPLIT_HINTTYPE, reserveCandidates);
                 // todo: find estimated quantity
                 reserveCandidates = await fetchReservesRatesFromNetwork(network, destToken.address, ethSrcQty, false);
                 hintedReservesE2T = applyHintToReserves(SPLIT_HINTTYPE, reserveCandidates);
+=======
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, srcToken.address, srcQty, true);
+                hintedReservesT2E = nwHelper.applyHintToReserves(SPLIT_HINTTYPE, reserveCandidates);
+                // todo: find estimated quantity
+                reserveCandidates = await nwHelper.fetchReservesRatesFromNetwork(network, reserveInstances, destToken.address, ethSrcQty, false);
+                hintedReservesE2T = nwHelper.applyHintToReserves(SPLIT_HINTTYPE, reserveCandidates);
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
                 hint = await tradeLogic.buildTokenToTokenHint(
                     hintedReservesT2E.tradeType, hintedReservesT2E.reservesForHint, hintedReservesT2E.splits,
                     hintedReservesE2T.tradeType, hintedReservesE2T.reservesForHint, hintedReservesE2T.splits
@@ -875,6 +1103,7 @@ async function transferTokensToNetwork(networkInstance) {
     }
 }
 
+<<<<<<< HEAD
 async function setupReserves(numMock, numFpr, enhancedFprReserves, aprReserves, accounts) {
     let totalReserves = numMock * 1 + numFpr * 1 + enhancedFprReserves * 1 + aprReserves * 1;
     let i;
@@ -1100,6 +1329,8 @@ async function assertSameTokenBalance(accountAddress, token, expectedBalance) {
     Helper.assertEqual(balance, expectedBalance, "wrong token balance");
 }
 
+=======
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
 //returns random integer between min (inclusive) and max (inclusive)
 function getRandomInt(min, max) {
     min = Math.ceil(min);
@@ -1107,6 +1338,7 @@ function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+<<<<<<< HEAD
 async function getBestReserveAndRate(reserves, src, dest, srcAmount, takerFeeBps) {
     bestReserveData = {
         address: zeroAddress,
@@ -1212,6 +1444,8 @@ function randomSelectReserves(tradeType, reserves, splits) {
     return result;
 }
 
+=======
+>>>>>>> 9e89402921164f1d348980733c328278459d8929
 function log(str) {
     console.log(str);
 }
