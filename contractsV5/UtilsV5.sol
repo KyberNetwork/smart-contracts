@@ -1,6 +1,7 @@
 pragma solidity 0.5.11;
 
 import "./IERC20.sol";
+import "@nomiclabs/buidler/console.sol";
 
 
 /// @title Kyber utils and utils2 contracts
@@ -113,5 +114,14 @@ contract Utils {
 
     function minOf(uint x, uint y) internal pure returns(uint) {
         return x > y ? y : x;
+    }
+
+    function printGas(string memory str, uint refGas) internal view returns(uint currGas) {
+        assembly {
+            currGas := gas
+        }
+
+        if (refGas == 0) return currGas;
+        console.log("gas '%d' in '%s' diff: %d", currGas, str, refGas > 0 ? refGas - currGas : 0);
     }
 }
