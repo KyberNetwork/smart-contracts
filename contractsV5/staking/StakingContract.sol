@@ -138,7 +138,7 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
         require(KNC_TOKEN.transferFrom(S, address(this), amount), "deposit: can not get token");
 
         initDataIfNeeded(S, N);
-        
+
         stakes[N+1][S] = stakes[N+1][S].add(amount);
         latestStake[S] = latestStake[S].add(amount);
 
@@ -149,7 +149,7 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
             delegatedStakes[N + 1][dAddr] = delegatedStakes[N + 1][dAddr].add(amount);
             latestDelegatedStakes[dAddr] = latestDelegatedStakes[dAddr].add(amount);
         }
-        
+
         emit Deposited(N, S, amount);
     }
 

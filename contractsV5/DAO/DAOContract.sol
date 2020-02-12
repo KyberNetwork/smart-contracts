@@ -146,7 +146,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         CampaignType campType, uint startBlock, uint endBlock, uint formulaParams,
         uint[] memory options, bytes memory link
     )
-        public onlyAdmin returns(uint campID) 
+        public onlyAdmin returns(uint campID)
     {
         uint curEpoch = getCurrentEpochNumber();
 
@@ -190,7 +190,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
 
         // index 0 for total votes, index 1 -> options.length for each option
         campaignOptionPoints[campID] = new uint[](options.length + 1);
-    
+
         emit NewCampaignCreated(CampaignType.NETWORK_FEE, campID, startBlock, endBlock, formulaParams, options, link);
     }
 
@@ -414,7 +414,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         }
 
         uint totalSupply = camp.totalKNCSupply;
-        // no one has voted in this epoch, 
+        // no one has voted in this epoch
         if (totalSupply == 0) { return (0, 0); }
 
         uint[] memory voteCounts = campaignOptionPoints[campID];
@@ -536,7 +536,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
     function validateCampaignParams(
         CampaignType campType, uint startBlock, uint endBlock,
         uint currentEpoch, uint formulaParams, uint[] memory options
-    ) 
+    )
         public view returns(bool)
     {
         // block number < start block < end block

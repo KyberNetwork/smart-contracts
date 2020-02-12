@@ -23,6 +23,7 @@ let victor;
 let loi;
 let mike;
 let poolMaster;
+let poolMaster2;
 let maxCampOptions = 4;
 let minCampPeriod = 10; // 10 blocks
 let defaultNetworkFee = 25;
@@ -38,6 +39,7 @@ let formulaParamsData = getFormulaParamsData(minPercentageInPrecision, cInPrecis
 let initVictorStake = mulPrecision(1000);
 let initMikeStake = mulPrecision(2000);
 let initLoiStake = mulPrecision(3000);
+let initPoolMaster2Stake = mulPrecision(1000);
 
 contract('DAOContract', function(accounts) {
     before("one time init", async() => {
@@ -48,11 +50,14 @@ contract('DAOContract', function(accounts) {
         mike = accounts[4];
         admin = accounts[5];
         poolMaster = accounts[6];
+        poolMaster2 = accounts[7];
         feeHandler = await MockFeeHandler.new();
 
         await kncToken.transfer(victor, mulPrecision(1000000));
         await kncToken.transfer(mike, mulPrecision(1000000));
         await kncToken.transfer(loi, mulPrecision(1000000));
+        await kncToken.transfer(poolMaster, mulPrecision(1000000));
+        await kncToken.transfer(poolMaster2, mulPrecision(1000000));
     });
 
     beforeEach("running before each test", async() => {
@@ -79,13 +84,16 @@ contract('DAOContract', function(accounts) {
         await kncToken.approve(stakingContract.address, mulPrecision(1000000), {from: victor});
         await kncToken.approve(stakingContract.address, mulPrecision(1000000), {from: mike});
         await kncToken.approve(stakingContract.address, mulPrecision(1000000), {from: loi});
+        await kncToken.approve(stakingContract.address, mulPrecision(1000000), {from: poolMaster});
+        await kncToken.approve(stakingContract.address, mulPrecision(1000000), {from: poolMaster2});
 
         await stakingContract.deposit(initVictorStake, {from: victor});
         await stakingContract.deposit(initMikeStake, {from: mike});
         await stakingContract.deposit(initLoiStake, {from: loi});
+        await stakingContract.deposit(initPoolMaster2Stake, {from: poolMaster2});
     };
 
-    describe("#Handle Withdrawl Tests", () => {
+    describe("#Handle Withdrawl tests", () => {
         it("Test handle withdrawal should revert when sender is not staking", async function() {
             daoContract = await DAOContract.new(
                 10, currentBlock + 10,
@@ -373,7 +381,7 @@ contract('DAOContract', function(accounts) {
         });
 
         it("Test handle withdrawal updates correct data after withdraw - with delegation", async function() {
-            await deployContracts(50, currentBlock + 15, 20);
+            await deployContracts(50, currentBlock + 20, 20);
             await setupSimpleStakingData();
             await stakingContract.delegate(mike, {from: victor});
             await stakingContract.delegate(victor, {from: loi});
@@ -540,7 +548,7 @@ contract('DAOContract', function(accounts) {
                 );
                 Helper.assertEqual(id + 1, await daoContract.numberCampaigns(), "number campaign is incorrect");
                 Helper.assertEqual(true, await daoContract.isCampExisted(id + 1), "campaign should be existed");
-    
+
                 let data = await daoContract.getCampaignDetails(id + 1);
                 Helper.assertEqual(id, data[0], "campType is incorrect");
                 Helper.assertEqual(currentBlock + 2 * id + 5, data[1], "start block is incorrect");
@@ -1123,10 +1131,10 @@ contract('DAOContract', function(accounts) {
         it("Test submit campaign should revert exceed max campaigns for each epoch", async function() {
             await deployContracts(2, currentBlock + 50, 4);
             let maxCamps = await daoContract.MAX_EPOCH_CAMPS();
-            
+
             for(let id = 0; id < maxCamps; id++) {
                 await daoContract.submitNewCampaign(
-                    id <= 2 ? id : 0, currentBlock + 40, currentBlock + 40 + minCampPeriod, 
+                    id <= 2 ? id : 0, currentBlock + 40, currentBlock + 40 + minCampPeriod,
                     formulaParamsData, [1, 2, 3], '0x', {from: admin}
                 );
             }
@@ -1478,7 +1486,7 @@ contract('DAOContract', function(accounts) {
 
     describe("#Vote Tests", () => {
         it("Test vote should update data correctly - without delegation", async function() {
-            await deployContracts(100, currentBlock + 15, 20);
+            await deployContracts(100, currentBlock + 20, 20);
             await setupSimpleStakingData();
 
             currentBlock = await Helper.getCurrentBlock();
@@ -1636,7 +1644,7 @@ contract('DAOContract', function(accounts) {
         });
 
         it("Test vote should update data correctly when revote - without delegation", async function() {
-            await deployContracts(100, currentBlock + 15, 20);
+            await deployContracts(100, currentBlock + 20, 20);
             await setupSimpleStakingData();
 
             currentBlock = await Helper.getCurrentBlock();
@@ -1794,6 +1802,414 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
             Helper.assertEqual(option1Camp2, campPointsData[0][0], "option voted count is incorrect");
             Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
+        });
+
+        it("Test vote should update data correctly - with delegation", async function() {
+            await deployContracts(50, currentBlock + 20, 20);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(mike, {from: victor});
+            await stakingContract.delegate(poolMaster, {from: mike});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+
+            // Check: initial data for epoch 1 and camp 1
+            Helper.assertEqual(0, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            let campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(0, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(0, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
+            Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
+
+            Helper.assertEqual(0, await daoContract.getNumberVotes(victor, 1), "number votes should be correct");
+            Helper.assertEqual(0, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
+            Helper.assertEqual(0, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
+
+            // Check: victor has no delegated stake, has stake but already delegated to mike
+            // => no data changes here
+            await daoContract.vote(1, 1, {from: victor});
+
+            // Victor has delegated to mike, and no one delegated to him
+            // So his vote wont increase points or vote counts
+            let epochPoints = new BN(0);
+            let campPoints = new BN(0);
+            let optionPoint1 = new BN(0);
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
+            Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
+
+            Helper.assertEqual(1, await daoContract.getNumberVotes(victor, 1), "number votes should be correct");
+            Helper.assertEqual(0, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
+            Helper.assertEqual(0, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
+
+            // Check: mike delegated to poolMaster, victor delegated mike
+            // data should change based on victor's stake here
+            await daoContract.vote(1, 1, {from: mike});
+
+            // victor delegated to mike, mike delegated to poolmaster
+            // mike's vote will increase points + vote counts by victor's stake
+            epochPoints.iadd(initVictorStake);
+            campPoints.iadd(initVictorStake);
+            optionPoint1.iadd(initVictorStake);
+            let optionPoint2 = new BN(0);
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
+            Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
+
+            Helper.assertEqual(1, await daoContract.getNumberVotes(victor, 1), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
+            Helper.assertEqual(0, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
+
+            // Check: vote from someone has stake, no delegated stake, no delegated address
+            await daoContract.vote(1, 1, {from: loi});
+
+            epochPoints.iadd(initLoiStake);
+            campPoints.iadd(initLoiStake);
+            optionPoint1.iadd(initLoiStake);
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
+            Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
+
+            Helper.assertEqual(1, await daoContract.getNumberVotes(victor, 1), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
+
+            // Check: withdraw from staker with no delegated address
+            await stakingContract.withdraw(mulPrecision(100), {from: loi});
+
+            epochPoints.isub(mulPrecision(100));
+            campPoints.isub(mulPrecision(100));
+            optionPoint1.isub(mulPrecision(100));
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
+            Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
+
+            Helper.assertEqual(1, await daoContract.getNumberVotes(victor, 1), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
+
+            // Check: vote from someone with no stake, but has delegated stake
+            await daoContract.vote(1, 2, {from: poolMaster});
+
+            epochPoints.iadd(initMikeStake);
+            campPoints.iadd(initMikeStake);
+            optionPoint2.iadd(initMikeStake);
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
+
+            Helper.assertEqual(1, await daoContract.getNumberVotes(victor, 1), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(poolMaster, 1), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
+
+            // Check: new delegate + deposit won't affect current data
+            await stakingContract.deposit(mulPrecision(100), {from: mike});
+            await stakingContract.deposit(mulPrecision(100), {from: victor});
+            await stakingContract.deposit(mulPrecision(100), {from: loi});
+            await stakingContract.delegate(poolMaster, {from: loi});
+            await stakingContract.delegate(poolMaster, {from: victor});
+            await stakingContract.delegate(mike, {from: mike});
+
+            let initPoolMasterStake = mulPrecision(100);
+            await stakingContract.deposit(initPoolMasterStake, {from: poolMaster});
+
+            // data shouldn't be changed
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
+
+            Helper.assertEqual(1, await daoContract.getNumberVotes(victor, 1), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+
+            // Check: vote for second camp
+            await daoContract.vote(2, 1, {from: mike});
+
+            epochPoints.iadd(initVictorStake);
+            let campPoints2 = new BN(0).add(initVictorStake);
+            let optionPoint21 = new BN(0).add(initVictorStake);
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
+
+            campPointsData = await daoContract.getCampaignVoteCountData(2);
+            Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
+
+            Helper.assertEqual(2, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(victor, 1), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(poolMaster, 1), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
+
+            // Check: withdraw from someone who has delegated
+            // victor delegated to mike, so his withdrawal will affect mike's data
+            await stakingContract.withdraw(mulPrecision(200), {from: victor});
+
+            // mike voted 2 camps, so points should be changed as expected
+            // above victor has deposit 100, so here withdraw 200 the penalty amount only 100
+            epochPoints.isub(mulPrecision(100 * 2));
+            campPoints.isub(mulPrecision(100));
+            optionPoint1.isub(mulPrecision(100));
+            campPoints2.isub(mulPrecision(100));
+            optionPoint21.isub(mulPrecision(100));
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
+
+            campPointsData = await daoContract.getCampaignVoteCountData(2);
+            Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
+
+            // make stakes for each staker are the same as init
+            await stakingContract.deposit(mulPrecision(100), {from: victor});
+            await stakingContract.withdraw(mulPrecision(100), {from: mike});
+
+            currentBlock = await Helper.getCurrentBlock();
+            // delay to epoch 2
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            // Current data:
+            // (mike + poolMaster) (has stake, no delegation)
+            // loi + victor (delegated to poolMaster, has stake, no delegated stake)
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+
+            await daoContract.vote(3, 1, {from: poolMaster});
+            await daoContract.vote(3, 2, {from: mike});
+
+            epochPoints = new BN(0).add(initPoolMasterStake).add(initMikeStake).add(initVictorStake).add(initLoiStake);
+            let campPoints3 = new BN(0).add(epochPoints);
+            let optionPoints31 = new BN(0).add(initPoolMasterStake).add(initVictorStake).add(initLoiStake);
+            let optionPoints32 = new BN(0).add(initMikeStake);
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(2), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(3);
+            Helper.assertEqual(campPoints3, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoints31, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoints32, campPointsData[0][1], "option voted count is incorrect");
+            Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
+
+            Helper.assertEqual(1, await daoContract.getNumberVotes(mike, 2), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(poolMaster, 2), "number votes should be correct");
+
+            await stakingContract.withdraw(mulPrecision(100), {from: victor});
+            await stakingContract.withdraw(mulPrecision(200), {from: loi});
+            await stakingContract.withdraw(mulPrecision(50), {from: poolMaster});
+            await stakingContract.withdraw(mulPrecision(150), {from: mike});
+
+            epochPoints.isub(mulPrecision(500));
+            campPoints3.isub(mulPrecision(500));
+            optionPoints31.isub(mulPrecision(350));
+            optionPoints32.isub(mulPrecision(150));
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(2), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(3);
+            Helper.assertEqual(campPoints3, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoints31, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoints32, campPointsData[0][1], "option voted count is incorrect");
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+
+            await daoContract.vote(4, 2, {from: poolMaster});
+
+            let campPoints4 = new BN(0).add(initPoolMasterStake).add(initVictorStake).add(initLoiStake);
+            campPoints4.isub(mulPrecision(350));
+            let votePoints42 = new BN(0).add(campPoints4);
+            epochPoints.iadd(campPoints4);
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(2), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(3);
+            Helper.assertEqual(campPoints3, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoints31, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoints32, campPointsData[0][1], "option voted count is incorrect");
+
+            campPointsData = await daoContract.getCampaignVoteCountData(4);
+            Helper.assertEqual(campPoints4, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(0, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(votePoints42, campPointsData[0][1], "option voted count is incorrect");
+        });
+
+        it("Test vote should update data correctly when revote - with delegation", async function() {
+            await deployContracts(50, currentBlock + 20, 20);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(mike, {from: victor});
+            await stakingContract.delegate(poolMaster, {from: mike});
+            await stakingContract.delegate(poolMaster2, {from: loi});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+
+            await daoContract.vote(1, 1, {from: victor});
+            await daoContract.vote(1, 2, {from: loi});
+
+            // Nothing changes as victor + loi have delegated to another
+            let epochPoints = new BN(0);
+            let campPoints1 = new BN(0);
+            let optionPoint11 = new BN(0);
+            let optionPoint12 = new BN(0);
+            let campPoints2 = new BN(0);
+            let optionPoint21 = new BN(0);
+            let optionPoint22 = new BN(0);
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            let campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
+
+            campPointsData = await daoContract.getCampaignVoteCountData(2);
+            Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint22, campPointsData[0][1], "option voted count is incorrect");
+
+            Helper.assertEqual(1, await daoContract.getNumberVotes(victor, 1), "number votes should be correct");
+            Helper.assertEqual(0, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
+            Helper.assertEqual(0, await daoContract.getNumberVotes(poolMaster2, 1), "number votes should be correct");
+
+            await daoContract.vote(1, 1, {from: poolMaster});
+            await daoContract.vote(2, 1, {from: poolMaster});
+
+            epochPoints.iadd(initMikeStake).iadd(initMikeStake);
+            campPoints1.iadd(initMikeStake);
+            optionPoint11.iadd(initMikeStake);
+            campPoints2.iadd(initMikeStake);
+            optionPoint21.iadd(initMikeStake);
+
+            await daoContract.vote(1, 2, {from: poolMaster2});
+
+            epochPoints.iadd(initPoolMaster2Stake).iadd(initLoiStake);
+            campPoints1.iadd(initPoolMaster2Stake).iadd(initLoiStake);
+            optionPoint12.iadd(initPoolMaster2Stake).iadd(initLoiStake);
+
+            Helper.assertEqual(1, await daoContract.getNumberVotes(poolMaster2, 1), "number votes should be correct");
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
+
+            campPointsData = await daoContract.getCampaignVoteCountData(2);
+            Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint22, campPointsData[0][1], "option voted count is incorrect");
+
+            // Revote
+            await daoContract.vote(1, 1, {from: poolMaster2});
+
+            optionPoint12.isub(initPoolMaster2Stake).isub(initLoiStake);
+            optionPoint11.iadd(initPoolMaster2Stake).iadd(initLoiStake);
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
+
+            // Revote
+            await daoContract.vote(2, 2, {from: poolMaster});
+
+            optionPoint21.isub(initMikeStake);
+            optionPoint22.iadd(initMikeStake);
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+
+            campPointsData = await daoContract.getCampaignVoteCountData(2);
+            Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint22, campPointsData[0][1], "option voted count is incorrect");
+
+            // Revote back to older option
+            await daoContract.vote(1, 2, {from: poolMaster2});
+
+            optionPoint11.isub(initPoolMaster2Stake).isub(initLoiStake);
+            optionPoint12.iadd(initPoolMaster2Stake).iadd(initLoiStake);
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
+
+            // Revote the same previous option
+            await daoContract.vote(1, 2, {from: poolMaster2});
+            await daoContract.vote(2, 2, {from: poolMaster});
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
+
+            campPointsData = await daoContract.getCampaignVoteCountData(2);
+            Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint22, campPointsData[0][1], "option voted count is incorrect");
         });
 
         it("Test vote should revert camp is not existed", async function() {
