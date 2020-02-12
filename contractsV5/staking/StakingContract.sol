@@ -60,29 +60,30 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
     // S: staker's address to init
     // N: current epoch
     function initDataIfNeeded(address S, uint N) internal {
-        address latestDelegatedAddr = latestDelegatedAddress[S];
-        if (latestDelegatedAddr == address(0)) {
+        address ldAddress = latestDelegatedAddress[S];
+        if (ldAddress == address(0)) {
             // not delegate to anyone, consider as delegate to yourself
             latestDelegatedAddress[S] = S;
-            latestDelegatedAddr = S;
+            ldAddress = S;
         }
-        uint latestDelegatedStake = latestDelegatedStakes[S];
-        uint latestStakeBal = latestStake[S];
+
+        uint ldStake = latestDelegatedStakes[S];
+        uint lStakeBal = latestStake[S];
 
         if (!hasInited[N][S]) {
             hasInited[N][S] = true;
-            delegatedAddress[N][S] = latestDelegatedAddr;
-            delegatedStakes[N][S] = latestDelegatedStake;
-            stakes[N][S] = latestStakeBal;
+            delegatedAddress[N][S] = ldAddress;
+            delegatedStakes[N][S] = ldStake;
+            stakes[N][S] = lStakeBal;
         }
 
         // whenever users deposit/withdraw/delegate, the current and next epoch data need to be updated
         // as the result, we will also need to init data for staker at the next epoch
         if (!hasInited[N + 1][S]) {
             hasInited[N + 1][S] = true;
-            delegatedAddress[N + 1][S] = latestDelegatedAddr;
-            delegatedStakes[N + 1][S] = latestDelegatedStake;
-            stakes[N + 1][S] = latestStakeBal;
+            delegatedAddress[N + 1][S] = ldAddress;
+            delegatedStakes[N + 1][S] = ldStake;
+            stakes[N + 1][S] = lStakeBal;
         }
     }
 
@@ -94,23 +95,23 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
 
         initDataIfNeeded(S, N);
 
-        address curDelegatedAddr = delegatedAddress[N + 1][S];
+        address curDAddr = delegatedAddress[N + 1][S];
         // nothing changes here
-        if (dAddr == curDelegatedAddr) { return false; }
+        if (dAddr == curDAddr) { return false; }
 
         uint updatedStake = stakes[N + 1][S];
 
         // reduce delegatedStakes for curDelegatedAddr if needed
-        if (curDelegatedAddr != S) {
-            initDataIfNeeded(curDelegatedAddr, N);
+        if (curDAddr != S) {
+            initDataIfNeeded(curDAddr, N);
             // by right we don't need to check if delegatedStakes >= stakes
-            require(delegatedStakes[N + 1][curDelegatedAddr] >= updatedStake, "delegate: delegated stake is smaller than next epoch stake");
-            require(latestDelegatedStakes[curDelegatedAddr] >= updatedStake, "delegate: latest delegated stake is smaller than next epoch stake");
+            require(delegatedStakes[N + 1][curDAddr] >= updatedStake, "delegate: delegated stake is smaller than next epoch stake");
+            require(latestDelegatedStakes[curDAddr] >= updatedStake, "delegate: latest delegated stake is smaller than next epoch stake");
 
-            delegatedStakes[N + 1][curDelegatedAddr] = delegatedStakes[N + 1][curDelegatedAddr].sub(updatedStake);
-            latestDelegatedStakes[curDelegatedAddr] = latestDelegatedStakes[curDelegatedAddr].sub(updatedStake);
+            delegatedStakes[N + 1][curDAddr] = delegatedStakes[N + 1][curDAddr].sub(updatedStake);
+            latestDelegatedStakes[curDAddr] = latestDelegatedStakes[curDAddr].sub(updatedStake);
 
-            emit Delegated(S, curDelegatedAddr, false);
+            emit Delegated(S, curDAddr, false);
         }
 
         latestDelegatedAddress[S] = dAddr;
@@ -172,8 +173,8 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
         address dAddr = delegatedAddress[N][S];
 
         uint curStakes = stakes[N][S];
-        uint latestStakeBal = latestStake[S];
-        uint newStakes = curStakes.min(latestStakeBal);
+        uint lStakeBal = latestStake[S];
+        uint newStakes = curStakes.min(lStakeBal);
         uint penaltyAmount = curStakes.sub(newStakes); // newStakes is always <= curStakes
 
         if (penaltyAmount > 0) {

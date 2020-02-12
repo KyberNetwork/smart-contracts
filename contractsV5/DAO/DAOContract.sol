@@ -263,8 +263,6 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
 
     event RewardClaimed(address staker, uint epoch, uint percentageInPrecision);
     function claimReward(address staker, uint epoch) public nonReentrant {
-        require(address(feeHandler) != address(0), "claimReward: feeHandler address is missing");
-
         uint curEpoch = getCurrentEpochNumber();
         require(epoch >= curEpoch, "claimReward: can not claim for current or future epoch");
         require(!hasClaimedReward[staker][epoch], "claimReward: already claimed reward for this epoch");
