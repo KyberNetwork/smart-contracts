@@ -224,7 +224,7 @@ contract('KyberTradeLogic', function(accounts) {
             it("should get rates for token (no taker fee)", async() => {
                 takerFeeBps = new BN(0);
                 actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
-                for (var i=0; i < actualResult.buyReserves.length; i++) {
+                for (let i=0; i < actualResult.buyReserves.length; i++) {
                     reserveAddress = actualResult.buyReserves[i];
                     reserve = reserveInstances[reserveAddress];
                     Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
@@ -232,7 +232,7 @@ contract('KyberTradeLogic', function(accounts) {
                     Helper.assertEqual(expectedReserveRate, actualResult.buyRates[i], "rate not equal");
                 }
     
-                for (var i=0; i < actualResult.sellReserves.length; i++) {
+                for (let i=0; i < actualResult.sellReserves.length; i++) {
                     reserveAddress = actualResult.sellReserves[i];
                     reserve = reserveInstances[reserveAddress];
                     Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
@@ -243,7 +243,7 @@ contract('KyberTradeLogic', function(accounts) {
     
             it("should get rates for token (with taker fee)", async() => {
                 actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
-                for (var i=0; i < actualResult.buyReserves.length; i++) {
+                for (let i=0; i < actualResult.buyReserves.length; i++) {
                     reserveAddress = actualResult.buyReserves[i];
                     reserve = reserveInstances[reserveAddress];
                     Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
@@ -255,7 +255,7 @@ contract('KyberTradeLogic', function(accounts) {
                     Helper.assertEqual(expectedRate, actualResult.buyRates[i], "rate not equal");
                 }
     
-                for (var i=0; i < actualResult.sellReserves.length; i++) {
+                for (let i=0; i < actualResult.sellReserves.length; i++) {
                     reserveAddress = actualResult.sellReserves[i];
                     reserve = reserveInstances[reserveAddress];
                     Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
@@ -309,7 +309,7 @@ contract('KyberTradeLogic', function(accounts) {
             it("should get rates for token (no taker fee)", async() => {
                 takerFeeBps = new BN(0);
                 actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
-                for (var i=0; i < actualResult.buyReserves.length; i++) {
+                for (let i=0; i < actualResult.buyReserves.length; i++) {
                     reserveAddress = actualResult.buyReserves[i];
                     reserve = reserveInstances[reserveAddress];
                     Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
@@ -317,7 +317,7 @@ contract('KyberTradeLogic', function(accounts) {
                     Helper.assertEqual(expectedReserveRate, actualResult.buyRates[i], "rate not equal");
                 }
     
-                for (var i=0; i < actualResult.sellReserves.length; i++) {
+                for (let i=0; i < actualResult.sellReserves.length; i++) {
                     reserveAddress = actualResult.sellReserves[i];
                     reserve = reserveInstances[reserveAddress];
                     Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
@@ -328,7 +328,7 @@ contract('KyberTradeLogic', function(accounts) {
     
             it("should get rates for token (with taker fee)", async() => {
                 actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
-                for (var i=0; i < actualResult.buyReserves.length; i++) {
+                for (let i=0; i < actualResult.buyReserves.length; i++) {
                     reserveAddress = actualResult.buyReserves[i];
                     reserve = reserveInstances[reserveAddress];
                     Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
@@ -340,7 +340,7 @@ contract('KyberTradeLogic', function(accounts) {
                     Helper.assertEqual(expectedRate, actualResult.buyRates[i], "rate not equal");
                 }
     
-                for (var i=0; i < actualResult.sellReserves.length; i++) {
+                for (let i=0; i < actualResult.sellReserves.length; i++) {
                     reserveAddress = actualResult.sellReserves[i];
                     reserve = reserveInstances[reserveAddress];
                     Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
@@ -395,14 +395,14 @@ contract('KyberTradeLogic', function(accounts) {
             it("should get rates for token (no taker fee)", async() => {
                 takerFeeBps = new BN(0);
                 actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
-                for (var i=0; i < actualResult.buyReserves.length; i++) {
+                for (let i=0; i < actualResult.buyReserves.length; i++) {
                     reserveAddress = actualResult.buyReserves[i];
                     reserve = reserveInstances[reserveAddress];
                     Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
                     Helper.assertEqual(zeroBN, actualResult.buyRates[i], "rate not zero");
                 }
     
-                for (var i=0; i < actualResult.sellReserves.length; i++) {
+                for (let i=0; i < actualResult.sellReserves.length; i++) {
                     reserveAddress = actualResult.sellReserves[i];
                     reserve = reserveInstances[reserveAddress];
                     Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
@@ -412,14 +412,14 @@ contract('KyberTradeLogic', function(accounts) {
     
             it("should get rates for token (with taker fee)", async() => {
                 actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
-                for (var i=0; i < actualResult.buyReserves.length; i++) {
+                for (let i=0; i < actualResult.buyReserves.length; i++) {
                     reserveAddress = actualResult.buyReserves[i];
                     reserve = reserveInstances[reserveAddress];
                     Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
                     Helper.assertEqual(zeroBN, actualResult.buyRates[i], "rate not zero");
                 }
     
-                for (var i=0; i < actualResult.sellReserves.length; i++) {
+                for (let i=0; i < actualResult.sellReserves.length; i++) {
                     reserveAddress = actualResult.sellReserves[i];
                     reserve = reserveInstances[reserveAddress];
                     Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
