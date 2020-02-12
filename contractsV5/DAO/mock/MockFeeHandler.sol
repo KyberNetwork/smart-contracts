@@ -21,4 +21,8 @@ contract MockFeeHandler is Utils {
         staker.transfer(rewardToClaim);
         return true;
     }
+
+    function withdrawAllETH() public {
+        msg.sender.transfer(address(this).balance);
+    }
 }

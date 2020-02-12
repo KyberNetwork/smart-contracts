@@ -2,6 +2,7 @@ const TestToken = artifacts.require("Token.sol");
 const DAOContract = artifacts.require("MockDAOContract.sol");
 const StakingContract = artifacts.require("StakingContract.sol");
 const MockFeeHandler = artifacts.require("MockFeeHandler.sol");
+const MockFeeHandlerClaimRewardFailed = artifacts.require("MockFeeHandlerClaimRewardFailed.sol");
 const Helper = require("../../v4/helper.js");
 
 const BN = web3.utils.BN;
@@ -2305,10 +2306,422 @@ contract('DAOContract', function(accounts) {
         })
     });
 
-    describe("#Conclude Campaign Tests", () => {
+    describe("#Claim Reward Tests", () => {
+        it("Test claim reward percentage is correct, balance changes as expected - with delegation", async function() {
+            await deployContracts(20, currentBlock + 15, 10);
+            await setupSimpleStakingData();
+            // no stake, but has delegated stake
+            await stakingContract.delegate(poolMaster, {from: victor});
+            // has both stake + delegated stake
+            await stakingContract.delegate(poolMaster2, {from: loi});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            let totalEpochPoints = new BN(0);
+            let mikePoints = new BN(0);
+            let poolMasterPoints = new BN(0);
+            let poolMaster2Points = new BN(0);
+
+            await daoContract.vote(1, 1, {from: mike});
+            await daoContract.vote(1, 2, {from: mike});
+            mikePoints.iadd(initMikeStake);
+            totalEpochPoints.iadd(initMikeStake);
+            await daoContract.vote(2, 1, {from: mike});
+            await daoContract.vote(2, 1, {from: mike});
+            mikePoints.iadd(initMikeStake);
+            totalEpochPoints.iadd(initMikeStake);
+            await daoContract.vote(1, 1, {from: poolMaster});
+            totalEpochPoints.iadd(initVictorStake);
+            poolMasterPoints.iadd(initVictorStake);
+            await daoContract.vote(1, 1, {from: poolMaster2});
+            totalEpochPoints.iadd(initLoiStake).iadd(initPoolMaster2Stake);
+            poolMaster2Points.iadd(initLoiStake).iadd(initPoolMaster2Stake);
+
+            await daoContract.vote(1, 1, {from: victor});
+            await daoContract.vote(1, 1, {from: loi});
+
+            let epochTotalReward = mulPrecision(1).div(new BN(2));
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: epochTotalReward});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 1 * epochPeriod + startBlock - currentBlock);
+
+            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+
+            let expectedMikeBal = await Helper.getBalancePromise(mike);
+            expectedMikeBal.iadd(mikePer.mul(epochTotalReward).div(precision));
+            let expectedPM1Bal = await Helper.getBalancePromise(poolMaster);
+            expectedPM1Bal.iadd(poolMasterPer.mul(epochTotalReward).div(precision));
+            let expectedPM2Bal = await Helper.getBalancePromise(poolMaster2);
+            expectedPM2Bal.iadd(poolMaster2Per.mul(epochTotalReward).div(precision));
+
+            await daoContract.claimReward(mike, 1);
+            await daoContract.claimReward(poolMaster, 1);
+            await daoContract.claimReward(poolMaster2, 1);
+
+            Helper.assertEqual(expectedMikeBal, await Helper.getBalancePromise(mike), "reward claimed is not correct");
+            Helper.assertEqual(expectedPM1Bal, await Helper.getBalancePromise(poolMaster), "reward claimed is not correct");
+            Helper.assertEqual(expectedPM2Bal, await Helper.getBalancePromise(poolMaster2), "reward claimed is not correct");
+
+            await feeHandler.withdrawAllETH({from: accounts[0]});
+        });
+
+        it("Test claim reward some epochs reward and balance change as epected", async function() {
+            await deployContracts(20, currentBlock + 15, 10);
+            await setupSimpleStakingData();
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            let mikeCurStake = new BN(0).add(initMikeStake);
+            let victorCurStake = new BN(0).add(initVictorStake);
+            let loiCurStake = new BN(0).add(initLoiStake);
+
+            let campCount = 0;
+            for(let id = 1; id < 5; id++) {
+                currentBlock = await Helper.getCurrentBlock();
+                await daoContract.submitNewCampaign(
+                    0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                    formulaParamsData, [25, 50], '0x', {from: admin}
+                );
+                await daoContract.submitNewCampaign(
+                    0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                    formulaParamsData, [25, 50], '0x', {from: admin}
+                );
+                campCount += 2;
+
+                let totalEpochPoints = new BN(0);
+                let mikePoints = new BN(0);
+                let victorPoints = new BN(0);
+                let loiPoints = new BN(0);
+
+                await daoContract.vote(campCount - 1, 1, {from: mike});
+                totalEpochPoints.iadd(mikeCurStake);
+                mikePoints.iadd(mikeCurStake);
+                await daoContract.vote(campCount, 2, {from: mike});
+                totalEpochPoints.iadd(mikeCurStake);
+                mikePoints.iadd(mikeCurStake);
+                await daoContract.vote(campCount, 1, {from: victor});
+                await daoContract.vote(campCount, 1, {from: victor});
+                totalEpochPoints.iadd(victorCurStake);
+                victorPoints.iadd(victorCurStake);
+                await daoContract.vote(campCount - 1, 2, {from: loi});
+                totalEpochPoints.iadd(loiCurStake);
+                loiPoints.iadd(loiCurStake);
+                await daoContract.vote(campCount - 1, 1, {from: loi});
+
+                let epochTotalReward = mulPrecision(1).div(new BN(id));
+                await feeHandler.setEpochReward(id, {from: accounts[0], value: epochTotalReward});
+
+                await stakingContract.deposit(mulPrecision(10), {from: loi});
+                loiCurStake.iadd(mulPrecision(10));
+
+                currentBlock = await Helper.getCurrentBlock();
+                await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], id * epochPeriod + startBlock - currentBlock);
+
+                let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+                let victorPer = victorPoints.mul(precision).div(totalEpochPoints);
+                let loiPer = loiPoints.mul(precision).div(totalEpochPoints);
+
+                Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, id), "reward per is incorrect");
+                Helper.assertEqual(victorPer, await daoContract.getStakerRewardPercentageInPrecision(victor, id), "reward per is incorrect");
+                Helper.assertEqual(loiPer, await daoContract.getStakerRewardPercentageInPrecision(loi, id), "reward per is incorrect");
+
+                let expectedMikeBal = await Helper.getBalancePromise(mike);
+                expectedMikeBal.iadd(mikePer.mul(epochTotalReward).div(precision));
+                let expectedVictorBal = await Helper.getBalancePromise(victor);
+                expectedVictorBal.iadd(victorPer.mul(epochTotalReward).div(precision));
+                let expectedLoiBal = await Helper.getBalancePromise(loi);
+                expectedLoiBal.iadd(loiPer.mul(epochTotalReward).div(precision));
+
+                Helper.assertEqual(false, await daoContract.hasClaimedReward(mike, id), "should have claimed reward");
+                Helper.assertEqual(false, await daoContract.hasClaimedReward(victor, id), "should have claimed reward");
+                Helper.assertEqual(false, await daoContract.hasClaimedReward(loi, id), "should have claimed reward");
+
+                await daoContract.claimReward(mike, id);
+                await daoContract.claimReward(victor, id);
+                await daoContract.claimReward(loi, id);
+
+                Helper.assertEqual(expectedMikeBal, await Helper.getBalancePromise(mike), "reward claimed is not correct");
+                Helper.assertEqual(expectedVictorBal, await Helper.getBalancePromise(victor), "reward claimed is not correct");
+                Helper.assertEqual(expectedLoiBal, await Helper.getBalancePromise(loi), "reward claimed is not correct");
+
+                Helper.assertEqual(true, await daoContract.hasClaimedReward(mike, id), "should have claimed reward");
+                Helper.assertEqual(true, await daoContract.hasClaimedReward(victor, id), "should have claimed reward");
+                Helper.assertEqual(true, await daoContract.hasClaimedReward(loi, id), "should have claimed reward");
+
+                await stakingContract.withdraw(mulPrecision(10), {from: mike});
+                mikeCurStake.isub(mulPrecision(10));
+                await stakingContract.withdraw(mulPrecision(10), {from: victor});
+                victorCurStake.isub(mulPrecision(10));
+            }
+            await feeHandler.withdrawAllETH({from: accounts[0]});
+        });
+
+        it("Test claim reward should revert epoch is not in the past", async function() {
+            await deployContracts(15, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+            await daoContract.vote(1, 2, {from: victor});
+
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: precision.div(new BN(10))});
+            await feeHandler.setEpochReward(2, {from: accounts[0], value: precision.div(new BN(10))});
+
+            // can not claim for current epoch
+            try {
+                await daoContract.claimReward(mike, 1);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "claimReward: can not claim for current or future epoch"),
+                    "wrong throw error message, got: " + e
+                );
+            }
+            // can not claim for next epoch
+            try {
+                await daoContract.claimReward(mike, 2);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessageContains(e, "claimReward: can not claim for current or future epoch"));
+            }
+            // can not claim for far future epoch
+            try {
+                await daoContract.claimReward(mike, 100);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "claimReward: can not claim for current or future epoch"),
+                    "wrong throw error message, got: " + e
+                );
+            }
+
+            // delay to epoch 2
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            // now mike can claim reward for epoch 1
+            await daoContract.claimReward(mike, 1);
+
+            await feeHandler.withdrawAllETH({from: accounts[0]});
+        });
+
+        it("Test claim reward should revert already claimed", async function() {
+            await deployContracts(15, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: precision.div(new BN(10))});
+
+            // delay to epoch 2
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            await daoContract.claimReward(mike, 1);
+
+            // can not claim again
+            try {
+                await daoContract.claimReward(mike, 1);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "claimReward: already claimed reward for this epoch"),
+                    "wrong throw error message, got: " + e
+                )
+            }
+
+            await feeHandler.withdrawAllETH({from: accounts[0]});
+        });
+
+        it("Test claim reward should revert no camp", async function() {
+            await deployContracts(15, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: precision.div(new BN(10))});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            try {
+                await daoContract.claimReward(mike, 1);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward to claim"),
+                    "wrong throw error message, got: " + e
+                )
+            }
+
+            await feeHandler.withdrawAllETH({from: accounts[0]});
+        })
+
+        it("Test claim reward should revert staker has no stake", async function() {
+            await deployContracts(15, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+            await stakingContract.withdraw(initMikeStake, {from: mike});
+            await stakingContract.delegate(mike, {from: victor});
+
+            // delay to epoch 1
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 1, {from: poolMaster});
+            await daoContract.vote(1, 2, {from: mike});
+            await daoContract.vote(1, 1, {from: loi});
+            await daoContract.vote(1, 2, {from: victor});
+
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: precision.div(new BN(10))});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            // no stake
+            try {
+                await daoContract.claimReward(poolMaster, 1);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward to claim"),
+                    "wrong throw error message, got: " + e
+                )
+            }
+            // already delegated
+            try {
+                await daoContract.claimReward(victor, 1);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward to claim"),
+                    "wrong throw error message, got: " + e
+                )
+            }
+
+            // mike has no stake, but has delegated stake
+            await daoContract.claimReward(mike, 1);
+            await daoContract.claimReward(loi, 1);
+
+            await feeHandler.withdrawAllETH({from: accounts[0]});
+        })
+
+        it("Test claim reward should revert staker didn't vote", async function() {
+            await deployContracts(15, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+
+            // delay to epoch 1
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: precision.div(new BN(10))});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            // victor didn't vote
+            try {
+                await daoContract.claimReward(victor, 1);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward to claim"),
+                    "wrong throw error message, got: " + e
+                )
+            }
+
+            await daoContract.claimReward(mike, 1);
+
+            await feeHandler.withdrawAllETH({from: accounts[0]});
+        });
+
+        it("Test claim reward should revert fee handler return false for claimReward", async function() {
+            feeHandler = await MockFeeHandlerClaimRewardFailed.new();
+            await deployContracts(15, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+
+            // delay to epoch 1
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: precision.div(new BN(10))});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            try {
+                await daoContract.claimReward(mike, 1);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "claimReward: feeHandle failed to claim reward"),
+                    "wrong throw error message, got: " + e
+                );
+            }
+
+            await feeHandler.withdrawAllETH({from: accounts[0]});
+            feeHandler = await MockFeeHandler.new();
+        });
     });
 
-    describe("#Claim Reward Tests", () => {
+    describe("#Conclude Campaign Tests", () => {
     });
 
     describe("#Constructor Tests", () => {
@@ -2335,6 +2748,10 @@ contract('DAOContract', function(accounts) {
 
 function logInfo(message) {
     console.log("           " + message);
+}
+
+function logNumber(num) {
+    console.log((new BN(num)).toString(10));
 }
 
 function mulPrecision(value) {

@@ -15,6 +15,10 @@ module.exports.isRevertErrorMessage = function( error ) {
     return false;
 };
 
+module.exports.isRevertErrorMessageContains = function(error, msg) {
+    return (error.message.search(msg) >= 0);
+}
+
 module.exports.expectThrow = async function (promise, message) {
     try {
         await promise;

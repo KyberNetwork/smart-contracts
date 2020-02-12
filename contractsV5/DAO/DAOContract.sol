@@ -261,31 +261,19 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         emit Voted(staker, curEpoch, campID, option);
     }
 
-    event RewardClaimed(address staker, uint epoch, uint percentageInPrecision);
+    event RewardClaimed(address staker, uint epoch, uint perInPrecision);
     function claimReward(address staker, uint epoch) public nonReentrant {
         uint curEpoch = getCurrentEpochNumber();
-        require(epoch >= curEpoch, "claimReward: can not claim for current or future epoch");
+        require(epoch < curEpoch, "claimReward: can not claim for current or future epoch");
         require(!hasClaimedReward[staker][epoch], "claimReward: already claimed reward for this epoch");
 
-        uint numVotes = numberVotes[staker][epoch];
-        // no votes, no rewards
-        require(numVotes > 0, "claimReward: no votes, no rewards");
+        uint perInPrecision = getStakerRewardPercentageInPrecision(staker, epoch);
+        require(perInPrecision > 0, "claimReward: No reward to claim");
 
-        (uint stake, uint delegatedStake, address delegatedAddr) = staking.getStakerDataForPastEpoch(staker, epoch);
-        uint totalStake = delegatedAddr == staker ? stake.add(delegatedStake) : delegatedStake;
-        require(totalStake > 0, "claimReward: total stakes is 0, no reward");
-
-        uint points = numVotes.mul(totalStake);
-        uint totalPts = totalEpochPoints[epoch];
-        require(totalPts > 0, "claimReward: total points is 0, can not claim reward");
-
-        require(points <= totalPts, "claimReward: points should not be greater than total points");
-        uint percentageInPrecision = points.mul(PRECISION).div(totalPts);
-
-        require(feeHandler.claimReward(staker, epoch, percentageInPrecision), "claimReward: feeHandle failed to claim reward");
+        require(feeHandler.claimReward(staker, epoch, perInPrecision), "claimReward: feeHandle failed to claim reward");
 
         hasClaimedReward[staker][epoch] = true;
-        emit RewardClaimed(staker, epoch, percentageInPrecision);
+        emit RewardClaimed(staker, epoch, perInPrecision);
     }
 
     function getLatestNetworkFeeDataWithCache() public returns(uint feeInBps, uint expiryBlockNumber) {
@@ -476,7 +464,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
 
     function getStakerRewardPercentageInPrecision(address staker, uint epoch) public view returns(uint) {
         uint curEpoch = getCurrentEpochNumber();
-        if (epoch >= curEpoch) { return 0; }
+        if (epoch > curEpoch) { return 0; }
 
         uint numVotes = numberVotes[staker][epoch];
         // no votes, no rewards
@@ -486,11 +474,13 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         uint totalStake = delegatedAddr == staker ? stake.add(delegatedStake) : delegatedStake;
         if (totalStake == 0) { return 0; }
 
-        uint points = numVotes * totalStake;
+        uint points = numVotes.mul(totalStake);
         uint totalPts = totalEpochPoints[epoch];
         if (totalPts == 0) { return 0; }
+        // something is wrong here, points should never be greater than total pts
+        if (points > totalPts) { return 0; }
 
-        return points * PRECISION / totalPts;
+        return points.mul(PRECISION).div(totalPts);
     }
 
     // return list campaign ids for epoch, excluding non-existed ones
@@ -519,17 +509,16 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
 
     // Note: option is indexed from 1
     function validateVoteOption(uint campID, uint option) internal view returns(bool) {
-        // camp is not existed
-        if (!isCampExisted[campID]) { return false; }
+        require(isCampExisted[campID], "vote: camp is not existd");
+
         Campaign storage camp = campaignData[campID];
-        // campaign is not started or alr ended
-        if (camp.startBlock > block.number || camp.endBlock < block.number) {
-            return false;
-        }
-        // option is not in range, note: option index starts from 1
-        if (camp.options.length < option || option == 0) {
-            return false;
-        }
+
+        require(camp.startBlock <= block.number, "vote: camp is not started yet");
+        require(camp.endBlock >= block.number, "vote: camp has already ended");
+
+        require(option > 0, "vote: option must be positive");
+        require(option <= camp.options.length, "vote: option must be in range");
+
         return true;
     }
 
