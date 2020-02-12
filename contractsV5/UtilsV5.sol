@@ -122,6 +122,6 @@ contract Utils {
         }
 
         if (refGas == 0) return currGas;
-        console.log("gas '%d' in '%s' diff: %d", currGas, str, refGas > 0 ? refGas - currGas : 0);
+        console.log("gas '%d' in '%s' diff: %d", currGas, str, refGas - currGas);
     }
 }
