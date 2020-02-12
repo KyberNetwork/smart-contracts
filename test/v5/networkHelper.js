@@ -299,7 +299,7 @@ function applyHintToReserves(tradeType, reserves, numReserves, splitValues) {
 
     if (tradeType == MASK_IN_HINTTYPE) {
         if (numReserves == undefined) numReserves = Math.floor(reserves.length/2);
-        for (var i=0; i < numReserves; i++) {
+        for (let i=0; i < numReserves; i++) {
             reserve = reserves[i];
             result.reservesForHint.push(reserve.reserveId);
             result.reservesForFetchRate.push(reserve);
@@ -307,12 +307,12 @@ function applyHintToReserves(tradeType, reserves, numReserves, splitValues) {
     } else if (tradeType == MASK_OUT_HINTTYPE) {
         if (numReserves == undefined) numReserves = Math.floor(reserves.length/2);
 
-        for (var i=0; i < numReserves; i++) {
+        for (let i=0; i < numReserves; i++) {
             reserve = reserves[i];
             result.reservesForHint.push(reserve.reserveId);
         }
 
-        for (var i = numReserves; i < reserves.length; i++) {
+        for (let i = numReserves; i < reserves.length; i++) {
             reserve = reserves[i];
             result.reservesForFetchRate.push(reserve);
         }
@@ -324,7 +324,7 @@ function applyHintToReserves(tradeType, reserves, numReserves, splitValues) {
             numReserves = splitValues.length;
         }
 
-        for (var i=0; i < numReserves; i++) {
+        for (let i=0; i < numReserves; i++) {
             reserve = reserves[i];
             result.reservesForHint.push(reserve.reserveId);
             result.reservesForFetchRate.push(reserve);
