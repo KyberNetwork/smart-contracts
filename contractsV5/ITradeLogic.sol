@@ -4,26 +4,31 @@ pragma  solidity 0.5.11;
 import "./IKyberReserve.sol";
 
 
-interface IKyberTradeLogic {
+interface ITradeLogic {
 
-    enum ResultIndex {
+    // enum for unit inputs to calcRatesAndAmounts
+    enum CalcIn {
+        tradeSrcAmount,
+        takerFeeBps,
+        platformFeeBps,
+        t2eDecimals,
+        e2tDecimals,
+        iLength
+    }
+
+    // calc rates and amounts uint outputs. no dependent on reserve number.
+    enum CalcOut {
         t2eNumReserves,
         e2tNumReserves,
         tradeWei,
         networkFeeWei,
         platformFeeWei,
         numFeePayingReserves,
-        feePayingReservesBps,
+        feePayingReservesTotalBps,
         destAmountNoFee,
-        actualDestAmount,
         destAmountWithNetworkFee,
-        resultLength
-    }
-    
-    enum FeesIndex {
-        takerFeeBps,
-        platformFeeBps,
-        feesLength
+        actualDestAmount,
+        iLength
     }
 
     function negligibleRateDiffBps() external view returns (uint);
