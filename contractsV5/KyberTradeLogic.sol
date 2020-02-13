@@ -201,7 +201,9 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         //if split reserves, add bps for ETH -> token
         if (tradeData.ethToToken.splitValuesBps.length > 1) {
             for (uint i = 0; i < tradeData.ethToToken.addresses.length; i++) {
-                if (tradeData.ethToToken.isFeePaying[i]) {
+                //check if ETH->token split reserves are fee paying
+                if (isFeePayingReserve[address(tradeData.ethToToken.addresses[i])]) {
+                    tradeData.ethToToken.isFeePaying[i] = true;
                     tradeData.feePayingReservesBps += tradeData.ethToToken.splitValuesBps[i];
                     tradeData.numFeePayingReserves ++;
                 }
@@ -361,7 +363,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
                     return (0, 0, 0);
                 }
                 destQty += calcDstQty(splitAmount, tradingReserves.decimals, ETH_DECIMALS, tradingReserves.rates[i]);
-                if (tradingReserves.isFeePaying[i]) {
+                if (isFeePayingReserve[address(reserve)]) {
+                    tradingReserves.isFeePaying[i] = true;
                     feePayingReservesBps += tradingReserves.splitValuesBps[i];
                     numFeePayingReserves ++;
                 }
