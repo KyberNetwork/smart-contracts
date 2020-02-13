@@ -255,7 +255,8 @@ async function fetchReservesRatesFromNetwork(networkInstance, reserveInstances, 
     }
     for (i=0; i<reserves.length; i++) {
         reserveAddress = reserves[i];
-        reserve = reserveInstances[reserveAddress];
+        //deep copy the object to avoid assign buy and sell rate to the same object
+        reserve = Object.assign({}, reserveInstances[reserveAddress]);
         reserve.rate = rates[i];
         reservesArray.push(reserve);
     }

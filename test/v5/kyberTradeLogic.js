@@ -212,59 +212,41 @@ contract('KyberTradeLogic', function(accounts) {
                 };
             });
 
-            beforeEach("reset taker fee bps to 20, select random token", async() => {
-                takerFeeBps = new BN(20);
+            beforeEach("select random token", async() => {
                 token = (Math.random() > 0.5) ? srcToken : destToken;
                 token = srcToken;
                 tokenDecimals = await token.decimals();
                 // 1000 tokens
                 tokenQty = new BN(1000).mul(new BN(10).pow(tokenDecimals));
             });
-
-            it("should get rates for token (no taker fee)", async() => {
-                takerFeeBps = new BN(0);
-                actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
-                for (var i=0; i < actualResult.buyReserves.length; i++) {
-                    reserveAddress = actualResult.buyReserves[i];
-                    reserve = reserveInstances[reserveAddress];
-                    Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
-                    expectedReserveRate = await reserve.instance.getConversionRate(ethAddress, token.address, ethSrcQty, 0);
-                    Helper.assertEqual(expectedReserveRate, actualResult.buyRates[i], "rate not equal");
-                }
     
-                for (var i=0; i < actualResult.sellReserves.length; i++) {
-                    reserveAddress = actualResult.sellReserves[i];
-                    reserve = reserveInstances[reserveAddress];
-                    Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
-                    expectedReserveRate = await reserve.instance.getConversionRate(token.address, ethAddress, tokenQty, 0);
-                    Helper.assertEqual(expectedReserveRate, actualResult.sellRates[i], "rate not equal");
-                }
-            });
-    
-            it("should get rates for token (with taker fee)", async() => {
-                actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
-                for (var i=0; i < actualResult.buyReserves.length; i++) {
-                    reserveAddress = actualResult.buyReserves[i];
-                    reserve = reserveInstances[reserveAddress];
-                    Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
-    
-                    queryQty = nwHelper.minusNetworkFees(ethSrcQty, reserve.isFeePaying, false, takerFeeBps);
-                    expectedReserveRate = await reserve.instance.getConversionRate(ethAddress, token.address, queryQty, 0);
-                    expectedDestAmt = Helper.calcDstQty(queryQty, ethDecimals, tokenDecimals, expectedReserveRate);
-                    expectedRate = Helper.calcRateFromQty(ethSrcQty, expectedDestAmt, ethDecimals, tokenDecimals);
-                    Helper.assertEqual(expectedRate, actualResult.buyRates[i], "rate not equal");
-                }
-    
-                for (var i=0; i < actualResult.sellReserves.length; i++) {
-                    reserveAddress = actualResult.sellReserves[i];
-                    reserve = reserveInstances[reserveAddress];
-                    Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
-    
-                    expectedReserveRate = await reserve.instance.getConversionRate(token.address, ethAddress, tokenQty, 0);
-                    expectedDestAmt = Helper.calcDstQty(tokenQty, tokenDecimals, ethDecimals, expectedReserveRate);
-                    expectedDestAmt = nwHelper.minusNetworkFees(expectedDestAmt, false, reserve.isFeePaying, takerFeeBps);
-                    expectedRate = Helper.calcRateFromQty(tokenQty, expectedDestAmt, tokenDecimals, ethDecimals);
-                    Helper.assertEqual(expectedRate, actualResult.sellRates[i], "rate not equal");
+            it("should get rates for token (different taker fee amounts)", async() => {
+                for (let takerFee = 0; takerFee <= 2500; takerFee += 500) {
+                    takerFeeBps = new BN(takerFee);
+                    actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
+                    for (let i=0; i < actualResult.buyReserves.length; i++) {
+                        reserveAddress = actualResult.buyReserves[i];
+                        reserve = reserveInstances[reserveAddress];
+                        Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
+        
+                        queryQty = nwHelper.minusNetworkFees(ethSrcQty, reserve.isFeePaying, false, takerFeeBps);
+                        expectedReserveRate = await reserve.instance.getConversionRate(ethAddress, token.address, queryQty, 0);
+                        expectedDestAmt = Helper.calcDstQty(queryQty, ethDecimals, tokenDecimals, expectedReserveRate);
+                        expectedRate = Helper.calcRateFromQty(ethSrcQty, expectedDestAmt, ethDecimals, tokenDecimals);
+                        Helper.assertEqual(expectedRate, actualResult.buyRates[i], "rate not equal");
+                    }
+        
+                    for (let i=0; i < actualResult.sellReserves.length; i++) {
+                        reserveAddress = actualResult.sellReserves[i];
+                        reserve = reserveInstances[reserveAddress];
+                        Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
+        
+                        expectedReserveRate = await reserve.instance.getConversionRate(token.address, ethAddress, tokenQty, 0);
+                        expectedDestAmt = Helper.calcDstQty(tokenQty, tokenDecimals, ethDecimals, expectedReserveRate);
+                        expectedDestAmt = nwHelper.minusNetworkFees(expectedDestAmt, false, reserve.isFeePaying, takerFeeBps);
+                        expectedRate = Helper.calcRateFromQty(tokenQty, expectedDestAmt, tokenDecimals, ethDecimals);
+                        Helper.assertEqual(expectedRate, actualResult.sellRates[i], "rate not equal");
+                    }   
                 }
             });
         });
@@ -297,59 +279,41 @@ contract('KyberTradeLogic', function(accounts) {
                 };
             });
 
-            beforeEach("reset taker fee bps to 20, select random token", async() => {
-                takerFeeBps = new BN(20);
+            beforeEach("select random token", async() => {
                 token = (Math.random() > 0.5) ? srcToken : destToken;
                 token = srcToken;
                 tokenDecimals = await token.decimals();
                 // 1000 tokens
                 tokenQty = new BN(1000).mul(new BN(10).pow(tokenDecimals));
             });
-
-            it("should get rates for token (no taker fee)", async() => {
-                takerFeeBps = new BN(0);
-                actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
-                for (var i=0; i < actualResult.buyReserves.length; i++) {
-                    reserveAddress = actualResult.buyReserves[i];
-                    reserve = reserveInstances[reserveAddress];
-                    Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
-                    expectedReserveRate = await reserve.instance.getConversionRate(ethAddress, token.address, ethSrcQty, 0);
-                    Helper.assertEqual(expectedReserveRate, actualResult.buyRates[i], "rate not equal");
-                }
     
-                for (var i=0; i < actualResult.sellReserves.length; i++) {
-                    reserveAddress = actualResult.sellReserves[i];
-                    reserve = reserveInstances[reserveAddress];
-                    Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
-                    expectedReserveRate = await reserve.instance.getConversionRate(token.address, ethAddress, tokenQty, 0);
-                    Helper.assertEqual(expectedReserveRate, actualResult.sellRates[i], "rate not equal");
-                }
-            });
-    
-            it("should get rates for token (with taker fee)", async() => {
-                actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
-                for (var i=0; i < actualResult.buyReserves.length; i++) {
-                    reserveAddress = actualResult.buyReserves[i];
-                    reserve = reserveInstances[reserveAddress];
-                    Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
-    
-                    queryQty = nwHelper.minusNetworkFees(ethSrcQty, reserve.isFeePaying, false, takerFeeBps);
-                    expectedReserveRate = await reserve.instance.getConversionRate(ethAddress, token.address, queryQty, 0);
-                    expectedDestAmt = Helper.calcDstQty(queryQty, ethDecimals, tokenDecimals, expectedReserveRate);
-                    expectedRate = Helper.calcRateFromQty(ethSrcQty, expectedDestAmt, ethDecimals, tokenDecimals);
-                    Helper.assertEqual(expectedRate, actualResult.buyRates[i], "rate not equal");
-                }
-    
-                for (var i=0; i < actualResult.sellReserves.length; i++) {
-                    reserveAddress = actualResult.sellReserves[i];
-                    reserve = reserveInstances[reserveAddress];
-                    Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
-    
-                    expectedReserveRate = await reserve.instance.getConversionRate(token.address, ethAddress, tokenQty, 0);
-                    expectedDestAmt = Helper.calcDstQty(tokenQty, tokenDecimals, ethDecimals, expectedReserveRate);
-                    expectedDestAmt = nwHelper.minusNetworkFees(expectedDestAmt, false, reserve.isFeePaying, takerFeeBps);
-                    expectedRate = Helper.calcRateFromQty(tokenQty, expectedDestAmt, tokenDecimals, ethDecimals);
-                    Helper.assertEqual(expectedRate, actualResult.sellRates[i], "rate not equal");
+            it("should get rates for token (different taker fee amounts)", async() => {
+                for (let takerFee = 0; takerFee <= 2500; takerFee += 500) {
+                    takerFeeBps = new BN(takerFee);
+                    actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
+                    for (let i=0; i < actualResult.buyReserves.length; i++) {
+                        reserveAddress = actualResult.buyReserves[i];
+                        reserve = reserveInstances[reserveAddress];
+                        Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
+        
+                        queryQty = nwHelper.minusNetworkFees(ethSrcQty, reserve.isFeePaying, false, takerFeeBps);
+                        expectedReserveRate = await reserve.instance.getConversionRate(ethAddress, token.address, queryQty, 0);
+                        expectedDestAmt = Helper.calcDstQty(queryQty, ethDecimals, tokenDecimals, expectedReserveRate);
+                        expectedRate = Helper.calcRateFromQty(ethSrcQty, expectedDestAmt, ethDecimals, tokenDecimals);
+                        Helper.assertEqual(expectedRate, actualResult.buyRates[i], "rate not equal");
+                    }
+        
+                    for (let i=0; i < actualResult.sellReserves.length; i++) {
+                        reserveAddress = actualResult.sellReserves[i];
+                        reserve = reserveInstances[reserveAddress];
+                        Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
+        
+                        expectedReserveRate = await reserve.instance.getConversionRate(token.address, ethAddress, tokenQty, 0);
+                        expectedDestAmt = Helper.calcDstQty(tokenQty, tokenDecimals, ethDecimals, expectedReserveRate);
+                        expectedDestAmt = nwHelper.minusNetworkFees(expectedDestAmt, false, reserve.isFeePaying, takerFeeBps);
+                        expectedRate = Helper.calcRateFromQty(tokenQty, expectedDestAmt, tokenDecimals, ethDecimals);
+                        Helper.assertEqual(expectedRate, actualResult.sellRates[i], "rate not equal");
+                    }
                 }
             });
         });
@@ -383,47 +347,31 @@ contract('KyberTradeLogic', function(accounts) {
                 };
             });
 
-            beforeEach("reset taker fee bps to 20, select random token", async() => {
-                takerFeeBps = new BN(20);
+            beforeEach("select random token", async() => {
                 token = (Math.random() > 0.5) ? srcToken : destToken;
                 token = srcToken;
                 tokenDecimals = await token.decimals();
                 // 1000 tokens
                 tokenQty = new BN(1000).mul(new BN(10).pow(tokenDecimals));
             });
-
-            it("should get rates for token (no taker fee)", async() => {
-                takerFeeBps = new BN(0);
-                actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
-                for (var i=0; i < actualResult.buyReserves.length; i++) {
-                    reserveAddress = actualResult.buyReserves[i];
-                    reserve = reserveInstances[reserveAddress];
-                    Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
-                    Helper.assertEqual(zeroBN, actualResult.buyRates[i], "rate not zero");
-                }
     
-                for (var i=0; i < actualResult.sellReserves.length; i++) {
-                    reserveAddress = actualResult.sellReserves[i];
-                    reserve = reserveInstances[reserveAddress];
-                    Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
-                    Helper.assertEqual(zeroBN, actualResult.sellRates[i], "rate not zero");
-                }
-            });
-    
-            it("should get rates for token (with taker fee)", async() => {
-                actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
-                for (var i=0; i < actualResult.buyReserves.length; i++) {
-                    reserveAddress = actualResult.buyReserves[i];
-                    reserve = reserveInstances[reserveAddress];
-                    Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
-                    Helper.assertEqual(zeroBN, actualResult.buyRates[i], "rate not zero");
-                }
-    
-                for (var i=0; i < actualResult.sellReserves.length; i++) {
-                    reserveAddress = actualResult.sellReserves[i];
-                    reserve = reserveInstances[reserveAddress];
-                    Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
-                    Helper.assertEqual(zeroBN, actualResult.sellRates[i], "rate not zero");
+            it("should get rates for token (different taker fee amounts)", async() => {
+                for (let takerFee = 0; takerFee <= 2500; takerFee += 500) {
+                    takerFeeBps = new BN(takerFee);
+                    actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
+                    for (let i=0; i < actualResult.buyReserves.length; i++) {
+                        reserveAddress = actualResult.buyReserves[i];
+                        reserve = reserveInstances[reserveAddress];
+                        Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
+                        Helper.assertEqual(zeroBN, actualResult.buyRates[i], "rate not zero");
+                    }
+        
+                    for (let i=0; i < actualResult.sellReserves.length; i++) {
+                        reserveAddress = actualResult.sellReserves[i];
+                        reserve = reserveInstances[reserveAddress];
+                        Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
+                        Helper.assertEqual(zeroBN, actualResult.sellRates[i], "rate not zero");
+                    }
                 }
             });
         });
@@ -441,10 +389,10 @@ contract('KyberTradeLogic', function(accounts) {
             destToken = await TestToken.new("destToken", "DEST", destDecimals);
         });
 
-        describe("3 mock reserves, all feePaying", async() => {
+        describe("4 mock reserves, all feePaying", async() => {
             before("setup reserves", async() => {
-                //init 3 mock reserves
-                let result = await nwHelper.setupReserves(network, [srcToken, destToken], 3,0,0,0, accounts, admin, operator);
+                //init 4 mock reserves
+                let result = await nwHelper.setupReserves(network, [srcToken, destToken], 4,0,0,0, accounts, admin, operator);
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
@@ -464,51 +412,281 @@ contract('KyberTradeLogic', function(accounts) {
                 };
             });
 
-            beforeEach("reset taker fee bps to 20, platform fee bps to 0", async() => {
-                takerFeeBps = new BN(20);
-                platformFeeBps = new BN(0);
-                
+            beforeEach("reset srcQty", async() => {
                 // 1000 tokens
                 srcQty = new BN(1000).mul(new BN(10).pow(srcDecimals));
-                fees = [takerFeeBps, platformFeeBps];
+                
             });
 
             it("T2E, no hint", async() => {
-                reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, srcToken.address, srcQty, takerFeeBps, true);
-                bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
-                result = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcQty, fees, emptyHint);
+                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
+                    takerFeeBps = new BN(takerFee);
+                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
+                        platformFeeBps = new BN(platformFee);
+                        fees = [takerFeeBps, platformFeeBps];
+                        //search with no fees
+                        reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, srcToken.address, srcQty, 0, true);
+                        bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
+                        expectedTradeResult = getTradeResult(
+                            srcDecimals, [bestReserve], [bestReserve.rateNoFee], [],
+                            ethDecimals, [], [], [],
+                            srcQty, takerFeeBps, platformFeeBps);
+                        
+                        expectedReserves = [bestReserve.address, zeroAddress];
+                        expectedRates = [bestReserve.rateNoFee, precisionUnits];
+                        expectedSplitValuesBps = [BPS, BPS];
+                        expectedFeePaying = [bestReserve.isFeePaying, false];
+                        
+                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcQty, fees, emptyHint);
+                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                    }   
+                }
             });
 
             it("E2T, no hint", async() => {
-
+                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
+                    takerFeeBps = new BN(takerFee);
+                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
+                        platformFeeBps = new BN(platformFee);
+                        fees = [takerFeeBps, platformFeeBps];
+                        //search with no fees
+                        reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, destToken.address, ethSrcQty, 0, false);
+                        bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        expectedTradeResult = getTradeResult(
+                            ethDecimals, [], [], [],
+                            destDecimals, [bestReserve], [bestReserve.rateNoFee], [],
+                            ethSrcQty, takerFeeBps, platformFeeBps);
+                        
+                        expectedReserves = [zeroAddress, bestReserve.address];
+                        expectedRates = [precisionUnits, bestReserve.rateNoFee];
+                        expectedSplitValuesBps = [BPS, BPS];
+                        expectedFeePaying = [false, bestReserve.isFeePaying];
+                        
+                        actualResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethSrcQty, fees, emptyHint);
+                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                    }   
+                }
             });
 
             it("T2T, no hint", async() => {
-
+                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
+                    takerFeeBps = new BN(takerFee);
+                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
+                        platformFeeBps = new BN(platformFee);
+                        fees = [takerFeeBps, platformFeeBps];
+                        //search with no fees
+                        reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, srcToken.address, srcQty, 0, true);
+                        bestSellReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
+                        reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, destToken.address, ethSrcQty, 0, false);
+                        bestBuyReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        
+                        //get trade result
+                        expectedTradeResult = getTradeResult(
+                            srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
+                            destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
+                            srcQty, takerFeeBps, platformFeeBps);
+                        
+                        expectedReserves = [bestSellReserve.address, bestBuyReserve.address];
+                        expectedRates = [bestSellReserve.rateNoFee, bestBuyReserve.rateNoFee];
+                        expectedSplitValuesBps = [BPS, BPS];
+                        expectedFeePaying = [bestSellReserve.isFeePaying, bestBuyReserve.isFeePaying];
+                        
+                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcQty, fees, emptyHint);
+                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                    }   
+                }
             });
 
             it("T2E, mask in hint", async() => {
+                numMaskedReserves = 2;
+                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
+                    takerFeeBps = new BN(takerFee);
+                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
+                        platformFeeBps = new BN(platformFee);
+                        fees = [takerFeeBps, platformFeeBps];
+                        //search with no fees
+                        hintedReserves = await getHintedReserves(
+                            tradeLogic, reserveInstances,
+                            MASK_IN_HINTTYPE, numMaskedReserves, [], srcQty,
+                            undefined, 0, undefined, 0,
+                            srcToken.address, ethAddress
+                            );
 
+                        bestReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
+                        expectedTradeResult = getTradeResult(
+                            srcDecimals, [bestReserve], [bestReserve.rateNoFee], [],
+                            ethDecimals, [], [], [],
+                            srcQty, takerFeeBps, platformFeeBps);
+                        
+                        expectedReserves = [bestReserve.address, zeroAddress];
+                        expectedRates = [bestReserve.rateNoFee, precisionUnits];
+                        expectedSplitValuesBps = [BPS, BPS];
+                        expectedFeePaying = [bestReserve.isFeePaying, false];
+                        
+                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcQty, fees, hintedReserves.hint);
+                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                    }   
+                }
             });
 
             it("E2T, mask in hint", async() => {
+                numMaskedReserves = 2;
+                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
+                    takerFeeBps = new BN(takerFee);
+                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
+                        platformFeeBps = new BN(platformFee);
+                        fees = [takerFeeBps, platformFeeBps];
+                        //search with no fees
+                        hintedReserves = await getHintedReserves(
+                            tradeLogic, reserveInstances,
+                            undefined, 0, undefined, 0,
+                            MASK_IN_HINTTYPE, numMaskedReserves, [], ethSrcQty,
+                            ethAddress, destToken.address
+                            );
 
+                        bestReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        expectedTradeResult = getTradeResult(
+                            ethDecimals, [], [], [],
+                            destDecimals, [bestReserve], [bestReserve.rateNoFee], [],
+                            ethSrcQty, takerFeeBps, platformFeeBps);
+                        
+                        expectedReserves = [zeroAddress, bestReserve.address];
+                        expectedRates = [precisionUnits, bestReserve.rateNoFee];
+                        expectedSplitValuesBps = [BPS, BPS];
+                        expectedFeePaying = [false, bestReserve.isFeePaying];
+                        
+                        actualResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethSrcQty, fees, hintedReserves.hint);
+                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                    }   
+                }
             });
 
-            it("T2T, mask in hint", async() => {
+            it("T2T, mask in hint (both ways)", async() => {
+                numMaskedReserves = 2;
+                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
+                    takerFeeBps = new BN(takerFee);
+                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
+                        platformFeeBps = new BN(platformFee);
+                        fees = [takerFeeBps, platformFeeBps];
+                        //search with no fees
+                        hintedReserves = await getHintedReserves(
+                            tradeLogic, reserveInstances,
+                            MASK_IN_HINTTYPE, numMaskedReserves, [], srcQty,
+                            MASK_IN_HINTTYPE, numMaskedReserves, [], ethSrcQty,
+                            srcToken.address, destToken.address
+                            );
 
+                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps); 
+                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        expectedTradeResult = getTradeResult(
+                            srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
+                            destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
+                            srcQty, takerFeeBps, platformFeeBps);
+
+                        expectedReserves = [bestSellReserve.address, bestBuyReserve.address];
+                        expectedRates = [bestSellReserve.rateNoFee, bestBuyReserve.rateNoFee];
+                        expectedSplitValuesBps = [BPS, BPS];
+                        expectedFeePaying = [bestSellReserve.isFeePaying, bestBuyReserve.isFeePaying];
+                        
+                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcQty, fees, hintedReserves.hint);
+                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                    }   
+                }
             });
 
             it("T2E, mask out hint", async() => {
+                numMaskOutReserves = 2;
+                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
+                    takerFeeBps = new BN(takerFee);
+                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
+                        platformFeeBps = new BN(platformFee);
+                        fees = [takerFeeBps, platformFeeBps];
+                        //search with no fees
+                        hintedReserves = await getHintedReserves(
+                            tradeLogic, reserveInstances,
+                            MASK_OUT_HINTTYPE, numMaskOutReserves, [], srcQty,
+                            undefined, 0, undefined, 0,
+                            srcToken.address, ethAddress
+                            );
 
+                        bestReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
+                        expectedTradeResult = getTradeResult(
+                            srcDecimals, [bestReserve], [bestReserve.rateNoFee], [],
+                            ethDecimals, [], [], [],
+                            srcQty, takerFeeBps, platformFeeBps);
+                        expectedReserves = [bestReserve.address, zeroAddress];
+                        expectedRates = [bestReserve.rateNoFee, precisionUnits];
+                        expectedSplitValuesBps = [BPS, BPS];
+                        expectedFeePaying = [bestReserve.isFeePaying, false];
+                        
+                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcQty, fees, hintedReserves.hint);
+                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                    }   
+                }
             });
 
             it("E2T, mask out hint", async() => {
+                numMaskOutReserves = 2;
+                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
+                    takerFeeBps = new BN(takerFee);
+                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
+                        platformFeeBps = new BN(platformFee);
+                        fees = [takerFeeBps, platformFeeBps];
+                        //search with no fees
+                        hintedReserves = await getHintedReserves(
+                            tradeLogic, reserveInstances,
+                            undefined, 0, undefined, 0,
+                            MASK_OUT_HINTTYPE, numMaskOutReserves, [], ethSrcQty,
+                            ethAddress, destToken.address
+                            );
 
+                        bestReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        expectedTradeResult = getTradeResult(
+                            ethDecimals, [], [], [],
+                            destDecimals, [bestReserve], [bestReserve.rateNoFee], [],
+                            ethSrcQty, takerFeeBps, platformFeeBps);
+                            expectedReserves = [zeroAddress, bestReserve.address];
+                            expectedRates = [precisionUnits, bestReserve.rateNoFee];
+                            expectedSplitValuesBps = [BPS, BPS];
+                            expectedFeePaying = [false, bestReserve.isFeePaying];
+                        
+                        actualResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethSrcQty, fees, hintedReserves.hint);
+                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                    }   
+                }
             });
 
             it("T2T, mask out hint", async() => {
+                numMaskedReserves = 2;
+                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
+                    takerFeeBps = new BN(takerFee);
+                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
+                        platformFeeBps = new BN(platformFee);
+                        fees = [takerFeeBps, platformFeeBps];
+                        //search with no fees
+                        hintedReserves = await getHintedReserves(
+                            tradeLogic, reserveInstances,
+                            MASK_OUT_HINTTYPE, numMaskedReserves, [], srcQty,
+                            MASK_OUT_HINTTYPE, numMaskedReserves, [], ethSrcQty,
+                            srcToken.address, destToken.address
+                            );
 
+                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps); 
+                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        expectedTradeResult = getTradeResult(
+                            srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
+                            destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
+                            srcQty, takerFeeBps, platformFeeBps);
+
+                        expectedReserves = [bestSellReserve.address, bestBuyReserve.address];
+                        expectedRates = [bestSellReserve.rateNoFee, bestBuyReserve.rateNoFee];
+                        expectedSplitValuesBps = [BPS, BPS];
+                        expectedFeePaying = [bestSellReserve.isFeePaying, bestBuyReserve.isFeePaying];
+                        
+                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcQty, fees, hintedReserves.hint);
+                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                    }   
+                }
             });
 
             it("T2E, split hint", async() => {
@@ -520,6 +698,54 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, split hint", async() => {
+
+            });
+
+            it("T2T, no hint | mask in hint", async() => {
+
+            });
+
+            it("T2T, no hint | mask out hint", async() => {
+
+            });
+
+            it("T2T, no hint | split hint", async() => {
+
+            });
+
+            it("T2T, mask in hint | no hint", async() => {
+
+            });
+
+            it("T2T, mask in hint | mask out hint", async() => {
+
+            });
+
+            it("T2T, mask in hint | split hint", async() => {
+
+            });
+
+            it("T2T, mask out hint | no hint", async() => {
+
+            });
+
+            it("T2T, mask out hint | mask in hint", async() => {
+
+            });
+
+            it("T2T, mask out hint | split hint", async() => {
+
+            });
+
+            it("T2T, split hint | no hint", async() => {
+
+            });
+
+            it("T2T, split hint | mask in hint", async() => {
+
+            });
+
+            it("T2T, split hint | mask out hint", async() => {
 
             });
         })
@@ -550,9 +776,198 @@ async function fetchReservesRatesFromTradeLogic(tradeLogicInstance, reserveInsta
     }
     for (i=0; i<reserves.length; i++) {
         reserveAddress = reserves[i];
-        reserve = reserveInstances[reserveAddress];
+        reserve = Object.assign({}, reserveInstances[reserveAddress]);
         reserve.rate = rates[i];
         reservesArray.push(reserve);
     }
     return reservesArray;
+}
+
+async function getHintedReserves(
+    tradeLogic, reserveInstances, 
+    t2eHintType, t2eNumReserves, t2eSplits, t2eQty,
+    e2tHintType, e2tNumReserves, e2tSplits, e2tQty,
+    srcAdd, destAdd) 
+{   
+    let reserveCandidates;
+    let res = {
+        'reservesT2E': {},
+        'reservesE2T': {},
+        'hint': emptyHint
+    };
+
+    if(srcAdd != ethAddress) {
+        reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, srcAdd, t2eQty, 0, true);        
+        res.reservesT2E = nwHelper.applyHintToReserves(t2eHintType, reserveCandidates, t2eNumReserves, t2eSplits);
+        if(destAdd == ethAddress) {
+            res.hint = await tradeLogic.buildTokenToEthHint(
+                res.reservesT2E.tradeType, res.reservesT2E.reservesForHint, res.reservesT2E.splits);
+            return res;
+        }
+    }
+    
+    if(destAdd != ethAddress) {
+        reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, destAdd, e2tQty, 0, false);
+        res.reservesE2T = nwHelper.applyHintToReserves(e2tHintType, reserveCandidates, e2tNumReserves, e2tSplits);
+        if(srcAdd == ethAddress) {
+            res.hint = await tradeLogic.buildEthToTokenHint(
+                res.reservesE2T.tradeType, res.reservesE2T.reservesForHint, res.reservesE2T.splits);
+            return res;
+        }
+    }
+
+    res.hint = await tradeLogic.buildTokenToTokenHint(
+        res.reservesT2E.tradeType, res.reservesT2E.reservesForHint, res.reservesT2E.splits,
+        res.reservesE2T.tradeType, res.reservesE2T.reservesForHint, res.reservesE2T.splits
+    );
+    
+    return res;
+}
+
+function getTradeResult(
+    srcDecimals, t2eReserves, t2eRates, t2eSplits,
+    destDecimals, e2tReserves, e2tRates, e2tSplits,
+    srcQty, takerFeeBps, platformFeeBps
+) {
+    result = {
+        t2eNumReserves: (t2eSplits.length > 0) ? t2eReserves.length : new BN(1),
+        e2tNumReserves: (e2tSplits.length > 0) ? e2tReserves.length : new BN(1),
+        tradeWei: zeroBN,
+        networkFeeWei: zeroBN,
+        platformFeeWei: zeroBN,
+        numFeePayingReserves: zeroBN,
+        feePayingReservesBps: zeroBN,
+        destAmountNoFee: zeroBN,
+        actualDestAmount: zeroBN,
+        destAmountWithNetworkFee: zeroBN
+    }
+
+    let amountSoFar = zeroBN;
+    if (t2eSplits.length > 0) {
+        for (let i=0; i<t2eReserves.length; i++) {
+            reserve = t2eReserves[i];
+            splitAmount = (i == t2eReserves.length - 1) ? (srcQty.sub(amountSoFar)) : t2eSplits[i].mul(srcQty).div(BPS);
+            if (t2eRates[i].isZero()) {
+                result.tradeWei = zeroBN;
+                result.numFeePayingReserves = zeroBN;
+                result.feePayingReservesBps = zeroBN;
+                return result;
+            }
+            destAmt = Helper.calcDstQty(splitAmount, srcDecimals, ethDecimals, t2eRates[i]);
+            result.tradeWei = result.tradeWei.add(destAmt);
+            amountSoFar = amountSoFar.add(splitAmount);
+            if (reserve.isFeePaying) {
+                result.feePayingReservesBps = result.feePayingReservesBps.add(t2eSplits[i]);
+                result.numFeePayingReserves = result.numFeePayingReserves.add(new BN(1));
+            }
+        }
+    } else if (t2eReserves.length > 0) {
+        reserve = t2eReserves[0];
+        result.tradeWei = Helper.calcDstQty(srcQty, srcDecimals, ethDecimals, t2eRates[0]);
+        if (reserve.isFeePaying) {
+            result.feePayingReservesBps = result.feePayingReservesBps.add(BPS);
+            result.numFeePayingReserves = result.numFeePayingReserves.add(new BN(1));
+        }
+    } else {
+        result.tradeWei = srcQty;
+    }
+
+    //add e2t reserve splits (doesn't matter if split or not, cos we already know best reserve)
+    for (let i=0; i<e2tReserves.length; i++) {
+        reserve = e2tReserves[i];
+        if (reserve.isFeePaying) {
+            feePayingBps = (e2tSplits[i] == undefined) ? BPS : e2tSplits[i];
+            result.feePayingReservesBps = result.feePayingReservesBps.add(feePayingBps);
+            result.numFeePayingReserves = result.numFeePayingReserves.add(new BN(1));
+        }
+    }
+
+    //calculate fees
+    result.networkFeeWei = result.tradeWei.mul(takerFeeBps).mul(result.feePayingReservesBps).div(BPS).div(BPS);
+    result.platformFeeWei = result.tradeWei.mul(platformFeeBps).div(BPS);
+    actualTradeWei = result.tradeWei.sub(result.networkFeeWei).sub(result.platformFeeWei);
+
+    //calculate dest amounts
+    amountSoFar = zeroBN;
+    if (e2tSplits.length > 0) {
+        for (let i=0; i<e2tReserves.length; i++) {
+            reserve = e2tReserves[i];
+            splitAmount = (i == e2tReserves.length - 1) ? (actualTradeWei.sub(amountSoFar)) : e2tReserves[i].mul(actualTradeWei).div(BPS);
+            if (e2tRates[i].isZero()) {
+                result.actualDestAmount = zeroBN;
+                return;
+            }
+            destAmt = Helper.calcDstQty(splitAmount, ethDecimals, destDecimals, e2tRates[i]);
+            result.actualDestAmount = result.actualDestAmount.add(destAmt);
+            amountSoFar = amountSoFar.add(splitAmount);
+        }
+        rate = calcRateFromQty(actualTradeWei, result.actualDestAmount, ethDecimals, destDecimals);
+    } else if (e2tReserves.length > 0) {
+        reserve = e2tReserves[0];
+        rate = e2tRates[0];
+        result.actualDestAmount = Helper.calcDstQty(actualTradeWei, ethDecimals, destDecimals, rate);
+    } else {
+        rate = precisionUnits;
+        result.actualDestAmount = Helper.calcDstQty(actualTradeWei, ethDecimals, destDecimals, rate);
+    }
+
+    //calculate dest amount with fees
+    result.destAmountNoFee = Helper.calcDstQty(result.tradeWei, ethDecimals, destDecimals, rate);
+    result.destAmountWithNetworkFee = Helper.calcDstQty(result.tradeWei.sub(result.networkFeeWei), ethDecimals, destDecimals, rate);
+    return result;
+}
+
+function compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult) {
+    //compare expectedTradeResult
+    Helper.assertEqual(expectedTradeResult.t2eNumReserves, actualResult.results[0], "t2eNumReserves not equal");
+    Helper.assertEqual(expectedTradeResult.e2tNumReserves, actualResult.results[1], "e2tNumReserves not equal");
+    Helper.assertEqual(expectedTradeResult.tradeWei, actualResult.results[2], "tradeWei not equal");
+    Helper.assertEqual(expectedTradeResult.networkFeeWei, actualResult.results[3], "networkFeeWei not equal");
+    Helper.assertEqual(expectedTradeResult.platformFeeWei, actualResult.results[4], "platformFeeWei not equal");
+    Helper.assertEqual(expectedTradeResult.numFeePayingReserves, actualResult.results[5], "numFeePayingReserves not equal");
+    Helper.assertEqual(expectedTradeResult.feePayingReservesBps, actualResult.results[6], "feePayingReservesBps not equal");
+    Helper.assertEqual(expectedTradeResult.destAmountNoFee, actualResult.results[7], "destAmountNoFee not equal");
+    Helper.assertEqual(expectedTradeResult.actualDestAmount, actualResult.results[8], "actualDestAmount not equal");
+    Helper.assertEqual(expectedTradeResult.destAmountWithNetworkFee, actualResult.results[9], "destAmountWithNetworkFee not equal");
+
+    //compare expectedReserves
+    for (let i=0; i<expectedReserves.length; i++) {
+        expected = expectedReserves[i];
+        actual = actualResult.reserveAddresses[i];
+        Helper.assertEqual(expected, actual, "reserve address not the same");
+    }
+
+    //compare expectedRates
+    for (let i=0; i<expectedRates.length; i++) {
+        expected = expectedRates[i];
+        actual = actualResult.rates[i];
+        Helper.assertEqual(expected, actual, "reserve rate not the same");
+    }
+
+    //compare expectedSplitValuesBps
+    for (let i=0; i<expectedSplitValuesBps.length; i++) {
+        expected = expectedSplitValuesBps[i];
+        actual = actualResult.splitValuesBps[i];
+        Helper.assertEqual(expected, actual, "reserve rate not the same");
+    }
+
+    //compare expectedFeePaying
+    for (let i=0; i<expectedFeePaying.length; i++) {
+        expected = expectedFeePaying[i];
+        actual = actualResult.isFeePaying[i];
+        Helper.assertEqual(expected, actual, "reserve rate not the same");
+    }
+}
+
+function printCalcRatesAmtsResult(tradeResult) {
+    console.log(`t2eNumReserves: ${tradeResult[0].toString()}`);
+    console.log(`e2tNumReserves: ${tradeResult[1].toString()}`);
+    console.log(`tradeWei: ${tradeResult[2].toString()} (${tradeResult[2].div(precisionUnits)} ETH)`);
+    console.log(`networkFeeWei: ${tradeResult[3].toString()} (${tradeResult[3].div(precisionUnits)} ETH)`);
+    console.log(`platformFeeWei: ${tradeResult[4].toString()} (${tradeResult[4].div(precisionUnits)} ETH)`);
+    console.log(`numFeePayingReserves: ${tradeResult[5].toString()}`);
+    console.log(`feePayingReservesBps: ${tradeResult[6].toString()}`);
+    console.log(`destAmountNoFee: ${tradeResult[7].toString()} (${tradeResult[7].div(precisionUnits)} ETH)`);
+    console.log(`actualDestAmount: ${tradeResult[8].toString()} (${tradeResult[8].div(precisionUnits)} ETH)`);
+    console.log(`destAmountWithNetworkFee: ${tradeResult[9].toString()} (${tradeResult[9].div(precisionUnits)} ETH)`);
 }

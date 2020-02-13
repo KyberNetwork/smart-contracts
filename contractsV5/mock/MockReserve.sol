@@ -23,10 +23,7 @@ contract MockReserve is IKyberReserve, Utils {
         uint destQty;
         uint rate;
         rate = (src == ETH_TOKEN_ADDRESS) ? buyTokenRates[address(dest)] : sellTokenRates[address(src)];
-        uint srcDecimals = getDecimals(src);
-        uint destDecimals = getDecimals(dest);
-        destQty = calcDstQty(srcQty, srcDecimals, destDecimals, rate);
-        return calcRateFromQty(srcQty, destQty, srcDecimals, destDecimals);
+        return rate;
     }
     
     function trade(

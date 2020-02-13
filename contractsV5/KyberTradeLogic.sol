@@ -201,7 +201,9 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         //if split reserves, add bps for ETH -> token
         if (tradeData.ethToToken.splitValuesBps.length > 1) {
             for (uint i = 0; i < tradeData.ethToToken.addresses.length; i++) {
-                if (tradeData.ethToToken.isFeePaying[i]) {
+                //check if ETH->token split reserves are fee paying
+                if (isFeePayingReserve[address(tradeData.ethToToken.addresses[i])]) {
+                    tradeData.ethToToken.isFeePaying[i] = true;
                     tradeData.feePayingReservesBps += tradeData.ethToToken.splitValuesBps[i];
                     tradeData.numFeePayingReserves ++;
                 }
@@ -256,7 +258,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
                 tradeData.ethToToken.splitValuesBps
             ) = parseHintT2T(hint);
         }
-        printGas("parse hint ", start, Module.LOGIC);
+        start = printGas("parse hint", start, Module.LOGIC);
 
         // T2E: apply masking out logic if mask out
         if (tradeData.tokenToEth.tradeType == TradeType.MaskOut) {
@@ -278,8 +280,9 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
     }
 
     function maskOutReserves(IKyberReserve[] memory allReservesPerToken, IKyberReserve[] memory maskedOutReserves)
-        internal pure returns (IKyberReserve[] memory filteredReserves)
+        internal view returns (IKyberReserve[] memory filteredReserves)
     {
+        uint start = printGas("", 0, Module.LOGIC);
         require(allReservesPerToken.length >= maskedOutReserves.length, "MASK_OUT_TOO_LONG");
         filteredReserves = new IKyberReserve[](allReservesPerToken.length - maskedOutReserves.length);
         uint currentResultIndex = 0;
@@ -299,6 +302,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
 
             if (notMaskedOut) filteredReserves[currentResultIndex++] = reserve;
         }
+        printGas("mask out algo", start, Module.LOGIC);
     }
 
     function calcRatesAndAmountsTokenToEth(IERC20 src, uint srcAmount, TradeData memory tradeData) internal view {
@@ -359,7 +363,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
                     return (0, 0, 0);
                 }
                 destQty += calcDstQty(splitAmount, tradingReserves.decimals, ETH_DECIMALS, tradingReserves.rates[i]);
-                if (tradingReserves.isFeePaying[i]) {
+                if (isFeePayingReserve[address(reserve)]) {
+                    tradingReserves.isFeePaying[i] = true;
                     feePayingReservesBps += tradingReserves.splitValuesBps[i];
                     numFeePayingReserves ++;
                 }
@@ -396,7 +401,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         bool[] memory isFeePaying
         )
     {
-        uint start = printGas("pack result Start", 0);
+        uint start = printGas("pack result Start", 0, Module.LOGIC);
         uint tokenToEthNumReserves = tradeData.tokenToEth.addresses.length;
         uint totalNumReserves = tokenToEthNumReserves + tradeData.ethToToken.addresses.length;
         reserveAddresses = new IKyberReserve[](totalNumReserves);
@@ -431,7 +436,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             splitValuesBps[i] = tradeData.ethToToken.splitValuesBps[i - tokenToEthNumReserves];
             isFeePaying[i] = tradeData.ethToToken.isFeePaying[i - tokenToEthNumReserves];
         }
-        printGas("pack result end", start);
+        printGas("pack result end", start, Module.LOGIC);
     }
     
     function calcRatesAndAmountsEthToToken(IERC20 dest, uint actualTradeWei, TradeData memory tradeData) internal view {
