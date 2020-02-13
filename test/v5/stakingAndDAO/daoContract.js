@@ -37,7 +37,7 @@ let cInPrecision = new BN(precision); // 100%
 let tInPrecision = new BN(precision); // 1
 let formulaParamsData = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
 
-let initVictorStake = mulPrecision(1000);
+let initVictorStake = mulPrecision(1500);
 let initMikeStake = mulPrecision(2000);
 let initLoiStake = mulPrecision(3000);
 let initPoolMaster2Stake = mulPrecision(1000);
@@ -91,7 +91,9 @@ contract('DAOContract', function(accounts) {
         await stakingContract.deposit(initVictorStake, {from: victor});
         await stakingContract.deposit(initMikeStake, {from: mike});
         await stakingContract.deposit(initLoiStake, {from: loi});
-        await stakingContract.deposit(initPoolMaster2Stake, {from: poolMaster2});
+        if (initPoolMaster2Stake > 0) {
+            await stakingContract.deposit(initPoolMaster2Stake, {from: poolMaster2});
+        }
     };
 
     describe("#Handle Withdrawl tests", () => {
@@ -540,13 +542,15 @@ contract('DAOContract', function(accounts) {
 
             let totalSupply = await kncToken.INITIAL_SUPPLY();
 
+            let gasUsed = new BN(0);
             for(let id = 0; id <= 2; id++) {
                 Helper.assertEqual(false, await daoContract.isCampExisted(id + 1), "campaign shouldn't be existed");
                 let link = web3.utils.fromAscii(id == 0 ? "" : "some_link");
-                await daoContract.submitNewCampaign(
+                let tx = await daoContract.submitNewCampaign(
                     id, currentBlock + 2 * id + 5, currentBlock + 2 * id + 5 + minCampPeriod,
                     formulaParamsData, [1, 2, 3, 4], link, {from: admin}
                 );
+                gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
                 Helper.assertEqual(id + 1, await daoContract.numberCampaigns(), "number campaign is incorrect");
                 Helper.assertEqual(true, await daoContract.isCampExisted(id + 1), "campaign should be existed");
 
@@ -578,6 +582,8 @@ contract('DAOContract', function(accounts) {
                 await kncToken.burn(mulPrecision(1000000));
                 totalSupply.isub(mulPrecision(1000000));
             }
+
+            logInfo("Submit Campaign: Average gas used for submit new campaign: " + gasUsed.div(new BN(3)).toString(10));
 
             Helper.assertEqual(2, await daoContract.networkFeeCampaign(0), "should have network fee camp");
             Helper.assertEqual(3, await daoContract.brrCampaign(0), "should have brr camp");
@@ -658,10 +664,11 @@ contract('DAOContract', function(accounts) {
 
             let link = web3.utils.fromAscii("https://kyberswap.com");
 
-            await daoContract.submitNewCampaign(
+            let tx = await daoContract.submitNewCampaign(
                 1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
                 formulaParamsData, [1, 2, 3, 4], link, {from: admin}
             );
+            logInfo("Submit Campaign: First time create network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
             Helper.assertEqual(1, await daoContract.networkFeeCampaign(1), "should have network fee camp");
 
             await daoContract.cancelCampaign(1, {from: admin});
@@ -678,10 +685,11 @@ contract('DAOContract', function(accounts) {
             );
             Helper.assertEqual(0, await daoContract.networkFeeCampaign(1), "shouldn't have network fee camp");
 
-            await daoContract.submitNewCampaign(
+            tx = await daoContract.submitNewCampaign(
                 1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
                 formulaParamsData, [1, 2, 3, 4], link, {from: admin}
             );
+            logInfo("Submit Campaign: Recreate network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
             Helper.assertEqual(4, await daoContract.networkFeeCampaign(1), "should have network fee camp");
         });
 
@@ -697,10 +705,11 @@ contract('DAOContract', function(accounts) {
 
             let link = web3.utils.fromAscii("https://kyberswap.com");
 
-            await daoContract.submitNewCampaign(
+            let tx = await daoContract.submitNewCampaign(
                 2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
                 formulaParamsData, [1, 2, 3, 4], link, {from: admin}
             );
+            logInfo("Submit Campaign: First time create brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
             Helper.assertEqual(1, await daoContract.brrCampaign(1), "should have brr camp");
 
             await daoContract.cancelCampaign(1, {from: admin});
@@ -717,10 +726,11 @@ contract('DAOContract', function(accounts) {
             );
             Helper.assertEqual(0, await daoContract.brrCampaign(1), "shouldn't have brr camp");
 
-            await daoContract.submitNewCampaign(
+            tx = await daoContract.submitNewCampaign(
                 2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
                 formulaParamsData, [1, 2, 3, 4], link, {from: admin}
             );
+            logInfo("Submit Campaign: Recreate brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
             Helper.assertEqual(4, await daoContract.brrCampaign(1), "shouldn't have brr camp");
         });
 
@@ -1270,7 +1280,8 @@ contract('DAOContract', function(accounts) {
                 Helper.assertEqual(listCamps[3], campCounts, "camp id for this epoch is incorrect");
 
                 // cancel last created camp
-                await daoContract.cancelCampaign(campCounts, {from: admin});
+                let tx = await daoContract.cancelCampaign(campCounts, {from: admin});
+                logInfo("Cancel campaign: 4 camps, cancel last one, gas used: " + tx.receipt.cumulativeGasUsed);
 
                 listCamps = await daoContract.getListCampIDs(id);
                 Helper.assertEqual(listCamps.length, 3, "number camps for this epoch is incorrect");
@@ -1295,7 +1306,8 @@ contract('DAOContract', function(accounts) {
                 Helper.assertEqual(await daoContract.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
 
                 // cancel middle camp
-                await daoContract.cancelCampaign(campCounts - 3, {from: admin});
+                tx = await daoContract.cancelCampaign(campCounts - 3, {from: admin});
+                logInfo("Cancel campaign: 3 camps, cancel first one, gas used: " + tx.receipt.cumulativeGasUsed);
 
                 listCamps = await daoContract.getListCampIDs(id);
                 Helper.assertEqual(listCamps.length, 2, "number camps for this epoch is incorrect");
@@ -1366,7 +1378,8 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(campData[6][1], 2, "camp details should be correct");
             Helper.assertEqual(campData[6][2], 3, "camp details should be correct");
 
-            await daoContract.cancelCampaign(1, {from: admin});
+            let tx = await daoContract.cancelCampaign(1, {from: admin});
+            logInfo("Cancel campaign: cancel network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
 
             campData = await daoContract.getCampaignDetails(1);
             Helper.assertEqual(campData[0], 0, "camp details should be deleted");
@@ -1438,7 +1451,8 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(campData[6][1], 2, "camp details should be correct");
             Helper.assertEqual(campData[6][2], 3, "camp details should be correct");
 
-            await daoContract.cancelCampaign(1, {from: admin});
+            let tx = await daoContract.cancelCampaign(1, {from: admin});
+            logInfo("Cancel campaign: cancel brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
 
             campData = await daoContract.getCampaignDetails(1);
             Helper.assertEqual(campData[0], 0, "camp details should be deleted");
@@ -1511,7 +1525,9 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(0, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
             Helper.assertEqual(0, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
-            await daoContract.vote(1, 1, {from: victor});
+            let gasUsed = new BN(0);
+            let tx = await daoContract.vote(1, 1, {from: victor});
+            gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
 
             let epochPoints = new BN(0).add(initVictorStake);
             let campPoints = new BN(0).add(initVictorStake);
@@ -1528,7 +1544,8 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(0, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
             Helper.assertEqual(0, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
-            await daoContract.vote(1, 2, {from: mike});
+            tx = await daoContract.vote(1, 2, {from: mike});
+            gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
 
             epochPoints.iadd(initMikeStake);
             campPoints.iadd(initMikeStake);
@@ -1545,7 +1562,10 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(1, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
             Helper.assertEqual(0, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
-            await daoContract.vote(1, 1, {from: loi});
+            tx = await daoContract.vote(1, 1, {from: loi});
+            gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+
+            logInfo("Vote: average gas used without delegation: " + gasUsed.div(new BN(3)).toString(10));
 
             epochPoints.iadd(initLoiStake);
             campPoints.iadd(initLoiStake);
@@ -1690,7 +1710,8 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(0, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
             Helper.assertEqual(0, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
-            await daoContract.vote(1, 2, {from: mike});
+            let tx = await daoContract.vote(1, 2, {from: mike});
+            logInfo("Vote: revote different option, gas used: " + tx.receipt.cumulativeGasUsed);
             await daoContract.vote(1, 2, {from: loi});
 
             epochPoints.iadd(initMikeStake).iadd(initLoiStake);
@@ -1709,7 +1730,8 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(1, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
             // vote the same
-            await daoContract.vote(1, 2, {from: mike});
+            tx = await daoContract.vote(1, 2, {from: mike});
+            logInfo("Vote: revote same option, gas used: " + tx.receipt.cumulativeGasUsed);
 
             Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
             campPointsData = await daoContract.getCampaignVoteCountData(1);
@@ -1835,7 +1857,8 @@ contract('DAOContract', function(accounts) {
 
             // Check: victor has no delegated stake, has stake but already delegated to mike
             // => no data changes here
-            await daoContract.vote(1, 1, {from: victor});
+            let tx = await daoContract.vote(1, 1, {from: victor});
+            let gasUsed = new BN(tx.receipt.cumulativeGasUsed);
 
             // Victor has delegated to mike, and no one delegated to him
             // So his vote wont increase points or vote counts
@@ -1856,7 +1879,10 @@ contract('DAOContract', function(accounts) {
 
             // Check: mike delegated to poolMaster, victor delegated mike
             // data should change based on victor's stake here
-            await daoContract.vote(1, 1, {from: mike});
+            tx = await daoContract.vote(1, 1, {from: mike});
+            gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+
+            logInfo("Vote: average gas used with delegation: " + gasUsed.div(new BN(2)).toString(10));
 
             // victor delegated to mike, mike delegated to poolmaster
             // mike's vote will increase points + vote counts by victor's stake
@@ -2133,7 +2159,8 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(1, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
             Helper.assertEqual(0, await daoContract.getNumberVotes(poolMaster2, 1), "number votes should be correct");
 
-            await daoContract.vote(1, 1, {from: poolMaster});
+            let tx = await daoContract.vote(1, 1, {from: poolMaster});
+            logInfo("Vote: init 1 epoch - with delegated stake, no stake, gas used: " + tx.receipt.cumulativeGasUsed);
             await daoContract.vote(2, 1, {from: poolMaster});
 
             epochPoints.iadd(initMikeStake).iadd(initMikeStake);
@@ -2142,7 +2169,8 @@ contract('DAOContract', function(accounts) {
             campPoints2.iadd(initMikeStake);
             optionPoint21.iadd(initMikeStake);
 
-            await daoContract.vote(1, 2, {from: poolMaster2});
+            tx = await daoContract.vote(1, 2, {from: poolMaster2});
+            logInfo("Vote: init 1 epoch - with both delegated stake + stake, gas used: " + tx.receipt.cumulativeGasUsed);
 
             epochPoints.iadd(initPoolMaster2Stake).iadd(initLoiStake);
             campPoints1.iadd(initPoolMaster2Stake).iadd(initLoiStake);
@@ -2245,9 +2273,14 @@ contract('DAOContract', function(accounts) {
             let optionPoint22 = new BN(0);
 
             // nothing changes since victor+loi have delegated to another
-            await daoContract.vote(1, 1, {from: victor});
-            await daoContract.vote(1, 2, {from: loi});
-            await daoContract.vote(1, 1, {from: mike});
+            let tx = await daoContract.vote(1, 1, {from: victor});
+            let gasUsed = new BN(tx.receipt.cumulativeGasUsed);
+            tx = await daoContract.vote(1, 2, {from: loi});
+            gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+            tx = await daoContract.vote(1, 1, {from: mike});
+            gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+            logInfo("Vote: init data for 2 epoches, average gas used: " + gasUsed.div(new BN(3)).toString(10));
+
             epochPoints.iadd(initMikeStake);
             campPoints1.iadd(initMikeStake);
             optionPoint11.iadd(initMikeStake);
@@ -2552,9 +2585,14 @@ contract('DAOContract', function(accounts) {
             let expectedPM2Bal = await Helper.getBalancePromise(poolMaster2);
             expectedPM2Bal.iadd(poolMaster2Per.mul(epochTotalReward).div(precision));
 
-            await daoContract.claimReward(mike, 1);
-            await daoContract.claimReward(poolMaster, 1);
-            await daoContract.claimReward(poolMaster2, 1);
+            let gasUsed = new BN(0);
+            let tx = await daoContract.claimReward(mike, 1);
+            gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+            tx = await daoContract.claimReward(poolMaster, 1);
+            gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+            tx = await daoContract.claimReward(poolMaster2, 1);
+            gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+            logInfo("Claim reward: Average gas used: " + gasUsed.div(new BN(3)).toString(10));
 
             Helper.assertEqual(expectedMikeBal, await Helper.getBalancePromise(mike), "reward claimed is not correct");
             Helper.assertEqual(expectedPM1Bal, await Helper.getBalancePromise(poolMaster), "reward claimed is not correct");
@@ -3687,6 +3725,642 @@ contract('DAOContract', function(accounts) {
     });
 
     describe("#Conclude Campaign tests", () => {
+        const setupTokenWithSupply = async(supply) => {
+            kncToken = await TestToken.new("test token", 'tst', 18, {from: accounts[0]});
+
+            let totalSupply = await kncToken.totalSupply();
+            let burnAmount = totalSupply.sub(new BN(supply));
+
+            await kncToken.burn(burnAmount, {from: accounts[0]});
+
+            Helper.assertEqual(supply, await kncToken.totalSupply(), "total supply is invalid");
+
+            await kncToken.transfer(victor, supply.div(new BN(5)));
+            await kncToken.transfer(mike, supply.div(new BN(5)));
+            await kncToken.transfer(loi, supply.div(new BN(5)));
+            await kncToken.transfer(poolMaster, supply.div(new BN(5)));
+            await kncToken.transfer(poolMaster2, supply.div(new BN(5)));
+        }
+
+        const resetSetupForKNCToken = async() => {
+            kncToken = await TestToken.new("test token", 'tst', 18, {from: accounts[0]});
+            await kncToken.transfer(victor, mulPrecision(1000000));
+            await kncToken.transfer(mike, mulPrecision(1000000));
+            await kncToken.transfer(loi, mulPrecision(1000000));
+            await kncToken.transfer(poolMaster, mulPrecision(1000000));
+            await kncToken.transfer(poolMaster2, mulPrecision(1000000));
+        }
+
+        it("Test get winning option for non-existed campaign", async function() {
+            await deployContracts(10, currentBlock + 10, 5);
+
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(0, data[0], "option id should be 0");
+            Helper.assertEqual(0, data[1], "option value should be 0");
+        });
+
+        it("Test get winning option for camp that hasn't ended", async function() {
+            await deployContracts(10, currentBlock + 20, 5);
+            await setupSimpleStakingData();
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min percentage: 0%, c = 0, t = 0
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 4, currentBlock + 4 + minCampPeriod,
+                0, [25, 50, 100], '0x', {from: admin}
+            );
+
+            // not started yet
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(0, data[0], "option id should be 0");
+            Helper.assertEqual(0, data[1], "option value should be 0");
+
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3);
+
+            await daoContract.vote(1, 1, {from: mike});
+
+            // currently running
+            data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(0, data[0], "option id should be 0");
+            Helper.assertEqual(0, data[1], "option value should be 0");
+
+            // delay until end of first camp
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 10);
+
+            data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(1, data[0], "winning option id is invalid");
+            Helper.assertEqual(25, data[1], "winning option value is invalid");
+        });
+
+        it("Test get winning option for camp that has concluded the result", async function() {
+            await deployContracts(10, currentBlock + 20, 5);
+            await setupSimpleStakingData();
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min percentage: 0%, c = 0, t = 0
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [25, 50, 100], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+
+            // delay to end of this epocch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(1, data[0], "winning option id is invalid");
+            Helper.assertEqual(25, data[1], "winning option value is invalid");
+
+            data = await daoContract.getWinningOptionData(1);
+            Helper.assertEqual(false, data[0], "shouldn't have concluded");
+            Helper.assertEqual(0, data[0], "winning option id is invalid");
+
+            // conclude result, it is network fee so just call get network fee with cache
+            await daoContract.getLatestNetworkFeeDataWithCache();
+
+            data = await daoContract.getWinningOptionData(1);
+            Helper.assertEqual(true, data[0], "should have concluded");
+            Helper.assertEqual(1, data[1], "winning option id is invalid");
+        });
+
+        it("Test get winning option total supply is 0", async function() {
+            kncToken = await TestToken.new("test token", 'tst', 18, {from: accounts[0]});
+
+            let totalSupply = await kncToken.totalSupply();
+            let burnAmount = totalSupply.sub(new BN(totalSupply));
+
+            await kncToken.burn(burnAmount, {from: accounts[0]});
+
+            await deployContracts(10, currentBlock + 20, 5);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min percentage: 0%, c = 0, t = 0
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [25, 50, 100], '0x', {from: admin}
+            );
+
+            // delay to end of this epocch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(0, data[0], "winning option id is invalid");
+            Helper.assertEqual(0, data[1], "winning option value is invalid");
+
+            data = await daoContract.getWinningOptionData(1);
+            Helper.assertEqual(false, data[0], "shouldn't have concluded");
+            Helper.assertEqual(0, data[0], "winning option id is invalid");
+
+            // conclude result, it is network fee so just call get network fee with cache
+            await daoContract.getLatestNetworkFeeDataWithCache();
+
+            data = await daoContract.getWinningOptionData(1);
+            Helper.assertEqual(true, data[0], "should have concluded");
+            Helper.assertEqual(0, data[1], "winning option id is invalid");
+        });
+
+        it("Test get winning option with no vote", async function() {
+            kncToken = await TestToken.new("test token", 'tst', 18, {from: accounts[0]});
+
+            let totalSupply = await kncToken.totalSupply();
+            let burnAmount = totalSupply.sub(new BN(totalSupply));
+
+            await kncToken.burn(burnAmount, {from: accounts[0]});
+
+            await deployContracts(10, currentBlock + 20, 5);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min percentage: 0%, c = 0, t = 0
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [25, 50, 100], '0x', {from: admin}
+            );
+
+            // delay to end of this epocch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(0, data[0], "winning option id is invalid");
+            Helper.assertEqual(0, data[1], "winning option value is invalid");
+
+            data = await daoContract.getWinningOptionData(1);
+            Helper.assertEqual(false, data[0], "shouldn't have concluded");
+            Helper.assertEqual(0, data[0], "winning option id is invalid");
+
+            // conclude result, it is network fee so just call get network fee with cache
+            await daoContract.getLatestNetworkFeeDataWithCache();
+
+            data = await daoContract.getWinningOptionData(1);
+            Helper.assertEqual(true, data[0], "should have concluded");
+            Helper.assertEqual(0, data[1], "winning option id is invalid");
+
+            await resetSetupForKNCToken();
+        });
+
+        it("Test get winning option with 2 options have the same most votes", async function() {
+            await deployContracts(10, currentBlock + 20, 5);
+            await setupSimpleStakingData();
+            // make the same stake
+            if (initMikeStake < initVictorStake) {
+                await stakingContract.deposit(initVictorStake.sub(initMikeStake), {from: mike});
+            } else {
+                await stakingContract.deposit(initMikeStake.sub(initVictorStake), {from: victor});
+            }
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min percentage: 0%, c = 0, t = 0
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [25, 50, 100], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+            await daoContract.vote(1, 2, {from: victor});
+
+            // delay to end of this epocch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(0, data[0], "winning option id is invalid");
+            Helper.assertEqual(0, data[1], "winning option value is invalid");
+
+            data = await daoContract.getWinningOptionData(1);
+            Helper.assertEqual(false, data[0], "shouldn't have concluded");
+            Helper.assertEqual(0, data[0], "winning option id is invalid");
+
+            // conclude result, it is network fee so just call get network fee with cache
+            await daoContract.getLatestNetworkFeeDataWithCache();
+
+            data = await daoContract.getWinningOptionData(1);
+            Helper.assertEqual(true, data[0], "should have concluded");
+            Helper.assertEqual(0, data[1], "winning option id is invalid");
+        });
+
+        it("Test get winning option return 0 vote count less than min percentage (20%)", async function() {
+            await deployContracts(10, currentBlock + 20, 5);
+            await setupSimpleStakingData();
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            // 20% of total supply
+            let formula = getFormulaParamsData(precision.div(new BN(5)), 0, 0);
+            currentBlock = await Helper.getCurrentBlock();
+            // min percentage: 0%, c = 0, t = 0
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [25, 50, 100], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+            await daoContract.vote(1, 1, {from: victor});
+            await daoContract.vote(1, 1, {from: loi});
+
+            let totalSupply = await kncToken.totalSupply();
+
+            Helper.assertLesser(
+                initMikeStake.add(initLoiStake).add(initVictorStake),
+                totalSupply.div(new BN(5)),
+                "total voted stake should be less than 20%"
+            );
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(0, data[0], "winning option id is invalid");
+            Helper.assertEqual(0, data[1], "winning option value is invalid")
+        });
+
+        it("Test get winning option return most voted option all formula params are 0", async function() {
+            await deployContracts(10, currentBlock + 20, 5);
+            await setupSimpleStakingData();
+            // make sure mike has more stake than both victor and loi
+            await stakingContract.deposit(initVictorStake.add(initLoiStake), {from: mike});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min percentage: 0%, c = 0, t = 0
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [25, 50, 100], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 2, {from: mike});
+            await daoContract.vote(1, 1, {from: victor});
+            await daoContract.vote(1, 3, {from: loi});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(2, data[0], "winning option id is invalid");
+            Helper.assertEqual(50, data[1], "winning option value is invalid")
+        });
+
+        it("Test get winning option total votes exact min percentage of total supply (20%)", async function() {
+            let totalSupply = (new BN(0)).add(initMikeStake).add(initVictorStake).add(initLoiStake);
+            totalSupply.imul(new BN(5));
+
+            await setupTokenWithSupply(totalSupply);
+            currentBlock = await Helper.getCurrentBlock();
+            await deployContracts(20, currentBlock + 20, 5);
+            await setupSimpleStakingData();
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min percentage: 20%, c = 0, t = 0
+            let formula = getFormulaParamsData(precision.div(new BN(5)), 0, 0);
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [25, 50, 100], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 3, {from: mike});
+            await daoContract.vote(1, 2, {from: victor});
+            await daoContract.vote(1, 3, {from: loi});
+
+            // delay to end of this epocch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(3, data[0], "winning option id is invalid");
+            Helper.assertEqual(100, data[1], "winning option value is invalid");
+
+            data = await daoContract.getWinningOptionData(1);
+            Helper.assertEqual(false, data[0], "shouldn't have concluded");
+            Helper.assertEqual(0, data[0], "winning option id is invalid");
+
+            // conclude result, it is network fee so just call get network fee with cache
+            await daoContract.getLatestNetworkFeeDataWithCache();
+
+            data = await daoContract.getWinningOptionData(1);
+            Helper.assertEqual(true, data[0], "should have concluded");
+            Helper.assertEqual(3, data[1], "winning option id is invalid");
+
+            // resetup data, increase total supply so total votes less than 20%
+            totalSupply.iadd(new BN(1));
+
+            await setupTokenWithSupply(totalSupply);
+            currentBlock = await Helper.getCurrentBlock();
+            await deployContracts(20, currentBlock + 20, 5);
+            await setupSimpleStakingData();
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [25, 50, 100], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 3, {from: mike});
+            await daoContract.vote(1, 2, {from: victor});
+            await daoContract.vote(1, 3, {from: loi});
+
+            // delay to end of this epocch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(0, data[0], "winning option id is invalid");
+            Helper.assertEqual(0, data[1], "winning option value is invalid");
+
+            await resetSetupForKNCToken();
+        });
+
+        const simpleSetupToTestThreshold = async(mikeStake, victorStake, loiStake, percentage) => {
+
+            initMikeStake = mulPrecision(mikeStake);
+            initVictorStake = mulPrecision(victorStake);
+            initLoiStake = mulPrecision(loiStake);
+            initPoolMaster2Stake = new BN(0);
+
+            let totalSupply = (new BN(0)).add(initMikeStake).add(initVictorStake).add(initLoiStake);
+            totalSupply = totalSupply.mul(new BN(100)).div(new BN(percentage)); // total stake = percentage% total supply
+            kncToken = await TestToken.new("test token", 'tst', 18, {from: accounts[0]});
+
+            let burnAmount = (await kncToken.totalSupply()).sub(new BN(totalSupply));
+            await kncToken.burn(burnAmount, {from: accounts[0]});
+
+            await kncToken.transfer(mike, initMikeStake);
+            await kncToken.transfer(victor, initVictorStake);
+            await kncToken.transfer(loi, initLoiStake);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await deployContracts(20, currentBlock + 20, 5);
+            await setupSimpleStakingData();
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+        }
+
+        it("Test get winning option returns 0 option voted percentage less than threshold", async function() {
+            // Min percentage: 20%
+            // C = 100%, t = 1
+            // Y = C - t * X
+            // Make X = 40% -> Y = 60%, make sure the most voted option < 60% of total voted stakes
+
+            await simpleSetupToTestThreshold(5900, 4000, 100, 40);
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min percentage: 20%, c = 100%, t = 1
+            minPercentageInPrecision = mulPrecision(20).div(new BN(100));
+            cInPrecision = precision; // 100%
+            tInPrecision = precision; // 1
+            let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 2, {from: mike});
+            await daoContract.vote(1, 3, {from: victor});
+            await daoContract.vote(1, 1, {from: loi});
+            await daoContract.vote(1, 1, {from: mike});
+            await daoContract.vote(1, 2, {from: loi});
+
+            // delay to end of this epocch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            // no winning option
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(0, data[0], "winning option id is invalid");
+            Helper.assertEqual(0, data[1], "winning option value is invalid");
+
+            await resetSetupForKNCToken();
+        });
+
+        it("Test get winning option with option voted percentage is equal threshold", async function() {
+            // Min percentage: 20%
+            // C = 100%, t = 1
+            // Y = C - t * X
+            // Make X = 40% -> Y = 60%, make sure the most voted option = 60% of total voted stakes
+
+            await simpleSetupToTestThreshold(6000, 3500, 500, 40);
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min percentage: 20%, c = 100%, t = 1
+            minPercentageInPrecision = mulPrecision(20).div(new BN(100));
+            cInPrecision = precision; // 100%
+            tInPrecision = precision; // 1
+            let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 2, {from: mike});
+            await daoContract.vote(1, 3, {from: victor});
+            await daoContract.vote(1, 1, {from: loi});
+
+            // delay to end of this epocch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            // option 2 should win as it equals the threshold
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(2, data[0], "winning option id is invalid");
+            Helper.assertEqual(26, data[1], "winning option value is invalid");
+
+            await resetSetupForKNCToken();
+        });
+
+        it("Test get winning option with option voted percentage is higher than threshold", async function() {
+            // Min percentage: 20%
+            // C = 100%, t = 1
+            // Y = C - t * X
+            // Make X = 40% -> Y = 60%, make sure the most voted option > 60% of total voted stakes
+
+            await simpleSetupToTestThreshold(6000, 3500, 500, 40);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min percentage: 20%, c = 100%, t = 1
+            minPercentageInPrecision = mulPrecision(40).div(new BN(100));
+            cInPrecision = precision; // 100%
+            tInPrecision = precision; // 1
+            let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+            await daoContract.vote(1, 3, {from: victor});
+            await daoContract.vote(1, 1, {from: loi});
+
+            // delay to end of this epocch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            // option 1 should win as it equals the threshold
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(1, data[0], "winning option id is invalid");
+            Helper.assertEqual(32, data[1], "winning option value is invalid");
+
+            await resetSetupForKNCToken();
+        });
+
+        it("Test get winning option with threshold is negative from formula", async function() {
+            // Min percentage: 20%
+            // C = 10%, t = 1
+            // Y = C - t * X
+            // Make X = 40% -> Y < 0, have winning option if % total stakes >= min percentage
+
+            await simpleSetupToTestThreshold(6000, 3500, 500, 40);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min percentage: 20%, c = 10%, t = 1
+            minPercentageInPrecision = mulPrecision(40).div(new BN(100));
+            cInPrecision = precision.div(new BN(10)); // 10%
+            tInPrecision = precision; // 1
+            let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 3, {from: mike});
+            await daoContract.vote(1, 1, {from: victor});
+            await daoContract.vote(1, 2, {from: loi});
+
+            // delay to end of this epocch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(3, data[0], "winning option id is invalid");
+            Helper.assertEqual(44, data[1], "winning option value is invalid");
+
+            await resetSetupForKNCToken();
+        });
+
+        it("Test get winning option with threshold is greater than 100% from formula", async function() {
+            // Min percentage: 20%
+            // C = 200%, t = 1
+            // Y = C - t * X
+            // Make X = 40% -> Y > 100%, have winning option if % total stakes >= min percentage
+
+            await simpleSetupToTestThreshold(6000, 3500, 500, 40);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min percentage: 20%, c = 200%, t = 1
+            minPercentageInPrecision = mulPrecision(40).div(new BN(100));
+            cInPrecision = mulPrecision(2); // 10%
+            tInPrecision = precision; // 1
+            let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+            await daoContract.vote(1, 1, {from: victor});
+            await daoContract.vote(1, 1, {from: loi});
+
+            // delay to end of this epocch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(0, data[0], "winning option id is invalid");
+            Helper.assertEqual(0, data[1], "winning option value is invalid");
+
+            await resetSetupForKNCToken();
+        });
+
+        it("Test get winning option with threshold is 100% from formula", async function() {
+            // Min percentage: 20%
+            // C = 100%, t = 0
+            // Y = C - t * X
+            // Make X = 40% -> Y > 100%, have winning option if % total stakes >= min percentage
+
+            await simpleSetupToTestThreshold(6000, 3500, 500, 40);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min percentage: 20%, c = 100%, t = 0
+            minPercentageInPrecision = mulPrecision(40).div(new BN(100));
+            cInPrecision = precision; // 100%
+            tInPrecision = 0; // 1
+            let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 2, {from: mike});
+            await daoContract.vote(1, 2, {from: victor});
+            await daoContract.vote(1, 2, {from: loi});
+
+            // delay to end of this epocch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            // all voted for option 1, however threshold is greater than 100%
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(2, data[0], "winning option id is invalid");
+            Helper.assertEqual(26, data[1], "winning option value is invalid");
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 26, 44], '0x', {from: admin}
+            );
+
+            // one person voted differently
+            await daoContract.vote(2, 2, {from: mike});
+            await daoContract.vote(2, 1, {from: victor});
+            await daoContract.vote(2, 2, {from: loi});
+
+            // delay to end of this epocch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
+
+            data = await daoContract.getCampaignWinningOptionAndValue(2);
+            Helper.assertEqual(0, data[0], "winning option id is invalid");
+            Helper.assertEqual(0, data[1], "winning option value is invalid");
+
+            await resetSetupForKNCToken();
+        });
     });
 
     describe("#Constructor tests", () => {
