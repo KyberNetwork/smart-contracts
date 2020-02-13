@@ -235,7 +235,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         // relevant arrays will be initialised when storing data
         if (hint.length == 0 || hint.length == 4) return;
 
-        uint start = printGas("start parsing hint", 0);
+        uint start = printGas("", 0, Module.LOGIC);
         if (src == ETH_TOKEN_ADDRESS) {
             (
                 tradeData.ethToToken.tradeType,
@@ -258,8 +258,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
                 tradeData.ethToToken.splitValuesBps
             ) = parseHintT2T(hint);
         }
-
-        start = printGas("parsing hint done", start);
+        printGas("parse hint ", start, Module.LOGIC);
 
         // T2E: apply masking out logic if mask out
         if (tradeData.tokenToEth.tradeType == TradeType.MaskOut) {
@@ -278,7 +277,6 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             tradeData.ethToToken.rates = new uint[](tradeData.ethToToken.addresses.length);
             tradeData.ethToToken.isFeePaying = new bool[](tradeData.ethToToken.addresses.length);
         }
-        // require(failingIndex > 0);
     }
 
     function maskOutReserves(IKyberReserve[] memory allReservesPerToken, IKyberReserve[] memory maskedOutReserves)

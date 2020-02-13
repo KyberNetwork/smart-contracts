@@ -613,14 +613,16 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         nonReentrant
         returns(uint destAmount) 
     {
-        // printGas("start_tr", 0);
+        destAmount = printGas("start_tr", 0, Module.NETWORK);
         require(verifyTradeValid(tradeData.input.src, tradeData.input.srcAmount, 
             tradeData.input.dest, tradeData.input.destAddress), "invalid");
         
         tradeData.takerFeeBps = getAndUpdateTakerFee();
         
         // amounts excluding fees
+        destAmount = printGas("start to calc", destAmount, Module.NETWORK);
         calcRatesAndAmounts(tradeData.input.src, tradeData.input.dest, tradeData.input.srcAmount, tradeData, hint);
+        destAmount = printGas("calcRatesAndAmounts", destAmount, Module.NETWORK);
 
         require(tradeData.rateWithNetworkFee > 0, "0 rate");
         require(tradeData.rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
@@ -638,7 +640,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         }
 
         subtractFeesFromTradeWei(tradeData);
-
+        destAmount = printGas("calc to trade", destAmount, Module.NETWORK);
         require(doReserveTrades(     //src to ETH
                 tradeData.input.src,
                 actualSrcAmount,
@@ -654,9 +656,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
                 tradeData.input.destAddress,
                 tradeData,
                 tradeData.actualDestAmount));
-
+destAmount = printGas("trade part", destAmount, Module.NETWORK);
         require(handleFees(tradeData));
-
+destAmount = printGas("handle fees part", destAmount, Module.NETWORK);
         // todo: splits to trade event?
         emit KyberTrade({
             trader: tradeData.input.trader,

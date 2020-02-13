@@ -213,7 +213,7 @@ async function setupFprPricing (tokens, numImbalanceSteps, numQtySteps, tokensPe
 module.exports.addReservesToNetwork = async function (networkInstance, reserveInstances, tokens, operator) {
     for (const [key, value] of Object.entries(reserveInstances)) {
         reserve = value;
-        console.log("add reserve type: " + reserve.type + " ID: " + reserve.reserveId + " address: " + reserve.address + " pricing: " + reserve.pricing);
+        console.log("add reserve type: " + reserve.type + " ID: " + reserve.reserveId);
         networkInstance.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, reserve.address, {from: operator});
         for (let j = 0; j < tokens.length; j++) {
             networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, true, {from: operator});
