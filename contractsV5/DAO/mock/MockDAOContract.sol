@@ -26,4 +26,8 @@ contract MockDAOContract is DAOContract {
     function getNumberVotes(address staker, uint epoch) public view returns(uint) {
         return numberVotes[staker][epoch];
     }
+
+    function getWinningOptionData(uint campID) public view returns(bool hasConcluded, uint winningOptionID) {
+        (hasConcluded, winningOptionID) = decodeWinningOptionData(winningOptionData[campID]);
+    }
 }

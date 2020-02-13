@@ -426,7 +426,7 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         uint totalVotes = voteCounts[0];
         uint votedPercentageInPrecision = totalVotes.mul(PRECISION).div(camp.totalKNCSupply);
 
-        if (formulaData.minPercentageInPrecision < votedPercentageInPrecision) { return (0, 0); }
+        if (formulaData.minPercentageInPrecision > votedPercentageInPrecision) { return (0, 0); }
 
         uint X = formulaData.tInPrecision.mul(votedPercentageInPrecision).div(PRECISION);
         if (X <= formulaData.cInPrecision) {
