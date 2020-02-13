@@ -2,7 +2,6 @@ pragma solidity 0.5.11;
 
 import "../StakingContract.sol";
 
-
 contract MockStakingContract is StakingContract {
 
     constructor(address _kncToken, uint _epochPeriod, uint _startBlock, address _admin) 
@@ -33,5 +32,9 @@ contract MockStakingContract is StakingContract {
         require(stake == expectedStake, "stake is incorrect");
         require(delegatedStake == expectedDelegatedStake, "delegated stake is incorrect");
         require(delegatedAddr == expectedDelegatedAddress, "delegated stake is incorrect");
+    }
+
+    function setDAOAddressWithoutCheck(address dao) public {
+        DAO = IKyberDAO(dao);
     }
 }

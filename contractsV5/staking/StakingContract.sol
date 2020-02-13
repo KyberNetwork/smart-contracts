@@ -49,6 +49,10 @@ contract StakingContract is IKyberStaking, EpochUtils, ReentrancyGuard {
         require(_daoAddress != address(0), "updateDAOAddressAndRemoveAdmin: DAO address is missing");
 
         DAO = IKyberDAO(_daoAddress);
+        // verify the same epoch period + start block
+        require(DAO.EPOCH_PERIOD() == EPOCH_PERIOD, "updateDAOAddressAndRemoveAdmin: DAO and Staking have different epoch period");
+        require(DAO.START_BLOCK() == START_BLOCK, "updateDAOAddressAndRemoveAdmin: DAO and Staking have different start block");
+
         emit DAOAddressSet(_daoAddress);
 
         // reset admin

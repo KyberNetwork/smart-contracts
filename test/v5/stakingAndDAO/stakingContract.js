@@ -42,14 +42,13 @@ contract('StakingContract', function(accounts) {
 
     it("Test setting DAO address and verify inited data", async function() {
         await deployStakingContract(10, currentBlock + 10);
+        let daoContract = await MockKyberDAO.new(10, currentBlock + 10);
 
         assert.equal(admin, await stakingContract.admin(), "admin address is wrong");
         assert.equal(kncToken.address, await stakingContract.KNC_TOKEN(), "admin address is wrong");
         assert.equal(zeroAddress, await stakingContract.DAO(), "admin address is wrong");
         assert.equal(epochPeriod, await stakingContract.EPOCH_PERIOD(), "admin address is wrong");
         assert.equal(startBlock, await stakingContract.START_BLOCK(), "admin address is wrong");
-
-        let daoContract = await MockKyberDAO.new();
 
         await stakingContract.updateDAOAddressAndRemoveAdmin(daoContract.address, {from: admin});
 
@@ -942,7 +941,7 @@ contract('StakingContract', function(accounts) {
 
         it("Test withdraw should call DAO handleWithdrawal as expected", async function() {
             await deployStakingContract(10, currentBlock + 10);
-            let dao = await MockKyberDAO.new();
+            let dao = await MockKyberDAO.new(10, currentBlock + 10);
             await stakingContract.updateDAOAddressAndRemoveAdmin(dao.address, {from: admin});
 
             await kncToken.transfer(victor, mulPrecision(500));
@@ -1009,6 +1008,7 @@ contract('StakingContract', function(accounts) {
 
         it("Test withdraw gas usages", async function() {
             await deployStakingContract(10, currentBlock + 10);
+            let dao = await MockKyberDAO.new(10, currentBlock + 10);
 
             await kncToken.transfer(victor, mulPrecision(500));
             await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
@@ -1048,7 +1048,6 @@ contract('StakingContract', function(accounts) {
             logInfo("Withdraw has delegation, no DAO: without init epoch data + no penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
 
             // Setting dao address
-            let dao = await MockKyberDAO.new();
             await stakingContract.updateDAOAddressAndRemoveAdmin(dao.address, {from: admin});
 
             tx = await stakingContract.withdraw(mulPrecision(20), {from: victor});
@@ -1969,7 +1968,7 @@ contract('StakingContract', function(accounts) {
         it("Test get staker data for current epoch called by DAO", async function() {
             await deployStakingContract(15, currentBlock + 15);
             let dao = accounts[8];
-            await stakingContract.updateDAOAddressAndRemoveAdmin(dao, {from: admin});
+            await stakingContract.setDAOAddressWithoutCheck(dao, {from: admin});
 
             await kncToken.transfer(victor, mulPrecision(500));
             await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
@@ -2064,7 +2063,7 @@ contract('StakingContract', function(accounts) {
     describe("#Revert Tests", () => {
         it("Test update DAO address should revert when sender is not admin or dao address is zero", async function() {
             await deployStakingContract(10, currentBlock + 10);
-            let dao = await MockKyberDAO.new();
+            let dao = await MockKyberDAO.new(10, currentBlock + 10);
             try {
                 await stakingContract.updateDAOAddressAndRemoveAdmin(zeroAddress, {from: admin});
                 assert(false, "throw was expected in line above.")
@@ -2084,6 +2083,31 @@ contract('StakingContract', function(accounts) {
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
+        });
+
+        it("Test update DAO address should revert when epoch period or start block is different between staking & DAO", async function() {
+            await deployStakingContract(10, currentBlock + 10);
+            let dao = await MockKyberDAO.new(9, currentBlock + 10);
+
+            // revert different epoch number
+            try {
+                await stakingContract.updateDAOAddressAndRemoveAdmin(dao.address, {from: admin});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            dao = await MockKyberDAO.new(10, currentBlock + 9);
+            // revert different epoch number
+            try {
+                await stakingContract.updateDAOAddressAndRemoveAdmin(dao.address, {from: admin});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            dao = await MockKyberDAO.new(10, currentBlock + 10);
+            await stakingContract.updateDAOAddressAndRemoveAdmin(dao.address, {from: admin});
         });
 
         it("Test constructor should revert with invalid arguments", async function() {
@@ -2189,7 +2213,7 @@ contract('StakingContract', function(accounts) {
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
-            await stakingContract.updateDAOAddressAndRemoveAdmin(mike, {from: admin});
+            await stakingContract.setDAOAddressWithoutCheck(mike, {from: admin});
             try {
                 await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: admin});
                 assert(false, "throw was expected in line above.")
@@ -2268,7 +2292,7 @@ contract('StakingContract', function(accounts) {
 
         it("Test withdraw should revert when handleWithdrawal in DAO reverted", async function() {
             await deployStakingContract(10, currentBlock + 10);
-            let dao = await MockDAOWithdrawFailed.new();
+            let dao = await MockDAOWithdrawFailed.new(10, currentBlock + 10);
             await stakingContract.updateDAOAddressAndRemoveAdmin(dao.address, {from: admin});
 
             await kncToken.transfer(victor, mulPrecision(500));
@@ -2290,7 +2314,7 @@ contract('StakingContract', function(accounts) {
 
         it("Test withdraw should revert when DAO does not have handleWithdrawl func", async function() {
             await deployStakingContract(10, currentBlock + 10);
-            await stakingContract.updateDAOAddressAndRemoveAdmin(accounts[8], {from: admin});
+            await stakingContract.setDAOAddressWithoutCheck(accounts[8], {from: admin});
 
             await kncToken.transfer(victor, mulPrecision(500));
             await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
@@ -2311,7 +2335,7 @@ contract('StakingContract', function(accounts) {
 
         it("Test delegate should revert when delegate to address 0", async function() {
             await deployStakingContract(2, currentBlock + 2);
-            await stakingContract.updateDAOAddressAndRemoveAdmin(accounts[8], {from: admin});
+            await stakingContract.setDAOAddressWithoutCheck(accounts[8], {from: admin});
 
             try {
                 await stakingContract.delegate(zeroAddress, {from: victor});
