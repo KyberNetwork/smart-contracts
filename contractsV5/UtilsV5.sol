@@ -116,12 +116,20 @@ contract Utils {
         return x > y ? y : x;
     }
 
-    function printGas(string memory str, uint refGas) internal view returns(uint currGas) {
+    enum Module {
+        LOGIC, // trade logic
+        PROXY,
+        NETWORK // internal network
+    }
+
+    function printGas(string memory str, uint refGas, Module module) internal view returns(uint currGas) {
+        if (module != Module.NETWORK) return currGas;
+
         assembly {
             currGas := gas
         }
 
         if (refGas == 0) return currGas;
-        console.log("gas '%d' in '%s' diff: %d", currGas, str, refGas > 0 ? refGas - currGas : 0);
+        console.log("gas '%d' in '%s' diff: %d", currGas, str, refGas - currGas);
     }
 }

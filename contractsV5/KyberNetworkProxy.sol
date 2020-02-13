@@ -309,7 +309,6 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
 
         require(tradeOutcome.userDeltaDestToken == returnedDestAmount, "wrong ret amount");
         require(tradeOutcome.userDeltaDestToken <= maxDestAmount, "Amount > maxDest");
-        //console.log("tradeOutcome.actualRate %d minConversionRate %d", tradeOutcome.actualRate, minConversionRate);
         require(tradeOutcome.actualRate >= minConversionRate, "rate < minRate");
         
         emit ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcToken, tradeOutcome.userDeltaDestToken);
@@ -333,6 +332,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         outcome.userDeltaDestToken = destTokenBalanceAfter - balanceBefore.destTok;
         
         // what would be the src amount after deducting platformFee
+        // not protecting from platform fee
         uint srcTokenAmountAfterDeductingFee = outcome.userDeltaSrcToken * (BPS - platformFeeBps) / BPS;
         
         outcome.actualRate = calcRateFromQty(
