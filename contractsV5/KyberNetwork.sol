@@ -446,7 +446,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         TradeData memory tradeData
         ) internal view 
     {
-        //uint start = printGas("start unpack", 0);
+        //uint start = printGas("", 0, Module.UNPACK);
         uint tokenToEthNumReserves = results[uint8(IKyberTradeLogic.ResultIndex.t2eNumReserves)];
         uint ethToTokenNumReserves = results[uint8(IKyberTradeLogic.ResultIndex.e2tNumReserves)];
         
@@ -461,7 +461,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tradeData.destAmountNoFee = results[uint8(IKyberTradeLogic.ResultIndex.destAmountNoFee)];
         tradeData.actualDestAmount = results[uint8(IKyberTradeLogic.ResultIndex.actualDestAmount)];
         tradeData.destAmountWithNetworkFee = results[uint8(IKyberTradeLogic.ResultIndex.destAmountWithNetworkFee)];
-        //printGas("end unpack", start);
+        //printGas("unpack results", start, Module.UNPACK);
     }
     
     function storeTradeData(TradingReserves memory tradingReserves, IKyberReserve[] memory reserveAddresses, 
@@ -620,7 +620,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tradeData.takerFeeBps = getAndUpdateTakerFee();
         
         // amounts excluding fees
-        destAmount = printGas("start to calc", destAmount, Module.NETWORK);
+        destAmount = printGas("start to calcRates", destAmount, Module.NETWORK);
         calcRatesAndAmounts(tradeData.input.src, tradeData.input.dest, tradeData.input.srcAmount, tradeData, hint);
         destAmount = printGas("calcRatesAndAmounts", destAmount, Module.NETWORK);
 
@@ -640,7 +640,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         }
 
         subtractFeesFromTradeWei(tradeData);
-        destAmount = printGas("calc to trade", destAmount, Module.NETWORK);
+        destAmount = printGas("calcRates to trade", destAmount, Module.NETWORK);
         require(doReserveTrades(     //src to ETH
                 tradeData.input.src,
                 actualSrcAmount,
@@ -674,7 +674,6 @@ destAmount = printGas("handle fees part", destAmount, Module.NETWORK);
             t2eReserves: tradeData.tokenToEth.addresses
         });
 
-        // printGas("end_tr", 0);
         return (tradeData.actualDestAmount);
     }
     /* solhint-enable function-max-lines */

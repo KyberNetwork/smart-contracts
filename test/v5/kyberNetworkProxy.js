@@ -361,7 +361,7 @@ contract('KyberNetworkProxy', function(accounts) {
             let str = typeStr[i];
             let fee = 123;
 
-            it.only("should perform a t2e trade with hint", async() => {
+            it("should perform a t2e trade with hint", async() => {
                 let tokenId = 3;
                 let tokenAdd = tokens[tokenId].address;
                 let token = tokens[tokenId];

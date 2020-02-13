@@ -119,11 +119,12 @@ contract Utils {
     enum Module {
         LOGIC, // trade logic
         PROXY,
-        NETWORK // internal network
+        NETWORK, // internal network
+        UNPACK
     }
 
     function printGas(string memory str, uint refGas, Module module) internal view returns(uint currGas) {
-        if (module != Module.NETWORK) return currGas;
+        if (module != Module.UNPACK) return currGas;
 
         assembly {
             currGas := gas
