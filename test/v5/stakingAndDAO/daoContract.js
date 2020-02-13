@@ -1485,7 +1485,7 @@ contract('DAOContract', function(accounts) {
         });
     });
 
-    describe("#Vote Tests", () => {
+    describe("#Vote tests", () => {
         it("Test vote should update data correctly - without delegation", async function() {
             await deployContracts(100, currentBlock + 20, 20);
             await setupSimpleStakingData();
@@ -2213,6 +2213,184 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(optionPoint22, campPointsData[0][1], "option voted count is incorrect");
         });
 
+        it("Test vote after few epochs not doing anything", async function() {
+            await deployContracts(50, currentBlock + 20, 20);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster, {from: victor});
+            await stakingContract.delegate(poolMaster2, {from: loi});
+
+            // delay to epoch 4
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+
+            let epochPoints = new BN(0);
+            let campPoints1 = new BN(0);
+            let optionPoint11 = new BN(0);
+            let optionPoint12 = new BN(0);
+            let campPoints2 = new BN(0);
+            let optionPoint21 = new BN(0);
+            let optionPoint22 = new BN(0);
+
+            // nothing changes since victor+loi have delegated to another
+            await daoContract.vote(1, 1, {from: victor});
+            await daoContract.vote(1, 2, {from: loi});
+            await daoContract.vote(1, 1, {from: mike});
+            epochPoints.iadd(initMikeStake);
+            campPoints1.iadd(initMikeStake);
+            optionPoint11.iadd(initMikeStake);
+            await daoContract.vote(2, 2, {from: mike});
+            epochPoints.iadd(initMikeStake);
+            campPoints2.iadd(initMikeStake);
+            optionPoint22.iadd(initMikeStake);
+            await daoContract.vote(1, 2, {from: poolMaster});
+            epochPoints.iadd(initVictorStake);
+            campPoints1.iadd(initVictorStake);
+            optionPoint12.iadd(initVictorStake);
+            await daoContract.vote(2, 1, {from: poolMaster2});
+            epochPoints.iadd(initLoiStake).iadd(initPoolMaster2Stake);
+            campPoints2.iadd(initLoiStake).iadd(initPoolMaster2Stake);
+            optionPoint21.iadd(initLoiStake).iadd(initPoolMaster2Stake);
+
+            Helper.assertEqual(1, await daoContract.getNumberVotes(victor, 4), "number votes should be correct");
+            Helper.assertEqual(2, await daoContract.getNumberVotes(mike, 4), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(loi, 4), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(poolMaster2, 4), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(poolMaster, 4), "number votes should be correct");
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(4), "total epoch points should be correct");
+            let campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
+
+            campPointsData = await daoContract.getCampaignVoteCountData(2);
+            Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint22, campPointsData[0][1], "option voted count is incorrect");
+        });
+
+        it("Test vote before start block", async function() {
+            await deployContracts(10, currentBlock + 40, 10);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster, {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+            await daoContract.vote(1, 2, {from: victor});
+            await daoContract.vote(1, 3, {from: loi});
+            await daoContract.vote(1, 2, {from: poolMaster});
+
+            Helper.assertEqual(1, await daoContract.getNumberVotes(victor, 0), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(mike, 0), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(loi, 0), "number votes should be correct");
+            Helper.assertEqual(0, await daoContract.getNumberVotes(poolMaster2, 0), "number votes should be correct");
+            Helper.assertEqual(1, await daoContract.getNumberVotes(poolMaster, 0), "number votes should be correct");
+
+            Helper.assertEqual(0, await daoContract.getTotalPoints(0), "total epoch points should be correct");
+            let campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(0, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(0, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
+            Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
+        });
+
+        it("Test vote after partial and full withdrawals", async function() {
+            await deployContracts(20, currentBlock + 15, 10);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster, {from: victor});
+            await stakingContract.delegate(poolMaster2, {from: loi});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+
+            await stakingContract.withdraw(mulPrecision(100), {from: mike});
+
+            let epochPoints = new BN(0);
+            let campPoints1 = new BN(0);
+            let optionPoint11 = new BN(0);
+            let optionPoint12 = new BN(0);
+            let campPoints2 = new BN(0);
+            let optionPoint21 = new BN(0);
+            let optionPoint23 = new BN(0);
+
+            // partial withdraw
+            await daoContract.vote(1, 1, {from: mike});
+            epochPoints.iadd(initMikeStake).isub(mulPrecision(100));
+            campPoints2.iadd(initMikeStake).isub(mulPrecision(100));
+            optionPoint23.iadd(initMikeStake).isub(mulPrecision(100));
+
+            await daoContract.vote(2, 3, {from: mike});
+            epochPoints.iadd(initMikeStake).isub(mulPrecision(100));
+            campPoints1.iadd(initMikeStake).isub(mulPrecision(100));
+            optionPoint11.iadd(initMikeStake).isub(mulPrecision(100));
+
+            await daoContract.vote(1, 2, {from: poolMaster});
+            epochPoints.iadd(initVictorStake);
+            campPoints1.iadd(initVictorStake);
+            optionPoint12.iadd(initVictorStake);
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            let campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
+
+            campPointsData = await daoContract.getCampaignVoteCountData(2);
+            Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint23, campPointsData[0][2], "option voted count is incorrect");
+
+            // full withdraw
+            await stakingContract.withdraw(initVictorStake, {from: victor});
+            epochPoints.isub(initVictorStake);
+            campPoints1.isub(initVictorStake);
+            optionPoint12.isub(initVictorStake);
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(1);
+            Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
+
+            await daoContract.vote(2, 1, {from: poolMaster});
+
+            Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+            campPointsData = await daoContract.getCampaignVoteCountData(2);
+            Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
+            Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
+            Helper.assertEqual(optionPoint23, campPointsData[0][2], "option voted count is incorrect");
+
+        });
+
         it("Test vote should revert camp is not existed", async function() {
             await deployContracts(4, currentBlock + 20, 3);
 
@@ -2306,7 +2484,7 @@ contract('DAOContract', function(accounts) {
         })
     });
 
-    describe("#Claim Reward Tests", () => {
+    describe("#Claim Reward tests", () => {
         it("Test claim reward percentage is correct, balance changes as expected - with delegation", async function() {
             await deployContracts(20, currentBlock + 15, 10);
             await setupSimpleStakingData();
@@ -2474,6 +2652,74 @@ contract('DAOContract', function(accounts) {
                 await stakingContract.withdraw(mulPrecision(10), {from: victor});
                 victorCurStake.isub(mulPrecision(10));
             }
+            await feeHandler.withdrawAllETH({from: accounts[0]});
+        });
+
+        it("Test claim reward after few epochs", async function() {
+            await deployContracts(10, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster, {from: loi});
+            await stakingContract.delegate(poolMaster2, {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            let totalEpochPoints = new BN(0);
+            let mikePoints = new BN(0);
+            let poolMasterPoints = new BN(0);
+            let poolMaster2Points = new BN(0);
+
+            await daoContract.vote(1, 1, {from: mike});
+            totalEpochPoints.iadd(initMikeStake);
+            mikePoints.iadd(initMikeStake);
+            await daoContract.vote(1, 2, {from: poolMaster});
+            totalEpochPoints.iadd(initLoiStake);
+            poolMasterPoints.iadd(initLoiStake);
+            await daoContract.vote(1, 1, {from: poolMaster2});
+            totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+            poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+
+            await daoContract.vote(1, 1, {from: victor});
+            await daoContract.vote(1, 2, {from: loi});
+
+            let epochTotalReward = precision.div(new BN(10));
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: epochTotalReward});
+
+            // delay few epochs not doing anything
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+
+            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+
+            let expectedMikeBal = await Helper.getBalancePromise(mike);
+            expectedMikeBal.iadd(mikePer.mul(epochTotalReward).div(precision));
+            let expectedPM1Bal = await Helper.getBalancePromise(poolMaster);
+            expectedPM1Bal.iadd(poolMasterPer.mul(epochTotalReward).div(precision));
+            let expectedPM2Bal = await Helper.getBalancePromise(poolMaster2);
+            expectedPM2Bal.iadd(poolMaster2Per.mul(epochTotalReward).div(precision));
+
+            await daoContract.claimReward(mike, 1);
+            await daoContract.claimReward(poolMaster, 1);
+            await daoContract.claimReward(poolMaster2, 1);
+
+            Helper.assertEqual(expectedMikeBal, await Helper.getBalancePromise(mike), "reward claimed is not correct");
+            Helper.assertEqual(expectedPM1Bal, await Helper.getBalancePromise(poolMaster), "reward claimed is not correct");
+            Helper.assertEqual(expectedPM2Bal, await Helper.getBalancePromise(poolMaster2), "reward claimed is not correct");
+
             await feeHandler.withdrawAllETH({from: accounts[0]});
         });
 
@@ -2719,12 +2965,731 @@ contract('DAOContract', function(accounts) {
             await feeHandler.withdrawAllETH({from: accounts[0]});
             feeHandler = await MockFeeHandler.new();
         });
+
+        it("Test claim reward should revert when claim for epoch in the past that didn't do anything", async function() {
+            await deployContracts(15, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+
+            // delay to epoch 1
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: precision.div(new BN(10))});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 5 * epochPeriod + startBlock - currentBlock);
+
+            try {
+                await daoContract.claimReward(mike, 4);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward to claim"),
+                    "wrong throw error message, got: " + e
+                );
+            }
+
+            await daoContract.claimReward(mike, 1);
+
+            await feeHandler.withdrawAllETH({from: accounts[0]});
+        });
+
+        it("Test get reward percentage after new deposit", async function() {
+            await deployContracts(10, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster, {from: loi});
+            await stakingContract.delegate(poolMaster2, {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            let totalEpochPoints = new BN(0);
+            let mikePoints = new BN(0);
+            let poolMasterPoints = new BN(0);
+            let poolMaster2Points = new BN(0);
+
+            await daoContract.vote(1, 1, {from: mike});
+            totalEpochPoints.iadd(initMikeStake);
+            mikePoints.iadd(initMikeStake);
+            await daoContract.vote(1, 2, {from: poolMaster});
+            totalEpochPoints.iadd(initLoiStake);
+            poolMasterPoints.iadd(initLoiStake);
+            await daoContract.vote(1, 1, {from: poolMaster2});
+            totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+            poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+
+            await stakingContract.deposit(mulPrecision(10), {from: mike});
+            await stakingContract.deposit(mulPrecision(20), {from: victor});
+            await stakingContract.deposit(mulPrecision(30), {from: loi});
+            await stakingContract.deposit(mulPrecision(40), {from: poolMaster});
+            await stakingContract.deposit(mulPrecision(50), {from: poolMaster2});
+
+            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+
+            // percentage no change after new deposit
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+        });
+
+        it("Test get reward percentage after new delegation", async function() {
+            await deployContracts(10, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster, {from: loi});
+            await stakingContract.delegate(poolMaster2, {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            let totalEpochPoints = new BN(0);
+            let mikePoints = new BN(0);
+            let poolMasterPoints = new BN(0);
+            let poolMaster2Points = new BN(0);
+
+            await daoContract.vote(1, 1, {from: mike});
+            totalEpochPoints.iadd(initMikeStake);
+            mikePoints.iadd(initMikeStake);
+            await daoContract.vote(1, 2, {from: poolMaster});
+            totalEpochPoints.iadd(initLoiStake);
+            poolMasterPoints.iadd(initLoiStake);
+            await daoContract.vote(1, 1, {from: poolMaster2});
+            totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+            poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+
+            await stakingContract.delegate(mike, {from: victor});
+            await stakingContract.delegate(victor, {from: loi});
+            await stakingContract.delegate(poolMaster, {from: poolMaster2});
+
+            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+
+            // percentage no change after new deposit
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+        });
+
+        it("Test get reward percentage after revote", async function() {
+            await deployContracts(10, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster, {from: loi});
+            await stakingContract.delegate(poolMaster2, {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            let totalEpochPoints = new BN(0);
+            let mikePoints = new BN(0);
+            let poolMasterPoints = new BN(0);
+            let poolMaster2Points = new BN(0);
+
+            await daoContract.vote(1, 1, {from: mike});
+            totalEpochPoints.iadd(initMikeStake);
+            mikePoints.iadd(initMikeStake);
+            await daoContract.vote(1, 2, {from: poolMaster});
+            totalEpochPoints.iadd(initLoiStake);
+            poolMasterPoints.iadd(initLoiStake);
+            await daoContract.vote(1, 1, {from: poolMaster2});
+            totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+            poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+
+            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+
+            // percentage no change after new deposit
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+
+            // revote different option
+            await daoContract.vote(1, 2, {from: mike});
+            // revote same option
+            await daoContract.vote(1, 2, {from: poolMaster});
+
+            // percentage no change after revoted
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+        });
+
+        it("Test get reward percentage after new withdraw", async function() {
+            await deployContracts(10, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster, {from: loi});
+            await stakingContract.delegate(poolMaster2, {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            let totalEpochPoints = new BN(0);
+            let mikePoints = new BN(0);
+            let poolMasterPoints = new BN(0);
+            let poolMaster2Points = new BN(0);
+
+            await daoContract.vote(1, 1, {from: mike});
+            totalEpochPoints.iadd(initMikeStake);
+            mikePoints.iadd(initMikeStake);
+            await daoContract.vote(1, 2, {from: poolMaster});
+            totalEpochPoints.iadd(initLoiStake);
+            poolMasterPoints.iadd(initLoiStake);
+            await daoContract.vote(1, 1, {from: poolMaster2});
+            totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+            poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+
+            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+
+            // percentage no change after new deposit
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+
+            await stakingContract.withdraw(mulPrecision(100), {from: mike});
+            await stakingContract.withdraw(mulPrecision(110), {from: victor});
+            await stakingContract.withdraw(mulPrecision(120), {from: loi});
+            await stakingContract.withdraw(mulPrecision(50), {from: poolMaster2});
+
+            totalEpochPoints.isub(mulPrecision(100 + 110 + 120 + 50));
+            mikePoints.isub(mulPrecision(100)); // mike's withdraw
+            poolMasterPoints.isub(mulPrecision(120)); // loi's withdraw
+            poolMaster2Points.isub(mulPrecision(110 + 50)); // victor + poolmaster2 withdraw
+
+            mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+            poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+        });
+
+        it("Test get reward percentage after deposit and withdraw", async function() {
+            await deployContracts(10, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster, {from: loi});
+            await stakingContract.delegate(poolMaster2, {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            let totalEpochPoints = new BN(0);
+            let mikePoints = new BN(0);
+            let poolMasterPoints = new BN(0);
+            let poolMaster2Points = new BN(0);
+
+            await daoContract.vote(1, 1, {from: mike});
+            totalEpochPoints.iadd(initMikeStake);
+            mikePoints.iadd(initMikeStake);
+            await daoContract.vote(1, 2, {from: poolMaster});
+            totalEpochPoints.iadd(initLoiStake);
+            poolMasterPoints.iadd(initLoiStake);
+            await daoContract.vote(1, 1, {from: poolMaster2});
+            totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+            poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+
+            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+
+            await stakingContract.deposit(mulPrecision(100), {from: mike});
+            await stakingContract.deposit(mulPrecision(200), {from: victor});
+            await stakingContract.deposit(mulPrecision(300), {from: loi});
+
+            await stakingContract.withdraw(mulPrecision(50), {from: mike});
+            await stakingContract.withdraw(mulPrecision(250), {from: victor});
+            await stakingContract.withdraw(mulPrecision(250), {from: loi});
+
+            totalEpochPoints.isub(mulPrecision(50));
+            poolMaster2Points.isub(mulPrecision(50));
+
+            mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+            poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+        });
+
+        it("Test get reward percentage with multiple campaigns", async function() {
+            await deployContracts(50, currentBlock + 15, 20);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster, {from: loi});
+            await stakingContract.delegate(poolMaster2, {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            let totalEpochPoints = new BN(0);
+            let mikePoints = new BN(0);
+            let poolMasterPoints = new BN(0);
+            let poolMaster2Points = new BN(0);
+
+            await daoContract.vote(1, 1, {from: mike});
+            totalEpochPoints.iadd(initMikeStake);
+            mikePoints.iadd(initMikeStake);
+            await daoContract.vote(2, 1, {from: mike});
+            totalEpochPoints.iadd(initMikeStake);
+            mikePoints.iadd(initMikeStake);
+            await daoContract.vote(1, 2, {from: poolMaster});
+            totalEpochPoints.iadd(initLoiStake);
+            poolMasterPoints.iadd(initLoiStake);
+            await daoContract.vote(2, 1, {from: poolMaster});
+            totalEpochPoints.iadd(initLoiStake);
+            poolMasterPoints.iadd(initLoiStake);
+            await daoContract.vote(3, 2, {from: poolMaster});
+            totalEpochPoints.iadd(initLoiStake);
+            poolMasterPoints.iadd(initLoiStake);
+            await daoContract.vote(1, 1, {from: poolMaster2});
+            totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+            poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+
+            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+
+            // mike voted 2 camps
+            await stakingContract.withdraw(mulPrecision(100), {from: mike});
+            totalEpochPoints.isub(mulPrecision(100 * 2));
+            mikePoints.isub(mulPrecision(100 * 2));
+
+            // loi's delegated address voted 3 camp
+            await stakingContract.withdraw(mulPrecision(150), {from: loi});
+            totalEpochPoints.isub(mulPrecision(150 * 3));
+            poolMasterPoints.isub(mulPrecision(150 * 3));
+
+            // victor's delegated address voted 1 camp
+            await stakingContract.withdraw(mulPrecision(100), {from: victor});
+            await stakingContract.withdraw(mulPrecision(50), {from: poolMaster2});
+            totalEpochPoints.isub(mulPrecision(100 + 50));
+            poolMaster2Points.isub(mulPrecision(100 + 50));
+
+            mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+            poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+        });
+
+        it("Test get reward percentage after camp has ended", async function() {
+            await deployContracts(50, currentBlock + 15, 6);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster, {from: loi});
+            await stakingContract.delegate(poolMaster2, {from: victor});
+
+            let totalEpochPoints = new BN(0);
+            let mikePoints = new BN(0);
+            let poolMasterPoints = new BN(0);
+            let poolMaster2Points = new BN(0);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+            totalEpochPoints.iadd(initMikeStake);
+            mikePoints.iadd(initMikeStake);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50], '0x', {from: admin}
+            );
+
+            await daoContract.vote(2, 1, {from: mike});
+            totalEpochPoints.iadd(initMikeStake);
+            mikePoints.iadd(initMikeStake);
+            await daoContract.vote(1, 2, {from: poolMaster});
+            totalEpochPoints.iadd(initLoiStake);
+            poolMasterPoints.iadd(initLoiStake);
+            await daoContract.vote(2, 1, {from: poolMaster});
+            totalEpochPoints.iadd(initLoiStake);
+            poolMasterPoints.iadd(initLoiStake);
+            await daoContract.vote(3, 2, {from: poolMaster});
+            totalEpochPoints.iadd(initLoiStake);
+            poolMasterPoints.iadd(initLoiStake);
+            await daoContract.vote(3, 1, {from: poolMaster2});
+            totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+            poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
+
+            // delay to make camp ended
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], minCampPeriod);
+
+            // camp has ended, but if user withdrew, reward will be still deducted
+            await stakingContract.withdraw(mulPrecision(100), {from: mike});
+            totalEpochPoints.isub(mulPrecision(100 * 2));
+            mikePoints.isub(mulPrecision(100 * 2));
+            await stakingContract.withdraw(mulPrecision(50), {from: loi});
+            totalEpochPoints.isub(mulPrecision(50 * 3));
+            poolMasterPoints.isub(mulPrecision(50 * 3));
+
+            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+        });
+
+        it("Test get reward percentage epoch 0", async function() {
+            await deployContracts(10, currentBlock + 40, 10);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster, {from: victor});
+            await stakingContract.delegate(poolMaster2, {from: loi});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+            await daoContract.vote(1, 2, {from: victor});
+            await daoContract.vote(1, 3, {from: loi});
+            await daoContract.vote(1, 2, {from: poolMaster});
+            await daoContract.vote(1, 2, {from: poolMaster2});
+
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(mike, 0), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 0), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 0), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 0), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 0), "reward per is incorrect");
+        });
+
+        it("Test get reward percentage and full withdrawals", async function() {
+            await deployContracts(20, currentBlock + 15, 10);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster, {from: victor});
+            await stakingContract.delegate(poolMaster, {from: loi});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+
+            await stakingContract.withdraw(mulPrecision(100), {from: mike});
+
+            let totalEpochPoints = new BN(0);
+            let mikePoints = new BN(0);
+            let poolMasterPoints = new BN(0);
+
+            // partial withdraw
+            await daoContract.vote(1, 1, {from: mike});
+            totalEpochPoints.iadd(initMikeStake).isub(mulPrecision(100));
+            mikePoints.iadd(initMikeStake).isub(mulPrecision(100));
+
+            await daoContract.vote(2, 3, {from: mike});
+            totalEpochPoints.iadd(initMikeStake).isub(mulPrecision(100));
+            mikePoints.iadd(initMikeStake).isub(mulPrecision(100));
+
+            await daoContract.vote(1, 2, {from: poolMaster});
+            totalEpochPoints.iadd(initVictorStake).iadd(initLoiStake);
+            poolMasterPoints.iadd(initVictorStake).iadd(initLoiStake);
+
+            // full withdraw from victor
+            await stakingContract.withdraw(initVictorStake, {from: victor});
+            totalEpochPoints.isub(initVictorStake);
+            poolMasterPoints.isub(initVictorStake);
+
+            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+        });
+
+        it("Test get reward percentage of pool master when he is in another pool", async function() {
+            await deployContracts(20, currentBlock + 20, 10);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster2, {from: victor});
+            await stakingContract.delegate(poolMaster2, {from: loi});
+            await stakingContract.delegate(poolMaster, {from: poolMaster2});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+
+            let totalEpochPoints = new BN(0);
+            let poolMasterPoints = new BN(0);
+            let poolMaster2Points = new BN(0);
+
+            await daoContract.vote(1, 1, {from: poolMaster2});
+            totalEpochPoints.iadd(initVictorStake).iadd(initLoiStake);
+            poolMaster2Points.iadd(initVictorStake).iadd(initLoiStake);
+
+            await daoContract.vote(1, 3, {from: poolMaster});
+            totalEpochPoints.iadd(initPoolMaster2Stake);
+            poolMasterPoints.iadd(initPoolMaster2Stake);
+
+            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+        });
+
+        it("Test get reward percentage of pool master when he is also in the pool", async function() {
+            await deployContracts(20, currentBlock + 15, 10);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster2, {from: victor});
+            await stakingContract.delegate(poolMaster2, {from: loi});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+
+            let totalEpochPoints = new BN(0);
+            let mikePoints = new BN(0);
+            let poolMaster2Points = new BN(0);
+
+            await daoContract.vote(1, 1, {from: poolMaster2});
+            totalEpochPoints.iadd(initPoolMaster2Stake).iadd(initVictorStake).iadd(initLoiStake);
+            poolMaster2Points.iadd(initPoolMaster2Stake).iadd(initVictorStake).iadd(initLoiStake);
+
+            await daoContract.vote(1, 3, {from: mike});
+            totalEpochPoints.iadd(initMikeStake);
+            mikePoints.iadd(initMikeStake);
+
+            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+        });
+
+        it("Test get reward percentage with vote before delegation takes effect", async function() {
+            await deployContracts(20, currentBlock + 15, 10);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster2, {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            await stakingContract.delegate(poolMaster2, {from: loi});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+
+            let totalEpochPoints = new BN(0);
+            let mikePoints = new BN(0);
+            let poolMaster2Points = new BN(0);
+            let loiPoints = new BN(0);
+
+            await daoContract.vote(1, 1, {from: poolMaster2});
+            totalEpochPoints.iadd(initPoolMaster2Stake).iadd(initVictorStake);
+            poolMaster2Points.iadd(initPoolMaster2Stake).iadd(initVictorStake);
+
+            await daoContract.vote(1, 3, {from: mike});
+            totalEpochPoints.iadd(initMikeStake);
+            mikePoints.iadd(initMikeStake);
+
+            await daoContract.vote(1, 3, {from: loi});
+            totalEpochPoints.iadd(initLoiStake);
+            loiPoints.iadd(initLoiStake);
+
+            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            let loiPer = loiPoints.mul(precision).div(totalEpochPoints);
+
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(loiPer, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+        });
+
+        it("Test get reward percentage after many epochs", async function() {
+            await deployContracts(20, currentBlock + 15, 10);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster2, {from: victor});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            await stakingContract.delegate(poolMaster2, {from: loi});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+
+            let totalEpochPoints = new BN(0);
+            let mikePoints = new BN(0);
+            let poolMaster2Points = new BN(0);
+            let loiPoints = new BN(0);
+
+            await daoContract.vote(1, 1, {from: poolMaster2});
+            totalEpochPoints.iadd(initPoolMaster2Stake).iadd(initVictorStake);
+            poolMaster2Points.iadd(initPoolMaster2Stake).iadd(initVictorStake);
+
+            await daoContract.vote(1, 3, {from: mike});
+            totalEpochPoints.iadd(initMikeStake);
+            mikePoints.iadd(initMikeStake);
+
+            await daoContract.vote(1, 3, {from: loi});
+            totalEpochPoints.iadd(initLoiStake);
+            loiPoints.iadd(initLoiStake);
+
+            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            let loiPer = loiPoints.mul(precision).div(totalEpochPoints);
+
+            await stakingContract.deposit(mulPrecision(200), {from: mike});
+            await stakingContract.deposit(mulPrecision(210), {from: victor});
+            await stakingContract.deposit(mulPrecision(220), {from: loi});
+            await stakingContract.deposit(mulPrecision(230), {from: poolMaster2});
+
+            await stakingContract.delegate(mike, {from: victor});
+            await stakingContract.delegate(victor, {from: victor});
+            await stakingContract.delegate(loi, {from: poolMaster2});
+            await stakingContract.delegate(loi, {from: poolMaster});
+
+            currentBlock = await Helper.getCurrentBlock();
+            // delay to epoch 5
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+            );
+
+            await daoContract.vote(2, 1, {from: poolMaster2});
+            await daoContract.vote(2, 3, {from: mike});
+            await daoContract.vote(2, 3, {from: loi});
+
+            Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+            Helper.assertEqual(poolMaster2Per, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
+            Helper.assertEqual(loiPer, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+
+            // get reward percentage for epoch that stakers did nothing, data is not inited in Staking
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(mike, 3), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 3), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 3), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 3), "reward per is incorrect");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 3), "reward per is incorrect");
+        });
     });
 
-    describe("#Conclude Campaign Tests", () => {
+    describe("#Conclude Campaign tests", () => {
     });
 
-    describe("#Constructor Tests", () => {
+    describe("#Constructor tests", () => {
         it("Test correct data is set after deployment", async function() {
             await deployContracts(10, currentBlock + 10, 10);
 
@@ -2742,7 +3707,7 @@ contract('DAOContract', function(accounts) {
         });
     });
 
-    describe("#Helper Function Tests", () => {
+    describe("#Helper Function tests", () => {
     });
 });
 
