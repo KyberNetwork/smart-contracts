@@ -111,7 +111,7 @@ contract('KyberNetworkProxy', function(accounts) {
         await tradeLogic.setNetworkContract(network.address, {from: admin});
 
         // init and setup reserves
-        let result = await nwHelper.setupReserves(network, tokens, 0, 5, 0, 0, accounts, admin, operator);
+        let result = await nwHelper.setupReserves(network, tokens, 0, 4, 0, 0, accounts, admin, operator);
         reserveInstances = result.reserveInstances;
         numReserves += result.numAddedReserves * 1;
 
@@ -346,13 +346,34 @@ contract('KyberNetworkProxy', function(accounts) {
         });
     });
 
-    describe("test trades - report gas", async() => {
+    describe.only("dirty storage for good gas reports", async() => {
+        for(let i = 0; i < numTokens; i++) {
+            it("should perform a t2t trade with split. to dirty valus. for correct gas result.", async() => {
+                let tokenId = i;
+                let srcAdd = tokens[i].address;
+                let destAdd = tokens[(tokenId + 1) % numTokens].address;
+                let srcToken = tokens[tokenId];
+                let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[tokenId])));
+                const numResForTest = 3;
+                fee = 127;
+                
+                let hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, SPLIT_HINTTYPE, numResForTest, srcAdd, destAdd, srcQty);
+                let rate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, 0, hint);
+                
+                await srcToken.transfer(taker, srcQty);
+                await srcToken.approve(networkProxy.address, srcQty, {from: taker});   
+                let txResult = await networkProxy.tradeWithHintAndFee(srcAdd, srcQty, destAdd, taker, 
+                    maxDestAmt, calcMinRate(rate), platformWallet, fee, hint, {from: taker});
+            });
+        }
+    })
+
+    describe.only("test trades - report gas", async() => {
         before("    ", async() => {
             
         });
         
-        
-        let PlatformFeeValue = [0, 111];
+        //let PlatformFeeValue = [0, 111];
         let tradeType = [MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE];
         let typeStr = ['MASK_IN', 'MASK_OUT', 'SPLIT', 'NO HINT'];
 
@@ -361,7 +382,7 @@ contract('KyberNetworkProxy', function(accounts) {
             let str = typeStr[i];
             let fee = 123;
 
-            it.only("should perform a t2e trade with hint", async() => {
+            it("should perform a t2e trade with hint", async() => {
                 let tokenId = 3;
                 let tokenAdd = tokens[tokenId].address;
                 let token = tokens[tokenId];

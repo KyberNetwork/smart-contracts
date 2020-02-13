@@ -1,6 +1,4 @@
 const TestToken = artifacts.require("Token.sol");
-const MockReserve = artifacts.require("MockReserve.sol");
-const MockDao = artifacts.require("MockDAO.sol");
 const TradeLogic = artifacts.require("KyberTradeLogic.sol");
 
 const Helper = require("../v4/helper.js");
@@ -14,10 +12,7 @@ const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK,
 
 //global variables
 //////////////////
-const gasPrice = (new BN(10).pow(new BN(9)).mul(new BN(50)));
 const negligibleRateDiffBps = new BN(5); //0.05% 
-const maxDestAmt = new BN(2).pow(new BN(255));
-const minConversionRate = new BN(0);
 
 let takerFeeBps = new BN(20);
 let platformFeeBps = new BN(0);
@@ -29,17 +24,11 @@ let operator;
 let network;
 let tradeLogic;
 let user;
-let platformWallet;
 
 //reserve data
 //////////////
 let reserveInstances = {};
 let reserve;
-let numReserves;
-
-let pricingFpr = [];
-let reserveFpr = [];
-let gNumFprReserves;
 
 //tokens data
 ////////////
