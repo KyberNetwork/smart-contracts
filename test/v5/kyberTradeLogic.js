@@ -19,6 +19,8 @@ const negligibleRateDiffBps = new BN(5); //0.05%
 const maxDestAmt = new BN(2).pow(new BN(255));
 const minConversionRate = new BN(0);
 
+let takerFeeArray = [new BN(0), new BN(500), new BN(1000)];
+let platformFeeArray = [new BN(0), new BN(500), new BN(1000)];
 let takerFeeBps = new BN(20);
 let platformFeeBps = new BN(0);
 let takerFeeAmount;
@@ -242,8 +244,7 @@ contract('KyberTradeLogic', function(accounts) {
             });
     
             it("should get rates for token (different taker fee amounts)", async() => {
-                for (let takerFee = 0; takerFee <= 2500; takerFee += 500) {
-                    takerFeeBps = new BN(takerFee);
+                for (takerFeeBps of takerFeeArray) {
                     actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
                     for (let i=0; i < actualResult.buyReserves.length; i++) {
                         reserveAddress = actualResult.buyReserves[i];
@@ -267,7 +268,7 @@ contract('KyberTradeLogic', function(accounts) {
                         expectedDestAmt = nwHelper.minusNetworkFees(expectedDestAmt, false, reserve.isFeePaying, takerFeeBps);
                         expectedRate = Helper.calcRateFromQty(tokenQty, expectedDestAmt, tokenDecimals, ethDecimals);
                         Helper.assertEqual(expectedRate, actualResult.sellRates[i], "rate not equal");
-                    }   
+                    }  
                 }
             });
         });
@@ -308,8 +309,7 @@ contract('KyberTradeLogic', function(accounts) {
             });
     
             it("should get rates for token (different taker fee amounts)", async() => {
-                for (let takerFee = 0; takerFee <= 2500; takerFee += 500) {
-                    takerFeeBps = new BN(takerFee);
+                for (takerFeeBps of takerFeeArray) {
                     actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
                     for (let i=0; i < actualResult.buyReserves.length; i++) {
                         reserveAddress = actualResult.buyReserves[i];
@@ -375,8 +375,7 @@ contract('KyberTradeLogic', function(accounts) {
             });
     
             it("should get rates for token (different taker fee amounts)", async() => {
-                for (let takerFee = 0; takerFee <= 2500; takerFee += 500) {
-                    takerFeeBps = new BN(takerFee);
+                for (takerFeeBps of takerFeeArray) {
                     actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
                     for (let i=0; i < actualResult.buyReserves.length; i++) {
                         reserveAddress = actualResult.buyReserves[i];
@@ -438,10 +437,8 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2E, no hint", async() => {
-                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
-                    takerFeeBps = new BN(takerFee);
-                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
-                        platformFeeBps = new BN(platformFee);
+                for (takerFeeBps of takerFeeArray) {
+                    for (platformFeeBps of platformFeeArray) {
                         fees = [takerFeeBps, platformFeeBps];
                         //search with no fees
                         reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, srcToken.address, srcQty, 0, true);
@@ -458,15 +455,13 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcQty, fees, emptyHint);
                         compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
-                    }   
+                    }
                 }
             });
 
             it("E2T, no hint", async() => {
-                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
-                    takerFeeBps = new BN(takerFee);
-                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
-                        platformFeeBps = new BN(platformFee);
+                for (takerFeeBps of takerFeeArray) {
+                    for (platformFeeBps of platformFeeArray) {
                         fees = [takerFeeBps, platformFeeBps];
                         //search with no fees
                         reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, destToken.address, ethSrcQty, 0, false);
@@ -488,10 +483,8 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, no hint", async() => {
-                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
-                    takerFeeBps = new BN(takerFee);
-                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
-                        platformFeeBps = new BN(platformFee);
+                for (takerFeeBps of takerFeeArray) {
+                    for (platformFeeBps of platformFeeArray) {
                         fees = [takerFeeBps, platformFeeBps];
                         //search with no fees
                         reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, srcToken.address, srcQty, 0, true);
@@ -518,10 +511,8 @@ contract('KyberTradeLogic', function(accounts) {
 
             it("T2E, mask in hint", async() => {
                 numMaskedReserves = 2;
-                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
-                    takerFeeBps = new BN(takerFee);
-                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
-                        platformFeeBps = new BN(platformFee);
+                for (takerFeeBps of takerFeeArray) {
+                    for (platformFeeBps of platformFeeArray) {
                         fees = [takerFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -550,10 +541,8 @@ contract('KyberTradeLogic', function(accounts) {
 
             it("E2T, mask in hint", async() => {
                 numMaskedReserves = 2;
-                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
-                    takerFeeBps = new BN(takerFee);
-                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
-                        platformFeeBps = new BN(platformFee);
+                for (takerFeeBps of takerFeeArray) {
+                    for (platformFeeBps of platformFeeArray) {
                         fees = [takerFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -582,10 +571,8 @@ contract('KyberTradeLogic', function(accounts) {
 
             it("T2T, mask in hint (both ways)", async() => {
                 numMaskedReserves = 2;
-                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
-                    takerFeeBps = new BN(takerFee);
-                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
-                        platformFeeBps = new BN(platformFee);
+                for (takerFeeBps of takerFeeArray) {
+                    for (platformFeeBps of platformFeeArray) {
                         fees = [takerFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -615,10 +602,8 @@ contract('KyberTradeLogic', function(accounts) {
 
             it("T2E, mask out hint", async() => {
                 numMaskOutReserves = 2;
-                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
-                    takerFeeBps = new BN(takerFee);
-                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
-                        platformFeeBps = new BN(platformFee);
+                for (takerFeeBps of takerFeeArray) {
+                    for (platformFeeBps of platformFeeArray) {
                         fees = [takerFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -646,10 +631,8 @@ contract('KyberTradeLogic', function(accounts) {
 
             it("E2T, mask out hint", async() => {
                 numMaskOutReserves = 2;
-                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
-                    takerFeeBps = new BN(takerFee);
-                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
-                        platformFeeBps = new BN(platformFee);
+                for (takerFeeBps of takerFeeArray) {
+                    for (platformFeeBps of platformFeeArray) {
                         fees = [takerFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -677,10 +660,8 @@ contract('KyberTradeLogic', function(accounts) {
 
             it("T2T, mask out hint", async() => {
                 numMaskedReserves = 2;
-                for (let takerFee = 0; takerFee <= 1000; takerFee += 500) {
-                    takerFeeBps = new BN(takerFee);
-                    for (let platformFee = 0; platformFee <= 1000; platformFee += 500) {
-                        platformFeeBps = new BN(platformFee);
+                for (takerFeeBps of takerFeeArray) {
+                    for (platformFeeBps of platformFeeArray) {
                         fees = [takerFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
