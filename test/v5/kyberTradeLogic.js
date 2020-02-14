@@ -35,6 +35,9 @@ let platformWallet;
 //////////////
 let reserveInstances = {};
 let reserve;
+let bestReserve;
+let bestSellReserve;
+let bestBuyReserve;
 let numReserves;
 
 let pricingFpr = [];
@@ -45,11 +48,30 @@ let gNumFprReserves;
 ////////////
 let srcToken;
 let destToken;
+let token;
 let srcDecimals;
 let destDecimals;
+let tokenDecimals;
+
+//quantities
+////////////
 let srcQty;
 let ethSrcQty = precisionUnits;
+let tokenQty;
+let queryQty;
 let zeroBN = new BN(0);
+
+//expected result variables
+///////////////////////////
+let expectedReserveRate;
+let expectedDestAmt;
+let expectedRate;
+let expectedTradeResult;
+let expectedReserves;
+let expectedRates;
+let expectedSplitValuesBps;
+let expectedFeePaying;
+let actualResult;
 
 contract('KyberTradeLogic', function(accounts) {
     before("one time global init", async() => {
