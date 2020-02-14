@@ -212,8 +212,7 @@ contract('KyberTradeLogic', function(accounts) {
                 };
             });
 
-            beforeEach("select random token", async() => {
-                token = (Math.random() > 0.5) ? srcToken : destToken;
+            beforeEach("use srcToken as token", async() => {
                 token = srcToken;
                 tokenDecimals = await token.decimals();
                 // 1000 tokens
@@ -279,8 +278,7 @@ contract('KyberTradeLogic', function(accounts) {
                 };
             });
 
-            beforeEach("select random token", async() => {
-                token = (Math.random() > 0.5) ? srcToken : destToken;
+            beforeEach("use srcToken as token", async() => {
                 token = srcToken;
                 tokenDecimals = await token.decimals();
                 // 1000 tokens
@@ -347,8 +345,7 @@ contract('KyberTradeLogic', function(accounts) {
                 };
             });
 
-            beforeEach("select random token", async() => {
-                token = (Math.random() > 0.5) ? srcToken : destToken;
+            beforeEach("use srcToken as token", async() => {
                 token = srcToken;
                 tokenDecimals = await token.decimals();
                 // 1000 tokens
@@ -762,7 +759,12 @@ contract('KyberTradeLogic', function(accounts) {
 });
 
 async function fetchReservesRatesFromTradeLogic(tradeLogicInstance, reserveInstances, tokenAddress, qty, takerFeeBps, isTokenToEth) {
-    reservesArray = [];
+    let reservesArray = [];
+    let result;
+    let reserves;
+    let reserve;
+    let rates;
+
     //sell
     if (isTokenToEth) {
         result = await tradeLogicInstance.getRatesForToken(tokenAddress, 0, qty, takerFeeBps);
@@ -829,7 +831,7 @@ function getTradeResult(
     destDecimals, e2tReserves, e2tRates, e2tSplits,
     srcQty, takerFeeBps, platformFeeBps
 ) {
-    result = {
+    let result = {
         t2eNumReserves: (t2eSplits.length > 0) ? t2eReserves.length : new BN(1),
         e2tNumReserves: (e2tSplits.length > 0) ? e2tReserves.length : new BN(1),
         tradeWei: zeroBN,
@@ -843,6 +845,12 @@ function getTradeResult(
     }
 
     let amountSoFar = zeroBN;
+    let reserve;
+    let splitAmount;
+    let destAmt;
+    let feePayingBps;
+    let actualTradeWei;
+
     if (t2eSplits.length > 0) {
         for (let i=0; i<t2eReserves.length; i++) {
             reserve = t2eReserves[i];
@@ -929,6 +937,9 @@ function compareResults(expectedTradeResult, expectedReserves, expectedRates, ex
     Helper.assertEqual(expectedTradeResult.destAmountNoFee, actualResult.results[7], "destAmountNoFee not equal");
     Helper.assertEqual(expectedTradeResult.actualDestAmount, actualResult.results[8], "actualDestAmount not equal");
     Helper.assertEqual(expectedTradeResult.destAmountWithNetworkFee, actualResult.results[9], "destAmountWithNetworkFee not equal");
+
+    let expected;
+    let actual;
 
     //compare expectedReserves
     for (let i=0; i<expectedReserves.length; i++) {
