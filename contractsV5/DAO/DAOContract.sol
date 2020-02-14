@@ -103,9 +103,12 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         (uint rebateBps, uint rewardBps) = getRebateAndRewardFromData(_defaultBrrData);
         require(rebateBps + rewardBps <= BPS, "constructor: default rebate + reward must not be greater than 100%");
 
+        staking = IKyberStaking(_staking);
+        require(staking.EPOCH_PERIOD() == _epochPeriod, "constructor: staking and dao have different epoch periods");
+        require(staking.START_BLOCK() == _startBlock, "constructor: staking and dao have different start block");
+
         EPOCH_PERIOD = _epochPeriod;
         START_BLOCK = _startBlock;
-        staking = IKyberStaking(_staking);
         feeHandler = IFeeHandler(_feeHandler);
         KNC_TOKEN = IERC20(_knc);
         latestNetworkFeeResult = _defaultNetworkFee;
@@ -424,11 +427,12 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         FormulaData memory formulaData = decodeFormulaParams(camp.formulaParams);
 
         uint totalVotes = voteCounts[0];
-        uint votedPercentageInPrecision = totalVotes.mul(PRECISION).div(camp.totalKNCSupply);
+        // compute voted percentage (in precision)
+        uint votedPercentage = totalVotes.mul(PRECISION).div(camp.totalKNCSupply);
 
-        if (formulaData.minPercentageInPrecision > votedPercentageInPrecision) { return (0, 0); }
+        if (formulaData.minPercentageInPrecision > votedPercentage) { return (0, 0); }
 
-        uint X = formulaData.tInPrecision.mul(votedPercentageInPrecision).div(PRECISION);
+        uint X = formulaData.tInPrecision.mul(votedPercentage).div(PRECISION);
         if (X <= formulaData.cInPrecision) {
             // threshold is not negative, need to compare with voted count
             uint Y = formulaData.cInPrecision.sub(X);

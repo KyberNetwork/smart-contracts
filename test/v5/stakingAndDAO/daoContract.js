@@ -96,14 +96,68 @@ contract('DAOContract', function(accounts) {
         }
     };
 
+    const setupTokenWithSupply = async(supply) => {
+        kncToken = await TestToken.new("test token", 'tst', 18, {from: accounts[0]});
+
+        let totalSupply = await kncToken.totalSupply();
+        let burnAmount = totalSupply.sub(new BN(supply));
+
+        await kncToken.burn(burnAmount, {from: accounts[0]});
+
+        Helper.assertEqual(supply, await kncToken.totalSupply(), "total supply is invalid");
+
+        await kncToken.transfer(victor, supply.div(new BN(5)));
+        await kncToken.transfer(mike, supply.div(new BN(5)));
+        await kncToken.transfer(loi, supply.div(new BN(5)));
+        await kncToken.transfer(poolMaster, supply.div(new BN(5)));
+        await kncToken.transfer(poolMaster2, supply.div(new BN(5)));
+    }
+
+    const resetSetupForKNCToken = async() => {
+        kncToken = await TestToken.new("test token", 'tst', 18, {from: accounts[0]});
+        await kncToken.transfer(victor, mulPrecision(1000000));
+        await kncToken.transfer(mike, mulPrecision(1000000));
+        await kncToken.transfer(loi, mulPrecision(1000000));
+        await kncToken.transfer(poolMaster, mulPrecision(1000000));
+        await kncToken.transfer(poolMaster2, mulPrecision(1000000));
+    }
+
+    const simpleSetupToTestThreshold = async(mikeStake, victorStake, loiStake, percentage) => {
+        initMikeStake = mulPrecision(mikeStake);
+        initVictorStake = mulPrecision(victorStake);
+        initLoiStake = mulPrecision(loiStake);
+        initPoolMaster2Stake = new BN(0);
+
+        let totalSupply = (new BN(0)).add(initMikeStake).add(initVictorStake).add(initLoiStake);
+        totalSupply = totalSupply.mul(new BN(100)).div(new BN(percentage)); // total stake = percentage% total supply
+        kncToken = await TestToken.new("test token", 'tst', 18, {from: accounts[0]});
+
+        let burnAmount = (await kncToken.totalSupply()).sub(new BN(totalSupply));
+        await kncToken.burn(burnAmount, {from: accounts[0]});
+
+        await kncToken.transfer(mike, initMikeStake);
+        await kncToken.transfer(victor, initVictorStake);
+        await kncToken.transfer(loi, initLoiStake);
+
+        currentBlock = await Helper.getCurrentBlock();
+        await deployContracts(20, currentBlock + 20, 8);
+        await setupSimpleStakingData();
+
+        currentBlock = await Helper.getCurrentBlock();
+        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+    }
+
     describe("#Handle Withdrawl tests", () => {
         it("Test handle withdrawal should revert when sender is not staking", async function() {
+            let stakingContract = await StakingContract.new(kncToken.address, 10, currentBlock + 10, admin);
             daoContract = await DAOContract.new(
                 10, currentBlock + 10,
-                mike,  feeHandler.address, kncToken.address,
+                stakingContract.address,  feeHandler.address, kncToken.address,
                 maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
                 admin
             )
+            await daoContract.replaceStakingContract(mike);
+            Helper.assertEqual(mike, await daoContract.staking(), "staking contract is setting wrongly");
 
             try {
                 await daoContract.handleWithdrawal(victor, 0, {from: victor});
@@ -3725,31 +3779,6 @@ contract('DAOContract', function(accounts) {
     });
 
     describe("#Conclude Campaign tests", () => {
-        const setupTokenWithSupply = async(supply) => {
-            kncToken = await TestToken.new("test token", 'tst', 18, {from: accounts[0]});
-
-            let totalSupply = await kncToken.totalSupply();
-            let burnAmount = totalSupply.sub(new BN(supply));
-
-            await kncToken.burn(burnAmount, {from: accounts[0]});
-
-            Helper.assertEqual(supply, await kncToken.totalSupply(), "total supply is invalid");
-
-            await kncToken.transfer(victor, supply.div(new BN(5)));
-            await kncToken.transfer(mike, supply.div(new BN(5)));
-            await kncToken.transfer(loi, supply.div(new BN(5)));
-            await kncToken.transfer(poolMaster, supply.div(new BN(5)));
-            await kncToken.transfer(poolMaster2, supply.div(new BN(5)));
-        }
-
-        const resetSetupForKNCToken = async() => {
-            kncToken = await TestToken.new("test token", 'tst', 18, {from: accounts[0]});
-            await kncToken.transfer(victor, mulPrecision(1000000));
-            await kncToken.transfer(mike, mulPrecision(1000000));
-            await kncToken.transfer(loi, mulPrecision(1000000));
-            await kncToken.transfer(poolMaster, mulPrecision(1000000));
-            await kncToken.transfer(poolMaster2, mulPrecision(1000000));
-        }
 
         it("Test get winning option for non-existed campaign", async function() {
             await deployContracts(10, currentBlock + 10, 5);
@@ -4095,32 +4124,6 @@ contract('DAOContract', function(accounts) {
             await resetSetupForKNCToken();
         });
 
-        const simpleSetupToTestThreshold = async(mikeStake, victorStake, loiStake, percentage) => {
-
-            initMikeStake = mulPrecision(mikeStake);
-            initVictorStake = mulPrecision(victorStake);
-            initLoiStake = mulPrecision(loiStake);
-            initPoolMaster2Stake = new BN(0);
-
-            let totalSupply = (new BN(0)).add(initMikeStake).add(initVictorStake).add(initLoiStake);
-            totalSupply = totalSupply.mul(new BN(100)).div(new BN(percentage)); // total stake = percentage% total supply
-            kncToken = await TestToken.new("test token", 'tst', 18, {from: accounts[0]});
-
-            let burnAmount = (await kncToken.totalSupply()).sub(new BN(totalSupply));
-            await kncToken.burn(burnAmount, {from: accounts[0]});
-
-            await kncToken.transfer(mike, initMikeStake);
-            await kncToken.transfer(victor, initVictorStake);
-            await kncToken.transfer(loi, initLoiStake);
-
-            currentBlock = await Helper.getCurrentBlock();
-            await deployContracts(20, currentBlock + 20, 5);
-            await setupSimpleStakingData();
-
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
-        }
-
         it("Test get winning option returns 0 option voted percentage less than threshold", async function() {
             // Min percentage: 20%
             // C = 100%, t = 1
@@ -4363,6 +4366,579 @@ contract('DAOContract', function(accounts) {
         });
     });
 
+    describe("#Get Network Fee Data tests", () => {
+        it("Test get network fee returns correct default data for epoch 0", async function() {
+            await deployContracts(10, currentBlock + 10, 5);
+
+            // get fee data for epoch 0
+            let feeData = await daoContract.getLatestNetworkFeeData();
+            Helper.assertEqual(defaultNetworkFee, feeData[0], "network fee default is wrong");
+            Helper.assertEqual(startBlock - 1, feeData[1], "expiry block number is wrong");
+
+            await daoContract.setLatestNetworkFee(32);
+            feeData = await daoContract.getLatestNetworkFeeData();
+            Helper.assertEqual(32, feeData[0], "network fee default is wrong");
+            Helper.assertEqual(startBlock - 1, feeData[1], "expiry block number is wrong");
+
+            let tx = await daoContract.getLatestNetworkFeeDataWithCache();
+            logInfo("Get Network Fee: epoch 0, gas used: " + tx.receipt.cumulativeGasUsed);
+        });
+
+        it("Test get network fee returns correct latest data, no campaigns", async function() {
+            await deployContracts(10, currentBlock + 10, 5);
+
+            // delay to epoch 1
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            // get fee data for epoch 1
+            feeData = await daoContract.getLatestNetworkFeeData();
+            Helper.assertEqual(defaultNetworkFee, feeData[0], "network fee default is wrong");
+            Helper.assertEqual(epochPeriod + startBlock - 1, feeData[1], "expiry block number is wrong");
+
+            await daoContract.setLatestNetworkFee(32);
+            feeData = await daoContract.getLatestNetworkFeeData();
+            Helper.assertEqual(32, feeData[0], "network fee default is wrong");
+            Helper.assertEqual(epochPeriod + startBlock - 1, feeData[1], "expiry block number is wrong");
+
+            // delay to epoch 4
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+            // get fee data for epoch 4
+            feeData = await daoContract.getLatestNetworkFeeData();
+            Helper.assertEqual(32, feeData[0], "network fee default is wrong");
+            Helper.assertEqual(4 * epochPeriod + startBlock - 1, feeData[1], "expiry block number is wrong");
+
+            let tx = await daoContract.getLatestNetworkFeeDataWithCache();
+            logInfo("Get Network Fee: epoch > 0, no fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
+        });
+
+        it("Test get network fee returns correct latest data, has camp but no fee campaign", async function() {
+            await deployContracts(15, currentBlock + 20, 10);
+            await setupSimpleStakingData();
+
+            // delay to epoch 1
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [32, 26, 44], '0x', {from: admin}
+            );
+            await daoContract.vote(1, 2, {from: mike});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [22, 23, 24], '0x', {from: admin}
+            );
+            await daoContract.vote(2, 3, {from: mike});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+
+            Helper.assertEqual(2, data[0], "winning option is wrong");
+            Helper.assertEqual(26, data[1], "winning option value is wrong");
+
+            Helper.assertEqual(0, await daoContract.networkFeeCampaign(1), "shouldn't have network fee camp for epoch 1");
+
+            data = await daoContract.getLatestNetworkFeeData();
+
+            Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
+            // expiry block should be end of epoch 2
+            Helper.assertEqual(2 * epochPeriod + startBlock - 1, data[1], "expiry block number is wrong for epoch 1");
+        });
+
+        it("Test get network fee returns correct latest data on-going network fee has a winning option", async function() {
+            await simpleSetupToTestThreshold(410, 410, 180, 40);
+            currentBlock = await Helper.getCurrentBlock();
+            // min per: 40%, C = 100%, t = 1
+            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 50, 44], '0x', {from: admin}
+            );
+
+            // option 2 should win
+            await daoContract.vote(1, 2, {from: mike});
+            await daoContract.vote(1, 2, {from: loi});
+            await daoContract.vote(1, 2, {from: victor});
+
+            // camp is not ended yet, so data shouldn't change
+            let data = await daoContract.getLatestNetworkFeeData();
+            Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
+            Helper.assertEqual(epochPeriod + startBlock - 1, data[1], "expiry block number is wrong");
+
+            // delay to epoch 2
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            Helper.assertEqual(1, await daoContract.networkFeeCampaign(1), "should have network fee camp");
+
+            data = await daoContract.getLatestNetworkFeeData();
+
+            Helper.assertEqual(50, data[0], "should fallback to previous data");
+            Helper.assertEqual(2 * epochPeriod + startBlock - 1, data[1], "expiry block number is wrong");
+
+            await resetSetupForKNCToken();
+        });
+
+        it("Test get network fee returns correct latest data, has network fee camp but no winning option", async function() {
+            // mike: 410, victor: 410, loi: 280, total stakes = 40% * total supply
+            await simpleSetupToTestThreshold(410, 410, 180, 40);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 2, {from: mike});
+            await daoContract.vote(1, 1, {from: victor});
+            await daoContract.vote(1, 3, {from: loi});
+
+            // delay to epoch 2
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            // no winning as same vote count
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(0, data[0], "winning option is wrong");
+            Helper.assertEqual(0, data[1], "winning option value is wrong");
+
+            Helper.assertEqual(1, await daoContract.networkFeeCampaign(1), "should have network fee camp for epoch 1");
+
+            data = await daoContract.getLatestNetworkFeeData();
+
+            Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
+            Helper.assertEqual(2 * epochPeriod + startBlock - 1, data[1], "expiry block number is wrong for epoch 1");
+
+            let tx = await daoContract.getLatestNetworkFeeDataWithCache();
+            logInfo("Get Network Fee: epoch > 0, has fee camp, no win option, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min per: 41%, C = 0, t = 0
+            let formula = getFormulaParamsData(precision.mul(new BN(41)).div(new BN(100)), 0, 0);
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(2, 1, {from: mike});
+            await daoContract.vote(2, 1, {from: victor});
+            await daoContract.vote(2, 1, {from: loi});
+
+            // delay to epoch 3
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
+
+            // no winning as min percentage > total votes / total supply
+            data = await daoContract.getCampaignWinningOptionAndValue(2);
+            Helper.assertEqual(0, data[0], "winning option is wrong");
+            Helper.assertEqual(0, data[1], "winning option value is wrong");
+
+            Helper.assertEqual(2, await daoContract.networkFeeCampaign(2), "should have network fee camp");
+
+            data = await daoContract.getLatestNetworkFeeData();
+
+            Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
+            Helper.assertEqual(3 * epochPeriod + startBlock - 1, data[1], "expiry block number is wrong");
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min per: 40%, C = 100%, t = 1
+            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(3, 1, {from: mike});
+            await daoContract.vote(3, 1, {from: loi});
+            await daoContract.vote(3, 2, {from: victor});
+
+            // delay to epoch 4
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+
+            // no winning as most option voted percentage (59%) < threshold (60%)
+            data = await daoContract.getCampaignWinningOptionAndValue(3);
+            Helper.assertEqual(0, data[0], "winning option is wrong");
+            Helper.assertEqual(0, data[1], "winning option value is wrong");
+
+            Helper.assertEqual(3, await daoContract.networkFeeCampaign(3), "should have network fee camp");
+
+            data = await daoContract.getLatestNetworkFeeData();
+
+            Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
+            Helper.assertEqual(4 * epochPeriod + startBlock - 1, data[1], "expiry block number is wrong");
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min per: 40%, C = 100%, t = 1
+            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(4, 1, {from: mike});
+            await daoContract.vote(4, 1, {from: loi});
+            await daoContract.vote(4, 1, {from: victor});
+
+            // delay to epoch 5
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+
+            data = await daoContract.getCampaignWinningOptionAndValue(4);
+            Helper.assertEqual(1, data[0], "winning option is wrong");
+            Helper.assertEqual(32, data[1], "winning option value is wrong");
+
+            Helper.assertEqual(4, await daoContract.networkFeeCampaign(4), "should have network fee camp");
+
+            data = await daoContract.getLatestNetworkFeeData();
+
+            Helper.assertEqual(32, data[0], "should get correct winning value as new network fee");
+            Helper.assertEqual(5 * epochPeriod + startBlock - 1, data[1], "expiry block number is wrong");
+
+            // conclude and save data
+            Helper.assertEqual(defaultNetworkFee, await daoContract.latestNetworkFeeResult(), "latest network fee is wrong");
+            await daoContract.getLatestNetworkFeeDataWithCache();
+            Helper.assertEqual(32, await daoContract.latestNetworkFeeResult(), "latest network fee is wrong");
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min per: 40%, C = 100%, t = 1
+            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(5, 1, {from: mike});
+            await daoContract.vote(5, 2, {from: loi});
+            await daoContract.vote(5, 2, {from: victor});
+
+            // delay to epoch 6
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 5 * epochPeriod + startBlock - currentBlock);
+
+            // no winning as most option voted percentage (59%) < threshold (60%)
+            data = await daoContract.getCampaignWinningOptionAndValue(5);
+            Helper.assertEqual(0, data[0], "winning option is wrong");
+            Helper.assertEqual(0, data[1], "winning option value is wrong");
+
+            Helper.assertEqual(5, await daoContract.networkFeeCampaign(5), "should have network fee camp");
+
+            data = await daoContract.getLatestNetworkFeeData();
+
+            Helper.assertEqual(32, data[0], "should fallback to previous data");
+            Helper.assertEqual(6 * epochPeriod + startBlock - 1, data[1], "expiry block number is wrong");
+
+            tx = await daoContract.getLatestNetworkFeeDataWithCache();
+            logInfo("Get Network Fee: epoch > 0, has fee camp + win option, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            await resetSetupForKNCToken();
+        });
+    });
+
+    describe("#Get BRR Data tests", () => {
+        it("Test get brr data returns correct default data for epoch 0", async function() {
+            let rebate = 24;
+            let reward = 26;
+            defaultBrrData = getDataFromRebateAndReward(rebate, reward);
+            await deployContracts(10, currentBlock + 10, 5);
+
+            Helper.assertEqual(defaultBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
+
+            // make sure data is correct
+            // reward - rebate - burn - epoch - expiry block
+            let tx = await daoContract.getLatestBRRData();
+            logInfo("Get Brr: epoch = 0, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            await daoContract.checkLatestBrrData(
+                reward, rebate, 10000 - rebate - reward, 0, startBlock - 1
+            );
+
+            rebate = 46;
+            reward = 54;
+            let newBrrData = getDataFromRebateAndReward(rebate, reward);
+            await daoContract.setLatestBrrData(newBrrData);
+            Helper.assertEqual(newBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
+
+            await daoContract.checkLatestBrrData(
+                reward, rebate, 10000 - rebate - reward, 0, startBlock - 1
+            );
+        });
+
+        it("Test get brr data returns correct latest data, no campaigns", async function() {
+            let rebate = 24;
+            let reward = 26;
+            defaultBrrData = getDataFromRebateAndReward(rebate, reward);
+            await deployContracts(10, currentBlock + 10, 5);
+
+            // delay to epoch 1
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await daoContract.checkLatestBrrData(
+                reward, rebate, 10000 - rebate - reward, 1, epochPeriod + startBlock - 1
+            );
+            Helper.assertEqual(defaultBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
+
+            rebate = 46;
+            reward = 54;
+            let newBrrData = getDataFromRebateAndReward(rebate, reward);
+            await daoContract.setLatestBrrData(newBrrData);
+            await daoContract.checkLatestBrrData(
+                reward, rebate, 10000 - rebate - reward, 1, epochPeriod + startBlock - 1
+            );
+            Helper.assertEqual(newBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
+
+            // delay to epoch 4
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+            // get brr data for epoch 4
+            await daoContract.checkLatestBrrData(
+                reward, rebate, 10000 - rebate - reward, 4, 4 * epochPeriod + startBlock - 1
+            );
+            Helper.assertEqual(newBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
+        });
+
+        it("Test get brr returns correct latest data, has camp but no brr campaign", async function() {
+            let rebate = 24;
+            let reward = 26;
+            defaultBrrData = getDataFromRebateAndReward(rebate, reward);
+            await deployContracts(15, currentBlock + 20, 10);
+            await setupSimpleStakingData();
+
+            // delay to epoch 1
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [32, 26, 44], '0x', {from: admin}
+            );
+            await daoContract.vote(1, 2, {from: mike});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [22, 23, 24], '0x', {from: admin}
+            );
+            await daoContract.vote(2, 3, {from: mike});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+
+            Helper.assertEqual(2, data[0], "winning option is wrong");
+            Helper.assertEqual(26, data[1], "winning option value is wrong");
+
+            Helper.assertEqual(0, await daoContract.brrCampaign(1), "shouldn't have brr camp for epoch 1");
+
+            await daoContract.checkLatestBrrData(
+                reward, rebate, 10000 - rebate - reward, 2, 2 * epochPeriod + startBlock - 1
+            );
+            let tx = await daoContract.getLatestBRRData();
+            logInfo("Get Brr: epoch > 0, no brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            Helper.assertEqual(defaultBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
+        });
+
+        it("Test get brr data returns correct latest data on-going brr camp has a winning option", async function() {
+            let reward = 30;
+            let rebate = 20;
+            defaultBrrData = getDataFromRebateAndReward(rebate, reward);
+            await simpleSetupToTestThreshold(410, 410, 180, 40);
+            // min per: 40%, C = 100%, t = 1
+            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+
+            let newReward = 36;
+            let newRebate = 44;
+            let brrData = getDataFromRebateAndReward(newRebate, newReward);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, brrData, 44], '0x', {from: admin}
+            );
+
+            // option 2 should win
+            await daoContract.vote(1, 2, {from: mike});
+            await daoContract.vote(1, 2, {from: loi});
+            await daoContract.vote(1, 2, {from: victor});
+
+            // camp is not ended yet, so data shouldn't change
+            await daoContract.checkLatestBrrData(
+                reward, rebate, 10000 - rebate - reward, 1, epochPeriod + startBlock - 1
+            );
+            Helper.assertEqual(1, await daoContract.brrCampaign(1), "should have brr camp");
+
+            // delay to epoch 2
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            await daoContract.checkLatestBrrData(
+                newReward, newRebate, 10000 - newRebate - newReward, 2, 2 * epochPeriod + startBlock - 1
+            );
+            Helper.assertEqual(brrData, await daoContract.latestBrrResult(), "latest brr is wrong");
+            await resetSetupForKNCToken();
+        });
+
+        it("Test get brr returns correct latest data, has brr camp but no winning option", async function() {
+            let rebate = 24;
+            let reward = 26;
+            defaultBrrData = getDataFromRebateAndReward(rebate, reward);
+            // mike: 410, victor: 410, loi: 280, total stakes = 40% * total supply
+            await simpleSetupToTestThreshold(410, 410, 180, 40);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 2, {from: mike});
+            await daoContract.vote(1, 1, {from: victor});
+            await daoContract.vote(1, 3, {from: loi});
+
+            // delay to epoch 2
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            // no winning as same vote count
+            let data = await daoContract.getCampaignWinningOptionAndValue(1);
+            Helper.assertEqual(0, data[0], "winning option is wrong");
+            Helper.assertEqual(0, data[1], "winning option value is wrong");
+
+            Helper.assertEqual(1, await daoContract.brrCampaign(1), "should have brr camp for epoch 1");
+
+            await daoContract.checkLatestBrrData(
+                reward, rebate, 10000 - rebate - reward, 2, 2 * epochPeriod + startBlock - 1
+            );
+            let tx = await daoContract.getLatestBRRData();
+            logInfo("Get Brr: epoch > 0, has brr camp + no win option, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            Helper.assertEqual(defaultBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min per: 41%, C = 0, t = 0
+            let formula = getFormulaParamsData(precision.mul(new BN(41)).div(new BN(100)), 0, 0);
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(2, 1, {from: mike});
+            await daoContract.vote(2, 1, {from: victor});
+            await daoContract.vote(2, 1, {from: loi});
+
+            // delay to epoch 3
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
+
+            // no winning as min percentage > total votes / total supply
+            data = await daoContract.getCampaignWinningOptionAndValue(2);
+            Helper.assertEqual(0, data[0], "winning option is wrong");
+            Helper.assertEqual(0, data[1], "winning option value is wrong");
+
+            Helper.assertEqual(2, await daoContract.brrCampaign(2), "should have brr camp");
+
+            await daoContract.checkLatestBrrData(
+                reward, rebate, 10000 - rebate - reward, 3, 3 * epochPeriod + startBlock - 1
+            );
+
+            Helper.assertEqual(defaultBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min per: 40%, C = 100%, t = 1
+            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(3, 1, {from: mike});
+            await daoContract.vote(3, 1, {from: loi});
+            await daoContract.vote(3, 2, {from: victor});
+
+            // delay to epoch 4
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+
+            // no winning as most option voted percentage (59%) < threshold (60%)
+            data = await daoContract.getCampaignWinningOptionAndValue(3);
+            Helper.assertEqual(0, data[0], "winning option is wrong");
+            Helper.assertEqual(0, data[1], "winning option value is wrong");
+
+            Helper.assertEqual(3, await daoContract.brrCampaign(3), "should have brr camp");
+
+            await daoContract.checkLatestBrrData(
+                reward, rebate, 10000 - rebate - reward, 4, 4 * epochPeriod + startBlock - 1
+            );
+
+            Helper.assertEqual(defaultBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min per: 40%, C = 100%, t = 1
+            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(4, 1, {from: mike});
+            await daoContract.vote(4, 1, {from: loi});
+            await daoContract.vote(4, 1, {from: victor});
+
+            // delay to epoch 5
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+
+            data = await daoContract.getCampaignWinningOptionAndValue(4);
+            Helper.assertEqual(1, data[0], "winning option is wrong");
+            Helper.assertEqual(32, data[1], "winning option value is wrong");
+
+            Helper.assertEqual(4, await daoContract.brrCampaign(4), "should have brr camp");
+
+            await daoContract.getLatestBRRData();
+
+            Helper.assertEqual(32, await daoContract.latestBrrResult(), "brr default is wrong");
+
+            currentBlock = await Helper.getCurrentBlock();
+            // min per: 40%, C = 100%, t = 1
+            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formula, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(5, 1, {from: mike});
+            await daoContract.vote(5, 2, {from: loi});
+            await daoContract.vote(5, 2, {from: victor});
+
+            // delay to epoch 6
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 5 * epochPeriod + startBlock - currentBlock);
+
+            // no winning as most option voted percentage (59%) < threshold (60%)
+            data = await daoContract.getCampaignWinningOptionAndValue(5);
+            Helper.assertEqual(0, data[0], "winning option is wrong");
+            Helper.assertEqual(0, data[1], "winning option value is wrong");
+
+            Helper.assertEqual(5, await daoContract.brrCampaign(5), "should have brr camp");
+
+            tx = await daoContract.getLatestBRRData();
+            logInfo("Get Brr: epoch > 0, has brr camp + win option, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            Helper.assertEqual(32, await daoContract.latestBrrResult(), "brr default is wrong");
+
+            await resetSetupForKNCToken();
+        });
+    });
+
     describe("#Constructor tests", () => {
         it("Test correct data is set after deployment", async function() {
             await deployContracts(10, currentBlock + 10, 10);
@@ -4378,6 +4954,48 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(await daoContract.latestBrrResult(), defaultBrrData, "default brr data is wrong");
             Helper.assertEqual(await daoContract.admin(), admin, "admin is wrong");
             Helper.assertEqual(await daoContract.numberCampaigns(), 0, "number campaign is wrong");
+        });
+
+        it("Test constructor should revert staking & dao have different epoch period or start block", async function() {
+            // different epoch period
+            try {
+                let stakingContract = await StakingContract.new(kncToken.address, 10, currentBlock + 10, admin);
+                await DAOContract.new(
+                    9, currentBlock + 10,
+                    stakingContract.address,  feeHandler.address, kncToken.address,
+                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
+                    admin
+                )
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "constructor: staking and dao have different epoch periods"),
+                    "unexpected error message: " + e
+                );
+            }
+            // different start block
+            try {
+                let stakingContract = await StakingContract.new(kncToken.address, 10, currentBlock + 10, admin);
+                await DAOContract.new(
+                    10, currentBlock + 11,
+                    stakingContract.address,  feeHandler.address, kncToken.address,
+                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
+                    admin
+                )
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "constructor: staking and dao have different start block"),
+                    "unexpected error message: " + e
+                );
+            }
+            let stakingContract = await StakingContract.new(kncToken.address, 10, currentBlock + 10, admin);
+            await DAOContract.new(
+                10, currentBlock + 10,
+                stakingContract.address,  feeHandler.address, kncToken.address,
+                maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
+                admin
+            )
         });
     });
 
@@ -4404,9 +5022,9 @@ function getDataFromRebateAndReward(rebate, reward) {
 
 function getRebateAndRewardFromData(data) {
     let power128 = new BN(2).pow(new BN(128));
-    let reward = new BN(data).mod(power128);
-    let rebate = new BN(data).div(power128);
-    return (reward, rebate);
+    let reward = (new BN(data)).mod(power128);
+    let rebate = (new BN(data)).div(power128);
+    return (rebate, reward);
 }
 
 function getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision) {
