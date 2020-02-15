@@ -148,34 +148,6 @@ contract('DAOContract', function(accounts) {
     }
 
     describe("#Handle Withdrawl tests", () => {
-        it("Test handle withdrawal should revert when sender is not staking", async function() {
-            let stakingContract = await StakingContract.new(kncToken.address, 10, currentBlock + 10, admin);
-            daoContract = await DAOContract.new(
-                10, currentBlock + 10,
-                stakingContract.address,  feeHandler.address, kncToken.address,
-                maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
-                admin
-            )
-            await daoContract.replaceStakingContract(mike);
-            Helper.assertEqual(mike, await daoContract.staking(), "staking contract is setting wrongly");
-
-            try {
-                await daoContract.handleWithdrawal(victor, 0, {from: victor});
-                assert(false, "throw was expected in line above");
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
-
-            try {
-                await daoContract.handleWithdrawal(victor, mulPrecision(10), {from: admin});
-                assert(false, "throw was expected in line above");
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
-
-            await daoContract.handleWithdrawal(victor, 0, {from: mike});
-        });
-
         it("Test handle withdrawal update correct points and vote count - no delegation", async function() {
             await deployContracts(20, currentBlock + 20, 10);
             await setupSimpleStakingData();
@@ -584,6 +556,34 @@ contract('DAOContract', function(accounts) {
             voteData = await daoContract.getCampaignVoteCountData(2);
             Helper.assertEqual(voteData[1], totalCampPoint2, "total camp votes is incorrect");
             Helper.assertEqual(voteData[0][0], voteCount21, "option voted count is incorrect");
+        });
+
+        it("Test handle withdrawal should revert when sender is not staking", async function() {
+            let stakingContract = await StakingContract.new(kncToken.address, 10, currentBlock + 10, admin);
+            daoContract = await DAOContract.new(
+                10, currentBlock + 10,
+                stakingContract.address,  feeHandler.address, kncToken.address,
+                maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
+                admin
+            )
+            await daoContract.replaceStakingContract(mike);
+            Helper.assertEqual(mike, await daoContract.staking(), "staking contract is setting wrongly");
+
+            try {
+                await daoContract.handleWithdrawal(victor, 0, {from: victor});
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            try {
+                await daoContract.handleWithdrawal(victor, mulPrecision(10), {from: admin});
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            await daoContract.handleWithdrawal(victor, 0, {from: mike});
         });
     });
 
@@ -4021,7 +4021,7 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(0, data[1], "winning option value is invalid")
         });
 
-        it("Test get winning option return most voted option all formula params are 0", async function() {
+        it("Test get winning option return most voted option with all formula params are 0", async function() {
             await deployContracts(10, currentBlock + 20, 5);
             await setupSimpleStakingData();
             // make sure mike has more stake than both victor and loi
@@ -4368,6 +4368,7 @@ contract('DAOContract', function(accounts) {
 
     describe("#Get Network Fee Data tests", () => {
         it("Test get network fee returns correct default data for epoch 0", async function() {
+            defaultNetworkFee = 32;
             await deployContracts(10, currentBlock + 10, 5);
 
             // get fee data for epoch 0
@@ -4375,9 +4376,9 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(defaultNetworkFee, feeData[0], "network fee default is wrong");
             Helper.assertEqual(startBlock - 1, feeData[1], "expiry block number is wrong");
 
-            await daoContract.setLatestNetworkFee(32);
+            await daoContract.setLatestNetworkFee(36);
             feeData = await daoContract.getLatestNetworkFeeData();
-            Helper.assertEqual(32, feeData[0], "network fee default is wrong");
+            Helper.assertEqual(36, feeData[0], "network fee default is wrong");
             Helper.assertEqual(startBlock - 1, feeData[1], "expiry block number is wrong");
 
             let tx = await daoContract.getLatestNetworkFeeDataWithCache();
@@ -4385,6 +4386,7 @@ contract('DAOContract', function(accounts) {
         });
 
         it("Test get network fee returns correct latest data, no campaigns", async function() {
+            defaultNetworkFee = 25;
             await deployContracts(10, currentBlock + 10, 5);
 
             // delay to epoch 1
@@ -4636,6 +4638,95 @@ contract('DAOContract', function(accounts) {
 
             tx = await daoContract.getLatestNetworkFeeDataWithCache();
             logInfo("Get Network Fee: epoch > 0, has fee camp + win option, gas used: " + tx.receipt.cumulativeGasUsed);
+
+            await resetSetupForKNCToken();
+        });
+
+        it("Test get network fee with cache returns & records correct data", async function() {
+            // test get at epoch 0
+            await deployContracts(2, currentBlock + 5, 2);
+            await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, startBlock - 1);
+
+            // simple setup to create camp with a winning option
+            // mike: 410, victor: 410, loi 180, total stakes = 40% total supply
+            await simpleSetupToTestThreshold(410, 410, 180, 40);
+
+            // get at epoch 1, no camps
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, epochPeriod + startBlock - 1);
+
+            // create camp, but not fee camp
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [32, 26, 44], '0x', {from: admin}
+            );
+            await daoContract.vote(1, 1, {from: mike});
+            await daoContract.vote(1, 1, {from: loi});
+            await daoContract.vote(1, 1, {from: victor});
+
+            // delay to epoch 2
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            // check data
+            await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, 2 * epochPeriod + startBlock - 1);
+
+            let data = await daoContract.getWinningOptionData(1);
+            Helper.assertEqual(data[0], 0, "shouldn't conclude this camp");
+
+            // create fee camp, but no winning
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [32, 26, 44], '0x', {from: admin}
+            );
+            await daoContract.vote(2, 1, {from: mike});
+            await daoContract.vote(2, 2, {from: loi});
+            await daoContract.vote(2, 3, {from: victor});
+
+            // delay to epoch 3
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
+            // check data
+            await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, 3 * epochPeriod + startBlock - 1);
+
+            data = await daoContract.getWinningOptionData(2);
+            Helper.assertEqual(true, data[0], "should have concluded this camp");
+            Helper.assertEqual(0, data[1], "no winning option");
+
+            // delay few epoch, to epoch 5
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+
+            // create fee camp, has winning
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [32, 26, 1], '0x', {from: admin}
+            );
+            await daoContract.vote(3, 3, {from: mike});
+            await daoContract.vote(3, 3, {from: loi});
+            await daoContract.vote(3, 3, {from: victor});
+            // current epoch has network fee camp with a winning option
+            // but getting network fee data for this epoch should still return previous epoch result
+            await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, 5 * epochPeriod + startBlock - 1);
+
+            // delay to epoch 6
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 5 * epochPeriod + startBlock - currentBlock);
+            // check data
+            await daoContract.checkLatestNetworkFeeData(1, 6 * epochPeriod + startBlock - 1);
+
+            data = await daoContract.getWinningOptionData(3);
+            Helper.assertEqual(true, data[0], "should have concluded this camp");
+            Helper.assertEqual(3, data[1], "has winning option");
+
+            // delay to next epoch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 6 * epochPeriod + startBlock - currentBlock);
+            // check data with no fee camp at previous epoch
+            await daoContract.checkLatestNetworkFeeData(1, 7 * epochPeriod + startBlock - 1);
 
             await resetSetupForKNCToken();
         });
@@ -4936,6 +5027,134 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(32, await daoContract.latestBrrResult(), "brr default is wrong");
 
             await resetSetupForKNCToken();
+        });
+    });
+
+    describe("#Should burn all reward", () => {
+        it("Test should burn all reward returns false for current + future epoch", async function() {
+            await deployContracts(10, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+
+            Helper.assertEqual(false, await daoContract.shouldBurnRewardForEpoch(0), "should burn all reward result is wrong");
+            Helper.assertEqual(false, await daoContract.shouldBurnRewardForEpoch(1), "should burn all reward result is wrong");
+            Helper.assertEqual(false, await daoContract.shouldBurnRewardForEpoch(10), "should burn all reward result is wrong");
+
+            // delay to epoch 2
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            // create camp and vote
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [32, 26, 44], '0x', {from: admin}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+            await daoContract.vote(1, 2, {from: loi});
+            await daoContract.vote(1, 2, {from: victor});
+
+            Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(0), "should burn all reward result is wrong");
+            Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(1), "should burn all reward result is wrong");
+            Helper.assertEqual(false, await daoContract.shouldBurnRewardForEpoch(2), "should burn all reward result is wrong");
+
+            // delay to epoch 4
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+
+            Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(1), "should burn all reward result is wrong");
+            Helper.assertEqual(false, await daoContract.shouldBurnRewardForEpoch(2), "should burn all reward result is wrong");
+            Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(3), "should burn all reward result is wrong");
+            Helper.assertEqual(false, await daoContract.shouldBurnRewardForEpoch(4), "should burn all reward result is wrong");
+        });
+
+        it("Test should burn all reward returns correct data", async function() {
+            await deployContracts(10, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+
+            // delay to epoch 1
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(0), "should burn all reward result is wrong");
+
+            // create camp
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [32, 26, 44], '0x', {from: admin}
+            );
+
+            // delay to epoch 2
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            // has camp but no vote
+            Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(1), "should burn all reward result is wrong");
+
+            // create camp
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [32, 26, 44], '0x', {from: admin}
+            );
+            await daoContract.vote(2, 1, {from: poolMaster});
+
+            // delay to epoch 3
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
+            // has camp, has vote but staker has 0 stake
+            Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(2), "should burn all reward result is wrong");
+
+            // create camp
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [32, 26, 44], '0x', {from: admin}
+            );
+            await daoContract.vote(3, 1, {from: mike});
+            await stakingContract.withdraw(initMikeStake, {from: mike});
+
+            await stakingContract.delegate(poolMaster, {from: loi});
+
+            // delay to epoch 4
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+            // has camp, voted with staker has stakes, but then withdraw all
+            Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(3), "should burn all reward result is wrong");
+
+            // create camp
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [32, 26, 44], '0x', {from: admin}
+            );
+            await daoContract.vote(4, 1, {from: poolMaster});
+            await stakingContract.withdraw(initLoiStake, {from: loi});
+
+            // delay to epoch 5
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+            // has camp, voted with staker has delegated stakes, but then withdraw all
+            Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(4), "should burn all reward result is wrong");
+
+            // create camp
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, [32, 26, 44], '0x', {from: admin}
+            );
+            await daoContract.vote(5, 1, {from: victor});
+
+            // delay to epoch 6
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 5 * epochPeriod + startBlock - currentBlock);
+            // has camp, voted with stakes, burn should be false
+            Helper.assertEqual(false, await daoContract.shouldBurnRewardForEpoch(5), "should burn all reward result is wrong");
+
+            // delay to epoch 6
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 6 * epochPeriod + startBlock - currentBlock);
+            // no camp, no reward
+            Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(6), "should burn all reward result is wrong");
         });
     });
 

@@ -279,6 +279,8 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
         emit RewardClaimed(staker, epoch, perInPrecision);
     }
 
+    // get latest network fee data + expiry data
+    // also save winning option data and latest network fee result
     function getLatestNetworkFeeDataWithCache() public returns(uint feeInBps, uint expiryBlockNumber) {
         uint curEpoch = getCurrentEpochNumber();
 

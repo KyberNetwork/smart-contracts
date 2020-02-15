@@ -43,6 +43,19 @@ contract MockDAOContract is DAOContract {
         (hasConcluded, winningOptionID) = decodeWinningOptionData(winningOptionData[campID]);
     }
 
+    function getWinningOptionEncodeData(bool hasConcluded, uint optionID) public pure returns(uint) {
+        return encodeWinningOptionData(optionID, hasConcluded);
+    }
+
+    function getDecodeFormulaParams(uint data) public pure
+        returns(uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision)
+    {
+        FormulaData memory formulaData = decodeFormulaParams(data);
+        minPercentageInPrecision = formulaData.minPercentageInPrecision;
+        cInPrecision = formulaData.cInPrecision;
+        tInPrecision = formulaData.tInPrecision;
+    }
+
     function checkLatestBrrData(uint _rewardInBps, uint _rebateInBps, uint _burnInBps, uint _epoch, uint _expiryBlockNumber) public returns(bool) {
         (uint burn, uint reward, uint rebate, uint epoch, uint expiryBN) = getLatestBRRData();
         require(_rewardInBps == reward, "reward bps is wrong");
@@ -50,5 +63,11 @@ contract MockDAOContract is DAOContract {
         require(_burnInBps == burn, "burn bps is wrong");
         require(_epoch == epoch, "epoch is wrong");
         require(_expiryBlockNumber == expiryBN, "expiry block number is wrong");
+    }
+
+    function checkLatestNetworkFeeData(uint _networkFee, uint _expiryBlockNumber) public {
+        (uint networkFee, uint expiryBlock) = getLatestNetworkFeeDataWithCache();
+        require(networkFee == _networkFee, "network fee is wrong");
+        require(expiryBlock == _expiryBlockNumber, "expiry block number is wrong");
     }
 }
