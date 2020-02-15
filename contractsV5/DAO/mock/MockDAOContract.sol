@@ -43,6 +43,10 @@ contract MockDAOContract is DAOContract {
         (hasConcluded, winningOptionID) = decodeWinningOptionData(winningOptionData[campID]);
     }
 
+    function getWinningOptionDecodeData(uint data) public pure returns(bool hasConcluded, uint winningOptionID) {
+        (hasConcluded, winningOptionID) = decodeWinningOptionData(data);
+    }
+
     function getWinningOptionEncodeData(bool hasConcluded, uint optionID) public pure returns(uint) {
         return encodeWinningOptionData(optionID, hasConcluded);
     }

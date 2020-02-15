@@ -624,6 +624,10 @@ contract DAOContract is IKyberDAO, PermissionGroups, EpochUtils, ReentrancyGuard
     function encodeFormulaParams(
         uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision
     ) public pure returns(uint data) {
+        require(minPercentageInPrecision <= PRECISION);
+        require(cInPrecision < POWER_84);
+        require(tInPrecision < POWER_84);
+
         data = minPercentageInPrecision & (POWER_84.sub(1));
         data |= (cInPrecision & (POWER_84.sub(1))).mul(POWER_84);
         data |= (tInPrecision & (POWER_84.sub(1))).mul(POWER_84).mul(POWER_84);

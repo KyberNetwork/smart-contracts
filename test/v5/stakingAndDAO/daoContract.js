@@ -5219,6 +5219,175 @@ contract('DAOContract', function(accounts) {
     });
 
     describe("#Helper Function tests", () => {
+        it("Test getRebateAndRewardFromData returns correct data", async function() {
+            await deployContracts(10, currentBlock + 10, 10);
+            let reward = 0;
+            let rebate = 0;
+
+            let data = getDataFromRebateAndReward(rebate, reward);
+            let result = await daoContract.getRebateAndRewardFromData(data);
+
+            Helper.assertEqual(rebate, result[0], "rebate data is wrong");
+            Helper.assertEqual(reward, result[1], "reward data is wrong");
+
+            reward = 10000;
+            rebate = 0;
+            data = getDataFromRebateAndReward(rebate, reward);
+            result = await daoContract.getRebateAndRewardFromData(data);
+
+            Helper.assertEqual(rebate, result[0], "rebate data is wrong");
+            Helper.assertEqual(reward, result[1], "reward data is wrong");
+
+            reward = 0;
+            rebate = 10000;
+            data = getDataFromRebateAndReward(rebate, reward);
+            result = await daoContract.getRebateAndRewardFromData(data);
+
+            Helper.assertEqual(rebate, result[0], "rebate data is wrong");
+            Helper.assertEqual(reward, result[1], "reward data is wrong");
+
+            reward = 5000;
+            rebate = 5000;
+            data = getDataFromRebateAndReward(rebate, reward);
+            result = await daoContract.getRebateAndRewardFromData(data);
+
+            Helper.assertEqual(rebate, result[0], "rebate data is wrong");
+            Helper.assertEqual(reward, result[1], "reward data is wrong");
+
+            reward = 2424;
+            rebate = 3213;
+            data = getDataFromRebateAndReward(rebate, reward);
+            result = await daoContract.getRebateAndRewardFromData(data);
+
+            Helper.assertEqual(rebate, result[0], "rebate data is wrong");
+            Helper.assertEqual(reward, result[1], "reward data is wrong");
+        });
+
+        it("Test getDataFromRewardAndRebateWithValidation returns correct data", async function() {
+            await deployContracts(10, currentBlock + 10, 10);
+            let reward = 0;
+            let rebate = 0;
+
+            let data = getDataFromRebateAndReward(rebate, reward);
+            let result = await daoContract.getDataFromRewardAndRebateWithValidation(reward, rebate);
+
+            Helper.assertEqual(data, result, "encode function returns different value");
+
+            reward = 10000;
+            rebate = 0;
+            data = getDataFromRebateAndReward(rebate, reward);
+            result = await daoContract.getDataFromRewardAndRebateWithValidation(reward, rebate);
+
+            Helper.assertEqual(data, result, "encode function returns different value");
+
+            reward = 0;
+            rebate = 10000;
+            data = getDataFromRebateAndReward(rebate, reward);
+            result = await daoContract.getDataFromRewardAndRebateWithValidation(reward, rebate);
+
+            Helper.assertEqual(data, result, "encode function returns different value");
+
+            reward = 5000;
+            rebate = 5000;
+            data = getDataFromRebateAndReward(rebate, reward);
+            result = await daoContract.getDataFromRewardAndRebateWithValidation(reward, rebate);
+
+            Helper.assertEqual(data, result, "encode function returns different value");
+
+            reward = 2424;
+            rebate = 3213;
+            data = getDataFromRebateAndReward(rebate, reward);
+            result = await daoContract.getDataFromRewardAndRebateWithValidation(reward, rebate);
+
+            Helper.assertEqual(data, result, "encode function returns different value");
+        });
+
+        it("Test getDataFromRewardAndRebateWithValidation should revert total amount > bps (10000)", async function() {
+            await deployContracts(10, currentBlock + 10, 10);
+            let reward = 10001;
+            let rebate = 0;
+            try {
+                await daoContract.getDataFromRewardAndRebateWithValidation(reward, rebate);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            reward = 0;
+            rebate = 10001;
+            try {
+                await daoContract.getDataFromRewardAndRebateWithValidation(reward, rebate);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            reward = 5001;
+            rebate = 5000;
+            try {
+                await daoContract.getDataFromRewardAndRebateWithValidation(reward, rebate);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            reward = 2424;
+            rebate = 10010 - reward;
+            try {
+                await daoContract.getDataFromRewardAndRebateWithValidation(reward, rebate);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        });
+
+        it("Test encode winning option data returns correct value", async function() {
+            let hasConcluded = false;
+            let optionID = 0;
+            let data;
+            let result;
+
+            for(let id = 0; id <= 10; id++) {
+                hasConcluded = false;
+                optionID = id;
+
+                data = getEncodeWinningOption(optionID, hasConcluded);
+                result = await daoContract.getWinningOptionEncodeData(hasConcluded, optionID);
+
+                Helper.assertEqual(data, result, "encode winning option returns different value");
+
+                hasConcluded = true;
+                data = getEncodeWinningOption(optionID, hasConcluded);
+                result = await daoContract.getWinningOptionEncodeData(hasConcluded, optionID);
+
+                Helper.assertEqual(data, result, "encode winning option returns different value");
+            }
+        });
+
+        it("Test decode winning option data returns correct value", async function() {
+            let hasConcluded = false;
+            let optionID = 0;
+            let data;
+            let result;
+
+            for(let id = 0; id <= 10; id++) {
+                hasConcluded = false;
+                optionID = id;
+
+                data = getEncodeWinningOption(optionID, hasConcluded);
+                result = await daoContract.getWinningOptionDecodeData(data);
+
+                Helper.assertEqual(hasConcluded, result[0], "decode winning option returns different value");
+                Helper.assertEqual(optionID, result[1], "decode winning option returns different value");
+
+                hasConcluded = true;
+                data = getEncodeWinningOption(optionID, hasConcluded);
+                result = await daoContract.getWinningOptionDecodeData(data);
+
+                Helper.assertEqual(hasConcluded, result[0], "decode winning option returns different value");
+                Helper.assertEqual(optionID, result[1], "decode winning option returns different value");
+            }
+        });
     });
 });
 
@@ -5239,17 +5408,19 @@ function getDataFromRebateAndReward(rebate, reward) {
     return (new BN(rebate).mul(power128)).add(new BN(reward));
 }
 
-function getRebateAndRewardFromData(data) {
-    let power128 = new BN(2).pow(new BN(128));
-    let reward = (new BN(data)).mod(power128);
-    let rebate = (new BN(data)).div(power128);
-    return (rebate, reward);
-}
-
 function getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision) {
     let power84 = new BN(2).pow(new BN(84));
     let data = (new BN(0)).add(minPercentageInPrecision);
     data.iadd(new BN(cInPrecision).mul(power84));
     data.iadd(new BN(tInPrecision).mul(power84).mul(power84));
+    return data;
+}
+
+function getEncodeWinningOption(option, concluded) {
+    let power128 = new BN(2).pow(new BN(128));
+    let data = new BN(option);
+    if (concluded) {
+        data.iadd(power128);
+    }
     return data;
 }
