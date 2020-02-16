@@ -5388,6 +5388,147 @@ contract('DAOContract', function(accounts) {
                 Helper.assertEqual(optionID, result[1], "decode winning option returns different value");
             }
         });
+
+        it("Test decode formula params returns correct values", async function() {
+            let minPercent = 0;
+            let cInPre = 0;
+            let tInPre = 0;
+
+            let data = getFormulaParamsData(minPercent, cInPre, tInPre);
+            let result = await daoContract.getDecodeFormulaParams(data);
+
+            Helper.assertEqual(minPercent, result[0], "min percentage in precision is wrong");
+            Helper.assertEqual(cInPre, result[1], "c in precision is wrong");
+            Helper.assertEqual(tInPre, result[2], "t in precision is wrong");
+
+            minPercent = precision;
+            cInPre = precision;
+            t = precision;
+
+            data = getFormulaParamsData(minPercent, cInPre, tInPre);
+            result = await daoContract.getDecodeFormulaParams(data);
+
+            Helper.assertEqual(minPercent, result[0], "min percentage in precision is wrong");
+            Helper.assertEqual(cInPre, result[1], "c in precision is wrong");
+            Helper.assertEqual(tInPre, result[2], "t in precision is wrong");
+
+            minPercent = precision.div(new BN(5));
+            cInPre = precision;
+            t = precision.div(new BN(2));
+
+            data = getFormulaParamsData(minPercent, cInPre, tInPre);
+            result = await daoContract.getDecodeFormulaParams(data);
+
+            Helper.assertEqual(minPercent, result[0], "min percentage in precision is wrong");
+            Helper.assertEqual(cInPre, result[1], "c in precision is wrong");
+            Helper.assertEqual(tInPre, result[2], "t in precision is wrong");
+
+            minPercent = precision.div(new BN(10));
+            cInPre = precision.div(new BN(5));
+            t = precision;
+
+            data = getFormulaParamsData(minPercent, cInPre, tInPre);
+            result = await daoContract.getDecodeFormulaParams(data);
+
+            Helper.assertEqual(minPercent, result[0], "min percentage in precision is wrong");
+            Helper.assertEqual(cInPre, result[1], "c in precision is wrong");
+            Helper.assertEqual(tInPre, result[2], "t in precision is wrong");
+
+            minPercent = precision;
+            cInPre = precision;
+            t = 0;
+
+            data = getFormulaParamsData(minPercent, cInPre, tInPre);
+            result = await daoContract.getDecodeFormulaParams(data);
+
+            Helper.assertEqual(minPercent, result[0], "min percentage in precision is wrong");
+            Helper.assertEqual(cInPre, result[1], "c in precision is wrong");
+            Helper.assertEqual(tInPre, result[2], "t in precision is wrong");
+        });
+
+        it("Test encode formula params returns correct values", async function() {
+            let minPercent = 0;
+            let cInPre = 0;
+            let tInPre = 0;
+
+            let data = getFormulaParamsData(minPercent, cInPre, tInPre);
+            let result = await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
+
+            Helper.assertEqual(data, result, "encode data is wrong");
+
+            minPercent = precision;
+            cInPre = precision;
+            t = precision;
+
+            data = getFormulaParamsData(minPercent, cInPre, tInPre);
+            result = await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
+
+            Helper.assertEqual(data, result, "encode data is wrong");
+
+            minPercent = precision.div(new BN(5));
+            cInPre = precision;
+            t = precision.div(new BN(2));
+
+            data = getFormulaParamsData(minPercent, cInPre, tInPre);
+            result = await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
+
+            Helper.assertEqual(data, result, "encode data is wrong");
+
+            minPercent = precision.div(new BN(10));
+            cInPre = precision.div(new BN(5));
+            t = precision;
+
+            data = getFormulaParamsData(minPercent, cInPre, tInPre);
+            result = await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
+
+            Helper.assertEqual(data, result, "encode data is wrong");
+
+            minPercent = precision;
+            cInPre = precision;
+            t = 0;
+
+            data = getFormulaParamsData(minPercent, cInPre, tInPre);
+            result = await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
+            Helper.assertEqual(data, result, "encode data is wrong");
+        });
+
+        it("Test encode formula params should revert when data is invalid", async function() {
+            let power84 = new BN(2).pow(new BN(84));
+            let minPercent = new BN(0).add(precision);
+            let cInPre = 0;
+            let tInPre = 0;
+
+            minPercent.iadd(new BN(1));
+            try {
+                await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            minPercent.isub(new BN(1));
+            cInPre = power84;
+            try {
+                await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            cInPre = 0;
+            tInPre = power84;
+            try {
+                await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            cInPre = power84.sub(new BN(1));
+            tInPre = power84.sub(new BN(1));
+
+            await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
+        });
     });
 });
 
@@ -5410,7 +5551,7 @@ function getDataFromRebateAndReward(rebate, reward) {
 
 function getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision) {
     let power84 = new BN(2).pow(new BN(84));
-    let data = (new BN(0)).add(minPercentageInPrecision);
+    let data = (new BN(0)).add(new BN(minPercentageInPrecision));
     data.iadd(new BN(cInPrecision).mul(power84));
     data.iadd(new BN(tInPrecision).mul(power84).mul(power84));
     return data;
