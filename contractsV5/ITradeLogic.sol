@@ -8,18 +8,20 @@ interface ITradeLogic {
 
     // enum for unit inputs to calcRatesAndAmounts
     enum CalcIn {
-        tradeSrcAmount,
+        srcAmount,
         takerFeeBps,
         platformFeeBps,
         t2eDecimals,
         e2tDecimals,
-        iLength
+        size
     }
 
     // calc rates and amounts uint outputs. no dependent on reserve number.
     enum CalcOut {
         t2eNumReserves,
         e2tNumReserves,
+        t2eTradeType,
+        e2tTradeType,
         tradeWei,
         networkFeeWei,
         platformFeeWei,
@@ -28,7 +30,7 @@ interface ITradeLogic {
         destAmountNoFee,
         destAmountWithNetworkFee,
         actualDestAmount,
-        iLength
+        size
     }
 
     function negligibleRateDiffBps() external view returns (uint);
@@ -43,15 +45,15 @@ interface ITradeLogic {
         external
         returns (bool);
     
-    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, uint[] calldata fees, bytes calldata hint)
-        external view
-        returns (
-            uint[] memory results,
+    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint[] calldata calcInput, bytes calldata hint)
+        external view returns (
+            uint[] memory calcOut,
             IKyberReserve[] memory reserveAddresses,
             uint[] memory rates,
             uint[] memory splitValuesBps,
-            bool[] memory isFeePaying
-        );
+            bool[] memory isFeePaying,
+            bytes8[] memory t2eResIds,
+            bytes8[] memory e2tResIds);
 
     function getRatesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount, uint takerFee) external view
         returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, 

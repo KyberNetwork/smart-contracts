@@ -44,7 +44,7 @@ contract KyberHintHandler is IKyberHint, Utils {
         TradeHint memory tradeHint;
         uint indexToContinueFrom;
 
-        decodeOperation(hint, tradeHint, indexToContinueFrom, false);
+        decodeOperation(hint, tradeHint.tokenToEthReserves, tradeHint, indexToContinueFrom);
 
         tradeType = tradeHint.ethToTokenReserves.tradeType;
         addresses = tradeHint.ethToTokenReserves.addresses;
@@ -63,8 +63,8 @@ contract KyberHintHandler is IKyberHint, Utils {
         TradeHint memory tradeHint;
         uint indexToContinueFrom;
 
-        decodeOperation(hint, tradeHint, indexToContinueFrom, true);
-
+        decodeOperation(hint, tradeHint.tokenToEthReserves, tradeHint, indexToContinueFrom);
+        
         tradeType = tradeHint.tokenToEthReserves.tradeType;
         addresses = tradeHint.tokenToEthReserves.addresses;
         splits = tradeHint.tokenToEthReserves.splitValuesBps;
@@ -85,7 +85,7 @@ contract KyberHintHandler is IKyberHint, Utils {
         TradeHint memory tradeHint;
         uint indexToContinueFrom;
 
-        decodeOperation(hint, tradeHint, indexToContinueFrom, true);
+        decodeOperation(hint, tradeHint.tokenToEthReserves, tradeHint, indexToContinueFrom);
 
         t2eType = tradeHint.tokenToEthReserves.tradeType;
         t2eAddresses = tradeHint.tokenToEthReserves.addresses;
@@ -168,48 +168,41 @@ contract KyberHintHandler is IKyberHint, Utils {
 
     function decodeOperation(
         bytes memory hint,
+        ReservesHint memory reservesHint,
         TradeHint memory tradeHint,
-        uint indexToContinueFrom,
-        bool isTokenToEth
+        uint indexToContinueFrom
     )
         internal
         view
     {
         bytes memory opcode = hint.slice(indexToContinueFrom, 1);
         bytes32 opcodeKeccak = keccak256(opcode);
-        ReservesHint memory reservesHint;
-
-        if (isTokenToEth) {
-            reservesHint = tradeHint.tokenToEthReserves;
-        } else {
-            reservesHint = tradeHint.ethToTokenReserves;
-        }
 
         indexToContinueFrom += 1;
 
         if (opcodeKeccak == END_KECCAK) {
             return;
         } else if (opcodeKeccak == SEPARATOR_KECCAK) {
-            decodeOperation(hint, tradeHint, indexToContinueFrom, false);
+            decodeOperation(hint, tradeHint.ethToTokenReserves, tradeHint, indexToContinueFrom);
         } else if (opcodeKeccak == MASK_IN_KECCAK) {
             reservesHint.tradeType = TradeType.MaskIn;
             (indexToContinueFrom) = decodeReservesFromHint(false, hint, reservesHint, indexToContinueFrom);
-            decodeOperation(hint, tradeHint, indexToContinueFrom, isTokenToEth);
+            decodeOperation(hint, reservesHint, tradeHint, indexToContinueFrom);
         } else if (opcodeKeccak == MASK_OUT_KECCAK) {
             reservesHint.tradeType = TradeType.MaskOut;
             (indexToContinueFrom) = decodeReservesFromHint(false, hint, reservesHint, indexToContinueFrom);
-            decodeOperation(hint, tradeHint, indexToContinueFrom, isTokenToEth);
+            decodeOperation(hint, reservesHint, tradeHint, indexToContinueFrom);
         } else if (opcodeKeccak == SPLIT_TRADE_KECCAK) {
             reservesHint.tradeType = TradeType.Split;
             (indexToContinueFrom) = decodeReservesFromHint(true, hint, reservesHint, indexToContinueFrom);
-            decodeOperation(hint, tradeHint, indexToContinueFrom, isTokenToEth);
+            decodeOperation(hint, reservesHint, tradeHint, indexToContinueFrom);
         } else {
             revert("Invalid hint opcode");
         }
     }
 
     function decodeReservesFromHint(
-        bool isTokenSplit,
+        bool isSplitTrade,
         bytes memory hint,
         ReservesHint memory reservesHint,
         uint indexToContinueFrom
@@ -225,7 +218,7 @@ contract KyberHintHandler is IKyberHint, Utils {
        uint[] memory splitValuesBps;
        IKyberReserve[] memory addresses = new IKyberReserve[](reservesLength);
 
-       if (isTokenSplit) {
+       if (isSplitTrade) {
            splitValuesBps = new uint[](reservesLength);
        } else {
            splitValuesBps = new uint[](1);
@@ -239,7 +232,7 @@ contract KyberHintHandler is IKyberHint, Utils {
 
            indexToContinueFrom += RESERVE_ID_LENGTH;
 
-           if (isTokenSplit) {
+           if (isSplitTrade) {
                splitValuesBps[i] = uint(hint.toUint16(indexToContinueFrom));
                bpsSoFar += splitValuesBps[i];
                indexToContinueFrom += 2;
