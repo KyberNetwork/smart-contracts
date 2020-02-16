@@ -149,7 +149,7 @@ contract KyberTradeLogic is KyberHintHandler, ITradeLogic, PermissionGroups {
         TradeType tradeType;
         IKyberReserve[] addresses;
         uint[] splitValuesBps;
-        bytes8[] ids;
+        // bytes8[] ids;
 
         // uint[] rates;
         // bool[] isFeePaying;
@@ -192,9 +192,10 @@ contract KyberTradeLogic is KyberHintHandler, ITradeLogic, PermissionGroups {
             IKyberReserve[] memory reserveAddresses,
             uint[] memory rates,
             uint[] memory splitValuesBps,
-            bool[] memory isFeePaying,
-            bytes8[] memory t2eResIds,
-            bytes8[] memory e2tResIds)
+            bool[] memory isFeePaying
+            // bytes8[] memory t2eResIds,
+            // bytes8[] memory e2tResIds)
+        )
     {
         //initialisation
         TradeData memory tradeData;
@@ -212,7 +213,7 @@ contract KyberTradeLogic is KyberHintHandler, ITradeLogic, PermissionGroups {
             //initialise ethToToken and store as zero
             // storeTradeReserveData(tradeData.e2t, IKyberReserve(0), 0, false);
             return(tradeData.calcOut, tradeData.resAddresses, tradeData.rates, tradeData.splitValuesBps,
-                tradeData.isFeePaying, tradeData.t2e.ids, tradeData.e2t.ids);
+                tradeData.isFeePaying);//, tradeData.t2e.ids, tradeData.e2t.ids);
         }
 
         uint startI = tradeData.calcOut[uint(CalcOut.t2eNumReserves)];
@@ -244,7 +245,7 @@ contract KyberTradeLogic is KyberHintHandler, ITradeLogic, PermissionGroups {
             );
 
         return(tradeData.calcOut, tradeData.resAddresses, tradeData.rates, tradeData.splitValuesBps,
-            tradeData.isFeePaying, tradeData.t2e.ids, tradeData.e2t.ids);
+            tradeData.isFeePaying);//, tradeData.t2e.ids, tradeData.e2t.ids);
     }
 
     function initResultArrays(TradeData memory tradeData) internal view {

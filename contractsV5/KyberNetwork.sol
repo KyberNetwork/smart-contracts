@@ -448,7 +448,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // bool[] memory isFeePaying;
         
         (tradeData.calcOut, tradeData.resAddresses, tradeData.rates, tradeData.splitValuesBps, 
-            tradeData.isFeePaying, tradeData.t2eResIds, tradeData.e2tResIds) = 
+            tradeData.isFeePaying//, tradeData.t2eResIds, tradeData.e2tResIds) = 
+        ) =
             tradeLogic.calcRatesAndAmounts(src, dest, tradeData.calcIn, hint);
         
         // unpackResults(results, resAddresses, rates, splitValuesBps, isFeePaying, tradeData);
