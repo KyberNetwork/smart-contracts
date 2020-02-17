@@ -204,10 +204,6 @@ contract KyberHintHandler is IKyberHint, Utils {
             (indexToContinueFrom) = decodeReservesFromHint(true, hint, reservesHint, indexToContinueFrom);
             decodeOperation(hint, tradeHint, indexToContinueFrom, isTokenToEth);
         } else {
-            console.log("invalid opcode");
-            console.logBytes(opcode);
-            console.logBytes(SEPARATOR_OPCODE);
-            
             revert("Invalid hint opcode");
         }
     }
