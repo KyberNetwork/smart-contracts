@@ -297,8 +297,14 @@ function applyHintToReserves(tradeType, reserves, numReserves, splitValues) {
         'reservesForFetchRate': [],
         'splits': []
     }
-
-    if (tradeType == MASK_IN_HINTTYPE) {
+    if (tradeType == EMPTY_HINTTYPE) {
+        numReserves = reserves.length;
+        for (let i=0; i < numReserves; i++) {
+            reserve = reserves[i];
+            result.reservesForHint.push(reserve.reserveId);
+            result.reservesForFetchRate.push(reserve);
+        }
+    } else if (tradeType == MASK_IN_HINTTYPE) {
         if (numReserves == undefined) numReserves = Math.floor(reserves.length/2);
         for (let i=0; i < numReserves; i++) {
             reserve = reserves[i];
