@@ -19,8 +19,8 @@ const negligibleRateDiffBps = new BN(5); //0.05%
 const maxDestAmt = new BN(2).pow(new BN(255));
 const minConversionRate = new BN(0);
 
-let takerFeeArray = [new BN(0), new BN(500), new BN(1000)];
-let platformFeeArray = [new BN(0), new BN(500), new BN(1000)];
+let takerFeeArray = [new BN(0), new BN(250), new BN(400)];
+let platformFeeArray = [new BN(0), new BN(250, new BN(400))];
 let takerFeeBps;
 let platformFeeBps;
 let takerFeeAmount;
@@ -1354,7 +1354,8 @@ function getTradeResult(
     }
 
     //calculate fees
-    result.networkFeeWei = result.tradeWei.mul(takerFeeBps).div(BPS).mul(result.feePayingReservesBps).div(BPS);
+    result.networkFeeWei = result.tradeWei.mul(takerFeeBps).div(BPS);
+    result.networkFeeWei = result.networkFeeWei.mul(result.feePayingReservesBps).div(BPS);
     result.platformFeeWei = result.tradeWei.mul(platformFeeBps).div(BPS);
     actualTradeWei = result.tradeWei.sub(result.networkFeeWei).sub(result.platformFeeWei);
 
