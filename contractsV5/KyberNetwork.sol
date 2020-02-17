@@ -638,7 +638,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         require(tData.rateWithNetworkFee >= tData.input.minConversionRate, "rate < minConvRate");
 
         if (gasHelper != IGasHelper(0)) {
-            gasHelper.help(tData.input.platformWallet, tData.input.src, tData.input.dest);
+            gasHelper.freeGas(tData.input.platformWallet, tData.input.src, tData.input.dest);
         }
 
         uint actualSrcAmount;
