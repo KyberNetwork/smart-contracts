@@ -24,7 +24,7 @@ contract GasHelper is IGasHelper, PermissionGroups {
         kyberNetwork = _kyberNetwork;
     }
 
-    function freeGas(address platformWallet, IERC20 src, IERC20 dest) external {
+    function freeGas(address platformWallet, IERC20 src, IERC20 dest, uint tradeWei) external {
         require(msg.sender == kyberNetwork);
         if (tx.gasprice <= MIN_ACTIVATE_PRICE) return;
 
