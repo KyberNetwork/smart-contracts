@@ -1,5 +1,4 @@
 const TestToken = artifacts.require("Token.sol");
-const MockReserve = artifacts.require("MockReserve.sol");
 const MockDao = artifacts.require("MockDAO.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
@@ -20,12 +19,8 @@ const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, MASK_I
 const gasPrice = (new BN(10).pow(new BN(9)).mul(new BN(50)));
 const negligibleRateDiffBps = new BN(10); //0.01% 
 const maxDestAmt = new BN(2).pow(new BN(255));
-const minConversionRate = new BN(0);
 
 let takerFeeBps = new BN(20);
-let platformFeeBps = new BN(0);
-let takerFeeAmount;
-let txResult;
 
 let admin;
 let alerter;
@@ -58,13 +53,9 @@ let numReserves;
 let numTokens = 5;
 let tokens = [];
 let tokenDecimals = [];
-let srcToken;
-let ethSrcQty = precisionUnits;
 
 //rates data
 ////////////
-
-let tempNetwork;
 
 contract('KyberNetworkProxy', function(accounts) {
     before("one time global init", async() => {
@@ -119,7 +110,7 @@ contract('KyberNetworkProxy', function(accounts) {
         ///////////////
         await network.addKyberProxy(networkProxy.address, {from: admin});
         await network.addOperator(operator, {from: admin});
-        await network.setContracts(feeHandler.address, DAO.address, tradeLogic.address, {from: admin});
+        await network.setContracts(feeHandler.address, DAO.address, tradeLogic.address, zeroAddress, {from: admin});
 
         //add and list pair for reserve
         nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
@@ -361,7 +352,7 @@ contract('KyberNetworkProxy', function(accounts) {
             let str = typeStr[i];
             let fee = 123;
 
-            it.only("should perform a t2e trade with hint", async() => {
+            it("should perform a t2e trade with hint", async() => {
                 let tokenId = 3;
                 let tokenAdd = tokens[tokenId].address;
                 let token = tokens[tokenId];

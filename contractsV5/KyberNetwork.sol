@@ -8,6 +8,7 @@ import "./IKyberReserve.sol";
 import "./IFeeHandler.sol";
 import "./IKyberDAO.sol";
 import "./IKyberTradeLogic.sol";
+import "./IGasHelper.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -17,6 +18,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     IFeeHandler       internal feeHandler;
     IKyberDAO         internal kyberDAO;
     IKyberTradeLogic  internal tradeLogic;
+    IGasHelper        internal gasHelper;
 
     uint            takerFeeData; // data is feeBps and expiry block
     uint            maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
@@ -46,7 +48,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         external payable
         returns(uint destAmount)
     {
-        TradeData memory tradeData = initTradeInput({
+        TradeData memory tData = initTradeInput({
             trader: trader,
             src: src,
             dest: dest,
@@ -58,7 +60,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             platformFeeBps: platformFeeBps
             });
         
-        return trade(tradeData, hint);
+        return trade(tData, hint);
     }
 
      // backward compatible
@@ -66,7 +68,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint maxDestAmount, uint minConversionRate, address walletId, bytes calldata hint)
         external payable returns(uint destAmount)
     {
-        TradeData memory tradeData = initTradeInput({
+        TradeData memory tData = initTradeInput({
             trader: address(uint160(trader)),
             src: src,
             dest: dest,
@@ -78,7 +80,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             platformFeeBps: 0
             });
 
-        return trade(tradeData, hint);
+        return trade(tData, hint);
     }
 
     event AddReserveToNetwork (
@@ -169,8 +171,14 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     event FeeHandlerUpdated(IFeeHandler newHandler);
     event KyberDAOUpdated(IKyberDAO newDAO);
     event TradeLogicUpdated(IKyberTradeLogic tradeLogic);
+    event GasHelperUpdated(IGasHelper gasHelper);
     
-    function setContracts(IFeeHandler _feeHandler, IKyberDAO _kyberDAO, IKyberTradeLogic _tradeLogic) external onlyAdmin {
+    function setContracts(IFeeHandler _feeHandler, 
+        IKyberDAO _kyberDAO, 
+        IKyberTradeLogic _tradeLogic,
+        IGasHelper _gasHelper) 
+        external onlyAdmin 
+    {
         require(_feeHandler != IFeeHandler(0), "feeHandler 0");
         require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
         require(_tradeLogic != IKyberTradeLogic(0), "tradeLogic 0");
@@ -189,6 +197,11 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             emit TradeLogicUpdated(_tradeLogic);
             tradeLogic = _tradeLogic;
         }
+
+        if((_gasHelper != IGasHelper(0)) && (_gasHelper != gasHelper)) {
+            emit GasHelperUpdated(_gasHelper);
+            gasHelper = _gasHelper;
+        }
     }
 
     event KyberNetworkParamsSet(uint maxGasPrice, uint negligibleRateDiffBps);
@@ -203,9 +216,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     function setEnable(bool _enable) external onlyAdmin {
         if (_enable) {
-            require(feeHandler != IFeeHandler(0), "no feeHandler set");
-            require(tradeLogic != IKyberTradeLogic(0), "no tradeLogic set");
-            require(kyberProxyArray.length > 0, "no proxy set");
+            require(feeHandler != IFeeHandler(0), "feeHandler 0");
+            require(tradeLogic != IKyberTradeLogic(0), "tradeLogic 0");
+            require(kyberProxyArray.length > 0, "proxy 0");
         }
         isEnabled = _enable;
 
@@ -226,7 +239,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     }
     
     function removeKyberProxy(address networkProxy) external onlyAdmin {
-        require(kyberProxyContracts[networkProxy], "proxy not found");
+        require(kyberProxyContracts[networkProxy], "proxy ?");
         
         uint proxyIndex = 2 ** 255;
         
@@ -259,7 +272,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         if (src == dest) return (0, 0);
         uint qty = srcQty & ~PERM_HINT_GET_RATE;
 
-        TradeData memory tradeData = initTradeInput({
+        TradeData memory tData = initTradeInput({
             trader: address(uint160(0)),
             src: src,
             dest: dest,
@@ -271,11 +284,11 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             platformFeeBps: 0
         });
         
-        tradeData.takerFeeBps = getTakerFee();
+        tData.takerFeeBps = getTakerFee();
 
-        calcRatesAndAmounts(src, dest, qty, tradeData, "");
+        calcRatesAndAmounts(src, dest, qty, tData, "");
         
-        expectedRate = tradeData.rateWithNetworkFee;
+        expectedRate = tData.rateWithNetworkFee;
         worstRate = expectedRate * 97 / 100; // backward compatible formula
     }
 
@@ -286,7 +299,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     {
         if (src == dest) return (0, 0, 0);
         
-        TradeData memory tradeData = initTradeInput({
+        TradeData memory tData = initTradeInput({
             trader: address(uint160(0)),
             src: src,
             dest: dest,
@@ -298,13 +311,13 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             platformFeeBps: platformFeeBps
         });
         
-        tradeData.takerFeeBps = getTakerFee();
+        tData.takerFeeBps = getTakerFee();
         
-        calcRatesAndAmounts(src, dest, srcQty, tradeData, hint);
+        calcRatesAndAmounts(src, dest, srcQty, tData, hint);
         
-        rateNoFees = calcRateFromQty(srcQty, tradeData.destAmountNoFee, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
-        rateAfterNetworkFees = tradeData.rateWithNetworkFee;
-        rateAfterAllFees = calcRateFromQty(srcQty, tradeData.actualDestAmount, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
+        rateNoFees = calcRateFromQty(srcQty, tData.destAmountNoFee, tData.tokenToEth.decimals, tData.ethToToken.decimals);
+        rateAfterNetworkFees = tData.rateWithNetworkFee;
+        rateAfterAllFees = calcRateFromQty(srcQty, tData.actualDestAmount, tData.tokenToEth.decimals, tData.ethToToken.decimals);
     }
 
     function initTradeInput(
@@ -318,20 +331,20 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         address payable platformWallet,
         uint platformFeeBps
         )
-    internal view returns (TradeData memory tradeData)
+    internal view returns (TradeData memory tData)
     {
-        tradeData.input.trader = trader;
-        tradeData.input.src = src;
-        tradeData.input.srcAmount = srcAmount;
-        tradeData.input.dest = dest;
-        tradeData.input.destAddress = destAddress;
-        tradeData.input.maxDestAmount = maxDestAmount;
-        tradeData.input.minConversionRate = minConversionRate;
-        tradeData.input.platformWallet = platformWallet;
-        tradeData.input.platformFeeBps = platformFeeBps;
+        tData.input.trader = trader;
+        tData.input.src = src;
+        tData.input.srcAmount = srcAmount;
+        tData.input.dest = dest;
+        tData.input.destAddress = destAddress;
+        tData.input.maxDestAmount = maxDestAmount;
+        tData.input.minConversionRate = minConversionRate;
+        tData.input.platformWallet = platformWallet;
+        tData.input.platformFeeBps = platformFeeBps;
 
-        tradeData.tokenToEth.decimals = getDecimals(src);
-        tradeData.ethToToken.decimals = getDecimals(dest);
+        tData.tokenToEth.decimals = getDecimals(src);
+        tData.ethToToken.decimals = getDecimals(dest);
     }
 
     function getContracts() external view 
@@ -415,14 +428,14 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // uint rateWithAllFees;
     }
 
-    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, TradeData memory tradeData, bytes memory hint)
+    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, TradeData memory tData, bytes memory hint)
         internal view
     // function should set all TradeData so it can later be used without any ambiguity
     {
         //init fees structure
         uint[] memory fees = new uint[](uint8(IKyberTradeLogic.FeesIndex.feesLength));
-        fees[uint8(IKyberTradeLogic.FeesIndex.takerFeeBps)] = tradeData.takerFeeBps;
-        fees[uint8(IKyberTradeLogic.FeesIndex.platformFeeBps)] = tradeData.input.platformFeeBps;
+        fees[uint8(IKyberTradeLogic.FeesIndex.takerFeeBps)] = tData.takerFeeBps;
+        fees[uint8(IKyberTradeLogic.FeesIndex.platformFeeBps)] = tData.input.platformFeeBps;
         
         uint[] memory results;
         IKyberReserve[] memory reserveAddresses;
@@ -433,8 +446,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         (results, reserveAddresses, rates, splitValuesBps, isFeePaying) = 
             tradeLogic.calcRatesAndAmounts(src, dest, srcAmount, fees, hint);
         
-        unpackResults(results, reserveAddresses, rates, splitValuesBps, isFeePaying, tradeData);
-        tradeData.rateWithNetworkFee = calcRateFromQty(srcAmount, tradeData.destAmountWithNetworkFee, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals);
+        unpackResults(results, reserveAddresses, rates, splitValuesBps, isFeePaying, tData);
+        tData.rateWithNetworkFee = calcRateFromQty(srcAmount, tData.destAmountWithNetworkFee, tData.tokenToEth.decimals, tData.ethToToken.decimals);
     }
     
     function unpackResults(
@@ -443,24 +456,24 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint[] memory rates,
         uint[] memory splitValuesBps,
         bool[] memory isFeePaying,
-        TradeData memory tradeData
+        TradeData memory tData
         ) internal view 
     {
         //uint start = printGas("start unpack", 0);
         uint tokenToEthNumReserves = results[uint8(IKyberTradeLogic.ResultIndex.t2eNumReserves)];
         uint ethToTokenNumReserves = results[uint8(IKyberTradeLogic.ResultIndex.e2tNumReserves)];
         
-        storeTradeData(tradeData.tokenToEth, reserveAddresses, rates, splitValuesBps, isFeePaying, 0, tokenToEthNumReserves);
-        storeTradeData(tradeData.ethToToken, reserveAddresses, rates, splitValuesBps, isFeePaying, tokenToEthNumReserves, ethToTokenNumReserves);
+        storeTradeData(tData.tokenToEth, reserveAddresses, rates, splitValuesBps, isFeePaying, 0, tokenToEthNumReserves);
+        storeTradeData(tData.ethToToken, reserveAddresses, rates, splitValuesBps, isFeePaying, tokenToEthNumReserves, ethToTokenNumReserves);
         
-        tradeData.tradeWei = results[uint8(IKyberTradeLogic.ResultIndex.tradeWei)];
-        tradeData.networkFeeWei = results[uint8(IKyberTradeLogic.ResultIndex.networkFeeWei)];
-        tradeData.platformFeeWei = results[uint8(IKyberTradeLogic.ResultIndex.platformFeeWei)];
-        tradeData.numFeePayingReserves = results[uint8(IKyberTradeLogic.ResultIndex.numFeePayingReserves)];
-        tradeData.feePayingReservesBps = results[uint8(IKyberTradeLogic.ResultIndex.feePayingReservesBps)];
-        tradeData.destAmountNoFee = results[uint8(IKyberTradeLogic.ResultIndex.destAmountNoFee)];
-        tradeData.actualDestAmount = results[uint8(IKyberTradeLogic.ResultIndex.actualDestAmount)];
-        tradeData.destAmountWithNetworkFee = results[uint8(IKyberTradeLogic.ResultIndex.destAmountWithNetworkFee)];
+        tData.tradeWei = results[uint8(IKyberTradeLogic.ResultIndex.tradeWei)];
+        tData.networkFeeWei = results[uint8(IKyberTradeLogic.ResultIndex.networkFeeWei)];
+        tData.platformFeeWei = results[uint8(IKyberTradeLogic.ResultIndex.platformFeeWei)];
+        tData.numFeePayingReserves = results[uint8(IKyberTradeLogic.ResultIndex.numFeePayingReserves)];
+        tData.feePayingReservesBps = results[uint8(IKyberTradeLogic.ResultIndex.feePayingReservesBps)];
+        tData.destAmountNoFee = results[uint8(IKyberTradeLogic.ResultIndex.destAmountNoFee)];
+        tData.actualDestAmount = results[uint8(IKyberTradeLogic.ResultIndex.actualDestAmount)];
+        tData.destAmountWithNetworkFee = results[uint8(IKyberTradeLogic.ResultIndex.destAmountWithNetworkFee)];
         //printGas("end unpack", start);
     }
     
@@ -484,29 +497,29 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     event PlatformFeeSent(address recipient, uint fees);
 
-    function handleFees(TradeData memory tradeData) internal returns(bool) {
+    function handleFees(TradeData memory tData) internal returns(bool) {
 
-        if (tradeData.platformFeeWei != 0) {
+        if (tData.platformFeeWei != 0) {
             // Sending platform fee to taker platform
-            (bool success, ) =  tradeData.input.platformWallet.call.value(tradeData.platformFeeWei)("");
+            (bool success, ) =  tData.input.platformWallet.call.value(tData.platformFeeWei)("");
             require(success, "PLAT_FEE_TX_FAIL");
-            emit PlatformFeeSent(tradeData.input.platformWallet, tradeData.platformFeeWei);
+            emit PlatformFeeSent(tData.input.platformWallet, tData.platformFeeWei);
         }
 
         //no need to handle fees if no fee paying reserves
-        if (tradeData.numFeePayingReserves == 0) return true;
+        if (tData.numFeePayingReserves == 0) return true;
 
         // create array of rebate wallets + fee percent per reserve
         // fees should add up to 100%.
-        address[] memory eligibleWallets = new address[](tradeData.numFeePayingReserves);
-        uint[] memory rebatePercentages = new uint[](tradeData.numFeePayingReserves);
+        address[] memory eligibleWallets = new address[](tData.numFeePayingReserves);
+        uint[] memory rebatePercentages = new uint[](tData.numFeePayingReserves);
 
         // Updates reserve eligibility and rebate percentages
-        updateEligibilityAndRebates(eligibleWallets, rebatePercentages, tradeData);
+        updateEligibilityAndRebates(eligibleWallets, rebatePercentages, tData);
 
         // Send total fee amount to fee handler with reserve data.
         require(
-            feeHandler.handleFees.value(tradeData.networkFeeWei)(eligibleWallets, rebatePercentages),
+            feeHandler.handleFees.value(tData.networkFeeWei)(eligibleWallets, rebatePercentages),
             "FEE_TX_FAIL"
         );
         return true;
@@ -515,7 +528,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     function updateEligibilityAndRebates(
         address[] memory eligibleWallets,
         uint[] memory rebatePercentages,
-        TradeData memory tradeData
+        TradeData memory tData
     ) internal view
     {
         uint index; 
@@ -523,18 +536,18 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         index = parseReserveList(
             eligibleWallets,
             rebatePercentages,
-            tradeData.ethToToken,
+            tData.ethToToken,
             index,
-            tradeData.feePayingReservesBps
+            tData.feePayingReservesBps
         );
 
         // Parse tokenToEth list
         index = parseReserveList(
             eligibleWallets,
             rebatePercentages,
-            tradeData.tokenToEth,
+            tData.tokenToEth,
             index,
-            tradeData.feePayingReservesBps
+            tData.feePayingReservesBps
         );
     }
 
@@ -551,15 +564,11 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         for(i = 0; i < resList.isFeePaying.length; i ++) {
             if(resList.isFeePaying[i]) {
                 eligibleWallets[_index] = reserveRebateWallet[address(resList.addresses[i])];
-                rebatePercentages[_index] = getRebatePercentage(resList.splitValuesBps[i], feePayingReservesBps);
+                rebatePercentages[_index] = resList.splitValuesBps[i] * 100 / feePayingReservesBps;
                 _index ++;
             }
         }
         return _index;
-    }
-
-    function getRebatePercentage(uint splitValuesBps, uint feePayingReservesBps) internal pure returns(uint) {
-        return splitValuesBps * 100 / feePayingReservesBps;
     }
 
     function calcTradeSrcAmount(uint srcDecimals, uint destDecimals, uint destAmount, uint[] memory rates, 
@@ -577,26 +586,26 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         }
     }
 
-    function calcTradeSrcAmountFromDest (TradeData memory tradeData)
+    function calcTradeSrcAmountFromDest (TradeData memory tData)
         internal pure returns(uint actualSrcAmount)
     {
-        if (tradeData.input.dest != ETH_TOKEN_ADDRESS) {
-            tradeData.tradeWei = calcTradeSrcAmount(tradeData.ethToToken.decimals, ETH_DECIMALS, tradeData.input.maxDestAmount, 
-                tradeData.ethToToken.rates, tradeData.ethToToken.splitValuesBps);
+        if (tData.input.dest != ETH_TOKEN_ADDRESS) {
+            tData.tradeWei = calcTradeSrcAmount(tData.ethToToken.decimals, ETH_DECIMALS, tData.input.maxDestAmount, 
+                tData.ethToToken.rates, tData.ethToToken.splitValuesBps);
         } else {
-            tradeData.tradeWei = tradeData.input.maxDestAmount;
+            tData.tradeWei = tData.input.maxDestAmount;
         }
 
-        tradeData.networkFeeWei = tradeData.tradeWei * tradeData.takerFeeBps * tradeData.feePayingReservesBps / (BPS * BPS);
-        tradeData.platformFeeWei = tradeData.tradeWei * tradeData.input.platformFeeBps / BPS;
+        tData.networkFeeWei = tData.tradeWei * tData.takerFeeBps * tData.feePayingReservesBps / (BPS * BPS);
+        tData.platformFeeWei = tData.tradeWei * tData.input.platformFeeBps / BPS;
 
-        if (tradeData.input.src != ETH_TOKEN_ADDRESS) {
-            actualSrcAmount = calcTradeSrcAmount(ETH_DECIMALS, tradeData.tokenToEth.decimals, tradeData.tradeWei, tradeData.tokenToEth.rates, tradeData.tokenToEth.splitValuesBps);
+        if (tData.input.src != ETH_TOKEN_ADDRESS) {
+            actualSrcAmount = calcTradeSrcAmount(ETH_DECIMALS, tData.tokenToEth.decimals, tData.tradeWei, tData.tokenToEth.rates, tData.tokenToEth.splitValuesBps);
         } else {
-            actualSrcAmount = tradeData.tradeWei;
+            actualSrcAmount = tData.tradeWei;
         }
     
-        require(actualSrcAmount <= tradeData.input.srcAmount, "actualSrcAmt > given srcAmt");
+        require(actualSrcAmount <= tData.input.srcAmount, "actualSrcAmt > given srcAmt");
     }
 
     event KyberTrade(address indexed trader, IERC20 src, IERC20 dest, uint srcAmount, uint dstAmount,
@@ -607,80 +616,84 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     //  Most of the lines here are functions calls spread over multiple lines. We find this function readable enough
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev trade api for kyber network.
-    /// @param tradeData.input structure of trade inputs
-    function trade(TradeData memory tradeData, bytes memory hint) 
+    /// @param tData.input structure of trade inputs
+    function trade(TradeData memory tData, bytes memory hint) 
         internal
         nonReentrant
         returns(uint destAmount) 
     {
-        destAmount = printGas("start_tr", 0, Module.NETWORK);
-        require(verifyTradeValid(tradeData.input.src, tradeData.input.srcAmount, 
-            tradeData.input.dest, tradeData.input.destAddress), "invalid");
+        // destAmount = printGas("start_tr", 0, Module.NETWORK);
+        require(verifyTradeValid(tData.input.src, tData.input.srcAmount, 
+            tData.input.dest, tData.input.destAddress), "invalid");
         
-        tradeData.takerFeeBps = getAndUpdateTakerFee();
+        tData.takerFeeBps = getAndUpdateTakerFee();
         
         // amounts excluding fees
-        destAmount = printGas("start to calc", destAmount, Module.NETWORK);
-        calcRatesAndAmounts(tradeData.input.src, tradeData.input.dest, tradeData.input.srcAmount, tradeData, hint);
-        destAmount = printGas("calcRatesAndAmounts", destAmount, Module.NETWORK);
+        // destAmount = printGas("start to calc", destAmount, Module.NETWORK);
+        calcRatesAndAmounts(tData.input.src, tData.input.dest, tData.input.srcAmount, tData, hint);
+        // destAmount = printGas("calcRatesAndAmounts", destAmount, Module.NETWORK);
 
-        require(tradeData.rateWithNetworkFee > 0, "0 rate");
-        require(tradeData.rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
-        require(tradeData.rateWithNetworkFee >= tradeData.input.minConversionRate, "rate < minConvRate");
+        require(tData.rateWithNetworkFee > 0, "0 rate");
+        require(tData.rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
+        require(tData.rateWithNetworkFee >= tData.input.minConversionRate, "rate < minConvRate");
+
+        if (gasHelper != IGasHelper(0)) {
+            gasHelper.help(tData.input.platformWallet, tData.input.src, tData.input.dest);
+        }
 
         uint actualSrcAmount;
 
-        if (tradeData.actualDestAmount > tradeData.input.maxDestAmount) {
-            // notice tradeData passed by reference. and updated
-            actualSrcAmount = calcTradeSrcAmountFromDest(tradeData);
+        if (tData.actualDestAmount > tData.input.maxDestAmount) {
+            // notice tData passed by reference. and updated
+            actualSrcAmount = calcTradeSrcAmountFromDest(tData);
 
-            require(handleChange(tradeData.input.src, tradeData.input.srcAmount, actualSrcAmount, tradeData.input.trader));
+            require(handleChange(tData.input.src, tData.input.srcAmount, actualSrcAmount, tData.input.trader));
         } else {
-            actualSrcAmount = tradeData.input.srcAmount;
+            actualSrcAmount = tData.input.srcAmount;
         }
 
-        subtractFeesFromTradeWei(tradeData);
-        destAmount = printGas("calc to trade", destAmount, Module.NETWORK);
+        subtractFeesFromTradeWei(tData);
+        // destAmount = printGas("calc to trade", destAmount, Module.NETWORK);
         require(doReserveTrades(     //src to ETH
-                tradeData.input.src,
+                tData.input.src,
                 actualSrcAmount,
                 ETH_TOKEN_ADDRESS,
                 address(this),
-                tradeData,
-                tradeData.tradeWei));
+                tData,
+                tData.tradeWei));
 
         require(doReserveTrades(     //Eth to dest
                 ETH_TOKEN_ADDRESS,
-                tradeData.tradeWei,
-                tradeData.input.dest,
-                tradeData.input.destAddress,
-                tradeData,
-                tradeData.actualDestAmount));
-destAmount = printGas("trade part", destAmount, Module.NETWORK);
-        require(handleFees(tradeData));
-destAmount = printGas("handle fees part", destAmount, Module.NETWORK);
+                tData.tradeWei,
+                tData.input.dest,
+                tData.input.destAddress,
+                tData,
+                tData.actualDestAmount));
+// destAmount = printGas("trade part", destAmount, Module.NETWORK);
+        require(handleFees(tData));
+// destAmount = printGas("handle fees part", destAmount, Module.NETWORK);
         // todo: splits to trade event?
         emit KyberTrade({
-            trader: tradeData.input.trader,
-            src: tradeData.input.src,
-            dest: tradeData.input.dest,
+            trader: tData.input.trader,
+            src: tData.input.src,
+            dest: tData.input.dest,
             srcAmount: actualSrcAmount,
-            dstAmount: tradeData.actualDestAmount,
-            destAddress: tradeData.input.destAddress,
-            ethWeiValue: tradeData.tradeWei,
-            networkFeeWei: tradeData.networkFeeWei,
-            customPlatformFeeWei: tradeData.platformFeeWei,
-            e2tReserves: tradeData.ethToToken.addresses,
-            t2eReserves: tradeData.tokenToEth.addresses
+            dstAmount: tData.actualDestAmount,
+            destAddress: tData.input.destAddress,
+            ethWeiValue: tData.tradeWei,
+            networkFeeWei: tData.networkFeeWei,
+            customPlatformFeeWei: tData.platformFeeWei,
+            e2tReserves: tData.ethToToken.addresses,
+            t2eReserves: tData.tokenToEth.addresses
         });
 
         // printGas("end_tr", 0);
-        return (tradeData.actualDestAmount);
+        return (tData.actualDestAmount);
     }
     /* solhint-enable function-max-lines */
 
-    function subtractFeesFromTradeWei(TradeData memory tradeData) internal pure {
-        tradeData.tradeWei -= (tradeData.networkFeeWei + tradeData.platformFeeWei);
+    function subtractFeesFromTradeWei(TradeData memory tData) internal pure {
+        tData.tradeWei -= (tData.networkFeeWei + tData.platformFeeWei);
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
@@ -695,7 +708,7 @@ destAmount = printGas("handle fees part", destAmount, Module.NETWORK);
         uint amount,
         IERC20 dest,
         address payable destAddress,
-        TradeData memory tradeData,
+        TradeData memory tData,
         uint expectedDestAmount
     )
         internal
@@ -708,7 +721,7 @@ destAmount = printGas("handle fees part", destAmount, Module.NETWORK);
             return true;
         }
 
-        TradingReserves memory reservesData = src == ETH_TOKEN_ADDRESS? tradeData.ethToToken : tradeData.tokenToEth;
+        TradingReserves memory reservesData = src == ETH_TOKEN_ADDRESS? tData.ethToToken : tData.tokenToEth;
         uint callValue;
         uint srcAmountSoFar;
 
@@ -759,7 +772,7 @@ destAmount = printGas("handle fees part", destAmount, Module.NETWORK);
         view
         returns(bool)
     {
-        require(isEnabled, "network disabled");
+        require(isEnabled, "!network");
         require(kyberProxyContracts[msg.sender], "bad sender");
         require(tx.gasprice <= maxGasPriceValue, "gas price");
         require(srcAmount <= MAX_QTY, "srcAmt > MAX_QTY");

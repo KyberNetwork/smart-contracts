@@ -18,10 +18,13 @@ contract MockReserve is IKyberReserve, Utils {
         return getDecimals(token);
     }
     
-    function getConversionRate(IERC20 src, IERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
+    function getConversionRate(IERC20 src, IERC20 dest, uint srcQty, uint blockNumber) public view 
+        returns(uint) 
+    {
         blockNumber;
-        uint destQty;
         uint rate;
+        srcQty;
+        
         rate = (src == ETH_TOKEN_ADDRESS) ? buyTokenRates[address(dest)] : sellTokenRates[address(src)];
         return rate;
     }

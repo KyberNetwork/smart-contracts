@@ -148,7 +148,7 @@ contract('KyberNetwork', function(accounts) {
             //setup network
             await network.addOperator(operator, {from: admin});
             await network.addKyberProxy(networkProxy, {from: admin});
-            await network.setContracts(feeHandler.address, DAO.address, tradeLogic.address, {from: admin});
+            await network.setContracts(feeHandler.address, DAO.address, tradeLogic.address, zeroAddress, {from: admin});
 
             //set params, enable network
             await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
@@ -170,7 +170,10 @@ contract('KyberNetwork', function(accounts) {
                 amount: ethSrcQty
             });
 
-            txResult = await tempNetwork.setContracts(feeHandler.address, DAO.address, tempTradeLogic.address, {from: admin});
+            let gasHelperAdd = accounts[9];
+
+            txResult = await tempNetwork.setContracts(feeHandler.address, DAO.address, 
+                tempTradeLogic.address, gasHelperAdd, {from: admin});
             expectEvent(txResult, 'FeeHandlerUpdated', {
                 newHandler: feeHandler.address
             });
@@ -180,6 +183,9 @@ contract('KyberNetwork', function(accounts) {
             });
             expectEvent(txResult, 'TradeLogicUpdated', {
                 tradeLogic: tempTradeLogic.address
+            });
+            expectEvent(txResult, 'GasHelperUpdated', {
+                gasHelper: gasHelperAdd
             });
 
             txResult = await tempNetwork.addReserve(mockReserve.address, nwHelper.genReserveID(MOCK_ID, mockReserve.address), true, taker, {from: operator});
@@ -777,7 +783,8 @@ contract('KyberNetwork', function(accounts) {
     
         it("test encode decode taker fee data with mock setter getter", async() => {
             let tempNetwork = await MockNetwork.new(admin);
-            await tempNetwork.setContracts(feeHandler.address, DAO.address, tradeLogic.address, {from: admin});
+            await tempNetwork.setContracts(feeHandler.address, DAO.address, tradeLogic.address, 
+                zeroAddress, {from: admin});
     
             let networkData = await tempNetwork.getNetworkData();
          
