@@ -1,6 +1,6 @@
 const TestToken = artifacts.require("Token.sol");
 const DAOContract = artifacts.require("MockDAOContract.sol");
-const StakingContract = artifacts.require("StakingContract.sol");
+const StakingContract = artifacts.require("KyberStaking.sol");
 const MockFeeHandler = artifacts.require("MockFeeHandler.sol");
 const MockFeeHandlerClaimRewardFailed = artifacts.require("MockFeeHandlerClaimRewardFailed.sol");
 const Helper = require("../../v4/helper.js");
@@ -591,7 +591,7 @@ contract('DAOContract', function(accounts) {
         it("Test submit campaign returns correct data after created", async function() {
             await deployContracts(10, currentBlock + 30, 10);
 
-            Helper.assertEqual(0, await daoContract.networkFeeCampaign(0), "shouldn't have network fee camp");
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(0), "shouldn't have network fee camp");
             Helper.assertEqual(0, await daoContract.brrCampaign(0), "shouldn't have brr camp");
 
             let totalSupply = await kncToken.INITIAL_SUPPLY();
@@ -639,7 +639,7 @@ contract('DAOContract', function(accounts) {
 
             logInfo("Submit Campaign: Average gas used for submit new campaign: " + gasUsed.div(new BN(3)).toString(10));
 
-            Helper.assertEqual(2, await daoContract.networkFeeCampaign(0), "should have network fee camp");
+            Helper.assertEqual(2, await daoContract.networkFeeCamp(0), "should have network fee camp");
             Helper.assertEqual(3, await daoContract.brrCampaign(0), "should have brr camp");
 
             let listCamps = await daoContract.getListCampIDs(0);
@@ -659,8 +659,8 @@ contract('DAOContract', function(accounts) {
                 formulaParamsData, [1, 2, 3, 4], link, {from: admin}
             );
 
-            Helper.assertEqual(1, await daoContract.networkFeeCampaign(0), "should have network fee camp");
-            Helper.assertEqual(0, await daoContract.networkFeeCampaign(1), "shouldn't have network fee camp");
+            Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "should have network fee camp");
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
 
             await daoContract.submitNewCampaign(
                 0, currentBlock + 9, currentBlock + 9 + minCampPeriod,
@@ -684,26 +684,26 @@ contract('DAOContract', function(accounts) {
                 1, currentBlock + 6, currentBlock + 6 + minCampPeriod,
                 formulaParamsData, [1, 2, 3, 4], link, {from: admin}
             );
-            Helper.assertEqual(1, await daoContract.networkFeeCampaign(0), "should have network fee camp");
-            Helper.assertEqual(5, await daoContract.networkFeeCampaign(1), "should have network fee camp");
+            Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "should have network fee camp");
+            Helper.assertEqual(5, await daoContract.networkFeeCamp(1), "should have network fee camp");
 
             await daoContract.cancelCampaign(5, {from: admin});
-            Helper.assertEqual(1, await daoContract.networkFeeCampaign(0), "should have network fee camp");
-            Helper.assertEqual(0, await daoContract.networkFeeCampaign(1), "shouldn't have network fee camp");
+            Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "should have network fee camp");
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
 
             currentBlock = await Helper.getCurrentBlock();
             // deploy to epoch 3
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
-            Helper.assertEqual(0, await daoContract.networkFeeCampaign(3), "shouldn't have network fee camp");
-            Helper.assertEqual(0, await daoContract.networkFeeCampaign(2), "shouldn't have network fee camp");
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(3), "shouldn't have network fee camp");
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(2), "shouldn't have network fee camp");
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 6, currentBlock + 6 + minCampPeriod,
                 formulaParamsData, [1, 2, 3, 4], link, {from: admin}
             );
-            Helper.assertEqual(0, await daoContract.networkFeeCampaign(2), "shouldn't have network fee camp");
-            Helper.assertEqual(6, await daoContract.networkFeeCampaign(3), "should have network fee camp");
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(2), "shouldn't have network fee camp");
+            Helper.assertEqual(6, await daoContract.networkFeeCamp(3), "should have network fee camp");
         });
 
         it("Test submit campaign network fee campaign changed correctly after cancel and created new one", async function() {
@@ -712,7 +712,7 @@ contract('DAOContract', function(accounts) {
             // delay to epoch 1
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3);
 
-            Helper.assertEqual(0, await daoContract.networkFeeCampaign(1), "shouldn't have network fee camp");
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
 
             currentBlock = await Helper.getCurrentBlock();
 
@@ -723,11 +723,11 @@ contract('DAOContract', function(accounts) {
                 formulaParamsData, [1, 2, 3, 4], link, {from: admin}
             );
             logInfo("Submit Campaign: First time create network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
-            Helper.assertEqual(1, await daoContract.networkFeeCampaign(1), "should have network fee camp");
+            Helper.assertEqual(1, await daoContract.networkFeeCamp(1), "should have network fee camp");
 
             await daoContract.cancelCampaign(1, {from: admin});
 
-            Helper.assertEqual(0, await daoContract.networkFeeCampaign(1), "shouldn't have network fee camp");
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
 
             await daoContract.submitNewCampaign(
                 0, currentBlock + 10, currentBlock + 10 + minCampPeriod,
@@ -737,14 +737,14 @@ contract('DAOContract', function(accounts) {
                 2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
                 formulaParamsData, [1, 2, 3, 4], link, {from: admin}
             );
-            Helper.assertEqual(0, await daoContract.networkFeeCampaign(1), "shouldn't have network fee camp");
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
 
             tx = await daoContract.submitNewCampaign(
                 1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
                 formulaParamsData, [1, 2, 3, 4], link, {from: admin}
             );
             logInfo("Submit Campaign: Recreate network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
-            Helper.assertEqual(4, await daoContract.networkFeeCampaign(1), "should have network fee camp");
+            Helper.assertEqual(4, await daoContract.networkFeeCamp(1), "should have network fee camp");
         });
 
         it("Test submit campaign brr campaign changed correctly after cancel and created new one", async function() {
@@ -1409,7 +1409,7 @@ contract('DAOContract', function(accounts) {
         it("Test cancel campaign correctly for network fee camp", async function() {
             await deployContracts(20, currentBlock + 50, 5);
 
-            Helper.assertEqual(0, await daoContract.networkFeeCampaign(0), "network fee camp id should be correct");
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(0), "network fee camp id should be correct");
 
             let link = web3.utils.fromAscii("https://kyberswap.com");
             let formula = formulaParamsData;
@@ -1418,7 +1418,7 @@ contract('DAOContract', function(accounts) {
                 formula, [1, 2, 3], link, {from: admin}
             );
 
-            Helper.assertEqual(1, await daoContract.networkFeeCampaign(0), "network fee camp id should be correct");
+            Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp id should be correct");
 
             let campData = await daoContract.getCampaignDetails(1);
             Helper.assertEqual(campData[0], 1, "camp details should be correct");
@@ -1443,7 +1443,7 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(campData[4], 0, "camp details should be deleted");
             Helper.assertEqual(campData[6].length, 0, "camp details should be deleted");
 
-            Helper.assertEqual(0, await daoContract.networkFeeCampaign(0), "network fee camp id should be deleted");
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(0), "network fee camp id should be deleted");
 
             // create a general camp
             await daoContract.submitNewCampaign(
@@ -1455,7 +1455,7 @@ contract('DAOContract', function(accounts) {
                 2, currentBlock + 20, currentBlock + 20 + minCampPeriod,
                 formula, [25, 50], link, {from: admin}
             );
-            Helper.assertEqual(0, await daoContract.networkFeeCampaign(0), "network fee camp id should be deleted");
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(0), "network fee camp id should be deleted");
 
             link = web3.utils.fromAscii("https://google.com");
             formula = getFormulaParamsData(precision.div(new BN(10)), precision.div(new BN(2)), precision.div(new BN(4)));
@@ -1465,7 +1465,7 @@ contract('DAOContract', function(accounts) {
                 formula, [25, 50], link, {from: admin}
             );
 
-            Helper.assertEqual(4, await daoContract.networkFeeCampaign(0), "network fee camp id should be correct");
+            Helper.assertEqual(4, await daoContract.networkFeeCamp(0), "network fee camp id should be correct");
 
             campData = await daoContract.getCampaignDetails(4);
             Helper.assertEqual(campData[0], 1, "camp details should be correct");
@@ -4444,7 +4444,7 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(2, data[0], "winning option is wrong");
             Helper.assertEqual(26, data[1], "winning option value is wrong");
 
-            Helper.assertEqual(0, await daoContract.networkFeeCampaign(1), "shouldn't have network fee camp for epoch 1");
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp for epoch 1");
 
             data = await daoContract.getLatestNetworkFeeData();
 
@@ -4477,7 +4477,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
 
-            Helper.assertEqual(1, await daoContract.networkFeeCampaign(1), "should have network fee camp");
+            Helper.assertEqual(1, await daoContract.networkFeeCamp(1), "should have network fee camp");
 
             data = await daoContract.getLatestNetworkFeeData();
 
@@ -4510,7 +4510,7 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(0, data[0], "winning option is wrong");
             Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-            Helper.assertEqual(1, await daoContract.networkFeeCampaign(1), "should have network fee camp for epoch 1");
+            Helper.assertEqual(1, await daoContract.networkFeeCamp(1), "should have network fee camp for epoch 1");
 
             data = await daoContract.getLatestNetworkFeeData();
 
@@ -4541,7 +4541,7 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(0, data[0], "winning option is wrong");
             Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-            Helper.assertEqual(2, await daoContract.networkFeeCampaign(2), "should have network fee camp");
+            Helper.assertEqual(2, await daoContract.networkFeeCamp(2), "should have network fee camp");
 
             data = await daoContract.getLatestNetworkFeeData();
 
@@ -4569,7 +4569,7 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(0, data[0], "winning option is wrong");
             Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-            Helper.assertEqual(3, await daoContract.networkFeeCampaign(3), "should have network fee camp");
+            Helper.assertEqual(3, await daoContract.networkFeeCamp(3), "should have network fee camp");
 
             data = await daoContract.getLatestNetworkFeeData();
 
@@ -4596,7 +4596,7 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(1, data[0], "winning option is wrong");
             Helper.assertEqual(32, data[1], "winning option value is wrong");
 
-            Helper.assertEqual(4, await daoContract.networkFeeCampaign(4), "should have network fee camp");
+            Helper.assertEqual(4, await daoContract.networkFeeCamp(4), "should have network fee camp");
 
             data = await daoContract.getLatestNetworkFeeData();
 
@@ -4629,7 +4629,7 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(0, data[0], "winning option is wrong");
             Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-            Helper.assertEqual(5, await daoContract.networkFeeCampaign(5), "should have network fee camp");
+            Helper.assertEqual(5, await daoContract.networkFeeCamp(5), "should have network fee camp");
 
             data = await daoContract.getLatestNetworkFeeData();
 
@@ -5164,7 +5164,7 @@ contract('DAOContract', function(accounts) {
 
             Helper.assertEqual(await daoContract.EPOCH_PERIOD(), 10, "Epoch period is wrong");
             Helper.assertEqual(await daoContract.START_BLOCK(), currentBlock + 10, "Start block is wrong");
-            Helper.assertEqual(await daoContract.KNC_TOKEN(), kncToken.address, "KNC token is wrong");
+            Helper.assertEqual(await daoContract.kncToken(), kncToken.address, "KNC token is wrong");
             Helper.assertEqual(await daoContract.staking(), stakingContract.address, "Staking contract is wrong");
             Helper.assertEqual(await daoContract.feeHandler(), feeHandler.address, "Feehandler contract is wrong");
             Helper.assertEqual(await daoContract.MAX_CAMP_OPTIONS(), maxCampOptions, "max camp option is wrong");

@@ -1,11 +1,11 @@
 pragma solidity 0.5.11;
 
-import "../StakingContract.sol";
+import "../KyberStaking.sol";
 
-contract MockStakingContract is StakingContract {
+contract MockStakingContract is KyberStaking {
 
     constructor(address _kncToken, uint _epochPeriod, uint _startBlock, address _admin) 
-        StakingContract(_kncToken, _epochPeriod, _startBlock, _admin) public { }
+        KyberStaking(_kncToken, _epochPeriod, _startBlock, _admin) public { }
 
     function getHasInitedValue(address staker, uint epoch) public view returns(bool) {
         return hasInited[epoch][staker];
@@ -35,6 +35,6 @@ contract MockStakingContract is StakingContract {
     }
 
     function setDAOAddressWithoutCheck(address dao) public {
-        DAO = IKyberDAO(dao);
+        daoContract = IKyberDAO(dao);
     }
 }

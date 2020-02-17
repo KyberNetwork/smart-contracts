@@ -45,15 +45,15 @@ contract('StakingContract', function(accounts) {
         let daoContract = await MockKyberDAO.new(10, currentBlock + 10);
 
         assert.equal(admin, await stakingContract.admin(), "admin address is wrong");
-        assert.equal(kncToken.address, await stakingContract.KNC_TOKEN(), "admin address is wrong");
-        assert.equal(zeroAddress, await stakingContract.DAO(), "admin address is wrong");
+        assert.equal(kncToken.address, await stakingContract.kncToken(), "admin address is wrong");
+        assert.equal(zeroAddress, await stakingContract.daoContract(), "admin address is wrong");
         assert.equal(epochPeriod, await stakingContract.EPOCH_PERIOD(), "admin address is wrong");
         assert.equal(startBlock, await stakingContract.START_BLOCK(), "admin address is wrong");
 
         await stakingContract.updateDAOAddressAndRemoveAdmin(daoContract.address, {from: admin});
 
         assert.equal(zeroAddress, await stakingContract.admin(), "admin address is wrong");
-        assert.equal(daoContract.address, await stakingContract.DAO(), "admin address is wrong");
+        assert.equal(daoContract.address, await stakingContract.daoContract(), "admin address is wrong");
 
         try {
             await stakingContract.updateDAOAddressAndRemoveAdmin(daoContract.address, {from: admin});

@@ -1,8 +1,8 @@
 pragma solidity 0.5.11;
 
-import "../DAOContract.sol";
+import "../KyberDAO.sol";
 
-contract MockDAOContract is DAOContract {
+contract MockDAOContract is KyberDAO {
 
     constructor(
         uint _epochPeriod, uint _startBlock,
@@ -10,7 +10,7 @@ contract MockDAOContract is DAOContract {
         uint _maxNumOptions, uint _minCampDuration,
         uint _defaultNetworkFee, uint _defaultBrrData,
         address _admin
-    ) DAOContract(
+    ) KyberDAO(
         _epochPeriod, _startBlock,
         _staking, _feeHandler, _knc,
         _defaultNetworkFee, _defaultBrrData, _admin
