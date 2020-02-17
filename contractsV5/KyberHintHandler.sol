@@ -7,7 +7,7 @@ import "./IKyberReserve.sol";
 
 
 contract KyberHintHandler is IKyberHint, Utils {
-    bytes public constant SEPARATOR_OPCODE = "\x00";
+    bytes public constant SEPARATOR_OPCODE = "\x77";
     bytes public constant MASK_IN_OPCODE = "\x01";
     bytes public constant MASK_OUT_OPCODE = "\x02";
     bytes public constant SPLIT_TRADE_OPCODE = "\x03";
@@ -204,6 +204,10 @@ contract KyberHintHandler is IKyberHint, Utils {
             (indexToContinueFrom) = decodeReservesFromHint(true, hint, reservesHint, indexToContinueFrom);
             decodeOperation(hint, tradeHint, indexToContinueFrom, isTokenToEth);
         } else {
+            console.log("invalid opcode");
+            console.logBytes(opcode);
+            console.logBytes(SEPARATOR_OPCODE);
+            
             revert("Invalid hint opcode");
         }
     }
