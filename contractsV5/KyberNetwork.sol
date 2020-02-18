@@ -434,10 +434,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     // function should set all TradeData so it can later be used without any ambiguity
     {
         //init info structure
-        uint[] memory info = new uint[](uint8(IKyberTradeLogic.InfoIndex.infoLength));
-        info[uint8(IKyberTradeLogic.InfoIndex.takerFeeBps)] = tData.takerFeeBps;
-        info[uint8(IKyberTradeLogic.InfoIndex.platformFeeBps)] = tData.input.platformFeeBps;
-        info[uint8(IKyberTradeLogic.InfoIndex.srcAmount)] = srcAmount;
+        uint[] memory info = new uint[](uint(IKyberTradeLogic.InfoIndex.infoLength));
+        info[uint(IKyberTradeLogic.InfoIndex.takerFeeBps)] = tData.takerFeeBps;
+        info[uint(IKyberTradeLogic.InfoIndex.platformFeeBps)] = tData.input.platformFeeBps;
+        info[uint(IKyberTradeLogic.InfoIndex.srcAmount)] = srcAmount;
 
         uint[] memory results;
         IKyberReserve[] memory reserveAddresses;
@@ -464,20 +464,20 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         ) internal view 
     {
         //uint start = printGas("start unpack", 0);
-        uint tokenToEthNumReserves = results[uint8(IKyberTradeLogic.ResultIndex.t2eNumReserves)];
-        uint ethToTokenNumReserves = results[uint8(IKyberTradeLogic.ResultIndex.e2tNumReserves)];
+        uint tokenToEthNumReserves = results[uint(IKyberTradeLogic.ResultIndex.t2eNumReserves)];
+        uint ethToTokenNumReserves = results[uint(IKyberTradeLogic.ResultIndex.e2tNumReserves)];
         
         storeTradeData(tData.tokenToEth, reserveAddresses, rates, splitValuesBps, isFeePaying, ids, 0, tokenToEthNumReserves);
         storeTradeData(tData.ethToToken, reserveAddresses, rates, splitValuesBps, isFeePaying, ids, tokenToEthNumReserves, ethToTokenNumReserves);
         
-        tData.tradeWei = results[uint8(IKyberTradeLogic.ResultIndex.tradeWei)];
-        tData.networkFeeWei = results[uint8(IKyberTradeLogic.ResultIndex.networkFeeWei)];
-        tData.platformFeeWei = results[uint8(IKyberTradeLogic.ResultIndex.platformFeeWei)];
-        tData.numFeePayingReserves = results[uint8(IKyberTradeLogic.ResultIndex.numFeePayingReserves)];
-        tData.feePayingReservesBps = results[uint8(IKyberTradeLogic.ResultIndex.feePayingReservesBps)];
-        tData.destAmountNoFee = results[uint8(IKyberTradeLogic.ResultIndex.destAmountNoFee)];
-        tData.actualDestAmount = results[uint8(IKyberTradeLogic.ResultIndex.actualDestAmount)];
-        tData.destAmountWithNetworkFee = results[uint8(IKyberTradeLogic.ResultIndex.destAmountWithNetworkFee)];
+        tData.tradeWei = results[uint(IKyberTradeLogic.ResultIndex.tradeWei)];
+        tData.networkFeeWei = results[uint(IKyberTradeLogic.ResultIndex.networkFeeWei)];
+        tData.platformFeeWei = results[uint(IKyberTradeLogic.ResultIndex.platformFeeWei)];
+        tData.numFeePayingReserves = results[uint(IKyberTradeLogic.ResultIndex.numFeePayingReserves)];
+        tData.feePayingReservesBps = results[uint(IKyberTradeLogic.ResultIndex.feePayingReservesBps)];
+        tData.destAmountNoFee = results[uint(IKyberTradeLogic.ResultIndex.destAmountNoFee)];
+        tData.actualDestAmount = results[uint(IKyberTradeLogic.ResultIndex.actualDestAmount)];
+        tData.destAmountWithNetworkFee = results[uint(IKyberTradeLogic.ResultIndex.destAmountWithNetworkFee)];
         //printGas("end unpack", start);
     }
     

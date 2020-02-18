@@ -188,12 +188,12 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         TradeData memory tradeData;
         tradeData.tokenToEth.decimals = srcDecimals;
         tradeData.ethToToken.decimals = destDecimals;
-        tradeData.takerFeeBps = info[uint8(IKyberTradeLogic.InfoIndex.takerFeeBps)];
-        tradeData.platformFeeBps = info[uint8(IKyberTradeLogic.InfoIndex.platformFeeBps)];
+        tradeData.takerFeeBps = info[uint(IKyberTradeLogic.InfoIndex.takerFeeBps)];
+        tradeData.platformFeeBps = info[uint(IKyberTradeLogic.InfoIndex.platformFeeBps)];
 
         parseTradeDataHint(src, dest, tradeData, hint);
 
-        calcRatesAndAmountsTokenToEth(src, info[uint8(IKyberTradeLogic.InfoIndex.srcAmount)], tradeData);
+        calcRatesAndAmountsTokenToEth(src, info[uint(IKyberTradeLogic.InfoIndex.srcAmount)], tradeData);
 
         //TODO: see if this need to be shifted below instead
         if (tradeData.tradeWei == 0) {
