@@ -21,8 +21,7 @@ interface IKyberTradeLogic {
     }
     
     enum InfoIndex {
-        srcDecimals,
-        destDecimals,
+        srcAmount,
         takerFeeBps,
         platformFeeBps,
         infoLength
@@ -40,7 +39,7 @@ interface IKyberTradeLogic {
         external
         returns (bool);
     
-    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, uint[] calldata info, bytes calldata hint)
+    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcDecimals, uint destDecimals, uint[] calldata info, bytes calldata hint)
         external view
         returns (
             uint[] memory results,
@@ -48,8 +47,7 @@ interface IKyberTradeLogic {
             uint[] memory rates,
             uint[] memory splitValuesBps,
             bool[] memory isFeePaying,
-            bytes8[] memory t2eIds,
-            bytes8[] memory e2tIds
+            bytes8[] memory ids
         );
 
     function getRatesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount, uint takerFee) external view

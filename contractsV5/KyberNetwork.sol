@@ -437,19 +437,21 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint[] memory info = new uint[](uint8(IKyberTradeLogic.InfoIndex.infoLength));
         info[uint8(IKyberTradeLogic.InfoIndex.takerFeeBps)] = tData.takerFeeBps;
         info[uint8(IKyberTradeLogic.InfoIndex.platformFeeBps)] = tData.input.platformFeeBps;
-        info[uint8(IKyberTradeLogic.InfoIndex.srcDecimals)] = tData.tokenToEth.decimals;
-        info[uint8(IKyberTradeLogic.InfoIndex.destDecimals)] = tData.ethToToken.decimals;
+        info[uint8(IKyberTradeLogic.InfoIndex.srcAmount)] = srcAmount;
+        // info[uint8(IKyberTradeLogic.InfoIndex.srcDecimals)] = tData.tokenToEth.decimals;
+        // info[uint8(IKyberTradeLogic.InfoIndex.destDecimals)] = tData.ethToToken.decimals;
 
         uint[] memory results;
         IKyberReserve[] memory reserveAddresses;
         uint[] memory rates;
         uint[] memory splitValuesBps;
         bool[] memory isFeePaying;
+        bytes8[] memory ids;
+
+        (results, reserveAddresses, rates, splitValuesBps, isFeePaying, ids) = 
+            tradeLogic.calcRatesAndAmounts(src, dest, tData.tokenToEth.decimals, tData.ethToToken.decimals, info, hint);
         
-        (results, reserveAddresses, rates, splitValuesBps, isFeePaying, tData.tokenToEth.ids, tData.ethToToken.ids) = 
-            tradeLogic.calcRatesAndAmounts(src, dest, srcAmount, info, hint);
-        
-        unpackResults(results, reserveAddresses, rates, splitValuesBps, isFeePaying, tData);
+        unpackResults(results, reserveAddresses, rates, splitValuesBps, isFeePaying, ids, tData);
         tData.rateWithNetworkFee = calcRateFromQty(srcAmount, tData.destAmountWithNetworkFee, tData.tokenToEth.decimals, tData.ethToToken.decimals);
     }
     
@@ -459,6 +461,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint[] memory rates,
         uint[] memory splitValuesBps,
         bool[] memory isFeePaying,
+        bytes8[] memory ids,
         TradeData memory tData
         ) internal view 
     {
@@ -466,8 +469,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint tokenToEthNumReserves = results[uint8(IKyberTradeLogic.ResultIndex.t2eNumReserves)];
         uint ethToTokenNumReserves = results[uint8(IKyberTradeLogic.ResultIndex.e2tNumReserves)];
         
-        storeTradeData(tData.tokenToEth, reserveAddresses, rates, splitValuesBps, isFeePaying, 0, tokenToEthNumReserves);
-        storeTradeData(tData.ethToToken, reserveAddresses, rates, splitValuesBps, isFeePaying, tokenToEthNumReserves, ethToTokenNumReserves);
+        storeTradeData(tData.tokenToEth, reserveAddresses, rates, splitValuesBps, isFeePaying, ids, 0, tokenToEthNumReserves);
+        storeTradeData(tData.ethToToken, reserveAddresses, rates, splitValuesBps, isFeePaying, ids, tokenToEthNumReserves, ethToTokenNumReserves);
         
         tData.tradeWei = results[uint8(IKyberTradeLogic.ResultIndex.tradeWei)];
         tData.networkFeeWei = results[uint8(IKyberTradeLogic.ResultIndex.networkFeeWei)];
@@ -481,13 +484,14 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     }
     
     function storeTradeData(TradingReserves memory tradingReserves, IKyberReserve[] memory reserveAddresses, 
-        uint[] memory rates, uint[] memory splitValuesBps, bool[] memory isFeePaying, uint startIndex, uint numReserves
+        uint[] memory rates, uint[] memory splitValuesBps, bool[] memory isFeePaying, bytes8[] memory ids, uint startIndex, uint numReserves
     ) internal pure {
         //init arrays
         tradingReserves.addresses = new IKyberReserve[](numReserves);
         tradingReserves.rates = new uint[](numReserves);
         tradingReserves.splitValuesBps = new uint[](numReserves);
         tradingReserves.isFeePaying = new bool[](numReserves);
+        tradingReserves.ids = new bytes8[](numReserves);
 
         //store info
         for (uint i = startIndex; i < startIndex + numReserves; i++) {
@@ -495,6 +499,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             tradingReserves.rates[i - startIndex] = rates[i];
             tradingReserves.splitValuesBps[i - startIndex] = splitValuesBps[i];
             tradingReserves.isFeePaying[i - startIndex] = isFeePaying[i];
+            tradingReserves.ids[i - startIndex] = ids[i];
         }
     }
 

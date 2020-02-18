@@ -175,26 +175,25 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         uint actualDestAmount; // all fees
     }
 
-    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, uint[] calldata info, bytes calldata hint)
+    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcDecimals, uint destDecimals, uint[] calldata info, bytes calldata hint)
         external view returns (
             uint[] memory results,
             IKyberReserve[] memory reserveAddresses,
             uint[] memory rates,
             uint[] memory splitValuesBps,
             bool[] memory isFeePaying,
-            bytes8[] memory t2eIds,
-            bytes8[] memory e2tIds)
+            bytes8[] memory ids)
     {
         //initialisation
         TradeData memory tradeData;
-        tradeData.tokenToEth.decimals = info[uint8(IKyberTradeLogic.InfoIndex.srcDecimals)];
-        tradeData.ethToToken.decimals = info[uint8(IKyberTradeLogic.InfoIndex.destDecimals)];
+        tradeData.tokenToEth.decimals = srcDecimals;
+        tradeData.ethToToken.decimals = destDecimals;
         tradeData.takerFeeBps = info[uint8(IKyberTradeLogic.InfoIndex.takerFeeBps)];
         tradeData.platformFeeBps = info[uint8(IKyberTradeLogic.InfoIndex.platformFeeBps)];
 
         parseTradeDataHint(src, dest, tradeData, hint);
 
-        calcRatesAndAmountsTokenToEth(src, srcAmount, tradeData);
+        calcRatesAndAmountsTokenToEth(src, info[uint8(IKyberTradeLogic.InfoIndex.srcAmount)], tradeData);
 
         //TODO: see if this need to be shifted below instead
         if (tradeData.tradeWei == 0) {
@@ -401,8 +400,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         uint[] memory rates,
         uint[] memory splitValuesBps,
         bool[] memory isFeePaying,
-        bytes8[] memory t2eIds,
-        bytes8[] memory e2tIds
+        bytes8[] memory ids
         )
     {
         // uint start = printGas("pack result Start", 0, Module.LOGIC);
@@ -412,8 +410,9 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         rates = new uint[](totalNumReserves);
         splitValuesBps = new uint[](totalNumReserves);
         isFeePaying = new bool[](totalNumReserves);
-        t2eIds = new bytes8[](tokenToEthNumReserves);
-        e2tIds = new bytes8[](tradeData.ethToToken.addresses.length);
+        ids = new bytes8[](totalNumReserves);
+        // t2eIds = new bytes8[](tokenToEthNumReserves);
+        // e2tIds = new bytes8[](tradeData.ethToToken.addresses.length);
 
         results = new uint[](uint(ResultIndex.resultLength));
         results[uint(ResultIndex.t2eNumReserves)] = tokenToEthNumReserves;
@@ -433,7 +432,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             rates[i] = tradeData.tokenToEth.rates[i];
             splitValuesBps[i] = tradeData.tokenToEth.splitValuesBps[i];
             isFeePaying[i] = tradeData.tokenToEth.isFeePaying[i];
-            t2eIds[i] = convertAddressToReserveId(address(reserveAddresses[i]));
+            ids[i] = convertAddressToReserveId(address(reserveAddresses[i]));
+            // t2eIds[i] = convertAddressToReserveId(address(reserveAddresses[i]));
         }
         
         //then store ETH to token information, but need to offset when accessing tradeData
@@ -442,7 +442,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             rates[i] = tradeData.ethToToken.rates[i - tokenToEthNumReserves];
             splitValuesBps[i] = tradeData.ethToToken.splitValuesBps[i - tokenToEthNumReserves];
             isFeePaying[i] = tradeData.ethToToken.isFeePaying[i - tokenToEthNumReserves];
-            e2tIds[i - tokenToEthNumReserves] = convertAddressToReserveId(address(reserveAddresses[i]));
+            ids[i] = convertAddressToReserveId(address(reserveAddresses[i]));
+            // e2tIds[i - tokenToEthNumReserves] = convertAddressToReserveId(address(reserveAddresses[i]));
         }
         // printGas("pack result end", start, Module.LOGIC);
     }
