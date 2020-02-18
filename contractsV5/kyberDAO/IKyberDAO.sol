@@ -5,7 +5,7 @@ interface IKyberDAO {
     function EPOCH_PERIOD() external view returns(uint);
     function START_BLOCK() external view returns(uint);
 
-    function handleWithdrawal(address staker, uint penaltyAmount) external returns(bool);
+    function handleWithdrawal(address staker, uint reduceAmount) external returns(bool);
 
     function getLatestNetworkFeeData() external view returns(uint feeInBps, uint expiryBlockNumber);
     function getLatestNetworkFeeDataWithCache() external returns(uint feeInBps, uint expiryBlockNumber);

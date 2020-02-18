@@ -10,7 +10,7 @@ import "../UtilsV5.sol";
 
 
 interface IFeeHandler {
-    function claimReward(address staker, uint epoch, uint percentageInBps) external returns(bool);
+    function claimStakerReward(address staker, uint percentageInBps, uint epoch) external returns(bool);
 }
 
 contract CampPermissionGroups {
@@ -170,9 +170,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         _;
     }
 
-    function handleWithdrawal(address staker, uint penaltyAmount) public onlyStakingContract returns(bool) {
-        // staking shouldn't call this func with penalty amount = 0
-        if (penaltyAmount == 0) { return false; }
+    function handleWithdrawal(address staker, uint reduceAmount) public onlyStakingContract returns(bool) {
+        // staking shouldn't call this func with reduce amount = 0
+        if (reduceAmount == 0) { return false; }
         uint curEpoch = getCurrentEpochNumber();
 
         // update total points for epoch
@@ -180,7 +180,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         // if no votes, no need to deduce points, but it should still return true to allow withdraw
         if (numVotes == 0) { return true; }
 
-        totalEpochPoints[curEpoch] = totalEpochPoints[curEpoch].sub(numVotes.mul(penaltyAmount));
+        totalEpochPoints[curEpoch] = totalEpochPoints[curEpoch].sub(numVotes.mul(reduceAmount));
 
         // update voted count for each camp staker has voted
         uint[] memory campIDs = epochCampaigns[curEpoch];
@@ -191,8 +191,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             // deduce vote count for current running campaign that this staker has voted
             if (votedOption > 0 && campaignData[campID].endBlock >= block.number) {
                 // user already voted for this camp and the camp is not ended
-                campOptionPoints[campID][0] = campOptionPoints[campID][0].sub(penaltyAmount);
-                campOptionPoints[campID][votedOption] = campOptionPoints[campID][votedOption].sub(penaltyAmount);
+                campOptionPoints[campID][0] = campOptionPoints[campID][0].sub(reduceAmount);
+                campOptionPoints[campID][votedOption] = campOptionPoints[campID][votedOption].sub(reduceAmount);
             }
         }
 
@@ -338,7 +338,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint perInPrecision = getStakerRewardPercentageInPrecision(staker, epoch);
         require(perInPrecision > 0, "claimReward: No reward to claim");
 
-        require(feeHandler.claimReward(staker, epoch, perInPrecision), "claimReward: feeHandle failed to claim reward");
+        require(feeHandler.claimStakerReward(staker, perInPrecision, epoch), "claimReward: feeHandle failed to claim reward");
 
         hasClaimedReward[staker][epoch] = true;
         emit RewardClaimed(staker, epoch, perInPrecision);
@@ -593,13 +593,13 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         // block number < start block < end block
         require(
             startBlock >= block.number,
-            "validateCampaignParams: can not start in the past"
+            "validateParams: can not start in the past"
         );
         // camp duration must be at least min camp duration
         // endBlock - startBlock + 1 >= MIN_CAMP_DURATION,
         require(
             endBlock.add(1) >= startBlock.add(MIN_CAMP_DURATION),
-            "validateCampaignParams: camp duration is lower than min camp duration"
+            "validateParams: camp duration is lower than min camp duration"
         );
 
         uint startEpoch = getEpochNumber(startBlock);
@@ -607,14 +607,14 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         // start + end blocks must be in the same current epoch
         require(
             startEpoch == currentEpoch && endEpoch == currentEpoch,
-            "validateCampaignParams: start and end block must be in current epoch"
+            "validateParams: start and end block must be in current epoch"
         );
 
         // verify number of options
         uint numOptions = options.length;
         require(
             numOptions > 1 && numOptions <= MAX_CAMP_OPTIONS,
-            "validateCampaignParams: number options is invalid"
+            "validateParams: number options is invalid"
         );
 
         // Validate option values based on campaign type
@@ -623,7 +623,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             for (uint i = 0; i < options.length; i++) {
                 require(
                     options[i] > 0,
-                    "validateCampaignParams: general camp options must be positive"
+                    "validateParams: general camp options must be positive"
                 );
             }
         } else if (campType == CampaignType.NETWORK_FEE) {
@@ -632,7 +632,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
                 // fee must <= 100%
                 require(
                     options[i] <= BPS,
-                    "validateCampaignParams: NetworkFee camp options must be smaller than or equal 100%"
+                    "validateParams: NetworkFee camp options must be smaller than or equal 100%"
                 );
             }
         } else if (campType == CampaignType.FEE_HANDLER_BRR) {
@@ -642,18 +642,18 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
                 (uint rebateInBps, uint rewardInBps) = getRebateAndRewardFromData(options[i]);
                 require(
                     rewardInBps + rebateInBps <= BPS,
-                    "validateCampaignParams: BRR camp options must be smaller than or equal 100%"
+                    "validateParams: BRR camp options must be smaller than or equal 100%"
                 );
             }
         } else {
-            require(false, "validateCampaignParams: invalid camp type");
+            require(false, "validateParams: invalid camp type");
         }
 
         FormulaData memory data = decodeFormulaParams(formulaParams);
         // percentage should be smaller than or equal 100%
         require(
             data.minPercentageInPrecision <= PRECISION,
-            "validateCampaignParams: formula min percentage must not be greater than 100%"
+            "validateParams: formula min percentage must not be greater than 100%"
         );
 
         return true;
