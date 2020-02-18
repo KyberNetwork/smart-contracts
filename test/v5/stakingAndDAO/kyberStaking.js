@@ -21,7 +21,7 @@ let victor;
 let loi;
 let mike;
 
-contract('StakingContract', function(accounts) {
+contract('KyberStaking', function(accounts) {
     before("one time init", async() => {
         daoSetter = accounts[1];
         kncToken = await TestToken.new("Kyber Network Crystal", "KNC", 18);

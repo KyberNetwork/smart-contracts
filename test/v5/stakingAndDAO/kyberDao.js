@@ -42,7 +42,7 @@ let initMikeStake = mulPrecision(2000);
 let initLoiStake = mulPrecision(3000);
 let initPoolMaster2Stake = mulPrecision(1000);
 
-contract('DAOContract', function(accounts) {
+contract('KyberDAO', function(accounts) {
     before("one time init", async() => {
         campCreator = accounts[1];
         kncToken = await TestToken.new("Kyber Network Crystal", "KNC", 18);
