@@ -411,8 +411,6 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         splitValuesBps = new uint[](totalNumReserves);
         isFeePaying = new bool[](totalNumReserves);
         ids = new bytes8[](totalNumReserves);
-        // t2eIds = new bytes8[](tokenToEthNumReserves);
-        // e2tIds = new bytes8[](tradeData.ethToToken.addresses.length);
 
         results = new uint[](uint(ResultIndex.resultLength));
         results[uint(ResultIndex.t2eNumReserves)] = tokenToEthNumReserves;
@@ -433,7 +431,6 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             splitValuesBps[i] = tradeData.tokenToEth.splitValuesBps[i];
             isFeePaying[i] = tradeData.tokenToEth.isFeePaying[i];
             ids[i] = convertAddressToReserveId(address(reserveAddresses[i]));
-            // t2eIds[i] = convertAddressToReserveId(address(reserveAddresses[i]));
         }
         
         //then store ETH to token information, but need to offset when accessing tradeData
@@ -443,7 +440,6 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             splitValuesBps[i] = tradeData.ethToToken.splitValuesBps[i - tokenToEthNumReserves];
             isFeePaying[i] = tradeData.ethToToken.isFeePaying[i - tokenToEthNumReserves];
             ids[i] = convertAddressToReserveId(address(reserveAddresses[i]));
-            // e2tIds[i - tokenToEthNumReserves] = convertAddressToReserveId(address(reserveAddresses[i]));
         }
         // printGas("pack result end", start, Module.LOGIC);
     }
