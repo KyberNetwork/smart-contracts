@@ -7,7 +7,7 @@ import "./IKyberReserve.sol";
 
 
 contract KyberHintHandler is IKyberHint, Utils {
-    bytes public constant SEPARATOR_OPCODE = "\x00";
+    bytes public constant SEPARATOR_OPCODE = "\x77";
     bytes public constant MASK_IN_OPCODE = "\x01";
     bytes public constant MASK_OUT_OPCODE = "\x02";
     bytes public constant SPLIT_TRADE_OPCODE = "\x03";
