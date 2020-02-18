@@ -10,8 +10,9 @@ contract MockSimpleDAO is EpochUtils {
         START_BLOCK = _startBlock;
     }
 
-    function handleWithdrawal(address staker, uint amount) public {
+    function handleWithdrawal(address staker, uint amount) public returns(bool) {
         // to test if staking has called this func or not when withdrawing
         values[staker] += amount;
+        return true;
     }
 }

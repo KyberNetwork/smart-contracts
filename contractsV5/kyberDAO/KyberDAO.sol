@@ -5,7 +5,6 @@ import "../EpochUtils.sol";
 import "../IERC20.sol";
 import "../kyberStaking/IKyberStaking.sol";
 import "./IKyberDAO.sol";
-import "../PermissionGroupsV5.sol";
 import "../ReentrancyGuard.sol";
 import "../UtilsV5.sol";
 
@@ -14,13 +13,65 @@ interface IFeeHandler {
     function claimReward(address staker, uint epoch, uint percentageInBps) external returns(bool);
 }
 
+contract CampPermissionGroups {
 
+    address public campaignCreator;
+    address public pendingCampCreator;
+
+    constructor(address _campCreator) public {
+        require(_campCreator != address(0), "campCreator is 0");
+        campaignCreator = _campCreator;
+    }
+
+    modifier onlyCampaignCreator() {
+        require(msg.sender == campaignCreator);
+        _;
+    }
+
+    event TransferCampaignCreatorPending(address pendingCampCreator);
+
+    /**
+     * @dev Allows the current campaignCreator to set the pendingCampCreator address.
+     * @param newCampCreator The address to transfer ownership to.
+     */
+    function transferCampaignCreator(address newCampCreator) public onlyCampaignCreator {
+        require(newCampCreator != address(0), "newCampCreator is 0");
+        emit TransferCampaignCreatorPending(newCampCreator);
+        pendingCampCreator = newCampCreator;
+    }
+
+    /**
+     * @dev Allows the current campCcampaignCreatorreator to set the campaignCreator in one tx. Useful initial deployment.
+     * @param newCampCreator The address to transfer ownership to.
+     */
+    function transferCampaignCreatorQuickly(address newCampCreator) public onlyCampaignCreator {
+        require(newCampCreator != address(0));
+        emit TransferCampaignCreatorPending(newCampCreator);
+        emit CampaignCreatorClaimed(newCampCreator, campaignCreator);
+        campaignCreator = newCampCreator;
+    }
+
+    event CampaignCreatorClaimed( address newAdmin, address previousAdmin);
+
+    /**
+     * @dev Allows the pendingCampCreator address to finalize the change campaign creator process.
+     */
+    function claimCampaignCreator() public {
+        require(pendingCampCreator == msg.sender);
+        emit CampaignCreatorClaimed(pendingCampCreator, campaignCreator);
+        campaignCreator = pendingCampCreator;
+        pendingCampCreator = address(0);
+    }
+}
+
+// Note: camp -> campaign
 // Assumption:
-// - Network fee camp: options are fee in bps
-// - BRR fee handler camp: options are conbimed of rebate (first 128 bits) + reward (last 128 bits)
-// - General camp: options are from 1 to num_options
-contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, PermissionGroups, Utils {
+// - Network fee campaign: options are fee in bps
+// - BRR fee handler campaign: options are combined of rebate (first 128 bits) + reward (last 128 bits)
+// - General campaign: options are from 1 to num_options
 
+// This contract is using SafeMath for uint, which is inherited from EpochUtils
+contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroups, Utils {
     // Constants
     uint internal constant BPS = 10000;
     uint internal constant POWER_128 = 2 ** 128;
@@ -59,53 +110,52 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, PermissionGroups, U
     uint public numberCampaigns = 0;
     mapping(uint => bool) public isCampExisted;
     mapping(uint => Campaign) internal campaignData;
-    // use index 0 for total points, index 1 -> ... for each option ID
+    // campOptionPoints[campID]: total points and points of each option for a campaign
+    // campOptionPoints[campID][0] is total points, campOptionPoints[campID][1..] for each option ID
     mapping(uint => uint[]) internal campOptionPoints;
-    // winning option data for each campaign
+    // winningOptionData[campID]: winning option data for each campaign
     // 128 bits: has concluded campaign or not, last 128 bits: winning option ID
     mapping(uint => uint) internal winningOptionData;
 
     /** Mapping from epoch => data */
-    // list camp IDs for each epoch (epoch => camp IDs)
+    // epochCampaigns[epoch]: list camp IDs for each epoch (epoch => camp IDs)
     mapping(uint => uint[]) internal epochCampaigns;
-    // total points for an epoch (epoch => total points)
+    // totalEpochPoints[epoch]: total points for an epoch (epoch => total points)
     mapping(uint => uint) internal totalEpochPoints;
-
-    // number of votes at an epoch for each address (address => epoch => number votes)
+    // numberVotes[staker][epoch]: number of campaigns that the staker has voted at an epoch
     mapping(address => mapping(uint => uint)) public numberVotes;
-    // whether a staker has claimed reward for an epoch (address => camp => has claimed)
+    // hasClaimedReward[staker][epoch]: true/false if the staker has/hasn't claimed the reward for an epoch
     mapping(address => mapping(uint => bool)) public hasClaimedReward;
-    // staker's voted option for a camp, vote option must start from 1 (address => campID => option ID)
+    // stakerVotedOption[staker][campID]: staker's voted option ID for a campaign
     mapping(address => mapping(uint => uint)) public stakerVotedOption;
 
     /* Configuration Campaign Data */
-    // epoch => campID for network fee campaign
     uint public latestNetworkFeeResult = 25; // 0.25%
+    // epoch => campID for network fee campaign
     mapping(uint => uint) public networkFeeCamp;
-    // epoch => campID for brr campaign
     uint public latestBrrResult = 0; // 0: 0% reward + 0% rebate
+    // epoch => campID for brr campaign
     mapping(uint => uint) public brrCampaign;
 
     constructor(
         uint _epochPeriod, uint _startBlock,
         address _staking, address _feeHandler, address _knc,
         uint _defaultNetworkFee, uint _defaultBrrData,
-        address _admin
-    ) public PermissionGroups(_admin) {
-        require(_epochPeriod > 0, "constructor: epoch period must be positive");
-        require(_startBlock >= block.number, "constructor: startBlock shouldn't be in the past");
-        require(_staking != address(0), "constructor: staking address is missing");
-        require(_feeHandler != address(0), "constructor: feeHandler address is missing");
-        require(_knc != address(0), "constructor: knc address is missing");
-        require(_admin != address(0), "constructor: admin address is missing");
-        require(_defaultNetworkFee <= BPS, "constructor: default network fee must not be greater than 100%");
+        address _campaignCreator
+    ) public CampPermissionGroups(_campaignCreator) {
+        require(_epochPeriod > 0, "ctor: epoch period must be positive");
+        require(_startBlock >= block.number, "ctor: startBlock shouldn't be in the past");
+        require(_staking != address(0), "ctor: staking is missing");
+        require(_feeHandler != address(0), "ctor: feeHandler is missing");
+        require(_knc != address(0), "ctor: knc token is missing");
+        require(_defaultNetworkFee <= BPS, "ctor: network fee is more than 100%");
 
         (uint rebateBps, uint rewardBps) = getRebateAndRewardFromData(_defaultBrrData);
-        require(rebateBps + rewardBps <= BPS, "constructor: default rebate + reward must not be greater than 100%");
+        require(rebateBps + rewardBps <= BPS, "ctor: rebate + reward is more than 100%");
 
         staking = IKyberStaking(_staking);
-        require(staking.EPOCH_PERIOD() == _epochPeriod, "constructor: staking and dao have different epoch periods");
-        require(staking.START_BLOCK() == _startBlock, "constructor: staking and dao have different start block");
+        require(staking.EPOCH_PERIOD() == _epochPeriod, "ctor: different epoch period");
+        require(staking.START_BLOCK() == _startBlock, "ctor: different start block");
 
         EPOCH_PERIOD = _epochPeriod;
         START_BLOCK = _startBlock;
@@ -115,14 +165,20 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, PermissionGroups, U
         latestBrrResult = _defaultBrrData;
     }
 
-    function handleWithdrawal(address staker, uint penaltyAmount) public {
-        require(msg.sender == address(staking), "handleWithdrawal: only staking contract can call this func");
-        if (penaltyAmount == 0) { return; }
+    modifier onlyStakingContract {
+        require(msg.sender == address(staking), "sender is not staking");
+        _;
+    }
+
+    function handleWithdrawal(address staker, uint penaltyAmount) public onlyStakingContract returns(bool) {
+        // staking shouldn't call this func with penalty amount = 0
+        if (penaltyAmount == 0) { return false; }
         uint curEpoch = getCurrentEpochNumber();
 
         // update total points for epoch
         uint numVotes = numberVotes[staker][curEpoch];
-        if (numVotes == 0) { return; }
+        // if no votes, no need to deduce points, but it should still return true to allow withdraw
+        if (numVotes == 0) { return true; }
 
         totalEpochPoints[curEpoch] = totalEpochPoints[curEpoch].sub(numVotes.mul(penaltyAmount));
 
@@ -139,6 +195,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, PermissionGroups, U
                 campOptionPoints[campID][votedOption] = campOptionPoints[campID][votedOption].sub(penaltyAmount);
             }
         }
+
+        return true;
     }
 
     event NewCampaignCreated(
@@ -151,31 +209,38 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, PermissionGroups, U
         CampaignType campType, uint startBlock, uint endBlock, uint formulaParams,
         uint[] memory options, bytes memory link
     )
-        public onlyAdmin returns(uint campID)
+        public onlyCampaignCreator returns(uint campID)
     {
         uint curEpoch = getCurrentEpochNumber();
 
         require(
             epochCampaigns[curEpoch].length < MAX_EPOCH_CAMPS,
-            "submitNewCampaign: exceed max number camps for each epoch"
+            "newCampaign: exceed max number camps for each epoch"
         );
 
         require(
             validateCampaignParams(campType, startBlock, endBlock, curEpoch, formulaParams, options),
-            "submitNewCampaign: validate camp params failed"
+            "newCampaign: validate camp params failed"
         );
 
         if (campType == CampaignType.NETWORK_FEE) {
-            require(networkFeeCamp[curEpoch] == 0, "submitNewCampaign: alr had one camp for network fee at this epoch");
+            require(networkFeeCamp[curEpoch] == 0, "newCampaign: alr had one camp for network fee at this epoch");
         } else if (campType == CampaignType.FEE_HANDLER_BRR) {
-            require(brrCampaign[curEpoch] == 0, "submitNewCampaign: alr had one camp for brr at this epoch");
+            require(brrCampaign[curEpoch] == 0, "newCampaign: alr had one camp for brr at this epoch");
         }
 
         numberCampaigns = numberCampaigns.add(1);
         campID = numberCampaigns;
 
+        isCampExisted[campID] = true;
         // add campID into this current epoch camp IDs
         epochCampaigns[curEpoch].push(campID);
+        // update network fee or brr campaigns
+        if (campType == CampaignType.NETWORK_FEE) {
+            networkFeeCamp[curEpoch] = campID;
+        } else if (campType == CampaignType.FEE_HANDLER_BRR) {
+            brrCampaign[curEpoch] = campID;
+        }
 
         campaignData[campID] = Campaign({
             campID: campID,
@@ -188,14 +253,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, PermissionGroups, U
             options: options
         });
 
-        isCampExisted[campID] = true;
-
-        if (campType == CampaignType.NETWORK_FEE) {
-            networkFeeCamp[curEpoch] = campID;
-        } else if (campType == CampaignType.FEE_HANDLER_BRR) {
-            brrCampaign[curEpoch] = campID;
-        }
-
         // index 0 for total votes, index 1 -> options.length for each option
         campOptionPoints[campID] = new uint[](options.length + 1);
 
@@ -204,12 +261,12 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, PermissionGroups, U
 
     event CancelledCampaign(uint campID);
 
-    function cancelCampaign(uint campID) public onlyAdmin {
-        require(isCampExisted[campID], "cancelCampaign: campID is not existed");
+    function cancelCampaign(uint campID) public onlyCampaignCreator {
+        require(isCampExisted[campID], "cancelCamp: campID is not existed");
 
         Campaign storage camp = campaignData[campID];
 
-        require(camp.startBlock > block.number, "cancelCampaign: campaign has started, can not cancel");
+        require(camp.startBlock > block.number, "cancelCamp: campaign has started, can not cancel");
 
         uint curEpoch = getCurrentEpochNumber();
 
@@ -616,7 +673,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, PermissionGroups, U
 
     // Note: option is indexed from 1
     function validateVoteOption(uint campID, uint option) internal view returns(bool) {
-        require(isCampExisted[campID], "vote: camp is not existd");
+        require(isCampExisted[campID], "vote: camp is not existed");
 
         Campaign storage camp = campaignData[campID];
 

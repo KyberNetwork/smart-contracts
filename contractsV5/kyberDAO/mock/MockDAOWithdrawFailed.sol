@@ -11,8 +11,8 @@ contract MockDAOWithdrawFailed is EpochUtils {
         START_BLOCK = _startBlock;
     }
 
-    function handleWithdrawal(address, uint) public {
+    function handleWithdrawal(address, uint) public returns(bool) {
         value++;
-        revert();
+        return false;
     }
 }

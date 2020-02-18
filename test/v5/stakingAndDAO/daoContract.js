@@ -7,10 +7,10 @@ const Helper = require("../../v4/helper.js");
 
 const BN = web3.utils.BN;
 
-const precision = (new BN(10).pow(new BN(18)));
+const precision = new BN(10).pow(new BN(18));
 const zeroAddress = '0x0000000000000000000000000000000000000000';
 
-let admin;
+let campCreator;
 
 let currentBlock;
 
@@ -44,12 +44,12 @@ let initPoolMaster2Stake = mulPrecision(1000);
 
 contract('DAOContract', function(accounts) {
     before("one time init", async() => {
-        admin = accounts[1];
+        campCreator = accounts[1];
         kncToken = await TestToken.new("Kyber Network Crystal", "KNC", 18);
         victor = accounts[2];
         loi = accounts[3];
         mike = accounts[4];
-        admin = accounts[5];
+        campCreator = accounts[5];
         poolMaster = accounts[6];
         poolMaster2 = accounts[7];
         feeHandler = await MockFeeHandler.new();
@@ -68,16 +68,16 @@ contract('DAOContract', function(accounts) {
     const deployContracts = async(_epochPeriod, _startBlock, _campPeriod) => {
         epochPeriod = _epochPeriod;
         startBlock = _startBlock;
-        stakingContract = await StakingContract.new(kncToken.address, epochPeriod, startBlock, admin);
+        stakingContract = await StakingContract.new(kncToken.address, epochPeriod, startBlock, campCreator);
 
         minCampPeriod = _campPeriod;
         daoContract = await DAOContract.new(
             epochPeriod, startBlock,
             stakingContract.address,  feeHandler.address, kncToken.address,
             maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
-            admin
+            campCreator
         )
-        await stakingContract.updateDAOAddressAndRemoveAdmin(daoContract.address, {from: admin});
+        await stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: campCreator});
     };
 
     const setupSimpleStakingData = async() => {
@@ -159,7 +159,7 @@ contract('DAOContract', function(accounts) {
             let link = web3.utils.fromAscii("https://kyberswap.com");
             await daoContract.submitNewCampaign(
                 0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             // withdraw when no votes
@@ -298,7 +298,7 @@ contract('DAOContract', function(accounts) {
             let link = web3.utils.fromAscii("https://kyberswap.com");
             await daoContract.submitNewCampaign(
                 0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             // deplay to start of first camp
@@ -319,7 +319,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             // vote for first campaign
@@ -387,7 +387,7 @@ contract('DAOContract', function(accounts) {
             // create new campaign far from current block
             await daoContract.submitNewCampaign(
                 2, currentBlock + 20, currentBlock + 20 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             // withdraw should change epoch points, but only camp2 vote data
@@ -422,7 +422,7 @@ contract('DAOContract', function(accounts) {
             let link = web3.utils.fromAscii("https://kyberswap.com");
             await daoContract.submitNewCampaign(
                 0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             // deplay to start of first camp
@@ -496,7 +496,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -559,12 +559,12 @@ contract('DAOContract', function(accounts) {
         });
 
         it("Test handle withdrawal should revert when sender is not staking", async function() {
-            let stakingContract = await StakingContract.new(kncToken.address, 10, currentBlock + 10, admin);
+            let stakingContract = await StakingContract.new(kncToken.address, 10, currentBlock + 10, campCreator);
             daoContract = await DAOContract.new(
                 10, currentBlock + 10,
                 stakingContract.address,  feeHandler.address, kncToken.address,
                 maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
-                admin
+                campCreator
             )
             await daoContract.replaceStakingContract(mike);
             Helper.assertEqual(mike, await daoContract.staking(), "staking contract is setting wrongly");
@@ -577,7 +577,7 @@ contract('DAOContract', function(accounts) {
             }
 
             try {
-                await daoContract.handleWithdrawal(victor, mulPrecision(10), {from: admin});
+                await daoContract.handleWithdrawal(victor, mulPrecision(10), {from: campCreator});
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -602,7 +602,7 @@ contract('DAOContract', function(accounts) {
                 let link = web3.utils.fromAscii(id == 0 ? "" : "some_link");
                 let tx = await daoContract.submitNewCampaign(
                     id, currentBlock + 2 * id + 5, currentBlock + 2 * id + 5 + minCampPeriod,
-                    formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                    formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
                 );
                 gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
                 Helper.assertEqual(id + 1, await daoContract.numberCampaigns(), "number campaign is incorrect");
@@ -656,7 +656,7 @@ contract('DAOContract', function(accounts) {
 
             await daoContract.submitNewCampaign(
                 1, currentBlock + 9, currentBlock + 9 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "should have network fee camp");
@@ -664,12 +664,12 @@ contract('DAOContract', function(accounts) {
 
             await daoContract.submitNewCampaign(
                 0, currentBlock + 9, currentBlock + 9 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             await daoContract.submitNewCampaign(
                 2, currentBlock + 9, currentBlock + 9 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             currentBlock = await Helper.getCurrentBlock();
@@ -678,16 +678,16 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 6, currentBlock + 6 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 1, currentBlock + 6, currentBlock + 6 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
             Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "should have network fee camp");
             Helper.assertEqual(5, await daoContract.networkFeeCamp(1), "should have network fee camp");
 
-            await daoContract.cancelCampaign(5, {from: admin});
+            await daoContract.cancelCampaign(5, {from: campCreator});
             Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "should have network fee camp");
             Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
 
@@ -700,7 +700,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 6, currentBlock + 6 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
             Helper.assertEqual(0, await daoContract.networkFeeCamp(2), "shouldn't have network fee camp");
             Helper.assertEqual(6, await daoContract.networkFeeCamp(3), "should have network fee camp");
@@ -720,28 +720,28 @@ contract('DAOContract', function(accounts) {
 
             let tx = await daoContract.submitNewCampaign(
                 1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
             logInfo("Submit Campaign: First time create network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
             Helper.assertEqual(1, await daoContract.networkFeeCamp(1), "should have network fee camp");
 
-            await daoContract.cancelCampaign(1, {from: admin});
+            await daoContract.cancelCampaign(1, {from: campCreator});
 
             Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
 
             await daoContract.submitNewCampaign(
                 0, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
             Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
 
             tx = await daoContract.submitNewCampaign(
                 1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
             logInfo("Submit Campaign: Recreate network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
             Helper.assertEqual(4, await daoContract.networkFeeCamp(1), "should have network fee camp");
@@ -761,28 +761,28 @@ contract('DAOContract', function(accounts) {
 
             let tx = await daoContract.submitNewCampaign(
                 2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
             logInfo("Submit Campaign: First time create brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
             Helper.assertEqual(1, await daoContract.brrCampaign(1), "should have brr camp");
 
-            await daoContract.cancelCampaign(1, {from: admin});
+            await daoContract.cancelCampaign(1, {from: campCreator});
 
             Helper.assertEqual(0, await daoContract.brrCampaign(1), "shouldn't have brr camp");
 
             await daoContract.submitNewCampaign(
                 0, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
             Helper.assertEqual(0, await daoContract.brrCampaign(1), "shouldn't have brr camp");
 
             tx = await daoContract.submitNewCampaign(
                 2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
             logInfo("Submit Campaign: Recreate brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
             Helper.assertEqual(4, await daoContract.brrCampaign(1), "shouldn't have brr camp");
@@ -795,7 +795,7 @@ contract('DAOContract', function(accounts) {
 
             await daoContract.submitNewCampaign(
                 2, currentBlock + 9, currentBlock + 9 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             Helper.assertEqual(1, await daoContract.brrCampaign(0), "should have brr camp");
@@ -803,12 +803,12 @@ contract('DAOContract', function(accounts) {
 
             await daoContract.submitNewCampaign(
                 0, currentBlock + 9, currentBlock + 9 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             await daoContract.submitNewCampaign(
                 1, currentBlock + 9, currentBlock + 9 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             currentBlock = await Helper.getCurrentBlock();
@@ -817,16 +817,16 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 6, currentBlock + 6 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 2, currentBlock + 6, currentBlock + 6 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
             Helper.assertEqual(1, await daoContract.brrCampaign(0), "should have brr camp");
             Helper.assertEqual(5, await daoContract.brrCampaign(1), "should have brr camp");
 
-            await daoContract.cancelCampaign(5, {from: admin});
+            await daoContract.cancelCampaign(5, {from: campCreator});
             Helper.assertEqual(1, await daoContract.brrCampaign(0), "should have brr camp");
             Helper.assertEqual(0, await daoContract.brrCampaign(1), "shouldn't have brr camp");
 
@@ -840,13 +840,13 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 6, currentBlock + 6 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: admin}
+                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
             );
             Helper.assertEqual(0, await daoContract.brrCampaign(2), "should have brr camp");
             Helper.assertEqual(6, await daoContract.brrCampaign(3), "shouldn't have brr camp");
         });
 
-        it("Test submit campaign should revert sender is not admin", async function() {
+        it("Test submit campaign should revert sender is not campCreator", async function() {
             await deployContracts(10, currentBlock + 30, 10);
             try {
                 await daoContract.submitNewCampaign(
@@ -859,7 +859,7 @@ contract('DAOContract', function(accounts) {
             }
             await daoContract.submitNewCampaign(
                 0, currentBlock + 6, currentBlock + 20, formulaParamsData,
-                [1, 2, 3, 4], '0x', {from: admin}
+                [1, 2, 3, 4], '0x', {from: campCreator}
             );
         });
 
@@ -869,7 +869,7 @@ contract('DAOContract', function(accounts) {
             try {
                 await daoContract.submitNewCampaign(
                     0, currentBlock - 1, currentBlock + 20, formulaParamsData,
-                    [1, 2, 3, 4], '0x', {from: admin}
+                    [1, 2, 3, 4], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -879,7 +879,7 @@ contract('DAOContract', function(accounts) {
             try {
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 50, currentBlock + 70, formulaParamsData,
-                    [1, 2, 3, 4], '0x', {from: admin}
+                    [1, 2, 3, 4], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -889,7 +889,7 @@ contract('DAOContract', function(accounts) {
             try {
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 6, currentBlock + 30, formulaParamsData,
-                    [1, 2, 3, 4], '0x', {from: admin}
+                    [1, 2, 3, 4], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -899,7 +899,7 @@ contract('DAOContract', function(accounts) {
             try {
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 6, currentBlock + 3, formulaParamsData,
-                    [1, 2, 3, 4], '0x', {from: admin}
+                    [1, 2, 3, 4], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -909,7 +909,7 @@ contract('DAOContract', function(accounts) {
             try {
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 10, currentBlock + 10 + minCampPeriod - 2, formulaParamsData,
-                    [1, 2, 3, 4], '0x', {from: admin}
+                    [1, 2, 3, 4], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -917,7 +917,7 @@ contract('DAOContract', function(accounts) {
             }
             await daoContract.submitNewCampaign(
                 0, currentBlock + 10, currentBlock + 10 + minCampPeriod - 1, formulaParamsData,
-                [1, 2, 3, 4], '0x', {from: admin}
+                [1, 2, 3, 4], '0x', {from: campCreator}
             );
         });
 
@@ -927,7 +927,7 @@ contract('DAOContract', function(accounts) {
             try {
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 3, currentBlock + 3 + minCampPeriod, formulaParamsData,
-                    [], '0x', {from: admin}
+                    [], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -937,7 +937,7 @@ contract('DAOContract', function(accounts) {
             try {
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 5, currentBlock + 5 + minCampPeriod, formulaParamsData,
-                    [1], '0x', {from: admin}
+                    [1], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -947,7 +947,7 @@ contract('DAOContract', function(accounts) {
             try {
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 7, currentBlock + 7 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3, 4, 5], '0x', {from: admin}
+                    [1, 2, 3, 4, 5], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -956,15 +956,15 @@ contract('DAOContract', function(accounts) {
             // should work with 2, 3, 4 options
             await daoContract.submitNewCampaign(
                 0, currentBlock + 9, currentBlock + 9 + minCampPeriod - 1, formulaParamsData,
-                [1, 2], '0x', {from: admin}
+                [1, 2], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 0, currentBlock + 11, currentBlock + 11 + minCampPeriod - 1, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 0, currentBlock + 13, currentBlock + 13 + minCampPeriod - 1, formulaParamsData,
-                [1, 2, 3, 4], '0x', {from: admin}
+                [1, 2, 3, 4], '0x', {from: campCreator}
             );
         });
 
@@ -974,7 +974,7 @@ contract('DAOContract', function(accounts) {
             try {
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 3, currentBlock + 3 + minCampPeriod, formulaParamsData,
-                    [0, 1, 2], '0x', {from: admin}
+                    [0, 1, 2], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -983,7 +983,7 @@ contract('DAOContract', function(accounts) {
             try {
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 5, currentBlock + 5 + minCampPeriod, formulaParamsData,
-                    [1, 2, 0], '0x', {from: admin}
+                    [1, 2, 0], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -992,13 +992,13 @@ contract('DAOContract', function(accounts) {
             // valid option values
             await daoContract.submitNewCampaign(
                 0, currentBlock + 7, currentBlock + 7 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
             // network fee: option > 100% (BPS)
             try {
                 await daoContract.submitNewCampaign(
                     1, currentBlock + 9, currentBlock + 9 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3, 10001], '0x', {from: admin}
+                    [1, 2, 3, 10001], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -1007,7 +1007,7 @@ contract('DAOContract', function(accounts) {
             try {
                 await daoContract.submitNewCampaign(
                     1, currentBlock + 11, currentBlock + 11 + minCampPeriod, formulaParamsData,
-                    [1, 10010, 2, 3], '0x', {from: admin}
+                    [1, 10010, 2, 3], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -1015,13 +1015,13 @@ contract('DAOContract', function(accounts) {
             }
             await daoContract.submitNewCampaign(
                 1, currentBlock + 13, currentBlock + 13 + minCampPeriod, formulaParamsData,
-                [1, 10000, 2, 3], '0x', {from: admin}
+                [1, 10000, 2, 3], '0x', {from: campCreator}
             );
             // brr campaign: reward + rebate > 100%
             try {
                 await daoContract.submitNewCampaign(
                     2, currentBlock + 15, currentBlock + 15 + minCampPeriod, formulaParamsData,
-                    [1, getDataFromRebateAndReward(100, 10001 - 100), 2, 3], '0x', {from: admin}
+                    [1, getDataFromRebateAndReward(100, 10001 - 100), 2, 3], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -1030,7 +1030,7 @@ contract('DAOContract', function(accounts) {
             try {
                 await daoContract.submitNewCampaign(
                     2, currentBlock + 17, currentBlock + 17 + minCampPeriod, formulaParamsData,
-                    [1, 2, getDataFromRebateAndReward(20, 10000)], '0x', {from: admin}
+                    [1, 2, getDataFromRebateAndReward(20, 10000)], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -1038,7 +1038,7 @@ contract('DAOContract', function(accounts) {
             }
             await daoContract.submitNewCampaign(
                 2, currentBlock + 19, currentBlock + 19 + minCampPeriod, formulaParamsData,
-                [1, getDataFromRebateAndReward(2500, 2500), 2, 3], '0x', {from: admin}
+                [1, getDataFromRebateAndReward(2500, 2500), 2, 3], '0x', {from: campCreator}
             );
         });
 
@@ -1047,7 +1047,7 @@ contract('DAOContract', function(accounts) {
             try {
                 await daoContract.submitNewCampaign(
                     3, currentBlock + 3, currentBlock + 3 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3], '0x', {from: admin}
+                    [1, 2, 3], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -1056,7 +1056,7 @@ contract('DAOContract', function(accounts) {
             try {
                 await daoContract.submitNewCampaign(
                     5, currentBlock + 5, currentBlock + 5 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3], '0x', {from: admin}
+                    [1, 2, 3], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -1064,15 +1064,15 @@ contract('DAOContract', function(accounts) {
             }
             await daoContract.submitNewCampaign(
                 0, currentBlock + 7, currentBlock + 7 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 1, currentBlock + 9, currentBlock + 9 + minCampPeriod, formulaParamsData,
-                [1, 10000, 2, 3], '0x', {from: admin}
+                [1, 10000, 2, 3], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 2, currentBlock + 11, currentBlock + 11 + minCampPeriod, formulaParamsData,
-                [1, getDataFromRebateAndReward(2500, 2500), 2, 3], '0x', {from: admin}
+                [1, getDataFromRebateAndReward(2500, 2500), 2, 3], '0x', {from: campCreator}
             );
         });
 
@@ -1083,7 +1083,7 @@ contract('DAOContract', function(accounts) {
             try {
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 3, currentBlock + 3 + minCampPeriod, formula,
-                    [1, 2, 3], '0x', {from: admin}
+                    [1, 2, 3], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -1092,12 +1092,12 @@ contract('DAOContract', function(accounts) {
             formula = getFormulaParamsData(precision.sub(new BN(100)), cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 0, currentBlock + 5, currentBlock + 5 + minCampPeriod, formula,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
             formula = getFormulaParamsData(precision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 0, currentBlock + 7, currentBlock + 7 + minCampPeriod, formula,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
         });
 
@@ -1105,12 +1105,12 @@ contract('DAOContract', function(accounts) {
             await deployContracts(30, currentBlock + 20, 4);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 4, currentBlock + 4 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
             try {
                 await daoContract.submitNewCampaign(
                     1, currentBlock + 6, currentBlock + 6 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3], '0x', {from: admin}
+                    [1, 2, 3], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -1118,11 +1118,11 @@ contract('DAOContract', function(accounts) {
             }
             await daoContract.submitNewCampaign(
                 0, currentBlock + 8, currentBlock + 8 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 2, currentBlock + 10, currentBlock + 10 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             // jump to epoch 1
@@ -1130,12 +1130,12 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 4, currentBlock + 4 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
             try {
                 await daoContract.submitNewCampaign(
                     1, currentBlock + 6, currentBlock + 6 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3], '0x', {from: admin}
+                    [1, 2, 3], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -1143,7 +1143,7 @@ contract('DAOContract', function(accounts) {
             }
             await daoContract.submitNewCampaign(
                 0, currentBlock + 8, currentBlock + 8 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
         });
 
@@ -1151,12 +1151,12 @@ contract('DAOContract', function(accounts) {
             await deployContracts(30, currentBlock + 20, 4);
             await daoContract.submitNewCampaign(
                 2, currentBlock + 4, currentBlock + 4 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
             try {
                 await daoContract.submitNewCampaign(
                     2, currentBlock + 6, currentBlock + 6 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3], '0x', {from: admin}
+                    [1, 2, 3], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -1164,11 +1164,11 @@ contract('DAOContract', function(accounts) {
             }
             await daoContract.submitNewCampaign(
                 0, currentBlock + 8, currentBlock + 8 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 1, currentBlock + 10, currentBlock + 10 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             // jump to epoch 1
@@ -1176,12 +1176,12 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 4, currentBlock + 4 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
             try {
                 await daoContract.submitNewCampaign(
                     2, currentBlock + 6, currentBlock + 6 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3], '0x', {from: admin}
+                    [1, 2, 3], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -1189,7 +1189,7 @@ contract('DAOContract', function(accounts) {
             }
             await daoContract.submitNewCampaign(
                 0, currentBlock + 8, currentBlock + 8 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
         });
 
@@ -1200,31 +1200,31 @@ contract('DAOContract', function(accounts) {
             for(let id = 0; id < maxCamps; id++) {
                 await daoContract.submitNewCampaign(
                     id <= 2 ? id : 0, currentBlock + 40, currentBlock + 40 + minCampPeriod,
-                    formulaParamsData, [1, 2, 3], '0x', {from: admin}
+                    formulaParamsData, [1, 2, 3], '0x', {from: campCreator}
                 );
             }
 
             try {
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 40, currentBlock + 40 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3], '0x', {from: admin}
+                    [1, 2, 3], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
 
-            await daoContract.cancelCampaign(1, {from: admin});
+            await daoContract.cancelCampaign(1, {from: campCreator});
 
             await daoContract.submitNewCampaign(
                 0, currentBlock + 40, currentBlock + 40 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
 
             try {
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 40, currentBlock + 40 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3], '0x', {from: admin}
+                    [1, 2, 3], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
@@ -1237,7 +1237,7 @@ contract('DAOContract', function(accounts) {
         it("Test cancel campaign should revert campaign is not existed", async function() {
             await deployContracts(10, currentBlock + 20, 2);
             try {
-                await daoContract.cancelCampaign(1, {from: admin});
+                await daoContract.cancelCampaign(1, {from: campCreator});
                 assert(false, "throw was expected in line above.")
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -1245,23 +1245,23 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 5, currentBlock + 5 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
             try {
-                await daoContract.cancelCampaign(2, {from: admin});
+                await daoContract.cancelCampaign(2, {from: campCreator});
                 assert(false, "throw was expected in line above.")
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
-            await daoContract.cancelCampaign(1, {from: admin});
+            await daoContract.cancelCampaign(1, {from: campCreator});
         });
 
-        it("Test cancel campaign should revert sender is not admin", async function() {
+        it("Test cancel campaign should revert sender is not campCreator", async function() {
             await deployContracts(10, currentBlock + 20, 2);
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 5, currentBlock + 5 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
             try {
                 await daoContract.cancelCampaign(1, {from: mike});
@@ -1269,7 +1269,7 @@ contract('DAOContract', function(accounts) {
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
-            await daoContract.cancelCampaign(1, {from: admin});
+            await daoContract.cancelCampaign(1, {from: campCreator});
         })
 
         it("Test cancel campaign should revert camp already started or ended", async function() {
@@ -1277,12 +1277,12 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod, formulaParamsData,
-                [1, 2, 3], '0x', {from: admin}
+                [1, 2, 3], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
             // camp already running, can not cancel
             try {
-                await daoContract.cancelCampaign(1, {from: admin});
+                await daoContract.cancelCampaign(1, {from: campCreator});
                 assert(false, "throw was expected in line above.")
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -1290,7 +1290,7 @@ contract('DAOContract', function(accounts) {
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 10);
             // camp already ended, cancel cancel
             try {
-                await daoContract.cancelCampaign(1, {from: admin});
+                await daoContract.cancelCampaign(1, {from: campCreator});
                 assert(false, "throw was expected in line above.")
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -1306,19 +1306,19 @@ contract('DAOContract', function(accounts) {
                 currentBlock = await Helper.getCurrentBlock();
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 10, currentBlock + 10 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3], '0x', {from: admin}
+                    [1, 2, 3], '0x', {from: campCreator}
                 );
                 await daoContract.submitNewCampaign(
                     1, currentBlock + 10, currentBlock + 10 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3], '0x', {from: admin}
+                    [1, 2, 3], '0x', {from: campCreator}
                 );
                 await daoContract.submitNewCampaign(
                     2, currentBlock + 10, currentBlock + 10 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3], '0x', {from: admin}
+                    [1, 2, 3], '0x', {from: campCreator}
                 );
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 10, currentBlock + 10 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3], '0x', {from: admin}
+                    [1, 2, 3], '0x', {from: campCreator}
                 );
 
                 campCounts += 4;
@@ -1334,7 +1334,7 @@ contract('DAOContract', function(accounts) {
                 Helper.assertEqual(listCamps[3], campCounts, "camp id for this epoch is incorrect");
 
                 // cancel last created camp
-                let tx = await daoContract.cancelCampaign(campCounts, {from: admin});
+                let tx = await daoContract.cancelCampaign(campCounts, {from: campCreator});
                 logInfo("Cancel campaign: 4 camps, cancel last one, gas used: " + tx.receipt.cumulativeGasUsed);
 
                 listCamps = await daoContract.getListCampIDs(id);
@@ -1360,7 +1360,7 @@ contract('DAOContract', function(accounts) {
                 Helper.assertEqual(await daoContract.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
 
                 // cancel middle camp
-                tx = await daoContract.cancelCampaign(campCounts - 3, {from: admin});
+                tx = await daoContract.cancelCampaign(campCounts - 3, {from: campCreator});
                 logInfo("Cancel campaign: 3 camps, cancel first one, gas used: " + tx.receipt.cumulativeGasUsed);
 
                 listCamps = await daoContract.getListCampIDs(id);
@@ -1386,7 +1386,7 @@ contract('DAOContract', function(accounts) {
 
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 10, currentBlock + 10 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3], '0x', {from: admin}
+                    [1, 2, 3], '0x', {from: campCreator}
                 );
 
                 campCounts++;
@@ -1415,7 +1415,7 @@ contract('DAOContract', function(accounts) {
             let formula = formulaParamsData;
             await daoContract.submitNewCampaign(
                 1, currentBlock + 15, currentBlock + 15 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: admin}
+                formula, [1, 2, 3], link, {from: campCreator}
             );
 
             Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp id should be correct");
@@ -1432,7 +1432,7 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(campData[6][1], 2, "camp details should be correct");
             Helper.assertEqual(campData[6][2], 3, "camp details should be correct");
 
-            let tx = await daoContract.cancelCampaign(1, {from: admin});
+            let tx = await daoContract.cancelCampaign(1, {from: campCreator});
             logInfo("Cancel campaign: cancel network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
 
             campData = await daoContract.getCampaignDetails(1);
@@ -1448,12 +1448,12 @@ contract('DAOContract', function(accounts) {
             // create a general camp
             await daoContract.submitNewCampaign(
                 0, currentBlock + 20, currentBlock + 20 + minCampPeriod,
-                formula, [25, 50], link, {from: admin}
+                formula, [25, 50], link, {from: campCreator}
             );
             // create brr camp
             await daoContract.submitNewCampaign(
                 2, currentBlock + 20, currentBlock + 20 + minCampPeriod,
-                formula, [25, 50], link, {from: admin}
+                formula, [25, 50], link, {from: campCreator}
             );
             Helper.assertEqual(0, await daoContract.networkFeeCamp(0), "network fee camp id should be deleted");
 
@@ -1462,7 +1462,7 @@ contract('DAOContract', function(accounts) {
             await kncToken.burn(mulPrecision(100));
             await daoContract.submitNewCampaign(
                 1, currentBlock + 20, currentBlock + 20 + minCampPeriod,
-                formula, [25, 50], link, {from: admin}
+                formula, [25, 50], link, {from: campCreator}
             );
 
             Helper.assertEqual(4, await daoContract.networkFeeCamp(0), "network fee camp id should be correct");
@@ -1488,7 +1488,7 @@ contract('DAOContract', function(accounts) {
             let formula = formulaParamsData;
             await daoContract.submitNewCampaign(
                 2, currentBlock + 15, currentBlock + 15 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: admin}
+                formula, [1, 2, 3], link, {from: campCreator}
             );
 
             Helper.assertEqual(1, await daoContract.brrCampaign(0), "brr camp id should be correct");
@@ -1505,7 +1505,7 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(campData[6][1], 2, "camp details should be correct");
             Helper.assertEqual(campData[6][2], 3, "camp details should be correct");
 
-            let tx = await daoContract.cancelCampaign(1, {from: admin});
+            let tx = await daoContract.cancelCampaign(1, {from: campCreator});
             logInfo("Cancel campaign: cancel brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
 
             campData = await daoContract.getCampaignDetails(1);
@@ -1521,12 +1521,12 @@ contract('DAOContract', function(accounts) {
             // create a general camp
             await daoContract.submitNewCampaign(
                 0, currentBlock + 20, currentBlock + 20 + minCampPeriod,
-                formula, [25, 50], link, {from: admin}
+                formula, [25, 50], link, {from: campCreator}
             );
             // create network fee camp
             await daoContract.submitNewCampaign(
                 1, currentBlock + 20, currentBlock + 20 + minCampPeriod,
-                formula, [25, 50], link, {from: admin}
+                formula, [25, 50], link, {from: campCreator}
             );
             Helper.assertEqual(0, await daoContract.brrCampaign(0), "brr camp id should be deleted");
 
@@ -1535,7 +1535,7 @@ contract('DAOContract', function(accounts) {
             await kncToken.burn(mulPrecision(100));
             await daoContract.submitNewCampaign(
                 2, currentBlock + 20, currentBlock + 20 + minCampPeriod,
-                formula, [25, 50], link, {from: admin}
+                formula, [25, 50], link, {from: campCreator}
             );
 
             Helper.assertEqual(4, await daoContract.brrCampaign(0), "brr camp id should be correct");
@@ -1564,7 +1564,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -1671,7 +1671,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -1728,12 +1728,12 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 4, currentBlock + 4 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -1893,7 +1893,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -2035,7 +2035,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -2098,7 +2098,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -2139,7 +2139,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -2175,13 +2175,13 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -2308,13 +2308,13 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -2377,7 +2377,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -2411,12 +2411,12 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await stakingContract.withdraw(mulPrecision(100), {from: mike});
@@ -2491,7 +2491,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3);
@@ -2511,7 +2511,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 5, currentBlock + 5 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             // camp not started yet
@@ -2544,7 +2544,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 5, currentBlock + 5 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3);
@@ -2586,11 +2586,11 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -2671,11 +2671,11 @@ contract('DAOContract', function(accounts) {
                 currentBlock = await Helper.getCurrentBlock();
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    formulaParamsData, [25, 50], '0x', {from: admin}
+                    formulaParamsData, [25, 50], '0x', {from: campCreator}
                 );
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                    formulaParamsData, [25, 50], '0x', {from: admin}
+                    formulaParamsData, [25, 50], '0x', {from: campCreator}
                 );
                 campCount += 2;
 
@@ -2759,7 +2759,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -2825,7 +2825,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -2882,7 +2882,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -2944,7 +2944,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: poolMaster});
@@ -2996,7 +2996,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -3034,7 +3034,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -3069,7 +3069,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -3103,7 +3103,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3148,7 +3148,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3191,7 +3191,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3242,7 +3242,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3301,7 +3301,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3360,17 +3360,17 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3448,7 +3448,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -3458,12 +3458,12 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: admin}
+                formulaParamsData, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(2, 1, {from: mike});
@@ -3513,7 +3513,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -3541,12 +3541,12 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await stakingContract.withdraw(mulPrecision(100), {from: mike});
@@ -3596,7 +3596,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3633,7 +3633,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3671,7 +3671,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3715,7 +3715,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3756,7 +3756,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: admin}
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(2, 1, {from: poolMaster2});
@@ -3799,7 +3799,7 @@ contract('DAOContract', function(accounts) {
             // min percentage: 0%, c = 0, t = 0
             await daoContract.submitNewCampaign(
                 1, currentBlock + 4, currentBlock + 4 + minCampPeriod,
-                0, [25, 50, 100], '0x', {from: admin}
+                0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             // not started yet
@@ -3835,7 +3835,7 @@ contract('DAOContract', function(accounts) {
             // min percentage: 0%, c = 0, t = 0
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [25, 50, 100], '0x', {from: admin}
+                0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -3877,7 +3877,7 @@ contract('DAOContract', function(accounts) {
             // min percentage: 0%, c = 0, t = 0
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [25, 50, 100], '0x', {from: admin}
+                0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             // delay to end of this epocch
@@ -3917,7 +3917,7 @@ contract('DAOContract', function(accounts) {
             // min percentage: 0%, c = 0, t = 0
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [25, 50, 100], '0x', {from: admin}
+                0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             // delay to end of this epocch
@@ -3959,7 +3959,7 @@ contract('DAOContract', function(accounts) {
             // min percentage: 0%, c = 0, t = 0
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [25, 50, 100], '0x', {from: admin}
+                0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -3998,7 +3998,7 @@ contract('DAOContract', function(accounts) {
             // min percentage: 0%, c = 0, t = 0
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [25, 50, 100], '0x', {from: admin}
+                formula, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -4034,7 +4034,7 @@ contract('DAOContract', function(accounts) {
             // min percentage: 0%, c = 0, t = 0
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [25, 50, 100], '0x', {from: admin}
+                0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 2, {from: mike});
@@ -4066,7 +4066,7 @@ contract('DAOContract', function(accounts) {
             let formula = getFormulaParamsData(precision.div(new BN(5)), 0, 0);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [25, 50, 100], '0x', {from: admin}
+                formula, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 3, {from: mike});
@@ -4106,7 +4106,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [25, 50, 100], '0x', {from: admin}
+                formula, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 3, {from: mike});
@@ -4140,7 +4140,7 @@ contract('DAOContract', function(accounts) {
             let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: admin}
+                formula, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 2, {from: mike});
@@ -4177,7 +4177,7 @@ contract('DAOContract', function(accounts) {
             let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: admin}
+                formula, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 2, {from: mike});
@@ -4215,7 +4215,7 @@ contract('DAOContract', function(accounts) {
             let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: admin}
+                formula, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -4253,7 +4253,7 @@ contract('DAOContract', function(accounts) {
             let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: admin}
+                formula, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 3, {from: mike});
@@ -4290,7 +4290,7 @@ contract('DAOContract', function(accounts) {
             let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: admin}
+                formula, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -4327,7 +4327,7 @@ contract('DAOContract', function(accounts) {
             let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: admin}
+                formula, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 2, {from: mike});
@@ -4346,7 +4346,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: admin}
+                formula, [32, 26, 44], '0x', {from: campCreator}
             );
 
             // one person voted differently
@@ -4425,14 +4425,14 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: admin}
+                0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(1, 2, {from: mike});
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [22, 23, 24], '0x', {from: admin}
+                0, [22, 23, 24], '0x', {from: campCreator}
             );
             await daoContract.vote(2, 3, {from: mike});
 
@@ -4460,7 +4460,7 @@ contract('DAOContract', function(accounts) {
             formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 50, 44], '0x', {from: admin}
+                formula, [32, 50, 44], '0x', {from: campCreator}
             );
 
             // option 2 should win
@@ -4494,7 +4494,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: admin}
+                0, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 2, {from: mike});
@@ -4525,7 +4525,7 @@ contract('DAOContract', function(accounts) {
             let formula = getFormulaParamsData(precision.mul(new BN(41)).div(new BN(100)), 0, 0);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: admin}
+                formula, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(2, 1, {from: mike});
@@ -4553,7 +4553,7 @@ contract('DAOContract', function(accounts) {
             formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: admin}
+                formula, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(3, 1, {from: mike});
@@ -4581,7 +4581,7 @@ contract('DAOContract', function(accounts) {
             formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: admin}
+                formula, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(4, 1, {from: mike});
@@ -4613,7 +4613,7 @@ contract('DAOContract', function(accounts) {
             formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: admin}
+                formula, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(5, 1, {from: mike});
@@ -4660,7 +4660,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: admin}
+                0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(1, 1, {from: mike});
             await daoContract.vote(1, 1, {from: loi});
@@ -4679,7 +4679,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: admin}
+                0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(2, 1, {from: mike});
             await daoContract.vote(2, 2, {from: loi});
@@ -4703,7 +4703,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 1], '0x', {from: admin}
+                0, [32, 26, 1], '0x', {from: campCreator}
             );
             await daoContract.vote(3, 3, {from: mike});
             await daoContract.vote(3, 3, {from: loi});
@@ -4808,14 +4808,14 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: admin}
+                0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(1, 2, {from: mike});
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [22, 23, 24], '0x', {from: admin}
+                0, [22, 23, 24], '0x', {from: campCreator}
             );
             await daoContract.vote(2, 3, {from: mike});
 
@@ -4853,7 +4853,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, brrData, 44], '0x', {from: admin}
+                formula, [32, brrData, 44], '0x', {from: campCreator}
             );
 
             // option 2 should win
@@ -4888,7 +4888,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: admin}
+                0, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 2, {from: mike});
@@ -4919,7 +4919,7 @@ contract('DAOContract', function(accounts) {
             let formula = getFormulaParamsData(precision.mul(new BN(41)).div(new BN(100)), 0, 0);
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: admin}
+                formula, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(2, 1, {from: mike});
@@ -4948,7 +4948,7 @@ contract('DAOContract', function(accounts) {
             formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: admin}
+                formula, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(3, 1, {from: mike});
@@ -4977,7 +4977,7 @@ contract('DAOContract', function(accounts) {
             formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: admin}
+                formula, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(4, 1, {from: mike});
@@ -5003,7 +5003,7 @@ contract('DAOContract', function(accounts) {
             formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: admin}
+                formula, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(5, 1, {from: mike});
@@ -5047,7 +5047,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: admin}
+                0, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -5081,7 +5081,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: admin}
+                0, [32, 26, 44], '0x', {from: campCreator}
             );
 
             // delay to epoch 2
@@ -5094,7 +5094,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: admin}
+                0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(2, 1, {from: poolMaster});
 
@@ -5108,7 +5108,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: admin}
+                0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(3, 1, {from: mike});
             await stakingContract.withdraw(initMikeStake, {from: mike});
@@ -5125,7 +5125,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: admin}
+                0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(4, 1, {from: poolMaster});
             await stakingContract.withdraw(initLoiStake, {from: loi});
@@ -5140,7 +5140,7 @@ contract('DAOContract', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: admin}
+                0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(5, 1, {from: victor});
 
@@ -5171,49 +5171,49 @@ contract('DAOContract', function(accounts) {
             Helper.assertEqual(await daoContract.MIN_CAMP_DURATION(), minCampPeriod, "min camp period is wrong");
             Helper.assertEqual(await daoContract.latestNetworkFeeResult(), defaultNetworkFee, "default network fee is wrong");
             Helper.assertEqual(await daoContract.latestBrrResult(), defaultBrrData, "default brr data is wrong");
-            Helper.assertEqual(await daoContract.admin(), admin, "admin is wrong");
+            Helper.assertEqual(await daoContract.campaignCreator(), campCreator, "campaignCreator is wrong");
             Helper.assertEqual(await daoContract.numberCampaigns(), 0, "number campaign is wrong");
         });
 
         it("Test constructor should revert staking & dao have different epoch period or start block", async function() {
             // different epoch period
             try {
-                let stakingContract = await StakingContract.new(kncToken.address, 10, currentBlock + 10, admin);
+                let stakingContract = await StakingContract.new(kncToken.address, 10, currentBlock + 10, campCreator);
                 await DAOContract.new(
                     9, currentBlock + 10,
                     stakingContract.address,  feeHandler.address, kncToken.address,
                     maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
-                    admin
+                    campCreator
                 )
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "constructor: staking and dao have different epoch periods"),
+                    Helper.isRevertErrorMessageContains(e, "ctor: different epoch period"),
                     "unexpected error message: " + e
                 );
             }
             // different start block
             try {
-                let stakingContract = await StakingContract.new(kncToken.address, 10, currentBlock + 10, admin);
+                let stakingContract = await StakingContract.new(kncToken.address, 10, currentBlock + 10, campCreator);
                 await DAOContract.new(
                     10, currentBlock + 11,
                     stakingContract.address,  feeHandler.address, kncToken.address,
                     maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
-                    admin
+                    campCreator
                 )
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "constructor: staking and dao have different start block"),
+                    Helper.isRevertErrorMessageContains(e, "ctor: different start block"),
                     "unexpected error message: " + e
                 );
             }
-            let stakingContract = await StakingContract.new(kncToken.address, 10, currentBlock + 10, admin);
+            let stakingContract = await StakingContract.new(kncToken.address, 10, currentBlock + 10, campCreator);
             await DAOContract.new(
                 10, currentBlock + 10,
                 stakingContract.address,  feeHandler.address, kncToken.address,
                 maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
-                admin
+                campCreator
             )
         });
     });
@@ -5529,6 +5529,135 @@ contract('DAOContract', function(accounts) {
 
             await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
         });
+    });
+
+    describe("#Change campaign creator", () => {
+        it("Test transfer and claim camp creator role", async function() {
+            await deployContracts(10, currentBlock + 20, 5);
+            let newCampCreator = accounts[9];
+
+            // can not transfer from non camp creator
+            try {
+                await daoContract.transferCampaignCreatorQuickly(newCampCreator, {from: mike});
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            await daoContract.transferCampaignCreatorQuickly(newCampCreator, {from: campCreator});
+            Helper.assertEqual(newCampCreator, await daoContract.campaignCreator(), "campaign creator address is wrong");
+
+            // can not transfer from non camp creator
+            try {
+                await daoContract.transferCampaignCreator(campCreator, {from: campCreator});
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            await daoContract.transferCampaignCreator(campCreator, {from: newCampCreator});
+            Helper.assertEqual(campCreator, await daoContract.pendingCampCreator(), "pending campaign creator address is wrong");
+            Helper.assertEqual(newCampCreator, await daoContract.campaignCreator(), "campaign creator address is wrong");
+
+            // can not claim camp creator from non pending camp creator
+            try {
+                await daoContract.claimCampaignCreator({from: mike});
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            await daoContract.claimCampaignCreator({from: campCreator});
+            Helper.assertEqual(campCreator, await daoContract.campaignCreator(), "campaign creator address is wrong");
+            Helper.assertEqual(zeroAddress, await daoContract.pendingCampCreator(), "pending campaign creator address is wrong");
+
+            // can not transfer to address 0
+            try {
+                await daoContract.transferCampaignCreator(zeroAddress, {from: campCreator});
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            // can not transfer quickly to address 0
+            try {
+                await daoContract.transferCampaignCreatorQuickly(zeroAddress, {from: campCreator});
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+        });
+
+        it("Test should submit new campaign after transfer admin role", async function() {
+            await deployContracts(10, currentBlock + 50, 5);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
+                0, [32, 26, 44], '0x', {from: campCreator}
+            );
+
+            let newCampCreator = accounts[9];
+
+            // should not be able to submit campaign
+            try {
+                await daoContract.submitNewCampaign(
+                    0, currentBlock + 10, currentBlock + 10 + minCampPeriod,
+                    0, [32, 26, 44], '0x', {from: newCampCreator}
+                );
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            await daoContract.transferCampaignCreatorQuickly(newCampCreator, {from: campCreator});
+
+            // should not be able to submit campaign with old camp creator
+            try {
+                await daoContract.submitNewCampaign(
+                    0, currentBlock + 10, currentBlock + 10 + minCampPeriod,
+                    0, [32, 26, 44], '0x', {from: campCreator}
+                );
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 10, currentBlock + 10 + minCampPeriod,
+                0, [32, 26, 44], '0x', {from: newCampCreator}
+            );
+        })
+
+        it("Test should cancel campaign after transfer admin role", async function() {
+            await deployContracts(10, currentBlock + 50, 5);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
+                0, [32, 26, 44], '0x', {from: campCreator}
+            );
+
+            let newCampCreator = accounts[9];
+
+            // should not be able to cancel campaign
+            try {
+                await daoContract.cancelCampaign(1, {from: newCampCreator});
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            await daoContract.transferCampaignCreatorQuickly(newCampCreator, {from: campCreator});
+
+            // should not be able to cancel campaign with old camp creator
+            try {
+                await daoContract.cancelCampaign(1, {from: campCreator});
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            await daoContract.cancelCampaign(1, {from: newCampCreator});
+        })
     });
 });
 

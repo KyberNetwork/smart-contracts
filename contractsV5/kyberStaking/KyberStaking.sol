@@ -8,6 +8,7 @@ import "../kyberDAO/IKyberDAO.sol";
 import "../EpochUtils.sol";
 
 
+// This contract is using SafeMath for uint, which is inherited from EpochUtils
 contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
     // amount KNC staked of an address for each epoch
@@ -30,26 +31,30 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
     IERC20 public kncToken;
     IKyberDAO public daoContract;
-    address public admin;
+    address public daoContractSetter;
 
-    constructor(address _kncToken, uint _epochPeriod, uint _startBlock, address _admin) public {
+    constructor(address _kncToken, uint _epochPeriod, uint _startBlock, address _daoContractSetter) public {
         require(_epochPeriod > 0, "constructor: epoch duration must be positive");
         require(_startBlock >= block.number, "constructor: start block should not be in the past");
         require(_kncToken != address(0), "constructor: KNC address is missing");
-        require(_admin != address(0), "constructor: admin address is missing");
+        require(_daoContractSetter != address(0), "constructor: daoContractSetter address is missing");
 
         EPOCH_PERIOD = _epochPeriod;
         START_BLOCK = _startBlock;
         kncToken = IERC20(_kncToken);
-        admin = _admin;
+        daoContractSetter = _daoContractSetter;
+    }
+
+    modifier onlyDAOContractSetter() {
+        require(msg.sender == daoContractSetter, "sender is not daoContractSetter");
+        _;
     }
 
     event DAOAddressSet(address _daoAddress);
 
-    event AdminRemoved();
+    event DAOContractSetterRemoved();
 
-    function updateDAOAddressAndRemoveAdmin(address _daoAddress) public {
-        require(msg.sender == admin, "updateDAO: sender address is not admin");
+    function updateDAOAddressAndRemoveSetter(address _daoAddress) public onlyDAOContractSetter {
         require(_daoAddress != address(0), "updateDAO: DAO address is missing");
 
         daoContract = IKyberDAO(_daoAddress);
@@ -59,9 +64,9 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
         emit DAOAddressSet(_daoAddress);
 
-        // reset admin
-        admin = address(0);
-        emit AdminRemoved();
+        // reset dao contract setter
+        daoContractSetter = address(0);
+        emit DAOContractSetterRemoved();
     }
 
     event Delegated(address staker, address dAddr, bool isDelegated);
@@ -170,7 +175,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
             stakes[curEpoch][staker] = newStakes;
             // call DAO to reduce reward, if staker has delegated, then pass his delegated address
             if (address(daoContract) != address(0)) {
-                daoContract.handleWithdrawal(dAddr, penaltyAmount);
+                require(daoContract.handleWithdrawal(dAddr, penaltyAmount), "withdraw: dao returns false for handle withdrawal");
             }
         }
         dAddr = delegatedAddress[curEpoch + 1][staker];
