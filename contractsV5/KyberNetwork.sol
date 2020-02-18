@@ -381,7 +381,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     struct TradingReserves {
         IKyberReserve[] addresses;
-        uint[] rates; // rate per chosen reserve for token to eth
+        bytes8[] ids;
+        uint[] rates; // rate per chosen reserve
         bool[] isFeePaying;
         uint[] splitValuesBps;
         uint decimals;
@@ -443,7 +444,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint[] memory splitValuesBps;
         bool[] memory isFeePaying;
         
-        (results, reserveAddresses, rates, splitValuesBps, isFeePaying) = 
+        (results, reserveAddresses, rates, splitValuesBps, isFeePaying, tData.tokenToEth.ids, tData.ethToToken.ids) = 
             tradeLogic.calcRatesAndAmounts(src, dest, srcAmount, fees, hint);
         
         unpackResults(results, reserveAddresses, rates, splitValuesBps, isFeePaying, tData);
@@ -610,7 +611,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     event KyberTrade(address indexed trader, IERC20 src, IERC20 dest, uint srcAmount, uint dstAmount,
         address destAddress, uint ethWeiValue, uint networkFeeWei, uint customPlatformFeeWei, 
-        IKyberReserve[] e2tReserves, IKyberReserve[] t2eReserves);
+        bytes8[] t2eIds, bytes8[] e2tIds);
 
     /* solhint-disable function-max-lines */
     //  Most of the lines here are functions calls spread over multiple lines. We find this function readable enough
@@ -683,8 +684,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             ethWeiValue: tData.tradeWei,
             networkFeeWei: tData.networkFeeWei,
             customPlatformFeeWei: tData.platformFeeWei,
-            e2tReserves: tData.ethToToken.addresses,
-            t2eReserves: tData.tokenToEth.addresses
+            t2eIds: tData.tokenToEth.ids,
+            e2tIds: tData.ethToToken.ids
         });
 
         // printGas("end_tr", 0);

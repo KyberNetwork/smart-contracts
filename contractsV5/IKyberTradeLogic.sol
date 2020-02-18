@@ -45,7 +45,9 @@ interface IKyberTradeLogic {
             IKyberReserve[] memory reserveAddresses,
             uint[] memory rates,
             uint[] memory splitValuesBps,
-            bool[] memory isFeePaying
+            bool[] memory isFeePaying,
+            bytes8[] memory t2eIds,
+            bytes8[] memory e2tIds
         );
 
     function getRatesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount, uint takerFee) external view

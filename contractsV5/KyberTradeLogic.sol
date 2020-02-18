@@ -180,7 +180,9 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             IKyberReserve[] memory reserveAddresses,
             uint[] memory rates,
             uint[] memory splitValuesBps,
-            bool[] memory isFeePaying)
+            bool[] memory isFeePaying,
+            bytes8[] memory t2eIds,
+            bytes8[] memory e2tIds)
     {
         //initialisation
         TradeData memory tradeData;
@@ -397,7 +399,9 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         IKyberReserve[] memory reserveAddresses,
         uint[] memory rates,
         uint[] memory splitValuesBps,
-        bool[] memory isFeePaying
+        bool[] memory isFeePaying,
+        bytes8[] memory t2eIds,
+        bytes8[] memory e2tIds
         )
     {
         // uint start = printGas("pack result Start", 0, Module.LOGIC);
@@ -407,6 +411,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         rates = new uint[](totalNumReserves);
         splitValuesBps = new uint[](totalNumReserves);
         isFeePaying = new bool[](totalNumReserves);
+        t2eIds = new bytes8[](tokenToEthNumReserves);
+        e2tIds = new bytes8[](tradeData.ethToToken.addresses.length);
 
         results = new uint[](uint(ResultIndex.resultLength));
         results[uint(ResultIndex.t2eNumReserves)] = tokenToEthNumReserves;
@@ -426,6 +432,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             rates[i] = tradeData.tokenToEth.rates[i];
             splitValuesBps[i] = tradeData.tokenToEth.splitValuesBps[i];
             isFeePaying[i] = tradeData.tokenToEth.isFeePaying[i];
+            t2eIds[i] = convertAddressToReserveId(address(reserveAddresses[i]));
         }
         
         //then store ETH to token information, but need to offset when accessing tradeData
@@ -434,6 +441,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             rates[i] = tradeData.ethToToken.rates[i - tokenToEthNumReserves];
             splitValuesBps[i] = tradeData.ethToToken.splitValuesBps[i - tokenToEthNumReserves];
             isFeePaying[i] = tradeData.ethToToken.isFeePaying[i - tokenToEthNumReserves];
+            e2tIds[i - tokenToEthNumReserves] = convertAddressToReserveId(address(reserveAddresses[i]));
         }
         // printGas("pack result end", start, Module.LOGIC);
     }
