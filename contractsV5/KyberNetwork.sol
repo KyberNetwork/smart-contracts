@@ -15,6 +15,9 @@ import "./IGasHelper.sol";
 /// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
+    uint  constant PERM_HINT_GET_RATE = 1 << 255; //for backwards compatibility
+    uint  constant DEFAULT_NETWORK_FEE_BPS = 25; //for backwards compatibility
+
     IFeeHandler       internal feeHandler;
     IKyberDAO         internal kyberDAO;
     IKyberTradeLogic  internal tradeLogic;
@@ -24,8 +27,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     uint            maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool            isEnabled = false; // network is enabled
 
-    uint  constant PERM_HINT_GET_RATE = 1 << 255; //for backwards compatibility
-    
     mapping(address=>bool) internal kyberProxyContracts;
     address[] internal kyberProxyArray;
     
@@ -34,7 +35,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     constructor(address _admin) public 
         Withdrawable(_admin)
-    { /* empty body */ }
+    { 
+        takerFeeData = encodeTakerFee(block.number, DEFAULT_NETWORK_FEE_BPS);
+    }
 
     event EtherReceival(address indexed sender, uint amount);
 
@@ -94,7 +97,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     /// @dev add or deletes a reserve to/from the network.
     /// @param reserve The reserve address.
     function addReserve(address reserve, bytes8 reserveId, bool isFeePaying, address wallet) external onlyOperator returns(bool) {
-        //TODO: call TradeLogic.addReserve
         require(tradeLogic.addReserve(reserve, reserveId, isFeePaying));
         reserves.push(IKyberReserve(reserve));
 
@@ -124,6 +126,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             }
         }
         
+        require(reserveIndex != 2 ** 255, "reserve ?");
+
         reserves[reserveIndex] = reserves[reserves.length - 1];
         reserves.length--;
         
@@ -610,7 +614,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     event KyberTrade(address indexed trader, IERC20 src, IERC20 dest, uint srcAmount, uint dstAmount,
         address destAddress, uint ethWeiValue, uint networkFeeWei, uint customPlatformFeeWei, 
-        IKyberReserve[] e2tReserves, IKyberReserve[] t2eReserves);
+        IKyberReserve[] e2tReserves, IKyberReserve[] t2eReserves, bytes hint);
 
     /* solhint-disable function-max-lines */
     //  Most of the lines here are functions calls spread over multiple lines. We find this function readable enough
@@ -672,7 +676,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 // destAmount = printGas("trade part", destAmount, Module.NETWORK);
         require(handleFees(tData));
 // destAmount = printGas("handle fees part", destAmount, Module.NETWORK);
-        // todo: splits to trade event?
         emit KyberTrade({
             trader: tData.input.trader,
             src: tData.input.src,
@@ -684,7 +687,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             networkFeeWei: tData.networkFeeWei,
             customPlatformFeeWei: tData.platformFeeWei,
             e2tReserves: tData.ethToToken.addresses,
-            t2eReserves: tData.tokenToEth.addresses
+            t2eReserves: tData.tokenToEth.addresses,
+            hint: hint
         });
 
         // printGas("end_tr", 0);
@@ -809,8 +813,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         (takerFeeBps, expiryBlock) = decodeTakerFee(takerFeeData);
 
-        if (expiryBlock <= block.number) {
-            (takerFeeBps, expiryBlock) = kyberDAO.getLatestNetworkFeeData();
+        if (expiryBlock <= block.number && kyberDAO != IKyberDAO(0)) {
+            (takerFeeBps, expiryBlock) = kyberDAO.getLatestNetworkFeeDataWithCache();
             takerFeeData = encodeTakerFee(expiryBlock, takerFeeBps);
         }
     }
