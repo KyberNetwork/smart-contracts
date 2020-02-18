@@ -164,7 +164,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         uint networkFeeWei;
         uint platformFeeWei;
 
-        uint[] fees;
+        uint takerFeeBps;
+        uint platformFeeBps;
         
         uint numFeePayingReserves;
         uint feePayingReservesBps; // what part of this trade is fee paying. for token to token - up to 200%
@@ -174,7 +175,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         uint actualDestAmount; // all fees
     }
 
-    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, uint[] calldata fees, bytes calldata hint)
+    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, uint[] calldata info, bytes calldata hint)
         external view returns (
             uint[] memory results,
             IKyberReserve[] memory reserveAddresses,
@@ -186,10 +187,12 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
     {
         //initialisation
         TradeData memory tradeData;
-        tradeData.tokenToEth.decimals = getDecimals(src);
-        tradeData.ethToToken.decimals = getDecimals(dest);
+        tradeData.tokenToEth.decimals = info[uint8(IKyberTradeLogic.InfoIndex.srcDecimals)];
+        tradeData.ethToToken.decimals = info[uint8(IKyberTradeLogic.InfoIndex.destDecimals)];
+        tradeData.takerFeeBps = info[uint8(IKyberTradeLogic.InfoIndex.takerFeeBps)];
+        tradeData.platformFeeBps = info[uint8(IKyberTradeLogic.InfoIndex.platformFeeBps)];
 
-        parseTradeDataHint(src, dest, fees, tradeData, hint);
+        parseTradeDataHint(src, dest, tradeData, hint);
 
         calcRatesAndAmountsTokenToEth(src, srcAmount, tradeData);
 
@@ -214,8 +217,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
 
         //fee deduction
         //no fee deduction occurs for masking of ETH -> token reserves, or if no ETH -> token reserve was specified
-        tradeData.networkFeeWei = tradeData.tradeWei * tradeData.fees[uint(FeesIndex.takerFeeBps)] * tradeData.feePayingReservesBps / (BPS * BPS);
-        tradeData.platformFeeWei = tradeData.tradeWei * tradeData.fees[uint(FeesIndex.platformFeeBps)] / BPS;
+        tradeData.networkFeeWei = tradeData.tradeWei * tradeData.takerFeeBps * tradeData.feePayingReservesBps / (BPS * BPS);
+        tradeData.platformFeeWei = tradeData.tradeWei * tradeData.platformFeeBps / BPS;
 
         require(tradeData.tradeWei >= (tradeData.networkFeeWei + tradeData.platformFeeWei), "fees exceed trade amt");
         calcRatesAndAmountsEthToToken(dest, tradeData.tradeWei - tradeData.networkFeeWei - tradeData.platformFeeWei, tradeData);
@@ -223,14 +226,12 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         return packResults(tradeData);
     }
 
-    function parseTradeDataHint(IERC20 src, IERC20 dest, uint[] memory fees, TradeData memory tradeData, bytes memory hint) internal view {
+    function parseTradeDataHint(IERC20 src, IERC20 dest, TradeData memory tradeData, bytes memory hint) internal view {
         
         tradeData.tokenToEth.addresses = (src == ETH_TOKEN_ADDRESS) ?
             new IKyberReserve[](1) : reservesPerTokenSrc[address(src)];
         tradeData.ethToToken.addresses = (dest == ETH_TOKEN_ADDRESS) ?
             new IKyberReserve[](1) :reservesPerTokenDest[address(dest)];
-
-        tradeData.fees = fees;
 
         // PERM is treated as no hint, so we just return
         // relevant arrays will be initialised when storing data
@@ -324,7 +325,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
                 src,
                 ETH_TOKEN_ADDRESS,
                 srcAmount,
-                tradeData.fees[uint(FeesIndex.takerFeeBps)]
+                tradeData.takerFeeBps
             );
             //save into tradeData
             storeTradeReserveData(tradeData.tokenToEth, reserve, rate, isFeePaying);
@@ -460,7 +461,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             rate = calcRateFromQty(actualTradeWei, tradeData.actualDestAmount, ETH_DECIMALS, tradeData.ethToToken.decimals);
         } else {
             //network fee for ETH -> token is in ETH amount
-            uint ethToTokenNetworkFeeWei = tradeData.tradeWei * tradeData.fees[uint(FeesIndex.takerFeeBps)] / BPS;
+            uint ethToTokenNetworkFeeWei = tradeData.tradeWei * tradeData.takerFeeBps / BPS;
             // search best reserve and its corresponding dest amount
             // Have to search with tradeWei minus fees, because that is the actual src amount for ETH -> token trade
             (reserve, rate, isFeePaying) = searchBestRate(

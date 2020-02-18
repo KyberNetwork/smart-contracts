@@ -20,10 +20,12 @@ interface IKyberTradeLogic {
         resultLength
     }
     
-    enum FeesIndex {
+    enum InfoIndex {
+        srcDecimals,
+        destDecimals,
         takerFeeBps,
         platformFeeBps,
-        feesLength
+        infoLength
     }
 
     function negligibleRateDiffBps() external view returns (uint);
@@ -38,7 +40,7 @@ interface IKyberTradeLogic {
         external
         returns (bool);
     
-    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, uint[] calldata fees, bytes calldata hint)
+    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, uint[] calldata info, bytes calldata hint)
         external view
         returns (
             uint[] memory results,

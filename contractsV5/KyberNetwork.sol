@@ -433,11 +433,13 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         internal view
     // function should set all TradeData so it can later be used without any ambiguity
     {
-        //init fees structure
-        uint[] memory fees = new uint[](uint8(IKyberTradeLogic.FeesIndex.feesLength));
-        fees[uint8(IKyberTradeLogic.FeesIndex.takerFeeBps)] = tData.takerFeeBps;
-        fees[uint8(IKyberTradeLogic.FeesIndex.platformFeeBps)] = tData.input.platformFeeBps;
-        
+        //init info structure
+        uint[] memory info = new uint[](uint8(IKyberTradeLogic.InfoIndex.infoLength));
+        info[uint8(IKyberTradeLogic.InfoIndex.takerFeeBps)] = tData.takerFeeBps;
+        info[uint8(IKyberTradeLogic.InfoIndex.platformFeeBps)] = tData.input.platformFeeBps;
+        info[uint8(IKyberTradeLogic.InfoIndex.srcDecimals)] = tData.tokenToEth.decimals;
+        info[uint8(IKyberTradeLogic.InfoIndex.destDecimals)] = tData.ethToToken.decimals;
+
         uint[] memory results;
         IKyberReserve[] memory reserveAddresses;
         uint[] memory rates;
@@ -445,7 +447,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         bool[] memory isFeePaying;
         
         (results, reserveAddresses, rates, splitValuesBps, isFeePaying, tData.tokenToEth.ids, tData.ethToToken.ids) = 
-            tradeLogic.calcRatesAndAmounts(src, dest, srcAmount, fees, hint);
+            tradeLogic.calcRatesAndAmounts(src, dest, srcAmount, info, hint);
         
         unpackResults(results, reserveAddresses, rates, splitValuesBps, isFeePaying, tData);
         tData.rateWithNetworkFee = calcRateFromQty(srcAmount, tData.destAmountWithNetworkFee, tData.tokenToEth.decimals, tData.ethToToken.decimals);
