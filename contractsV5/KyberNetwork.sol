@@ -438,8 +438,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         info[uint8(IKyberTradeLogic.InfoIndex.takerFeeBps)] = tData.takerFeeBps;
         info[uint8(IKyberTradeLogic.InfoIndex.platformFeeBps)] = tData.input.platformFeeBps;
         info[uint8(IKyberTradeLogic.InfoIndex.srcAmount)] = srcAmount;
-        // info[uint8(IKyberTradeLogic.InfoIndex.srcDecimals)] = tData.tokenToEth.decimals;
-        // info[uint8(IKyberTradeLogic.InfoIndex.destDecimals)] = tData.ethToToken.decimals;
 
         uint[] memory results;
         IKyberReserve[] memory reserveAddresses;
