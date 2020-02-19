@@ -14,6 +14,7 @@ require("chai")
 const {BPS, precisionUnits, ethAddress, zeroAddress, emptyHint}  = require("../v4/helper.js")
 
 //// reserve types
+const NULL_ID = '0x0000000000000000';
 const APR_ID = '0xaa000000';
 const BRIDGE_ID  = '0xbb000000';
 const MOCK_ID  = '0x22000000';
@@ -28,7 +29,7 @@ const MASK_OUT_HINTTYPE = 1;
 const SPLIT_HINTTYPE = 2;
 const EMPTY_HINTTYPE = 3;
 
-module.exports = {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, 
+module.exports = {NULL_ID, APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, 
     MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE};
     
     
@@ -266,6 +267,7 @@ async function fetchReservesRatesFromNetwork(networkInstance, reserveInstances, 
 module.exports.getBestReserveAndRate = async function (reserves, src, dest, srcAmount, takerFeeBps) {
     bestReserveData = {
         address: zeroAddress,
+        reserveId: '',
         rateNoFee: new BN(0),
         rateWithNetworkFee: new BN(0),
         isPaying: false
@@ -279,6 +281,7 @@ module.exports.getBestReserveAndRate = async function (reserves, src, dest, srcA
         reserve = reserveArr[i];
         if (reserve.rate.gt(bestReserveData.rateWithNetworkFee)) {
             bestReserveData.address = reserve.address;
+            bestReserveData.reserveId = reserve.reserveId;
             bestReserveData.rateNoFee = reserve.rate;
             bestReserveData.isFeePaying = reserve.isFeePaying;
             bestReserveData.rateWithNetworkFee = (reserve.isFeePaying) ? reserve.rate.mul(BPS.sub(takerFeeBps)).div(BPS) : reserve.rate;
