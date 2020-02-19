@@ -25,7 +25,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     uint            takerFeeData; // data is feeBps and expiry block
     uint            maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
-    bool            isEnabled = false; // network is enabled
+    bool            isEnabled = false; // is network enabled
 
     mapping(address=>bool) internal kyberProxyContracts;
     address[] internal kyberProxyArray;
@@ -33,9 +33,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     IKyberReserve[] internal reserves;
     mapping(address=>address) public reserveRebateWallet;
 
-    constructor(address _admin) public 
-        Withdrawable(_admin)
-    { 
+    constructor(address _admin) public Withdrawable(_admin) { 
         takerFeeData = encodeTakerFee(block.number, DEFAULT_NETWORK_FEE_BPS);
     }
 
