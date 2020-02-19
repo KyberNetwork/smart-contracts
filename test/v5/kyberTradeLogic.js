@@ -1,6 +1,4 @@
 const TestToken = artifacts.require("Token.sol");
-const MockReserve = artifacts.require("MockReserve.sol");
-const MockDao = artifacts.require("MockDAO.sol");
 const TradeLogic = artifacts.require("KyberTradeLogic.sol");
 
 const Helper = require("../v4/helper.js");
@@ -9,8 +7,7 @@ const nwHelper = require("./networkHelper.js");
 const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint} = require("../v4/helper.js");
-const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, 
-    EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE}  = require('./networkHelper.js');
+const {NULL_ID, EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE}  = require('./networkHelper.js');
 
 //global variables
 //////////////////
@@ -65,10 +62,7 @@ let expectedReserveRate;
 let expectedDestAmt;
 let expectedRate;
 let expectedTradeResult;
-let expectedReserves;
-let expectedRates;
-let expectedSplitValuesBps;
-let expectedFeePaying;
+let expectedOutput;
 let actualResult;
 
 contract('KyberTradeLogic', function(accounts) {
@@ -436,6 +430,7 @@ contract('KyberTradeLogic', function(accounts) {
                 // 1000 tokens
                 srcQty = new BN(1000).mul(new BN(10).pow(srcDecimals));
                 expectedReserves = [];
+                expectedIds = [];
                 expectedRates = [];
                 expectedSplitValuesBps = [];
                 expectedFeePaying = [];
@@ -454,13 +449,13 @@ contract('KyberTradeLogic', function(accounts) {
                             ethDecimals, [], [], [],
                             srcQty, takerFeeBps, platformFeeBps);
                         
-                        expectedReserves = expectedReserves.concat([bestReserve.address, zeroAddress]);
-                        expectedRates = expectedRates.concat([bestReserve.rateNoFee, precisionUnits]);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat([BPS, BPS]);
-                        expectedFeePaying = expectedFeePaying.concat([bestReserve.isFeePaying, false]);
+                        expectedOutput = getExpectedOutput(
+                            [bestReserve], [BPS],
+                            [], []
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }
                 }
             });
@@ -477,13 +472,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, [bestReserve], [bestReserve.rateNoFee], [],
                             ethSrcQty, takerFeeBps, platformFeeBps);
                         
-                        expectedReserves = expectedReserves.concat([zeroAddress, bestReserve.address]);
-                        expectedRates = expectedRates.concat([precisionUnits, bestReserve.rateNoFee]);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat([BPS, BPS]);
-                        expectedFeePaying = expectedFeePaying.concat([false, bestReserve.isFeePaying]);
+                        expectedOutput = getExpectedOutput(
+                            [], [],
+                            [bestReserve], [BPS]
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, emptyHint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -504,13 +499,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
                             srcQty, takerFeeBps, platformFeeBps);
                         
-                        expectedReserves = expectedReserves.concat([bestSellReserve.address, bestBuyReserve.address]);
-                        expectedRates = expectedRates.concat([bestSellReserve.rateNoFee, bestBuyReserve.rateNoFee]);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat([BPS, BPS]);
-                        expectedFeePaying = expectedFeePaying.concat([bestSellReserve.isFeePaying, bestBuyReserve.isFeePaying]);
+                        expectedOutput = getExpectedOutput(
+                            [bestSellReserve], [BPS],
+                            [bestBuyReserve], [BPS]
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, emptyHint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -534,13 +529,13 @@ contract('KyberTradeLogic', function(accounts) {
                             ethDecimals, [], [], [],
                             srcQty, takerFeeBps, platformFeeBps);
                         
-                        expectedReserves =expectedReserves.concat([bestReserve.address, zeroAddress]);
-                        expectedRates = expectedRates.concat([bestReserve.rateNoFee, precisionUnits]);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat([BPS, BPS]);
-                        expectedFeePaying = expectedFeePaying.concat([bestReserve.isFeePaying, false]);
+                        expectedOutput = getExpectedOutput(
+                            [bestReserve], [BPS],
+                            [], [],
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -564,13 +559,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, [bestReserve], [bestReserve.rateNoFee], [],
                             ethSrcQty, takerFeeBps, platformFeeBps);
                         
-                        expectedReserves = expectedReserves.concat([zeroAddress, bestReserve.address]);
-                        expectedRates = expectedRates.concat([precisionUnits, bestReserve.rateNoFee]);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat([BPS, BPS]);
-                        expectedFeePaying = expectedFeePaying.concat([false, bestReserve.isFeePaying]);
+                        expectedOutput = getExpectedOutput(
+                            [], [],
+                            [bestReserve], [BPS]
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -595,13 +590,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
                             srcQty, takerFeeBps, platformFeeBps);
 
-                        expectedReserves = expectedReserves.concat([bestSellReserve.address, bestBuyReserve.address]);
-                        expectedRates = expectedRates.concat([bestSellReserve.rateNoFee, bestBuyReserve.rateNoFee]);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat([BPS, BPS]);
-                        expectedFeePaying = expectedFeePaying.concat([bestSellReserve.isFeePaying, bestBuyReserve.isFeePaying]);
+                        expectedOutput = getExpectedOutput(
+                            [bestSellReserve], [BPS],
+                            [bestBuyReserve], [BPS]
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -624,13 +619,14 @@ contract('KyberTradeLogic', function(accounts) {
                             srcDecimals, [bestReserve], [bestReserve.rateNoFee], [],
                             ethDecimals, [], [], [],
                             srcQty, takerFeeBps, platformFeeBps);
-                        expectedReserves =expectedReserves.concat([bestReserve.address, zeroAddress]);
-                        expectedRates = expectedRates.concat([bestReserve.rateNoFee, precisionUnits]);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat([BPS, BPS]);
-                        expectedFeePaying = expectedFeePaying.concat([bestReserve.isFeePaying, false]);
+                        
+                        expectedOutput = getExpectedOutput(
+                            [bestReserve], [BPS],
+                            [], []
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -653,13 +649,14 @@ contract('KyberTradeLogic', function(accounts) {
                             ethDecimals, [], [], [],
                             destDecimals, [bestReserve], [bestReserve.rateNoFee], [],
                             ethSrcQty, takerFeeBps, platformFeeBps);
-                            expectedReserves = expectedReserves.concat([zeroAddress, bestReserve.address]);
-                            expectedRates = expectedRates.concat([precisionUnits, bestReserve.rateNoFee]);
-                            expectedSplitValuesBps = expectedSplitValuesBps.concat([BPS, BPS]);
-                            expectedFeePaying = expectedFeePaying.concat([false, bestReserve.isFeePaying]);
-                        
+
+                        expectedOutput = getExpectedOutput(
+                            [], [],
+                            [bestReserve], [BPS]
+                        );
+
                         actualResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -684,13 +681,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
                             srcQty, takerFeeBps, platformFeeBps);
 
-                        expectedReserves = expectedReserves.concat([bestSellReserve.address, bestBuyReserve.address]);
-                        expectedRates = expectedRates.concat([bestSellReserve.rateNoFee, bestBuyReserve.rateNoFee]);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat([BPS, BPS]);
-                        expectedFeePaying = expectedFeePaying.concat([bestSellReserve.isFeePaying, bestBuyReserve.isFeePaying]);
+                        expectedOutput = getExpectedOutput(
+                            [bestSellReserve], [BPS],
+                            [bestBuyReserve], [BPS]
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -713,19 +710,13 @@ contract('KyberTradeLogic', function(accounts) {
                             ethDecimals, [], [], [],
                             srcQty, takerFeeBps, platformFeeBps);
                         
-                        expectedReserves = expectedReserves.concat(hintedReserves.reservesT2E.reservesForFetchRate.map(reserve => reserve.address));
-                        expectedRates = expectedRates.concat(reserveRates);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(hintedReserves.reservesT2E.splits);
-                        expectedFeePaying = expectedFeePaying.concat(hintedReserves.reservesT2E.reservesForFetchRate.map(reserve => reserve.isFeePaying));
-                        
-                        //handle empty E2E
-                        expectedReserves = expectedReserves.concat(zeroAddress);
-                        expectedRates = expectedRates.concat(precisionUnits);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(BPS);
-                        expectedFeePaying = expectedFeePaying.concat(false);
+                        expectedOutput = getExpectedOutput(
+                            hintedReserves.reservesT2E.reservesForFetchRate, hintedReserves.reservesT2E.splits,
+                            [], [],
+                        );
 
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -742,25 +733,19 @@ contract('KyberTradeLogic', function(accounts) {
                             ethAddress, destToken.address
                             );
 
-                        //handle empty E2E
-                        expectedReserves = expectedReserves.concat(zeroAddress);
-                        expectedRates = expectedRates.concat(precisionUnits);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(BPS);
-                        expectedFeePaying = expectedFeePaying.concat(false);
-
                         reserveRates = hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.rate);
                         expectedTradeResult = getTradeResult(
                             ethDecimals, [], [], [],
                             destDecimals, hintedReserves.reservesE2T.reservesForFetchRate, reserveRates, hintedReserves.reservesE2T.splits,
                             ethSrcQty, takerFeeBps, platformFeeBps);
                         
-                        expectedReserves = expectedReserves.concat(hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.address));
-                        expectedRates = expectedRates.concat(reserveRates);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(hintedReserves.reservesE2T.splits);
-                        expectedFeePaying = expectedFeePaying.concat(hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.isFeePaying));
+                        expectedOutput = getExpectedOutput(
+                            [], [],
+                            hintedReserves.reservesE2T.reservesForFetchRate, hintedReserves.reservesE2T.splits,
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -785,17 +770,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, hintedReserves.reservesE2T.reservesForFetchRate, reserveRatesE2T, hintedReserves.reservesE2T.splits,
                             srcQty, takerFeeBps, platformFeeBps);
                         
-                        expectedReserves = expectedReserves.concat(hintedReserves.reservesT2E.reservesForFetchRate.map(reserve => reserve.address));
-                        expectedReserves = expectedReserves.concat(hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.address));
-                        expectedRates = expectedRates.concat(reserveRatesT2E);
-                        expectedRates = expectedRates.concat(reserveRatesE2T);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(hintedReserves.reservesT2E.splits);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(hintedReserves.reservesE2T.splits);
-                        expectedFeePaying = expectedFeePaying.concat(hintedReserves.reservesT2E.reservesForFetchRate.map(reserve => reserve.isFeePaying));
-                        expectedFeePaying = expectedFeePaying.concat(hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.isFeePaying));
+                        expectedOutput = getExpectedOutput(
+                            hintedReserves.reservesT2E.reservesForFetchRate, hintedReserves.reservesT2E.splits,
+                            hintedReserves.reservesE2T.reservesForFetchRate, hintedReserves.reservesE2T.splits,
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -819,13 +800,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
                             srcQty, takerFeeBps, platformFeeBps);
 
-                        expectedReserves = expectedReserves.concat([bestSellReserve.address, bestBuyReserve.address]);
-                        expectedRates = expectedRates.concat([bestSellReserve.rateNoFee, bestBuyReserve.rateNoFee]);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat([BPS, BPS]);
-                        expectedFeePaying = expectedFeePaying.concat([bestSellReserve.isFeePaying, bestBuyReserve.isFeePaying]);
+                        expectedOutput = getExpectedOutput(
+                            [bestSellReserve], [BPS],
+                            [bestBuyReserve], [BPS]
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -849,13 +830,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
                             srcQty, takerFeeBps, platformFeeBps);
 
-                        expectedReserves = expectedReserves.concat([bestSellReserve.address, bestBuyReserve.address]);
-                        expectedRates = expectedRates.concat([bestSellReserve.rateNoFee, bestBuyReserve.rateNoFee]);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat([BPS, BPS]);
-                        expectedFeePaying = expectedFeePaying.concat([bestSellReserve.isFeePaying, bestBuyReserve.isFeePaying]);
+                        expectedOutput = getExpectedOutput(
+                            [bestSellReserve], [BPS],
+                            [bestBuyReserve], [BPS]
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -880,20 +861,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, hintedReserves.reservesE2T.reservesForFetchRate, reserveRatesE2T, hintedReserves.reservesE2T.splits,
                             srcQty, takerFeeBps, platformFeeBps);
 
-                        //T2E
-                        expectedReserves = expectedReserves.concat(bestSellReserve.address);
-                        expectedRates = expectedRates.concat(bestSellReserve.rateNoFee);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(BPS);
-                        expectedFeePaying = expectedFeePaying.concat(bestSellReserve.isFeePaying);
-
-                        //E2T
-                        expectedReserves = expectedReserves.concat(hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.address));
-                        expectedRates = expectedRates.concat(reserveRatesE2T);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(hintedReserves.reservesE2T.splits);
-                        expectedFeePaying = expectedFeePaying.concat(hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.isFeePaying));
+                        expectedOutput = getExpectedOutput(
+                            [bestSellReserve], [BPS],
+                            hintedReserves.reservesE2T.reservesForFetchRate, hintedReserves.reservesE2T.splits,
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -917,13 +891,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
                             srcQty, takerFeeBps, platformFeeBps);
 
-                        expectedReserves = expectedReserves.concat([bestSellReserve.address, bestBuyReserve.address]);
-                        expectedRates = expectedRates.concat([bestSellReserve.rateNoFee, bestBuyReserve.rateNoFee]);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat([BPS, BPS]);
-                        expectedFeePaying = expectedFeePaying.concat([bestSellReserve.isFeePaying, bestBuyReserve.isFeePaying]);
+                        expectedOutput = getExpectedOutput(
+                            [bestSellReserve], [BPS],
+                            [bestBuyReserve], [BPS]
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -947,13 +921,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
                             srcQty, takerFeeBps, platformFeeBps);
 
-                        expectedReserves = expectedReserves.concat([bestSellReserve.address, bestBuyReserve.address]);
-                        expectedRates = expectedRates.concat([bestSellReserve.rateNoFee, bestBuyReserve.rateNoFee]);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat([BPS, BPS]);
-                        expectedFeePaying = expectedFeePaying.concat([bestSellReserve.isFeePaying, bestBuyReserve.isFeePaying]);
+                        expectedOutput = getExpectedOutput(
+                            [bestSellReserve], [BPS],
+                            [bestBuyReserve], [BPS]
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -978,20 +952,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, hintedReserves.reservesE2T.reservesForFetchRate, reserveRatesE2T, hintedReserves.reservesE2T.splits,
                             srcQty, takerFeeBps, platformFeeBps);
 
-                        //T2E
-                        expectedReserves = expectedReserves.concat(bestSellReserve.address);
-                        expectedRates = expectedRates.concat(bestSellReserve.rateNoFee);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(BPS);
-                        expectedFeePaying = expectedFeePaying.concat(bestSellReserve.isFeePaying);
-
-                        //E2T
-                        expectedReserves = expectedReserves.concat(hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.address));
-                        expectedRates = expectedRates.concat(reserveRatesE2T);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(hintedReserves.reservesE2T.splits);
-                        expectedFeePaying = expectedFeePaying.concat(hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.isFeePaying));
+                        expectedOutput = getExpectedOutput(
+                            [bestSellReserve], [BPS],
+                            hintedReserves.reservesE2T.reservesForFetchRate, hintedReserves.reservesE2T.splits,
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -1015,13 +982,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
                             srcQty, takerFeeBps, platformFeeBps);
 
-                        expectedReserves = expectedReserves.concat([bestSellReserve.address, bestBuyReserve.address]);
-                        expectedRates = expectedRates.concat([bestSellReserve.rateNoFee, bestBuyReserve.rateNoFee]);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat([BPS, BPS]);
-                        expectedFeePaying = expectedFeePaying.concat([bestSellReserve.isFeePaying, bestBuyReserve.isFeePaying]);
+                        expectedOutput = getExpectedOutput(
+                            [bestSellReserve], [BPS],
+                            [bestBuyReserve], [BPS]
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -1045,13 +1012,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
                             srcQty, takerFeeBps, platformFeeBps);
 
-                        expectedReserves = expectedReserves.concat([bestSellReserve.address, bestBuyReserve.address]);
-                        expectedRates = expectedRates.concat([bestSellReserve.rateNoFee, bestBuyReserve.rateNoFee]);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat([BPS, BPS]);
-                        expectedFeePaying = expectedFeePaying.concat([bestSellReserve.isFeePaying, bestBuyReserve.isFeePaying]);
+                        expectedOutput = getExpectedOutput(
+                            [bestSellReserve], [BPS],
+                            [bestBuyReserve], [BPS]
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -1076,20 +1043,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, hintedReserves.reservesE2T.reservesForFetchRate, reserveRatesE2T, hintedReserves.reservesE2T.splits,
                             srcQty, takerFeeBps, platformFeeBps);
 
-                        //T2E
-                        expectedReserves = expectedReserves.concat(bestSellReserve.address);
-                        expectedRates = expectedRates.concat(bestSellReserve.rateNoFee);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(BPS);
-                        expectedFeePaying = expectedFeePaying.concat(bestSellReserve.isFeePaying);
-
-                        //E2T
-                        expectedReserves = expectedReserves.concat(hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.address));
-                        expectedRates = expectedRates.concat(reserveRatesE2T);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(hintedReserves.reservesE2T.splits);
-                        expectedFeePaying = expectedFeePaying.concat(hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.isFeePaying));
+                        expectedOutput = getExpectedOutput(
+                            [bestSellReserve], [BPS],
+                            hintedReserves.reservesE2T.reservesForFetchRate, hintedReserves.reservesE2T.splits,
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -1113,20 +1073,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
                             srcQty, takerFeeBps, platformFeeBps);
 
-                        //T2E
-                        expectedReserves = expectedReserves.concat(hintedReserves.reservesT2E.reservesForFetchRate.map(reserve => reserve.address));
-                        expectedRates = expectedRates.concat(reserveRatesT2E);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(hintedReserves.reservesT2E.splits);
-                        expectedFeePaying = expectedFeePaying.concat(hintedReserves.reservesT2E.reservesForFetchRate.map(reserve => reserve.isFeePaying));
-
-                        //E2T
-                        expectedReserves = expectedReserves.concat(bestBuyReserve.address);
-                        expectedRates = expectedRates.concat(bestBuyReserve.rateNoFee);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(BPS);
-                        expectedFeePaying = expectedFeePaying.concat(bestBuyReserve.isFeePaying);
+                        expectedOutput = getExpectedOutput(
+                            hintedReserves.reservesT2E.reservesForFetchRate, hintedReserves.reservesT2E.splits,
+                            [bestBuyReserve], [BPS],
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -1150,20 +1103,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
                             srcQty, takerFeeBps, platformFeeBps);
 
-                        //T2E
-                        expectedReserves = expectedReserves.concat(hintedReserves.reservesT2E.reservesForFetchRate.map(reserve => reserve.address));
-                        expectedRates = expectedRates.concat(reserveRatesT2E);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(hintedReserves.reservesT2E.splits);
-                        expectedFeePaying = expectedFeePaying.concat(hintedReserves.reservesT2E.reservesForFetchRate.map(reserve => reserve.isFeePaying));
-
-                        //E2T
-                        expectedReserves = expectedReserves.concat(bestBuyReserve.address);
-                        expectedRates = expectedRates.concat(bestBuyReserve.rateNoFee);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(BPS);
-                        expectedFeePaying = expectedFeePaying.concat(bestBuyReserve.isFeePaying);
+                        expectedOutput = getExpectedOutput(
+                            hintedReserves.reservesT2E.reservesForFetchRate, hintedReserves.reservesT2E.splits,
+                            [bestBuyReserve], [BPS],
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -1187,20 +1133,13 @@ contract('KyberTradeLogic', function(accounts) {
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
                             srcQty, takerFeeBps, platformFeeBps);
 
-                        //T2E
-                        expectedReserves = expectedReserves.concat(hintedReserves.reservesT2E.reservesForFetchRate.map(reserve => reserve.address));
-                        expectedRates = expectedRates.concat(reserveRatesT2E);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(hintedReserves.reservesT2E.splits);
-                        expectedFeePaying = expectedFeePaying.concat(hintedReserves.reservesT2E.reservesForFetchRate.map(reserve => reserve.isFeePaying));
-
-                        //E2T
-                        expectedReserves = expectedReserves.concat(bestBuyReserve.address);
-                        expectedRates = expectedRates.concat(bestBuyReserve.rateNoFee);
-                        expectedSplitValuesBps = expectedSplitValuesBps.concat(BPS);
-                        expectedFeePaying = expectedFeePaying.concat(bestBuyReserve.isFeePaying);
+                        expectedOutput = getExpectedOutput(
+                            hintedReserves.reservesT2E.reservesForFetchRate, hintedReserves.reservesT2E.splits,
+                            [bestBuyReserve], [BPS],
+                        );
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
-                        compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult);
+                        compareResults(expectedTradeResult, expectedOutput, actualResult);
                     }   
                 }
             });
@@ -1387,7 +1326,63 @@ function getTradeResult(
     return result;
 }
 
-function compareResults(expectedTradeResult, expectedReserves, expectedRates, expectedSplitValuesBps, expectedFeePaying, actualResult) {
+function getExpectedOutput(sellReserves, sellSplits, buyReserves, buySplits) {
+    let result = {
+        'addresses': [],
+        'ids': [],
+        'rates': [],
+        'splitValuesBps': [],
+        'isFeePaying': []
+    }
+
+    //tokenToEth
+    if (buyReserves.length == 0) {
+        result.addresses = sellReserves.map(reserve => reserve.address);
+        result.addresses = result.addresses.concat(zeroAddress);
+        result.ids = sellReserves.map(reserve => reserve.reserveId);
+        result.ids = result.ids.concat(NULL_ID);
+        result.rates = (sellSplits.length > 1) ? 
+            result.rates.concat(sellReserves.map(reserve => reserve.rate)) :
+            result.rates.concat(sellReserves.map(reserve => reserve.rateNoFee));
+        result.rates = result.rates.concat(precisionUnits);
+        result.splitValuesBps = sellSplits.concat(BPS);
+        result.isFeePaying = sellReserves.map(reserve => reserve.isFeePaying);
+        result.isFeePaying = result.isFeePaying.concat(false);
+    //ethToToken
+    } else if (sellReserves.length == 0) {
+        result.addresses = [zeroAddress];
+        result.addresses = result.addresses.concat(buyReserves.map(reserve => reserve.address)); 
+        result.ids = [NULL_ID];
+        result.ids = result.ids.concat(buyReserves.map(reserve => reserve.reserveId));
+        result.rates = [precisionUnits];
+        result.rates = (buySplits.length > 1) ?
+            result.rates.concat(buyReserves.map(reserve => reserve.rate)) :
+            result.rates.concat(buyReserves.map(reserve => reserve.rateNoFee));
+        result.splitValuesBps = [BPS];
+        result.splitValuesBps = result.splitValuesBps.concat(buySplits);
+        result.isFeePaying = [false];
+        result.isFeePaying = result.isFeePaying.concat(buyReserves.map(reserve => reserve.isFeePaying));
+    //tokenToToken
+    } else {
+        result.addresses = sellReserves.map(reserve => reserve.address);
+        result.addresses = result.addresses.concat(buyReserves.map(reserve => reserve.address));
+        result.ids = sellReserves.map(reserve => reserve.reserveId);
+        result.ids = result.ids.concat(buyReserves.map(reserve => reserve.reserveId));
+        result.rates = (sellSplits.length > 1) ? 
+            result.rates.concat(sellReserves.map(reserve => reserve.rate)) :
+            result.rates.concat(sellReserves.map(reserve => reserve.rateNoFee));
+        result.rates = (buySplits.length > 1) ?
+            result.rates.concat(buyReserves.map(reserve => reserve.rate)) :
+            result.rates.concat(buyReserves.map(reserve => reserve.rateNoFee));
+        result.splitValuesBps = sellSplits;
+        result.splitValuesBps = result.splitValuesBps.concat(buySplits);
+        result.isFeePaying = sellReserves.map(reserve => reserve.isFeePaying);
+        result.isFeePaying = result.isFeePaying.concat(buyReserves.map(reserve => reserve.isFeePaying));
+    }
+    return result;
+}
+
+function compareResults(expectedTradeResult, expectedOutput, actualResult) {
     //compare expectedTradeResult
     Helper.assertEqual(expectedTradeResult.t2eNumReserves, actualResult.results[0], "t2eNumReserves not equal");
     Helper.assertEqual(expectedTradeResult.e2tNumReserves, actualResult.results[1], "e2tNumReserves not equal");
@@ -1405,28 +1400,35 @@ function compareResults(expectedTradeResult, expectedReserves, expectedRates, ex
 
     //compare expectedReserves
     for (let i=0; i<actualResult.reserveAddresses.length; i++) {
-        expected = expectedReserves[i];
+        expected = expectedOutput.addresses[i];
         actual = actualResult.reserveAddresses[i];
         Helper.assertEqual(expected, actual, "reserve address not the same");
     }
 
+    //compare expectedIds
+    for (let i=0; i<actualResult.ids.length; i++) {
+        expected = expectedOutput.ids[i];
+        actual = actualResult.ids[i];
+        Helper.assertEqual(expected, actual, "reserve id not the same");
+    }
+
     //compare expectedRates
     for (let i=0; i<actualResult.rates.length; i++) {
-        expected = expectedRates[i];
+        expected = expectedOutput.rates[i];
         actual = actualResult.rates[i];
         Helper.assertEqual(expected, actual, "reserve rate not the same");
     }
 
     //compare expectedSplitValuesBps
     for (let i=0; i<actualResult.splitValuesBps.length; i++) {
-        expected = expectedSplitValuesBps[i];
+        expected = expectedOutput.splitValuesBps[i];
         actual = actualResult.splitValuesBps[i];
         Helper.assertEqual(expected, actual, "reserve rate not the same");
     }
 
     //compare expectedFeePaying
     for (let i=0; i<actualResult.isFeePaying.length; i++) {
-        expected = expectedFeePaying[i];
+        expected = expectedOutput.isFeePaying[i];
         actual = actualResult.isFeePaying[i];
         Helper.assertEqual(expected, actual, "reserve rate not the same");
     }

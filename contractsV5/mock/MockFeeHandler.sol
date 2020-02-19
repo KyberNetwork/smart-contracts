@@ -5,9 +5,9 @@ import "../FeeHandler.sol";
 
 contract MockFeeHandler is FeeHandler {
 
-    constructor(IKyberDAO _kyberDAO, IKyberNetworkProxy _kyberNetworkProxy, address _kyberNetwork,
+    constructor(address daoSetter, IKyberNetworkProxy _kyberNetworkProxy, address _kyberNetwork,
         IBurnableToken _knc, uint _burnBlockInterval) 
-        public FeeHandler(_kyberDAO, _kyberNetworkProxy, _kyberNetwork, _knc, _burnBlockInterval)
+        public FeeHandler(daoSetter, _kyberNetworkProxy, _kyberNetwork, _knc, _burnBlockInterval)
         {}
     
     function setTotalValues(uint totalRebateWei, uint totalRewardWei) public {

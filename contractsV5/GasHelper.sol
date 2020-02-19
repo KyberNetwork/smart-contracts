@@ -31,6 +31,7 @@ contract GasHelper is IGasHelper, PermissionGroups {
         platformWallet;
         src;
         dest;
+        tradeWei;
         
         freeGas(gasleft() / 2);
     }
