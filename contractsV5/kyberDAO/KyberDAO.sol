@@ -108,7 +108,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     /* Mapping from campaign ID => data */
     // use to generate increasing camp ID
     uint public numberCampaigns = 0;
-    mapping(uint => bool) public isCampExisted;
+    mapping(uint => bool) public campExists;
     mapping(uint => Campaign) internal campaignData;
     // campOptionPoints[campID]: total points and points of each option for a campaign
     // campOptionPoints[campID][0] is total points, campOptionPoints[campID][1..] for each option ID
@@ -232,7 +232,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         numberCampaigns = numberCampaigns.add(1);
         campID = numberCampaigns;
 
-        isCampExisted[campID] = true;
+        campExists[campID] = true;
         // add campID into this current epoch camp IDs
         epochCampaigns[curEpoch].push(campID);
         // update network fee or brr campaigns
@@ -262,7 +262,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     event CancelledCampaign(uint campID);
 
     function cancelCampaign(uint campID) public onlyCampaignCreator {
-        require(isCampExisted[campID], "cancelCamp: campID is not existed");
+        require(campExists[campID], "cancelCamp: campID does not exist");
 
         Campaign storage camp = campaignData[campID];
 
@@ -270,7 +270,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         uint curEpoch = getCurrentEpochNumber();
 
-        isCampExisted[campID] = false;
+        campExists[campID] = false;
 
         if (camp.campType == CampaignType.NETWORK_FEE) {
             delete networkFeeCamp[curEpoch];
@@ -460,7 +460,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         public view
         returns(uint optionID, uint value)
     {
-        if (!isCampExisted[campID]) { return (0, 0); } // not existed
+        if (!campExists[campID]) { return (0, 0); } // not exist
 
         Campaign storage camp = campaignData[campID];
 
@@ -503,12 +503,14 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         // compute voted percentage (in precision)
         uint votedPercentage = totalVotes.mul(PRECISION).div(camp.totalKNCSupply);
 
+        // total voted percentage is below min acceptable percentage, no winning option
         if (formulaData.minPercentageInPrecision > votedPercentage) { return (0, 0); }
 
         uint x = formulaData.tInPrecision.mul(votedPercentage).div(PRECISION);
         if (x <= formulaData.cInPrecision) {
             // threshold is not negative, need to compare with voted count
             uint y = formulaData.cInPrecision.sub(x);
+            // (most voted option count / total votes) is below threshold, no winining option
             if (maxVotedCount.mul(PRECISION) < y.mul(totalVotes)) { return (0, 0); }
         }
 
@@ -673,7 +675,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     // Note: option is indexed from 1
     function validateVoteOption(uint campID, uint option) internal view returns(bool) {
-        require(isCampExisted[campID], "vote: camp is not existed");
+        require(campExists[campID], "vote: camp does not exist");
 
         Campaign storage camp = campaignData[campID];
 

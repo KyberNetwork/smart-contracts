@@ -598,7 +598,7 @@ contract('KyberDAO', function(accounts) {
 
             let gasUsed = new BN(0);
             for(let id = 0; id <= 2; id++) {
-                Helper.assertEqual(false, await daoContract.isCampExisted(id + 1), "campaign shouldn't be existed");
+                Helper.assertEqual(false, await daoContract.campExists(id + 1), "campaign shouldn't be existed");
                 let link = web3.utils.fromAscii(id == 0 ? "" : "some_link");
                 let tx = await daoContract.submitNewCampaign(
                     id, currentBlock + 2 * id + 5, currentBlock + 2 * id + 5 + minCampPeriod,
@@ -606,7 +606,7 @@ contract('KyberDAO', function(accounts) {
                 );
                 gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
                 Helper.assertEqual(id + 1, await daoContract.numberCampaigns(), "number campaign is incorrect");
-                Helper.assertEqual(true, await daoContract.isCampExisted(id + 1), "campaign should be existed");
+                Helper.assertEqual(true, await daoContract.campExists(id + 1), "campaign should be existed");
 
                 let data = await daoContract.getCampaignDetails(id + 1);
                 Helper.assertEqual(id, data[0], "campType is incorrect");
@@ -1343,7 +1343,7 @@ contract('KyberDAO', function(accounts) {
                 Helper.assertEqual(listCamps[1], campCounts - 2, "camp id for this epoch is incorrect");
                 Helper.assertEqual(listCamps[2], campCounts - 1, "camp id for this epoch is incorrect");
 
-                Helper.assertEqual(false, await daoContract.isCampExisted(campCounts), "camp shouldn't be existed after cancel");
+                Helper.assertEqual(false, await daoContract.campExists(campCounts), "camp shouldn't be existed after cancel");
 
                 let campData = await daoContract.getCampaignDetails(campCounts);
                 Helper.assertEqual(campData[0], 0, "camp details should be deleted");
@@ -1379,7 +1379,7 @@ contract('KyberDAO', function(accounts) {
                 Helper.assertEqual(voteData[0].length, 0, "camp vote data should be deleted");
                 Helper.assertEqual(voteData[1], 0, "camp vote data be deleted");
 
-                Helper.assertEqual(false, await daoContract.isCampExisted(campCounts - 3), "camp shouldn't be existed after cancel");
+                Helper.assertEqual(false, await daoContract.campExists(campCounts - 3), "camp shouldn't be existed after cancel");
 
                 // numberCampaigns value shouldn't be changed
                 Helper.assertEqual(await daoContract.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
