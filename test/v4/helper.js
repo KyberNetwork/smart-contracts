@@ -15,6 +15,10 @@ module.exports.isRevertErrorMessage = function( error ) {
     return false;
 };
 
+module.exports.isRevertErrorMessageContains = function(error, msg) {
+    return (error.message.search(msg) >= 0);
+}
+
 module.exports.expectThrow = async function (promise, message) {
     try {
         await promise;
@@ -210,3 +214,8 @@ module.exports.calcRateFromQty = function(srcQty, dstQty, srcDecimals, dstDecima
     }
 }
 
+module.exports.increaseBlockNumberBySendingEther = async function(sender, recv, blocks) {
+    for(let id = 0; id < blocks; id++) {
+        await this.sendEtherWithPromise(sender, recv, 0);
+    }
+}
