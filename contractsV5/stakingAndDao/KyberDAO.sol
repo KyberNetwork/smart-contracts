@@ -338,9 +338,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint perInPrecision = getStakerRewardPercentageInPrecision(staker, epoch);
         require(perInPrecision > 0, "claimReward: No reward to claim");
 
+        hasClaimedReward[staker][epoch] = true;
+        // call fee handler to claim reward
         require(feeHandler.claimStakerReward(staker, perInPrecision, epoch), "claimReward: feeHandle failed to claim reward");
 
-        hasClaimedReward[staker][epoch] = true;
         emit RewardClaimed(staker, epoch, perInPrecision);
     }
 
