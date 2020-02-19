@@ -1,6 +1,6 @@
 pragma solidity 0.5.11;
 
-import "../../EpochUtils.sol";
+import "../EpochUtils.sol";
 
 contract MockSimpleDAO is EpochUtils {
 

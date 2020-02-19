@@ -1,9 +1,9 @@
 pragma solidity 0.5.11;
 
 
-import "../EpochUtils.sol";
+import "./EpochUtils.sol";
 import "../IERC20.sol";
-import "../kyberStaking/IKyberStaking.sol";
+import "./IKyberStaking.sol";
 import "./IKyberDAO.sol";
 import "../ReentrancyGuard.sol";
 import "../UtilsV5.sol";

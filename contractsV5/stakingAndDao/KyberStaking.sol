@@ -4,8 +4,8 @@ pragma solidity 0.5.11;
 import "../IERC20.sol";
 import "../ReentrancyGuard.sol";
 import "./IKyberStaking.sol";
-import "../kyberDAO/IKyberDAO.sol";
-import "../EpochUtils.sol";
+import "./IKyberDAO.sol";
+import "./EpochUtils.sol";
 
 
 // This contract is using SafeMath for uint, which is inherited from EpochUtils
