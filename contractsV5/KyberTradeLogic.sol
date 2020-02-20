@@ -421,8 +421,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         results[uint(ResultIndex.numFeePayingReserves)] = tData.numFeePayingReserves;
         results[uint(ResultIndex.feePayingReservesBps)] = tData.feePayingReservesBps;
         results[uint(ResultIndex.destAmountNoFee)] = tData.destAmountNoFee;
-        results[uint(ResultIndex.actualDestAmount)] = tData.actualDestAmount;
         results[uint(ResultIndex.destAmountWithNetworkFee)] = tData.destAmountWithNetworkFee;
+        results[uint(ResultIndex.actualDestAmount)] = tData.actualDestAmount;
 
         //store token to ETH information
         for (uint i=0; i < tokenToEthNumReserves; i++) {

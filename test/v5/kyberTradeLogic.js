@@ -6,7 +6,7 @@ const nwHelper = require("./networkHelper.js");
 
 const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
-const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint} = require("../v4/helper.js");
+const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN} = require("../v4/helper.js");
 const {NULL_ID, EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE}  = require('./networkHelper.js');
 
 //global variables
@@ -54,7 +54,6 @@ let srcQty;
 let ethSrcQty = precisionUnits;
 let tokenQty;
 let queryQty;
-let zeroBN = new BN(0);
 
 //expected result variables
 ///////////////////////////
@@ -1392,8 +1391,8 @@ function compareResults(expectedTradeResult, expectedOutput, actualResult) {
     Helper.assertEqual(expectedTradeResult.numFeePayingReserves, actualResult.results[5], "numFeePayingReserves not equal");
     Helper.assertEqual(expectedTradeResult.feePayingReservesBps, actualResult.results[6], "feePayingReservesBps not equal");
     Helper.assertEqual(expectedTradeResult.destAmountNoFee, actualResult.results[7], "destAmountNoFee not equal");
-    Helper.assertEqual(expectedTradeResult.actualDestAmount, actualResult.results[8], "actualDestAmount not equal");
-    Helper.assertEqual(expectedTradeResult.destAmountWithNetworkFee, actualResult.results[9], "destAmountWithNetworkFee not equal");
+    Helper.assertEqual(expectedTradeResult.destAmountWithNetworkFee, actualResult.results[8], "actualDestAmount not equal");
+    Helper.assertEqual(expectedTradeResult.actualDestAmount, actualResult.results[9], "destAmountWithNetworkFee not equal");
 
     let expected;
     let actual;
