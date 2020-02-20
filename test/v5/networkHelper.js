@@ -11,7 +11,8 @@ require("chai")
     .should();
 
 
-const {BPS, precisionUnits, ethAddress, zeroAddress, emptyHint}  = require("../v4/helper.js")
+const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN,
+    calcRateFromQty, assertEqual, getBalancePromise}  = require("../v4/helper.js")
 
 //// reserve types
 const NULL_ID = '0x0000000000000000';
@@ -234,7 +235,6 @@ module.exports.removeReservesFromNetwork = async function (networkInstance, rese
 }
 
 module.exports.genReserveID = genReserveID; 
-
 function genReserveID(reserveID, reserveAddress) {
     return reserveID + reserveAddress.substring(2,10);
 }
@@ -264,7 +264,8 @@ async function fetchReservesRatesFromNetwork(networkInstance, reserveInstances, 
     return reservesArray;
 }
 
-module.exports.getBestReserveAndRate = async function (reserves, src, dest, srcAmount, takerFeeBps) {
+module.exports.getBestReserveAndRate = getBestReserveAndRate;
+async function getBestReserveAndRate(reserves, src, dest, srcAmount, takerFeeBps) {
     bestReserveData = {
         address: zeroAddress,
         reserveId: '',
@@ -356,6 +357,7 @@ function applyHintToReserves(tradeType, reserves, numReserves, splitValues) {
     return result;
 }
 
+module.exports.getHint = getHint;
 async function getHint(network, tradeLogic, reserveInstances, hintType, numReserves, srcAdd, destAdd, qty) {
     if (hintType == EMPTY_HINTTYPE) return emptyHint;
     
@@ -391,9 +393,8 @@ async function getHint(network, tradeLogic, reserveInstances, hintType, numReser
     return hint;
 }
 
-module.exports.getHint = getHint;
-
-module.exports.minusNetworkFees = function (weiAmt, buyReserveFeePaying, sellReserveFeePaying, takerFeeBps) {
+module.exports.minusNetworkFees = minusNetworkFees;
+function minusNetworkFees(weiAmt, buyReserveFeePaying, sellReserveFeePaying, takerFeeBps) {
     result = weiAmt;
     networkFee = weiAmt.mul(takerFeeBps).div(BPS);
     if (buyReserveFeePaying) {
@@ -405,7 +406,8 @@ module.exports.minusNetworkFees = function (weiAmt, buyReserveFeePaying, sellRes
     return result;
 }
 
-module.exports.randomSelectReserves = function (tradeType, reserves, splits) {
+module.exports.randomSelectReserves = randomSelectReserves;
+function randomSelectReserves(tradeType, reserves, splits) {
     result = {
         'tradeType': tradeType,
         'reserves': [],
@@ -430,4 +432,194 @@ module.exports.randomSelectReserves = function (tradeType, reserves, splits) {
         }
     }
     return result;
+}
+
+module.exports.unpackRatesAndAmounts = unpackRatesAndAmounts;
+function unpackRatesAndAmounts(srcQty, srcDecimals, destDecimals, calcRatesAndAmountsOutput) {
+    t2eNumReserves = calcRatesAndAmountsOutput.results[0];
+    totalReserves = t2eNumReserves.add(calcRatesAndAmountsOutput.results[1]);
+    result = {
+        'tradeWei': calcRatesAndAmountsOutput.results[2],
+        'networkFeeWei': calcRatesAndAmountsOutput.results[3],
+        'platformFeeWei': calcRatesAndAmountsOutput.results[4],
+        'numFeePayingReserves': calcRatesAndAmountsOutput.results[5],
+        'feePayingReservesBps': calcRatesAndAmountsOutput.results[6],
+        'destAmountNoFee': calcRatesAndAmountsOutput.results[7],
+        'destAmountWithNetworkFee': calcRatesAndAmountsOutput.results[8],
+        'actualDestAmount': calcRatesAndAmountsOutput.results[9],
+        'rateNoFees': calcRateFromQty(srcQty, calcRatesAndAmountsOutput.results[7], srcDecimals, destDecimals),
+        'rateAfterNetworkFees': calcRateFromQty(srcQty, calcRatesAndAmountsOutput.results[8], srcDecimals, destDecimals),
+        'rateAfterAllFees': calcRateFromQty(srcQty, calcRatesAndAmountsOutput.results[9], srcDecimals, destDecimals),
+        't2eAddresses': calcRatesAndAmountsOutput.reserveAddresses.slice(0,t2eNumReserves),
+        't2eRates': calcRatesAndAmountsOutput.rates.slice(0,t2eNumReserves),
+        't2eSplits': calcRatesAndAmountsOutput.splitValuesBps.slice(0,t2eNumReserves),
+        't2eIsFeePaying': calcRatesAndAmountsOutput.isFeePaying.slice(0,t2eNumReserves),
+        't2eIds': calcRatesAndAmountsOutput.ids.slice(0,t2eNumReserves),
+        'e2tAddresses': calcRatesAndAmountsOutput.reserveAddresses.slice(t2eNumReserves, totalReserves),
+        'e2tRates': calcRatesAndAmountsOutput.rates.slice(t2eNumReserves, totalReserves),
+        'e2tSplits': calcRatesAndAmountsOutput.splitValuesBps.slice(t2eNumReserves, totalReserves),
+        'e2tIsFeePaying': calcRatesAndAmountsOutput.isFeePaying.slice(t2eNumReserves, totalReserves),
+        'e2tIds': calcRatesAndAmountsOutput.ids.slice(t2eNumReserves, totalReserves)
+    }
+    return result;
+}
+
+module.exports.assertRatesEqual = assertRatesEqual;
+function assertRatesEqual(expectedRates, actualRates) {
+    assertEqual(expectedRates.rateNoFees, actualRates.rateNoFees, "rate no fees not equal");
+    assertEqual(expectedRates.rateAfterNetworkFees, actualRates.rateAfterNetworkFees, "rate after network fees not equal");
+    assertEqual(expectedRates.rateAfterAllFees, actualRates.rateAfterAllFees, "rate after all fees not equal");
+}
+
+module.exports.getReserveBalances = getReserveBalances;
+async function getReserveBalances(srcToken, destToken, ratesAmts) {
+    let reserveBalances = {
+        't2eEth': [], //expect ETH balance to decrease
+        't2eToken': [], //expect src token balance to increase
+        'e2tEth': [], //expect ETH balance to increase
+        'e2tToken': [] //expect dest token balance to decrease
+    }
+    for (let i=0; i< ratesAmts.t2eAddresses.length; i++) {
+        let reserveAddress = ratesAmts.t2eAddresses[i];
+        let reserveBalance = await getBalancePromise(reserveAddress);
+        reserveBalances.t2eEth.push(reserveBalance);
+        if (srcToken != ethAddress) {
+            reserveBalance = await srcToken.balanceOf(reserveAddress);
+            reserveBalances.t2eToken.push(reserveBalance);
+        }
+    }
+
+    for (i=0; i< ratesAmts.e2tAddresses.length; i++) {
+        let reserveAddress = ratesAmts.e2tAddresses[i];
+        let reserveBalance = await getBalancePromise(reserveAddress);
+        reserveBalances.e2tEth.push(reserveBalance);
+        if (destToken != ethAddress) {
+            reserveBalance = await destToken.balanceOf(reserveAddress);
+            reserveBalances.e2tToken.push(reserveBalance);
+        }
+    }
+    return reserveBalances;
+}
+
+module.exports.getTakerBalances = getTakerBalances;
+async function getTakerBalances(srcToken, destToken, taker, proxy) {
+    let takerBalances = {
+        'src': zeroBN,
+        'dest': zeroBN
+    }
+    if (proxy == undefined) proxy = taker;
+    takerBalances.src = (srcToken == ethAddress) ? await getBalancePromise(proxy) : await srcToken.balanceOf(proxy);
+    takerBalances.dest = (destToken == ethAddress) ? await getBalancePromise(taker) : await destToken.balanceOf(taker);
+    return takerBalances;
+}
+
+module.exports.compareBalancesAfterTrade = compareBalancesAfterTrade;
+async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialReserveBalances, initialTakerBalances, ratesAmts, taker, networkAdd) {
+    let expectedTakerBalance;
+    let expectedReserveBalance;
+    let reserveAddress;
+    let expectedDestChange;
+    let splitAmount;
+    let amountSoFar = zeroBN;
+    let srcDecimals = (srcToken == ethAddress) ? ethDecimals : await srcToken.decimals();
+    let destDecimals = (destToken == ethAddress) ? ethDecimals : await destToken.decimals();
+    networkAdd = (networkAdd == undefined) ? taker : networkAdd;
+
+    if (destToken == ethAddress) {
+        //token -> ETH trade
+        //user: minus srcQty (token), plus actualDestAmt (ETH)
+        expectedTakerBalance = initialTakerBalances.src.sub(srcQty);
+        await Helper.assertSameTokenBalance(networkAdd, srcToken, expectedTakerBalance);
+        expectedTakerBalance = initialTakerBalances.dest.add(ratesAmts.actualDestAmount);
+        actualBalance = await Helper.getBalancePromise(taker);
+        await Helper.assertSameEtherBalance(taker, expectedTakerBalance);
+
+        //Reserves: plus split dest amt (srcToken), minus split src amt based on rate (ETH)
+        for (let i=0; i<ratesAmts.t2eAddresses.length; i++) {
+            reserveAddress = ratesAmts.t2eAddresses[i];
+            splitAmount = (i == ratesAmts.t2eAddresses.length - 1) ?
+                (srcQty.sub(amountSoFar)) : ratesAmts.t2eSplits[i].mul(srcQty).div(BPS);
+            amountSoFar = amountSoFar.add(splitAmount);
+            //plus split amount (token)
+            expectedReserveBalance = initialReserveBalances.t2eToken[i].add(splitAmount);
+            await Helper.assertSameTokenBalance(reserveAddress, srcToken, expectedReserveBalance);
+            //minus split dest amount (ETH)
+            expectedDestChange = Helper.calcDstQty(splitAmount, srcDecimals, destDecimals, ratesAmts.t2eRates[i]);
+            expectedReserveBalance = initialReserveBalances.t2eEth[i].sub(expectedDestChange);
+            await Helper.assertSameEtherBalance(reserveAddress, expectedReserveBalance);
+        }
+    } else if (srcToken == ethAddress) {
+        //ETH -> token trade
+        //User: Minus srcQty (ETH), plus expectedDestAmtAfterAllFees (token)
+        //Issue: Sender has to pay network fee, so ETH calculation is a lil difficult
+        // expectedTakerBalance = initialTakerBalances.src.sub(srcQty);
+        // await Helper.assertSameEtherBalance(taker, expectedTakerBalance);
+
+        expectedTakerBalance = initialTakerBalances.dest.add(ratesAmts.actualDestAmount);
+        let actualTokenBal = await destToken.balanceOf(taker);
+        await Helper.assertSameTokenBalance(taker, destToken, expectedTakerBalance);
+
+        //Reserves: Minus expectedDestAmtAfterAllFees (ETH), Plus destAmtAfterNetworkFees (token)
+        for (let i=0; i<ratesAmts.e2tAddresses.length; i++) {
+            reserveAddress = ratesAmts.e2tAddresses[i];
+            splitAmount = (i == ratesAmts.e2tAddresses.length - 1) ?
+                ratesAmts.tradeWei.sub(ratesAmts.networkFeeWei).sub(ratesAmts.platformFeeWei).sub(amountSoFar) :
+                ratesAmts.e2tSplits[i].mul(ratesAmts.tradeWei.sub(ratesAmts.networkFeeWei).sub(ratesAmts.platformFeeWei)).div(BPS);
+            amountSoFar = amountSoFar.add(splitAmount);
+            //plus split amount (ETH)
+            expectedReserveBalance = initialReserveBalances.e2tEth[i].add(splitAmount);
+            await Helper.assertSameEtherBalance(reserveAddress, expectedReserveBalance);
+            //minus split amount (token)
+            expectedDestChange = Helper.calcDstQty(splitAmount, srcDecimals, destDecimals, ratesAmts.e2tRates[i]);
+            expectedReserveBalance = initialReserveBalances.e2tToken[i].sub(expectedDestChange);
+            await Helper.assertSameTokenBalance(reserveAddress, destToken, expectedReserveBalance);
+        }
+    } else {
+        //user: minus srcQty (srcToken), plus actualDestAmount (destToken)
+        expectedTakerBalance = initialTakerBalances.src.sub(srcQty);
+        await Helper.assertSameTokenBalance(networkAdd, srcToken, expectedTakerBalance);
+        expectedTakerBalance = initialTakerBalances.dest.add(ratesAmts.actualDestAmount);
+        await Helper.assertSameTokenBalance(taker, destToken, expectedTakerBalance);
+
+        //Reserves: plus split dest amt (srcToken), minus split src amt based on rate (ETH)
+        for (let i=0; i<ratesAmts.t2eAddresses.length; i++) {
+            reserveAddress = ratesAmts.t2eAddresses[i];
+            splitAmount = (i == ratesAmts.t2eAddresses.length - 1) ?
+                (srcQty.sub(amountSoFar)) : ratesAmts.t2eSplits[i].mul(srcQty).div(BPS);
+            amountSoFar = amountSoFar.add(splitAmount);
+            //plus split amount (token)
+            expectedReserveBalance = initialReserveBalances.t2eToken[i].add(splitAmount);
+            await Helper.assertSameTokenBalance(reserveAddress, srcToken, expectedReserveBalance);
+            //minus split dest amount (ETH)
+            expectedDestChange = Helper.calcDstQty(splitAmount, srcDecimals, ethDecimals, ratesAmts.t2eRates[i]);
+            expectedReserveBalance = initialReserveBalances.t2eEth[i].sub(expectedDestChange);
+
+            //if reserve is used later for E2T, actual ETH balance will be checked later
+            let index = ratesAmts.e2tAddresses.findIndex((address) => (address == reserveAddress));
+            if (index != -1) {
+                initialReserveBalances.e2tEth[index] = expectedReserveBalance;
+            } else {
+                await Helper.assertSameEtherBalance(reserveAddress, expectedReserveBalance);
+            }
+        }
+
+        //reset amountSoFar
+        amountSoFar = zeroBN;
+
+        //e2tReserves: minus split expectedDestAmtAfterAllFee (ETH), plus split dest amt (destToken)
+        for (let i=0; i<ratesAmts.e2tAddresses.length; i++) {
+            reserveAddress = ratesAmts.e2tAddresses[i];
+            splitAmount = (i == ratesAmts.e2tAddresses.length - 1) ?
+                ratesAmts.tradeWei.sub(ratesAmts.networkFeeWei).sub(ratesAmts.platformFeeWei).sub(amountSoFar) :
+                ratesAmts.e2tSplits[i].mul(ratesAmts.tradeWei.sub(ratesAmts.networkFeeWei).sub(ratesAmts.platformFeeWei)).div(BPS);
+            amountSoFar = amountSoFar.add(splitAmount);
+            //plus split amount (ETH)
+            expectedReserveBalance = initialReserveBalances.e2tEth[i].add(splitAmount);
+            await Helper.assertSameEtherBalance(reserveAddress, expectedReserveBalance);
+            //minus split amount (token)
+            expectedDestChange = Helper.calcDstQty(splitAmount, ethDecimals, destDecimals, ratesAmts.e2tRates[i]);
+            expectedReserveBalance = initialReserveBalances.e2tToken[i].sub(expectedDestChange);
+            await Helper.assertSameTokenBalance(reserveAddress, destToken, expectedReserveBalance);
+        }
+    }
 }
