@@ -22,6 +22,7 @@ const gasPrice = (new BN(10).pow(new BN(9)).mul(new BN(50)));
 const negligibleRateDiffBps = new BN(10); //0.01% 
 const maxDestAmt = new BN(2).pow(new BN(255));
 const minConversionRate = new BN(0);
+const oneEth = new BN(10).pow(ethDecimals);
 
 let takerFeeBps = new BN(20);
 let platformFeeBps = zeroBN;
@@ -214,6 +215,7 @@ contract('KyberNetwork', function(accounts) {
             //TODO: KyberTrade
         });
 
+        it("should test handleFees call")
         it("should test enabling network", async() => {
             let result = await network.getNetworkData();
             let isEnabled = result.networkEnabled;
@@ -250,7 +252,7 @@ contract('KyberNetwork', function(accounts) {
             });
 
             after("unlist and remove reserve", async() => {
-                nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
                 reserveInstances = {};
             });
 
@@ -336,7 +338,7 @@ contract('KyberNetwork', function(accounts) {
             })
 
             after("unlist and remove reserve", async() => {
-                nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
                 reserveInstances = {};
             });
             
@@ -522,16 +524,81 @@ contract('KyberNetwork', function(accounts) {
             });
         });
 
-        describe("test trades with very small and very big numbers", async() => {
+        describe("test trades with very small and very big numbers (1 src to max source)", async() => {
         });
 
-        it("test contract addresses for fee handler and DAO", async() => {
-            let contracts = await network.getContracts();
-            Helper.assertEqual(contracts[0], DAO.address)
-            Helper.assertEqual(contracts[1], feeHandler.address)
-            Helper.assertEqual(contracts[2], tradeLogic.address);
+        describe("test fee handler integrations with 2 mock reserves", async() => {
+            let platformFee = new BN(200);
+            let takerFeeBps;
+            let rebateBps;
+            let reserveIdToWallet = [];
+            let rebateWallets;
+
+            before("setup, add and list mock reserves", async() => {
+                //init reserves
+                rebateWallets = [accounts[7], accounts[8]];
+
+                let result = await nwHelper.setupReserves(network, tokens, 2,0,0,0, accounts, admin, operator, rebateWallets);
+                
+                reserveInstances = result.reserveInstances;
+                numReserves += result.numAddedReserves * 1;
+                reserveIdToWallet = result.reserveIdToRebateWallet;
+                
+                //add and list pair for reserve
+                nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+            });
+
+            after("unlist and remove reserve", async() => {
+                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                reserveInstances = {};
+            });
+
+            beforeEach("update fee values", async() => {
+                await network.getAndUpdateTakerFee();
+                const data = await network.getNetworkData();
+                takerFeeBps = data.takerFeeBps;
+                const BRRData = await feeHandler.decodeBRRData();
+                // log(BRRData)
+                rebateBps = BRRData.rebateBPS;
+            });
+        
+            it("et2 trade. see total rebate updated in fee handler.", async() => {
+                
+                let BRRAmounts0 = await feeHandler.getTotalAmounts();
+                let rebateWalletBalance0 = {};
+                for (let i = 0; i < rebateWallets.length; i++) {
+                    rebateWalletBalance0[rebateWallets[i]] = await feeHandler.rebatePerWallet(rebateWallets[i]);
+                } 
+                let srcQty = oneEth;
+                let expectedRebate = srcQty.mul(takerFeeBps).div(BPS).mul(rebateBps).div(BPS);
+                let txResult = await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker, 
+                    maxDestAmt, minConversionRate, platformWallet, platformFee, '0x', {from: networkProxy, value: srcQty});
+                
+                let tradedReserve = txResult.logs[1].args.e2tIds[0];
+                let rebateWallet = reserveIdToWallet[tradedReserve];
+                log("tradedReserve " + tradedReserve)
+                log("rebate wallet " + rebateWallet)
+
+                let expectedBalance = rebateWalletBalance0[rebateWallet].add(expectedRebate);
+                let actualBalance = await feeHandler.rebatePerWallet(rebateWallet);
+                Helper.assertEqual(actualBalance, expectedBalance);
+            });
+
+            it("et2 trade. see rebate per wallet updated in fee handler.", async() => {
+                
+                let BRRAmounts0 = await feeHandler.getTotalAmounts();
+
+                let srcQty = oneEth;
+                let txResult = await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker, 
+                    maxDestAmt, minConversionRate, platformWallet, platformFee, '0x', {from: networkProxy, value: srcQty});
+                let expectedAddedRebate = srcQty.mul(takerFeeBps).div(BPS).mul(rebateBps).div(BPS);
+                let expectedRebateAmount = BRRAmounts0.totalRebateWei.add(expectedAddedRebate);
+                let BRRAmounts1 = await feeHandler.getTotalAmounts();
+                Helper.assertEqual(BRRAmounts1.totalRebateWei, expectedRebateAmount);
+            });
+
         });
-    
+
         it("test encode decode taker fee data with mock setter getter", async() => {
             let tempNetwork = await MockNetwork.new(admin);
             await tempNetwork.setContracts(feeHandler.address, DAO.address, tradeLogic.address, 
