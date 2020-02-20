@@ -15,6 +15,10 @@ const emptyHint = '0x';
 const zeroBN = new BN(0);
 module.exports = {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN};
 
+module.exports.isRevertErrorMessageContains = function(error, msg) {
+    return (error.message.search(msg) >= 0);
+}
+
 module.exports.isRevertErrorMessage = function( error ) {
     if( error.message.search('invalid opcode') >= 0 ) return true;
     if( error.message.search('revert') >= 0 ) return true;
@@ -230,3 +234,8 @@ module.exports.calcRateFromQty = function(srcQty, dstQty, srcDecimals, dstDecima
     }
 }
 
+module.exports.increaseBlockNumberBySendingEther = async function(sender, recv, blocks) {
+    for(let id = 0; id < blocks; id++) {
+        await this.sendEtherWithPromise(sender, recv, 0);
+    }
+}
