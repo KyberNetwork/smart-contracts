@@ -7,7 +7,8 @@ import "../IKyberNetworkProxy.sol";
 
 contract SimpleKyberProxy is IKyberNetworkProxy, Utils {
     mapping(bytes32=>uint) public pairRate; //rate in precision units. i.e. if rate is 10**18 its same as 1:1
-    
+    uint networkFeeBps = 25;
+
     function() external payable {}
 
     function setPairRate(ERC20 src, ERC20 dest, uint rate) public {
@@ -50,7 +51,7 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils {
         customFeeBps;
         hint;
         expectedRate = pairRate[keccak256(abi.encodePacked(src, dest))];
-        expectedRate = expectedRate * (BPS - customFeeBps) / customFeeBps;
+        expectedRate = expectedRate * (BPS - customFeeBps) / BPS;
     }
         
     function getPriceDataNoFees(IERC20 src, IERC20 dest, uint srcQty, bytes calldata hint) 
@@ -67,27 +68,46 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils {
         public payable 
         returns(uint destAmount)
     {
+        uint networkFeeWei;
+        uint platformFeeWei;
+
+        uint actualSrcAmount = srcAmount;
+        if (src == ETH_TOKEN_ADDRESS) {
+            require(srcAmount == msg.value);
+            networkFeeWei = srcAmount * networkFeeBps / BPS;
+            platformFeeWei = srcAmount * platformFeeBps / BPS;
+            actualSrcAmount = srcAmount - networkFeeWei - platformFeeWei;
+        } else {
+            require(msg.value == 0);
+            require(src.transferFrom(msg.sender, address(this), srcAmount));
+        }
+
         uint rate = pairRate[keccak256(abi.encodePacked(src, dest))];
 
         platformWallet;
         hint;
+        maxDestAmount;
         
         require(rate > 0);
         require(rate > minConversionRate);
     
-        destAmount = srcAmount * rate / PRECISION;
-        uint actualSrcAmount = srcAmount;
+        destAmount = actualSrcAmount * rate / PRECISION;
+        
+        //todo: handle max dest amount
+        // if (destAmount > maxDestAmount) {
+        //     destAmount = maxDestAmount;
+        //     actualSrcAmount = maxDestAmount * PRECISION / rate;
+        // }
 
-        if (destAmount > maxDestAmount) {
-            destAmount = maxDestAmount;
-            actualSrcAmount = maxDestAmount * PRECISION / rate;
+        
+        if (dest == ETH_TOKEN_ADDRESS) {
+            networkFeeWei = destAmount * networkFeeBps / BPS;
+            platformFeeWei = destAmount * platformFeeBps / BPS;
+            destAmount -= (networkFeeWei + platformFeeWei);
+            destAddress.transfer(destAmount);
+        } else {
+            require(dest.transfer(destAddress, destAmount));
         }
-
-        destAmount = destAmount * (BPS - platformFeeBps) / BPS;
-
-        // address payable toAdd = address(uint160(this)); 
-        require(src.transferFrom(msg.sender, address(this), actualSrcAmount));
-        destAddress.transfer(destAmount);
 
         return destAmount;
     }

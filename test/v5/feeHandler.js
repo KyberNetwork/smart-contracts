@@ -7,9 +7,11 @@ const Token = artifacts.require("Token.sol");
 const Proxy = artifacts.require("SimpleKyberProxy.sol");
 
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint} = require("../v4/helper.js");
+const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
+
 const BITS_PER_PARAM = 64;
 const KNC_DECIMALS = 18;
-const BURN_BLOCK_INTERVAL = 5;
+const BURN_BLOCK_INTERVAL = 3;
 
 let kyberNetwork;
 let proxy;
@@ -313,7 +315,139 @@ contract('FeeHandler', function(accounts) {
             let expectedRewardAfter = totalAmountsBefore.totalRewardWei.sub(payedReward);
             
             Helper.assertEqual(expectedRewardAfter, totalAmountsAfter.totalRewardWei);
-        })
+        });
+
+        it("claim more then full reward in 1 calim. see revert.", async() => {
+            let sendVal = oneEth;
+            
+            sendVal = oneEth;
+            let expectedRebates = await callHandleFeeAndVerifyRebate(
+                sendVal, currentRebateBps, rebateWallets, rebatePercentBps, []
+                );
+            
+            
+            let claim = precisionUnits.add(new BN(1));
+            
+            await expectRevert(
+                mockDAO.claimStakerReward(user, claim, currentEpoch), // full reward
+                "percentage high"
+            );
+        });
+
+        it("claim more then total reward in 2 claims. see revert.", async() => {
+            let sendVal = oneEth;
+            
+            sendVal = oneEth;
+            let expectedRebates = await callHandleFeeAndVerifyRebate(
+                sendVal, currentRebateBps, rebateWallets, rebatePercentBps, []
+                );
+            
+            
+            let claim = precisionUnits.div(new BN(2));
+            
+            await mockDAO.claimStakerReward(user, claim, currentEpoch), // full reward
+            claim = precisionUnits.div(new BN(2)).add(new BN(9));
+            // claim = precisionUnits;
+
+            await expectRevert(
+                mockDAO.claimStakerReward(user, claim, currentEpoch), // full reward
+                "Amount underflow"
+            );
+        });
+
+        it("claim more then full reward per epoch in 2 claims. see revert.", async() => {
+            let sendVal = oneEth;
+            
+            sendVal = oneEth;
+            let expectedRebates = await callHandleFeeAndVerifyRebate(
+                sendVal, currentRebateBps, rebateWallets, rebatePercentBps, []
+                );
+            
+            await mockDAO.advanceEpoch();
+            await feeHandler.getBRR();   
+            
+            sendVal = oneEth;
+            expectedRebates = await callHandleFeeAndVerifyRebate(
+                sendVal, currentRebateBps, rebateWallets, rebatePercentBps, expectedRebates
+                );
+            
+            currentEpoch++;
+            
+            let claim = precisionUnits.div(new BN(2));
+            
+            await mockDAO.claimStakerReward(user, claim, currentEpoch), // full reward
+            claim = precisionUnits.div(new BN(2)).add(new BN(9));
+
+            await expectRevert(
+                mockDAO.claimStakerReward(user, claim, currentEpoch), // full reward
+                "payed per epoch high"
+            );
+        });
+
+        it("burn KNC test correct burn amount - full burn", async() => {
+            let sendVal = oneEth;
+            let burnPerCall = await feeHandler.WEI_TO_BURN();
+
+            sendVal = oneEth.mul(new BN(30));
+            await callHandleFeeAndVerifyRebate(
+                sendVal, currentRebateBps, rebateWallets, rebatePercentBps, []
+                );
+            
+            let totalAmounts0 = await feeHandler.getTotalAmounts();
+            
+            await feeHandler.burnKNC();
+            let totalAmounts1 = await feeHandler.getTotalAmounts();
+            
+            Helper.assertEqual(totalAmounts0.totalBurnWei.sub(burnPerCall), totalAmounts1.totalBurnWei);
+        });
+
+        it("burn KNC test correct burn amount - partial burn", async() => {
+            let sendVal = oneEth;
+            let burnPerCall = await feeHandler.WEI_TO_BURN();
+
+            sendVal = oneEth;
+            await callHandleFeeAndVerifyRebate(
+                sendVal, currentRebateBps, rebateWallets, rebatePercentBps, []
+                );
+            
+            let totalAmounts0 = await feeHandler.getTotalAmounts();
+
+            let expectedBurnAmount = totalAmounts0.totalBurnWei.gt(burnPerCall) ? 
+                burnPerCall : totalAmounts0.totalBurnWei;
+
+            await feeHandler.burnKNC();
+            let totalAmounts1 = await feeHandler.getTotalAmounts();
+            
+            Helper.assertEqual(totalAmounts0.totalBurnWei.sub(expectedBurnAmount), totalAmounts1.totalBurnWei);
+        });
+
+        it("burn KNC test correct burn_wait_interval for next burn", async() => {
+            let sendVal = oneEth;
+            let burnPerCall = await feeHandler.WEI_TO_BURN();
+            let blockInterval = await feeHandler.burnBlockInterval();
+
+            sendVal = oneEth.mul(new BN(30));
+            await callHandleFeeAndVerifyRebate(
+                sendVal, currentRebateBps, rebateWallets, rebatePercentBps, []
+                );
+            
+            
+            await feeHandler.burnKNC();
+            let lastBurnBlock = new BN(await web3.eth.getBlockNumber());
+            let nextBurnBlock = lastBurnBlock.add(blockInterval);
+            // console.log("next burn block " + nextBurnBlock); 
+            
+            let currentBlock = await web3.eth.getBlockNumber();
+            while (nextBurnBlock > currentBlock) {
+                await expectRevert(
+                    feeHandler.burnKNC(),
+                    "Wait more block to burn"
+                );
+                currentBlock = await web3.eth.getBlockNumber();
+                // log("block:" + currentBlock)
+            }
+            await feeHandler.burnKNC();
+        });
     });
 
 })
