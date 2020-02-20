@@ -12,9 +12,10 @@ contract MockDAO is IKyberDAO, Utils {
     uint public epoch;
     uint public expiryBlockNumber;
     uint public feeBps;
-    uint public epochPeriod = 200;
+    uint public epochPeriod = 10;
     uint public startBlock;
     uint data;
+    mapping(uint => bool) public shouldBurnRewardEpoch;
 
     constructor(uint _rewardInBPS, uint _rebateInBPS, uint _epoch, uint _expiryBlockNumber) public {
         rewardInBPS = _rewardInBPS;
@@ -77,7 +78,16 @@ contract MockDAO is IKyberDAO, Utils {
     }
 
     function shouldBurnRewardForEpoch(uint epochNum) external view returns(bool) {
-        epochNum;
+        if (shouldBurnRewardEpoch[epochNum]) return true; 
         return false;
+    }
+
+    function setShouldBurnRewardTrue(uint epochNum) public {
+        shouldBurnRewardEpoch[epochNum] = true;
+    }
+
+    function advanceEpoch() public {
+        epoch++;
+        expiryBlockNumber = block.number + epochPeriod; 
     }
 }

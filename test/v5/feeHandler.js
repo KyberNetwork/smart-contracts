@@ -14,6 +14,7 @@ const BURN_BLOCK_INTERVAL = 5;
 let kyberNetwork;
 let proxy;
 let user;
+let user2;
 let daoSetter;
 let mockDAO;
 let knc;
@@ -31,7 +32,8 @@ let oneEth = new BN(10).pow(new BN(ethDecimals));
 
 contract('FeeHandler', function(accounts) {
     before("Setting global variables", async() => {
-        user = accounts[0];
+        user = accounts[9];
+        user2 = accounts[8];
         daoSetter = accounts[1];
 
         rebateWallets.push(accounts[1]);
@@ -114,6 +116,8 @@ contract('FeeHandler', function(accounts) {
             await feeHandler.getBRR();   
             const BRRData = await feeHandler.getSavedBRR();   
             
+            await mockDAO.setFeeHandler(feeHandler.address);
+
             // log(BRRData);
 
             currentRewardBps = BRRData.rewardBps;
@@ -209,23 +213,108 @@ contract('FeeHandler', function(accounts) {
                 Helper.assertEqual(expectedTotal, totalAmounts.totalRebateWei);
             }
 
-            log("here")
-            
             totalAmounts = await feeHandler.getTotalAmounts();
             Helper.assertEqual(totalAmounts.totalRebateWei, rebateWallets.length, "each wallet exected to have 1 wei left");
         });
 
         it("test reward per eopch updated correctly", async() => {
+            let sendVal = oneEth;
             
+            sendVal = oneEth;
+            let expectedRebates = await callHandleFeeAndVerifyRebate(
+                sendVal, currentRebateBps, rebateWallets, rebatePercentBps, []
+                );
+            
+            let expectedRewardPerEpoch = sendVal.mul(currentRewardBps).div(BPS);
+            let rewardPerEpoch = await feeHandler.rewardsPerEpoch(currentEpoch);
+            Helper.assertEqual(expectedRewardPerEpoch, rewardPerEpoch);
 
+            sendVal = oneEth.div(new BN(333));
+            expectedRebates = await callHandleFeeAndVerifyRebate(
+                sendVal, currentRebateBps, rebateWallets, rebatePercentBps, expectedRebates
+                );
+
+            expectedRewardPerEpoch = expectedRewardPerEpoch.add(sendVal.mul(currentRewardBps).div(BPS));
+            rewardPerEpoch = await feeHandler.rewardsPerEpoch(currentEpoch);
+            Helper.assertEqual(expectedRewardPerEpoch, rewardPerEpoch);
         })
-       
+        
+        it("test reward per eopch updated when epoch advances", async() => {
+            let sendVal = oneEth;
+            
+            sendVal = oneEth;
+            let expectedRebates = await callHandleFeeAndVerifyRebate(
+                sendVal, currentRebateBps, rebateWallets, rebatePercentBps, []
+                );
+            
+            await mockDAO.advanceEpoch();
+            await feeHandler.getBRR();   
+            const BRRData = await feeHandler.getSavedBRR();   
+            
+            currentRewardBps = BRRData.rewardBps;
+            currentRebateBps = BRRData.rebateBps;
+            Helper.assertGreater(BRRData.epoch, currentEpoch);
+            currentEpoch = BRRData.epoch;
+        
+            let rewardPerEpoch = await feeHandler.rewardsPerEpoch(currentEpoch);
+            Helper.assertEqual(0, rewardPerEpoch);
+
+            sendVal = oneEth.div(new BN(333));
+            expectedRebates = await callHandleFeeAndVerifyRebate(
+                sendVal, currentRebateBps, rebateWallets, rebatePercentBps, expectedRebates
+                );
+
+            expectedRewardPerEpoch = sendVal.mul(currentRewardBps).div(BPS);
+            rewardPerEpoch = await feeHandler.rewardsPerEpoch(currentEpoch);
+            Helper.assertEqual(expectedRewardPerEpoch, rewardPerEpoch);
+        })
+
+        it("claim reward and see payed so far updated.", async() => {
+            let sendVal = oneEth;
+            
+            sendVal = oneEth;
+            let expectedRebates = await callHandleFeeAndVerifyRebate(
+                sendVal, currentRebateBps, rebateWallets, rebatePercentBps, []
+                );
+            
+            
+            let rewardBefore = await feeHandler.rewardsPerEpoch(currentEpoch);
+            let userBal = await Helper.getBalancePromise(user);
+            
+            let claim = precisionUnits.div(new BN(3));
+            await mockDAO.claimStakerReward(user, claim, currentEpoch); // full reward
+
+            let payedSoFar = await feeHandler.rewardsPayedPerEpoch(currentEpoch);
+            let userBalAfter = await Helper.getBalancePromise(user);
+            
+            let expectedPayed = rewardBefore.mul(claim).div(precisionUnits);
+            Helper.assertEqual(payedSoFar, expectedPayed);
+            Helper.assertEqual(userBalAfter, userBal.add(expectedPayed));
+        })
+
+        it("claim reward and see total reward updated.", async() => {
+            let sendVal = oneEth;
+            
+            sendVal = oneEth;
+            let expectedRebates = await callHandleFeeAndVerifyRebate(
+                sendVal, currentRebateBps, rebateWallets, rebatePercentBps, []
+                );
+            
+            
+            let totalAmountsBefore = await feeHandler.getTotalAmounts();
+    
+            let claim = precisionUnits.div(new BN(3));
+            await mockDAO.claimStakerReward(user, claim, currentEpoch); // full reward
+            
+            let payedReward = totalAmountsBefore.totalRewardWei.mul(claim).div(precisionUnits);
+    
+            let totalAmountsAfter = await feeHandler.getTotalAmounts();
+    
+            let expectedRewardAfter = totalAmountsBefore.totalRewardWei.sub(payedReward);
+            
+            Helper.assertEqual(expectedRewardAfter, totalAmountsAfter.totalRewardWei);
+        })
     });
-
-    // Test handleFees
-    // Test claimStakerReward
-    // Test claimReserveRebate
-
 
 })
 
