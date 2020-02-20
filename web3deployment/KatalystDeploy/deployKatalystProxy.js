@@ -14,6 +14,7 @@ const { gasPriceGwei, printPrivateKey, rpcUrl, signedTxOutput, dontSendTx, chain
     .boolean('printPrivateKey')
     .boolean('dontSendTx')
     .argv;
+
 const web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
 const solc = require('solc')
 
@@ -21,13 +22,13 @@ const rand = web3.utils.randomHex(7);
 const privateKey = web3.utils.sha3("js sucks" + rand);
 
 if (printPrivateKey) {
-  let path = "privatekey_"  + web3.utils.randomHex(7) + ".txt";
+    let path = "privatekey_"  + web3.utils.randomHex(7) + ".txt";
 
-  fs.writeFileSync(path, privateKey, function(err) {
-      if(err) {
-          return console.log(err);
-      }
-  });
+    fs.writeFileSync(path, privateKey, function(err) {
+        if(err) {
+            return console.log(err);
+        }
+    });
 }
 const account = web3.eth.accounts.privateKeyToAccount(privateKey);
 const sender = account.address;
@@ -39,45 +40,46 @@ let chainId = chainIdInput;
 console.log("from",sender);
 
 async function sendTx(txObject) {
-  const txTo = txObject._parent.options.address;
+    const txTo = txObject._parent.options.address;
 
-  let gasLimit;
-  try {
-    gasLimit = await txObject.estimateGas();
-  }
-  catch (e) {
-    gasLimit = 800 * 1000;
-  }
+    let gasLimit;
+    try {
+      gasLimit = await txObject.estimateGas();
+    }
+    catch (e) {
+      gasLimit = 800 * 1000;
+    }
 
-  if(txTo !== null) {
-    gasLimit = 800 * 1000;
-  }
+    if(txTo !== null) {
+        gasLimit = 800 * 1000;
+    }
 
     gasLimit *= 1.2;
     gasLimit -= gasLimit % 1;
 
-  //console.log(gasLimit);
-  const txData = txObject.encodeABI();
-  const txFrom = account.address;
-  const txKey = account.privateKey;
+    //console.log(gasLimit);
+    const txData = txObject.encodeABI();
+    const txFrom = account.address;
+    const txKey = account.privateKey;
 
-  const tx = {
-    from : txFrom,
-    to : txTo,
-    nonce : nonce,
-    data : txData,
-    gas : gasLimit,
-    chainId,
-    gasPrice
-  };
+    const tx = {
+        from : txFrom,
+        to : txTo,
+        nonce : nonce,
+        data : txData,
+        gas : gasLimit,
+        chainId,
+        gasPrice
+    };
 
-  const signedTx = await web3.eth.accounts.signTransaction(tx, txKey);
-  nonce++;
-  // don't wait for confirmation
-  signedTxs.push(signedTx.rawTransaction)
-  if (!dontSendTx) {
-    web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
-  }
+    const signedTx = await web3.eth.accounts.signTransaction(tx, txKey);
+    nonce++;
+    // don't wait for confirmation
+    signedTxs.push(signedTx.rawTransaction)
+    
+    if (!dontSendTx) {
+        web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
+    }
 }
 
 async function deployContract(solcOutput, contractName, name, ctorArgs) {
@@ -145,15 +147,17 @@ function sleep(ms){
 }
 
 async function waitForEth() {
-  while(true) {
-    const balance = await web3.eth.getBalance(sender);
-    console.log("waiting for balance to account " + sender);
-    if(balance.toString() !== "0") {
-      console.log("received " + balance.toString() + " wei");
-      return;
+    while(true) {
+        const balance = await web3.eth.getBalance(sender);
+        console.log("waiting for balance to account " + sender);
+  
+        if(balance.toString() !== "0") {
+            console.log("received " + balance.toString() + " wei");
+            return;
+        } else {
+            await sleep(10000);
+        }
     }
-    else await sleep(10000)
-  }
 }
 
 main();
