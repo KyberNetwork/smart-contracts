@@ -122,10 +122,11 @@ contract('FeeHandler', function(accounts) {
         })
 
         it("test total rebates total rewards updated correctly", async() => {
-            let emptyArr = [];
+            let wallets = [accounts[6]];
+            let bps = [10000];
             let sendVal = oneEth;
 
-            await feeHandler.handleFees(emptyArr, emptyArr, {from: kyberNetwork, value: sendVal});
+            await feeHandler.handleFees(wallets, bps, {from: kyberNetwork, value: sendVal});
 
             let expectedTotalReward = sendVal.mul(currentRewardBps).div(BPS);
             let expectedTotalRebate = sendVal.mul(currentRebateBps).div(BPS);
@@ -135,7 +136,7 @@ contract('FeeHandler', function(accounts) {
             Helper.assertEqual(totalAmounts.totalRebateWei, expectedTotalRebate);
 
             sendVal = oneEth.div(new BN(33));
-            await feeHandler.handleFees(emptyArr, emptyArr, {from: kyberNetwork, value: sendVal});
+            await feeHandler.handleFees(wallets, bps, {from: kyberNetwork, value: sendVal});
 
             expectedTotalReward = expectedTotalReward.add(sendVal.mul(currentRewardBps).div(BPS));
             expectedTotalRebate = expectedTotalRebate.add(sendVal.mul(currentRebateBps).div(BPS));

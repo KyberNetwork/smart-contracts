@@ -85,15 +85,16 @@ contract FeeHandler is IFeeHandler, Utils {
 
     // Todo: consider optimize to accumulate rebates is same wallet twice
     function handleFees(address[] calldata eligibleWallets, uint[] calldata rebatePercentBps) external payable onlyKyberNetwork returns(bool) {
-        require(eligibleWallets.length > 0, "no wallets");
+        require (eligibleWallets.length > 0, "no rebate wallet");
 
+        // Decoding BRR data
         (uint rewardInBPS, uint rebateInBPS, uint epoch) = getBRR();
 
         uint fee = msg.value;
 
         uint rebateWei = rebateInBPS * fee / BPS;
         uint rewardWei = rewardInBPS * fee / BPS;
-        for(uint i = 0; i < eligibleWallets.length; i ++) {
+        for (uint i = 0; i < eligibleWallets.length; i ++) {
             // Internal accounting for rebates per reserve wallet (rebatePerWallet)
             rebatePerWallet[eligibleWallets[i]] += rebateWei * rebatePercentBps[i] / BPS;
         }
