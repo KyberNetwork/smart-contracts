@@ -12,8 +12,8 @@ const ethDecimals = new BN(18);
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 const zeroAddress = constants.ZERO_ADDRESS;
 const emptyHint = '0x';
-
-module.exports = {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint};
+const zeroBN = new BN(0);
+module.exports = {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN};
 
 module.exports.isRevertErrorMessage = function( error ) {
     if( error.message.search('invalid opcode') >= 0 ) return true;

@@ -15,8 +15,8 @@ interface IKyberTradeLogic {
         numFeePayingReserves,
         feePayingReservesBps,
         destAmountNoFee,
-        actualDestAmount,
         destAmountWithNetworkFee,
+        actualDestAmount,
         resultLength
     }
     

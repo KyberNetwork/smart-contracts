@@ -425,10 +425,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint destAmountWithNetworkFee;
         uint actualDestAmount; // all fees
 
-        // TODO: do we need to save rate locally. seems dest amounts enough.
-        // uint rateNoFee;
         uint rateWithNetworkFee;
-        // uint rateWithAllFees;
     }
 
     function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, TradeData memory tData, bytes memory hint)
@@ -478,8 +475,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         tData.numFeePayingReserves = results[uint(IKyberTradeLogic.ResultIndex.numFeePayingReserves)];
         tData.feePayingReservesBps = results[uint(IKyberTradeLogic.ResultIndex.feePayingReservesBps)];
         tData.destAmountNoFee = results[uint(IKyberTradeLogic.ResultIndex.destAmountNoFee)];
-        tData.actualDestAmount = results[uint(IKyberTradeLogic.ResultIndex.actualDestAmount)];
         tData.destAmountWithNetworkFee = results[uint(IKyberTradeLogic.ResultIndex.destAmountWithNetworkFee)];
+        tData.actualDestAmount = results[uint(IKyberTradeLogic.ResultIndex.actualDestAmount)];
         //printGas("end unpack", start);
     }
     
