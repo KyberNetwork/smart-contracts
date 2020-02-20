@@ -12,9 +12,10 @@ contract MockDAO is IKyberDAO, Utils {
     uint public epoch;
     uint public expiryBlockNumber;
     uint public feeBps;
-    uint public epochPeriod = 200;
+    uint public epochPeriod = 10;
     uint public startBlock;
     uint data;
+    mapping(uint => bool) public shouldBurnRewardEpoch;
 
     constructor(uint _rewardInBPS, uint _rebateInBPS, uint _epoch, uint _expiryBlockNumber) public {
         rewardInBPS = _rewardInBPS;
@@ -47,9 +48,9 @@ contract MockDAO is IKyberDAO, Utils {
         return (feeBps, expiryBlockNumber);
     }
 
-    function getLatestNetworkFeeDataWithCache() external returns(uint feeInBps, uint expiryBlockNumber) {
+    function getLatestNetworkFeeDataWithCache() external returns(uint feeInBps, uint expiryBlock) {
         data++;
-        return (feeBps, expiryBlockNumber);
+        return (feeBps, expiryBlock);
     }
 
     function getLatestBRRData() external returns(uint, uint, uint, uint, uint) {
@@ -70,11 +71,23 @@ contract MockDAO is IKyberDAO, Utils {
         return startBlock;
     }
 
-    function handleWithdrawal(address staker, uint penaltyAmount) external returns(bool) {
+    function handleWithdrawal(address staker, uint reduceAmount) external returns(bool) {
+        staker;
+        reduceAmount;
         return true;
     }
 
-    function shouldBurnRewardForEpoch(uint epoch) external view returns(bool) {
+    function shouldBurnRewardForEpoch(uint epochNum) external view returns(bool) {
+        if (shouldBurnRewardEpoch[epochNum]) return true; 
         return false;
+    }
+
+    function setShouldBurnRewardTrue(uint epochNum) public {
+        shouldBurnRewardEpoch[epochNum] = true;
+    }
+
+    function advanceEpoch() public {
+        epoch++;
+        expiryBlockNumber = block.number + epochPeriod; 
     }
 }

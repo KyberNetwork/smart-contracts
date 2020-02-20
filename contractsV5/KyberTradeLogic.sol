@@ -281,7 +281,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
     }
 
     function maskOutReserves(IKyberReserve[] memory allReservesPerToken, IKyberReserve[] memory maskedOutReserves)
-        internal view returns (IKyberReserve[] memory filteredReserves)
+        internal pure returns (IKyberReserve[] memory filteredReserves)
     {
         // uint start = printGas("", 0, Module.LOGIC);
         require(allReservesPerToken.length >= maskedOutReserves.length, "MASK_OUT_TOO_LONG");

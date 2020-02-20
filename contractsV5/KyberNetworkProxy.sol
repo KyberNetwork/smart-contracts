@@ -43,7 +43,6 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     /// @param hint will give hints for the trade.
     /// @return amount of actual dest tokens
 
-    //todo: should we maintain backward compatible API
     function tradeWithHint(ERC20 src, uint srcAmount, ERC20 dest, address destAddress, uint maxDestAmount,
         uint minConversionRate, address walletId, bytes calldata hint) 
         external payable 
@@ -171,9 +170,9 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     }
     
     function getPriceDataNoFees(IERC20 src, IERC20 dest, uint srcQty, bytes calldata hint) external view 
-        returns (uint priceNoFees)
+        returns (uint priceNoFee)
     {
-        (priceNoFees, , ) = kyberNetwork.getExpectedRateWithHintAndFee(src, dest, srcQty, 0, hint);
+        (priceNoFee, , ) = kyberNetwork.getExpectedRateWithHintAndFee(src, dest, srcQty, 0, hint);
     }
     
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
