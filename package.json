@@ -1,7 +1,7 @@
 {
   "name": "smart-contracts",
   "version": "1.0.0",
-  "description": "This repository has the main contracts in KyberNetwork platform. There are three main components in this repository including  KyberNetwork contract, KyberReserve and KyberWallet contracts. In addition, we have a couple of mock modules that simulate testnet tokens and centralized exchanges. This repository is for testing purposes only,  do not use it for real deployment.",
+  "description": "This repository has the main contracts for KyberNetwork protocol.",
   "main": "truffle.js",
   "directories": {
     "test": "test"
@@ -28,7 +28,7 @@
     "rlp": "2.2.4",
     "secp256k1": "3.8.0",
     "sha3": "2.1.1",
-    "solc": "0.4.18",
+    "solc": "0.5.11",
     "solhint": "1.4.0",
     "truffle-assertions": "0.7.2",
     "truffle-flattener": "1.4.2",
