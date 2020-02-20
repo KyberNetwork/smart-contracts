@@ -47,9 +47,9 @@ contract MockDAO is IKyberDAO, Utils {
         return (feeBps, expiryBlockNumber);
     }
 
-    function getLatestNetworkFeeDataWithCache() external returns(uint feeInBps, uint expiryBlockNumber) {
+    function getLatestNetworkFeeDataWithCache() external returns(uint feeInBps, uint expiryBlock) {
         data++;
-        return (feeBps, expiryBlockNumber);
+        return (feeBps, expiryBlock);
     }
 
     function getLatestBRRData() external returns(uint, uint, uint, uint, uint) {
@@ -70,11 +70,14 @@ contract MockDAO is IKyberDAO, Utils {
         return startBlock;
     }
 
-    function handleWithdrawal(address staker, uint penaltyAmount) external returns(bool) {
+    function handleWithdrawal(address staker, uint reduceAmount) external returns(bool) {
+        staker;
+        reduceAmount;
         return true;
     }
 
-    function shouldBurnRewardForEpoch(uint epoch) external view returns(bool) {
+    function shouldBurnRewardForEpoch(uint epochNum) external view returns(bool) {
+        epochNum;
         return false;
     }
 }

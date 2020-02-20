@@ -463,7 +463,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         bool[] memory isFeePaying,
         bytes8[] memory ids,
         TradeData memory tData
-        ) internal view 
+        ) internal pure 
     {
         //uint start = printGas("start unpack", 0);
         uint tokenToEthNumReserves = results[uint(IKyberTradeLogic.ResultIndex.t2eNumReserves)];
@@ -520,14 +520,14 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // create array of rebate wallets + fee percent per reserve
         // fees should add up to 100%.
         address[] memory eligibleWallets = new address[](tData.numFeePayingReserves);
-        uint[] memory rebatePercentages = new uint[](tData.numFeePayingReserves);
+        uint[] memory rebatePercentBps = new uint[](tData.numFeePayingReserves);
 
         // Updates reserve eligibility and rebate percentages
-        updateEligibilityAndRebates(eligibleWallets, rebatePercentages, tData);
+        updateEligibilityAndRebates(eligibleWallets, rebatePercentBps, tData);
 
         // Send total fee amount to fee handler with reserve data.
         require(
-            feeHandler.handleFees.value(tData.networkFeeWei)(eligibleWallets, rebatePercentages),
+            feeHandler.handleFees.value(tData.networkFeeWei)(eligibleWallets, rebatePercentBps),
             "FEE_TX_FAIL"
         );
         return true;
@@ -535,7 +535,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     function updateEligibilityAndRebates(
         address[] memory eligibleWallets,
-        uint[] memory rebatePercentages,
+        uint[] memory rebatePercentBps,
         TradeData memory tData
     ) internal view
     {
@@ -543,7 +543,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // Parse ethToToken list
         index = parseReserveList(
             eligibleWallets,
-            rebatePercentages,
+            rebatePercentBps,
             tData.ethToToken,
             index,
             tData.feePayingReservesBps
@@ -552,7 +552,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // Parse tokenToEth list
         index = parseReserveList(
             eligibleWallets,
-            rebatePercentages,
+            rebatePercentBps,
             tData.tokenToEth,
             index,
             tData.feePayingReservesBps
@@ -561,18 +561,17 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     function parseReserveList(
         address[] memory eligibleWallets,
-        uint[] memory rebatePercentages,
+        uint[] memory rebatePercentBps,
         TradingReserves memory resList,
         uint index,
         uint feePayingReservesBps
     ) internal view returns(uint) {
-        uint i;
         uint _index = index;
 
-        for(i = 0; i < resList.isFeePaying.length; i ++) {
+        for(uint i = 0; i < resList.isFeePaying.length; i ++) {
             if(resList.isFeePaying[i]) {
                 eligibleWallets[_index] = reserveRebateWallet[address(resList.addresses[i])];
-                rebatePercentages[_index] = resList.splitValuesBps[i] * 100 / feePayingReservesBps;
+                rebatePercentBps[_index] = resList.splitValuesBps[i] * BPS / feePayingReservesBps;
                 _index ++;
             }
         }

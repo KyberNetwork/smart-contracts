@@ -18,7 +18,7 @@ contract FeeHandler is IFeeHandler, Utils {
     IKyberDAO public kyberDAO;
     IKyberNetworkProxy public networkProxy;
     address public kyberNetwork;
-    IBurnableToken public knc;
+    IERC20 public KNC;
     
     uint public burnBlockInterval;
     uint public lastBurnBlock;
@@ -34,24 +34,29 @@ contract FeeHandler is IFeeHandler, Utils {
         address _daoSetter,
         IKyberNetworkProxy _networkProxy,
         address _kyberNetwork,
-        IBurnableToken _knc,
+        IERC20 _KNC,
         uint _burnBlockInterval
     ) public
     {
         require(address(_daoSetter) != address(0), "FeeHandler: daoSetter 0");
         require(address(_networkProxy) != address(0), "FeeHandler: KyberNetworkProxy 0");
         require(address(_kyberNetwork) != address(0), "FeeHandler: KyberNetwork 0");
-        require(address(_knc) != address(0), "FeeHandler: KNC 0");
+        require(address(_KNC) != address(0), "FeeHandler: KNC 0");
         require(_burnBlockInterval != 0, "FeeHandler: _burnBlockInterval 0");
 
         daoSetter = _daoSetter;
         networkProxy = _networkProxy;
         kyberNetwork = _kyberNetwork;
-        knc = _knc;
+        KNC = _KNC;
         burnBlockInterval = _burnBlockInterval;
 
         //start with epoch 0
         brrAndEpochData = encodeBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, 0, block.number);
+    }
+
+    event EthRecieved(uint amount);
+    function() external payable {
+        emit EthRecieved(msg.value);
     }
 
     modifier onlyDAO {
@@ -72,16 +77,16 @@ contract FeeHandler is IFeeHandler, Utils {
 
     event AccumulateReserveRebate(
         address[] eligibleWallets,
-        uint[] rebatePercentages,
+        uint[] rebatePercentBps,
         uint totalRebateAmtWei,
         uint totalRewardAmtWei,
         uint totalBurnAmtWei
     );
 
-    // Todo: future optimize to accumulate rebates is same wallet twice
-    // encode totals, 128 bits per reward / rebate
-    function handleFees(address[] calldata eligibleWallets, uint[] calldata rebatePercentages) external payable onlyKyberNetwork returns(bool) {
-        // Decoding BRR data
+    // Todo: consider optimize to accumulate rebates is same wallet twice
+    function handleFees(address[] calldata eligibleWallets, uint[] calldata rebatePercentBps) external payable onlyKyberNetwork returns(bool) {
+        require(eligibleWallets.length > 0, "no wallets");
+
         (uint rewardInBPS, uint rebateInBPS, uint epoch) = getBRR();
 
         uint fee = msg.value;
@@ -90,7 +95,7 @@ contract FeeHandler is IFeeHandler, Utils {
         uint rewardWei = rewardInBPS * fee / BPS;
         for(uint i = 0; i < eligibleWallets.length; i ++) {
             // Internal accounting for rebates per reserve wallet (rebatePerWallet)
-            rebatePerWallet[eligibleWallets[i]] += rebateWei * rebatePercentages[i] / 100;
+            rebatePerWallet[eligibleWallets[i]] += rebateWei * rebatePercentBps[i] / BPS;
         }
 
         (uint totalRewards , uint totalRebates) = decodeTotalValues(totalValues);
@@ -103,7 +108,7 @@ contract FeeHandler is IFeeHandler, Utils {
 
         totalValues = encodeTotalValues(totalRewards, totalRebates);
 
-        emit AccumulateReserveRebate(eligibleWallets, rebatePercentages, rebateWei, rewardWei, fee - rebateWei - rewardWei);
+        emit AccumulateReserveRebate(eligibleWallets, rebatePercentBps, rebateWei, rewardWei, fee - rebateWei - rewardWei);
 
         return true;
     }
@@ -150,13 +155,13 @@ contract FeeHandler is IFeeHandler, Utils {
 
         // Update total rebate and rebate per rebate wallet amounts
         totalRebates -= amount;
-        rebatePerWallet[rebateWallet] = 1; // Do not use 0 to avoid paying high gas when setting back from 0 to non zero.
+        rebatePerWallet[rebateWallet] = 1; // avoid zero to non zero storage cost
 
         totalValues = encodeTotalValues(totalRewards, totalRebates);
         
         // send rebate to rebate wallet
         (bool success, ) = rebateWallet.call.value(amount)("");
-        require(success, "Transfer of rebates to rebate wallet failed.");
+        require(success, "Transfer rebates failed.");
 
         emit DistributeRebate(rebateWallet, amount);
 
@@ -174,26 +179,16 @@ contract FeeHandler is IFeeHandler, Utils {
         daoSetter = address(0);
     }
 
-    // this to get Brr data and avoid any trade to pay the gas for it.
-    function getBRRData () public {
-        getBRR();
-    }
-    
-    // we will have to limit amounts. per burn.
-    // and create some block delay between burns.
-    // Todo: include arbitrage check https://github.com/KyberNetwork/smart-contracts/pull/433/files
+    /// @dev should limit burn amount and create block delay between burns.
     function burnKNC() public returns(uint) {
         // check if current block > last burn block number + num block interval
-        require(
-            block.number > lastBurnBlock + burnBlockInterval,
-            "Burn blocked up to block: lastBurnBlock + burnBlockInterval"
-        );
+        require(block.number > lastBurnBlock + burnBlockInterval, "Must wait more blocks to burn");
 
         // update last burn block number
         lastBurnBlock = block.number;
 
         // Get srcQty to burn, if greater than ETH_TO_BURN, burn only ETH_TO_BURN per function call.
-        (uint totalRewards , uint totalRebates) = decodeTotalValues(totalValues);
+        (uint totalRewards, uint totalRebates) = decodeTotalValues(totalValues);
 
         uint totalBalance = address(this).balance;
         require(totalBalance >= totalRebates + totalRewards, "contract bal too low");
@@ -203,31 +198,40 @@ contract FeeHandler is IFeeHandler, Utils {
 
         // Get the rate
         // If srcQty is too big, get expected rate will return 0 so maybe we should limit how much can be bought at one time.
-        uint expectedRate = networkProxy.getExpectedRateAfterFee(
-            IERC20(ETH_TOKEN_ADDRESS),
-            IERC20(address(knc)),
+        uint kyberEthKncRate = networkProxy.getExpectedRateAfterFee(
+            ETH_TOKEN_ADDRESS,
+            KNC,
+            srcQty,
+            0,
+            ""
+        );
+        uint kyberKncEthRate = networkProxy.getExpectedRateAfterFee(
+            KNC,
+            ETH_TOKEN_ADDRESS,
             srcQty,
             0,
             ""
         );
 
-        require(expectedRate > 0, "rate is 0");
+        require(kyberEthKncRate <= MAX_RATE && kyberKncEthRate <= MAX_RATE, "KNC rate out of bounds");
+        require(kyberEthKncRate * kyberKncEthRate <= PRECISION ** 2, "internal KNC arb");
+        require(kyberEthKncRate * kyberKncEthRate > PRECISION ** 2 / 2, "high KNC spread");
 
         // Buy some KNC and burn
         uint destQty = networkProxy.tradeWithHintAndFee(
             ETH_TOKEN_ADDRESS,
             srcQty,
-            IERC20(address(knc)),
+            KNC,
             address(uint160(address(this))), // Convert this address into address payable
             MAX_QTY,
-            expectedRate * 97 / 100,
+            kyberEthKncRate * 97 / 100,
             address(0), // platform wallet
             0, // platformFeeBps
             "" // hint
         );
 
         // Burn KNC
-        require(knc.burn(destQty), "KNC burn failed");
+        require(IBurnableToken(address(KNC)).burn(destQty), "KNC burn failed");
     }
 
     event RewardsRemovedToBurn(uint epoch, uint rewardsWei);
@@ -254,6 +258,10 @@ contract FeeHandler is IFeeHandler, Utils {
         emit RewardsRemovedToBurn(epoch, rewardAmount);
     }
 
+    function getTotalAmounts() external view returns(uint totalRewardWei, uint totalRebateWei) {
+        (totalRewardWei, totalRebateWei) = decodeTotalValues(totalValues);
+    }
+
     function encodeBRRData(uint _reward, uint _rebate, uint _epoch, uint _expiryBlock) public pure returns (uint) {
         return (((((_reward << BITS_PER_PARAM) + _rebate) << BITS_PER_PARAM) + _epoch) << BITS_PER_PARAM) + _expiryBlock;
     }
@@ -263,7 +271,7 @@ contract FeeHandler is IFeeHandler, Utils {
         epoch = (brrAndEpochData / (1 << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
         rebateBPS = (brrAndEpochData / (1 << (2 * BITS_PER_PARAM))) & (1 << BITS_PER_PARAM) - 1;
         rewardBPS = (brrAndEpochData / (1 << (3 * BITS_PER_PARAM))) & (1 << BITS_PER_PARAM) - 1;
-        return (rewardBPS, rebateBPS, epoch, expiryBlock);
+        return (rewardBPS, rebateBPS, expiryBlock, epoch);
     }
 
     function encodeTotalValues(uint totalRewards, uint totalRebates) public pure returns (uint) {
@@ -279,7 +287,7 @@ contract FeeHandler is IFeeHandler, Utils {
 
     event BRRUpdated(uint rewardBPS, uint rebateBPS, uint burnBPS, uint expiryBlock, uint epoch);
 
-    function getBRR() internal returns(uint rewardBPS, uint rebateBPS, uint epoch) {
+    function getBRR() public returns(uint rewardBPS, uint rebateBPS, uint epoch) {
         uint expiryBlock;
         (rewardBPS, rebateBPS, expiryBlock, epoch) = decodeBRRData();
 
