@@ -6,8 +6,7 @@ const Helper = require("../v4/helper.js");
 
 const BN = web3.utils.BN;
 
-const precision = new BN(10).pow(new BN(18));
-const zeroAddress = '0x0000000000000000000000000000000000000000';
+const { precisionUnits, zeroAddress } = require("../v4/helper.js");
 
 let daoSetter;
 
@@ -77,19 +76,10 @@ contract('KyberStaking', function(accounts) {
         currentBlock = await Helper.getCurrentBlock();
         Helper.assertEqual(currentEpoch, await stakingContract.getCurrentEpochNumber(), "wrong epoch number");
         Helper.assertEqual(currentEpoch, await stakingContract.getEpochNumber(currentBlock), "wrong epoch number");
-        Helper.assertEqual(
-            await stakingContract.getCurrentEpochNumber(),
-            await stakingContract.getEpochNumber(currentBlock),
-            "wrong epoch number from contract"
-        );
 
         currentBlock = await Helper.getCurrentBlock();
         // delay until last block of epoch 1
         await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock - 1);
-        currentBlock = await Helper.getCurrentBlock();
-        console.log(currentBlock.toString(10));
-        currentBlock = await Helper.getCurrentBlock();
-        console.log(currentBlock.toString(10));
         Helper.assertEqual(currentEpoch, await stakingContract.getCurrentEpochNumber(), "wrong epoch number");
 
         currentEpoch = 10;
@@ -302,18 +292,18 @@ contract('KyberStaking', function(accounts) {
             let totalDeposited = 0;
 
             for(let id = 0; id < 10; id++) {
-                await stakingContract.deposit(precision.mul(new BN(id * 2 + 1)), {from: victor});
+                await stakingContract.deposit(mulPrecision(id * 2 + 1), {from: victor});
                 totalDeposited += id * 2 + 1;
-                Helper.assertEqual(precision.mul(new BN(totalDeposited - id * 2 - 1)), await stakingContract.getStakesValue(victor, currentEpoch), "stake at cur epoch is wrong, loop: " + id);
-                Helper.assertEqual(precision.mul(new BN(totalDeposited)), await stakingContract.getStakesValue(victor, currentEpoch + 1), "stake at next epoch is wrong, loop: " + id);
-                Helper.assertEqual(precision.mul(new BN(totalDeposited)), await stakingContract.getLatestStakeBalance(victor), "latest stake balance is wrong, loop: " + id);
+                Helper.assertEqual(mulPrecision(totalDeposited - id * 2 - 1), await stakingContract.getStakesValue(victor, currentEpoch), "stake at cur epoch is wrong, loop: " + id);
+                Helper.assertEqual(mulPrecision(totalDeposited), await stakingContract.getStakesValue(victor, currentEpoch + 1), "stake at next epoch is wrong, loop: " + id);
+                Helper.assertEqual(mulPrecision(totalDeposited), await stakingContract.getLatestStakeBalance(victor), "latest stake balance is wrong, loop: " + id);
                 currentEpoch++;
                 await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod - 1);
             }
 
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod);
-            Helper.assertEqual(precision.mul(new BN(totalDeposited)), await stakingContract.getLatestStakeBalance(victor), "latest stake balance is wrong");
-            Helper.assertEqual(precision.mul(new BN(totalDeposited)), await stakingContract.getStake(victor, currentEpoch + 3), "stake is wrong");
+            Helper.assertEqual(mulPrecision(totalDeposited), await stakingContract.getLatestStakeBalance(victor), "latest stake balance is wrong");
+            Helper.assertEqual(mulPrecision(totalDeposited), await stakingContract.getStake(victor, currentEpoch + 3), "stake is wrong");
         });
 
         it("Test deposit then delegate, then deposit again, stakes changes as expected", async function() {
@@ -531,7 +521,7 @@ contract('KyberStaking', function(accounts) {
         it("Test deposit large amount of tokens, check for overflow", async function() {
             await deployStakingContract(4, currentBlock + 20);
 
-            let totalAmount = precision.mul(new BN(10).pow(new BN(8))).mul(new BN(2)); // 200M tokens
+            let totalAmount = precisionUnits.mul(new BN(10).pow(new BN(8))).mul(new BN(2)); // 200M tokens
             await kncToken.transfer(victor, totalAmount);
             await kncToken.approve(stakingContract.address, totalAmount, {from: victor});
             await stakingContract.deposit(totalAmount, {from: victor});
@@ -541,7 +531,7 @@ contract('KyberStaking', function(accounts) {
 
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 17);
 
-            let withdrawAmount = precision.mul(new BN(10).pow(new BN(8))); // 100M tokens
+            let withdrawAmount = precisionUnits.mul(new BN(10).pow(new BN(8))); // 100M tokens
             await stakingContract.withdraw(withdrawAmount, {from: victor});
             totalAmount.isub(withdrawAmount);
 
@@ -2357,5 +2347,5 @@ function logInfo(message) {
 }
 
 function mulPrecision(value) {
-    return precision.mul(new BN(value));
+    return precisionUnits.mul(new BN(value));
 }

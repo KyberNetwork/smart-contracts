@@ -9,8 +9,6 @@ const BN = web3.utils.BN;
 
 const { precisionUnits, zeroAddress } = require("../v4/helper.js");
 
-const precision = precisionUnits;//new BN(10).pow(new BN(18));
-
 let campCreator;
 
 let currentBlock;
@@ -30,12 +28,12 @@ let maxCampOptions = 4;
 let minCampPeriod = 10; // 10 blocks
 let defaultNetworkFee = 25;
 let defaultBrrData = getDataFromRebateAndReward(25, 25);
-let minPercentageInPrecision = new BN(precision).div(new BN(5)); // 20%
+let minPercentageInPrecision = new BN(precisionUnits).div(new BN(5)); // 20%
 // Y = C - t * X
 // Example: X = 20%, C = 100%, t = 1
 // Y = 100% - 1 * 20% = 80%
-let cInPrecision = new BN(precision); // 100%
-let tInPrecision = new BN(precision); // 1
+let cInPrecision = new BN(precisionUnits); // 100%
+let tInPrecision = new BN(precisionUnits); // 1
 let formulaParamsData = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
 
 let initVictorStake = mulPrecision(1500);
@@ -249,7 +247,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(voteData[0][2], 0, "option voted count is incorrect");
 
             // total withdraw is 400 more than new deposit (200)
-            await stakingContract.withdraw(precision.mul(new BN(300)), {from: victor});
+            await stakingContract.withdraw(mulPrecision(300), {from: victor});
 
             totalPoints.isub(mulPrecision(200));
             voteCount1.isub(mulPrecision(200));
@@ -1079,7 +1077,7 @@ contract('KyberDAO', function(accounts) {
 
         it("Test submit campaign should revert formula params are invalid", async function() {
             await deployContracts(30, currentBlock + 50, 10);
-            let formula = getFormulaParamsData(precision.add(new BN(1)), cInPrecision, tInPrecision);
+            let formula = getFormulaParamsData(precisionUnits.add(new BN(1)), cInPrecision, tInPrecision);
             // invalid min percentage (> 100%)
             try {
                 await daoContract.submitNewCampaign(
@@ -1090,12 +1088,12 @@ contract('KyberDAO', function(accounts) {
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
-            formula = getFormulaParamsData(precision.sub(new BN(100)), cInPrecision, tInPrecision);
+            formula = getFormulaParamsData(precisionUnits.sub(new BN(100)), cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 0, currentBlock + 5, currentBlock + 5 + minCampPeriod, formula,
                 [1, 2, 3], '0x', {from: campCreator}
             );
-            formula = getFormulaParamsData(precision, cInPrecision, tInPrecision);
+            formula = getFormulaParamsData(precisionUnits, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 0, currentBlock + 7, currentBlock + 7 + minCampPeriod, formula,
                 [1, 2, 3], '0x', {from: campCreator}
@@ -1459,7 +1457,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(0, await daoContract.networkFeeCamp(0), "network fee camp id should be deleted");
 
             link = web3.utils.fromAscii("https://google.com");
-            formula = getFormulaParamsData(precision.div(new BN(10)), precision.div(new BN(2)), precision.div(new BN(4)));
+            formula = getFormulaParamsData(precisionUnits.div(new BN(10)), precisionUnits.div(new BN(2)), precisionUnits.div(new BN(4)));
             await kncToken.burn(mulPrecision(100));
             await daoContract.submitNewCampaign(
                 1, currentBlock + 20, currentBlock + 20 + minCampPeriod,
@@ -1532,7 +1530,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(0, await daoContract.brrCampaign(0), "brr camp id should be deleted");
 
             link = web3.utils.fromAscii("https://google.com");
-            formula = getFormulaParamsData(precision.div(new BN(10)), precision.div(new BN(2)), precision.div(new BN(4)));
+            formula = getFormulaParamsData(precisionUnits.div(new BN(10)), precisionUnits.div(new BN(2)), precisionUnits.div(new BN(4)));
             await kncToken.burn(mulPrecision(100));
             await daoContract.submitNewCampaign(
                 2, currentBlock + 20, currentBlock + 20 + minCampPeriod,
@@ -2623,9 +2621,9 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 1 * epochPeriod + startBlock - currentBlock);
 
-            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
-            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
             Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
             Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
@@ -2634,11 +2632,11 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
 
             let expectedMikeBal = await Helper.getBalancePromise(mike);
-            expectedMikeBal.iadd(mikePer.mul(epochTotalReward).div(precision));
+            expectedMikeBal.iadd(mikePer.mul(epochTotalReward).div(precisionUnits));
             let expectedPM1Bal = await Helper.getBalancePromise(poolMaster);
-            expectedPM1Bal.iadd(poolMasterPer.mul(epochTotalReward).div(precision));
+            expectedPM1Bal.iadd(poolMasterPer.mul(epochTotalReward).div(precisionUnits));
             let expectedPM2Bal = await Helper.getBalancePromise(poolMaster2);
-            expectedPM2Bal.iadd(poolMaster2Per.mul(epochTotalReward).div(precision));
+            expectedPM2Bal.iadd(poolMaster2Per.mul(epochTotalReward).div(precisionUnits));
 
             let gasUsed = new BN(0);
             let tx = await daoContract.claimReward(mike, 1);
@@ -2709,20 +2707,20 @@ contract('KyberDAO', function(accounts) {
                 currentBlock = await Helper.getCurrentBlock();
                 await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], id * epochPeriod + startBlock - currentBlock);
 
-                let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-                let victorPer = victorPoints.mul(precision).div(totalEpochPoints);
-                let loiPer = loiPoints.mul(precision).div(totalEpochPoints);
+                let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+                let victorPer = victorPoints.mul(precisionUnits).div(totalEpochPoints);
+                let loiPer = loiPoints.mul(precisionUnits).div(totalEpochPoints);
 
                 Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, id), "reward per is incorrect");
                 Helper.assertEqual(victorPer, await daoContract.getStakerRewardPercentageInPrecision(victor, id), "reward per is incorrect");
                 Helper.assertEqual(loiPer, await daoContract.getStakerRewardPercentageInPrecision(loi, id), "reward per is incorrect");
 
                 let expectedMikeBal = await Helper.getBalancePromise(mike);
-                expectedMikeBal.iadd(mikePer.mul(epochTotalReward).div(precision));
+                expectedMikeBal.iadd(mikePer.mul(epochTotalReward).div(precisionUnits));
                 let expectedVictorBal = await Helper.getBalancePromise(victor);
-                expectedVictorBal.iadd(victorPer.mul(epochTotalReward).div(precision));
+                expectedVictorBal.iadd(victorPer.mul(epochTotalReward).div(precisionUnits));
                 let expectedLoiBal = await Helper.getBalancePromise(loi);
-                expectedLoiBal.iadd(loiPer.mul(epochTotalReward).div(precision));
+                expectedLoiBal.iadd(loiPer.mul(epochTotalReward).div(precisionUnits));
 
                 Helper.assertEqual(false, await daoContract.hasClaimedReward(mike, id), "should have claimed reward");
                 Helper.assertEqual(false, await daoContract.hasClaimedReward(victor, id), "should have claimed reward");
@@ -2781,16 +2779,16 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(1, 1, {from: victor});
             await daoContract.vote(1, 2, {from: loi});
 
-            let epochTotalReward = precision.div(new BN(10));
+            let epochTotalReward = precisionUnits.div(new BN(10));
             await feeHandler.setEpochReward(1, {from: accounts[0], value: epochTotalReward});
 
             // delay few epochs not doing anything
             currentBlock = await Helper.getCurrentBlock();
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
 
-            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
-            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
             Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
             Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
@@ -2799,11 +2797,11 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
 
             let expectedMikeBal = await Helper.getBalancePromise(mike);
-            expectedMikeBal.iadd(mikePer.mul(epochTotalReward).div(precision));
+            expectedMikeBal.iadd(mikePer.mul(epochTotalReward).div(precisionUnits));
             let expectedPM1Bal = await Helper.getBalancePromise(poolMaster);
-            expectedPM1Bal.iadd(poolMasterPer.mul(epochTotalReward).div(precision));
+            expectedPM1Bal.iadd(poolMasterPer.mul(epochTotalReward).div(precisionUnits));
             let expectedPM2Bal = await Helper.getBalancePromise(poolMaster2);
-            expectedPM2Bal.iadd(poolMaster2Per.mul(epochTotalReward).div(precision));
+            expectedPM2Bal.iadd(poolMaster2Per.mul(epochTotalReward).div(precisionUnits));
 
             await daoContract.claimReward(mike, 1);
             await daoContract.claimReward(poolMaster, 1);
@@ -2832,8 +2830,8 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(1, 1, {from: mike});
             await daoContract.vote(1, 2, {from: victor});
 
-            await feeHandler.setEpochReward(1, {from: accounts[0], value: precision.div(new BN(10))});
-            await feeHandler.setEpochReward(2, {from: accounts[0], value: precision.div(new BN(10))});
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: precisionUnits.div(new BN(10))});
+            await feeHandler.setEpochReward(2, {from: accounts[0], value: precisionUnits.div(new BN(10))});
 
             // can not claim for current epoch
             try {
@@ -2888,7 +2886,7 @@ contract('KyberDAO', function(accounts) {
 
             await daoContract.vote(1, 1, {from: mike});
 
-            await feeHandler.setEpochReward(1, {from: accounts[0], value: precision.div(new BN(10))});
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: precisionUnits.div(new BN(10))});
 
             // delay to epoch 2
             currentBlock = await Helper.getCurrentBlock();
@@ -2914,7 +2912,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(15, currentBlock + 15, 5);
             await setupSimpleStakingData();
 
-            await feeHandler.setEpochReward(1, {from: accounts[0], value: precision.div(new BN(10))});
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: precisionUnits.div(new BN(10))});
 
             currentBlock = await Helper.getCurrentBlock();
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
@@ -2953,7 +2951,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(1, 1, {from: loi});
             await daoContract.vote(1, 2, {from: victor});
 
-            await feeHandler.setEpochReward(1, {from: accounts[0], value: precision.div(new BN(10))});
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: precisionUnits.div(new BN(10))});
 
             currentBlock = await Helper.getCurrentBlock();
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
@@ -3002,7 +3000,7 @@ contract('KyberDAO', function(accounts) {
 
             await daoContract.vote(1, 1, {from: mike});
 
-            await feeHandler.setEpochReward(1, {from: accounts[0], value: precision.div(new BN(10))});
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: precisionUnits.div(new BN(10))});
 
             currentBlock = await Helper.getCurrentBlock();
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
@@ -3040,7 +3038,7 @@ contract('KyberDAO', function(accounts) {
 
             await daoContract.vote(1, 1, {from: mike});
 
-            await feeHandler.setEpochReward(1, {from: accounts[0], value: precision.div(new BN(10))});
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: precisionUnits.div(new BN(10))});
 
             currentBlock = await Helper.getCurrentBlock();
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
@@ -3075,7 +3073,7 @@ contract('KyberDAO', function(accounts) {
 
             await daoContract.vote(1, 1, {from: mike});
 
-            await feeHandler.setEpochReward(1, {from: accounts[0], value: precision.div(new BN(10))});
+            await feeHandler.setEpochReward(1, {from: accounts[0], value: precisionUnits.div(new BN(10))});
 
             currentBlock = await Helper.getCurrentBlock();
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 5 * epochPeriod + startBlock - currentBlock);
@@ -3128,9 +3126,9 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.deposit(mulPrecision(40), {from: poolMaster});
             await stakingContract.deposit(mulPrecision(50), {from: poolMaster2});
 
-            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
-            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
             // percentage no change after new deposit
             Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
@@ -3171,9 +3169,9 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.delegate(victor, {from: loi});
             await stakingContract.delegate(poolMaster, {from: poolMaster2});
 
-            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
-            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
             // percentage no change after new deposit
             Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
@@ -3210,9 +3208,9 @@ contract('KyberDAO', function(accounts) {
             totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
             poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
 
-            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
-            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
             // percentage no change after new deposit
             Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
@@ -3261,9 +3259,9 @@ contract('KyberDAO', function(accounts) {
             totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
             poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
 
-            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
-            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
             // percentage no change after new deposit
             Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
@@ -3282,9 +3280,9 @@ contract('KyberDAO', function(accounts) {
             poolMasterPoints.isub(mulPrecision(120)); // loi's withdraw
             poolMaster2Points.isub(mulPrecision(110 + 50)); // victor + poolmaster2 withdraw
 
-            mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-            poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
-            poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+            poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
+            poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
             Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
             Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
@@ -3320,9 +3318,9 @@ contract('KyberDAO', function(accounts) {
             totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
             poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
 
-            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
-            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
             Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
             Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
@@ -3341,9 +3339,9 @@ contract('KyberDAO', function(accounts) {
             totalEpochPoints.isub(mulPrecision(50));
             poolMaster2Points.isub(mulPrecision(50));
 
-            mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-            poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
-            poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+            poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
+            poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
             Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
             Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
@@ -3398,9 +3396,9 @@ contract('KyberDAO', function(accounts) {
             totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
             poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
 
-            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
-            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
             Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
             Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
@@ -3424,9 +3422,9 @@ contract('KyberDAO', function(accounts) {
             totalEpochPoints.isub(mulPrecision(100 + 50));
             poolMaster2Points.isub(mulPrecision(100 + 50));
 
-            mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-            poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
-            poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+            poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
+            poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
             Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
             Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
@@ -3494,9 +3492,9 @@ contract('KyberDAO', function(accounts) {
             totalEpochPoints.isub(mulPrecision(50 * 3));
             poolMasterPoints.isub(mulPrecision(50 * 3));
 
-            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
-            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
             Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
             Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
@@ -3574,8 +3572,8 @@ contract('KyberDAO', function(accounts) {
             totalEpochPoints.isub(initVictorStake);
             poolMasterPoints.isub(initVictorStake);
 
-            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
 
             Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
             Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
@@ -3612,8 +3610,8 @@ contract('KyberDAO', function(accounts) {
             totalEpochPoints.iadd(initPoolMaster2Stake);
             poolMasterPoints.iadd(initPoolMaster2Stake);
 
-            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
-            let poolMasterPer = poolMasterPoints.mul(precision).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
+            let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
 
             Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
             Helper.assertEqual(poolMasterPer, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
@@ -3649,8 +3647,8 @@ contract('KyberDAO', function(accounts) {
             totalEpochPoints.iadd(initMikeStake);
             mikePoints.iadd(initMikeStake);
 
-            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
-            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
 
             Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
             Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
@@ -3692,9 +3690,9 @@ contract('KyberDAO', function(accounts) {
             totalEpochPoints.iadd(initLoiStake);
             loiPoints.iadd(initLoiStake);
 
-            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
-            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-            let loiPer = loiPoints.mul(precision).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+            let loiPer = loiPoints.mul(precisionUnits).div(totalEpochPoints);
 
             Helper.assertEqual(mikePer, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
             Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
@@ -3736,9 +3734,9 @@ contract('KyberDAO', function(accounts) {
             totalEpochPoints.iadd(initLoiStake);
             loiPoints.iadd(initLoiStake);
 
-            let poolMaster2Per = poolMaster2Points.mul(precision).div(totalEpochPoints);
-            let mikePer = mikePoints.mul(precision).div(totalEpochPoints);
-            let loiPer = loiPoints.mul(precision).div(totalEpochPoints);
+            let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
+            let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
+            let loiPer = loiPoints.mul(precisionUnits).div(totalEpochPoints);
 
             await stakingContract.deposit(mulPrecision(200), {from: mike});
             await stakingContract.deposit(mulPrecision(210), {from: victor});
@@ -3994,7 +3992,7 @@ contract('KyberDAO', function(accounts) {
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
 
             // 20% of total supply
-            let formula = getFormulaParamsData(precision.div(new BN(5)), 0, 0);
+            let formula = getFormulaParamsData(precisionUnits.div(new BN(5)), 0, 0);
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 0%, c = 0, t = 0
             await daoContract.submitNewCampaign(
@@ -4064,7 +4062,7 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 20%, c = 0, t = 0
-            let formula = getFormulaParamsData(precision.div(new BN(5)), 0, 0);
+            let formula = getFormulaParamsData(precisionUnits.div(new BN(5)), 0, 0);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
                 formula, [25, 50, 100], '0x', {from: campCreator}
@@ -4136,8 +4134,8 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 20%, c = 100%, t = 1
             minPercentageInPrecision = mulPrecision(20).div(new BN(100));
-            cInPrecision = precision; // 100%
-            tInPrecision = precision; // 1
+            cInPrecision = precisionUnits; // 100%
+            tInPrecision = precisionUnits; // 1
             let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
@@ -4173,8 +4171,8 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 20%, c = 100%, t = 1
             minPercentageInPrecision = mulPrecision(20).div(new BN(100));
-            cInPrecision = precision; // 100%
-            tInPrecision = precision; // 1
+            cInPrecision = precisionUnits; // 100%
+            tInPrecision = precisionUnits; // 1
             let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
@@ -4211,8 +4209,8 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 20%, c = 100%, t = 1
             minPercentageInPrecision = mulPrecision(40).div(new BN(100));
-            cInPrecision = precision; // 100%
-            tInPrecision = precision; // 1
+            cInPrecision = precisionUnits; // 100%
+            tInPrecision = precisionUnits; // 1
             let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
@@ -4249,8 +4247,8 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 20%, c = 10%, t = 1
             minPercentageInPrecision = mulPrecision(40).div(new BN(100));
-            cInPrecision = precision.div(new BN(10)); // 10%
-            tInPrecision = precision; // 1
+            cInPrecision = precisionUnits.div(new BN(10)); // 10%
+            tInPrecision = precisionUnits; // 1
             let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
@@ -4287,7 +4285,7 @@ contract('KyberDAO', function(accounts) {
             // min percentage: 20%, c = 200%, t = 1
             minPercentageInPrecision = mulPrecision(40).div(new BN(100));
             cInPrecision = mulPrecision(2); // 10%
-            tInPrecision = precision; // 1
+            tInPrecision = precisionUnits; // 1
             let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
@@ -4323,7 +4321,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 20%, c = 100%, t = 0
             minPercentageInPrecision = mulPrecision(40).div(new BN(100));
-            cInPrecision = precision; // 100%
+            cInPrecision = precisionUnits; // 100%
             tInPrecision = 0; // 1
             let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
@@ -4458,7 +4456,7 @@ contract('KyberDAO', function(accounts) {
             await simpleSetupToTestThreshold(410, 410, 180, 40);
             currentBlock = await Helper.getCurrentBlock();
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
                 formula, [32, 50, 44], '0x', {from: campCreator}
@@ -4523,7 +4521,7 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 41%, C = 0, t = 0
-            let formula = getFormulaParamsData(precision.mul(new BN(41)).div(new BN(100)), 0, 0);
+            let formula = getFormulaParamsData(precisionUnits.mul(new BN(41)).div(new BN(100)), 0, 0);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
                 formula, [32, 26, 44], '0x', {from: campCreator}
@@ -4551,7 +4549,7 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
                 formula, [32, 26, 44], '0x', {from: campCreator}
@@ -4579,7 +4577,7 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
                 formula, [32, 26, 44], '0x', {from: campCreator}
@@ -4611,7 +4609,7 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
                 formula, [32, 26, 44], '0x', {from: campCreator}
@@ -4845,7 +4843,7 @@ contract('KyberDAO', function(accounts) {
             defaultBrrData = getDataFromRebateAndReward(rebate, reward);
             await simpleSetupToTestThreshold(410, 410, 180, 40);
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
 
             let newReward = 36;
             let newRebate = 44;
@@ -4917,7 +4915,7 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 41%, C = 0, t = 0
-            let formula = getFormulaParamsData(precision.mul(new BN(41)).div(new BN(100)), 0, 0);
+            let formula = getFormulaParamsData(precisionUnits.mul(new BN(41)).div(new BN(100)), 0, 0);
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
                 formula, [32, 26, 44], '0x', {from: campCreator}
@@ -4946,7 +4944,7 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
                 formula, [32, 26, 44], '0x', {from: campCreator}
@@ -4975,7 +4973,7 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
                 formula, [32, 26, 44], '0x', {from: campCreator}
@@ -5001,7 +4999,7 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precision.mul(new BN(40)).div(new BN(100)), precision, precision);
+            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
                 formula, [32, 26, 44], '0x', {from: campCreator}
@@ -5402,9 +5400,9 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(cInPre, result[1], "c in precision is wrong");
             Helper.assertEqual(tInPre, result[2], "t in precision is wrong");
 
-            minPercent = precision;
-            cInPre = precision;
-            t = precision;
+            minPercent = precisionUnits;
+            cInPre = precisionUnits;
+            t = precisionUnits;
 
             data = getFormulaParamsData(minPercent, cInPre, tInPre);
             result = await daoContract.getDecodeFormulaParams(data);
@@ -5413,9 +5411,9 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(cInPre, result[1], "c in precision is wrong");
             Helper.assertEqual(tInPre, result[2], "t in precision is wrong");
 
-            minPercent = precision.div(new BN(5));
-            cInPre = precision;
-            t = precision.div(new BN(2));
+            minPercent = precisionUnits.div(new BN(5));
+            cInPre = precisionUnits;
+            t = precisionUnits.div(new BN(2));
 
             data = getFormulaParamsData(minPercent, cInPre, tInPre);
             result = await daoContract.getDecodeFormulaParams(data);
@@ -5424,9 +5422,9 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(cInPre, result[1], "c in precision is wrong");
             Helper.assertEqual(tInPre, result[2], "t in precision is wrong");
 
-            minPercent = precision.div(new BN(10));
-            cInPre = precision.div(new BN(5));
-            t = precision;
+            minPercent = precisionUnits.div(new BN(10));
+            cInPre = precisionUnits.div(new BN(5));
+            t = precisionUnits;
 
             data = getFormulaParamsData(minPercent, cInPre, tInPre);
             result = await daoContract.getDecodeFormulaParams(data);
@@ -5435,8 +5433,8 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(cInPre, result[1], "c in precision is wrong");
             Helper.assertEqual(tInPre, result[2], "t in precision is wrong");
 
-            minPercent = precision;
-            cInPre = precision;
+            minPercent = precisionUnits;
+            cInPre = precisionUnits;
             t = 0;
 
             data = getFormulaParamsData(minPercent, cInPre, tInPre);
@@ -5457,35 +5455,35 @@ contract('KyberDAO', function(accounts) {
 
             Helper.assertEqual(data, result, "encode data is wrong");
 
-            minPercent = precision;
-            cInPre = precision;
-            t = precision;
+            minPercent = precisionUnits;
+            cInPre = precisionUnits;
+            t = precisionUnits;
 
             data = getFormulaParamsData(minPercent, cInPre, tInPre);
             result = await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
 
             Helper.assertEqual(data, result, "encode data is wrong");
 
-            minPercent = precision.div(new BN(5));
-            cInPre = precision;
-            t = precision.div(new BN(2));
+            minPercent = precisionUnits.div(new BN(5));
+            cInPre = precisionUnits;
+            t = precisionUnits.div(new BN(2));
 
             data = getFormulaParamsData(minPercent, cInPre, tInPre);
             result = await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
 
             Helper.assertEqual(data, result, "encode data is wrong");
 
-            minPercent = precision.div(new BN(10));
-            cInPre = precision.div(new BN(5));
-            t = precision;
+            minPercent = precisionUnits.div(new BN(10));
+            cInPre = precisionUnits.div(new BN(5));
+            t = precisionUnits;
 
             data = getFormulaParamsData(minPercent, cInPre, tInPre);
             result = await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
 
             Helper.assertEqual(data, result, "encode data is wrong");
 
-            minPercent = precision;
-            cInPre = precision;
+            minPercent = precisionUnits;
+            cInPre = precisionUnits;
             t = 0;
 
             data = getFormulaParamsData(minPercent, cInPre, tInPre);
@@ -5495,7 +5493,7 @@ contract('KyberDAO', function(accounts) {
 
         it("Test encode formula params should revert when data is invalid", async function() {
             let power84 = new BN(2).pow(new BN(84));
-            let minPercent = new BN(0).add(precision);
+            let minPercent = new BN(0).add(precisionUnits);
             let cInPre = 0;
             let tInPre = 0;
 
@@ -5671,7 +5669,7 @@ function logNumber(num) {
 }
 
 function mulPrecision(value) {
-    return precision.mul(new BN(value));
+    return precisionUnits.mul(new BN(value));
 }
 
 function getDataFromRebateAndReward(rebate, reward) {
