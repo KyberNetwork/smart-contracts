@@ -80,6 +80,7 @@ contract('KyberStaking', function(accounts) {
         currentBlock = await Helper.getCurrentBlock();
         // delay until last block of epoch 1
         await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock - 1);
+        console.log("Mike: This test will fail if using buidlerevm as default network in config, need to change it to develop")
         Helper.assertEqual(currentEpoch, await stakingContract.getCurrentEpochNumber(), "wrong epoch number");
 
         currentEpoch = 10;
