@@ -7,13 +7,14 @@ import "./IKyberNetworkProxy.sol";
 import "./ISimpleKyberProxy.sol";
 import "./IKyberHint.sol";
 
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network proxy for main contract
 contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawable, Utils {
 
     IKyberNetwork public kyberNetwork;
     IKyberHint public hintHandler;
-
+    
     mapping(address=>uint) platformWalletFeeBps;    
 
     constructor(address _admin) public Withdrawable(_admin) 
