@@ -5,7 +5,6 @@ import "./UtilsV5.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberNetworkProxy.sol";
 import "./ISimpleKyberProxy.sol";
-import "./IKyberHint.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -13,7 +12,6 @@ import "./IKyberHint.sol";
 contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawable, Utils {
 
     IKyberNetwork public kyberNetwork;
-    IKyberHint public hintHandler;
     
     mapping(address=>uint) platformWalletFeeBps;    
 
@@ -226,7 +224,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         returns(uint)
     {
         (UserBalance memory balanceBefore) = 
-            preapareTrade(src, dest, srcAmount, destAddress);
+            prepareTrade(src, dest, srcAmount, destAddress);
 
         (uint destAmount) = kyberNetwork.tradeWithHintAndFee.value(msg.value)(
             msg.sender,
@@ -259,16 +257,6 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         kyberNetwork = _kyberNetwork;
     }
     
-    event HintHandlerSet(IKyberHint hintHandler);
-
-    function setHintHandler(IKyberHint _hintHandler) public onlyAdmin {
-        require(_hintHandler != IKyberHint(0), "Hint handler 0");
-
-        emit HintHandlerSet(_hintHandler);
-
-        hintHandler = _hintHandler;
-    }
-    
     function maxGasPrice() public view returns(uint gasPrice) {
         ( , , gasPrice, , ) = kyberNetwork.getNetworkData();
     }
@@ -283,7 +271,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         uint actualRate;
     }
     
-    function preapareTrade(IERC20 src, IERC20 dest, uint srcAmount, address destAddress) 
+    function prepareTrade(IERC20 src, IERC20 dest, uint srcAmount, address destAddress) 
         internal returns
         (UserBalance memory balanceBefore) 
     {
