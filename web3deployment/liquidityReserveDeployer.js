@@ -15,9 +15,7 @@ const { configPath, gasPriceGwei, printPrivateKey, rpcUrl, signedTxOutput, dontS
     .boolean('dontSendTx')
     .argv;
 let web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
-const solc = require('solc');
-const input = require("./compileContracts.js").contracts;
-let output;
+
 const rand = web3.utils.randomHex(7);
 const privateKey = web3.utils.sha3("js sucks" + rand);
 if (printPrivateKey) {
@@ -42,13 +40,14 @@ async function sendTx(txObject) {
   let gasLimit;
   try {
     gasLimit = await txObject.estimateGas();
+    gasLimit = gasLimit.mul(new BN(150)).div(new BN(100));
   }
   catch (e) {
-    gasLimit = new BN(900).mul(new BN(1000));
+    gasLimit = new BN(1500).mul(new BN(1000));
   }
 
   if(txTo !== null) {
-    gasLimit = new BN(500).mul(new BN(1000));
+    gasLimit = new BN(800).mul(new BN(1000));
   }
 
   //console.log(gasLimit);
@@ -79,13 +78,14 @@ async function sendTx(txObject) {
   }
 }
 
-async function deployContract(solcOutput, contractName, ctorArgs) {
+async function deployContract(solcOutput, contractName, name, ctorArgs) {
 
   const actualName = contractName;
-  const bytecode = solcOutput.contracts[actualName].bytecode;
+  const contract = solcOutput.contracts[actualName][name];
+  const bytecode = contract["evm"]["bytecode"]["object"];
+  const abi = contract['abi'];
+  const myContract = new web3.eth.Contract(abi);
 
-  const abi = solcOutput.contracts[actualName].interface;
-  const myContract = new web3.eth.Contract(JSON.parse(abi));
   const deploy = myContract.deploy({data:"0x" + bytecode, arguments: ctorArgs});
   let address = "0x" + web3.utils.sha3(RLP.encode([sender,nonce])).slice(12).substring(14);
   address = web3.utils.toChecksumAddress(address);
@@ -162,7 +162,8 @@ async function main() {
   chainId = chainId || await web3.eth.net.getId()
   console.log('chainId', chainId);
   console.log("starting compilation");
-  output = await solc.compile({ sources: input }, 1);
+  output = await require("./compileContracts.js").compileContracts("v4");
+  // console.log(output);
   console.log("finished compilation");
 
   web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
@@ -173,9 +174,9 @@ async function main() {
 
   await deployPricingContract(output);
   await deployReserveContract(output);
-  await connectPricingToReserve();
-  await setWhitelistAddresses();
-  await handoverPermissions();
+  // await connectPricingToReserve();
+  // await setWhitelistAddresses();
+  // await handoverPermissions();
 
   console.log("last nonce is", nonce);
 
@@ -188,13 +189,13 @@ async function main() {
 
 async function deployPricingContract(output) {
   console.log("deploying pricing contract");
-  [pricingAddress,pricingContract] = await deployContract(output, "LiquidityConversionRates.sol:LiquidityConversionRates", [sender,token]);
+  [pricingAddress,pricingContract] = await deployContract(output, "LiquidityConversionRates.sol", "LiquidityConversionRates", [sender,token]);
   console.log(`pricingAddress: ${pricingAddress}`)
 }
 
 async function deployReserveContract(output) {
   console.log("deploying reserve contract");
-  [reserveAddress,reserveContract] = await deployContract(output, "KyberReserve.sol:KyberReserve", [networkAddress, pricingAddress, sender]);
+  [reserveAddress,reserveContract] = await deployContract(output, "KyberReserve.sol", "KyberReserve", [networkAddress, pricingAddress, sender]);
   console.log(`reserveAddress: ${reserveAddress}`)
 }
 

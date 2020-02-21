@@ -1,0 +1,109 @@
+{
+    "tokens": {
+        "DAI": {
+            "name": "DAI Stablecoin",
+            "decimals": 18,
+            "address": "0xad6d458402f60fd3bd25163575031acdce07538d"
+        },
+        "KNC": {
+            "name": "KyberNetwork",
+            "decimals": 18,
+            "address": "0xa67bba948bd8372bc9e60b1acfafb8e2db3cc57c"
+        },
+        "WBTC": {
+            "name": "Wrapped BTC",
+            "decimals": 8,
+            "address": "0x3dff0dce5fc4b367ec91d31de3837cf3840c8284"
+        }
+    },
+
+    "addresses": {
+        "knc": "0xa67bba948bd8372bc9e60b1acfafb8e2db3cc57c"
+    },
+
+    "reserves": [
+        {
+            "address": "0x39C30B03799DB870e9C01747f68e24D2b38A30C9",
+            "id": "0xff00004b79626572",
+            "isFeePaying": true,
+            "rebateWallet": "0xDd102CeDa27a2283dC85028f9bF7d022d8a640d2",
+            "tokens": [
+                {
+                    "address":"0xad6d458402f60fd3bd25163575031acdce07538d",
+                    "ethToToken":true,
+                    "tokenToEth":true
+                },
+                {
+                    "address":"0xa67bba948bd8372bc9e60b1acfafb8e2db3cc57c",
+                    "ethToToken":true,
+                    "tokenToEth":true
+                },
+                {
+                    "address":"0x3dff0dce5fc4b367ec91d31de3837cf3840c8284",
+                    "ethToToken":true,
+                    "tokenToEth":true
+                }
+            ]
+        },
+        {
+            "address": "0x43bC6b5fa717cf3d663C722F6520b39D24CD6AE1",
+            "id": "0xff53706561726f53",
+            "isFeePaying": false,
+            "rebateWallet": "0xDd102CeDa27a2283dC85028f9bF7d022d8a640d2",
+            "tokens": [
+                {
+                    "address":"0xad6d458402f60fd3bd25163575031acdce07538d",
+                    "ethToToken":true,
+                    "tokenToEth":true
+                },
+                {
+                    "address":"0xa67bba948bd8372bc9e60b1acfafb8e2db3cc57c",
+                    "ethToToken":true,
+                    "tokenToEth":true
+                },
+                {
+                    "address":"0x3dff0dce5fc4b367ec91d31de3837cf3840c8284",
+                    "ethToToken":true,
+                    "tokenToEth":true
+                }
+            ]
+        },
+        {
+            "address": "0x199570B965a446aBF284731873dbbf6b09269338",
+            "id": "0xaa00004e61716962",
+            "isFeePaying": true,
+            "rebateWallet": "0xDd102CeDa27a2283dC85028f9bF7d022d8a640d2",
+            "tokens": [
+                {
+                    "address":"0xa67bba948bd8372bc9e60b1acfafb8e2db3cc57c",
+                    "ethToToken":true,
+                    "tokenToEth":true
+                }
+            ]
+        }
+    ],
+
+    "wallets": [],
+
+    "permission" : {
+        "TradeLogic" : {
+            "admin" : "0xbDd33F411DA0B40018922a3BC69001B458227f5c",
+            "operator" : ["0xbDd33F411DA0B40018922a3BC69001B458227f5c","0xBE2F0354D970265BFc36D383af77F72736b81B54","0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA"],
+            "alerter" : ["0xbDd33F411DA0B40018922a3BC69001B458227f5c","0xBE2F0354D970265BFc36D383af77F72736b81B54","0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA"]},
+        "Network" : {
+            "admin" : "0xbDd33F411DA0B40018922a3BC69001B458227f5c",
+            "operator" : ["0xbDd33F411DA0B40018922a3BC69001B458227f5c","0xBE2F0354D970265BFc36D383af77F72736b81B54","0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA"],
+            "alerter" : ["0xbDd33F411DA0B40018922a3BC69001B458227f5c","0xBE2F0354D970265BFc36D383af77F72736b81B54","0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA"]},
+        "Proxy" : {
+            "admin" : "0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA",
+            "operator" : ["0xeAE89c711c02468deA8eE1AdE4fA78B79AC9379a",
+                         "0x9224016462B204C57Eb70e1D69652f60bcAF53A8",
+                        "0x7985405a348baa90c92164b86b383c8f43ad2d96"],
+            "alerter" : []}
+    },
+    "max gas price" : 50000000000,
+    "neg diff in bps" : 20,
+    "burn block interval": 10,
+    
+    "output filename" : "katalystRopsten.json"
+}
