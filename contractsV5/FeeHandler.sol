@@ -10,7 +10,7 @@ import "./IERC20.sol";
 
 contract FeeHandler is IFeeHandler, Utils {
 
-    uint constant ETH_TO_BURN = 10**19;
+    uint constant public WEI_TO_BURN = 2 * 10 ** ETH_DECIMALS;
     uint constant BITS_PER_PARAM = 64;
     uint constant DEFAULT_REWARD_BPS = 3000;
     uint constant DEFAULT_REBATE_BPS = 3000;
@@ -20,7 +20,7 @@ contract FeeHandler is IFeeHandler, Utils {
     address public kyberNetwork;
     IERC20 public KNC;
     
-    uint public burnBlockInterval;
+    uint public burnBlockInterval = 15;
     uint public lastBurnBlock;
     uint public brrAndEpochData;
     address public daoSetter;
@@ -128,7 +128,6 @@ contract FeeHandler is IFeeHandler, Utils {
         require(totalRewards >= amount, "Amount underflow");
 
         require(rewardsPayedPerEpoch[epoch] + amount <= rewardsPerEpoch[epoch], "payed per epoch high");
-
         rewardsPayedPerEpoch[epoch] += amount;
         totalRewards -= amount;
 
@@ -183,19 +182,19 @@ contract FeeHandler is IFeeHandler, Utils {
     /// @dev should limit burn amount and create block delay between burns.
     function burnKNC() public returns(uint) {
         // check if current block > last burn block number + num block interval
-        require(block.number > lastBurnBlock + burnBlockInterval, "Must wait more blocks to burn");
+        require(block.number > lastBurnBlock + burnBlockInterval, "Wait more block to burn");
 
         // update last burn block number
         lastBurnBlock = block.number;
 
-        // Get srcQty to burn, if greater than ETH_TO_BURN, burn only ETH_TO_BURN per function call.
+        // Get srcQty to burn, if greater than WEI_TO_BURN, burn only WEI_TO_BURN per function call.
         (uint totalRewards, uint totalRebates) = decodeTotalValues(totalValues);
 
         uint totalBalance = address(this).balance;
         require(totalBalance >= totalRebates + totalRewards, "contract bal too low");
 
         uint srcQty = totalBalance - totalRebates - totalRewards;
-        srcQty = srcQty > ETH_TO_BURN ? ETH_TO_BURN : srcQty;
+        srcQty = srcQty > WEI_TO_BURN ? WEI_TO_BURN : srcQty;
 
         // Get the rate
         // If srcQty is too big, get expected rate will return 0 so maybe we should limit how much can be bought at one time.
@@ -219,7 +218,7 @@ contract FeeHandler is IFeeHandler, Utils {
         require(kyberEthKncRate * kyberKncEthRate > PRECISION ** 2 / 2, "high KNC spread");
 
         // Buy some KNC and burn
-        uint destQty = networkProxy.tradeWithHintAndFee(
+        uint destQty = networkProxy.tradeWithHintAndFee.value(srcQty)(
             ETH_TOKEN_ADDRESS,
             srcQty,
             KNC,
@@ -259,8 +258,9 @@ contract FeeHandler is IFeeHandler, Utils {
         emit RewardsRemovedToBurn(epoch, rewardAmount);
     }
 
-    function getTotalAmounts() external view returns(uint totalRewardWei, uint totalRebateWei) {
+    function getTotalAmounts() external view returns(uint totalRewardWei, uint totalRebateWei, uint totalBurnWei) {
         (totalRewardWei, totalRebateWei) = decodeTotalValues(totalValues);
+        totalBurnWei = address(this).balance - totalRewardWei - totalRebateWei;
     }
 
     function encodeBRRData(uint _reward, uint _rebate, uint _epoch, uint _expiryBlock) public pure returns (uint) {
