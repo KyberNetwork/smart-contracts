@@ -22,6 +22,7 @@ const gasPrice = (new BN(10).pow(new BN(9)).mul(new BN(50)));
 const negligibleRateDiffBps = new BN(10); //0.01% 
 const maxDestAmt = new BN(2).pow(new BN(255));
 const minConversionRate = new BN(0);
+const defaultNetworkFeeBps = new BN(25);
 
 let takerFeeBps = new BN(20);
 let platformFeeBps = zeroBN;
@@ -151,8 +152,8 @@ contract('KyberNetwork', function(accounts) {
             //setup network
             await network.addOperator(operator, {from: admin});
             await network.addKyberProxy(networkProxy, {from: admin});
-            await network.setContracts(feeHandler.address, DAO.address, tradeLogic.address, zeroAddress, {from: admin});
-
+            await network.setContracts(feeHandler.address, tradeLogic.address, zeroAddress, {from: admin});
+            await network.setDAOCOntract(DAO.address, {from: admin});
             //set params, enable network
             await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
             await network.setEnable(true, {from: admin});
@@ -175,14 +176,9 @@ contract('KyberNetwork', function(accounts) {
 
             let gasHelperAdd = accounts[9];
 
-            txResult = await tempNetwork.setContracts(feeHandler.address, DAO.address, 
-                tempTradeLogic.address, gasHelperAdd, {from: admin});
+            txResult = await tempNetwork.setContracts(feeHandler.address, tempTradeLogic.address, gasHelperAdd, {from: admin});
             expectEvent(txResult, 'FeeHandlerUpdated', {
                 newHandler: feeHandler.address
-            });
-            //TODO: set new DAO. and see event.
-            expectEvent(txResult, 'KyberDAOUpdated', {
-                newDAO: DAO.address
             });
             expectEvent(txResult, 'TradeLogicUpdated', {
                 tradeLogic: tempTradeLogic.address
@@ -205,7 +201,7 @@ contract('KyberNetwork', function(accounts) {
 
             //TODO: RemoveReserveFromNetwork
             //TODO: ListReservePairs
-            //TODO: FeeHandlerContractSet
+            //TODO: DAOContractSet 
             //TODO: KyberNetworkParamsSet
             //TODO: KyberNetworkSetEnable
             //TODO: KyberProxyAdded
@@ -237,7 +233,7 @@ contract('KyberNetwork', function(accounts) {
                 numReserves += result.numAddedReserves * 1;
 
                 //add and list pair for reserve
-                nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
 
                 //set zero rates
                 for (const [key, value] of Object.entries(reserveInstances)) {
@@ -250,7 +246,7 @@ contract('KyberNetwork', function(accounts) {
             });
 
             after("unlist and remove reserve", async() => {
-                nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
                 reserveInstances = {};
             });
 
@@ -332,11 +328,11 @@ contract('KyberNetwork', function(accounts) {
                 numReserves += result.numAddedReserves * 1;              
                 
                 //add and list pair for reserve
-                nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
             })
 
             after("unlist and remove reserve", async() => {
-                nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
                 reserveInstances = {};
             });
             
@@ -534,14 +530,14 @@ contract('KyberNetwork', function(accounts) {
     
         it("test encode decode taker fee data with mock setter getter", async() => {
             let tempNetwork = await MockNetwork.new(admin);
-            await tempNetwork.setContracts(feeHandler.address, DAO.address, tradeLogic.address, 
+            await tempNetwork.setContracts(feeHandler.address, tradeLogic.address, 
                 zeroAddress, {from: admin});
     
             let networkData = await tempNetwork.getNetworkData();
          
             await tempNetwork.getAndUpdateTakerFee();
             networkData = await tempNetwork.getNetworkData();
-            Helper.assertEqual(networkData.takerFeeBps, takerFeeBps);
+            Helper.assertEqual(networkData.takerFeeBps, defaultNetworkFeeBps);
             
             let newFee = new BN(35);
             let newExpiryBlock = new BN(723);
@@ -555,7 +551,7 @@ contract('KyberNetwork', function(accounts) {
             Helper.assertEqual(takerFeeData[1], newExpiryBlock);
         });
         
-        it("update fee in DAO and see updated in netwrok on correct block", async() => {
+        it("update fee in DAO and see updated in network on correct block", async() => {
             //TODO:
         });
     });

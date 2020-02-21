@@ -216,9 +216,9 @@ module.exports.addReservesToNetwork = async function (networkInstance, reserveIn
     for (const [key, value] of Object.entries(reserveInstances)) {
         reserve = value;
         console.log("add reserve type: " + reserve.type + " ID: " + reserve.reserveId);
-        networkInstance.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, reserve.address, {from: operator});
+        await networkInstance.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, reserve.address, {from: operator});
         for (let j = 0; j < tokens.length; j++) {
-            networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, true, {from: operator});
+            await networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, true, {from: operator});
         }
     }
 }
@@ -228,9 +228,9 @@ module.exports.removeReservesFromNetwork = async function (networkInstance, rese
         reserve = value;
         console.log("removing reserve type: " + reserve.type + " address: " + reserve.address + " pricing: " + reserve.pricing);
         for (let j = 0; j < tokens.length; j++) {
-            networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, false, {from: operator});
+            await networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, false, {from: operator});
         }
-        networkInstance.rmReserve(reserve.address, {from: operator});
+        await networkInstance.rmReserve(reserve.address, {from: operator});
     }
 }
 
