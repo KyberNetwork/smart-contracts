@@ -97,7 +97,7 @@ function createConfiguration(sourceFiles) {
                 // values will optimize more for high-frequency usage.
                 'runs': 200,
             },
-            'evmVersion': 'petersburg'
+            'evmVersion': 'istanbul'
         }
     };
 }

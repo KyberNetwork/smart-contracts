@@ -15,18 +15,26 @@ const { configPath, gasPriceGwei, printPrivateKey, rpcUrl, signedTxOutput, dontS
     .boolean('dontSendTx')
     .argv;
 let web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
-let privateKey = "0x18ff1b2a1556888ce95e2f10536d8678c02cb863bc6a3047f5ac242ccea3db70";
-// const rand = web3.utils.randomHex(7);
-// const privateKey = web3.utils.sha3("js sucks" + rand);
-// if (printPrivateKey) {
-//   console.log("privateKey", privateKey);
-//   let path = "privatekey_"  + web3.utils.randomHex(7) + ".txt";
-//   fs.writeFileSync(path, privateKey, function(err) {
-//       if(err) {
-//           return console.log(err);
-//       }
-//   });
-// }
+const rand = web3.utils.randomHex(7);
+let privateKey = web3.utils.sha3("js sucks" + rand);
+if (printPrivateKey) {
+  console.log("privateKey", privateKey);
+  let path = "privatekey_"  + web3.utils.randomHex(7) + ".txt";
+  fs.writeFileSync(path, privateKey, function(err) {
+      if(err) {
+          return console.log(err);
+      }
+  });
+}
+//REPLACE PRIVATE KEY HERE
+// privateKey = "";
+
+//contract addresses: REPLACE IF SOMETHING BREAKS DURING DEPLOYMENT
+let tradeLogicAddress = "";
+let networkAddress = "";
+let proxyAddress = "";
+let feeHandlerAddress = "";
+
 const account = web3.eth.accounts.privateKeyToAccount(privateKey);
 const sender = account.address;
 const gasPrice = new BN(gasPriceGwei).mul(new BN(10).pow(new BN(9)));
@@ -51,7 +59,6 @@ async function sendTx(txObject, gasLimit) {
     gasLimit = 800000;
   }
 
-  console.log(gasLimit);
   const txData = txObject.encodeABI();
   const txFrom = account.address;
   const txKey = account.privateKey;
@@ -97,12 +104,6 @@ async function deployContract(solcOutput, contractName, name, ctorArgs) {
 //token addresses
 let kncTokenAddress;
 
-//contract addresses: REPLACE IF SOMETHING BREAKS DURING DEPLOYMENT
-let tradeLogicAddress = "";
-let proxyAddress = "";
-let networkAddress = "";
-let feeHandlerAddress = "";
-
 //contracts
 let tradeLogicContract;
 let networkContract;
@@ -113,6 +114,7 @@ let feeHandlerContract;
 let tradeLogicPermissions;
 let networkPermissions;
 let proxyPermissions;
+let daoSetter;
 
 //misc variables needed for contracts deployment, should be obtained from input json
 let maxGasPrice = (new BN(50).mul(new BN(10).pow(new BN(9)))).toString();
@@ -160,6 +162,7 @@ function parseInput( jsonInput ) {
     tradeLogicPermissions = jsonInput.permission["TradeLogic"];
     networkPermissions = jsonInput.permission["Network"];
     proxyPermissions = jsonInput.permission["Proxy"];
+    daoSetter = jsonInput.permission["FeeHandler"]["DAOSetter"];
 
     maxGasPrice = jsonInput["max gas price"].toString();
     negDiffInBps = jsonInput["neg diff in bps"].toString();
@@ -198,6 +201,7 @@ async function main() {
   console.log('chainId', chainId);
   console.log('starting compilation');
   output = await require("../compileContracts.js").compileContracts("v5");
+  console.log(output);
   console.log("finished compilation");
 
   //reinstantiate web3 (solc overwrites something)
@@ -207,10 +211,14 @@ async function main() {
   }
 
   //deployment: Replace contract addresses variables on top should something break during deployment
+  /////////////////////////////////////////
+  // CONTRACT INSTANTIATION / DEPLOYMENT //
+  /////////// DO NOT TOUCH ////////////////
   await deployTradeLogicContract(output);
   await deployNetworkContract(output);
   await deployProxyContract(output);
   await deployFeeHandlerContract(output);
+  /////////////////////////////////////////
 
   await setNetworkAddressInTradeLogic();
   await setContractsInNetwork();
@@ -283,8 +291,8 @@ async function deployTradeLogicContract(output) {
         console.log(`tradeLogic: ${tradeLogicAddress}`);
     } else {
         console.log("Instantiating trade logic...");
-        tradeLogicContract = new web3.eth.Contract(JSON.parse(
-            output.contracts["KyberTradeLogic.sol"]["KyberTradeLogic"].abi), tradeLogicAddress
+        tradeLogicContract = new web3.eth.Contract(
+            output.contracts["KyberTradeLogic.sol"]["KyberTradeLogic"].abi, tradeLogicAddress
         );
     }
 }
@@ -296,8 +304,8 @@ async function deployNetworkContract(output) {
         console.log(`network: ${networkAddress}`);
     } else {
         console.log("Instantiating network...");
-        networkContract = new web3.eth.Contract(JSON.parse(
-            output.contracts["KyberNetwork.sol:KyberNetwork"].abi), networkAddress
+        networkContract = new web3.eth.Contract(
+            output.contracts["KyberNetwork.sol"]["KyberNetwork"].abi, networkAddress
         );
     }
 }
@@ -309,8 +317,8 @@ async function deployProxyContract(output) {
         console.log(`KNProxy: ${proxyAddress}`);
     } else {
         console.log("Instantiating proxy...");
-        proxyContract = new web3.eth.Contract(JSON.parse(
-            output.contracts["KyberNetworkProxy.sol:KyberNetworkProxy"].abi), proxyAddress
+        proxyContract = new web3.eth.Contract(
+            output.contracts["KyberNetworkProxy.sol"]["KyberNetworkProxy"].abi, proxyAddress
         );
     }
 }
@@ -320,13 +328,13 @@ async function deployFeeHandlerContract(output) {
         console.log("deploying feeHandler");
         [feeHandlerAddress, feeHandlerContract] = await deployContract(
             output, "FeeHandler.sol", "FeeHandler", 
-            [sender, proxyAddress, networkAddress, kncTokenAddress, burnBlockInterval]
+            [daoSetter, proxyAddress, networkAddress, kncTokenAddress, burnBlockInterval]
         );
         console.log(`Fee Handler: ${feeHandlerAddress}`);
     } else {
         console.log("Instantiating feeHandler...");
-        feeHandlerContract = new web3.eth.Contract(JSON.parse(
-            output.contracts["FeeHandler.sol:FeeHandler"].abi), feeHandlerAddress
+        feeHandlerContract = new web3.eth.Contract(
+          output.contracts["FeeHandler.sol"]["FeeHandler"].abi, feeHandlerAddress
         );
     }
 }
