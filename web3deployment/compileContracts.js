@@ -96,8 +96,7 @@ function createConfiguration(sourceFiles) {
                 // Lower values will optimize more for initial deployment cost, higher
                 // values will optimize more for high-frequency usage.
                 'runs': 200,
-            },
-            'evmVersion': 'istanbul'
+            }
         }
     };
 }
