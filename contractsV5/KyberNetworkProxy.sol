@@ -5,14 +5,15 @@ import "./UtilsV5.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberNetworkProxy.sol";
 import "./ISimpleKyberProxy.sol";
-
+import "./IKyberHint.sol";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network proxy for main contract
 contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawable, Utils {
 
     IKyberNetwork public kyberNetwork;
-    
+    IKyberHint public hintHandler;
+
     mapping(address=>uint) platformWalletFeeBps;    
 
     constructor(address _admin) public Withdrawable(_admin) 
@@ -255,6 +256,16 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         emit KyberNetworkSet(_kyberNetwork, kyberNetwork);
 
         kyberNetwork = _kyberNetwork;
+    }
+    
+    event HintHandlerSet(IKyberHint hintHandler);
+
+    function setHintHandler(IKyberHint _hintHandler) public onlyAdmin {
+        require(_hintHandler != IKyberHint(0), "Hint handler 0");
+
+        emit HintHandlerSet(_hintHandler);
+
+        hintHandler = _hintHandler;
     }
     
     function maxGasPrice() public view returns(uint gasPrice) {
