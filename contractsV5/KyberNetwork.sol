@@ -800,7 +800,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint expiryBlock;
         (takerFeeBps, expiryBlock) = decodeTakerFee(takerFeeData);
 
-        if (expiryBlock <= block.number) {
+        if (expiryBlock < block.number && kyberDAO != IKyberDAO(0)) {
             (takerFeeBps, expiryBlock) = kyberDAO.getLatestNetworkFeeData();
         }
         // todo: don't revert if DAO reverts. just return exsiting value.
@@ -813,7 +813,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         (takerFeeBps, expiryBlock) = decodeTakerFee(takerFeeData);
 
-        if (expiryBlock <= block.number && kyberDAO != IKyberDAO(0)) {
+        if (expiryBlock < block.number && kyberDAO != IKyberDAO(0)) {
             (takerFeeBps, expiryBlock) = kyberDAO.getLatestNetworkFeeDataWithCache();
             takerFeeData = encodeTakerFee(expiryBlock, takerFeeBps);
         }
