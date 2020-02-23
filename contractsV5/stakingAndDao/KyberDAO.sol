@@ -140,7 +140,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     constructor(
         uint _epochPeriod, uint _startBlock,
         address _staking, address _feeHandler, address _knc,
-        uint _defaultNetworkFee, uint _defaultBrrData,
+        uint _defaultNetworkFeeBps, uint _defaultRewardBps, uint _defaultRebateBps,
         address _campaignCreator
     ) public CampPermissionGroups(_campaignCreator) {
         require(_epochPeriod > 0, "ctor: epoch period must be positive");
@@ -148,10 +148,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         require(_staking != address(0), "ctor: staking is missing");
         require(_feeHandler != address(0), "ctor: feeHandler is missing");
         require(_knc != address(0), "ctor: knc token is missing");
-        require(_defaultNetworkFee <= BPS, "ctor: network fee is more than 100%");
-
-        (uint rebateBps, uint rewardBps) = getRebateAndRewardFromData(_defaultBrrData);
-        require(rebateBps + rewardBps <= BPS, "ctor: rebate + reward is more than 100%");
+        require(_defaultNetworkFeeBps <= BPS, "ctor: network fee is more than 100%");
+        require(_defaultRewardBps + _defaultRebateBps <= BPS, "ctor: rebate + reward is more than 100%");
 
         staking = IKyberStaking(_staking);
         require(staking.EPOCH_PERIOD() == _epochPeriod, "ctor: different epoch period");
@@ -161,8 +159,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         START_BLOCK = _startBlock;
         feeHandler = IFeeHandler(_feeHandler);
         kncToken = IERC20(_knc);
-        latestNetworkFeeResult = _defaultNetworkFee;
-        latestBrrResult = _defaultBrrData;
+        latestNetworkFeeResult = _defaultNetworkFeeBps;
+        latestBrrResult = getDataFromRewardAndRebateWithValidation(_defaultRewardBps, _defaultRebateBps);
     }
 
     modifier onlyStakingContract {
@@ -566,6 +564,31 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     // return list campaign ids for epoch, excluding non-existed ones
     function getListCampIDs(uint epoch) public view returns(uint[] memory campIDs) {
         return epochCampaigns[epoch];
+    }
+
+    // return latest brr data after decoded so it is easily to check from read contract
+    function latestBRRDataDecoded()
+        public view
+        returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber)
+    {
+        epoch = getCurrentEpochNumber();
+        // expiryBlockNumber = START_BLOCK + curEpoch * EPOCH_PERIOD - 1;
+        expiryBlockNumber = START_BLOCK.add(epoch.mul(EPOCH_PERIOD)).sub(1);
+        uint brrData = latestBrrResult;
+        if (epoch > 0) {
+            uint campID = brrCampaign[epoch.sub(1)];
+            if (campID != 0) {
+                uint winningOption;
+                (winningOption, brrData) = getCampaignWinningOptionAndValue(campID);
+                if (winningOption == 0) {
+                    // no winning option, fallback to previous result
+                    brrData = latestBrrResult;
+                }
+            }
+        }
+
+        (rebateInBps, rewardInBps) = getRebateAndRewardFromData(brrData);
+        burnInBps = BPS.sub(rebateInBps).sub(rewardInBps);
     }
 
     // Helper functions for squeezing data
