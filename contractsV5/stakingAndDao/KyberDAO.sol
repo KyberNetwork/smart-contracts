@@ -77,9 +77,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     uint internal constant POWER_84 = 2 ** 84;
     // max number of camps for each epoch
     uint public constant MAX_EPOCH_CAMPS = 10;
-
-    uint public MAX_CAMP_OPTIONS = 4; // TODO: Finalise the value
-    uint public MIN_CAMP_DURATION = 75000; // around 2 weeks time. TODO: Finalise the value
+    // max number of options for each campaign
+    uint public MAX_CAMP_OPTIONS = 4;
+    // minimum blocks duration for a campaign
+    uint public MIN_CAMP_DURATION = 21600; // around 4 days
 
     IERC20 public kncToken;
     IKyberStaking public staking;
