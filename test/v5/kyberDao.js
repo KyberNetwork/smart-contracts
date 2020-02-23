@@ -27,6 +27,8 @@ let poolMaster2;
 let maxCampOptions = 4;
 let minCampPeriod = 10; // 10 blocks
 let defaultNetworkFee = 25;
+let defaultRewardBps = 3000; // 30%
+let defaultRebateBps = 2000; // 20%
 let defaultBrrData = getDataFromRebateAndReward(25, 25);
 let minPercentageInPrecision = new BN(precisionUnits).div(new BN(5)); // 20%
 // Y = C - t * X
@@ -73,7 +75,8 @@ contract('KyberDAO', function(accounts) {
         daoContract = await DAOContract.new(
             epochPeriod, startBlock,
             stakingContract.address,  feeHandler.address, kncToken.address,
-            maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
+            maxCampOptions, minCampPeriod,
+            defaultNetworkFee, defaultRewardBps, defaultRebateBps,
             campCreator
         )
         await stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: campCreator});
@@ -146,7 +149,7 @@ contract('KyberDAO', function(accounts) {
         await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
     }
 
-    describe("#Handle Withdrawl tests", () => {
+    describe("#Handle Withdrawal tests", () => {
         it("Test handle withdrawal update correct points and vote count - no delegation", async function() {
             await deployContracts(20, currentBlock + 20, 10);
             await setupSimpleStakingData();
@@ -562,7 +565,7 @@ contract('KyberDAO', function(accounts) {
             daoContract = await DAOContract.new(
                 10, currentBlock + 10,
                 stakingContract.address,  feeHandler.address, kncToken.address,
-                maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
+                maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
                 campCreator
             )
             await daoContract.replaceStakingContract(mike);
@@ -2654,7 +2657,7 @@ contract('KyberDAO', function(accounts) {
             await feeHandler.withdrawAllETH({from: accounts[0]});
         });
 
-        it("Test claim reward some epochs reward and balance change as epected", async function() {
+        it("Test claim reward some epochs reward and balance changes as epected", async function() {
             await deployContracts(20, currentBlock + 15, 10);
             await setupSimpleStakingData();
 
@@ -4735,10 +4738,18 @@ contract('KyberDAO', function(accounts) {
         it("Test get brr data returns correct default data for epoch 0", async function() {
             let rebate = 24;
             let reward = 26;
+            defaultRewardBps = reward;
+            defaultRebateBps = rebate;
             defaultBrrData = getDataFromRebateAndReward(rebate, reward);
             await deployContracts(10, currentBlock + 10, 5);
 
             Helper.assertEqual(defaultBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
+            let dataDecoded = await daoContract.latestBRRDataDecoded();
+            Helper.assertEqual(10000 - rebate - reward, dataDecoded[0], "burn default is wrong");
+            Helper.assertEqual(reward, dataDecoded[1], "reward default is wrong");
+            Helper.assertEqual(rebate, dataDecoded[2], "rebate default is wrong");
+            Helper.assertEqual(0, dataDecoded[3], "epoch is wrong");
+            Helper.assertEqual(startBlock - 1, dataDecoded[4], "expiry block is wrong");
 
             // make sure data is correct
             // reward - rebate - burn - epoch - expiry block
@@ -4758,11 +4769,19 @@ contract('KyberDAO', function(accounts) {
             await daoContract.checkLatestBrrData(
                 reward, rebate, 10000 - rebate - reward, 0, startBlock - 1
             );
+            dataDecoded = await daoContract.latestBRRDataDecoded();
+            Helper.assertEqual(10000 - rebate - reward, dataDecoded[0], "burn default is wrong");
+            Helper.assertEqual(reward, dataDecoded[1], "reward default is wrong");
+            Helper.assertEqual(rebate, dataDecoded[2], "rebate default is wrong");
+            Helper.assertEqual(0, dataDecoded[3], "epoch is wrong");
+            Helper.assertEqual(startBlock - 1, dataDecoded[4], "expiry block is wrong");
         });
 
         it("Test get brr data returns correct latest data, no campaigns", async function() {
             let rebate = 24;
             let reward = 26;
+            defaultRewardBps = reward;
+            defaultRebateBps = rebate;
             defaultBrrData = getDataFromRebateAndReward(rebate, reward);
             await deployContracts(10, currentBlock + 10, 5);
 
@@ -4773,6 +4792,12 @@ contract('KyberDAO', function(accounts) {
                 reward, rebate, 10000 - rebate - reward, 1, epochPeriod + startBlock - 1
             );
             Helper.assertEqual(defaultBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
+            let dataDecoded = await daoContract.latestBRRDataDecoded();
+            Helper.assertEqual(10000 - rebate - reward, dataDecoded[0], "burn default is wrong");
+            Helper.assertEqual(reward, dataDecoded[1], "reward default is wrong");
+            Helper.assertEqual(rebate, dataDecoded[2], "rebate default is wrong");
+            Helper.assertEqual(1, dataDecoded[3], "epoch is wrong");
+            Helper.assertEqual(epochPeriod + startBlock - 1, dataDecoded[4], "expiry block is wrong");
 
             rebate = 46;
             reward = 54;
@@ -4791,11 +4816,20 @@ contract('KyberDAO', function(accounts) {
                 reward, rebate, 10000 - rebate - reward, 4, 4 * epochPeriod + startBlock - 1
             );
             Helper.assertEqual(newBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
+
+            dataDecoded = await daoContract.latestBRRDataDecoded();
+            Helper.assertEqual(10000 - rebate - reward, dataDecoded[0], "burn is wrong");
+            Helper.assertEqual(reward, dataDecoded[1], "reward is wrong");
+            Helper.assertEqual(rebate, dataDecoded[2], "rebate is wrong");
+            Helper.assertEqual(4, dataDecoded[3], "epoch is wrong");
+            Helper.assertEqual(4 * epochPeriod + startBlock - 1, dataDecoded[4], "expiry block is wrong");
         });
 
         it("Test get brr returns correct latest data, has camp but no brr campaign", async function() {
             let rebate = 24;
             let reward = 26;
+            defaultRewardBps = reward;
+            defaultRebateBps = rebate;
             defaultBrrData = getDataFromRebateAndReward(rebate, reward);
             await deployContracts(15, currentBlock + 20, 10);
             await setupSimpleStakingData();
@@ -4840,6 +4874,8 @@ contract('KyberDAO', function(accounts) {
         it("Test get brr data returns correct latest data on-going brr camp has a winning option", async function() {
             let reward = 30;
             let rebate = 20;
+            defaultRewardBps = reward;
+            defaultRebateBps = rebate;
             defaultBrrData = getDataFromRebateAndReward(rebate, reward);
             await simpleSetupToTestThreshold(410, 410, 180, 40);
             // min per: 40%, C = 100%, t = 1
@@ -4865,8 +4901,14 @@ contract('KyberDAO', function(accounts) {
                 reward, rebate, 10000 - rebate - reward, 1, epochPeriod + startBlock - 1
             );
             Helper.assertEqual(1, await daoContract.brrCampaign(1), "should have brr camp");
+            let dataDecoded = await daoContract.latestBRRDataDecoded();
+            Helper.assertEqual(10000 - rebate - reward, dataDecoded[0], "burn is wrong");
+            Helper.assertEqual(reward, dataDecoded[1], "reward is wrong");
+            Helper.assertEqual(rebate, dataDecoded[2], "rebate is wrong");
+            Helper.assertEqual(1, dataDecoded[3], "epoch is wrong");
+            Helper.assertEqual(epochPeriod + startBlock - 1, dataDecoded[4], "expiry block is wrong");
 
-            // delay to epoch 2
+            // delay to epoch 2, winning option should take effect
             currentBlock = await Helper.getCurrentBlock();
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
 
@@ -4874,12 +4916,22 @@ contract('KyberDAO', function(accounts) {
                 newReward, newRebate, 10000 - newRebate - newReward, 2, 2 * epochPeriod + startBlock - 1
             );
             Helper.assertEqual(brrData, await daoContract.latestBrrResult(), "latest brr is wrong");
+
+            dataDecoded = await daoContract.latestBRRDataDecoded();
+            Helper.assertEqual(10000 - newRebate - newReward, dataDecoded[0], "burn is wrong");
+            Helper.assertEqual(newReward, dataDecoded[1], "reward is wrong");
+            Helper.assertEqual(newRebate, dataDecoded[2], "rebate is wrong");
+            Helper.assertEqual(2, dataDecoded[3], "epoch is wrong");
+            Helper.assertEqual(2 * epochPeriod + startBlock - 1, dataDecoded[4], "expiry block is wrong");
+
             await resetSetupForKNCToken();
         });
 
         it("Test get brr returns correct latest data, has brr camp but no winning option", async function() {
             let rebate = 24;
             let reward = 26;
+            defaultRewardBps = reward;
+            defaultRebateBps = rebate;
             defaultBrrData = getDataFromRebateAndReward(rebate, reward);
             // mike: 410, victor: 410, loi: 280, total stakes = 40% * total supply
             await simpleSetupToTestThreshold(410, 410, 180, 40);
@@ -4908,6 +4960,13 @@ contract('KyberDAO', function(accounts) {
             await daoContract.checkLatestBrrData(
                 reward, rebate, 10000 - rebate - reward, 2, 2 * epochPeriod + startBlock - 1
             );
+            let dataDecoded = await daoContract.latestBRRDataDecoded();
+            Helper.assertEqual(10000 - rebate - reward, dataDecoded[0], "burn is wrong");
+            Helper.assertEqual(reward, dataDecoded[1], "reward is wrong");
+            Helper.assertEqual(rebate, dataDecoded[2], "rebate is wrong");
+            Helper.assertEqual(2, dataDecoded[3], "epoch is wrong");
+            Helper.assertEqual(2 * epochPeriod + startBlock - 1, dataDecoded[4], "expiry block is wrong");
+
             let tx = await daoContract.getLatestBRRData();
             logInfo("Get Brr: epoch > 0, has brr camp + no win option, gas used: " + tx.receipt.cumulativeGasUsed);
 
@@ -5181,7 +5240,7 @@ contract('KyberDAO', function(accounts) {
                 await DAOContract.new(
                     9, currentBlock + 10,
                     stakingContract.address,  feeHandler.address, kncToken.address,
-                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
+                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
                     campCreator
                 )
                 assert(false, "throw was expected in line above");
@@ -5197,7 +5256,7 @@ contract('KyberDAO', function(accounts) {
                 await DAOContract.new(
                     10, currentBlock + 11,
                     stakingContract.address,  feeHandler.address, kncToken.address,
-                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
+                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
                     campCreator
                 )
                 assert(false, "throw was expected in line above");
@@ -5211,7 +5270,7 @@ contract('KyberDAO', function(accounts) {
             await DAOContract.new(
                 10, currentBlock + 10,
                 stakingContract.address,  feeHandler.address, kncToken.address,
-                maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
+                maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
                 campCreator
             )
         });
