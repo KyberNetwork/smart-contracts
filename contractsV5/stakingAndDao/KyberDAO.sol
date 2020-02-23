@@ -78,7 +78,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     // max number of camps for each epoch
     uint public constant MAX_EPOCH_CAMPS = 10;
     // max number of options for each campaign
-    uint public MAX_CAMP_OPTIONS = 4;
+    uint public MAX_CAMP_OPTIONS = 8;
     // minimum blocks duration for a campaign
     uint public MIN_CAMP_DURATION = 21600; // around 4 days
 
