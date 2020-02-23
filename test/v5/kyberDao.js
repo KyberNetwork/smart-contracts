@@ -2842,7 +2842,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: can not claim for current or future epoch"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: not past epoch"),
                     "wrong throw error message, got: " + e
                 );
             }
@@ -2851,7 +2851,7 @@ contract('KyberDAO', function(accounts) {
                 await daoContract.claimReward(mike, 2);
                 assert(false, "throw was expected in line above");
             } catch (e) {
-                assert(Helper.isRevertErrorMessageContains(e, "claimReward: can not claim for current or future epoch"));
+                assert(Helper.isRevertErrorMessageContains(e, "claimReward: not past epoch"));
             }
             // can not claim for far future epoch
             try {
@@ -2859,7 +2859,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: can not claim for current or future epoch"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: not past epoch"),
                     "wrong throw error message, got: " + e
                 );
             }
@@ -2903,7 +2903,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: already claimed reward for this epoch"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: alr claimed"),
                     "wrong throw error message, got: " + e
                 )
             }
@@ -2925,7 +2925,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward to claim"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward"),
                     "wrong throw error message, got: " + e
                 )
             }
@@ -2965,7 +2965,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward to claim"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward"),
                     "wrong throw error message, got: " + e
                 )
             }
@@ -2975,7 +2975,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward to claim"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward"),
                     "wrong throw error message, got: " + e
                 )
             }
@@ -3014,7 +3014,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward to claim"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward"),
                     "wrong throw error message, got: " + e
                 )
             }
@@ -3051,7 +3051,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: feeHandle failed to claim reward"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: feeHandle failed to claim"),
                     "wrong throw error message, got: " + e
                 );
             }
@@ -3086,7 +3086,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward to claim"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward"),
                     "wrong throw error message, got: " + e
                 );
             }
@@ -5246,7 +5246,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "ctor: different epoch period"),
+                    Helper.isRevertErrorMessageContains(e, "ctor: diff epoch period"),
                     "unexpected error message: " + e
                 );
             }
@@ -5262,7 +5262,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "ctor: different start block"),
+                    Helper.isRevertErrorMessageContains(e, "ctor: diff start block"),
                     "unexpected error message: " + e
                 );
             }
