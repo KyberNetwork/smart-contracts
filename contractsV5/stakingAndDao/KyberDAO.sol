@@ -470,11 +470,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         bool hasConcluded;
         (hasConcluded, optionID) = decodeWinningOptionData(winningOptionData[campID]);
         if (hasConcluded) {
-            if (optionID == 0 || optionID >= camp.options.length) {
+            if (optionID == 0 || optionID > camp.options.length) {
                 // no winning option or invalid winning option
                 return (0, 0);
             }
-            return (optionID, camp.options[optionID]);
+            return (optionID, camp.options[optionID - 1]);
         }
 
         uint totalSupply = camp.totalKNCSupply;
