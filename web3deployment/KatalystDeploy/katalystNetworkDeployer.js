@@ -34,6 +34,7 @@ let tradeLogicAddress = "";
 let networkAddress = "";
 let proxyAddress = "";
 let feeHandlerAddress = "";
+let gasHelperAddress = "";
 
 const account = web3.eth.accounts.privateKeyToAccount(privateKey);
 const sender = account.address;
@@ -169,6 +170,7 @@ function parseInput( jsonInput ) {
     burnBlockInterval = jsonInput["burn block interval"].toString();
 
     kncTokenAddress = jsonInput["addresses"].knc;
+    gasHelperAddress = jsonInput["addresses"].gasHelper;
 
     // output file name
     outputFileName = jsonInput["output filename"];
@@ -210,7 +212,6 @@ async function main() {
     await waitForEth();
   }
 
-  //deployment: Replace contract addresses variables on top should something break during deployment
   /////////////////////////////////////////
   // CONTRACT INSTANTIATION / DEPLOYMENT //
   /////////// DO NOT TOUCH ////////////////
@@ -220,19 +221,31 @@ async function main() {
   await deployFeeHandlerContract(output);
   /////////////////////////////////////////
 
-  await setNetworkAddressInTradeLogic();
-  await setContractsInNetwork();
-  await setNetworkInProxy();
-  await setTempOperatorToNetwork();
-  //   await setDAOContractInFeeHandler() and in network;
-  await addReservesToNetwork();
-  await listTokensForReserves();
-  await configureAndEnableNetwork();
+  //IF DEPLOYMENT BREAKS:
+  // 1) Replace relevant contract addresses (if any) variables on top
+  // 2) Use ONLY ONE of the following functions below:
+  // NOTE: Redeploying network == fullDeployment
+  await fullDeployment();
 
-  await removeTempOperatorFromNetwork();
-  await setPermissionsInProxy();
-  await setPermissionsInNetwork();
-  await setPermissionsInTradeLogic();
+  //////////////////
+  // REDEPLOYMENT //
+  //////////////////
+  // await redeployTradeLogic();
+  // await redeployFeeHandler();
+
+  /////////////////////
+  // ADDING RESERVES //
+  /////////////////////
+  // NOTE: Replace RESERVE_INDEX if continuing from specific index
+  // await addReservesToNetwork(RESERVE_INDEX);
+  // await addReservesToTradeLogic(RESERVE_INDEX);
+
+  /////////////////////////
+  // LISTING TOKEN PAIRS //
+  /////////////////////////
+  // NOTE: Replace RESERVE_INDEX & TOKEN_INDEX if process stopped halfway, and need to continue from specific index
+  // await listTokensForReservesNetwork(RESERVE_INDEX, TOKEN_INDEX);
+  // await listTokensForReservesTradeLogic(RESERVE_INDEX, TOKEN_INDEX);
 
   console.log("last nonce is", nonce);
   oneLastThing();
@@ -241,6 +254,37 @@ async function main() {
   if (signedTxOutput) {
     fs.writeFileSync(signedTxOutput, signedTxsJson);
   }
+}
+
+async function fullDeployment() {
+  await setNetworkAddressInTradeLogic();
+  await set_Fee_Logic_Gas_ContractsInNetwork();
+  await setProxyInNetwork();
+  await setNetworkInProxy();
+  await setTempOperatorToNetwork();
+  //   await setDAOContractInFeeHandler() and in network;
+  await addReservesToNetwork();
+  await listTokensForReservesNetwork();
+  await configureAndEnableNetwork();
+
+  await removeTempOperator([networkContract]);
+  await setPermissionsInProxy();
+  await setPermissionsInNetwork();
+  await setPermissionsInTradeLogic();
+}
+
+async function redeployTradeLogic() {
+  await setNetworkAddressInTradeLogic(sender); //use sender adding and listing reserve pair
+  await addReservesToTradeLogic();
+  await listTokensForReservesTradeLogic();
+  await removeTempOperator([tradeLogicContract]);
+  await setNetworkAddressInTradeLogic(); //set to network address
+  await setPermissionsInTradeLogic();
+  console.log(`Set FeeHandler contract to network by calling the setContracts() function!!!`);
+}
+
+async function redeployFeeHandler() {
+  await set_Fee_Logic_Gas_ContractsInNetwork();
 }
 
 function printParams(jsonInput) {
@@ -339,19 +383,25 @@ async function deployFeeHandlerContract(output) {
     }
 }
 
-async function setNetworkAddressInTradeLogic() {
+async function setNetworkAddressInTradeLogic(tempAddress) {
   console.log("set network in trade logic");
-  await sendTx(tradeLogicContract.methods.setNetworkContract(networkAddress));
+  if (tempAddress == undefined) {
+    await sendTx(tradeLogicContract.methods.setNetworkContract(networkAddress));
+  } else {
+    await sendTx(tradeLogicContract.methods.setNetworkContract(tempAddress));
+  }
 }
 
-async function setContractsInNetwork() {
-    console.log("set feeHandler and tradeLogic in network");
-    await sendTx(networkContract.methods.setContracts(
-        feeHandlerAddress, tradeLogicAddress, zeroAddress
-    ));
+async function set_Fee_Logic_Gas_ContractsInNetwork() {
+  console.log("set feeHandler, tradeLogic and gas helper in network");
+  await sendTx(networkContract.methods.setContracts(
+    feeHandlerAddress, tradeLogicAddress, gasHelperAddress
+  ));
+}
 
-    console.log("set proxy in network");
-    await sendTx(networkContract.methods.addKyberProxy(proxyAddress));
+await setProxyInNetwork() {
+  console.log("set proxy in network");
+  await sendTx(networkContract.methods.addKyberProxy(proxyAddress));
 }
 
 async function setNetworkInProxy() {
@@ -371,27 +421,31 @@ async function addPermissionlessListerToNetwork() {
   await sendTx(networkContract.methods.addOperator(permissionlessOrderbookReserveListerAddress));
 }
 
-async function addReservesToNetwork() {
+async function addReservesToNetwork(reserveIndex) {
   // add reserve to network
   console.log("Add reserves to network");
-  for (let i = 0 ; i < reserveDataArray.length ; i++) {
+  reserveIndex = (reserveIndex == undefined) ? 0 : reserveIndex;
+  for (let i = reserveIndex ; i < reserveDataArray.length ; i++) {
     const reserve = reserveDataArray[i];
-    console.log(`At index ${i} of reserve array`);
+    console.log(`Reserve array index ${i}`);
     console.log(`Adding reserve ${reserve.address}`);
     await sendTx(networkContract.methods.addReserve(reserve.address, reserve.id, reserve.isFeePaying, reserve.wallet));
   }
 }
 
-async function listTokensForReserves() {
-    for (let i = 0 ; i < reserveDataArray.length ; i++) {
-        const reserve = reserveDataArray[i];
-        const tokens = reserve.tokens;
-        for (let j = 0 ; j < tokens.length ; j++) {
-            token = tokens[j];
-            console.log(`listing token ${token.address} for reserve ${reserve.address}`);
-        await sendTx(networkContract.methods.listPairForReserve(reserve.address,token.address,token.ethToToken,token.tokenToEth,true));
-        }
+async function listTokensForReservesNetwork(reserveIndex, tokenIndex) {
+  reserveIndex = (reserveIndex == undefined) ? 0 : reserveIndex;
+  tokenIndex = (tokenIndex == undefined) ? 0 : tokenIndex;
+  for (let i = reserveIndex ; i < reserveDataArray.length ; i++) {
+    const reserve = reserveDataArray[i];
+    const tokens = reserve.tokens;
+    for (let j = tokenIndex ; j < tokens.length ; j++) {
+      token = tokens[j];
+      console.log(`Reserve array index ${i}, token array index ${j}`);
+      console.log(`listing token ${token.address} for reserve ${reserve.address}`);
+      await sendTx(networkContract.methods.listPairForReserve(reserve.address,token.address,token.ethToToken,token.tokenToEth,true));
     }
+  }
 }
 
 async function configureAndEnableNetwork() {
@@ -404,9 +458,11 @@ async function configureAndEnableNetwork() {
     await sendTx(networkContract.methods.setEnable(true));
 }
 
-async function removeTempOperatorFromNetwork() {
-    console.log("network - remove temp operator");
-    await sendTx(networkContract.methods.removeOperator(sender));
+async function removeTempOperator(contractInstances) {
+    for (let contractInstance of contractInstances) {
+      console.log(`remove temp operator - ${contractInstance.address}`);
+      await sendTx(contractInstance.methods.removeOperator(sender));
+    }
 }
 
 async function setPermissionsInNetwork() {
@@ -425,6 +481,33 @@ function oneLastThing() {
   console.log("\x1b[41m%s\x1b[0m" ,"REMINDER: Don't forget to send DGX to network contract!!");
 }
 
+async function addReservesToTradeLogic(reserveIndex) {
+  // add reserve to network
+  console.log("Add reserves to network");
+  reserveIndex = (reserveIndex == undefined) ? 0 : reserveIndex;
+  for (let i = reserveIndex ; i < reserveDataArray.length ; i++) {
+    const reserve = reserveDataArray[i];
+    console.log(`Reserve array index ${i}`);
+    console.log(`Adding reserve ${reserve.address}`);
+    await sendTx(tradeLogicContract.methods.addReserve(reserve.address, reserve.id, reserve.isFeePaying));
+  }
+}
+
+async function listTokensForReservesTradeLogic(reserveIndex, tokenIndex) {
+  reserveIndex = (reserveIndex == undefined) ? 0 : reserveIndex;
+  tokenIndex = (tokenIndex == undefined) ? 0 : tokenIndex;
+  for (let i = reserveIndex ; i < reserveDataArray.length ; i++) {
+    const reserve = reserveDataArray[i];
+    const tokens = reserve.tokens;
+    for (let j = tokenIndex ; j < tokens.length ; j++) {
+        token = tokens[j];
+        console.log(`Reserve array index ${i}, token array index ${j}`);
+        console.log(`listing token ${token.address} for reserve ${reserve.address}`);
+    await sendTx(tradeLogicContract.methods.listPairForReserve(reserve.address,token.address,token.ethToToken,token.tokenToEth,true));
+    }
+  }
+}
+
 let filename;
 let content;
 
@@ -441,4 +524,3 @@ catch(err) {
 
 main();
 
-//console.log(deployContract(output, "cont",5));
