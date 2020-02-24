@@ -8,6 +8,7 @@ const Helper = require("../v4/helper.js");
 const BN = web3.utils.BN;
 
 const { precisionUnits, zeroAddress } = require("../v4/helper.js");
+const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
 let daoSetter;
 
@@ -50,17 +51,17 @@ contract('KyberStaking', function(accounts) {
         assert.equal(epochPeriod, await stakingContract.EPOCH_PERIOD(), "daoSetter address is wrong");
         assert.equal(startBlock, await stakingContract.START_BLOCK(), "daoSetter address is wrong");
 
-        await stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: daoSetter});
+        let tx = await stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: daoSetter});
+        expectEvent(tx, "DAOAddressSet", {_daoAddress: daoContract.address});
+        expectEvent(tx, "DAOContractSetterRemoved");
 
         assert.equal(zeroAddress, await stakingContract.daoContractSetter(), "daoSetter address is wrong");
         assert.equal(daoContract.address, await stakingContract.daoContract(), "daoSetter address is wrong");
 
-        try {
-            await stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: daoSetter});
-            assert(false, "throw was expected in line above.")
-        } catch (e) {
-            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-        }
+        await expectRevert(
+            stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: daoSetter}),
+            "sender is not daoContractSetter"
+        );
     });
 
     it("Test get epoch number returns correct data", async function() {
@@ -294,7 +295,12 @@ contract('KyberStaking', function(accounts) {
             let totalDeposited = 0;
 
             for(let id = 0; id < 10; id++) {
-                await stakingContract.deposit(mulPrecision(id * 2 + 1), {from: victor});
+                let tx = await stakingContract.deposit(mulPrecision(id * 2 + 1), {from: victor});
+                expectEvent(tx, "Deposited", {
+                    curEpoch: new BN(id),
+                    staker: victor,
+                    amount: mulPrecision(id * 2 + 1)
+                });
                 totalDeposited += id * 2 + 1;
                 Helper.assertEqual(mulPrecision(totalDeposited - id * 2 - 1), await stakingContract.getStakesValue(victor, currentEpoch), "stake at cur epoch is wrong, loop: " + id);
                 Helper.assertEqual(mulPrecision(totalDeposited), await stakingContract.getStakesValue(victor, currentEpoch + 1), "stake at next epoch is wrong, loop: " + id);
@@ -583,7 +589,12 @@ contract('KyberStaking', function(accounts) {
             await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
             await stakingContract.deposit(mulPrecision(500), {from: victor});
 
-            await stakingContract.withdraw(mulPrecision(50), {from: victor});
+            let tx = await stakingContract.withdraw(mulPrecision(50), {from: victor});
+            expectEvent(tx, "Withdraw", {
+                curEpoch: new BN(0),
+                staker: victor,
+                amount: mulPrecision(50)
+            });
 
             Helper.assertEqual(mulPrecision(450), await stakingContract.getStakesValue(victor, 1), "stake at epoch 1 should be correct");
             Helper.assertEqual(mulPrecision(450), await stakingContract.getLatestStakeBalance(victor), "latest stake balance should be correct");
@@ -592,15 +603,25 @@ contract('KyberStaking', function(accounts) {
             // delay to epoch 1
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock + 1);
 
-            await stakingContract.withdraw(mulPrecision(100), {from: victor});
+            tx = await stakingContract.withdraw(mulPrecision(100), {from: victor});
+            expectEvent(tx, "Withdraw", {
+                curEpoch: new BN(1),
+                staker: victor,
+                amount: mulPrecision(100)
+            });
 
             Helper.assertEqual(mulPrecision(350), await stakingContract.getStakesValue(victor, 1), "stake at epoch 1 should be correct");
             Helper.assertEqual(mulPrecision(350), await stakingContract.getLatestStakeBalance(victor), "latest stake balance should be correct");
 
-            // delay to epoch 1
+            // delay to epoch 5
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod);
 
-            await stakingContract.withdraw(mulPrecision(40), {from: victor});
+            tx = await stakingContract.withdraw(mulPrecision(40), {from: victor});
+            expectEvent(tx, "Withdraw", {
+                curEpoch: new BN(5),
+                staker: victor,
+                amount: mulPrecision(40)
+            });
 
             Helper.assertEqual(mulPrecision(310), await stakingContract.getStakesValue(victor, 5), "stake at epoch 5 should be correct");
             Helper.assertEqual(mulPrecision(310), await stakingContract.getLatestStakeBalance(victor), "latest stake balance should be correct");
@@ -659,12 +680,10 @@ contract('KyberStaking', function(accounts) {
             Helper.assertEqual(0, await stakingContract.getDelegatedStakesValue(mike, 9), "delegated stake should be correct");
             Helper.assertEqual(0, await stakingContract.getLatestDelegatedStake(mike), "latest delegated stake balance should be correct");
 
-            try {
-                await stakingContract.withdraw(mulPrecision(10), {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.withdraw(mulPrecision(10), {from: victor}),
+                "withdraw: latest amount staked < withdrawal amount"
+            );
         });
 
 
@@ -1077,7 +1096,13 @@ contract('KyberStaking', function(accounts) {
             await kncToken.transfer(victor, mulPrecision(100));
             await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
 
-            await stakingContract.delegate(mike, {from: victor});
+            let tx = await stakingContract.delegate(mike, {from: victor});
+            expectEvent(tx, "Delegated", {
+                staker: victor,
+                dAddr: mike,
+                epoch: new BN(0),
+                isDelegated: true
+            });
 
             currentBlock = await Helper.getCurrentBlock();
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
@@ -1089,7 +1114,19 @@ contract('KyberStaking', function(accounts) {
             Helper.assertEqual(0, await stakingContract.getDelegatedStakesValue(mike, 5), "delegated stake is incorrect");
             Helper.assertEqual(mulPrecision(50), await stakingContract.getDelegatedStakesValue(mike, 6), "delegated stake is incorrect");
 
-            await stakingContract.delegate(loi, {from: victor});
+            tx = await stakingContract.delegate(loi, {from: victor});
+            expectEvent(tx, "Delegated", {
+                staker: victor,
+                dAddr: mike,
+                epoch: new BN(5),
+                isDelegated: false
+            });
+            expectEvent(tx, "Delegated", {
+                staker: victor,
+                dAddr: loi,
+                epoch: new BN(5),
+                isDelegated: true
+            });
 
             Helper.assertEqual(loi, await stakingContract.getLatestDelegatedAddress(victor), "latest delegated address is incorrect");
             Helper.assertEqual(0, await stakingContract.getLatestDelegatedStake(mike), "latest delegated stake is incorrect");
@@ -2071,25 +2108,19 @@ contract('KyberStaking', function(accounts) {
         it("Test update DAO address should revert when sender is not daoSetter or dao address is zero", async function() {
             await deployStakingContract(10, currentBlock + 10);
             let dao = await MockKyberDAO.new(10, currentBlock + 10);
-            try {
-                await stakingContract.updateDAOAddressAndRemoveSetter(zeroAddress, {from: daoSetter});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
-            try {
-                await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: mike});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.updateDAOAddressAndRemoveSetter(zeroAddress, {from: daoSetter}),
+                "updateDAO: DAO address is missing"
+            );
+            await expectRevert(
+                stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: mike}),
+                "sender is not daoContractSetter"
+            )
             await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
-            try {
-                await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter}),
+                "sender is not daoContractSetter"
+            )
         });
 
         it("Test update DAO address should revert when epoch period or start block is different between staking & DAO", async function() {
@@ -2097,21 +2128,17 @@ contract('KyberStaking', function(accounts) {
             let dao = await MockKyberDAO.new(9, currentBlock + 10);
 
             // revert different epoch number
-            try {
-                await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter}),
+                "updateDAO: DAO and Staking have different epoch period"
+            )
 
             dao = await MockKyberDAO.new(10, currentBlock + 9);
-            // revert different epoch number
-            try {
-                await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            // revert different start block number
+            await expectRevert(
+                stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter}),
+                "updateDAO: DAO and Staking have different start block"
+            )
 
             dao = await MockKyberDAO.new(10, currentBlock + 10);
             await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
@@ -2119,33 +2146,25 @@ contract('KyberStaking', function(accounts) {
 
         it("Test constructor should revert with invalid arguments", async function() {
             // knc is 0
-            try {
-                stakingContract = await StakingContract.new(zeroAddress, 20, currentBlock + 10, daoSetter)
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                StakingContract.new(zeroAddress, 20, currentBlock + 10, daoSetter),
+                "ctor: KNC address is missing"
+            );
             // epoch period is 0
-            try {
-                stakingContract = await StakingContract.new(kncToken.address, 0, currentBlock + 10, daoSetter)
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                StakingContract.new(kncToken.address, 0, currentBlock + 10, daoSetter),
+                "ctor: epoch duration must be positive"
+            )
             // start block is in the past
-            try {
-                stakingContract = await StakingContract.new(kncToken.address, 20, currentBlock - 1, daoSetter)
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                StakingContract.new(kncToken.address, 20, currentBlock - 1, daoSetter),
+                "ctor: start block should not be in the past"
+            )
             // dao setter is 0
-            try {
-                stakingContract = await StakingContract.new(kncToken.address, 20, currentBlock + 10, zeroAddress)
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                StakingContract.new(kncToken.address, 20, currentBlock + 10, zeroAddress),
+                "ctor: daoContractSetter address is missing"
+            )
             stakingContract = await StakingContract.new(kncToken.address, 20, currentBlock + 10, daoSetter)
         });
 
@@ -2155,12 +2174,10 @@ contract('KyberStaking', function(accounts) {
             await kncToken.transfer(victor, mulPrecision(100));
             await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
 
-            try {
-                await stakingContract.deposit(0, {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.deposit(0, {from: victor}),
+                "deposit: amount to deposit should be positive"
+            )
             await stakingContract.deposit(mulPrecision(90), {from: victor});
         });
 
@@ -2170,67 +2187,53 @@ contract('KyberStaking', function(accounts) {
             // has 100 tokens, approve enough but try to deposit more
             await kncToken.transfer(victor, mulPrecision(100));
             await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
-            try {
-                await stakingContract.deposit(mulPrecision(200), {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.deposit(mulPrecision(200), {from: victor}),
+                "transfer more then allowed"
+            )
             await stakingContract.deposit(mulPrecision(90), {from: victor});
             await stakingContract.deposit(mulPrecision(10), {from: victor});
 
             // has more tokens, approve small amounts and try to deposit more than allowances
             await kncToken.transfer(mike, mulPrecision(1000));
             // not approve yet, should revert
-            try {
-                await stakingContract.deposit(mulPrecision(100), {from: mike});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.deposit(mulPrecision(100), {from: mike}),
+                "transfer more then allowed"
+            )
 
             // approve and deposit more than allowance
             await kncToken.approve(stakingContract.address, mulPrecision(100), {from: mike});
-            try {
-                await stakingContract.deposit(mulPrecision(200), {from: mike});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.deposit(mulPrecision(200), {from: mike}),
+                "transfer more then allowed"
+            )
 
             // total deposit more than allowances
             await stakingContract.deposit(mulPrecision(50), {from: mike});
-            try {
-                await stakingContract.deposit(mulPrecision(51), {from: mike});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.deposit(mulPrecision(51), {from: mike}),
+                "transfer more then allowed"
+            )
 
             await stakingContract.deposit(mulPrecision(50), {from: mike});
         });
 
         it("Test get staker data for current epoch should revert when sender is not dao", async function() {
             await deployStakingContract(10, currentBlock + 10);
-            try {
-                await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: mike});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
-            try {
-                await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: daoSetter});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: mike}),
+                "initAndReturnData: sender is not DAO address"
+            )
+            await expectRevert(
+                stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: daoSetter}),
+                "initAndReturnData: sender is not DAO address"
+            )
             await stakingContract.setDAOAddressWithoutCheck(mike, {from: daoSetter});
-            try {
-                await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: daoSetter});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: daoSetter}),
+                "initAndReturnData: sender is not DAO address"
+            )
             await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: mike});
         });
 
@@ -2241,15 +2244,10 @@ contract('KyberStaking', function(accounts) {
             await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
             await stakingContract.deposit(mulPrecision(100), {from: victor});
 
-            try {
-                await stakingContract.withdraw(0, {from: victor});
-                assert(false, "throw was expected in line above");
-            } catch (e) {
-                assert(
-                    Helper.isRevertErrorMessageContains(e, "withdraw: amount is 0"),
-                    "expected throw but got: " + e
-                );
-            }
+            await expectRevert(
+                stakingContract.withdraw(0, {from: victor}),
+                "withdraw: amount is 0"
+            )
             await stakingContract.withdraw(mulPrecision(10), {from: victor});
         });
 
@@ -2272,12 +2270,10 @@ contract('KyberStaking', function(accounts) {
             Helper.assertEqual(mulPrecision(100), await stakingContract.getStake(victor, 1), "stake at epoch 0 is wrong");
             Helper.assertEqual(mulPrecision(800), await stakingContract.getStake(loi, 1), "stake at epoch 1 is wrong");
 
-            try {
-                await stakingContract.withdraw(mulPrecision(900), {from: loi});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.withdraw(mulPrecision(900), {from: loi}),
+                "withdraw: latest amount staked < withdrawal amount"
+            )
 
             await stakingContract.withdraw(mulPrecision(100), {from: victor});
 
@@ -2310,12 +2306,10 @@ contract('KyberStaking', function(accounts) {
             await stakingContract.deposit(mulPrecision(200), {from: victor});
 
             // mike can not withdraw
-            try {
-                await stakingContract.withdraw(mulPrecision(100), {from: mike});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.withdraw(mulPrecision(100), {from: mike}),
+                "withdraw: latest amount staked < withdrawal amount"
+            )
             // victor can withdraw
             await stakingContract.withdraw(mulPrecision(100), {from: victor});
         });
@@ -2367,12 +2361,10 @@ contract('KyberStaking', function(accounts) {
             await deployStakingContract(2, currentBlock + 2);
             await stakingContract.setDAOAddressWithoutCheck(accounts[8], {from: daoSetter});
 
-            try {
-                await stakingContract.delegate(zeroAddress, {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.delegate(zeroAddress, {from: victor}),
+                "delegate: delegated address should not be 0x0"
+            )
             await stakingContract.delegate(mike, {from: victor});
         });
     });
@@ -2390,15 +2382,10 @@ contract('KyberStaking', function(accounts) {
             // reduce next epoch stake, so withdraw will check and revert
             await stakingContract.setEpochStake(victor, 1, mulPrecision(100));
 
-            try {
-                await stakingContract.withdraw(mulPrecision(200), {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(
-                    Helper.isRevertErrorMessageContains(e, "withdraw: next epoch staked amt < withdrawal amount"),
-                    "expected throw but got: " + e
-                );
-            }
+            await expectRevert(
+                stakingContract.withdraw(mulPrecision(200), {from: victor}),
+                "withdraw: next epoch staked amt < withdrawal amount"
+            )
         });
 
         it("Test withdraw should revert, pass checking but not enough knc to withdraw", async function() {
@@ -2414,15 +2401,10 @@ contract('KyberStaking', function(accounts) {
             await stakingContract.setEpochStake(victor, 1, mulPrecision(1000));
             await stakingContract.setLatestStake(victor, mulPrecision(1000));
 
-            try {
-                await stakingContract.withdraw(mulPrecision(800), {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(
-                    Helper.isRevertErrorMessage(e),
-                    "expected throw but got: " + e
-                );
-            }
+            await expectRevert(
+                stakingContract.withdraw(mulPrecision(800), {from: victor}),
+                "sub underflow"
+            )
         });
 
         it("Test withdraw should revert, delegated stake less than withdrawal amount", async function() {
@@ -2437,27 +2419,17 @@ contract('KyberStaking', function(accounts) {
 
             await stakingContract.setLatestDelegatedStake(mike, mulPrecision(200));
 
-            try {
-                await stakingContract.withdraw(mulPrecision(300), {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(
-                    Helper.isRevertErrorMessageContains(e, "withdraw: latest delegated stake is smaller than next epoch stake"),
-                    "expected throw but got: " + e
-                );
-            }
+            await expectRevert(
+                stakingContract.withdraw(mulPrecision(300), {from: victor}),
+                "withdraw: latest delegated stake is smaller than next epoch stake"
+            )
 
             await stakingContract.setEpochDelegatedStake(mike, 1, mulPrecision(200));
 
-            try {
-                await stakingContract.withdraw(mulPrecision(300), {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(
-                    Helper.isRevertErrorMessageContains(e, "withdraw: delegated stake is smaller than next epoch stake"),
-                    "expected throw but got: " + e
-                );
-            }
+            await expectRevert(
+                stakingContract.withdraw(mulPrecision(300), {from: victor}),
+                "withdraw: delegated stake is smaller than next epoch stake"
+            )
         });
 
         it("Test delegate should revert, delegated stake is small", async function() {
@@ -2472,27 +2444,17 @@ contract('KyberStaking', function(accounts) {
 
             await stakingContract.setLatestDelegatedStake(mike, mulPrecision(200));
 
-            try {
-                await stakingContract.delegate(loi, {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(
-                    Helper.isRevertErrorMessageContains(e, "delegate: latest delegated stake is smaller than next epoch stake"),
-                    "expected throw but got: " + e
-                );
-            }
+            await expectRevert(
+                stakingContract.delegate(loi, {from: victor}),
+                "delegate: latest delegated stake is smaller than next epoch stake"
+            )
 
             await stakingContract.setEpochDelegatedStake(mike, 1, mulPrecision(200));
 
-            try {
-                await stakingContract.delegate(loi, {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(
-                    Helper.isRevertErrorMessageContains(e, "delegate: delegated stake is smaller than next epoch stake"),
-                    "expected throw but got: " + e
-                );
-            }
+            await expectRevert(
+                stakingContract.delegate(loi, {from: victor}),
+                "delegate: delegated stake is smaller than next epoch stake"
+            )
         });
     });
 });

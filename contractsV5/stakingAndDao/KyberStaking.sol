@@ -69,7 +69,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         emit DAOContractSetterRemoved();
     }
 
-    event Delegated(address staker, address dAddr, bool isDelegated);
+    event Delegated(address staker, address dAddr, uint epoch, bool isDelegated);
 
     function delegate(address dAddr) public returns(bool) {
         require(dAddr != address(0), "delegate: delegated address should not be 0x0");
@@ -100,7 +100,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
             delegatedStake[curEpoch + 1][curDAddr] = delegatedStake[curEpoch + 1][curDAddr].sub(updatedStake);
             latestDelegatedStake[curDAddr] = latestDelegatedStake[curDAddr].sub(updatedStake);
 
-            emit Delegated(staker, curDAddr, false);
+            emit Delegated(staker, curDAddr, curEpoch, false);
         }
 
         latestDelegatedAddress[staker] = dAddr;
@@ -113,7 +113,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
             latestDelegatedStake[dAddr] = latestDelegatedStake[dAddr].add(updatedStake);
         }
 
-        emit Delegated(staker, dAddr, true);
+        emit Delegated(staker, dAddr, curEpoch, true);
     }
 
     event Deposited(uint curEpoch, address staker, uint amount);
