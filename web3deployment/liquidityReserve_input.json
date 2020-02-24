@@ -3,23 +3,23 @@
       "name": "KyberNetwork",
       "symbol": "KNC",
       "decimals": 18,
-      "address": "0xa67bba948bd8372bc9e60b1acfafb8e2db3cc57c"
+      "address": "0x4E470dc7321E84CA96FcAEDD0C8aBCebbAEB68C6"
   },
 
   "whitelistedAddresses": {
-      "ETH": ["0xbDd33F411DA0B40018922a3BC69001B458227f5c"],
-      "KNC": ["0xbDd33F411DA0B40018922a3BC69001B458227f5c"] 
+      "ETH": ["0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"],
+      "KNC": ["0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"] 
   },
 
   "permission" : {
       "reserve": {
-        "admin": "0xbDd33F411DA0B40018922a3BC69001B458227f5c",
-        "operators": ["0xbDd33F411DA0B40018922a3BC69001B458227f5c"],
-        "alerters": ["0xbDd33F411DA0B40018922a3BC69001B458227f5c"]
+        "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
+        "operators": ["0x5bab5ef16cfac98e216a229db17913454b0f9365"],
+        "alerters": ["0x5bab5ef16cfac98e216a229db17913454b0f9365"]
       },
 
       "pricing": {
-        "admin": "0xbDd33F411DA0B40018922a3BC69001B458227f5c",
+        "admin": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
         "operators": [],
         "alerters": []
       }
