@@ -146,7 +146,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     event Withdraw(uint curEpoch, address staker, uint amount);
 
     function withdraw(uint amount) public nonReentrant {
-        require(amount > 0, "withdraw: amount to withdraw should be positive");
+        require(amount > 0, "withdraw: amount is 0");
 
         uint curEpoch = getCurrentEpochNumber();
         address staker = msg.sender;
@@ -261,7 +261,8 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
             if (i == 0) { break; }
             i--;
         }
-        return address(0);
+        // not delegated to anyone, default to yourself
+        return staker;
     }
 
     function getLatestDelegatedAddress(address staker) public view returns(address) {

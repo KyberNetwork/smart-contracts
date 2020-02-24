@@ -24,7 +24,7 @@ contract CampPermissionGroups {
     }
 
     modifier onlyCampaignCreator() {
-        require(msg.sender == campaignCreator);
+        require(msg.sender == campaignCreator, "not camp creator");
         _;
     }
 
@@ -45,7 +45,7 @@ contract CampPermissionGroups {
      * @param newCampCreator The address to transfer ownership to.
      */
     function transferCampaignCreatorQuickly(address newCampCreator) public onlyCampaignCreator {
-        require(newCampCreator != address(0));
+        require(newCampCreator != address(0), "new camp creator is 0");
         emit TransferCampaignCreatorPending(newCampCreator);
         emit CampaignCreatorClaimed(newCampCreator, campaignCreator);
         campaignCreator = newCampCreator;
@@ -57,7 +57,7 @@ contract CampPermissionGroups {
      * @dev Allows the pendingCampCreator address to finalize the change campaign creator process.
      */
     function claimCampaignCreator() public {
-        require(pendingCampCreator == msg.sender);
+        require(pendingCampCreator == msg.sender, "not pending camp creator");
         emit CampaignCreatorClaimed(pendingCampCreator, campaignCreator);
         campaignCreator = pendingCampCreator;
         pendingCampCreator = address(0);
@@ -143,8 +143,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint _defaultNetworkFeeBps, uint _defaultRewardBps, uint _defaultRebateBps,
         address _campaignCreator
     ) public CampPermissionGroups(_campaignCreator) {
-        require(_epochPeriod > 0, "ctor: epoch period must be positive");
-        require(_startBlock >= block.number, "ctor: shouldn't start in the past");
+        require(_epochPeriod > 0, "ctor: epoch period is 0");
+        require(_startBlock >= block.number, "ctor: start in the past");
         require(_staking != address(0), "ctor: staking is missing");
         require(_feeHandler != address(0), "ctor: feeHandler is missing");
         require(_knc != address(0), "ctor: knc token is missing");
@@ -209,21 +209,19 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     )
         public onlyCampaignCreator returns(uint campID)
     {
-        uint curEpoch = getCurrentEpochNumber();
+        // campaign epoch could be different from current epoch
+        // as we allow to create campaign of next epoch as well
+        uint campEpoch = getEpochNumber(startBlock);
 
         require(
-            epochCampaigns[curEpoch].length < MAX_EPOCH_CAMPS,
+            epochCampaigns[campEpoch].length < MAX_EPOCH_CAMPS,
             "newCampaign: too many camps"
         );
 
         require(
-            validateCampaignParams(campType, startBlock, endBlock, curEpoch, formulaParams, options),
+            validateCampaignParams(campType, startBlock, endBlock, campEpoch, formulaParams, options),
             "newCampaign: invalid camp params"
         );
-
-        // campaign epoch could be different from current epoch
-        // as we allow to create campaign of next epoch as well
-        uint campEpoch = getEpochNumber(startBlock);
 
         if (campType == CampaignType.NETWORK_FEE) {
             require(networkFeeCamp[campEpoch] == 0, "newCampaign: alr had network fee at the epoch");
@@ -447,18 +445,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         }
     }
 
-    function getCampaignOptionVoteCount(uint campID, uint optionID)
-        public view
-        returns(uint voteCount, uint totalVoteCount)
-    {
-        uint[] memory voteCounts = campOptionPoints[campID];
-        if (voteCounts.length == 0 || optionID == 0 || optionID >= voteCounts.length) {
-            return (voteCount, totalVoteCount);
-        }
-        voteCount = voteCounts[optionID];
-        totalVoteCount = voteCounts[0];
-    }
-
     function getCampaignWinningOptionAndValue(uint campID)
         public view
         returns(uint optionID, uint value)
@@ -610,13 +596,13 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         public pure
         returns(uint data)
     {
-        require(rewardInBps.add(rebateInBps) <= BPS, "reward+rebate high");
+        require(rewardInBps.add(rebateInBps) <= BPS, "reward plus rebate high");
         data = (rebateInBps.mul(POWER_128)).add(rewardInBps);
     }
 
     function validateCampaignParams(
         CampaignType campType, uint startBlock, uint endBlock,
-        uint currentEpoch, uint formulaParams, uint[] memory options
+        uint startEpoch, uint formulaParams, uint[] memory options
     )
         public view returns(bool)
     {
@@ -632,7 +618,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             "validateParams: camp duration low"
         );
 
-        uint startEpoch = getEpochNumber(startBlock);
+        uint currentEpoch = getCurrentEpochNumber();
         uint endEpoch = getEpochNumber(endBlock);
         // start + end blocks must be in the same epoch
         require(
@@ -670,7 +656,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
                     "validateParams: Fee camp options high"
                 );
             }
-        } else if (campType == CampaignType.FEE_HANDLER_BRR) {
+        } else {
             // brr fee handler campaign, option must be combined for reward + rebate %
             for (uint i = 0; i < options.length; i++) {
                 // first 128 bits is rebate, last 128 bits is reward
@@ -680,8 +666,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
                     "validateParams: RR too high"
                 );
             }
-        } else {
-            require(false, "validateParams: invalid camp type");
         }
 
         FormulaData memory data = decodeFormulaParams(formulaParams);

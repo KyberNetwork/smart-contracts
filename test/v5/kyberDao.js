@@ -2,6 +2,7 @@ const TestToken = artifacts.require("Token.sol");
 const DAOContract = artifacts.require("MockKyberDaoMoreGetters.sol");
 const StakingContract = artifacts.require("KyberStaking.sol");
 const MockFeeHandler = artifacts.require("MockFeeHandlerNoContructor.sol");
+const MockMaliciousDAO = artifacts.require("MockMaliciousDAO.sol");
 const MockFeeHandlerClaimRewardFailed = artifacts.require("MockFeeHandlerClaimRewardFailed.sol");
 const Helper = require("../v4/helper.js");
 
@@ -1035,6 +1036,7 @@ contract('KyberDAO', function(accounts) {
 
         it("Test submit campaign should revert sender is not campCreator", async function() {
             await deployContracts(10, currentBlock + 30, 10);
+            currentBlock = await Helper.getCurrentBlock();
             try {
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 6, currentBlock + 20, formulaParamsData,
@@ -1052,6 +1054,7 @@ contract('KyberDAO', function(accounts) {
 
         it("Test submit campaign should revert start or end block is invalid", async function() {
             await deployContracts(30, currentBlock + 30, 10);
+            currentBlock = await Helper.getCurrentBlock();
             // start in the past
             try {
                 await daoContract.submitNewCampaign(
@@ -1060,7 +1063,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: start in the past"),
+                     "expected throw but got: " + e
+                );
             }
             // start in the next 2 epochs
             try {
@@ -1070,7 +1076,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: not for current or next epoch"),
+                    "expected throw but got: " + e
+                );
             }
             // start in the next 10 epochs
             try {
@@ -1080,7 +1089,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: not for current or next epoch"),
+                    "expected throw but got: " + e
+                );
             }
             // start at current epoch but end in the next epoch
             try {
@@ -1090,7 +1102,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: start & end not same epoch"),
+                    "expected throw but got: " + e
+                );
             }
             // start less than end
             try {
@@ -1100,7 +1115,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: camp duration low"),
+                    "expected throw but got: " + e
+                );
             }
             // duration is smaller than min camp duration
             try {
@@ -1110,7 +1128,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: camp duration low"),
+                    "expected throw but got: " + e
+                );
             }
             await daoContract.submitNewCampaign(
                 0, currentBlock + 10, currentBlock + 10 + minCampPeriod - 1, formulaParamsData,
@@ -1125,6 +1146,7 @@ contract('KyberDAO', function(accounts) {
 
         it("Test submit campaign should revert number options is invalid", async function() {
             await deployContracts(30, currentBlock + 30, 10);
+            currentBlock = await Helper.getCurrentBlock();
             // no options
             try {
                 await daoContract.submitNewCampaign(
@@ -1133,7 +1155,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: invalid no. options"),
+                    "expected throw but got: " + e
+                );
             }
             // one options
             try {
@@ -1143,7 +1168,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: invalid no. options"),
+                    "expected throw but got: " + e
+                );
             }
             // more than 4 options (max number options)
             try {
@@ -1153,7 +1181,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: invalid no. options"),
+                    "expected throw but got: " + e
+                );
             }
             // should work with 2, 3, 4 options
             await daoContract.submitNewCampaign(
@@ -1173,6 +1204,7 @@ contract('KyberDAO', function(accounts) {
         it("Test submit campaign should revert option value is invalid", async function() {
             await deployContracts(30, currentBlock + 50, 10);
             // general camp: option value is 0
+            currentBlock = await Helper.getCurrentBlock();
             try {
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 3, currentBlock + 3 + minCampPeriod, formulaParamsData,
@@ -1180,7 +1212,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: general camp options is 0"),
+                    "expected throw but got: " + e
+                );
             }
             try {
                 await daoContract.submitNewCampaign(
@@ -1189,7 +1224,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: general camp options is 0"),
+                    "expected throw but got: " + e
+                );
             }
             // valid option values
             await daoContract.submitNewCampaign(
@@ -1204,7 +1242,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: Fee camp options high"),
+                    "expected throw but got: " + e
+                );
             }
             try {
                 await daoContract.submitNewCampaign(
@@ -1213,7 +1254,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: Fee camp options high"),
+                    "expected throw but got: " + e
+                );
             }
             await daoContract.submitNewCampaign(
                 1, currentBlock + 13, currentBlock + 13 + minCampPeriod, formulaParamsData,
@@ -1227,7 +1271,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: RR too high"),
+                    "expected throw but got: " + e
+                );
             }
             try {
                 await daoContract.submitNewCampaign(
@@ -1236,7 +1283,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: RR too high"),
+                    "expected throw but got: " + e
+                );
             }
             await daoContract.submitNewCampaign(
                 2, currentBlock + 19, currentBlock + 19 + minCampPeriod, formulaParamsData,
@@ -1246,6 +1296,7 @@ contract('KyberDAO', function(accounts) {
 
         it("Test submit campaign should revert invalid campaign type", async function() {
             await deployContracts(30, currentBlock + 50, 10);
+            currentBlock = await Helper.getCurrentBlock();
             try {
                 await daoContract.submitNewCampaign(
                     3, currentBlock + 3, currentBlock + 3 + minCampPeriod, formulaParamsData,
@@ -1253,7 +1304,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessage(e),
+                    "expected throw but got: " + e
+                )
             }
             try {
                 await daoContract.submitNewCampaign(
@@ -1262,7 +1316,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessage(e),
+                    "expected throw but got: " + e
+                )
             }
             await daoContract.submitNewCampaign(
                 0, currentBlock + 7, currentBlock + 7 + minCampPeriod, formulaParamsData,
@@ -1281,6 +1338,7 @@ contract('KyberDAO', function(accounts) {
         it("Test submit campaign should revert formula params are invalid", async function() {
             await deployContracts(30, currentBlock + 50, 10);
             let formula = getFormulaParamsData(precisionUnits.add(new BN(1)), cInPrecision, tInPrecision);
+            currentBlock = await Helper.getCurrentBlock();
             // invalid min percentage (> 100%)
             try {
                 await daoContract.submitNewCampaign(
@@ -1289,7 +1347,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "validateParams: min percentage high"),
+                    "expected throw but got: " + e
+                );
             }
             formula = getFormulaParamsData(precisionUnits.sub(new BN(100)), cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
@@ -1305,6 +1366,7 @@ contract('KyberDAO', function(accounts) {
 
         it("Test submit campaign should revert network fee camp's already existed", async function() {
             await deployContracts(30, currentBlock + 20, 4);
+            currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 4, currentBlock + 4 + minCampPeriod, formulaParamsData,
                 [1, 2, 3], '0x', {from: campCreator}
@@ -1316,7 +1378,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "newCampaign: alr had network fee at the epoch"),
+                    "expected throw but got: " + e
+                );
             }
             await daoContract.submitNewCampaign(
                 0, currentBlock + 8, currentBlock + 8 + minCampPeriod, formulaParamsData,
@@ -1341,7 +1406,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "newCampaign: alr had network fee at the epoch"),
+                    "expected throw but got: " + e
+                );
             }
             await daoContract.submitNewCampaign(
                 0, currentBlock + 8, currentBlock + 8 + minCampPeriod, formulaParamsData,
@@ -1351,6 +1419,7 @@ contract('KyberDAO', function(accounts) {
 
         it("Test submit campaign should revert brr camp's already existed", async function() {
             await deployContracts(30, currentBlock + 20, 4);
+            currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 4, currentBlock + 4 + minCampPeriod, formulaParamsData,
                 [1, 2, 3], '0x', {from: campCreator}
@@ -1362,7 +1431,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "newCampaign: alr had brr at the epoch"),
+                    "expected throw but got: " + e
+                );
             }
             await daoContract.submitNewCampaign(
                 0, currentBlock + 8, currentBlock + 8 + minCampPeriod, formulaParamsData,
@@ -1387,7 +1459,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "newCampaign: alr had brr at the epoch"),
+                    "expected throw but got: " + e
+                );
             }
             await daoContract.submitNewCampaign(
                 0, currentBlock + 8, currentBlock + 8 + minCampPeriod, formulaParamsData,
@@ -1395,8 +1470,9 @@ contract('KyberDAO', function(accounts) {
             );
         });
 
-        it("Test submit campaign should revert exceed max campaigns for each epoch", async function() {
-            await deployContracts(2, currentBlock + 50, 4);
+        it("Test submit campaign should revert exceed max campaigns for current or next epoch", async function() {
+            await deployContracts(20, currentBlock + 50, 4);
+            currentBlock = await Helper.getCurrentBlock();
             let maxCamps = await daoContract.MAX_EPOCH_CAMPS();
 
             for(let id = 0; id < maxCamps; id++) {
@@ -1413,7 +1489,10 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "newCampaign: too many camps"),
+                    "expected throw but got: " + e
+                );
             }
 
             await daoContract.cancelCampaign(1, {from: campCreator});
@@ -1430,8 +1509,35 @@ contract('KyberDAO', function(accounts) {
                 );
                 assert(false, "throw was expected in line above.")
             } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "newCampaign: too many camps"),
+                    "expected throw but got: " + e
+                );
             }
+
+            for(let id = 0; id < maxCamps; id++) {
+                await daoContract.submitNewCampaign(
+                    id <= 2 ? id : 0, startBlock + 2, startBlock + 2 + minCampPeriod,
+                    formulaParamsData, [1, 2, 3], '0x', {from: campCreator}
+                );
+            }
+            try {
+                await daoContract.submitNewCampaign(
+                    0, startBlock + 2, startBlock + 2 + minCampPeriod, formulaParamsData,
+                    [1, 2, 3], '0x', {from: campCreator}
+                );
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "newCampaign: too many camps"),
+                    "expected throw but got: " + e
+                );
+            }
+            await daoContract.cancelCampaign(await daoContract.numberCampaigns(), {from: campCreator});
+            await daoContract.submitNewCampaign(
+                0, startBlock + 2, startBlock + 2 + minCampPeriod, formulaParamsData,
+                [1, 2, 3], '0x', {from: campCreator}
+            );
         });
     });
 
@@ -4174,6 +4280,69 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(victor, 3), "reward per is incorrect");
             Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(loi, 3), "reward per is incorrect");
         });
+
+        it("Test get staker reward percentage for future epoch", async function() {
+            await deployContracts(20, currentBlock + 15, 10);
+            await setupSimpleStakingData();
+            await stakingContract.delegate(poolMaster2, {from: victor});
+
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(mike, 3), "reward percentage is wrong");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(mike, 20), "reward percentage is wrong");
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(mike, 300), "reward percentage is wrong");
+        });
+
+        it("Test get staker reward percentage when no votes", async function() {
+            await deployContracts(20, currentBlock + 15, 10);
+            await setupSimpleStakingData();
+            await stakingContract.deposit(mulPrecision(100), {from: mike});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            // has stake, but no vote yet
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(mike, 0), "reward percentage is wrong");
+        });
+
+        // test coverage for total epoch points = 0 or less than staker's point
+        it("Test get reward percenage returns 0 with invalid total epoch points", async function() {
+            epochPeriod = 20;
+            startBlock = currentBlock + 30;
+            stakingContract = await StakingContract.new(kncToken.address, epochPeriod, startBlock, campCreator);
+
+            minCampPeriod = 10;
+            daoContract = await MockMaliciousDAO.new(
+                epochPeriod, startBlock,
+                stakingContract.address,  feeHandler.address, kncToken.address,
+                maxCampOptions, minCampPeriod,
+                defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+                campCreator
+            )
+            await stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: campCreator});
+
+            await setupSimpleStakingData();
+
+            await stakingContract.deposit(mulPrecision(100), {from: mike});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+            );
+            await daoContract.vote(1, 2, {from: mike});
+
+            // set total epoch points is 0
+            await daoContract.setTotalEpochPoints(1, 0);
+
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward should be 0");
+
+            // set total epoch points less than point of mike
+            await daoContract.setTotalEpochPoints(1, mulPrecision(90));
+
+            Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(mike, 1), "reward should be 0");
+        });
     });
 
     describe("#Conclude Campaign tests", () => {
@@ -4262,9 +4431,8 @@ contract('KyberDAO', function(accounts) {
             kncToken = await TestToken.new("test token", 'tst', 18, {from: accounts[0]});
 
             let totalSupply = await kncToken.totalSupply();
-            let burnAmount = totalSupply.sub(new BN(totalSupply));
 
-            await kncToken.burn(burnAmount, {from: accounts[0]});
+            await kncToken.burn(totalSupply, {from: accounts[0]});
 
             await deployContracts(10, currentBlock + 20, 5);
 
@@ -5677,6 +5845,146 @@ contract('KyberDAO', function(accounts) {
                 maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
                 campCreator
             )
+        });
+
+        it("Test constructor should revert invalid arguments", async function() {
+            let stakingContract = await StakingContract.new(kncToken.address, 10, currentBlock + 50, campCreator);
+
+            // epoch period is 0
+            try {
+                await DAOContract.new(
+                    0, currentBlock + 50,
+                    stakingContract.address,  feeHandler.address, kncToken.address,
+                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+                    campCreator
+                )
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "ctor: epoch period is 0"),
+                    "unexpected error message: " + e
+                );
+            }
+            // start in the past
+            try {
+                await DAOContract.new(
+                    20, currentBlock - 1,
+                    stakingContract.address,  feeHandler.address, kncToken.address,
+                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+                    campCreator
+                )
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "ctor: start in the past"),
+                    "unexpected error message: " + e
+                );
+            }
+            // staking missing
+            try {
+                await DAOContract.new(
+                    10, currentBlock + 50,
+                    zeroAddress,  feeHandler.address, kncToken.address,
+                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+                    campCreator
+                )
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "ctor: staking is missing"),
+                    "unexpected error message: " + e
+                );
+            }
+            // feehandler missing
+            try {
+                await DAOContract.new(
+                    10, currentBlock + 50,
+                    stakingContract.address,  zeroAddress, kncToken.address,
+                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+                    campCreator
+                )
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "ctor: feeHandler is missing"),
+                    "unexpected error message: " + e
+                );
+            }
+            // knc missing
+            try {
+                await DAOContract.new(
+                    10, currentBlock + 50,
+                    stakingContract.address,  feeHandler.address, zeroAddress,
+                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+                    campCreator
+                )
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "ctor: knc token is missing"),
+                    "unexpected error message: " + e
+                );
+            }
+            // network fee is high
+            try {
+                await DAOContract.new(
+                    10, currentBlock + 50,
+                    stakingContract.address,  feeHandler.address, kncToken.address,
+                    maxCampOptions, minCampPeriod, 10001, defaultRewardBps, defaultRebateBps,
+                    campCreator
+                )
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "ctor: network fee high"),
+                    "unexpected error message: " + e
+                );
+            }
+            // brr is high
+            try {
+                await DAOContract.new(
+                    10, currentBlock + 50,
+                    stakingContract.address,  feeHandler.address, kncToken.address,
+                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, 10001 - defaultRewardBps,
+                    campCreator
+                )
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "reward plus rebate high"),
+                    "unexpected error message: " + e
+                );
+            }
+            // brr is high
+            try {
+                await DAOContract.new(
+                    10, currentBlock + 50,
+                    stakingContract.address,  feeHandler.address, kncToken.address,
+                    maxCampOptions, minCampPeriod, defaultNetworkFee, 10001 - defaultRebateBps, defaultRebateBps,
+                    campCreator
+                )
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessage(e, "reward plus rebate high"),
+                    "unexpected error message: " + e
+                );
+            }
+            // creator is zero
+            try {
+                await DAOContract.new(
+                    10, currentBlock + 50,
+                    stakingContract.address,  feeHandler.address, kncToken.address,
+                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+                    zeroAddress
+                )
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessage(e, "reward plus rebate high"),
+                    "unexpected error message: " + e
+                );
+            }
         });
     });
 
