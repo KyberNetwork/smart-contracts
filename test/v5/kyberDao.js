@@ -27,6 +27,8 @@ let poolMaster2;
 let maxCampOptions = 4;
 let minCampPeriod = 10; // 10 blocks
 let defaultNetworkFee = 25;
+let defaultRewardBps = 3000; // 30%
+let defaultRebateBps = 2000; // 20%
 let defaultBrrData = getDataFromRebateAndReward(25, 25);
 let minPercentageInPrecision = new BN(precisionUnits).div(new BN(5)); // 20%
 // Y = C - t * X
@@ -73,7 +75,8 @@ contract('KyberDAO', function(accounts) {
         daoContract = await DAOContract.new(
             epochPeriod, startBlock,
             stakingContract.address,  feeHandler.address, kncToken.address,
-            maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
+            maxCampOptions, minCampPeriod,
+            defaultNetworkFee, defaultRewardBps, defaultRebateBps,
             campCreator
         )
         await stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: campCreator});
@@ -146,7 +149,7 @@ contract('KyberDAO', function(accounts) {
         await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
     }
 
-    describe("#Handle Withdrawl tests", () => {
+    describe("#Handle Withdrawal tests", () => {
         it("Test handle withdrawal update correct points and vote count - no delegation", async function() {
             await deployContracts(20, currentBlock + 20, 10);
             await setupSimpleStakingData();
@@ -562,7 +565,7 @@ contract('KyberDAO', function(accounts) {
             daoContract = await DAOContract.new(
                 10, currentBlock + 10,
                 stakingContract.address,  feeHandler.address, kncToken.address,
-                maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
+                maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
                 campCreator
             )
             await daoContract.replaceStakingContract(mike);
@@ -845,6 +848,191 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(6, await daoContract.brrCampaign(3), "shouldn't have brr camp");
         });
 
+        it("Test submit new campaign for next epoch, data changes as expected", async function() {
+            await deployContracts(20, currentBlock + 10, 5);
+
+            let link = web3.utils.fromAscii("https://kyberswap.com");
+            await daoContract.submitNewCampaign(
+                0, startBlock + 1, startBlock + 1 + minCampPeriod,
+                formulaParamsData, [1, 2, 3], link, {from: campCreator}
+            );
+
+            // test recorded correct data
+            let data = await daoContract.getCampaignDetails(1);
+            Helper.assertEqual(0, data[0], "campType is incorrect");
+            Helper.assertEqual(startBlock + 1, data[1], "start block is incorrect");
+            Helper.assertEqual(startBlock + 1 + minCampPeriod, data[2], "end block is incorrect");
+            Helper.assertEqual(await kncToken.totalSupply(), data[3], "total supply is incorrect");
+            Helper.assertEqual(formulaParamsData, data[4], "formulaParamsData is incorrect");
+            Helper.assertEqual(link, data[5].toString(), "link is incorrect");
+            Helper.assertEqual(3, data[6].length, "number options is incorrect");
+            Helper.assertEqual(1, data[6][0], "option value is incorrect");
+            Helper.assertEqual(2, data[6][1], "option value is incorrect");
+            Helper.assertEqual(3, data[6][2], "option value is incorrect");
+
+            let listCampIDs = await daoContract.getListCampIDs(1);
+            Helper.assertEqual(1, listCampIDs.length, "should have added first camp");
+            Helper.assertEqual(1, listCampIDs[0], "should have added first camp");
+
+            listCampIDs = await daoContract.getListCampIDs(0);
+            Helper.assertEqual(0, listCampIDs.length, "shouldn't have added any camps");
+
+            await daoContract.submitNewCampaign(
+                0, startBlock + 4, startBlock + 4 + minCampPeriod,
+                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+            );
+
+            listCampIDs = await daoContract.getListCampIDs(1);
+            Helper.assertEqual(2, listCampIDs.length, "should have added 2 camps");
+            Helper.assertEqual(1, listCampIDs[0], "should have added 2 camps");
+            Helper.assertEqual(2, listCampIDs[1], "should have added 2 camps");
+
+            // delay to epoch 1
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0],  startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, startBlock + 4, startBlock + 4 + minCampPeriod,
+                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+            );
+
+            listCampIDs = await daoContract.getListCampIDs(1);
+            Helper.assertEqual(3, listCampIDs.length, "should have added 3 camps");
+            Helper.assertEqual(1, listCampIDs[0], "should have added 3 camps");
+            Helper.assertEqual(2, listCampIDs[1], "should have added 3 camps");
+            Helper.assertEqual(3, listCampIDs[2], "should have added 3 camps");
+            listCampIDs = await daoContract.getListCampIDs(0);
+            Helper.assertEqual(0, listCampIDs.length, "shouldn't have added any camps");
+        });
+
+        it("Test submit new campaign of network fee for next epoch", async function() {
+            await deployContracts(20, currentBlock + 20, 4);
+            // create network fee
+            await daoContract.submitNewCampaign(
+                1, startBlock + 1, startBlock + 1 + minCampPeriod,
+                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+            );
+            let networkFeeCamp = await daoContract.networkFeeCamp(1);
+            Helper.assertEqual(1, networkFeeCamp, "network fee camp is invalid");
+
+            // can not create new camp of network fee for next epoch
+            try {
+                await daoContract.submitNewCampaign(
+                    1, startBlock + 2, startBlock + 2 + minCampPeriod,
+                    formulaParamsData, [1, 2, 3], '0x', {from: campCreator}
+                );
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            // still able to create for current epoch
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+            );
+
+            networkFeeCamp = await daoContract.networkFeeCamp(1);
+            Helper.assertEqual(1, networkFeeCamp, "network fee camp is invalid");
+            networkFeeCamp = await daoContract.networkFeeCamp(0);
+            Helper.assertEqual(2, networkFeeCamp, "network fee camp is invalid");
+
+
+            // delay to next epoch, try to create fee campaign again
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], startBlock - currentBlock);
+            currentBlock = await Helper.getCurrentBlock();
+
+            // can not create new camp of network fee for current epoch as alr existed
+            try {
+                await daoContract.submitNewCampaign(
+                    1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                    formulaParamsData, [1, 2, 3], '0x', {from: campCreator}
+                );
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            // still able to create camp of other types
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+            );
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+            );
+            networkFeeCamp = await daoContract.networkFeeCamp(1);
+            Helper.assertEqual(1, networkFeeCamp, "network fee camp is invalid");
+        });
+
+        it("Test submit new campaign of brr for next epoch", async function() {
+            await deployContracts(20, currentBlock + 20, 4);
+            // create network fee
+            await daoContract.submitNewCampaign(
+                2, startBlock + 1, startBlock + 1 + minCampPeriod,
+                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+            );
+            let brrCamp = await daoContract.brrCampaign(1);
+            Helper.assertEqual(1, brrCamp, "brr camp is invalid");
+
+            // can not create new camp of network fee for next epoch
+            try {
+                await daoContract.submitNewCampaign(
+                    2, startBlock + 2, startBlock + 2 + minCampPeriod,
+                    formulaParamsData, [1, 2, 3], '0x', {from: campCreator}
+                );
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+
+            // still able to create for current epoch
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+            );
+
+            brrCamp = await daoContract.brrCampaign(1);
+            Helper.assertEqual(1, brrCamp, "brr camp is invalid");
+            brrCamp = await daoContract.brrCampaign(0);
+            Helper.assertEqual(2, brrCamp, "brr camp is invalid");
+
+            // delay to next epoch, try to create fee campaign again
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], startBlock - currentBlock);
+            currentBlock = await Helper.getCurrentBlock();
+
+            // can not create new camp of network fee for current epoch as alr existed
+            try {
+                await daoContract.submitNewCampaign(
+                    2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                    formulaParamsData, [1, 2, 3], '0x', {from: campCreator}
+                );
+                assert(false, "throw was expected in line above.");
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            // still able to create camp of other types
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+            );
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+            );
+            brrCamp = await daoContract.brrCampaign(1);
+            Helper.assertEqual(1, brrCamp, "brr camp is invalid");
+        });
+
         it("Test submit campaign should revert sender is not campCreator", async function() {
             await deployContracts(10, currentBlock + 30, 10);
             try {
@@ -874,10 +1062,20 @@ contract('KyberDAO', function(accounts) {
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
-            // start in the next epoch
+            // start in the next 2 epochs
             try {
                 await daoContract.submitNewCampaign(
-                    0, currentBlock + 50, currentBlock + 70, formulaParamsData,
+                    0, startBlock + epochPeriod, startBlock + epochPeriod + 10, formulaParamsData,
+                    [1, 2, 3, 4], '0x', {from: campCreator}
+                );
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+            }
+            // start in the next 10 epochs
+            try {
+                await daoContract.submitNewCampaign(
+                    0, startBlock + 10 * epochPeriod, startBlock + 10 * epochPeriod + 10, formulaParamsData,
                     [1, 2, 3, 4], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above.")
@@ -916,6 +1114,11 @@ contract('KyberDAO', function(accounts) {
             }
             await daoContract.submitNewCampaign(
                 0, currentBlock + 10, currentBlock + 10 + minCampPeriod - 1, formulaParamsData,
+                [1, 2, 3, 4], '0x', {from: campCreator}
+            );
+            // start at next epoch, should be ok
+            await daoContract.submitNewCampaign(
+                0, startBlock + 1, startBlock + 10, formulaParamsData,
                 [1, 2, 3, 4], '0x', {from: campCreator}
             );
         });
@@ -1549,6 +1752,202 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(campData[6].length, 2, "camp details should be correct");
             Helper.assertEqual(campData[6][0], 25, "camp details should be correct");
             Helper.assertEqual(campData[6][1], 50, "camp details should be correct");
+        });
+
+        it("Test cancel campaign of next epoch campaign, data changes as expected", async function() {
+            await deployContracts(50, currentBlock + 50, 5);
+
+            let link = web3.utils.fromAscii("https://kyberswap.com");
+            let formula = formulaParamsData;
+
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 15, currentBlock + 15 + minCampPeriod,
+                formula, [1, 2, 3], link, {from: campCreator}
+            );
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 15, currentBlock + 15 + minCampPeriod,
+                formula, [1, 2, 3], link, {from: campCreator}
+            );
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 15, currentBlock + 15 + minCampPeriod,
+                formula, [1, 2, 3], link, {from: campCreator}
+            );
+
+            let epoch1Block = startBlock + 1;
+
+            await daoContract.submitNewCampaign(
+                0, epoch1Block + 15, epoch1Block + 15 + minCampPeriod,
+                formula, [1, 2, 3], link, {from: campCreator}
+            );
+            await daoContract.submitNewCampaign(
+                1, epoch1Block + 15, epoch1Block + 15 + minCampPeriod,
+                formula, [1, 2, 3], link, {from: campCreator}
+            );
+            await daoContract.submitNewCampaign(
+                2, epoch1Block + 15, epoch1Block + 15 + minCampPeriod,
+                formula, [1, 2, 3], link, {from: campCreator}
+            );
+            await daoContract.submitNewCampaign(
+                0, epoch1Block + 15, epoch1Block + 15 + minCampPeriod,
+                formula, [1, 2, 3], link, {from: campCreator}
+            );
+
+            let campIDs = await daoContract.getListCampIDs(0);
+            Helper.assertEqual(3, campIDs.length, "number ids for first epoch is wrong");
+            Helper.assertEqual(1, campIDs[0], "camp id for first epoch is wrong");
+            Helper.assertEqual(2, campIDs[1], "camp id for first epoch is wrong");
+            Helper.assertEqual(3, campIDs[2], "camp id for first epoch is wrong");
+
+            campIDs = await daoContract.getListCampIDs(1);
+            Helper.assertEqual(4, campIDs.length, "number ids for second epoch is wrong");
+            Helper.assertEqual(4, campIDs[0], "camp id for second epoch is wrong");
+            Helper.assertEqual(5, campIDs[1], "camp id for second epoch is wrong");
+            Helper.assertEqual(6, campIDs[2], "camp id for second epoch is wrong");
+            Helper.assertEqual(7, campIDs[3], "camp id for second epoch is wrong");
+
+            // cancel next camp
+            await daoContract.cancelCampaign(5, {from: campCreator});
+
+            campIDs = await daoContract.getListCampIDs(1);
+            Helper.assertEqual(3, campIDs.length, "number ids for second epoch is wrong");
+            Helper.assertEqual(4, campIDs[0], "camp id for second epoch is wrong");
+            Helper.assertEqual(7, campIDs[1], "camp id for second epoch is wrong");
+            Helper.assertEqual(6, campIDs[2], "camp id for second epoch is wrong");
+
+            // epoch 1 camps shouldn't be changed
+            campIDs = await daoContract.getListCampIDs(0);
+            Helper.assertEqual(3, campIDs.length, "number ids for first epoch is wrong");
+            Helper.assertEqual(1, campIDs[0], "camp id for first epoch is wrong");
+            Helper.assertEqual(2, campIDs[1], "camp id for first epoch is wrong");
+            Helper.assertEqual(3, campIDs[2], "camp id for first epoch is wrong");
+
+            await daoContract.cancelCampaign(2, {from: campCreator});
+
+            campIDs = await daoContract.getListCampIDs(1);
+            Helper.assertEqual(3, campIDs.length, "number ids for second epoch is wrong");
+            Helper.assertEqual(4, campIDs[0], "camp id for second epoch is wrong");
+            Helper.assertEqual(7, campIDs[1], "camp id for second epoch is wrong");
+            Helper.assertEqual(6, campIDs[2], "camp id for second epoch is wrong");
+
+            campIDs = await daoContract.getListCampIDs(0);
+            Helper.assertEqual(2, campIDs.length, "number ids for first epoch is wrong");
+            Helper.assertEqual(1, campIDs[0], "camp id for first epoch is wrong");
+            Helper.assertEqual(3, campIDs[1], "camp id for first epoch is wrong");
+
+            // delay to epoch 1
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            await daoContract.cancelCampaign(4, {from: campCreator});
+            // check camp ids
+            campIDs = await daoContract.getListCampIDs(1);
+            Helper.assertEqual(2, campIDs.length, "number ids for second epoch is wrong");
+            Helper.assertEqual(6, campIDs[0], "camp id for second epoch is wrong");
+            Helper.assertEqual(7, campIDs[1], "camp id for second epoch is wrong");
+        });
+
+        it("Test cancel campaign for network fee camp of next epoch", async function() {
+            await deployContracts(20, currentBlock + 20, 5);
+
+            let link = web3.utils.fromAscii("https://kyberswap.com");
+            let formula = formulaParamsData;
+
+            await daoContract.submitNewCampaign(
+                1, currentBlock + 5, currentBlock + 5 + minCampPeriod,
+                formula, [1, 2, 3], link, {from: campCreator}
+            );
+
+            Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp is wrong");
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "network fee camp is wrong");
+
+            // create network fee for next epoch
+            await daoContract.submitNewCampaign(
+                1, startBlock + 5, startBlock + 5 + minCampPeriod,
+                formula, [1, 2, 3], link, {from: campCreator}
+            );
+
+            Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp is wrong");
+            Helper.assertEqual(2, await daoContract.networkFeeCamp(1), "network fee camp is wrong");
+
+            await daoContract.cancelCampaign(2, {from: campCreator});
+
+            Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp is wrong");
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "network fee camp is wrong");
+
+            // create network fee for next epoch again
+            await daoContract.submitNewCampaign(
+                1, startBlock + 5, startBlock + 5 + minCampPeriod,
+                formula, [1, 2, 3], link, {from: campCreator}
+            );
+
+            Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp is wrong");
+            Helper.assertEqual(3, await daoContract.networkFeeCamp(1), "network fee camp is wrong");
+
+            // delay to next epoch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            await daoContract.cancelCampaign(3, {from: campCreator});
+            Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "network fee camp is wrong");
+
+            // create network fee for epoch 1 again
+            await daoContract.submitNewCampaign(
+                1, startBlock + 5, startBlock + 5 + minCampPeriod,
+                formula, [1, 2, 3], link, {from: campCreator}
+            );
+            Helper.assertEqual(4, await daoContract.networkFeeCamp(1), "network fee camp is wrong");
+        });
+
+        it("Test cancel campaign for brr camp of next epoch", async function() {
+            await deployContracts(20, currentBlock + 20, 5);
+
+            let link = web3.utils.fromAscii("https://kyberswap.com");
+            let formula = formulaParamsData;
+
+            await daoContract.submitNewCampaign(
+                2, currentBlock + 5, currentBlock + 5 + minCampPeriod,
+                formula, [1, 2, 3], link, {from: campCreator}
+            );
+
+            Helper.assertEqual(1, await daoContract.brrCampaign(0), "brr camp is wrong");
+            Helper.assertEqual(0, await daoContract.brrCampaign(1), "brr camp is wrong");
+
+            // create brr for next epoch
+            await daoContract.submitNewCampaign(
+                2, startBlock + 5, startBlock + 5 + minCampPeriod,
+                formula, [1, 2, 3], link, {from: campCreator}
+            );
+
+            Helper.assertEqual(1, await daoContract.brrCampaign(0), "brr camp is wrong");
+            Helper.assertEqual(2, await daoContract.brrCampaign(1), "brr camp is wrong");
+
+            await daoContract.cancelCampaign(2, {from: campCreator});
+
+            Helper.assertEqual(1, await daoContract.brrCampaign(0), "brr camp is wrong");
+            Helper.assertEqual(0, await daoContract.brrCampaign(1), "brr camp is wrong");
+
+            // create brr for next epoch again
+            await daoContract.submitNewCampaign(
+                2, startBlock + 5, startBlock + 5 + minCampPeriod,
+                formula, [1, 2, 3], link, {from: campCreator}
+            );
+
+            Helper.assertEqual(1, await daoContract.brrCampaign(0), "brr camp is wrong");
+            Helper.assertEqual(3, await daoContract.brrCampaign(1), "brr camp is wrong");
+
+            // delay to next epoch
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            await daoContract.cancelCampaign(3, {from: campCreator});
+            Helper.assertEqual(0, await daoContract.brrCampaign(1), "brr camp is wrong");
+
+            // create brr for epoch 1 again
+            await daoContract.submitNewCampaign(
+                2, startBlock + 5, startBlock + 5 + minCampPeriod,
+                formula, [1, 2, 3], link, {from: campCreator}
+            );
+            Helper.assertEqual(4, await daoContract.brrCampaign(1), "brr camp is wrong");
         });
     });
 
@@ -2654,7 +3053,7 @@ contract('KyberDAO', function(accounts) {
             await feeHandler.withdrawAllETH({from: accounts[0]});
         });
 
-        it("Test claim reward some epochs reward and balance change as epected", async function() {
+        it("Test claim reward some epochs reward and balance changes as epected", async function() {
             await deployContracts(20, currentBlock + 15, 10);
             await setupSimpleStakingData();
 
@@ -2839,7 +3238,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: can not claim for current or future epoch"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: not past epoch"),
                     "wrong throw error message, got: " + e
                 );
             }
@@ -2848,7 +3247,7 @@ contract('KyberDAO', function(accounts) {
                 await daoContract.claimReward(mike, 2);
                 assert(false, "throw was expected in line above");
             } catch (e) {
-                assert(Helper.isRevertErrorMessageContains(e, "claimReward: can not claim for current or future epoch"));
+                assert(Helper.isRevertErrorMessageContains(e, "claimReward: not past epoch"));
             }
             // can not claim for far future epoch
             try {
@@ -2856,7 +3255,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: can not claim for current or future epoch"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: not past epoch"),
                     "wrong throw error message, got: " + e
                 );
             }
@@ -2900,7 +3299,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: already claimed reward for this epoch"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: alr claimed"),
                     "wrong throw error message, got: " + e
                 )
             }
@@ -2922,7 +3321,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward to claim"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward"),
                     "wrong throw error message, got: " + e
                 )
             }
@@ -2962,7 +3361,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward to claim"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward"),
                     "wrong throw error message, got: " + e
                 )
             }
@@ -2972,7 +3371,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward to claim"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward"),
                     "wrong throw error message, got: " + e
                 )
             }
@@ -3011,7 +3410,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward to claim"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward"),
                     "wrong throw error message, got: " + e
                 )
             }
@@ -3048,7 +3447,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: feeHandle failed to claim reward"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: feeHandle failed to claim"),
                     "wrong throw error message, got: " + e
                 );
             }
@@ -3083,7 +3482,7 @@ contract('KyberDAO', function(accounts) {
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward to claim"),
+                    Helper.isRevertErrorMessageContains(e, "claimReward: No reward"),
                     "wrong throw error message, got: " + e
                 );
             }
@@ -4735,10 +5134,18 @@ contract('KyberDAO', function(accounts) {
         it("Test get brr data returns correct default data for epoch 0", async function() {
             let rebate = 24;
             let reward = 26;
+            defaultRewardBps = reward;
+            defaultRebateBps = rebate;
             defaultBrrData = getDataFromRebateAndReward(rebate, reward);
             await deployContracts(10, currentBlock + 10, 5);
 
             Helper.assertEqual(defaultBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
+            let dataDecoded = await daoContract.latestBRRDataDecoded();
+            Helper.assertEqual(10000 - rebate - reward, dataDecoded[0], "burn default is wrong");
+            Helper.assertEqual(reward, dataDecoded[1], "reward default is wrong");
+            Helper.assertEqual(rebate, dataDecoded[2], "rebate default is wrong");
+            Helper.assertEqual(0, dataDecoded[3], "epoch is wrong");
+            Helper.assertEqual(startBlock - 1, dataDecoded[4], "expiry block is wrong");
 
             // make sure data is correct
             // reward - rebate - burn - epoch - expiry block
@@ -4758,11 +5165,19 @@ contract('KyberDAO', function(accounts) {
             await daoContract.checkLatestBrrData(
                 reward, rebate, 10000 - rebate - reward, 0, startBlock - 1
             );
+            dataDecoded = await daoContract.latestBRRDataDecoded();
+            Helper.assertEqual(10000 - rebate - reward, dataDecoded[0], "burn default is wrong");
+            Helper.assertEqual(reward, dataDecoded[1], "reward default is wrong");
+            Helper.assertEqual(rebate, dataDecoded[2], "rebate default is wrong");
+            Helper.assertEqual(0, dataDecoded[3], "epoch is wrong");
+            Helper.assertEqual(startBlock - 1, dataDecoded[4], "expiry block is wrong");
         });
 
         it("Test get brr data returns correct latest data, no campaigns", async function() {
             let rebate = 24;
             let reward = 26;
+            defaultRewardBps = reward;
+            defaultRebateBps = rebate;
             defaultBrrData = getDataFromRebateAndReward(rebate, reward);
             await deployContracts(10, currentBlock + 10, 5);
 
@@ -4773,6 +5188,12 @@ contract('KyberDAO', function(accounts) {
                 reward, rebate, 10000 - rebate - reward, 1, epochPeriod + startBlock - 1
             );
             Helper.assertEqual(defaultBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
+            let dataDecoded = await daoContract.latestBRRDataDecoded();
+            Helper.assertEqual(10000 - rebate - reward, dataDecoded[0], "burn default is wrong");
+            Helper.assertEqual(reward, dataDecoded[1], "reward default is wrong");
+            Helper.assertEqual(rebate, dataDecoded[2], "rebate default is wrong");
+            Helper.assertEqual(1, dataDecoded[3], "epoch is wrong");
+            Helper.assertEqual(epochPeriod + startBlock - 1, dataDecoded[4], "expiry block is wrong");
 
             rebate = 46;
             reward = 54;
@@ -4791,11 +5212,20 @@ contract('KyberDAO', function(accounts) {
                 reward, rebate, 10000 - rebate - reward, 4, 4 * epochPeriod + startBlock - 1
             );
             Helper.assertEqual(newBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
+
+            dataDecoded = await daoContract.latestBRRDataDecoded();
+            Helper.assertEqual(10000 - rebate - reward, dataDecoded[0], "burn is wrong");
+            Helper.assertEqual(reward, dataDecoded[1], "reward is wrong");
+            Helper.assertEqual(rebate, dataDecoded[2], "rebate is wrong");
+            Helper.assertEqual(4, dataDecoded[3], "epoch is wrong");
+            Helper.assertEqual(4 * epochPeriod + startBlock - 1, dataDecoded[4], "expiry block is wrong");
         });
 
         it("Test get brr returns correct latest data, has camp but no brr campaign", async function() {
             let rebate = 24;
             let reward = 26;
+            defaultRewardBps = reward;
+            defaultRebateBps = rebate;
             defaultBrrData = getDataFromRebateAndReward(rebate, reward);
             await deployContracts(15, currentBlock + 20, 10);
             await setupSimpleStakingData();
@@ -4840,6 +5270,8 @@ contract('KyberDAO', function(accounts) {
         it("Test get brr data returns correct latest data on-going brr camp has a winning option", async function() {
             let reward = 30;
             let rebate = 20;
+            defaultRewardBps = reward;
+            defaultRebateBps = rebate;
             defaultBrrData = getDataFromRebateAndReward(rebate, reward);
             await simpleSetupToTestThreshold(410, 410, 180, 40);
             // min per: 40%, C = 100%, t = 1
@@ -4865,21 +5297,45 @@ contract('KyberDAO', function(accounts) {
                 reward, rebate, 10000 - rebate - reward, 1, epochPeriod + startBlock - 1
             );
             Helper.assertEqual(1, await daoContract.brrCampaign(1), "should have brr camp");
+            let dataDecoded = await daoContract.latestBRRDataDecoded();
+            Helper.assertEqual(10000 - rebate - reward, dataDecoded[0], "burn is wrong");
+            Helper.assertEqual(reward, dataDecoded[1], "reward is wrong");
+            Helper.assertEqual(rebate, dataDecoded[2], "rebate is wrong");
+            Helper.assertEqual(1, dataDecoded[3], "epoch is wrong");
+            Helper.assertEqual(epochPeriod + startBlock - 1, dataDecoded[4], "expiry block is wrong");
 
-            // delay to epoch 2
+            // delay to epoch 2, winning option should take effect
             currentBlock = await Helper.getCurrentBlock();
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            dataDecoded = await daoContract.latestBRRDataDecoded();
+            Helper.assertEqual(10000 - newRebate - newReward, dataDecoded[0], "burn is wrong");
+            Helper.assertEqual(newReward, dataDecoded[1], "reward is wrong");
+            Helper.assertEqual(newRebate, dataDecoded[2], "rebate is wrong");
+            Helper.assertEqual(2, dataDecoded[3], "epoch is wrong");
+            Helper.assertEqual(2 * epochPeriod + startBlock - 1, dataDecoded[4], "expiry block is wrong");
 
             await daoContract.checkLatestBrrData(
                 newReward, newRebate, 10000 - newRebate - newReward, 2, 2 * epochPeriod + startBlock - 1
             );
             Helper.assertEqual(brrData, await daoContract.latestBrrResult(), "latest brr is wrong");
+
+            // test winning option is encoded
+            dataDecoded = await daoContract.latestBRRDataDecoded();
+            Helper.assertEqual(10000 - newRebate - newReward, dataDecoded[0], "burn is wrong");
+            Helper.assertEqual(newReward, dataDecoded[1], "reward is wrong");
+            Helper.assertEqual(newRebate, dataDecoded[2], "rebate is wrong");
+            Helper.assertEqual(2, dataDecoded[3], "epoch is wrong");
+            Helper.assertEqual(2 * epochPeriod + startBlock - 1, dataDecoded[4], "expiry block is wrong");
+
             await resetSetupForKNCToken();
         });
 
         it("Test get brr returns correct latest data, has brr camp but no winning option", async function() {
             let rebate = 24;
             let reward = 26;
+            defaultRewardBps = reward;
+            defaultRebateBps = rebate;
             defaultBrrData = getDataFromRebateAndReward(rebate, reward);
             // mike: 410, victor: 410, loi: 280, total stakes = 40% * total supply
             await simpleSetupToTestThreshold(410, 410, 180, 40);
@@ -4908,6 +5364,13 @@ contract('KyberDAO', function(accounts) {
             await daoContract.checkLatestBrrData(
                 reward, rebate, 10000 - rebate - reward, 2, 2 * epochPeriod + startBlock - 1
             );
+            let dataDecoded = await daoContract.latestBRRDataDecoded();
+            Helper.assertEqual(10000 - rebate - reward, dataDecoded[0], "burn is wrong");
+            Helper.assertEqual(reward, dataDecoded[1], "reward is wrong");
+            Helper.assertEqual(rebate, dataDecoded[2], "rebate is wrong");
+            Helper.assertEqual(2, dataDecoded[3], "epoch is wrong");
+            Helper.assertEqual(2 * epochPeriod + startBlock - 1, dataDecoded[4], "expiry block is wrong");
+
             let tx = await daoContract.getLatestBRRData();
             logInfo("Get Brr: epoch > 0, has brr camp + no win option, gas used: " + tx.receipt.cumulativeGasUsed);
 
@@ -5181,13 +5644,13 @@ contract('KyberDAO', function(accounts) {
                 await DAOContract.new(
                     9, currentBlock + 10,
                     stakingContract.address,  feeHandler.address, kncToken.address,
-                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
+                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
                     campCreator
                 )
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "ctor: different epoch period"),
+                    Helper.isRevertErrorMessageContains(e, "ctor: diff epoch period"),
                     "unexpected error message: " + e
                 );
             }
@@ -5197,13 +5660,13 @@ contract('KyberDAO', function(accounts) {
                 await DAOContract.new(
                     10, currentBlock + 11,
                     stakingContract.address,  feeHandler.address, kncToken.address,
-                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
+                    maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
                     campCreator
                 )
                 assert(false, "throw was expected in line above");
             } catch (e) {
                 assert(
-                    Helper.isRevertErrorMessageContains(e, "ctor: different start block"),
+                    Helper.isRevertErrorMessageContains(e, "ctor: diff start block"),
                     "unexpected error message: " + e
                 );
             }
@@ -5211,7 +5674,7 @@ contract('KyberDAO', function(accounts) {
             await DAOContract.new(
                 10, currentBlock + 10,
                 stakingContract.address,  feeHandler.address, kncToken.address,
-                maxCampOptions, minCampPeriod, defaultNetworkFee, defaultBrrData,
+                maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
                 campCreator
             )
         });
