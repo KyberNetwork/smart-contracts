@@ -205,7 +205,6 @@ async function main() {
   output = await require("../compileContracts.js").compileContracts("v5");
   console.log(output);
   console.log("finished compilation");
-  process.exit(1);
 
   //reinstantiate web3 (solc overwrites something)
   web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
