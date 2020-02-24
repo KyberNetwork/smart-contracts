@@ -18,7 +18,8 @@
     },
 
     "addresses": {
-        "knc": "0xa67bba948bd8372bc9e60b1acfafb8e2db3cc57c"
+        "knc": "0xa67bba948bd8372bc9e60b1acfafb8e2db3cc57c",
+        "gasHelper": "0x0000000000000000000000000000000000000000"
     },
 
     "reserves": [
