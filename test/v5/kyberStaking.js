@@ -2,6 +2,7 @@ const TestToken = artifacts.require("Token.sol");
 const MockKyberDAO = artifacts.require("MockKyberDAOTestHandleWithdrawal.sol");
 const MockDAOWithdrawFailed = artifacts.require("MockKyberDaoWithdrawFailed.sol");
 const StakingContract = artifacts.require("MockStakingContract.sol");
+const MaliciousStaking = artifacts.require("MockKyberStakingMalicious.sol");
 const Helper = require("../v4/helper.js");
 
 const BN = web3.utils.BN;
@@ -1624,6 +1625,8 @@ contract('KyberStaking', function(accounts) {
             // get data for current epoch
             Helper.assertEqual(mulPrecision(70), await stakingContract.getStake(victor, 10), "get stakes should return correct data");
             Helper.assertEqual(mulPrecision(100), await stakingContract.getStake(victor, 11), "get stakes should return correct data");
+
+            Helper.assertEqual(0, await stakingContract.getStake(victor, 100), "get stake should return correct data");
         });
 
         it("Test getDelegatedStakes return correct data", async function() {
@@ -1673,10 +1676,17 @@ contract('KyberStaking', function(accounts) {
             Helper.assertEqual(0, await stakingContract.getDelegatedStake(mike, 11), "get delegatedstakes should return correct data");
             Helper.assertEqual(0, await stakingContract.getDelegatedStake(loi, 10), "get delegated stakes should return correct data");
             Helper.assertEqual(mulPrecision(100), await stakingContract.getDelegatedStake(loi, 11), "get delegated stakes should return correct data");
+
+            Helper.assertEqual(0, await stakingContract.getDelegatedStake(victor, 100), "get delegated stake should return correct data");
         });
 
         it("Test getDelegatedAddress return correct data", async function() {
             await deployStakingContract(6, currentBlock + 10);
+
+            Helper.assertEqual(mike, await stakingContract.getDelegatedAddress(mike, 0), "get delegated address should return correct data");
+            Helper.assertEqual(mike, await stakingContract.getDelegatedAddress(mike, 1), "get delegated address should return correct data");
+            Helper.assertEqual(victor, await stakingContract.getDelegatedAddress(victor, 0), "get delegated address should return correct data");
+            Helper.assertEqual(victor, await stakingContract.getDelegatedAddress(victor, 1), "get delegated address should return correct data");
 
             await kncToken.transfer(victor, mulPrecision(200));
             await kncToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
@@ -1705,6 +1715,8 @@ contract('KyberStaking', function(accounts) {
             // get data for current epoch
             Helper.assertEqual(mike, await stakingContract.getDelegatedAddress(victor, 10), "get delegated address should return correct data");
             Helper.assertEqual(loi, await stakingContract.getDelegatedAddress(victor, 11), "get delegated address should return correct data");
+
+            Helper.assertEqual(zeroAddress, await stakingContract.getDelegatedAddress(victor, 100), "get delegated address should return correct data");
         });
 
         it("Test getStakes return correct data", async function() {
@@ -2106,24 +2118,28 @@ contract('KyberStaking', function(accounts) {
         });
 
         it("Test constructor should revert with invalid arguments", async function() {
+            // knc is 0
             try {
                 stakingContract = await StakingContract.new(zeroAddress, 20, currentBlock + 10, daoSetter)
                 assert(false, "throw was expected in line above.")
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
+            // epoch period is 0
             try {
                 stakingContract = await StakingContract.new(kncToken.address, 0, currentBlock + 10, daoSetter)
                 assert(false, "throw was expected in line above.")
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
+            // start block is in the past
             try {
                 stakingContract = await StakingContract.new(kncToken.address, 20, currentBlock - 1, daoSetter)
                 assert(false, "throw was expected in line above.")
             } catch (e) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
+            // dao setter is 0
             try {
                 stakingContract = await StakingContract.new(kncToken.address, 20, currentBlock + 10, zeroAddress)
                 assert(false, "throw was expected in line above.")
@@ -2216,6 +2232,25 @@ contract('KyberStaking', function(accounts) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
             await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: mike});
+        });
+
+        it("Test withdraw should revert amount is 0", async function() {
+            await deployStakingContract(10, currentBlock + 20);
+
+            await kncToken.transfer(victor, mulPrecision(100));
+            await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+            await stakingContract.deposit(mulPrecision(100), {from: victor});
+
+            try {
+                await stakingContract.withdraw(0, {from: victor});
+                assert(false, "throw was expected in line above");
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "withdraw: amount is 0"),
+                    "expected throw but got: " + e
+                );
+            }
+            await stakingContract.withdraw(mulPrecision(10), {from: victor});
         });
 
         it("Test withdraw should revert when amount more than current deposited amount", async function() {
@@ -2339,6 +2374,125 @@ contract('KyberStaking', function(accounts) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
             await stakingContract.delegate(mike, {from: victor});
+        });
+    });
+
+    describe("#Malicious Staking", () => {
+        it("Test withdraw should revert, stake at next epoch less than amount", async function() {
+            epochPeriod = 10;
+            startBlock = currentBlock + 20;
+            stakingContract = await MaliciousStaking.new(kncToken.address, epochPeriod, startBlock, daoSetter);
+
+            await kncToken.transfer(victor, mulPrecision(500));
+            await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+            await stakingContract.deposit(mulPrecision(500), {from: victor});
+
+            // reduce next epoch stake, so withdraw will check and revert
+            await stakingContract.setEpochStake(victor, 1, mulPrecision(100));
+
+            try {
+                await stakingContract.withdraw(mulPrecision(200), {from: victor});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "withdraw: next epoch staked amt < withdrawal amount"),
+                    "expected throw but got: " + e
+                );
+            }
+        });
+
+        it("Test withdraw should revert, pass checking but not enough knc to withdraw", async function() {
+            epochPeriod = 10;
+            startBlock = currentBlock + 20;
+            stakingContract = await MaliciousStaking.new(kncToken.address, epochPeriod, startBlock, daoSetter);
+
+            await kncToken.transfer(victor, mulPrecision(500));
+            await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+            await stakingContract.deposit(mulPrecision(500), {from: victor});
+
+            // reduce next epoch stake, so withdraw will check and revert
+            await stakingContract.setEpochStake(victor, 1, mulPrecision(1000));
+            await stakingContract.setLatestStake(victor, mulPrecision(1000));
+
+            try {
+                await stakingContract.withdraw(mulPrecision(800), {from: victor});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessage(e),
+                    "expected throw but got: " + e
+                );
+            }
+        });
+
+        it("Test withdraw should revert, delegated stake less than withdrawal amount", async function() {
+            epochPeriod = 10;
+            startBlock = currentBlock + 20;
+            stakingContract = await MaliciousStaking.new(kncToken.address, epochPeriod, startBlock, daoSetter);
+
+            await kncToken.transfer(victor, mulPrecision(500));
+            await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+            await stakingContract.deposit(mulPrecision(500), {from: victor});
+            await stakingContract.delegate(mike, {from: victor});
+
+            await stakingContract.setLatestDelegatedStake(mike, mulPrecision(200));
+
+            try {
+                await stakingContract.withdraw(mulPrecision(300), {from: victor});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "withdraw: latest delegated stake is smaller than next epoch stake"),
+                    "expected throw but got: " + e
+                );
+            }
+
+            await stakingContract.setEpochDelegatedStake(mike, 1, mulPrecision(200));
+
+            try {
+                await stakingContract.withdraw(mulPrecision(300), {from: victor});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "withdraw: delegated stake is smaller than next epoch stake"),
+                    "expected throw but got: " + e
+                );
+            }
+        });
+
+        it("Test delegate should revert, delegated stake is small", async function() {
+            epochPeriod = 10;
+            startBlock = currentBlock + 20;
+            stakingContract = await MaliciousStaking.new(kncToken.address, epochPeriod, startBlock, daoSetter);
+
+            await kncToken.transfer(victor, mulPrecision(500));
+            await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+            await stakingContract.deposit(mulPrecision(500), {from: victor});
+            await stakingContract.delegate(mike, {from: victor});
+
+            await stakingContract.setLatestDelegatedStake(mike, mulPrecision(200));
+
+            try {
+                await stakingContract.delegate(loi, {from: victor});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "delegate: latest delegated stake is smaller than next epoch stake"),
+                    "expected throw but got: " + e
+                );
+            }
+
+            await stakingContract.setEpochDelegatedStake(mike, 1, mulPrecision(200));
+
+            try {
+                await stakingContract.delegate(loi, {from: victor});
+                assert(false, "throw was expected in line above.")
+            } catch (e) {
+                assert(
+                    Helper.isRevertErrorMessageContains(e, "delegate: delegated stake is smaller than next epoch stake"),
+                    "expected throw but got: " + e
+                );
+            }
         });
     });
 });
