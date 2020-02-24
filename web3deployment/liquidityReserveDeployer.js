@@ -27,6 +27,7 @@ if (printPrivateKey) {
       }
   });
 }
+
 const account = web3.eth.accounts.privateKeyToAccount(privateKey);
 const sender = account.address;
 const gasPrice = new BN(gasPriceGwei).mul(new BN(10).pow(new BN(9)));
@@ -34,23 +35,21 @@ const signedTxs = [];
 let nonce;
 let chainId = chainIdInput;
 
-async function sendTx(txObject) {
+async function sendTx(txObject, gasLimit) {
   const txTo = txObject._parent.options.address;
 
-  let gasLimit;
   try {
-    gasLimit = await txObject.estimateGas();
-    gasLimit = gasLimit.mul(new BN(150)).div(new BN(100));
+    gasLimit = (gasLimit == undefined) ? await txObject.estimateGas() : gasLimit;
+    gasLimit = Math.round(1.1 * gasLimit);
   }
   catch (e) {
-    gasLimit = new BN(1500).mul(new BN(1000));
+    gasLimit = 800000;
   }
 
   if(txTo !== null) {
-    gasLimit = new BN(800).mul(new BN(1000));
+    gasLimit = 800000;
   }
 
-  //console.log(gasLimit);
   const txData = txObject.encodeABI();
   const txFrom = account.address;
   const txKey = account.privateKey;
@@ -70,11 +69,7 @@ async function sendTx(txObject) {
   // don't wait for confirmation
   signedTxs.push(signedTx.rawTransaction)
   if (!dontSendTx) {
-    try {
-      web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
-    } catch (e) {
-      console.error(e);
-    }
+    web3.eth.sendSignedTransaction(signedTx.rawTransaction, {from:sender});
   }
 }
 
@@ -90,7 +85,7 @@ async function deployContract(solcOutput, contractName, name, ctorArgs) {
   let address = "0x" + web3.utils.sha3(RLP.encode([sender,nonce])).slice(12).substring(14);
   address = web3.utils.toChecksumAddress(address);
 
-  await sendTx(deploy);
+  await sendTx(deploy, 6500000);
 
   myContract.options.address = address;
 
@@ -174,9 +169,9 @@ async function main() {
 
   await deployPricingContract(output);
   await deployReserveContract(output);
-  // await connectPricingToReserve();
-  // await setWhitelistAddresses();
-  // await handoverPermissions();
+  await connectPricingToReserve();
+  await setWhitelistAddresses();
+  await handoverPermissions();
 
   console.log("last nonce is", nonce);
 
@@ -226,9 +221,8 @@ async function handoverPermissions() {
 
 function printParams(jsonInput) {
     dictOutput = {};
-    dictOutput["tokens"] = jsonInput.tokens;
-    dictOutput["tokens"]["ETH"] = {"name" : "Ethereum", "decimals" : 18, "address" : ethAddress };
-    dictOutput["exchanges"] = jsonInput.exchanges;
+    dictOutput["token"] = jsonInput.token;
+    dictOutput["whitelistedAddresses"] = jsonInput.whitelistedAddresses;
     dictOutput["permission"] = jsonInput.permission;
     dictOutput["reserve"] = reserveAddress;
     dictOutput["pricing"] = pricingAddress;

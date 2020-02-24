@@ -95,7 +95,7 @@ async function deployContract(solcOutput, contractName, name, ctorArgs) {
   let address = "0x" + web3.utils.sha3(RLP.encode([sender,nonce])).slice(12).substring(14);
   address = web3.utils.toChecksumAddress(address);
 
-  await sendTx(deploy, new BN(6500000));
+  await sendTx(deploy, 6500000);
 
   myContract.options.address = address;
 
@@ -205,6 +205,7 @@ async function main() {
   output = await require("../compileContracts.js").compileContracts("v5");
   console.log(output);
   console.log("finished compilation");
+  process.exit(1);
 
   //reinstantiate web3 (solc overwrites something)
   web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
@@ -399,7 +400,7 @@ async function set_Fee_Logic_Gas_ContractsInNetwork() {
   ));
 }
 
-await setProxyInNetwork() {
+async function setProxyInNetwork() {
   console.log("set proxy in network");
   await sendTx(networkContract.methods.addKyberProxy(proxyAddress));
 }

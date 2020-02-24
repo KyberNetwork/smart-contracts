@@ -106,6 +106,7 @@ function getImports(dependency) {
 }
 
 async function loadSpecificCompiler(solcVersion) {
+    console.log(`Downloading compiler ${solcVersion}`);
     return await solc.loadRemoteVersion(solcVersion, async function (err, solc_specific) {
         if (err) {
             console.log(err);
@@ -143,15 +144,13 @@ async function compileContracts(versionNum) {
         solcVersionNum = solc511;
         sourceFiles = v5SourceFiles;
     } else {
-      console.log(versionNum);
-      console.log("invalid version number");
+      console.log(`invalid version number ${versionNum}`);
       process.exit(0);
     }
 
     while (compiler == undefined) {
-        console.log("loading compiler...");
         compiler = await loadSpecificCompiler(solcVersionNum);
-        await sleep(15000);
+        await sleep(30000); //change time based on internet connection
     }
     compilingPreparations();
     const config = createConfiguration(sourceFiles);
