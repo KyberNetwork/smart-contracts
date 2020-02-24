@@ -149,7 +149,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         require(_feeHandler != address(0), "ctor: feeHandler is missing");
         require(_knc != address(0), "ctor: knc token is missing");
         require(_defaultNetworkFeeBps <= BPS, "ctor: network fee high");
-        require(_defaultRewardBps.add(_defaultRebateBps) <= BPS, "ctor: rebate + reward high");
 
         staking = IKyberStaking(_staking);
         require(staking.EPOCH_PERIOD() == _epochPeriod, "ctor: diff epoch period");
@@ -160,6 +159,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         feeHandler = IFeeHandler(_feeHandler);
         kncToken = IERC20(_knc);
         latestNetworkFeeResult = _defaultNetworkFeeBps;
+        // reward + rebate will be validated inside get func here
         latestBrrResult = getDataFromRewardAndRebateWithValidation(_defaultRewardBps, _defaultRebateBps);
     }
 
@@ -610,7 +610,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         public pure
         returns(uint data)
     {
-        require(rewardInBps.add(rebateInBps) <= BPS);
+        require(rewardInBps.add(rebateInBps) <= BPS, "reward+rebate high");
         data = (rebateInBps.mul(POWER_128)).add(rewardInBps);
     }
 
