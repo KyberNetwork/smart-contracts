@@ -221,10 +221,14 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             "newCampaign: invalid camp params"
         );
 
+        // campaign epoch could be different from current epoch
+        // as we allow to create campaign of next epoch as well
+        uint campEpoch = getEpochNumber(startBlock);
+
         if (campType == CampaignType.NETWORK_FEE) {
-            require(networkFeeCamp[curEpoch] == 0, "newCampaign: alr had network fee at this epoch");
+            require(networkFeeCamp[campEpoch] == 0, "newCampaign: alr had network fee at the epoch");
         } else if (campType == CampaignType.FEE_HANDLER_BRR) {
-            require(brrCampaign[curEpoch] == 0, "newCampaign: alr had brr at this epoch");
+            require(brrCampaign[campEpoch] == 0, "newCampaign: alr had brr at the epoch");
         }
 
         numberCampaigns = numberCampaigns.add(1);
@@ -232,12 +236,12 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         campExists[campID] = true;
         // add campID into this current epoch camp IDs
-        epochCampaigns[curEpoch].push(campID);
+        epochCampaigns[campEpoch].push(campID);
         // update network fee or brr campaigns
         if (campType == CampaignType.NETWORK_FEE) {
-            networkFeeCamp[curEpoch] = campID;
+            networkFeeCamp[campEpoch] = campID;
         } else if (campType == CampaignType.FEE_HANDLER_BRR) {
-            brrCampaign[curEpoch] = campID;
+            brrCampaign[campEpoch] = campID;
         }
 
         campaignData[campID] = Campaign({
@@ -266,20 +270,20 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         require(camp.startBlock > block.number, "cancelCamp: camp alr started");
 
-        uint curEpoch = getCurrentEpochNumber();
+        uint epoch = getEpochNumber(camp.startBlock);
 
         campExists[campID] = false;
 
         if (camp.campType == CampaignType.NETWORK_FEE) {
-            delete networkFeeCamp[curEpoch];
+            delete networkFeeCamp[epoch];
         } else if (camp.campType == CampaignType.FEE_HANDLER_BRR) {
-            delete brrCampaign[curEpoch];
+            delete brrCampaign[epoch];
         }
 
         delete campaignData[campID];
         delete campOptionPoints[campID];
 
-        uint[] storage campIDs = epochCampaigns[curEpoch];
+        uint[] storage campIDs = epochCampaigns[epoch];
         for (uint i = 0; i < campIDs.length; i++) {
             if (campIDs[i] == campID) {
                 // remove this camp id out of list
@@ -631,10 +635,14 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint startEpoch = getEpochNumber(startBlock);
         uint endEpoch = getEpochNumber(endBlock);
         // start + end blocks must be in the same epoch
-        // campaign must be created for current epoch
         require(
-            startEpoch == endEpoch && startEpoch == currentEpoch,
-            "validateParams: start & end not in current epoch"
+            startEpoch == endEpoch,
+            "validateParams: start & end not same epoch"
+        );
+        // start + end blocks must be in the same epoch
+        require(
+            startEpoch <= currentEpoch + 1,
+            "validateParams: not for current or next epoch"
         );
 
         // verify number of options
