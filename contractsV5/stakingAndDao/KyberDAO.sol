@@ -256,7 +256,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         // index 0 for total votes, index 1 -> options.length for each option
         campOptionPoints[campID] = new uint[](options.length + 1);
 
-        emit NewCampaignCreated(CampaignType.NETWORK_FEE, campID, startBlock, endBlock, formulaParams, options, link);
+        emit NewCampaignCreated(campType, campID, startBlock, endBlock, formulaParams, options, link);
     }
 
     event CancelledCampaign(uint campID);
@@ -681,9 +681,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     function encodeFormulaParams(
         uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision
     ) public pure returns(uint data) {
-        require(minPercentageInPrecision <= PRECISION);
-        require(cInPrecision < POWER_84);
-        require(tInPrecision < POWER_84);
+        require(minPercentageInPrecision <= PRECISION, "min percentage high");
+        require(cInPrecision < POWER_84, "c high");
+        require(tInPrecision < POWER_84, "t high");
 
         data = minPercentageInPrecision & (POWER_84.sub(1));
         data |= (cInPrecision & (POWER_84.sub(1))).mul(POWER_84);
