@@ -9,6 +9,7 @@ module.exports = {
   },
 
   paths: {
-    sources: "./contracts"
+    sources: "./contracts",
+    artifacts: ".coverageV4Artifacts"
   }
 };

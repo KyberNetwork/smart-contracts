@@ -42,6 +42,7 @@
     "@openzeppelin/test-helpers": "0.5.4",
     "chai": "4.2.0",
     "chai-bn": "0.2.0",
-    "solidity-coverage": "0.6.7"
+    "mv": "^2.1.1",
+    "solidity-coverage": "^0.7.0-beta.3"
   }
 }
