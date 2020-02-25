@@ -16,11 +16,11 @@ const negligibleRateDiffBps = new BN(5); //0.05%
 const maxDestAmt = new BN(2).pow(new BN(255));
 const minConversionRate = new BN(0);
 
-let takerFeeArray = [new BN(0), new BN(250), new BN(400)];
+let networkFeeArray = [new BN(0), new BN(250), new BN(400)];
 let platformFeeArray = [new BN(0), new BN(250, new BN(400))];
-let takerFeeBps;
+let networkFeeBps;
 let platformFeeBps;
-let takerFeeAmount;
+let networkFeeAmount;
 let txResult;
 
 let admin;
@@ -233,14 +233,14 @@ contract('KyberTradeLogic', function(accounts) {
             });
     
             it("should get rates for token (different taker fee amounts)", async() => {
-                for (takerFeeBps of takerFeeArray) {
-                    actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
+                for (networkFeeBps of networkFeeArray) {
+                    actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, networkFeeBps);
                     for (let i=0; i < actualResult.buyReserves.length; i++) {
                         reserveAddress = actualResult.buyReserves[i];
                         reserve = reserveInstances[reserveAddress];
                         Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
         
-                        queryQty = nwHelper.minusNetworkFees(ethSrcQty, reserve.isFeePaying, false, takerFeeBps);
+                        queryQty = nwHelper.minusNetworkFees(ethSrcQty, reserve.isFeePaying, false, networkFeeBps);
                         expectedReserveRate = await reserve.instance.getConversionRate(ethAddress, token.address, queryQty, 0);
                         expectedDestAmt = Helper.calcDstQty(queryQty, ethDecimals, tokenDecimals, expectedReserveRate);
                         expectedRate = Helper.calcRateFromQty(ethSrcQty, expectedDestAmt, ethDecimals, tokenDecimals);
@@ -254,7 +254,7 @@ contract('KyberTradeLogic', function(accounts) {
         
                         expectedReserveRate = await reserve.instance.getConversionRate(token.address, ethAddress, tokenQty, 0);
                         expectedDestAmt = Helper.calcDstQty(tokenQty, tokenDecimals, ethDecimals, expectedReserveRate);
-                        expectedDestAmt = nwHelper.minusNetworkFees(expectedDestAmt, false, reserve.isFeePaying, takerFeeBps);
+                        expectedDestAmt = nwHelper.minusNetworkFees(expectedDestAmt, false, reserve.isFeePaying, networkFeeBps);
                         expectedRate = Helper.calcRateFromQty(tokenQty, expectedDestAmt, tokenDecimals, ethDecimals);
                         Helper.assertEqual(expectedRate, actualResult.sellRates[i], "rate not equal");
                     }  
@@ -298,14 +298,14 @@ contract('KyberTradeLogic', function(accounts) {
             });
     
             it("should get rates for token (different taker fee amounts)", async() => {
-                for (takerFeeBps of takerFeeArray) {
-                    actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
+                for (networkFeeBps of networkFeeArray) {
+                    actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, networkFeeBps);
                     for (let i=0; i < actualResult.buyReserves.length; i++) {
                         reserveAddress = actualResult.buyReserves[i];
                         reserve = reserveInstances[reserveAddress];
                         Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
         
-                        queryQty = nwHelper.minusNetworkFees(ethSrcQty, reserve.isFeePaying, false, takerFeeBps);
+                        queryQty = nwHelper.minusNetworkFees(ethSrcQty, reserve.isFeePaying, false, networkFeeBps);
                         expectedReserveRate = await reserve.instance.getConversionRate(ethAddress, token.address, queryQty, 0);
                         expectedDestAmt = Helper.calcDstQty(queryQty, ethDecimals, tokenDecimals, expectedReserveRate);
                         expectedRate = Helper.calcRateFromQty(ethSrcQty, expectedDestAmt, ethDecimals, tokenDecimals);
@@ -319,7 +319,7 @@ contract('KyberTradeLogic', function(accounts) {
         
                         expectedReserveRate = await reserve.instance.getConversionRate(token.address, ethAddress, tokenQty, 0);
                         expectedDestAmt = Helper.calcDstQty(tokenQty, tokenDecimals, ethDecimals, expectedReserveRate);
-                        expectedDestAmt = nwHelper.minusNetworkFees(expectedDestAmt, false, reserve.isFeePaying, takerFeeBps);
+                        expectedDestAmt = nwHelper.minusNetworkFees(expectedDestAmt, false, reserve.isFeePaying, networkFeeBps);
                         expectedRate = Helper.calcRateFromQty(tokenQty, expectedDestAmt, tokenDecimals, ethDecimals);
                         Helper.assertEqual(expectedRate, actualResult.sellRates[i], "rate not equal");
                     }
@@ -364,8 +364,8 @@ contract('KyberTradeLogic', function(accounts) {
             });
     
             it("should get rates for token (different taker fee amounts)", async() => {
-                for (takerFeeBps of takerFeeArray) {
-                    actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, takerFeeBps);
+                for (networkFeeBps of networkFeeArray) {
+                    actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, networkFeeBps);
                     for (let i=0; i < actualResult.buyReserves.length; i++) {
                         reserveAddress = actualResult.buyReserves[i];
                         reserve = reserveInstances[reserveAddress];
@@ -437,16 +437,16 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2E, no hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, srcToken.address, srcQty, 0, true);
-                        bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
+                        bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestReserve], [bestReserve.rateNoFee], [],
                             ethDecimals, [], [], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
                         
                         expectedOutput = getExpectedOutput(
                             [bestReserve], [BPS],
@@ -460,16 +460,16 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("E2T, no hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [ethSrcQty, takerFeeBps, platformFeeBps];
+                        info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, destToken.address, ethSrcQty, 0, false);
-                        bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             ethDecimals, [], [], [],
                             destDecimals, [bestReserve], [bestReserve.rateNoFee], [],
-                            ethSrcQty, takerFeeBps, platformFeeBps);
+                            ethSrcQty, networkFeeBps, platformFeeBps);
                         
                         expectedOutput = getExpectedOutput(
                             [], [],
@@ -483,20 +483,20 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, no hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, srcToken.address, srcQty, 0, true);
-                        bestSellReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, takerFeeBps);
+                        bestSellReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, networkFeeBps);
                         reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, destToken.address, ethSrcQty, 0, false);
-                        bestBuyReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        bestBuyReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         
                         //get trade result
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
                         
                         expectedOutput = getExpectedOutput(
                             [bestSellReserve], [BPS],
@@ -511,9 +511,9 @@ contract('KyberTradeLogic', function(accounts) {
 
             it("T2E, mask in hint", async() => {
                 numMaskedReserves = 2;
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -522,11 +522,11 @@ contract('KyberTradeLogic', function(accounts) {
                             srcToken.address, ethAddress
                             );
 
-                        bestReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
+                        bestReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestReserve], [bestReserve.rateNoFee], [],
                             ethDecimals, [], [], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
                         
                         expectedOutput = getExpectedOutput(
                             [bestReserve], [BPS],
@@ -541,9 +541,9 @@ contract('KyberTradeLogic', function(accounts) {
 
             it("E2T, mask in hint", async() => {
                 numMaskedReserves = 2;
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [ethSrcQty, takerFeeBps, platformFeeBps];
+                        info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -552,11 +552,11 @@ contract('KyberTradeLogic', function(accounts) {
                             ethAddress, destToken.address
                             );
 
-                        bestReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        bestReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             ethDecimals, [], [], [],
                             destDecimals, [bestReserve], [bestReserve.rateNoFee], [],
-                            ethSrcQty, takerFeeBps, platformFeeBps);
+                            ethSrcQty, networkFeeBps, platformFeeBps);
                         
                         expectedOutput = getExpectedOutput(
                             [], [],
@@ -571,9 +571,9 @@ contract('KyberTradeLogic', function(accounts) {
 
             it("T2T, mask in hint (both ways)", async() => {
                 numMaskedReserves = 2;
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -582,12 +582,12 @@ contract('KyberTradeLogic', function(accounts) {
                             srcToken.address, destToken.address
                             );
 
-                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps); 
-                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps); 
+                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
 
                         expectedOutput = getExpectedOutput(
                             [bestSellReserve], [BPS],
@@ -602,9 +602,9 @@ contract('KyberTradeLogic', function(accounts) {
 
             it("T2E, mask out hint", async() => {
                 numMaskedReserves = 2;
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -613,11 +613,11 @@ contract('KyberTradeLogic', function(accounts) {
                             srcToken.address, ethAddress
                             );
 
-                        bestReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps);
+                        bestReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestReserve], [bestReserve.rateNoFee], [],
                             ethDecimals, [], [], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
                         
                         expectedOutput = getExpectedOutput(
                             [bestReserve], [BPS],
@@ -632,9 +632,9 @@ contract('KyberTradeLogic', function(accounts) {
 
             it("E2T, mask out hint", async() => {
                 numMaskedReserves = 2;
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [ethSrcQty, takerFeeBps, platformFeeBps];
+                        info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -643,11 +643,11 @@ contract('KyberTradeLogic', function(accounts) {
                             ethAddress, destToken.address
                             );
 
-                        bestReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        bestReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             ethDecimals, [], [], [],
                             destDecimals, [bestReserve], [bestReserve.rateNoFee], [],
-                            ethSrcQty, takerFeeBps, platformFeeBps);
+                            ethSrcQty, networkFeeBps, platformFeeBps);
 
                         expectedOutput = getExpectedOutput(
                             [], [],
@@ -662,9 +662,9 @@ contract('KyberTradeLogic', function(accounts) {
 
             it("T2T, mask out hint", async() => {
                 numMaskedReserves = 2;
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -673,12 +673,12 @@ contract('KyberTradeLogic', function(accounts) {
                             srcToken.address, destToken.address
                             );
 
-                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps); 
-                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps); 
+                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
 
                         expectedOutput = getExpectedOutput(
                             [bestSellReserve], [BPS],
@@ -692,9 +692,9 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2E, split hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -707,7 +707,7 @@ contract('KyberTradeLogic', function(accounts) {
                         expectedTradeResult = getTradeResult(
                             srcDecimals, hintedReserves.reservesT2E.reservesForFetchRate, reserveRates, hintedReserves.reservesT2E.splits,
                             ethDecimals, [], [], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
                         
                         expectedOutput = getExpectedOutput(
                             hintedReserves.reservesT2E.reservesForFetchRate, hintedReserves.reservesT2E.splits,
@@ -721,9 +721,9 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("E2T, split hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [ethSrcQty, takerFeeBps, platformFeeBps];
+                        info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -736,7 +736,7 @@ contract('KyberTradeLogic', function(accounts) {
                         expectedTradeResult = getTradeResult(
                             ethDecimals, [], [], [],
                             destDecimals, hintedReserves.reservesE2T.reservesForFetchRate, reserveRates, hintedReserves.reservesE2T.splits,
-                            ethSrcQty, takerFeeBps, platformFeeBps);
+                            ethSrcQty, networkFeeBps, platformFeeBps);
                         
                         expectedOutput = getExpectedOutput(
                             [], [],
@@ -750,9 +750,9 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, split hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -767,7 +767,7 @@ contract('KyberTradeLogic', function(accounts) {
                         expectedTradeResult = getTradeResult(
                             srcDecimals, hintedReserves.reservesT2E.reservesForFetchRate, reserveRatesT2E, hintedReserves.reservesT2E.splits,
                             destDecimals, hintedReserves.reservesE2T.reservesForFetchRate, reserveRatesE2T, hintedReserves.reservesE2T.splits,
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
                         
                         expectedOutput = getExpectedOutput(
                             hintedReserves.reservesT2E.reservesForFetchRate, hintedReserves.reservesT2E.splits,
@@ -781,9 +781,9 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, no hint | mask in hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -792,12 +792,12 @@ contract('KyberTradeLogic', function(accounts) {
                             srcToken.address, destToken.address
                             );
 
-                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps); 
-                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps); 
+                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
 
                         expectedOutput = getExpectedOutput(
                             [bestSellReserve], [BPS],
@@ -811,9 +811,9 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, no hint | mask out hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -822,12 +822,12 @@ contract('KyberTradeLogic', function(accounts) {
                             srcToken.address, destToken.address
                             );
 
-                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps); 
-                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps); 
+                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
 
                         expectedOutput = getExpectedOutput(
                             [bestSellReserve], [BPS],
@@ -841,9 +841,9 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, no hint | split hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -852,13 +852,13 @@ contract('KyberTradeLogic', function(accounts) {
                             srcToken.address, destToken.address
                             );
 
-                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps); 
+                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps); 
                         reserveRatesE2T = hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.rate);
 
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
                             destDecimals, hintedReserves.reservesE2T.reservesForFetchRate, reserveRatesE2T, hintedReserves.reservesE2T.splits,
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
 
                         expectedOutput = getExpectedOutput(
                             [bestSellReserve], [BPS],
@@ -872,9 +872,9 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, mask in hint | no hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -883,12 +883,12 @@ contract('KyberTradeLogic', function(accounts) {
                             srcToken.address, destToken.address
                             );
 
-                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps); 
-                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps); 
+                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
 
                         expectedOutput = getExpectedOutput(
                             [bestSellReserve], [BPS],
@@ -902,9 +902,9 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, mask in hint | mask out hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -913,12 +913,12 @@ contract('KyberTradeLogic', function(accounts) {
                             srcToken.address, destToken.address
                             );
 
-                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps); 
-                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps); 
+                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
 
                         expectedOutput = getExpectedOutput(
                             [bestSellReserve], [BPS],
@@ -932,9 +932,9 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, mask in hint | split hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -943,13 +943,13 @@ contract('KyberTradeLogic', function(accounts) {
                             srcToken.address, destToken.address
                             );
 
-                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps); 
+                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps); 
                         reserveRatesE2T = hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.rate);
 
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
                             destDecimals, hintedReserves.reservesE2T.reservesForFetchRate, reserveRatesE2T, hintedReserves.reservesE2T.splits,
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
 
                         expectedOutput = getExpectedOutput(
                             [bestSellReserve], [BPS],
@@ -963,9 +963,9 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, mask out hint | no hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -974,12 +974,12 @@ contract('KyberTradeLogic', function(accounts) {
                             srcToken.address, destToken.address
                             );
 
-                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps); 
-                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps); 
+                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
 
                         expectedOutput = getExpectedOutput(
                             [bestSellReserve], [BPS],
@@ -993,9 +993,9 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, mask out hint | mask in hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -1004,12 +1004,12 @@ contract('KyberTradeLogic', function(accounts) {
                             srcToken.address, destToken.address
                             );
 
-                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps); 
-                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps); 
+                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
 
                         expectedOutput = getExpectedOutput(
                             [bestSellReserve], [BPS],
@@ -1023,9 +1023,9 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, mask out hint | split hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -1034,13 +1034,13 @@ contract('KyberTradeLogic', function(accounts) {
                             srcToken.address, destToken.address
                             );
 
-                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, takerFeeBps); 
+                        bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps); 
                         reserveRatesE2T = hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.rate);
 
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
                             destDecimals, hintedReserves.reservesE2T.reservesForFetchRate, reserveRatesE2T, hintedReserves.reservesE2T.splits,
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
 
                         expectedOutput = getExpectedOutput(
                             [bestSellReserve], [BPS],
@@ -1054,9 +1054,9 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, split hint | no hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -1066,11 +1066,11 @@ contract('KyberTradeLogic', function(accounts) {
                             );
 
                         reserveRatesT2E = hintedReserves.reservesT2E.reservesForFetchRate.map(reserve => reserve.rate);
-                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, hintedReserves.reservesT2E.reservesForFetchRate, reserveRatesT2E, hintedReserves.reservesT2E.splits,
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
 
                         expectedOutput = getExpectedOutput(
                             hintedReserves.reservesT2E.reservesForFetchRate, hintedReserves.reservesT2E.splits,
@@ -1084,9 +1084,9 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, split hint | mask in hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -1096,11 +1096,11 @@ contract('KyberTradeLogic', function(accounts) {
                             );
 
                         reserveRatesT2E = hintedReserves.reservesT2E.reservesForFetchRate.map(reserve => reserve.rate);
-                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, hintedReserves.reservesT2E.reservesForFetchRate, reserveRatesT2E, hintedReserves.reservesT2E.splits,
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
 
                         expectedOutput = getExpectedOutput(
                             hintedReserves.reservesT2E.reservesForFetchRate, hintedReserves.reservesT2E.splits,
@@ -1114,9 +1114,9 @@ contract('KyberTradeLogic', function(accounts) {
             });
 
             it("T2T, split hint | mask out hint", async() => {
-                for (takerFeeBps of takerFeeArray) {
+                for (networkFeeBps of networkFeeArray) {
                     for (platformFeeBps of platformFeeArray) {
-                        info = [srcQty, takerFeeBps, platformFeeBps];
+                        info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
                             tradeLogic, reserveInstances,
@@ -1126,11 +1126,11 @@ contract('KyberTradeLogic', function(accounts) {
                             );
 
                         reserveRatesT2E = hintedReserves.reservesT2E.reservesForFetchRate.map(reserve => reserve.rate);
-                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, takerFeeBps);
+                        bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, hintedReserves.reservesT2E.reservesForFetchRate, reserveRatesT2E, hintedReserves.reservesT2E.splits,
                             destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
-                            srcQty, takerFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps);
 
                         expectedOutput = getExpectedOutput(
                             hintedReserves.reservesT2E.reservesForFetchRate, hintedReserves.reservesT2E.splits,
@@ -1155,7 +1155,7 @@ contract('KyberTradeLogic', function(accounts) {
 
 });
 
-async function fetchReservesRatesFromTradeLogic(tradeLogicInstance, reserveInstances, tokenAddress, qty, takerFeeBps, isTokenToEth) {
+async function fetchReservesRatesFromTradeLogic(tradeLogicInstance, reserveInstances, tokenAddress, qty, networkFeeBps, isTokenToEth) {
     let reservesArray = [];
     let result;
     let reserves;
@@ -1164,12 +1164,12 @@ async function fetchReservesRatesFromTradeLogic(tradeLogicInstance, reserveInsta
 
     //sell
     if (isTokenToEth) {
-        result = await tradeLogicInstance.getRatesForToken(tokenAddress, 0, qty, takerFeeBps);
+        result = await tradeLogicInstance.getRatesForToken(tokenAddress, 0, qty, networkFeeBps);
         reserves = result.sellReserves;
         rates = result.sellRates;
     //buy
     } else {
-        result = await tradeLogicInstance.getRatesForToken(tokenAddress, qty, 0, takerFeeBps);
+        result = await tradeLogicInstance.getRatesForToken(tokenAddress, qty, 0, networkFeeBps);
         reserves = result.buyReserves;
         rates = result.buyRates;
     }
@@ -1228,7 +1228,7 @@ async function getHintedReserves(
 function getTradeResult(
     srcDecimals, t2eReserves, t2eRates, t2eSplits,
     destDecimals, e2tReserves, e2tRates, e2tSplits,
-    srcQty, takerFeeBps, platformFeeBps
+    srcQty, networkFeeBps, platformFeeBps
 ) {
     let result = {
         t2eNumReserves: (t2eSplits.length > 0) ? t2eReserves.length : new BN(1),
@@ -1290,7 +1290,7 @@ function getTradeResult(
     }
 
     //calculate fees
-    result.networkFeeWei = result.tradeWei.mul(takerFeeBps).div(BPS);
+    result.networkFeeWei = result.tradeWei.mul(networkFeeBps).div(BPS);
     result.networkFeeWei = result.networkFeeWei.mul(result.feePayingReservesBps).div(BPS);
     result.platformFeeWei = result.tradeWei.mul(platformFeeBps).div(BPS);
     actualTradeWei = result.tradeWei.sub(result.networkFeeWei).sub(result.platformFeeWei);

@@ -100,15 +100,26 @@ module.exports.setupReserves = async function
         let reserve = await setupFprReserve(network, tokens, accounts[ethSenderIndex++], pricing.address, ethInit, admin, operator);
         await pricing.setReserveAddress(reserve.address, {from: admin});
         
+        let reserveId = (genReserveID(MOCK_ID, reserve.address)).toLowerCase();
+        let rebateWallet;
+        if (rebateWallets == undefined || rebateWallets.length < i * 1 - 1 * 1) {
+            rebateWallet = zeroAddress;
+        } else {
+            rebateWallet = rebateWallets[i];
+        }
+
         result.reserveInstances[reserve.address] = {
             'address': reserve.address,
             'instance': reserve,
-            'reserveId': genReserveID(FPR_ID, reserve.address),
+            'reserveId': reserveId,
             'isFeePaying': true,
             'rate': new BN(0),
             'type': type_fpr,
-            'pricing': pricing.address
+            'pricing': pricing.address,
+            'rebateWallet': rebateWallet
         }
+
+        result.reserveIdToRebateWallet[reserveId] = rebateWallet;
     }
     //TODO: implement logic for other reserve types
     return result;
@@ -228,7 +239,8 @@ module.exports.addReservesToNetwork = async function (networkInstance, reserveIn
     for (const [key, value] of Object.entries(reserveInstances)) {
         reserve = value;
         console.log("add reserve type: " + reserve.type + " ID: " + reserve.reserveId);
-        let rebateWallet = reserve.rebateWallet == zeroAddress ? reserve.address : reserve.rebateWallet;
+        let rebateWallet = (reserve.rebateWallet == zeroAddress || reserve.rebateWallet == undefined) 
+             ? reserve.address : reserve.rebateWallet;
         await networkInstance.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, rebateWallet, {from: operator});
         for (let j = 0; j < tokens.length; j++) {
             await networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, true, {from: operator});
@@ -278,12 +290,12 @@ async function fetchReservesRatesFromNetwork(networkInstance, reserveInstances, 
 }
 
 module.exports.getBestReserveAndRate = getBestReserveAndRate;
-async function getBestReserveAndRate(reserves, src, dest, srcAmount, takerFeeBps) {
+async function getBestReserveAndRate(reserves, src, dest, srcAmount, networkFeeBps) {
     bestReserveData = {
         address: zeroAddress,
         reserveId: '',
         rateNoFee: new BN(0),
-        rateWithNetworkFee: new BN(0),
+        rateOnlyNetworkFee: new BN(0),
         isPaying: false
     }
 
@@ -293,12 +305,12 @@ async function getBestReserveAndRate(reserves, src, dest, srcAmount, takerFeeBps
     }
     for (let i=0; i < reserveArr.length; i++) {
         reserve = reserveArr[i];
-        if (reserve.rate.gt(bestReserveData.rateWithNetworkFee)) {
+        if (reserve.rate.gt(bestReserveData.rateOnlyNetworkFee)) {
             bestReserveData.address = reserve.address;
             bestReserveData.reserveId = reserve.reserveId;
             bestReserveData.rateNoFee = reserve.rate;
             bestReserveData.isFeePaying = reserve.isFeePaying;
-            bestReserveData.rateWithNetworkFee = (reserve.isFeePaying) ? reserve.rate.mul(BPS.sub(takerFeeBps)).div(BPS) : reserve.rate;
+            bestReserveData.rateOnlyNetworkFee = (reserve.isFeePaying) ? reserve.rate.mul(BPS.sub(networkFeeBps)).div(BPS) : reserve.rate;
         }
     }
     return bestReserveData;
@@ -407,9 +419,9 @@ async function getHint(network, tradeLogic, reserveInstances, hintType, numReser
 }
 
 module.exports.minusNetworkFees = minusNetworkFees;
-function minusNetworkFees(weiAmt, buyReserveFeePaying, sellReserveFeePaying, takerFeeBps) {
+function minusNetworkFees(weiAmt, buyReserveFeePaying, sellReserveFeePaying, networkFeeBps) {
     result = weiAmt;
-    networkFee = weiAmt.mul(takerFeeBps).div(BPS);
+    networkFee = weiAmt.mul(networkFeeBps).div(BPS);
     if (buyReserveFeePaying) {
         result = result.sub(networkFee);
     }

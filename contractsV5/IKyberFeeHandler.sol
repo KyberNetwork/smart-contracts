@@ -1,7 +1,7 @@
 pragma solidity 0.5.11;
 
 
-interface IFeeHandler {
+interface IKyberFeeHandler {
     function handleFees(address[] calldata eligibleWallets, uint[] calldata rebatePercentages) 
         external payable returns(bool);
     function claimReserveRebate(address rebateWallet) external returns (uint);

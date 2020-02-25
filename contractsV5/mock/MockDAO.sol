@@ -2,11 +2,11 @@ pragma solidity 0.5.11;
 
 import "../IKyberDAO.sol";
 import "../UtilsV5.sol";
-import "../IFeeHandler.sol";
+import "../IKyberFeeHandler.sol";
 
 contract MockDAO is IKyberDAO, Utils {
 
-    IFeeHandler public feeHandler;
+    IKyberFeeHandler public feeHandler;
     uint public rewardInBPS;
     uint public rebateInBPS;
     uint public epoch;
@@ -26,7 +26,7 @@ contract MockDAO is IKyberDAO, Utils {
 
     }
 
-    function setFeeHandler(IFeeHandler _handler) public {
+    function setFeeHandler(IKyberFeeHandler _handler) public {
         feeHandler = _handler;
     }
 
@@ -40,7 +40,7 @@ contract MockDAO is IKyberDAO, Utils {
         rebateInBPS = _rebateInBPS;
     }
 
-    function setTakerFeeBps(uint _feeBps) public {
+    function setNetworkFeeBps(uint _feeBps) public {
         feeBps = _feeBps;
     }
 

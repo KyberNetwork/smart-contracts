@@ -20,7 +20,7 @@ const gasPrice = (new BN(10).pow(new BN(9)).mul(new BN(50)));
 const negligibleRateDiffBps = new BN(10); //0.01% 
 const maxDestAmt = new BN(2).pow(new BN(255));
 
-let takerFeeBps = new BN(20);
+let networkFeeBps = new BN(20);
 
 let admin;
 let alerter;
@@ -70,7 +70,7 @@ contract('KyberNetworkProxy', function(accounts) {
         //DAO related init.
         expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
         DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
-        await DAO.setTakerFeeBps(takerFeeBps);
+        await DAO.setNetworkFeeBps(networkFeeBps);
         
         //deploy network
         network = await KyberNetwork.new(admin);
@@ -110,10 +110,11 @@ contract('KyberNetworkProxy', function(accounts) {
         ///////////////
         await network.addKyberProxy(networkProxy.address, {from: admin});
         await network.addOperator(operator, {from: admin});
-        await network.setContracts(feeHandler.address, DAO.address, tradeLogic.address, zeroAddress, {from: admin});
+        await network.setContracts(feeHandler.address, tradeLogic.address, zeroAddress, {from: admin});
+        await network.setDAOContract(DAO.address, {from: admin});
 
         //add and list pair for reserve
-        nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+        await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
         
         //set params, enable network
         await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});

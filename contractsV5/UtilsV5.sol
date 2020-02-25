@@ -1,7 +1,7 @@
 pragma solidity 0.5.11;
 
 import "./IERC20.sol";
-// import "@nomiclabs/buidler/console.sol";
+import "@nomiclabs/buidler/console.sol";
 
 
 /// @title Kyber utils and utils2 contracts
@@ -122,12 +122,12 @@ contract Utils {
         NETWORK // internal network
     }
 
-    // function printGas(string memory str, uint refGas, Module module) internal view returns(uint currGas) {
-    //     currGas = gasleft();
+    function printGas(string memory str, uint refGas, Module module) internal view returns(uint currGas) {
+        currGas = gasleft();
 
-    //     // update to your required module
-    //     if (module != Module.NETWORK || refGas == 0) return currGas;
+        // update to your required module
+        if (module != Module.NETWORK || refGas == 0) return currGas;
 
-    //     console.log("gas '%d' in '%s' diff: %d", currGas, str, refGas - currGas);
-    // }
+        console.log("gas '%d' in '%s' diff: %d", currGas, str, refGas - currGas);
+    }
 }

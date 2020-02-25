@@ -7,11 +7,12 @@ import "./IERC20.sol";
 interface IKyberNetwork {
 
     function getNetworkData() external view returns(
-        bool networkEnabled, 
         uint negligibleDiffBps, 
-        uint maximumGasPrice,
-        uint takerFeeBps,
+        uint networkFeeBps,
         uint expiryBlock);
+
+    function enabled() external view returns(bool);
+    function maxGasPrice() external view returns(uint);
 
     // backward compatible: don't modify
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
