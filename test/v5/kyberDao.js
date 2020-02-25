@@ -4942,6 +4942,8 @@ contract('KyberDAO', function(accounts) {
 
             let tx = await daoContract.getLatestNetworkFeeDataWithCache();
             logInfo("Get Network Fee: epoch > 0, has fee camp, no win option, gas used: " + tx.receipt.cumulativeGasUsed);
+            tx = await daoContract.getLatestNetworkFeeDataWithCache();
+            logInfo("Get Network Fee: epoch > 0, has fee camp, alr concluded, gas used: " + tx.receipt.cumulativeGasUsed);
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 41%, C = 0, t = 0
@@ -5398,6 +5400,8 @@ contract('KyberDAO', function(accounts) {
 
             let tx = await daoContract.getLatestBRRData();
             logInfo("Get Brr: epoch > 0, has brr camp + no win option, gas used: " + tx.receipt.cumulativeGasUsed);
+            tx = await daoContract.getLatestBRRData();
+            logInfo("Get Brr: epoch > 0, has brr camp, alr concluded, gas used: " + tx.receipt.cumulativeGasUsed);
 
             Helper.assertEqual(defaultBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
 
@@ -5510,6 +5514,8 @@ contract('KyberDAO', function(accounts) {
 
             tx = await daoContract.getLatestBRRData();
             logInfo("Get Brr: epoch > 0, has brr camp + win option, gas used: " + tx.receipt.cumulativeGasUsed);
+            tx = await daoContract.getLatestBRRData();
+            logInfo("Get Brr: epoch > 0, has brr camp, alr concluded, gas used: " + tx.receipt.cumulativeGasUsed);
 
             Helper.assertEqual(32, await daoContract.latestBrrResult(), "brr default is wrong");
 
