@@ -35,10 +35,11 @@ module.exports = {NULL_ID, APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fp
     
     
 module.exports.setupReserves = async function 
-    (network, tokens, numMock, numFpr, numEnhancedFpr, numApr, accounts, admin, operator) {
+    (network, tokens, numMock, numFpr, numEnhancedFpr, numApr, accounts, admin, operator, rebateWallets) {
     let result = {
         'numAddedReserves': numMock * 1 + numFpr * 1 + numEnhancedFpr * 1 + numApr * 1,
-        'reserveInstances': {} 
+        'reserveInstances': {},
+        'reserveIdToRebateWallet' : {} 
     }
 
     let i;
@@ -49,16 +50,27 @@ module.exports.setupReserves = async function
     //////////////////////
     for (i=0; i < numMock; i++) {
         reserve = await MockReserve.new();
+        let reserveId = (genReserveID(MOCK_ID, reserve.address)).toLowerCase();
+        let rebateWallet;
+        if (rebateWallets == undefined || rebateWallets.length < i * 1 - 1 * 1) {
+            rebateWallet = zeroAddress;
+        } else {
+            rebateWallet = rebateWallets[i];
+        }
+
         result.reserveInstances[reserve.address] = {
             'address': reserve.address,
             'instance': reserve,
-            'reserveId': genReserveID(MOCK_ID, reserve.address),
+            'reserveId': reserveId,
             'isFeePaying': true,
             'rate': new BN(0),
             'type': type_MOCK,
-            'pricing': "none"
+            'pricing': "none",
+            'rebateWallet': rebateWallet
         }
-
+        result.reserveIdToRebateWallet[reserveId] = rebateWallet;
+        
+        // console.log("reserve ID: " + reserveId + " rebate wallet: " + rebateWallet);
         tokensPerEther = precisionUnits.mul(new BN((i + 1) * 10));
         ethersPerToken = precisionUnits.div(new BN((i + 1) * 10));
 
@@ -216,9 +228,10 @@ module.exports.addReservesToNetwork = async function (networkInstance, reserveIn
     for (const [key, value] of Object.entries(reserveInstances)) {
         reserve = value;
         console.log("add reserve type: " + reserve.type + " ID: " + reserve.reserveId);
-        networkInstance.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, reserve.address, {from: operator});
+        let rebateWallet = reserve.rebateWallet == zeroAddress ? reserve.address : reserve.rebateWallet;
+        await networkInstance.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, rebateWallet, {from: operator});
         for (let j = 0; j < tokens.length; j++) {
-            networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, true, {from: operator});
+            await networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, true, {from: operator});
         }
     }
 }
@@ -228,9 +241,9 @@ module.exports.removeReservesFromNetwork = async function (networkInstance, rese
         reserve = value;
         console.log("removing reserve type: " + reserve.type + " address: " + reserve.address + " pricing: " + reserve.pricing);
         for (let j = 0; j < tokens.length; j++) {
-            networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, false, {from: operator});
+            await networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, false, {from: operator});
         }
-        networkInstance.rmReserve(reserve.address, {from: operator});
+        await networkInstance.rmReserve(reserve.address, {from: operator});
     }
 }
 
