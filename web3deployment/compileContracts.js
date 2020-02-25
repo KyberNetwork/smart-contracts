@@ -48,6 +48,7 @@ const v4SourceFiles = {
     "WrapConversionRate.sol" : {content: fs.readFileSync(contractV4Path + 'wrappers/WrapConversionRate.sol', 'utf8')},
     "WrapReadTokenData.sol" : {content: fs.readFileSync(contractV4Path + 'wrappers/WrapReadTokenData.sol', 'utf8')}
 }
+
 const v5SourceFiles = {
     'FeeHandler.sol' : {content: fs.readFileSync(contractV5Path + 'FeeHandler.sol', 'utf8')},
     'GasHelper.sol' : {content: fs.readFileSync(contractV5Path + 'GasHelper.sol', 'utf8')},
@@ -95,7 +96,7 @@ function createConfiguration(sourceFiles) {
                 // Optimize for how many times you intend to run the code.
                 // Lower values will optimize more for initial deployment cost, higher
                 // values will optimize more for high-frequency usage.
-                'runs': 200,
+                'runs': 9000,
             }
         }
     };
@@ -133,7 +134,6 @@ function sleep(ms){
 }
 
 module.exports.compileContracts = compileContracts;
-
 async function compileContracts(versionNum) {
     let solcVersionNum;
     let sourceFiles;
@@ -158,4 +158,23 @@ async function compileContracts(versionNum) {
     errorHandling(output);
     // console.log(output.contracts['GasHelper.sol']);
     return output;
+}
+
+module.exports.compileV4Contracts = compileV4Contracts;
+async function compileV4Contracts() {
+    return await compileContracts("v4");
+}
+
+module.exports.compileV5Contracts = compileV5Contracts;
+async function compileV5Contracts() {
+    return await compileContracts("v5");
+}
+
+module.exports.compileAllContracts = main;
+async function main() {
+    let output = {'contracts': {}, 'sources': {}};
+    //TODO: combine outputs
+    let v4Output = await compileContracts("v4");
+    let v5Output = await await compileContracts("v5");
+    return [v4Output, v5Output];
 }
