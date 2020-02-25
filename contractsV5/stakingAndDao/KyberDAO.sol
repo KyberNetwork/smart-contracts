@@ -80,7 +80,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     // max number of options for each campaign
     uint public MAX_CAMP_OPTIONS = 8;
     // minimum blocks duration for a campaign
-    uint public MIN_CAMP_DURATION = 21600; // around 4 days
+    uint public MIN_CAMP_DURATION_BLOCKS = 21600; // around 4 days
 
     IERC20 public kncToken;
     IKyberStaking public staking;
@@ -151,11 +151,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         require(_defaultNetworkFeeBps <= BPS, "ctor: network fee high");
 
         staking = IKyberStaking(_staking);
-        require(staking.EPOCH_PERIOD() == _epochPeriod, "ctor: diff epoch period");
-        require(staking.START_BLOCK() == _startBlock, "ctor: diff start block");
+        require(staking.EPOCH_PERIOD_BLOCKS() == _epochPeriod, "ctor: diff epoch period");
+        require(staking.FIRST_EPCOH_START_BLOCK() == _startBlock, "ctor: diff start block");
 
-        EPOCH_PERIOD = _epochPeriod;
-        START_BLOCK = _startBlock;
+        EPOCH_PERIOD_BLOCKS = _epochPeriod;
+        FIRST_EPCOH_START_BLOCK = _startBlock;
         feeHandler = IFeeHandler(_feeHandler);
         kncToken = IERC20(_knc);
         latestNetworkFeeResult = _defaultNetworkFeeBps;
@@ -351,8 +351,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint curEpoch = getCurrentEpochNumber();
 
         feeInBps = latestNetworkFeeResult;
-        // expiryBlockNumber = START_BLOCK + curEpoch * EPOCH_PERIOD - 1;
-        expiryBlockNumber = START_BLOCK.add(curEpoch.mul(EPOCH_PERIOD)).sub(1);
+        // expiryBlockNumber = FIRST_EPCOH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
+        expiryBlockNumber = FIRST_EPCOH_START_BLOCK.add(curEpoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
 
         // there is no camp for epoch 0
         if (curEpoch == 0) {
@@ -385,8 +385,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber)
     {
         epoch = getCurrentEpochNumber();
-        // expiryBlockNumber = START_BLOCK + curEpoch * EPOCH_PERIOD - 1;
-        expiryBlockNumber = START_BLOCK.add(epoch.mul(EPOCH_PERIOD)).sub(1);
+        // expiryBlockNumber = FIRST_EPCOH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
+        expiryBlockNumber = FIRST_EPCOH_START_BLOCK.add(epoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
         uint brrData = latestBrrResult;
         if (epoch > 0) {
             uint campID = brrCampaign[epoch.sub(1)];
@@ -511,8 +511,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     function getLatestNetworkFeeData() public view returns(uint feeInBps, uint expiryBlockNumber) {
         uint curEpoch = getCurrentEpochNumber();
         feeInBps = latestNetworkFeeResult;
-        // expiryBlockNumber = START_BLOCK + curEpoch * EPOCH_PERIOD - 1;
-        expiryBlockNumber = START_BLOCK.add(curEpoch.mul(EPOCH_PERIOD)).sub(1);
+        // expiryBlockNumber = FIRST_EPCOH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
+        expiryBlockNumber = FIRST_EPCOH_START_BLOCK.add(curEpoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
         if (curEpoch == 0) {
             return (feeInBps, expiryBlockNumber);
         }
@@ -562,8 +562,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber)
     {
         epoch = getCurrentEpochNumber();
-        // expiryBlockNumber = START_BLOCK + curEpoch * EPOCH_PERIOD - 1;
-        expiryBlockNumber = START_BLOCK.add(epoch.mul(EPOCH_PERIOD)).sub(1);
+        // expiryBlockNumber = FIRST_EPCOH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
+        expiryBlockNumber = FIRST_EPCOH_START_BLOCK.add(epoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
         uint brrData = latestBrrResult;
         if (epoch > 0) {
             uint campID = brrCampaign[epoch.sub(1)];
@@ -612,9 +612,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             "validateParams: start in the past"
         );
         // camp duration must be at least min camp duration
-        // endBlock - startBlock + 1 >= MIN_CAMP_DURATION,
+        // endBlock - startBlock + 1 >= MIN_CAMP_DURATION_BLOCKS,
         require(
-            endBlock.add(1) >= startBlock.add(MIN_CAMP_DURATION),
+            endBlock.add(1) >= startBlock.add(MIN_CAMP_DURATION_BLOCKS),
             "validateParams: camp duration low"
         );
 

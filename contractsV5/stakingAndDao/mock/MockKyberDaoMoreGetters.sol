@@ -17,7 +17,7 @@ contract MockKyberDaoMoreGetters is KyberDAO {
         _admin
     ) public {
         MAX_CAMP_OPTIONS = _maxNumOptions;
-        MIN_CAMP_DURATION = _minCampDuration;
+        MIN_CAMP_DURATION_BLOCKS = _minCampDuration;
     }
 
     function replaceStakingContract(address _staking) public {

@@ -63,11 +63,11 @@ contract MockDAO is IKyberDAO, Utils {
         return feeHandler.claimStakerReward(staker, percentageInPrecision, forEpoch);
     }
 
-    function EPOCH_PERIOD() external view returns(uint) {
+    function EPOCH_PERIOD_BLOCKS() external view returns(uint) {
         return epochPeriod;
     }
 
-    function START_BLOCK() external view returns(uint) {
+    function FIRST_EPCOH_START_BLOCK() external view returns(uint) {
         return startBlock;
     }
 
