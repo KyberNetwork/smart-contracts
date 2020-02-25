@@ -226,7 +226,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         returns(uint)
     {
         (UserBalance memory balanceBefore) = 
-            preapareTrade(src, dest, srcAmount, destAddress);
+            prepareTrade(src, dest, srcAmount, destAddress);
 
         (uint destAmount) = kyberNetwork.tradeWithHintAndFee.value(msg.value)(
             msg.sender,
@@ -283,7 +283,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         uint actualRate;
     }
     
-    function preapareTrade(IERC20 src, IERC20 dest, uint srcAmount, address destAddress) 
+    function prepareTrade(IERC20 src, IERC20 dest, uint srcAmount, address destAddress) 
         internal returns
         (UserBalance memory balanceBefore) 
     {
