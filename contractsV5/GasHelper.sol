@@ -16,7 +16,7 @@ contract GasHelper is IGasHelper, PermissionGroups {
     IGST2 constant GST2 = IGST2(0x0000000000b3F879cb30FE243b4Dfee438691c04);
     uint constant MIN_ACTIVATE_PRICE = 8 * 1000 * 1000 * 1000; // 8 gwei
     
-    // todo: for final version set a constant network address
+    // todo: consider constant network address
     address kyberNetwork;
 
     constructor(address _kyberNetwork, address _admin) public PermissionGroups(_admin) {
@@ -24,7 +24,10 @@ contract GasHelper is IGasHelper, PermissionGroups {
         kyberNetwork = _kyberNetwork;
     }
 
-    function freeGas(address platformWallet, IERC20 src, IERC20 dest, uint tradeWei) external {
+    function freeGas(address platformWallet, IERC20 src, IERC20 dest, uint tradeWei,
+        bytes8[] calldata t2eReserveIds, bytes8[] calldata e2tReserveIds) 
+        external 
+    {
         require(msg.sender == kyberNetwork);
         if (tx.gasprice <= MIN_ACTIVATE_PRICE) return;
 
@@ -32,6 +35,8 @@ contract GasHelper is IGasHelper, PermissionGroups {
         src;
         dest;
         tradeWei;
+        t2eReserveIds;
+        e2tReserveIds;
         
         freeGas(gasleft() / 2);
     }

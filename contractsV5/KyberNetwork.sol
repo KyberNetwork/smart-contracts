@@ -171,28 +171,20 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     }
 
     event FeeHandlerUpdated(IFeeHandler newHandler);
-    event KyberDAOUpdated(IKyberDAO newDAO);
     event TradeLogicUpdated(IKyberTradeLogic tradeLogic);
     event GasHelperUpdated(IGasHelper gasHelper);
     
     function setContracts(IFeeHandler _feeHandler, 
-        IKyberDAO _kyberDAO, 
         IKyberTradeLogic _tradeLogic,
         IGasHelper _gasHelper) 
         external onlyAdmin 
     {
         require(_feeHandler != IFeeHandler(0), "feeHandler 0");
-        require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
         require(_tradeLogic != IKyberTradeLogic(0), "tradeLogic 0");
 
         if(_feeHandler != feeHandler) {
             emit FeeHandlerUpdated(_feeHandler);
             feeHandler = _feeHandler;
-        }
-        
-        if(_kyberDAO != kyberDAO) {
-            emit KyberDAOUpdated(_kyberDAO);
-            kyberDAO = _kyberDAO;
         }
 
         if(_tradeLogic != tradeLogic) {
@@ -204,6 +196,14 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             emit GasHelperUpdated(_gasHelper);
             gasHelper = _gasHelper;
         }
+    }
+
+    event KyberDAOUpdated(IKyberDAO newDAO);
+    
+    function setDAOCOntract(IKyberDAO _kyberDAO) external onlyAdmin {
+        require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
+        emit KyberDAOUpdated(_kyberDAO);
+        kyberDAO = _kyberDAO;
     }
 
     event KyberNetworkParamsSet(uint maxGasPrice, uint negligibleRateDiffBps);
@@ -642,7 +642,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         require(tData.rateWithNetworkFee >= tData.input.minConversionRate, "rate < minConvRate");
 
         if (gasHelper != IGasHelper(0)) {
-            gasHelper.freeGas(tData.input.platformWallet, tData.input.src, tData.input.dest, tData.tradeWei);
+            gasHelper.freeGas(tData.input.platformWallet, tData.input.src, tData.input.dest, tData.tradeWei,
+            tData.tokenToEth.ids, tData.ethToToken.ids);
         }
 
         uint actualSrcAmount;
@@ -785,9 +786,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         require(src != dest, "src = dest");
 
         if (src == ETH_TOKEN_ADDRESS) {
-            require(msg.value == srcAmount, "ETH low");
+            require(msg.value == srcAmount, "eth qty !=");
         } else {
-            require(msg.value == 0, "ETH sent");
+            require(msg.value == 0, "Eth qty >");
             //funds should have been moved to this contract already.
             require(src.balanceOf(address(this)) >= srcAmount, "srcTok low");
         }
