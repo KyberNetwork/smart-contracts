@@ -200,7 +200,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
     event KyberDAOUpdated(IKyberDAO newDAO);
     
-    function setDAOCOntract(IKyberDAO _kyberDAO) external onlyAdmin {
+    function setDAOContract(IKyberDAO _kyberDAO) external onlyAdmin {
         require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
         emit KyberDAOUpdated(_kyberDAO);
         kyberDAO = _kyberDAO;
