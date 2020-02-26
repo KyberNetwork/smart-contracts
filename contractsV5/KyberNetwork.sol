@@ -642,7 +642,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         require(tData.rateWithNetworkFee >= tData.input.minConversionRate, "rate < minConvRate");
 
         if (gasHelper != IGasHelper(0)) {
-            gasHelper.freeGas(tData.input.platformWallet, tData.input.src, tData.input.dest, tData.tradeWei);
+            gasHelper.freeGas(tData.input.platformWallet, tData.input.src, tData.input.dest, tData.tradeWei,
+            tData.tokenToEth.ids, tData.ethToToken.ids);
         }
 
         uint actualSrcAmount;
@@ -785,9 +786,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         require(src != dest, "src = dest");
 
         if (src == ETH_TOKEN_ADDRESS) {
-            require(msg.value == srcAmount, "ETH low");
+            require(msg.value == srcAmount, "eth qty !=");
         } else {
-            require(msg.value == 0, "ETH sent");
+            require(msg.value == 0, "Eth qty >");
             //funds should have been moved to this contract already.
             require(src.balanceOf(address(this)) >= srcAmount, "srcTok low");
         }
@@ -800,7 +801,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         uint expiryBlock;
         (takerFeeBps, expiryBlock) = decodeTakerFee(takerFeeData);
 
-        if (expiryBlock <= block.number) {
+        if (expiryBlock < block.number && kyberDAO != IKyberDAO(0)) {
             (takerFeeBps, expiryBlock) = kyberDAO.getLatestNetworkFeeData();
         }
         // todo: don't revert if DAO reverts. just return exsiting value.
@@ -813,7 +814,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
 
         (takerFeeBps, expiryBlock) = decodeTakerFee(takerFeeData);
 
-        if (expiryBlock <= block.number && kyberDAO != IKyberDAO(0)) {
+        if (expiryBlock < block.number && kyberDAO != IKyberDAO(0)) {
             (takerFeeBps, expiryBlock) = kyberDAO.getLatestNetworkFeeDataWithCache();
             takerFeeData = encodeTakerFee(expiryBlock, takerFeeBps);
         }
