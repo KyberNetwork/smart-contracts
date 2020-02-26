@@ -371,14 +371,14 @@ async function deployFeeHandlerContract(output) {
     if (feeHandlerAddress == "") {
         console.log("deploying feeHandler");
         [feeHandlerAddress, feeHandlerContract] = await deployContract(
-            output, "FeeHandler.sol", "FeeHandler", 
+            output, "KyberFeeHandler.sol", "KyberFeeHandler", 
             [daoSetter, proxyAddress, networkAddress, kncTokenAddress, burnBlockInterval]
         );
         console.log(`Fee Handler: ${feeHandlerAddress}`);
     } else {
         console.log("Instantiating feeHandler...");
         feeHandlerContract = new web3.eth.Contract(
-          output.contracts["FeeHandler.sol"]["FeeHandler"].abi, feeHandlerAddress
+          output.contracts["KyberFeeHandler.sol"]["KyberFeeHandler"].abi, feeHandlerAddress
         );
     }
 }

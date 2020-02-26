@@ -50,7 +50,7 @@ const v4SourceFiles = {
 }
 
 const v5SourceFiles = {
-    'FeeHandler.sol' : {content: fs.readFileSync(contractV5Path + 'FeeHandler.sol', 'utf8')},
+    'KyberFeeHandler.sol' : {content: fs.readFileSync(contractV5Path + 'KyberFeeHandler.sol', 'utf8')},
     'GasHelper.sol' : {content: fs.readFileSync(contractV5Path + 'GasHelper.sol', 'utf8')},
     'PermissionGroupsV5.sol' : {content: fs.readFileSync(contractV5Path + 'PermissionGroupsV5.sol', 'utf8')},
     'BytesLib.sol' : {content: fs.readFileSync(contractV5Path + 'BytesLib.sol', 'utf8')},

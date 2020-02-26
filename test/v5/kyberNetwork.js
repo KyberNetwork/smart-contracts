@@ -3,7 +3,7 @@ const MockReserve = artifacts.require("MockReserve.sol");
 const MockDao = artifacts.require("MockDAO.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const MockNetwork = artifacts.require("MockNetwork.sol");
-const FeeHandler = artifacts.require("FeeHandler.sol");
+const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const TradeLogic = artifacts.require("KyberTradeLogic.sol");
 
 const Helper = require("../v4/helper.js");
