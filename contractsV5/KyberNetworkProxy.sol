@@ -13,10 +13,8 @@ import "./IKyberHint.sol";
 contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawable, Utils {
 
     IKyberNetwork public kyberNetwork;
-    IKyberHint public hintHandler;
+    IKyberHint public hintHandler; // hint handler pointer for users.
     
-    mapping(address=>uint) platformWalletFeeBps;    
-
     constructor(address _admin) public Withdrawable(_admin) 
         {/*empty body*/}
     
@@ -29,7 +27,6 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         // use simple backward compatible optoin.
         worstRate = expectedRate * 97 / 100;
     }
-
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev makes a trade between src and dest token and send dest token to destAddress
@@ -209,7 +206,8 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         uint destTok;
     }
 
-    event ExecuteTrade(address indexed trader, IERC20 src, IERC20 dest, uint actualSrcAmount, uint actualDestAmount);
+    event ExecuteTrade(address indexed trader, IERC20 src, IERC20 dest, uint actualSrcAmount, uint actualDestAmount,
+        address platformWallet, uint platformFeeBps);
 
     function doTrade(
         IERC20 src,
@@ -225,10 +223,9 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         internal
         returns(uint)
     {
-        (UserBalance memory balanceBefore) = 
-            prepareTrade(src, dest, srcAmount, destAddress);
+        UserBalance memory balanceBefore = prepareTrade(src, dest, srcAmount, destAddress);
 
-        (uint destAmount) = kyberNetwork.tradeWithHintAndFee.value(msg.value)(
+        uint reportedDestAmount = kyberNetwork.tradeWithHintAndFee.value(msg.value)(
             msg.sender,
             src,
             srcAmount,
@@ -241,19 +238,22 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
             hint
         );
 
-        TradeOutcome memory tradeOutcome = finalizeTradeValidateOutcome(src, dest, destAddress, maxDestAmount, minConversionRate,
-            platformFeeBps, balanceBefore, destAmount);
+        TradeOutcome memory tradeOutcome = calculateTradeOutcome(src, dest, destAddress, platformFeeBps, balanceBefore);
+
+        require(tradeOutcome.userDeltaDestToken == reportedDestAmount, "wrong ret amount");
+        require(tradeOutcome.userDeltaDestToken <= maxDestAmount, "Amount > maxDest");
+        require(tradeOutcome.actualRate >= minConversionRate, "rate < minRate");
+
+        emit ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcToken, tradeOutcome.userDeltaDestToken,
+            platformWallet, platformFeeBps);
 
         return tradeOutcome.userDeltaDestToken;
-            
     }
     
     event KyberNetworkSet(IKyberNetwork newNetwork, IKyberNetwork oldNetwork);
 
     function setKyberNetwork(IKyberNetwork _kyberNetwork) public onlyAdmin {
-
         require(_kyberNetwork != IKyberNetwork(0));
-
         emit KyberNetworkSet(_kyberNetwork, kyberNetwork);
 
         kyberNetwork = _kyberNetwork;
@@ -263,7 +263,6 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
 
     function setHintHandler(IKyberHint _hintHandler) public onlyAdmin {
         require(_hintHandler != IKyberHint(0), "Hint handler 0");
-
         emit HintHandlerSet(_hintHandler);
 
         hintHandler = _hintHandler;
@@ -297,22 +296,8 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         } else {
             require(src.transferFrom(msg.sender, address(kyberNetwork), srcAmount), "allowance");
         }
-    }
-    
-    function finalizeTradeValidateOutcome (IERC20 src, IERC20 dest, address destAddress, uint maxDestAmount, uint minConversionRate,
-        uint platformFee, UserBalance memory balanceBefore, uint returnedDestAmount) 
-        internal
-        returns(TradeOutcome memory tradeOutcome)
-    {
-        tradeOutcome = calculateTradeOutcome(src, dest, destAddress, platformFee, balanceBefore);
-
-        require(tradeOutcome.userDeltaDestToken == returnedDestAmount, "wrong ret amount");
-        require(tradeOutcome.userDeltaDestToken <= maxDestAmount, "Amount > maxDest");
-        require(tradeOutcome.actualRate >= minConversionRate, "rate < minRate");
-        
-        emit ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcToken, tradeOutcome.userDeltaDestToken);
-    }
-
+    } 
+   
     function calculateTradeOutcome (IERC20 src, IERC20 dest,
         address destAddress, uint platformFeeBps, UserBalance memory balanceBefore)
         internal returns(TradeOutcome memory outcome)
