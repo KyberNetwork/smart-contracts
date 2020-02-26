@@ -32,7 +32,7 @@ let rebateWallets = [];
 let oneKnc = new BN(10).pow(new BN(KNC_DECIMALS));
 let oneEth = new BN(10).pow(new BN(ethDecimals));
 
-contract('FeeHandler', function(accounts) {
+contract('KyberFeeHandler', function(accounts) {
     before("Setting global variables", async() => {
         user = accounts[9];
         user2 = accounts[8];

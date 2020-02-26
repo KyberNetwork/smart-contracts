@@ -66,7 +66,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         return reserveId;
     }
 
-    function getRatesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount, uint takerFeeBps) external view
+    function getRatesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount, uint networkFeeBps) external view
         returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, uint[] memory sellRates)
     {
         uint amount = optionalBuyAmount > 0 ? optionalBuyAmount : 1000;
@@ -77,12 +77,12 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         uint i;
         uint destAmount;
         for (i = 0; i < buyReserves.length; i++) {
-            if (takerFeeBps == 0 || (!isFeePayingReserve[address(buyReserves[i])])) {
+            if (networkFeeBps == 0 || (!isFeePayingReserve[address(buyReserves[i])])) {
                 buyRates[i] = (IKyberReserve(buyReserves[i])).getConversionRate(ETH_TOKEN_ADDRESS, token, amount, block.number);
                 continue;
             }
 
-            uint ethSrcAmount = amount - (amount * takerFeeBps / BPS);
+            uint ethSrcAmount = amount - (amount * networkFeeBps / BPS);
             buyRates[i] = (IKyberReserve(buyReserves[i])).getConversionRate(ETH_TOKEN_ADDRESS, token, ethSrcAmount, block.number);
             destAmount = calcDstQty(ethSrcAmount, ETH_DECIMALS, tokenDecimals, buyRates[i]);
             //use amount instead of ethSrcAmount to account for network fee
@@ -95,11 +95,11 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
 
         for (i = 0; i < sellReserves.length; i++) {
             sellRates[i] = (IKyberReserve(sellReserves[i])).getConversionRate(token, ETH_TOKEN_ADDRESS, amount, block.number);
-            if (takerFeeBps == 0 || (!isFeePayingReserve[address(sellReserves[i])])) {
+            if (networkFeeBps == 0 || (!isFeePayingReserve[address(sellReserves[i])])) {
                 continue;
             }
             destAmount = calcDstQty(amount, tokenDecimals, ETH_DECIMALS, sellRates[i]);
-            destAmount -= takerFeeBps * destAmount / BPS;
+            destAmount -= networkFeeBps * destAmount / BPS;
             sellRates[i] = calcRateFromQty(amount, destAmount, tokenDecimals, ETH_DECIMALS);
         }
     }
@@ -164,7 +164,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         uint networkFeeWei;
         uint platformFeeWei;
 
-        uint takerFeeBps;
+        uint networkFeeBps;
         uint platformFeeBps;
         
         uint numFeePayingReserves;
@@ -188,7 +188,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         TradeData memory tData;
         tData.tokenToEth.decimals = srcDecimals;
         tData.ethToToken.decimals = destDecimals;
-        tData.takerFeeBps = info[uint(IKyberTradeLogic.InfoIndex.takerFeeBps)];
+        tData.networkFeeBps = info[uint(IKyberTradeLogic.InfoIndex.networkFeeBps)];
         tData.platformFeeBps = info[uint(IKyberTradeLogic.InfoIndex.platformFeeBps)];
 
         parseTradeDataHint(src, dest, tData, hint);
@@ -216,7 +216,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
 
         //fee deduction
         //no fee deduction occurs for masking of ETH -> token reserves, or if no ETH -> token reserve was specified
-        tData.networkFeeWei = tData.tradeWei * tData.takerFeeBps * tData.feePayingReservesBps / (BPS * BPS);
+        tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps * tData.feePayingReservesBps / (BPS * BPS);
         tData.platformFeeWei = tData.tradeWei * tData.platformFeeBps / BPS;
 
         require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
@@ -324,7 +324,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
                 src,
                 ETH_TOKEN_ADDRESS,
                 srcAmount,
-                tData.takerFeeBps
+                tData.networkFeeBps
             );
             //save into tradeData
             storeTradeReserveData(tData.tokenToEth, reserve, rate, isFeePaying);
@@ -458,7 +458,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             rate = calcRateFromQty(actualTradeWei, tData.actualDestAmount, ETH_DECIMALS, tData.ethToToken.decimals);
         } else {
             //network fee for ETH -> token is in ETH amount
-            uint ethToTokenNetworkFeeWei = tData.tradeWei * tData.takerFeeBps / BPS;
+            uint ethToTokenNetworkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS;
             // search best reserve and its corresponding dest amount
             // Have to search with tradeWei minus fees, because that is the actual src amount for ETH -> token trade
             (reserve, rate, isFeePaying) = searchBestRate(
@@ -498,8 +498,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
     // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
     //  It has been tested, reviewed and found to be clear enough.
     //@dev this function always src or dest are ether. can't do token to token
-    //TODO: document takerFee
-    function searchBestRate(IKyberReserve[] memory reserveArr, IERC20 src, IERC20 dest, uint srcAmount, uint takerFee)
+    //TODO: document networkFee
+    function searchBestRate(IKyberReserve[] memory reserveArr, IERC20 src, IERC20 dest, uint srcAmount, uint networkFee)
         internal
         view
         returns(IKyberReserve reserve, uint, bool isFeePaying)
@@ -522,10 +522,10 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             reserve = reserveArr[i];
             //get isFeePaying info
             isFeePaying = isFeePayingReserve[address(reserve)];
-            //for ETH -> token paying reserve, takerFee is specified in amount
+            //for ETH -> token paying reserve, networkFee is specified in amount
             if ((src == ETH_TOKEN_ADDRESS) && isFeePaying) {
-                require(srcAmount > takerFee, "fee >= E2T tradeAmt");
-                srcAmountWithFee = srcAmount - takerFee;
+                require(srcAmount > networkFee, "fee >= E2T tradeAmt");
+                srcAmountWithFee = srcAmount - networkFee;
             } else {
                 srcAmountWithFee = srcAmount;
             }
@@ -536,8 +536,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
                 block.number);
 
             destAmount = srcAmountWithFee * rates[i] / PRECISION;
-             //for token -> ETH paying reserve, takerFee is specified in bps
-            destAmount = (dest == ETH_TOKEN_ADDRESS && isFeePaying) ? destAmount * (BPS - takerFee) / BPS : destAmount;
+             //for token -> ETH paying reserve, networkFee is specified in bps
+            destAmount = (dest == ETH_TOKEN_ADDRESS && isFeePaying) ? destAmount * (BPS - networkFee) / BPS : destAmount;
 
             if (destAmount > bestReserve.destAmount) {
                 //best rate is highest rate
@@ -558,9 +558,9 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             if (i == bestReserve.index) continue;
 
             isFeePaying = isFeePayingReserve[address(reserve)];
-            srcAmountWithFee = ((src == ETH_TOKEN_ADDRESS) && isFeePaying) ? srcAmount - takerFee : srcAmount;
+            srcAmountWithFee = ((src == ETH_TOKEN_ADDRESS) && isFeePaying) ? srcAmount - networkFee : srcAmount;
             destAmount = srcAmountWithFee * rates[i] / PRECISION;
-            destAmount = (dest == ETH_TOKEN_ADDRESS && isFeePaying) ? destAmount * (BPS - takerFee) / BPS : destAmount;
+            destAmount = (dest == ETH_TOKEN_ADDRESS && isFeePaying) ? destAmount * (BPS - networkFee) / BPS : destAmount;
 
             if (destAmount > bestReserve.destAmount) {
                 reserveCandidates[numRelevantReserves++] = i;

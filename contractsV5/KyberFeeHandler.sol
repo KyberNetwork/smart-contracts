@@ -1,14 +1,14 @@
 pragma solidity 0.5.11;
 
 import "./IKyberDAO.sol";
-import "./IFeeHandler.sol";
+import "./IKyberFeeHandler.sol";
 import "./PermissionGroupsV5.sol";
 import "./IKyberNetworkProxy.sol";
 import "./UtilsV5.sol";
 import "./IBurnableToken.sol";
 import "./IERC20.sol";
 
-contract FeeHandler is IFeeHandler, Utils {
+contract KyberFeeHandler is IKyberFeeHandler, Utils {
 
     uint constant public WEI_TO_BURN = 2 * 10 ** ETH_DECIMALS;
     uint constant BITS_PER_PARAM = 64;
