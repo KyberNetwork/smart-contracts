@@ -87,7 +87,7 @@ contract('KyberFeeHandler', function(accounts) {
         Helper.assertEqual(results['3'], epoch, "Actual decoded epoch is not correct");
     });
    
-    describe("test handle fees and claiming rebate / reward", async() => {
+    describe("test handle fees and claiming rebate / reward / fee", async() => {
         let currentRewardBps;
         let currentRebateBps;
         let currentEpoch;
@@ -192,7 +192,7 @@ contract('KyberFeeHandler', function(accounts) {
                 sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch, 
                     rebateWallets, rebatePerWalletBps  
                 );
-         });
+        });
 
         it("claim rebate see total payout balance updated", async() => {
             let sendVal = new BN(0);
@@ -235,7 +235,6 @@ contract('KyberFeeHandler', function(accounts) {
             const totalPayOutBalance = await feeHandler.totalPayoutBalance();
             Helper.assertEqual(expectedTotalPayoutAfter, totalPayOutBalance);
         });
-
 
         it("test reward per eopch updated correctly", async() => {
             let sendVal = oneEth;
@@ -316,7 +315,97 @@ contract('KyberFeeHandler', function(accounts) {
             Helper.assertEqual(userBalAfter, userBal.add(expectedPayed));
         })
 
-        it("claim more then full reward in 1 calim. see revert.", async() => {
+        it("send platform fee (no rebates), see values updated", async() => {
+            let sendVal = oneEth;
+            let platformWallet = accounts[5];
+            let platformFeeWei = new BN(50000);
+            rebateWallets = []
+            rebatePerWalletBps = []
+
+            let walletFee0 = await feeHandler.feePerPlatformWallet(platformWallet);
+
+            await callHandleFeeAndVerifyValues(
+                sendVal, platformWallet, platformFeeWei, currentRebateBps, currentRewardBps, currentEpoch, 
+                    rebateWallets, rebatePerWalletBps  
+                );
+
+            let expectedFeeValue = walletFee0.add(platformFeeWei);
+            let walletFee1 = await feeHandler.feePerPlatformWallet(platformWallet);
+            
+            Helper.assertEqual(expectedFeeValue, walletFee1);
+            
+            sendVal = oneEth.div(new BN(333));            
+            
+            await callHandleFeeAndVerifyValues(
+                sendVal, platformWallet, platformFeeWei, currentRebateBps, currentRewardBps, currentEpoch, 
+                    rebateWallets, rebatePerWalletBps  
+                );
+
+            
+            expectedFeeValue = walletFee1.add(platformFeeWei);
+            let walletFee2 = await feeHandler.feePerPlatformWallet(platformWallet);
+            
+            Helper.assertEqual(expectedFeeValue, walletFee2);            
+        });
+
+
+        it("send platform fee (and rebates), see values updated", async() => {
+            let sendVal = oneEth;
+            let platformWallet = accounts[5];
+            let platformFeeWei = new BN(50000);
+           
+            let walletFee0 = await feeHandler.feePerPlatformWallet(platformWallet);
+
+            await callHandleFeeAndVerifyValues(
+                sendVal, platformWallet, platformFeeWei, currentRebateBps, currentRewardBps, currentEpoch, 
+                    rebateWallets, rebatePerWalletBps  
+                );
+
+            let expectedFeeValue = walletFee0.add(platformFeeWei);
+            let walletFee1 = await feeHandler.feePerPlatformWallet(platformWallet);
+            
+            Helper.assertEqual(expectedFeeValue, walletFee1);
+            
+            sendVal = oneEth.div(new BN(333));            
+            
+            await callHandleFeeAndVerifyValues(
+                sendVal, platformWallet, platformFeeWei, currentRebateBps, currentRewardBps, currentEpoch, 
+                    rebateWallets, rebatePerWalletBps  
+                );
+
+            
+            expectedFeeValue = walletFee1.add(platformFeeWei);
+            let walletFee2 = await feeHandler.feePerPlatformWallet(platformWallet);
+            
+            Helper.assertEqual(expectedFeeValue, walletFee2);            
+        });
+
+        it("send platform fee, claim, see values updated", async() => {
+            let sendVal = oneEth;
+            let platformWallet = accounts[5];
+            let platformFeeWei = new BN(50000);
+            rebateWallets = []
+            rebatePerWalletBps = []
+
+            await callHandleFeeAndVerifyValues(
+                sendVal, platformWallet, platformFeeWei, currentRebateBps, currentRewardBps, currentEpoch, 
+                    rebateWallets, rebatePerWalletBps  
+                );
+            
+            let walletBalance0 = await await Helper.getBalancePromise(platformWallet);
+            
+            // claim
+            await feeHandler.claimPlatformFee(platformWallet);
+            let walletFeeAfter = await feeHandler.feePerPlatformWallet(platformWallet);
+            Helper.assertEqual(walletFeeAfter, 1);
+
+            let walletBalance1 = await Helper.getBalancePromise(platformWallet);
+            let expectedBalance = walletBalance0.add(platformFeeWei.sub(new BN(1)));
+            
+            Helper.assertEqual(walletBalance1, expectedBalance)          
+        });
+
+        it("claim more then full reward in 1 claim. see revert.", async() => {
             let sendVal = oneEth;
             
             sendVal = oneEth;
@@ -454,8 +543,11 @@ contract('KyberFeeHandler', function(accounts) {
 });
 
 async function callHandleFeeAndVerifyValues(sendValWei, platformWallet, platFeeWei, rebateBps, rewardBps, epoch, rebateWalletArr, rebateBpsArr) {
-    
-    let expectedRewardForEpoch = (await feeHandler.rewardsPerEpoch(epoch)).add(sendValWei.mul(rewardBps).div(BPS));
+    assert(sendValWei.gt(platFeeWei));
+   
+    let feeAmountBRR = sendValWei.sub(new BN(platFeeWei));
+
+    let expectedRewardForEpoch = (await feeHandler.rewardsPerEpoch(epoch)).add(feeAmountBRR.mul(rewardBps).div(BPS));
     let currentRebatesArr = [];
     for (let i = 0; i < rebateWalletArr.length; i++) {
         currentRebatesArr[i] = await feeHandler.rebatePerWallet(rebateWalletArr[i]);
@@ -468,7 +560,7 @@ async function callHandleFeeAndVerifyValues(sendValWei, platformWallet, platFeeW
     //validate values
     let expectedRebates = [];
     for (let i = 0; i < rebateWalletArr.length; i++) {
-        expectedRebates[i] = currentRebatesArr[i].add(sendValWei.mul(rebateBps).div(BPS).mul(rebateBpsArr[i]).div(BPS));
+        expectedRebates[i] = currentRebatesArr[i].add(feeAmountBRR.mul(rebateBps).div(BPS).mul(rebateBpsArr[i]).div(BPS));
         let actualRebate = await feeHandler.rebatePerWallet(rebateWalletArr[i]);
         Helper.assertEqual(actualRebate, expectedRebates[i]);
     }
