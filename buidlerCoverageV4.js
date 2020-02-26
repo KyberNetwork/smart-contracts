@@ -4,7 +4,7 @@ module.exports = {
     version: "0.4.18",
     optimizer: {
       enabled: true,
-      runs: 200
+      runs: 9000
     }
   },
 
