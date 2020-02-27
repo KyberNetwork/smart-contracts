@@ -165,7 +165,6 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         uint platformFeeWei;
 
         uint networkFeeBps;
-        uint platformFeeBps;
         
         uint numFeePayingReserves;
         uint feePayingReservesBps; // what part of this trade is fee paying. for token to token - up to 200%
@@ -189,13 +188,11 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         tData.tokenToEth.decimals = srcDecimals;
         tData.ethToToken.decimals = destDecimals;
         tData.networkFeeBps = info[uint(IKyberTradeLogic.InfoIndex.networkFeeBps)];
-        tData.platformFeeBps = info[uint(IKyberTradeLogic.InfoIndex.platformFeeBps)];
 
         parseTradeDataHint(src, dest, tData, hint);
 
         calcRatesAndAmountsTokenToEth(src, info[uint(IKyberTradeLogic.InfoIndex.srcAmount)], tData);
 
-        //TODO: see if this need to be shifted below instead
         if (tData.tradeWei == 0) {
             //initialise ethToToken and store as zero
             storeTradeReserveData(tData.ethToToken, IKyberReserve(0), 0, false);
@@ -217,7 +214,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         //fee deduction
         //no fee deduction occurs for masking of ETH -> token reserves, or if no ETH -> token reserve was specified
         tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps * tData.feePayingReservesBps / (BPS * BPS);
-        tData.platformFeeWei = tData.tradeWei * tData.platformFeeBps / BPS;
+        tData.platformFeeWei = tData.tradeWei * info[uint(IKyberTradeLogic.InfoIndex.platformFeeBps)] / BPS;
 
         require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
         calcRatesAndAmountsEthToToken(dest, tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei, tData);
@@ -314,7 +311,6 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         // token to Eth
         ///////////////
         // if split reserves, find rates
-        // can consider parsing enum hint type into tradeData for easy identification of splitHint. Or maybe just boolean flag
         if (tData.tokenToEth.splitValuesBps.length > 1) {
             (tData.tradeWei, tData.feePayingReservesBps, tData.numFeePayingReserves) = getDestQtyAndFeeDataFromSplits(tData.tokenToEth, src, srcAmount, true);
         } else {
@@ -414,18 +410,15 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
 
         results = new uint[](uint(ResultIndex.resultLength));
         results[uint(ResultIndex.t2eNumReserves)] = tokenToEthNumReserves;
-        results[uint(ResultIndex.e2tNumReserves)] = tData.ethToToken.addresses.length;
         results[uint(ResultIndex.tradeWei)] = tData.tradeWei;
-        results[uint(ResultIndex.networkFeeWei)] = tData.networkFeeWei;
-        results[uint(ResultIndex.platformFeeWei)] = tData.platformFeeWei;
         results[uint(ResultIndex.numFeePayingReserves)] = tData.numFeePayingReserves;
         results[uint(ResultIndex.feePayingReservesBps)] = tData.feePayingReservesBps;
         results[uint(ResultIndex.destAmountNoFee)] = tData.destAmountNoFee;
         results[uint(ResultIndex.destAmountWithNetworkFee)] = tData.destAmountWithNetworkFee;
         results[uint(ResultIndex.actualDestAmount)] = tData.actualDestAmount;
 
-        //store token to ETH information
-        for (uint i=0; i < tokenToEthNumReserves; i++) {
+        // store token to ETH information
+        for (uint i = 0; i < tokenToEthNumReserves; i++) {
             reserveAddresses[i] = tData.tokenToEth.addresses[i];
             rates[i] = tData.tokenToEth.rates[i];
             splitValuesBps[i] = tData.tokenToEth.splitValuesBps[i];
@@ -433,7 +426,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
             ids[i] = convertAddressToReserveId(address(reserveAddresses[i]));
         }
         
-        //then store ETH to token information, but need to offset when accessing tradeData
+        // then store ETH to token information, but need to offset when accessing tradeData
         for (uint i = tokenToEthNumReserves; i < totalNumReserves; i++) {
             reserveAddresses[i] = tData.ethToToken.addresses[i - tokenToEthNumReserves];
             rates[i] = tData.ethToToken.rates[i - tokenToEthNumReserves];
@@ -443,7 +436,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
         }
         // printGas("pack result end", start, Module.LOGIC);
     }
-    
+
     function calcRatesAndAmountsEthToToken(IERC20 dest, uint actualTradeWei, TradeData memory tData) internal view {
         IKyberReserve reserve;
         uint rate;

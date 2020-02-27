@@ -455,6 +455,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             tradeLogic.calcRatesAndAmounts(src, dest, tData.tokenToEth.decimals, tData.ethToToken.decimals, info, hint);
         
         unpackResults(results, reserveAddresses, rates, splitValuesBps, isFeePaying, ids, tData);
+
+        //cheaper to calculate than pack and unpack these values
+        tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps * tData.feePayingReservesBps / (BPS * BPS);
+        tData.platformFeeWei = tData.tradeWei * tData.input.platformFeeBps / BPS;
         tData.rateOnlyNetworkFee = calcRateFromQty(srcAmount, tData.destAmountWithNetworkFee, tData.tokenToEth.decimals, tData.ethToToken.decimals);
     }
     
@@ -466,27 +470,26 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         bool[] memory isFeePaying,
         bytes8[] memory ids,
         TradeData memory tData
-        ) internal pure 
+        ) internal pure
     {
         //uint start = printGas("start unpack", 0);
         uint tokenToEthNumReserves = results[uint(IKyberTradeLogic.ResultIndex.t2eNumReserves)];
-        uint ethToTokenNumReserves = results[uint(IKyberTradeLogic.ResultIndex.e2tNumReserves)];
         
         storeTradeData(tData.tokenToEth, reserveAddresses, rates, splitValuesBps, isFeePaying, ids, 0, tokenToEthNumReserves);
-        storeTradeData(tData.ethToToken, reserveAddresses, rates, splitValuesBps, isFeePaying, ids, tokenToEthNumReserves, ethToTokenNumReserves);
+        storeTradeData(tData.ethToToken, reserveAddresses, rates, splitValuesBps, isFeePaying, ids,
+            tokenToEthNumReserves, reserveAddresses.length - tokenToEthNumReserves);
         
         tData.tradeWei = results[uint(IKyberTradeLogic.ResultIndex.tradeWei)];
-        tData.networkFeeWei = results[uint(IKyberTradeLogic.ResultIndex.networkFeeWei)];
-        tData.platformFeeWei = results[uint(IKyberTradeLogic.ResultIndex.platformFeeWei)];
         tData.numFeePayingReserves = results[uint(IKyberTradeLogic.ResultIndex.numFeePayingReserves)];
         tData.feePayingReservesBps = results[uint(IKyberTradeLogic.ResultIndex.feePayingReservesBps)];
         tData.destAmountNoFee = results[uint(IKyberTradeLogic.ResultIndex.destAmountNoFee)];
         tData.destAmountWithNetworkFee = results[uint(IKyberTradeLogic.ResultIndex.destAmountWithNetworkFee)];
         tData.actualDestAmount = results[uint(IKyberTradeLogic.ResultIndex.actualDestAmount)];
+        
         //printGas("end unpack", start);
     }
     
-    function storeTradeData(TradingReserves memory tradingReserves, IKyberReserve[] memory reserveAddresses, 
+    function storeTradeData(TradingReserves memory tradingReserves, IKyberReserve[] memory reserveAddresses,
         uint[] memory rates, uint[] memory splitValuesBps, bool[] memory isFeePaying, bytes8[] memory ids, uint startIndex, uint numReserves
     ) internal pure {
         //init arrays
@@ -537,7 +540,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     {
         if(eligibleWallets.length == 0) return;
 
-        uint index; 
+        uint index;
         // Parse ethToToken list
         index = parseReserveList(
             eligibleWallets,

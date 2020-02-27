@@ -8,10 +8,7 @@ interface IKyberTradeLogic {
 
     enum ResultIndex {
         t2eNumReserves,
-        e2tNumReserves,
         tradeWei,
-        networkFeeWei,
-        platformFeeWei,
         numFeePayingReserves,
         feePayingReservesBps,
         destAmountNoFee,
