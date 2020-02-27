@@ -506,19 +506,9 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         }
     }
 
-    event PlatformFeeSent(address recipient, uint fees);
-
     function handleFees(TradeData memory tData) internal returns(bool) {
-
-        if (tData.platformFeeWei != 0) {
-            // Sending platform fee to taker platform
-            (bool success, ) =  tData.input.platformWallet.call.value(tData.platformFeeWei)("");
-            require(success, "PLAT_FEE_TX_FAIL");
-            emit PlatformFeeSent(tData.input.platformWallet, tData.platformFeeWei);
-        }
-
         //no need to handle fees if no fee paying reserves
-        if (tData.numFeePayingReserves == 0) return true;
+        if ((tData.numFeePayingReserves == 0) && (tData.platformFeeWei == 0)) return true;
 
         // create array of rebate wallets + fee percent per reserve
         // fees should add up to 100%.
@@ -528,10 +518,13 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         // Updates reserve eligibility and rebate percentages
         updateEligibilityAndRebates(eligibleWallets, rebatePercentBps, tData);
 
+        uint sentFee = tData.networkFeeWei + tData.platformFeeWei;
+
         // Send total fee amount to fee handler with reserve data.
         require(
-            feeHandler.handleFees.value(tData.networkFeeWei)(eligibleWallets, rebatePercentBps),
-            "FEE_TX_FAIL"
+            feeHandler.handleFees.value(sentFee)(eligibleWallets, rebatePercentBps,
+            tData.input.platformWallet, tData.platformFeeWei),
+            "handle fee fail"
         );
         return true;
     }
@@ -542,6 +535,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         TradeData memory tData
     ) internal view
     {
+        if(eligibleWallets.length == 0) return;
+
         uint index; 
         // Parse ethToToken list
         index = parseReserveList(

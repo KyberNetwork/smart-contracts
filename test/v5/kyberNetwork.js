@@ -500,19 +500,19 @@ contract('KyberNetwork', function(accounts) {
             it("should perform T2E trades (diff hint types) with platform fee and check fee wallet receives platform fee", async() => {
                 let platformFeeBps = new BN(50);
                 for (hintType of tradeTypesArray) {
-                    info = [srcQty, networkFeeBps, platformFee];
+                    info = [srcQty, networkFeeBps, platformFeeBps];
                     hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
                     expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hint);
                     expectedResult = await nwHelper.unpackRatesAndAmounts(srcQty, srcDecimals, ethDecimals, expectedResult);
 
-                    let initialBalance = await Helper.getBalancePromise(platformWallet);
+                    let initialWalletFee = await feeHandler.feePerPlatformWallet(platformWallet);
                     await srcToken.transfer(network.address, srcQty);
                     let txResult = await network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker, 
-                        maxDestAmt, minConversionRate, platformWallet, platformFee, hint);
+                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
 
-                    let expectedBalance = initialBalance.add(expectedResult.platformFeeWei);
-                    let actualBalance = await Helper.getBalancePromise(platformWallet);
-                    await Helper.assertEqual(expectedBalance, actualBalance, "platform fee did not receive fees");
+                    let expectedWalletFee = initialWalletFee.add(expectedResult.platformFeeWei);
+                    let actualWalletFee = await feeHandler.feePerPlatformWallet(platformWallet);
+                    await Helper.assertEqual(actualWalletFee, expectedWalletFee, "platform fee did not receive fees");
                 }
             });
         });
@@ -527,7 +527,7 @@ contract('KyberNetwork', function(accounts) {
             Helper.assertEqual(contracts[2], tradeLogic.address);
         });
     
-        it.only("test encode decode taker fee data with mock setter getter", async() => {
+        it("test encode decode network fee data with mock setter getter", async() => {
             let tempNetwork = await MockNetwork.new(admin);
             await tempNetwork.setContracts(feeHandler.address, tradeLogic.address, 
                 zeroAddress, {from: admin});
@@ -559,6 +559,7 @@ contract('KyberNetwork', function(accounts) {
         let platformFee = new BN(200);
         let networkFeeBps;
         let rebateBps;
+        let rewardBps;
         let reserveIdToWallet = [];
         let rebateWallets;
 
@@ -588,44 +589,48 @@ contract('KyberNetwork', function(accounts) {
             const BRRData = await feeHandler.decodeBRRData();
             // log(BRRData)
             rebateBps = BRRData.rebateBPS;
+            rewardBps = BRRData.rebateBPS;
         });
 
         it("et2 trade. see rebate per wallet updated in fee handler.", async() => {
 
-            let BRRAmounts0 = await feeHandler.getTotalAmounts();
+            let payoutBalance0 = await feeHandler.totalPayoutBalance();
             let rebateWalletBalance0 = {};
             for (let i = 0; i < rebateWallets.length; i++) {
                 rebateWalletBalance0[rebateWallets[i]] = await feeHandler.rebatePerWallet(rebateWallets[i]);
             } 
             let srcQty = oneEth;
-            log("taker fee bps: " + networkFeeBps + " rebate bps: " + rebateBps);
+            // log("network fee bps: " + networkFeeBps + " rebate bps: " + rebateBps);
             let expectedRebate = srcQty.mul(networkFeeBps).div(BPS).mul(rebateBps).div(BPS);
             let txResult = await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker, 
                 maxDestAmt, minConversionRate, platformWallet, platformFee, '0x', {from: networkProxy, value: srcQty});
 
-            let tradedReserve = txResult.logs[1].args.e2tIds[0];
+            let reserves = nwHelper.getEt2ReservesFromTradeTx(txResult);
+            let tradedReserve = reserves['e2tIds'][0];
             let rebateWallet = reserveIdToWallet[tradedReserve];
-            log("tradedReserve " + tradedReserve)
-            log("rebate wallet " + rebateWallet)
+            // log("tradedReserve " + tradedReserve)
+            // log("rebate wallet " + rebateWallet)
 
             let expectedBalance = rebateWalletBalance0[rebateWallet].add(expectedRebate);
             let actualBalance = await feeHandler.rebatePerWallet(rebateWallet);
-            log("actual balance " + actualBalance);
+            // log("actual balance " + actualBalance);
             Helper.assertEqual(actualBalance, expectedBalance);
-            
         });
 
-        it("et2 trade. see total rebate updated in fee handler.", async() => {
+        it("et2 trade. see total payout amount updated in fee handler.", async() => {
 
-            let BRRAmounts0 = await feeHandler.getTotalAmounts();
+            let payoutBalance0 = await feeHandler.totalPayoutBalance();
 
             let srcQty = oneEth;
-            let txResult = await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker, 
-                maxDestAmt, minConversionRate, platformWallet, platformFee, '0x', {from: networkProxy, value: srcQty});
+            await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker, 
+                maxDestAmt, minConversionRate, platformWallet, 0, '0x', {from: networkProxy, value: srcQty});
+            
             let expectedAddedRebate = srcQty.mul(networkFeeBps).div(BPS).mul(rebateBps).div(BPS);
-            let expectedRebateAmount = BRRAmounts0.totalRebateWei.add(expectedAddedRebate);
-            let BRRAmounts1 = await feeHandler.getTotalAmounts();
-            Helper.assertEqual(BRRAmounts1.totalRebateWei, expectedRebateAmount);
+            let expectedAddedReward = srcQty.mul(networkFeeBps).div(BPS).mul(rewardBps).div(BPS);
+
+            let expectedAddedAmount = expectedAddedRebate.add(expectedAddedReward);
+            let payoutBalance1 = await feeHandler.totalPayoutBalance();
+            Helper.assertEqual(payoutBalance0.add(expectedAddedAmount), payoutBalance1);
         });
     });
 })

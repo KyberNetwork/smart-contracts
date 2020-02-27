@@ -100,7 +100,7 @@ module.exports.setupReserves = async function
         let reserve = await setupFprReserve(network, tokens, accounts[ethSenderIndex++], pricing.address, ethInit, admin, operator);
         await pricing.setReserveAddress(reserve.address, {from: admin});
         
-        let reserveId = (genReserveID(MOCK_ID, reserve.address)).toLowerCase();
+        let reserveId = (genReserveID(FPR_ID, reserve.address)).toLowerCase();
         let rebateWallet;
         if (rebateWallets == undefined || rebateWallets.length < i * 1 - 1 * 1) {
             rebateWallet = zeroAddress;
@@ -244,6 +244,19 @@ module.exports.addReservesToNetwork = async function (networkInstance, reserveIn
         await networkInstance.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, rebateWallet, {from: operator});
         for (let j = 0; j < tokens.length; j++) {
             await networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, true, {from: operator});
+        }
+    }
+}
+
+module.exports.getEt2ReservesFromTradeTx = function(tradeTx) {
+    let result = {}
+
+    for (let event of tradeTx.logs) {
+        console.log("event.event: " + event.event)
+        if(event.event == 'KyberTrade') {
+            result['t2eIds'] = event.args.t2eIds;
+            result['e2tIds'] = event.args.e2tIds;
+            return result;
         }
     }
 }
