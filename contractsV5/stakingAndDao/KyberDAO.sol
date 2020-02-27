@@ -64,13 +64,16 @@ contract CampPermissionGroups {
     }
 }
 
-// Note: camp -> campaign
-// Assumption:
-// - Network fee campaign: options are fee in bps
-// - BRR fee handler campaign: options are combined of rebate (first 128 bits) + reward (last 128 bits)
-// - General campaign: options are from 1 to num_options
+/**
+* @dev camp -> campaign
+* @dev Network fee campaign: options are fee in bps
+* @dev BRR fee handler campaign: options are combined of rebate (first 128 bits) + reward (last 128 bits)
+* @dev General campaign: options are from 1 to num_options
+*/
 
-// This contract is using SafeMath for uint, which is inherited from EpochUtils
+/*
+* This contract is using SafeMath for uint, which is inherited from EpochUtils
+*/
 contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroups, Utils {
     // Constants
     uint internal constant POWER_128 = 2 ** 128;
@@ -106,6 +109,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     /* Mapping from campaign ID => data */
+
     // use to generate increasing camp ID
     uint public numberCampaigns = 0;
     mapping(uint => bool) public campExists;
@@ -118,6 +122,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     mapping(uint => uint) internal winningOptionData;
 
     /** Mapping from epoch => data */
+
     // epochCampaigns[epoch]: list camp IDs for each epoch (epoch => camp IDs)
     mapping(uint => uint[]) internal epochCampaigns;
     // totalEpochPoints[epoch]: total points for an epoch (epoch => total points)
@@ -168,6 +173,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         _;
     }
 
+    /**
+    * @dev called by staking contract when staker wanted to withdraw
+    * @param staker address of staker to reduce reward
+    * @param reduceAmount amount point to be reduced for each campaign staker has voted at this epoch
+    */
     function handleWithdrawal(address staker, uint reduceAmount) public onlyStakingContract returns(bool) {
         // staking shouldn't call this func with reduce amount = 0
         if (reduceAmount == 0) { return false; }
@@ -203,6 +213,15 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint[] options, bytes link
     );
 
+    /**
+    * @dev create new campaign, only called by admin
+    * @param campType type of campaign (network fee, brr, general)
+    * @param startBlock block to start running the campaign
+    * @param endBlock block to end this campaign
+    * @param formulaParams encoded formula params for this campaign (minPercentage, c, t)
+    * @param options list values of options to vote for this campaign
+    * @param link additional data for this campaign
+    */
     function submitNewCampaign(
         CampaignType campType, uint startBlock, uint endBlock, uint formulaParams,
         uint[] memory options, bytes memory link
@@ -261,6 +280,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     event CancelledCampaign(uint campID);
 
+    /**
+    * @dev cancel a campaign with given id, called by admin only
+    * @dev only can cancel campaigns that have not started yet
+    * @param campID id of the campaign to cancel
+    */
     function cancelCampaign(uint campID) public onlyCampaignCreator {
         require(campExists[campID], "cancelCamp: campID not exist");
 
@@ -297,6 +321,12 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     event Voted(address staker, uint epoch, uint campID, uint option);
 
+    /**
+    * @dev vote for an option of a campaign
+    * @dev options are indexed from 1 to number of options
+    * @param campID id of campaign to vote for
+    * @param option id of options to vote for
+    */
     function vote(uint campID, uint option) public returns(bool) {
         require(validateVoteOption(campID, option), "vote: invalid campID or option");
         address staker = msg.sender;
@@ -330,6 +360,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     event RewardClaimed(address staker, uint epoch, uint perInPrecision);
 
+    /**
+    * @dev call to claim reward of an epoch, can call by anyone, only once for each epoch
+    * @param staker address to claim reward for
+    * @param epoch to claim reward
+    */
     function claimReward(address staker, uint epoch) public nonReentrant {
         uint curEpoch = getCurrentEpochNumber();
         require(epoch < curEpoch, "claimReward: not past epoch");
@@ -345,8 +380,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         emit RewardClaimed(staker, epoch, perInPrecision);
     }
 
-    // get latest network fee data + expiry data
-    // also save winning option data and latest network fee result
+    /**
+    * @dev get latest network fee data + expiry block number
+    * @dev also save winning option data and latest network fee result
+    */
     function getLatestNetworkFeeDataWithCache() public returns(uint feeInBps, uint expiryBlockNumber) {
         uint curEpoch = getCurrentEpochNumber();
 
@@ -379,7 +416,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         }
     }
 
-    // return latest burn/reward/rebate data, also affecting epoch + expiry block number
+    /**
+    * @dev return latest burn/reward/rebate data, also affecting epoch + expiry block number
+    */
     function getLatestBRRData()
         public
         returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber)
@@ -409,7 +448,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         burnInBps = BPS.sub(rebateInBps).sub(rewardInBps);
     }
 
-    // if total points for that epoch is 0, should burn all reward since no campaign or no one voted
+    /**
+    * @dev some epochs have reward but no one can claim, for example: epoch 0
+    * @dev return true if should burn all that reward
+    * @param epoch epoch to check for burning reward
+    */
     function shouldBurnRewardForEpoch(uint epoch) public view returns(bool) {
         uint curEpoch = getCurrentEpochNumber();
         if (epoch >= curEpoch) { return false; }
@@ -445,6 +488,13 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         }
     }
 
+    /**
+    * @dev return campaign winning option and its value
+    * @dev return (0, 0) if campaign does not existed
+    * @dev return (0, 0) if campaign is not ended yet
+    * @dev return (0, 0) if campaign has no winning option based on the formula
+    * @param campID id of campaign to get result
+    */
     function getCampaignWinningOptionAndValue(uint campID)
         public view
         returns(uint optionID, uint value)
@@ -507,7 +557,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         value = camp.options[optionID - 1];
     }
 
-    // return latest network fee with expiry block number
+    /**
+    * @dev return latest network fee with expiry block number
+    */
     function getLatestNetworkFeeData() public view returns(uint feeInBps, uint expiryBlockNumber) {
         uint curEpoch = getCurrentEpochNumber();
         feeInBps = latestNetworkFeeResult;
@@ -530,6 +582,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         return (feeInBps, expiryBlockNumber);
     }
 
+    /**
+    * @dev return staker's reward percentage in precision for an epoch
+    * @dev return 0 if epoch is in the future
+    * @dev return 0 if staker has no votes or stakes
+    */
     function getStakerRewardPercentageInPrecision(address staker, uint epoch) public view returns(uint) {
         uint curEpoch = getCurrentEpochNumber();
         if (epoch > curEpoch) { return 0; }
@@ -556,7 +613,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         return epochCampaigns[epoch];
     }
 
-    // return latest brr data after decoded so it is easily to check from read contract
+    /** 
+    * @dev return latest brr data after decoded so it is easily to check from read contract
+    */
     function latestBRRDataDecoded()
         public view
         returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber)
@@ -590,8 +649,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         rebateInBps = (data.div(POWER_128)) & (POWER_128.sub(1));
     }
 
-    // revert here so if our operations use this func to generate data for new camp,
-    // they can be aware when params are invalid
+    /**
+    * @dev helper func to get encoded reward and rebate
+    * @dev revert if validation failed
+    */
     function getDataFromRewardAndRebateWithValidation(uint rewardInBps, uint rebateInBps)
         public pure
         returns(uint data)
@@ -678,6 +739,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         return true;
     }
 
+    /**
+    * @dev encode formula params
+    * @dev 84 bits for each value
+    */
     function encodeFormulaParams(
         uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision
     ) public pure returns(uint data) {
@@ -690,7 +755,15 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         data |= (tInPrecision & (POWER_84.sub(1))).mul(POWER_84).mul(POWER_84);
     }
 
-    // Note: option is indexed from 1
+    function decodeFormulaParams(uint data) internal pure returns(FormulaData memory formulaData) {
+        formulaData.minPercentageInPrecision = data & (POWER_84.sub(1));
+        formulaData.cInPrecision = (data.div(POWER_84)) & (POWER_84.sub(1));
+        formulaData.tInPrecision = (data.div(POWER_84.mul(POWER_84))) & (POWER_84.sub(1));
+    }
+
+    /**
+    * @dev options are indexed from 1
+    */
     function validateVoteOption(uint campID, uint option) internal view returns(bool) {
         require(campExists[campID], "vote: camp not exist");
 
@@ -715,11 +788,5 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         if (hasConcluded) {
             data = data.add(POWER_128);
         }
-    }
-
-    function decodeFormulaParams(uint data) internal pure returns(FormulaData memory formulaData) {
-        formulaData.minPercentageInPrecision = data & (POWER_84.sub(1));
-        formulaData.cInPrecision = (data.div(POWER_84)) & (POWER_84.sub(1));
-        formulaData.tInPrecision = (data.div(POWER_84.mul(POWER_84))) & (POWER_84.sub(1));
     }
 }

@@ -8,7 +8,9 @@ import "../IKyberDAO.sol";
 import "./EpochUtils.sol";
 
 
-// This contract is using SafeMath for uint, which is inherited from EpochUtils
+/*
+* This contract is using SafeMath for uint, which is inherited from EpochUtils
+*/
 contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
     // amount KNC staked of an address for each epoch
@@ -54,6 +56,10 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
     event DAOContractSetterRemoved();
 
+    /**
+    * @dev update DAO address and set daoSetter to zero address, can only call once
+    * @param _daoAddress address of new DAO
+    */
     function updateDAOAddressAndRemoveSetter(address _daoAddress) public onlyDAOContractSetter {
         require(_daoAddress != address(0), "updateDAO: DAO address is missing");
 
@@ -71,6 +77,10 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
     event Delegated(address staker, address dAddr, uint epoch, bool isDelegated);
 
+    /**
+    * @dev calls to set delegation for msg.sender, will take effect from the next epoch
+    * @param dAddr address to delegate to
+    */
     function delegate(address dAddr) public returns(bool) {
         require(dAddr != address(0), "delegate: delegated address should not be 0x0");
         address staker = msg.sender;
@@ -118,6 +128,10 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
     event Deposited(uint curEpoch, address staker, uint amount);
 
+    /**
+    * @dev call to stake more KNC for msg.sender
+    * @param amount amount of KNC to stake
+    */
     function deposit(uint amount) public {
         require(amount > 0, "deposit: amount to deposit should be positive");
         // compute epoch number
@@ -145,6 +159,10 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
     event Withdraw(uint curEpoch, address staker, uint amount);
 
+    /**
+    * @dev call to withdraw KNC from staking, it could affect reward when calling DAO handleWithdrawal
+    * @param amount amount of KNC to withdraw
+    */
     function withdraw(uint amount) public nonReentrant {
         require(amount > 0, "withdraw: amount is 0");
 
@@ -197,9 +215,11 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         emit Withdraw(curEpoch, staker, amount);
     }
 
-    // init data if needed, then true staker's data for current epoch
-    // for safe, only allow calling this func from DAO address
-    // Note: should only call when staker voted
+    /**
+    * @dev init data if needed, then return staker's data for current epoch
+    * @dev for safe, only allow calling this func from DAO address
+    * @param staker - staker's address to init and get data for
+    */
     function initAndReturnStakerDataForCurrentEpoch(address staker)
         public
         returns(uint _stake, uint _delegatedStake, address _delegatedAddress)
@@ -214,8 +234,10 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         _delegatedAddress = delegatedAddress[curEpoch][staker];
     }
 
-    // in DAO contract, if user wants to claim reward for past epoch, we must know the staker's data for that epoch
-    // if the data has not been inited, it means user hasn't done any action -> no reward
+    /**
+    * @dev in DAO contract, if user wants to claim reward for past epoch, we must know the staker's data for that epoch
+    * @dev if the data has not been inited, it means user hasn't done any action -> no reward
+    */
     function getStakerDataForPastEpoch(address staker, uint epoch)
         public view
         returns(uint _stake, uint _delegatedStake, address _delegatedAddress)
@@ -225,7 +247,9 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         _delegatedAddress = delegatedAddress[epoch][staker];
     }
 
-    // allow to get data up to current epoch + 1
+    /**
+    * @dev allow to get data up to current epoch + 1
+    */
     function getStake(address staker, uint epoch) public view returns(uint) {
         uint curEpoch = getCurrentEpochNumber();
         if (epoch > curEpoch + 1) { return 0; }
@@ -238,7 +262,9 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         return 0;
     }
 
-    // allow to get data up to current epoch + 1
+    /**
+    * @dev allow to get data up to current epoch + 1
+    */
     function getDelegatedStake(address staker, uint epoch) public view returns(uint) {
         uint curEpoch = getCurrentEpochNumber();
         if (epoch > curEpoch + 1) { return 0; }
@@ -251,7 +277,9 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         return 0;
     }
 
-    // allow to get data up to current epoch + 1
+    /**
+    * @dev allow to get data up to current epoch + 1
+    */
     function getDelegatedAddress(address staker, uint epoch) public view returns(address) {
         uint curEpoch = getCurrentEpochNumber();
         if (epoch > curEpoch + 1) { return address(0); }
@@ -277,9 +305,12 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         return latestStake[staker];
     }
 
-    // init data if it has not been init
-    // staker: staker's address to init
-    // epoch: current epoch
+    /**
+    * @dev
+    * @dev init data if it has not been init
+    * @param staker staker's address to init
+    * @param epoch should be current epoch
+    */
     function initDataIfNeeded(address staker, uint epoch) internal {
         address ldAddress = latestDelegatedAddress[staker];
         if (ldAddress == address(0)) {
