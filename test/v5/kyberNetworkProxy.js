@@ -81,6 +81,7 @@ contract('KyberNetworkProxy', function(accounts) {
         //init tradeLogic
         tradeLogic = await TradeLogic.new(admin);
         await tradeLogic.setNetworkContract(network.address, {from: admin});
+        await tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
@@ -96,10 +97,6 @@ contract('KyberNetworkProxy', function(accounts) {
         //init feeHandler
         KNC = await TestToken.new("kyber network crystal", "KNC", 18);
         feeHandler = await FeeHandler.new(DAO.address, networkProxy.address, network.address, KNC.address, burnBlockInterval);
-
-        //init tradeLogic
-        tradeLogic = await TradeLogic.new(admin);
-        await tradeLogic.setNetworkContract(network.address, {from: admin});
 
         // init and setup reserves
         let result = await nwHelper.setupReserves(network, tokens, 0, 5, 0, 0, accounts, admin, operator);
@@ -128,6 +125,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[4])));
                 let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, 0, emptyHint)
                 let proxyRate = await networkProxy.getExpectedRate(tokenAdd, ethAddress, srcQty);
+                log("proxy rate: " + proxyRate + " network rate " + networkRate);
                 Helper.assertEqual(networkRate.rateAfterNetworkFees, proxyRate.expectedRate, 
                     "expected rate network not equal rate proxy");
             });
