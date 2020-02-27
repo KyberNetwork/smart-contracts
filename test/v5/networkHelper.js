@@ -473,31 +473,37 @@ function randomSelectReserves(tradeType, reserves, splits) {
 }
 
 module.exports.unpackRatesAndAmounts = unpackRatesAndAmounts;
-function unpackRatesAndAmounts(srcQty, srcDecimals, destDecimals, calcRatesAndAmountsOutput) {
-    t2eNumReserves = calcRatesAndAmountsOutput.results[0];
-    totalReserves = t2eNumReserves.add(calcRatesAndAmountsOutput.results[1]);
+function unpackRatesAndAmounts(info, srcDecimals, destDecimals, calcRatesAndAmountsOutput) {
+    let srcQty = info[0];
+    let networkFeeBps = info[1];
+    let platformFeeBps = info[2];
+
+    let t2eNumReserves = calcRatesAndAmountsOutput.results[0];
+    let tradeWei = calcRatesAndAmountsOutput.results[1];
+    let feePayingReservesBps = calcRatesAndAmountsOutput.results[3];
+
     result = {
-        'tradeWei': calcRatesAndAmountsOutput.results[2],
-        'networkFeeWei': calcRatesAndAmountsOutput.results[3],
-        'platformFeeWei': calcRatesAndAmountsOutput.results[4],
-        'numFeePayingReserves': calcRatesAndAmountsOutput.results[5],
-        'feePayingReservesBps': calcRatesAndAmountsOutput.results[6],
-        'destAmountNoFee': calcRatesAndAmountsOutput.results[7],
-        'destAmountWithNetworkFee': calcRatesAndAmountsOutput.results[8],
-        'actualDestAmount': calcRatesAndAmountsOutput.results[9],
-        'rateNoFees': calcRateFromQty(srcQty, calcRatesAndAmountsOutput.results[7], srcDecimals, destDecimals),
-        'rateAfterNetworkFees': calcRateFromQty(srcQty, calcRatesAndAmountsOutput.results[8], srcDecimals, destDecimals),
-        'rateAfterAllFees': calcRateFromQty(srcQty, calcRatesAndAmountsOutput.results[9], srcDecimals, destDecimals),
+        'tradeWei': tradeWei,
+        'numFeePayingReserves': calcRatesAndAmountsOutput.results[2],
+        'feePayingReservesBps': calcRatesAndAmountsOutput.results[3],
+        'destAmountNoFee': calcRatesAndAmountsOutput.results[4],
+        'destAmountWithNetworkFee': calcRatesAndAmountsOutput.results[5],
+        'actualDestAmount': calcRatesAndAmountsOutput.results[6],
+        'rateNoFees': calcRateFromQty(srcQty, calcRatesAndAmountsOutput.results[4], srcDecimals, destDecimals),
+        'rateAfterNetworkFees': calcRateFromQty(srcQty, calcRatesAndAmountsOutput.results[5], srcDecimals, destDecimals),
+        'rateAfterAllFees': calcRateFromQty(srcQty, calcRatesAndAmountsOutput.results[6], srcDecimals, destDecimals),
         't2eAddresses': calcRatesAndAmountsOutput.reserveAddresses.slice(0,t2eNumReserves),
         't2eRates': calcRatesAndAmountsOutput.rates.slice(0,t2eNumReserves),
         't2eSplits': calcRatesAndAmountsOutput.splitValuesBps.slice(0,t2eNumReserves),
         't2eIsFeePaying': calcRatesAndAmountsOutput.isFeePaying.slice(0,t2eNumReserves),
         't2eIds': calcRatesAndAmountsOutput.ids.slice(0,t2eNumReserves),
-        'e2tAddresses': calcRatesAndAmountsOutput.reserveAddresses.slice(t2eNumReserves, totalReserves),
-        'e2tRates': calcRatesAndAmountsOutput.rates.slice(t2eNumReserves, totalReserves),
-        'e2tSplits': calcRatesAndAmountsOutput.splitValuesBps.slice(t2eNumReserves, totalReserves),
-        'e2tIsFeePaying': calcRatesAndAmountsOutput.isFeePaying.slice(t2eNumReserves, totalReserves),
-        'e2tIds': calcRatesAndAmountsOutput.ids.slice(t2eNumReserves, totalReserves)
+        'e2tAddresses': calcRatesAndAmountsOutput.reserveAddresses.slice(t2eNumReserves),
+        'e2tRates': calcRatesAndAmountsOutput.rates.slice(t2eNumReserves),
+        'e2tSplits': calcRatesAndAmountsOutput.splitValuesBps.slice(t2eNumReserves),
+        'e2tIsFeePaying': calcRatesAndAmountsOutput.isFeePaying.slice(t2eNumReserves),
+        'e2tIds': calcRatesAndAmountsOutput.ids.slice(t2eNumReserves),
+        'networkFeeWei': tradeWei.mul(networkFeeBps).mul(feePayingReservesBps).div(BPS).div(BPS),
+        'platformFeeWei': tradeWei.mul(platformFeeBps).div(BPS)
     }
     return result;
 }

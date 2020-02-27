@@ -1232,7 +1232,6 @@ function getTradeResult(
 ) {
     let result = {
         t2eNumReserves: (t2eSplits.length > 0) ? t2eReserves.length : new BN(1),
-        e2tNumReserves: (e2tSplits.length > 0) ? e2tReserves.length : new BN(1),
         tradeWei: zeroBN,
         networkFeeWei: zeroBN,
         platformFeeWei: zeroBN,
@@ -1384,15 +1383,12 @@ function getExpectedOutput(sellReserves, sellSplits, buyReserves, buySplits) {
 function compareResults(expectedTradeResult, expectedOutput, actualResult) {
     //compare expectedTradeResult
     Helper.assertEqual(expectedTradeResult.t2eNumReserves, actualResult.results[0], "t2eNumReserves not equal");
-    Helper.assertEqual(expectedTradeResult.e2tNumReserves, actualResult.results[1], "e2tNumReserves not equal");
-    Helper.assertEqual(expectedTradeResult.tradeWei, actualResult.results[2], "tradeWei not equal");
-    Helper.assertEqual(expectedTradeResult.networkFeeWei, actualResult.results[3], "networkFeeWei not equal");
-    Helper.assertEqual(expectedTradeResult.platformFeeWei, actualResult.results[4], "platformFeeWei not equal");
-    Helper.assertEqual(expectedTradeResult.numFeePayingReserves, actualResult.results[5], "numFeePayingReserves not equal");
-    Helper.assertEqual(expectedTradeResult.feePayingReservesBps, actualResult.results[6], "feePayingReservesBps not equal");
-    Helper.assertEqual(expectedTradeResult.destAmountNoFee, actualResult.results[7], "destAmountNoFee not equal");
-    Helper.assertEqual(expectedTradeResult.destAmountWithNetworkFee, actualResult.results[8], "actualDestAmount not equal");
-    Helper.assertEqual(expectedTradeResult.actualDestAmount, actualResult.results[9], "destAmountWithNetworkFee not equal");
+    Helper.assertEqual(expectedTradeResult.tradeWei, actualResult.results[1], "tradeWei not equal");
+    Helper.assertEqual(expectedTradeResult.numFeePayingReserves, actualResult.results[2], "numFeePayingReserves not equal");
+    Helper.assertEqual(expectedTradeResult.feePayingReservesBps, actualResult.results[3], "feePayingReservesBps not equal");
+    Helper.assertEqual(expectedTradeResult.destAmountNoFee, actualResult.results[4], "destAmountNoFee not equal");
+    Helper.assertEqual(expectedTradeResult.destAmountWithNetworkFee, actualResult.results[5], "actualDestAmount not equal");
+    Helper.assertEqual(expectedTradeResult.actualDestAmount, actualResult.results[6], "destAmountWithNetworkFee not equal");
 
     let expected;
     let actual;
@@ -1435,13 +1431,10 @@ function compareResults(expectedTradeResult, expectedOutput, actualResult) {
 
 function printCalcRatesAmtsResult(tradeResult) {
     console.log(`t2eNumReserves: ${tradeResult[0].toString()}`);
-    console.log(`e2tNumReserves: ${tradeResult[1].toString()}`);
-    console.log(`tradeWei: ${tradeResult[2].toString()} (${tradeResult[2].div(precisionUnits)} ETH)`);
-    console.log(`networkFeeWei: ${tradeResult[3].toString()} (${tradeResult[3].div(precisionUnits)} ETH)`);
-    console.log(`platformFeeWei: ${tradeResult[4].toString()} (${tradeResult[4].div(precisionUnits)} ETH)`);
-    console.log(`numFeePayingReserves: ${tradeResult[5].toString()}`);
-    console.log(`feePayingReservesBps: ${tradeResult[6].toString()}`);
-    console.log(`destAmountNoFee: ${tradeResult[7].toString()} (${tradeResult[7].div(precisionUnits)} ETH)`);
-    console.log(`actualDestAmount: ${tradeResult[8].toString()} (${tradeResult[8].div(precisionUnits)} ETH)`);
-    console.log(`destAmountWithNetworkFee: ${tradeResult[9].toString()} (${tradeResult[9].div(precisionUnits)} ETH)`);
+    console.log(`tradeWei: ${tradeResult[1].toString()} (${tradeResult[1].div(precisionUnits)} ETH)`);
+    console.log(`numFeePayingReserves: ${tradeResult[2].toString()}`);
+    console.log(`feePayingReservesBps: ${tradeResult[3].toString()}`);
+    console.log(`destAmountNoFee: ${tradeResult[4].toString()} (${tradeResult[4].div(precisionUnits)} ETH)`);
+    console.log(`actualDestAmount: ${tradeResult[5].toString()} (${tradeResult[5].div(precisionUnits)} ETH)`);
+    console.log(`destAmountWithNetworkFee: ${tradeResult[6].toString()} (${tradeResult[6].div(precisionUnits)} ETH)`);
 }
