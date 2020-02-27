@@ -229,9 +229,9 @@ contract('KyberFeeHandler', function(accounts) {
             let claim = precisionUnits.div(new BN(3));
             await mockDAO.claimStakerReward(user, claim, currentEpoch);
             
-            let payedReward = rewardAmount.mul(claim).div(precisionUnits);
+            let paidReward = rewardAmount.mul(claim).div(precisionUnits);
     
-            let expectedTotalPayoutAfter = totalPayOutBalanceBefore.sub(payedReward);
+            let expectedTotalPayoutAfter = totalPayOutBalanceBefore.sub(paidReward);
             const totalPayOutBalance = await feeHandler.totalPayoutBalance();
             Helper.assertEqual(expectedTotalPayoutAfter, totalPayOutBalance);
         });
@@ -292,7 +292,7 @@ contract('KyberFeeHandler', function(accounts) {
             Helper.assertEqual(expectedRewardPerEpoch, rewardPerEpoch);
         })
 
-        it("claim reward and see payed so far updated.", async() => {
+        it("claim reward and see paid so far updated.", async() => {
             let sendVal = oneEth;
             
             sendVal = oneEth;
@@ -307,12 +307,12 @@ contract('KyberFeeHandler', function(accounts) {
             let claim = precisionUnits.div(new BN(3));
             await mockDAO.claimStakerReward(user, claim, currentEpoch); // full reward
 
-            let payedSoFar = await feeHandler.rewardsPayedPerEpoch(currentEpoch);
+            let paidSoFar = await feeHandler.rewardsPaidPerEpoch(currentEpoch);
             let userBalAfter = await Helper.getBalancePromise(user);
             
-            let expectedPayed = rewardBefore.mul(claim).div(precisionUnits);
-            Helper.assertEqual(payedSoFar, expectedPayed);
-            Helper.assertEqual(userBalAfter, userBal.add(expectedPayed));
+            let expectedPaid = rewardBefore.mul(claim).div(precisionUnits);
+            Helper.assertEqual(paidSoFar, expectedPaid);
+            Helper.assertEqual(userBalAfter, userBal.add(expectedPaid));
         })
 
         it("send platform fee (no rebates), see values updated", async() => {
@@ -439,7 +439,7 @@ contract('KyberFeeHandler', function(accounts) {
 
             await expectRevert(
                 mockDAO.claimStakerReward(user, claim, currentEpoch), // full reward
-                "payed per epoch high"
+                "paid per epoch high"
             );
         });
 
@@ -470,7 +470,7 @@ contract('KyberFeeHandler', function(accounts) {
 
             await expectRevert(
                 mockDAO.claimStakerReward(user, claim, currentEpoch), // full reward
-                "payed per epoch high"
+                "paid per epoch high"
             );
         });
 

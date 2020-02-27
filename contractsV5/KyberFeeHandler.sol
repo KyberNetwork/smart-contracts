@@ -28,7 +28,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils {
     mapping(address => uint) public feePerPlatformWallet;
     mapping(address => uint) public rebatePerWallet;
     mapping(uint => uint) public rewardsPerEpoch;
-    mapping(uint => uint) public rewardsPayedPerEpoch;
+    mapping(uint => uint) public rewardsPaidPerEpoch;
     uint public totalPayoutBalance; // total balance in the contract that is for rebate, reward, platform fee
 
     constructor(
@@ -99,7 +99,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils {
         uint feeBRR = msg.value - platformFeeWei;
 
         if (feeBRR == 0) {
-            // only platform fee payed
+            // only platform fee paid
             totalPayoutBalance += platformFeeWei;
             emit FeeDistributed(platformWallet, platformFeeWei, 0, 0, rebateWallets, rebateBpsPerWallet, 0);
             return true;
@@ -124,7 +124,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils {
         return true;
     }
 
-    event RewardPayed(address staker, uint amountWei);
+    event RewardPaid(address staker, uint amountWei);
 
     function claimStakerReward(address staker, uint percentageInPrecision, uint epoch) 
         external onlyDAO returns(bool) 
@@ -134,20 +134,20 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils {
         uint amount = rewardsPerEpoch[epoch] * percentageInPrecision / PRECISION;
 
         require(totalPayoutBalance >= amount, "Amount underflow");
-        require(rewardsPayedPerEpoch[epoch] + amount <= rewardsPerEpoch[epoch], "payed per epoch high");
-        rewardsPayedPerEpoch[epoch] += amount;
+        require(rewardsPaidPerEpoch[epoch] + amount <= rewardsPerEpoch[epoch], "paid per epoch high");
+        rewardsPaidPerEpoch[epoch] += amount;
         totalPayoutBalance -= amount;
 
         // send reward to staker
         (bool success, ) = staker.call.value(amount)("");
         require(success, "Transfer staker rewards failed.");
 
-        emit RewardPayed(staker, amount);
+        emit RewardPaid(staker, amount);
 
         return true;
     }
 
-    event RebatePayed(address rebateWallet, uint amountWei);
+    event RebatePaid(address rebateWallet, uint amountWei);
 
     // Using rebateWallet instead of reserve so I don't have to store KyberNetwork variable.
     function claimReserveRebate(address rebateWallet) external returns (uint){
@@ -164,12 +164,12 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils {
         (bool success, ) = rebateWallet.call.value(amount)("");
         require(success, "Transfer rebates failed.");
 
-        emit RebatePayed(rebateWallet, amount);
+        emit RebatePaid(rebateWallet, amount);
 
         return amount;
     }
 
-    event PlatformFeePayed(address platformWallet, uint amountWei);
+    event PlatformFeePaid(address platformWallet, uint amountWei);
 
     function claimPlatformFee(address platformWallet) external returns(uint feeWei) {
         require(feePerPlatformWallet[platformWallet] > 1, "no fee to claim");
@@ -184,7 +184,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils {
         (bool success, ) = platformWallet.call.value(amount)("");
         require(success, "Transfer fee failed.");
 
-        emit PlatformFeePayed(platformWallet, amount);
+        emit PlatformFeePaid(platformWallet, amount);
         return amount;
     }
 
