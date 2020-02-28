@@ -293,17 +293,17 @@ contract('KyberNetwork', function(accounts) {
     
                 actualResult = await network.getExpectedRateWithHintAndFee(unlistedSrcToken.address, ethAddress, ethSrcQty, platformFeeBps, emptyHint);
                 Helper.assertEqual(actualResult.rateNoFees, zeroBN, "expected rate not 0");
-                Helper.assertEqual(actualResult.rateAfterNetworkFees, zeroBN, "rate with network fee not 0");
+                Helper.assertEqual(actualResult.rateAfterNetworkFee, zeroBN, "rate with network fee not 0");
                 Helper.assertEqual(actualResult.rateAfterAllFees, zeroBN, "rate with all fees not 0");
     
                 actualResult = await network.getExpectedRateWithHintAndFee(ethAddress, unlistedDestToken.address, ethSrcQty, platformFeeBps, emptyHint);
                 Helper.assertEqual(actualResult.rateNoFees, zeroBN, "expected rate not 0");
-                Helper.assertEqual(actualResult.rateAfterNetworkFees, zeroBN, "rate with network fee not 0");
+                Helper.assertEqual(actualResult.rateAfterNetworkFee, zeroBN, "rate with network fee not 0");
                 Helper.assertEqual(actualResult.rateAfterAllFees, zeroBN, "rate with all fees not 0");
     
                 actualResult = await network.getExpectedRateWithHintAndFee(unlistedSrcToken.address, unlistedDestToken.address, ethSrcQty, platformFeeBps, emptyHint);
                 Helper.assertEqual(actualResult.rateNoFees, zeroBN, "expected rate not 0");
-                Helper.assertEqual(actualResult.rateAfterNetworkFees, zeroBN, "rate with network fee not 0");
+                Helper.assertEqual(actualResult.rateAfterNetworkFee, zeroBN, "rate with network fee not 0");
                 Helper.assertEqual(actualResult.rateAfterAllFees, zeroBN, "rate with all fees not 0");
             });
 
@@ -312,19 +312,19 @@ contract('KyberNetwork', function(accounts) {
                     hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, ethAddress, srcQty, platformFeeBps, hint);
                     Helper.assertEqual(actualResult.rateNoFees, zeroBN, "expected rate not 0");
-                    Helper.assertEqual(actualResult.rateAfterNetworkFees, zeroBN, "rate with network fee not 0");
+                    Helper.assertEqual(actualResult.rateAfterNetworkFee, zeroBN, "rate with network fee not 0");
                     Helper.assertEqual(actualResult.rateAfterAllFees, zeroBN, "rate with all fees not 0");
 
                     hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(ethAddress, destToken.address, ethSrcQty, platformFeeBps, emptyHint);
                     Helper.assertEqual(actualResult.rateNoFees, zeroBN, "expected rate not 0");
-                    Helper.assertEqual(actualResult.rateAfterNetworkFees, zeroBN, "rate with network fee not 0");
+                    Helper.assertEqual(actualResult.rateAfterNetworkFee, zeroBN, "rate with network fee not 0");
                     Helper.assertEqual(actualResult.rateAfterAllFees, zeroBN, "rate with all fees not 0");
 
                     hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, MASK_IN_HINTTYPE, undefined, srcToken.address, destToken.address, srcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, destToken.address, srcQty, platformFeeBps, emptyHint);
                     Helper.assertEqual(actualResult.rateNoFees, zeroBN, "expected rate not 0");
-                    Helper.assertEqual(actualResult.rateAfterNetworkFees, zeroBN, "rate with network fee not 0");
+                    Helper.assertEqual(actualResult.rateAfterNetworkFee, zeroBN, "rate with network fee not 0");
                     Helper.assertEqual(actualResult.rateAfterAllFees, zeroBN, "rate with all fees not 0");
                 }
             });
@@ -356,19 +356,19 @@ contract('KyberNetwork', function(accounts) {
                     expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint);
                     expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, ethDecimals, expectedResult);
                     actualResult = await network.getExpectedRate(srcToken.address, ethAddress, srcQty);
-                    Helper.assertEqual(expectedResult.rateAfterNetworkFees, actualResult.expectedRate, "expected rate with network fee != actual rate for T2E");
+                    Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2E");
             
                     info = [ethSrcQty, networkFeeBps, platformFee];
                     expectedResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, emptyHint);
                     expectedResult = await nwHelper.unpackRatesAndAmounts(info, ethDecimals, destDecimals, expectedResult);
                     actualResult = await network.getExpectedRate(ethAddress, destToken.address, ethSrcQty);
-                    Helper.assertEqual(expectedResult.rateAfterNetworkFees, actualResult.expectedRate, "expected rate with network fee != actual rate for E2T");
+                    Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for E2T");
             
                     info = [srcQty, networkFeeBps, platformFee];
                     expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, emptyHint);
                     expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
                     actualResult = await network.getExpectedRate(srcToken.address, destToken.address, srcQty);
-                    Helper.assertEqual(expectedResult.rateAfterNetworkFees, actualResult.expectedRate, "expected rate with network fee != actual rate for T2T");
+                    Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2T");
                 }
             });
     

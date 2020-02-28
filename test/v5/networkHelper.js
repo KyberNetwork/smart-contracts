@@ -492,7 +492,7 @@ function unpackRatesAndAmounts(info, srcDecimals, destDecimals, calcRatesAndAmou
         'destAmountWithNetworkFee': calcRatesAndAmountsOutput.results[5],
         'actualDestAmount': calcRatesAndAmountsOutput.results[6],
         'rateNoFees': calcRateFromQty(srcQty, calcRatesAndAmountsOutput.results[4], srcDecimals, destDecimals),
-        'rateAfterNetworkFees': calcRateFromQty(srcQty, calcRatesAndAmountsOutput.results[5], srcDecimals, destDecimals),
+        'rateAfterNetworkFee': calcRateFromQty(srcQty, calcRatesAndAmountsOutput.results[5], srcDecimals, destDecimals),
         'rateAfterAllFees': calcRateFromQty(srcQty, calcRatesAndAmountsOutput.results[6], srcDecimals, destDecimals),
         't2eAddresses': calcRatesAndAmountsOutput.reserveAddresses.slice(0,t2eNumReserves),
         't2eRates': calcRatesAndAmountsOutput.rates.slice(0,t2eNumReserves),
@@ -504,7 +504,7 @@ function unpackRatesAndAmounts(info, srcDecimals, destDecimals, calcRatesAndAmou
         'e2tSplits': calcRatesAndAmountsOutput.splitValuesBps.slice(t2eNumReserves),
         'e2tIsFeePaying': calcRatesAndAmountsOutput.isFeePaying.slice(t2eNumReserves),
         'e2tIds': calcRatesAndAmountsOutput.ids.slice(t2eNumReserves),
-        'networkFeeWei': tradeWei.mul(networkFeeBps).mul(feePayingReservesBps).div(BPS).div(BPS),
+        'networkFeeWei': tradeWei.mul(networkFeeBps).div(BPS).mul(feePayingReservesBps).div(BPS),
         'platformFeeWei': tradeWei.mul(platformFeeBps).div(BPS)
     }
     return result;
@@ -513,7 +513,7 @@ function unpackRatesAndAmounts(info, srcDecimals, destDecimals, calcRatesAndAmou
 module.exports.assertRatesEqual = assertRatesEqual;
 function assertRatesEqual(expectedRates, actualRates) {
     assertEqual(expectedRates.rateNoFees, actualRates.rateNoFees, "rate no fees not equal");
-    assertEqual(expectedRates.rateAfterNetworkFees, actualRates.rateAfterNetworkFees, "rate after network fees not equal");
+    assertEqual(expectedRates.rateAfterNetworkFee, actualRates.rateAfterNetworkFee, "rate after network fees not equal");
     assertEqual(expectedRates.rateAfterAllFees, actualRates.rateAfterAllFees, "rate after all fees not equal");
 }
 
