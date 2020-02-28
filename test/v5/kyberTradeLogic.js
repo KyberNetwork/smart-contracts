@@ -506,9 +506,9 @@ contract('KyberTradeLogic', function(accounts) {
                 
             });
 
-            it("T2E, no hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+            for (networkFeeBps of networkFeeArray) {
+                for (platformFeeBps of platformFeeArray) {
+                    it("T2E, no hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, srcToken.address, srcQty, 0, true);
@@ -525,13 +525,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }
-                }
-            });
+                    });
 
-            it("E2T, no hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("E2T, no hint", async() => {
                         info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, destToken.address, ethSrcQty, 0, false);
@@ -548,13 +544,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, emptyHint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });   
 
-            it("T2T, no hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, no hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, srcToken.address, srcQty, 0, true);
@@ -575,14 +567,10 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, emptyHint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2E, mask in hint", async() => {
-                numMaskedReserves = 2;
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2E, mask in hint", async() => {
+                        numMaskedReserves = 2;
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -591,7 +579,7 @@ contract('KyberTradeLogic', function(accounts) {
                             undefined, 0, undefined, 0,
                             srcToken.address, ethAddress
                             );
-
+        
                         bestReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestReserve], [bestReserve.rateNoFee], [],
@@ -605,14 +593,10 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("E2T, mask in hint", async() => {
-                numMaskedReserves = 2;
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("E2T, mask in hint", async() => {
+                        numMaskedReserves = 2;
                         info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -635,14 +619,10 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2T, mask in hint (both ways)", async() => {
-                numMaskedReserves = 2;
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, mask in hint (both ways)", async() => {
+                        numMaskedReserves = 2;
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -666,14 +646,10 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2E, mask out hint", async() => {
-                numMaskedReserves = 2;
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2E, mask out hint", async() => {
+                        numMaskedReserves = 2;
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -696,14 +672,10 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("E2T, mask out hint", async() => {
-                numMaskedReserves = 2;
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("E2T, mask out hint", async() => {
+                        numMaskedReserves = 2;
                         info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -726,14 +698,10 @@ contract('KyberTradeLogic', function(accounts) {
 
                         actualResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2T, mask out hint", async() => {
-                numMaskedReserves = 2;
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, mask out hint", async() => {
+                        numMaskedReserves = 2;
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -757,13 +725,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2E, split hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2E, split hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -786,13 +750,9 @@ contract('KyberTradeLogic', function(accounts) {
 
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("E2T, split hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("E2T, split hint", async() => {
                         info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -815,13 +775,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2T, split hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, split hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -846,13 +802,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2T, no hint | mask in hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, no hint | mask in hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -876,13 +828,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2T, no hint | mask out hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, no hint | mask out hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -906,13 +854,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2T, no hint | split hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, no hint | split hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -937,13 +881,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2T, mask in hint | no hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, mask in hint | no hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -967,13 +907,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2T, mask in hint | mask out hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, mask in hint | mask out hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -997,13 +933,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2T, mask in hint | split hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, mask in hint | split hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -1028,13 +960,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2T, mask out hint | no hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, mask out hint | no hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -1058,13 +986,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2T, mask out hint | mask in hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, mask out hint | mask in hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -1088,13 +1012,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2T, mask out hint | split hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, mask out hint | split hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -1119,13 +1039,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2T, split hint | no hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, split hint | no hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -1149,13 +1065,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2T, split hint | mask in hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, split hint | mask in hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -1179,13 +1091,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
-                }
-            });
+                    });
 
-            it("T2T, split hint | mask out hint", async() => {
-                for (networkFeeBps of networkFeeArray) {
-                    for (platformFeeBps of platformFeeArray) {
+                    it("T2T, split hint | mask out hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -1209,9 +1117,9 @@ contract('KyberTradeLogic', function(accounts) {
                         
                         actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
-                    }   
+                    });
                 }
-            });
+            };
         })
     });
 
@@ -1304,8 +1212,6 @@ function getTradeResult(
     let result = {
         t2eNumReserves: (t2eSplits.length > 0) ? t2eReserves.length : new BN(1),
         tradeWei: zeroBN,
-        networkFeeWei: zeroBN,
-        platformFeeWei: zeroBN,
         numFeePayingReserves: zeroBN,
         feePayingReservesBps: zeroBN,
         destAmountNoFee: zeroBN,
@@ -1360,10 +1266,9 @@ function getTradeResult(
     }
 
     //calculate fees
-    result.networkFeeWei = result.tradeWei.mul(networkFeeBps).div(BPS);
-    result.networkFeeWei = result.networkFeeWei.mul(result.feePayingReservesBps).div(BPS);
-    result.platformFeeWei = result.tradeWei.mul(platformFeeBps).div(BPS);
-    actualTradeWei = result.tradeWei.sub(result.networkFeeWei).sub(result.platformFeeWei);
+    let networkFeeWei = result.tradeWei.mul(networkFeeBps).div(BPS).mul(result.feePayingReservesBps).div(BPS);
+    let platformFeeWei = result.tradeWei.mul(platformFeeBps).div(BPS);
+    actualTradeWei = result.tradeWei.sub(networkFeeWei).sub(platformFeeWei);
 
     //calculate dest amounts
     amountSoFar = zeroBN;
@@ -1391,7 +1296,7 @@ function getTradeResult(
 
     //calculate dest amount with fees
     result.destAmountNoFee = Helper.calcDstQty(result.tradeWei, ethDecimals, destDecimals, rate);
-    result.destAmountWithNetworkFee = Helper.calcDstQty(result.tradeWei.sub(result.networkFeeWei), ethDecimals, destDecimals, rate);
+    result.destAmountWithNetworkFee = Helper.calcDstQty(result.tradeWei.sub(networkFeeWei), ethDecimals, destDecimals, rate);
     return result;
 }
 
