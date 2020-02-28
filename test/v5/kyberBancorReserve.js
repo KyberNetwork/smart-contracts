@@ -19,7 +19,7 @@ const bntToEthRate = new BN(10).pow(new BN(18)).div(new BN(500));
 
 const zeroAddress = '0x0000000000000000000000000000000000000000';
 
-const tokenDecimal = 18;
+const tokenDecimal = new BN(18);
 
 let admin;
 let alerter;

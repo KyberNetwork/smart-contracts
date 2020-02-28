@@ -225,50 +225,31 @@ contract('KyberTradeLogic', function(accounts) {
         });
 
         it("get reserve details while modifying fee paying per type. see as expected", async() => {
-            let pay = [true, true, false, false];
-            await tradeLogic.setFeePayingPerReserveType(pay[0], pay[1], pay[2], pay[3], {from: admin});
-
-            let index = 0;
-
-            for (reserve of Object.values(reserveInstances)) {
-                let details = await tradeLogic.getReserveDetails(reserve.address);
-                Helper.assertEqual(reserve.reserveId, details.reserveId)
-                Helper.assertEqual(index + 1, details.resType)
-                Helper.assertEqual(pay[index], details.isFeePaying);
-                ++index;
-            }
-
-            pay = [false, false, true, true];
-            await tradeLogic.setFeePayingPerReserveType(pay[0], pay[1], pay[2], pay[3], {from: admin});
-
-            index = 0;
-
-            for (reserve of Object.values(reserveInstances)) {
-                let details = await tradeLogic.getReserveDetails(reserve.address);
-                Helper.assertEqual(pay[index], details.isFeePaying);
-                ++index;
-            }
-
-            pay = [true, false, true, false];
-            await tradeLogic.setFeePayingPerReserveType(pay[0], pay[1], pay[2], pay[3], {from: admin});
-
-            index = 0;
-
-            for (reserve of Object.values(reserveInstances)) {
-                let details = await tradeLogic.getReserveDetails(reserve.address);
-                Helper.assertEqual(pay[index], details.isFeePaying);
-                ++index;
-            }
-
-            pay = [false, true, false, true];
-            await tradeLogic.setFeePayingPerReserveType(pay[0], pay[1], pay[2], pay[3], {from: admin});
-
-            index = 0;
-
-            for (reserve of Object.values(reserveInstances)) {
-                let details = await tradeLogic.getReserveDetails(reserve.address);
-                Helper.assertEqual(pay[index], details.isFeePaying);
-                ++index;
+            let pay = [];
+            let totalReserveTypes = 4;
+            let numCombinations = totalReserveTypes ** 2;
+            //generate different pay combinations
+            for (let i = 0; i < numCombinations; i++) {
+                pay = [];
+                let j = i;
+                for (let n = 1; j > 0; j = j >> 1, n = n * 2) {
+                    pay.push(j % 2 == 1);
+                }
+                let originalResLength = result.length;
+                //append the rest of pay array with false values
+                for (let k = 0; k < totalReserveTypes - originalResLength; k++) {
+                    pay = pay.concat([false]);
+                }
+                
+                await tradeLogic.setFeePayingPerReserveType(pay[0], pay[1], pay[2], pay[3], {from: admin});
+                let index = 0;
+                for (reserve of Object.values(reserveInstances)) {
+                    let details = await tradeLogic.getReserveDetails(reserve.address);
+                    Helper.assertEqual(reserve.reserveId, details.reserveId)
+                    Helper.assertEqual(index + 1, details.resType)
+                    Helper.assertEqual(pay[index], details.isFeePaying);
+                    ++index;
+                }
             }
         });
     });
@@ -293,7 +274,7 @@ contract('KyberTradeLogic', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
-                tradeLogic.setFeePayingPerReserveType(true, true, true, true, {from: admin});
+                await tradeLogic.setFeePayingPerReserveType(true, true, true, true, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
@@ -496,7 +477,7 @@ contract('KyberTradeLogic', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
-                tradeLogic.setFeePayingPerReserveType(true, true, true, true, {from: admin});
+                await tradeLogic.setFeePayingPerReserveType(true, true, true, true, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
@@ -535,7 +516,7 @@ contract('KyberTradeLogic', function(accounts) {
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestReserve], [bestReserve.rateNoFee], [],
                             ethDecimals, [], [], [],
-                            srcQty, networkFeeBps, platformFeeBps, true);
+                            srcQty, networkFeeBps, platformFeeBps);
                         
                         expectedOutput = getExpectedOutput(
                             [bestReserve], [BPS],
@@ -1266,6 +1247,7 @@ async function fetchReservesRatesFromTradeLogic(tradeLogicInstance, reserveInsta
         reserveAddress = reserves[i];
         reserve = Object.assign({}, reserveInstances[reserveAddress]);
         reserve.rate = rates[i];
+        reserve.isFeePaying = (await tradeLogicInstance.getReserveDetails(reserveAddress)).isFeePaying;
         reservesArray.push(reserve);
     }
     return reservesArray;
@@ -1317,7 +1299,7 @@ async function getHintedReserves(
 function getTradeResult(
     srcDecimals, t2eReserves, t2eRates, t2eSplits,
     destDecimals, e2tReserves, e2tRates, e2tSplits,
-    srcQty, networkFeeBps, platformFeeBps, isFeePaying
+    srcQty, networkFeeBps, platformFeeBps
 ) {
     let result = {
         t2eNumReserves: (t2eSplits.length > 0) ? t2eReserves.length : new BN(1),
@@ -1351,7 +1333,7 @@ function getTradeResult(
             destAmt = Helper.calcDstQty(splitAmount, srcDecimals, ethDecimals, t2eRates[i]);
             result.tradeWei = result.tradeWei.add(destAmt);
             amountSoFar = amountSoFar.add(splitAmount);
-            if (isFeePaying) {
+            if (reserve.isFeePaying) {
                 result.feePayingReservesBps = result.feePayingReservesBps.add(t2eSplits[i]);
                 result.numFeePayingReserves = result.numFeePayingReserves.add(new BN(1));
             }
@@ -1359,7 +1341,7 @@ function getTradeResult(
     } else if (t2eReserves.length > 0) {
         reserve = t2eReserves[0];
         result.tradeWei = Helper.calcDstQty(srcQty, srcDecimals, ethDecimals, t2eRates[0]);
-        if (reserve.onChainType) {
+        if (reserve.isFeePaying) {
             result.feePayingReservesBps = result.feePayingReservesBps.add(BPS);
             result.numFeePayingReserves = result.numFeePayingReserves.add(new BN(1));
         }
@@ -1370,7 +1352,7 @@ function getTradeResult(
     //add e2t reserve splits (doesn't matter if split or not, cos we already know best reserve)
     for (let i=0; i<e2tReserves.length; i++) {
         reserve = e2tReserves[i];
-        if (isFeePaying) {
+        if (reserve.isFeePaying) {
             feePayingBps = (e2tSplits[i] == undefined) ? BPS : e2tSplits[i];
             result.feePayingReservesBps = result.feePayingReservesBps.add(feePayingBps);
             result.numFeePayingReserves = result.numFeePayingReserves.add(new BN(1));
@@ -1433,7 +1415,7 @@ function getExpectedOutput(sellReserves, sellSplits, buyReserves, buySplits) {
             result.rates.concat(sellReserves.map(reserve => reserve.rateNoFee));
         result.rates = result.rates.concat(precisionUnits);
         result.splitValuesBps = sellSplits.concat(BPS);
-        result.isFeePaying = sellReserves.map(reserve => reserve.onChainType);
+        result.isFeePaying = sellReserves.map(reserve => reserve.isFeePaying);
         result.isFeePaying = result.isFeePaying.concat(false);
     //ethToToken
     } else if (sellReserves.length == 0) {
@@ -1448,7 +1430,7 @@ function getExpectedOutput(sellReserves, sellSplits, buyReserves, buySplits) {
         result.splitValuesBps = [BPS];
         result.splitValuesBps = result.splitValuesBps.concat(buySplits);
         result.isFeePaying = [false];
-        result.isFeePaying = result.isFeePaying.concat(buyReserves.map(reserve => reserve.onChainType));
+        result.isFeePaying = result.isFeePaying.concat(buyReserves.map(reserve => reserve.isFeePaying));
     //tokenToToken
     } else {
         result.addresses = sellReserves.map(reserve => reserve.address);
@@ -1463,8 +1445,8 @@ function getExpectedOutput(sellReserves, sellSplits, buyReserves, buySplits) {
             result.rates.concat(buyReserves.map(reserve => reserve.rateNoFee));
         result.splitValuesBps = sellSplits;
         result.splitValuesBps = result.splitValuesBps.concat(buySplits);
-        result.isFeePaying = sellReserves.map(reserve => reserve.onChainType);
-        result.isFeePaying = result.isFeePaying.concat(buyReserves.map(reserve => reserve.onChainType));
+        result.isFeePaying = sellReserves.map(reserve => reserve.isFeePaying);
+        result.isFeePaying = result.isFeePaying.concat(buyReserves.map(reserve => reserve.isFeePaying));
     }
     return result;
 }
@@ -1507,14 +1489,14 @@ function compareResults(expectedTradeResult, expectedOutput, actualResult) {
     for (let i=0; i<actualResult.splitValuesBps.length; i++) {
         expected = expectedOutput.splitValuesBps[i];
         actual = actualResult.splitValuesBps[i];
-        Helper.assertEqual(expected, actual, "reserve rate not the same");
+        Helper.assertEqual(expected, actual, "reserve splitValuesBps not the same");
     }
 
     //compare expectedFeePaying
     for (let i=0; i<actualResult.isFeePaying.length; i++) {
         expected = expectedOutput.isFeePaying[i];
         actual = actualResult.isFeePaying[i];
-        Helper.assertEqual(expected, actual, "reserve rate not the same");
+        Helper.assertEqual(expected, actual, "reserve fee paying not the same");
     }
 }
 
