@@ -513,7 +513,7 @@ function unpackRatesAndAmounts(info, srcDecimals, destDecimals, calcRatesAndAmou
 module.exports.assertRatesEqual = assertRatesEqual;
 function assertRatesEqual(expectedRates, actualRates) {
     assertEqual(expectedRates.rateNoFees, actualRates.rateNoFees, "rate no fees not equal");
-    assertEqual(expectedRates.rateAfterNetworkFees, actualRates.rateAfterNetworkFees, "rate after network fees not equal");
+    assertEqual(expectedRates.rateAfterNetworkFees, actualRates.rateAfterNetworkFee, "rate after network fees not equal");
     assertEqual(expectedRates.rateAfterAllFees, actualRates.rateAfterAllFees, "rate after all fees not equal");
 }
 

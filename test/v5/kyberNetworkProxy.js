@@ -125,8 +125,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[4])));
                 let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, 0, emptyHint)
                 let proxyRate = await networkProxy.getExpectedRate(tokenAdd, ethAddress, srcQty);
-                log("proxy rate: " + proxyRate + " network rate " + networkRate);
-                Helper.assertEqual(networkRate.rateAfterNetworkFees, proxyRate.expectedRate, 
+                Helper.assertEqual(networkRate.rateAfterNetworkFee, proxyRate.expectedRate, 
                     "expected rate network not equal rate proxy");
             });
             
@@ -135,7 +134,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 let srcQty = (new BN(2)).mul((new BN(10)).pow(new BN(tokenDecimals[ethDecimals])));
                 let networkRate = await network.getExpectedRateWithHintAndFee(ethAddress, tokenAdd, srcQty, 0, emptyHint)
                 let proxyRate = await networkProxy.getExpectedRate(ethAddress, tokenAdd, srcQty);
-                Helper.assertEqual(networkRate.rateAfterNetworkFees, proxyRate.expectedRate, 
+                Helper.assertEqual(networkRate.rateAfterNetworkFee, proxyRate.expectedRate, 
                     "expected rate network not equal rate proxy");
             });
             
@@ -145,7 +144,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 let srcQty = (new BN(10)).mul((new BN(10)).pow(new BN(tokenDecimals[1])));
                 let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, 0, emptyHint);
                 let proxyRate = await networkProxy.getExpectedRate(srcAdd, destAdd, srcQty);
-                Helper.assertEqual(networkRate.rateAfterNetworkFees, proxyRate.expectedRate, 
+                Helper.assertEqual(networkRate.rateAfterNetworkFee, proxyRate.expectedRate, 
                     "expected rate network not equal rate proxy");
             });
         });
