@@ -87,20 +87,20 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     event AddReserveToNetwork (
         address indexed reserve,
         bytes8 indexed reserveId,
-        bool isFeePaying,
+        ReserveType reserveType,
         address indexed rebateWallet,
         bool add);
 
     /// @notice can be called only by operator
-    /// @dev add or deletes a reserve to/from the network.
+    /// @dev adds a reserve to/from the network.
     /// @param reserve The reserve address.
-    function addReserve(address reserve, bytes8 reserveId, bool isFeePaying, address wallet) external onlyOperator returns(bool) {
-        require(tradeLogic.addReserve(reserve, reserveId, isFeePaying));
+    function addReserve(address reserve, bytes8 reserveId, ReserveType reserveType, address wallet) external onlyOperator returns(bool) {
+        require(tradeLogic.addReserve(reserve, reserveId, reserveType));
         reserves.push(IKyberReserve(reserve));
 
         reserveRebateWallet[reserve] = wallet;
 
-        emit AddReserveToNetwork(reserve, reserveId, isFeePaying, wallet, true);
+        emit AddReserveToNetwork(reserve, reserveId, reserveType, wallet, true);
 
         return true;
     }
@@ -129,6 +129,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         reserves[reserveIndex] = reserves[reserves.length - 1];
         reserves.length--;
         
+        reserveRebateWallet[reserve] = address(0);
+
         emit RemoveReserveFromNetwork(reserve, reserveId);
 
         return true;
@@ -297,7 +299,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     // new APIs
     function getExpectedRateWithHintAndFee(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps, bytes calldata hint) 
         external view
-        returns (uint rateNoFees, uint rateAfterNetworkFees, uint rateAfterAllFees)
+        returns (uint rateNoFees, uint rateAfterNetworkFee, uint rateAfterAllFees)
     {
         if (src == dest) return (0, 0, 0);
         
@@ -318,7 +320,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         calcRatesAndAmounts(src, dest, srcQty, tData, hint);
         
         rateNoFees = calcRateFromQty(srcQty, tData.destAmountNoFee, tData.tokenToEth.decimals, tData.ethToToken.decimals);
-        rateAfterNetworkFees = tData.rateOnlyNetworkFee;
+        rateAfterNetworkFee = tData.rateOnlyNetworkFee;
         rateAfterAllFees = calcRateFromQty(srcQty, tData.actualDestAmount, tData.tokenToEth.decimals, tData.ethToToken.decimals);
     }
 

@@ -8,6 +8,7 @@ const BN = web3.utils.BN;
 
 const zeroBN = new BN(0);
 const daiTokenInewi = (new BN(10).pow(new BN(18)));
+const tokenDecimals = new BN(18);
 
 const precision = (new BN(10).pow(new BN(18)));
 const max_rate = (precision.mul(new BN(10 ** 6))); //internal parameter in Utils.sol
@@ -1421,17 +1422,17 @@ contract('Eth2DaiReserve', function(accounts) {
             let eth2daiRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, amountEth, 0);
             let dai2ethRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, amountDai, 0);
 
-            let rate = Helper.calcRateFromQty(amountEth, offersEthToken[0], 18, 18);
+            let rate = Helper.calcRateFromQty(amountEth, offersEthToken[0], tokenDecimals, tokenDecimals);
             rate = Helper.addBps(rate, -1 * feeBps);
             rate = applyInternalInventory(rate, false);
             Helper.assertEqual(rate, eth2daiRate, "eth to dai rate should be correct, loop: " + i);
 
-            rate = Helper.calcRateFromQty(amountDai, offersTokenEth[0], 18, 18);
+            rate = Helper.calcRateFromQty(amountDai, offersTokenEth[0], tokenDecimals, tokenDecimals);
             rate = Helper.addBps(rate, -1 * feeBps);
             rate = applyInternalInventory(rate, false);
             Helper.assertEqual(rate, dai2ethRate, "dai to eth rate should be correct, loop: " + i);
 
-            expectedUserDaiBal = expectedUserDaiBal.add(Helper.calcDstQty(amountEth, 18, 18, eth2daiRate));
+            expectedUserDaiBal = expectedUserDaiBal.add(Helper.calcDstQty(amountEth, tokenDecimals, tokenDecimals, eth2daiRate));
             await reserve.trade(ethAddress, amountEth, myDaiToken.address, user, eth2daiRate, true, {from: network, value: amountEth});
 
             let newUserEthBal = await Helper.getBalancePromise(user);
@@ -1440,7 +1441,7 @@ contract('Eth2DaiReserve', function(accounts) {
             Helper.assertEqual(expectedUserETHBal, newUserEthBal, "eth balance should be correct after traded, loop: " + i);
             Helper.assertEqual(expectedUserDaiBal, newUserDaiBal, "dai balance should be correct after traded, loop: " + i);
 
-            expectedUserETHBal = expectedUserETHBal.add(Helper.calcDstQty(amountDai, 18, 18, dai2ethRate));
+            expectedUserETHBal = expectedUserETHBal.add(Helper.calcDstQty(amountDai, tokenDecimals, tokenDecimals, dai2ethRate));
             await reserve.trade(myDaiToken.address, amountDai, ethAddress, user, dai2ethRate, true, {from: network});
 
             newUserEthBal = await Helper.getBalancePromise(user);
@@ -2051,17 +2052,17 @@ contract('Eth2DaiReserve', function(accounts) {
             let eth2daiRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, amountEth, 0);
             let dai2ethRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, amountDai, 0);
 
-            let rate = Helper.calcRateFromQty(amountEth, offersEthToken[0], 18, 18);
+            let rate = Helper.calcRateFromQty(amountEth, offersEthToken[0], tokenDecimals, tokenDecimals);
             rate = Helper.addBps(rate, -1 * feeBps);
             rate = applyInternalInventory(rate, false);
             Helper.assertEqual(rate, eth2daiRate, "eth to dai rate should be correct, loop: " + i);
 
-            rate = Helper.calcRateFromQty(amountDai, offersTokenEth[0], 18, 18);
+            rate = Helper.calcRateFromQty(amountDai, offersTokenEth[0], tokenDecimals, tokenDecimals);
             rate = Helper.addBps(rate, -1 * feeBps);
             rate = applyInternalInventory(rate, false);
             Helper.assertEqual(rate, dai2ethRate, "dai to eth rate should be correct, loop: " + i);
 
-            expectedUserDaiBal = expectedUserDaiBal.add(Helper.calcDstQty(amountEth, 18, 18, eth2daiRate));
+            expectedUserDaiBal = expectedUserDaiBal.add(Helper.calcDstQty(amountEth, tokenDecimals, tokenDecimals, eth2daiRate));
             await reserve.trade(ethAddress, amountEth, myDaiToken.address, user, eth2daiRate, true, {from: network, value: amountEth});
 
             let newUserEthBal = await Helper.getBalancePromise(user);
@@ -2070,7 +2071,7 @@ contract('Eth2DaiReserve', function(accounts) {
             Helper.assertEqual(expectedUserETHBal, newUserEthBal, "eth balance should be correct after traded, loop: " + i);
             Helper.assertEqual(expectedUserDaiBal, newUserDaiBal, "dai balance should be correct after traded, loop: " + i);
 
-            expectedUserETHBal = expectedUserETHBal.add(Helper.calcDstQty(amountDai, 18, 18, dai2ethRate));
+            expectedUserETHBal = expectedUserETHBal.add(Helper.calcDstQty(amountDai, tokenDecimals, tokenDecimals, dai2ethRate));
             await reserve.trade(myDaiToken.address, amountDai, ethAddress, user, dai2ethRate, true, {from: network});
 
             newUserEthBal = await Helper.getBalancePromise(user);
@@ -2124,17 +2125,17 @@ contract('Eth2DaiReserve', function(accounts) {
             let eth2daiRate = await reserve.getConversionRate(ethAddress, myDaiToken.address, amountEth, 0);
             let dai2ethRate = await reserve.getConversionRate(myDaiToken.address, ethAddress, amountDai, 0);
 
-            let rate = Helper.calcRateFromQty(amountEth, offersEthToken[0], 18, 18);
+            let rate = Helper.calcRateFromQty(amountEth, offersEthToken[0], tokenDecimals, tokenDecimals);
             rate = Helper.addBps(rate, -1 * feeBps);
             rate = applyInternalInventory(rate, false);
             Helper.assertEqual(rate, eth2daiRate, "eth to dai rate should be correct, loop: " + i);
 
-            rate = Helper.calcRateFromQty(amountDai, offersTokenEth[0], 18, 18);
+            rate = Helper.calcRateFromQty(amountDai, offersTokenEth[0], tokenDecimals, tokenDecimals);
             rate = Helper.addBps(rate, -1 * feeBps);
             rate = applyInternalInventory(rate, false);
             Helper.assertEqual(rate, dai2ethRate, "dai to eth rate should be correct, loop: " + i);
 
-            expectedUserDaiBal = expectedUserDaiBal.add(Helper.calcDstQty(amountEth, 18, 18, eth2daiRate));
+            expectedUserDaiBal = expectedUserDaiBal.add(Helper.calcDstQty(amountEth, tokenDecimals, tokenDecimals, eth2daiRate));
             await reserve.trade(ethAddress, amountEth, myDaiToken.address, user, eth2daiRate, true, {from: newNetwork, value: amountEth});
 
             let newUserEthBal = await Helper.getBalancePromise(user);
@@ -2143,7 +2144,7 @@ contract('Eth2DaiReserve', function(accounts) {
             Helper.assertEqual(expectedUserETHBal, newUserEthBal, "eth balance should be correct after traded, loop: " + i);
             Helper.assertEqual(expectedUserDaiBal, newUserDaiBal, "dai balance should be correct after traded, loop: " + i);
 
-            expectedUserETHBal = expectedUserETHBal.add(Helper.calcDstQty(amountDai, 18, 18, dai2ethRate));
+            expectedUserETHBal = expectedUserETHBal.add(Helper.calcDstQty(amountDai, tokenDecimals, tokenDecimals, dai2ethRate));
             await reserve.trade(myDaiToken.address, amountDai, ethAddress, user, dai2ethRate, true, {from: newNetwork});
 
             newUserEthBal = await Helper.getBalancePromise(user);

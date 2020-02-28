@@ -14,7 +14,7 @@ const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN} = require("../v4/helper.js");
 const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, 
-    MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE}  = require('./networkHelper.js');
+    MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, ReserveType}  = require('./networkHelper.js');
 
 //global variables
 //////////////////
@@ -108,13 +108,9 @@ contract('KyberNetwork', function(accounts) {
         }
     });
 
-    beforeEach("randomly select tokens before each test, reset networkFeeBps", async() => {
+    beforeEach("select tokens before each test, reset networkFeeBps", async() => {
         srcTokenId = 0;
         destTokenId = 1;
-        // while (srcTokenId == destTokenId) {
-        //     srcTokenId = getRandomInt(0,numTokens-1);
-        //     destTokenId = getRandomInt(0,numTokens-1);
-        // }
         
         srcToken = tokens[srcTokenId];
         destToken = tokens[destTokenId];
@@ -126,6 +122,78 @@ contract('KyberNetwork', function(accounts) {
         //fees
         networkFeeBps = new BN(20);
         platformFeeBps = new BN(0);
+    });
+
+    describe("should test events declared in network contract", async() => { 
+        let tempNetwork;
+        let tempTradeLogic;
+        let mockReserve;
+        let feeHandler;
+    
+        before("global setup ", async() => {
+            tempNetwork = await KyberNetwork.new(admin);
+            tempTradeLogic = await TradeLogic.new(admin);
+            mockReserve = await MockReserve.new();
+        
+            await tempNetwork.addOperator(operator, {from: admin});
+            await tempTradeLogic.setNetworkContract(tempNetwork.address, {from: admin});
+            await tempTradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: admin});
+            //init feeHandler
+            KNC = await TestToken.new("kyber network crystal", "KNC", 18);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+        });
+
+        it("eth recieval", async() => {
+        
+            let ethSender = accounts[9];
+
+            txResult = await tempNetwork.send(ethSrcQty, {from: ethSender});
+            expectEvent(txResult, 'EtherReceival', {
+                sender: ethSender,
+                amount: ethSrcQty
+            });
+        });
+
+        it("set contracts", async() => {
+        
+            let gasHelperAdd = accounts[9];
+
+            txResult = await tempNetwork.setContracts(feeHandler.address, tempTradeLogic.address, gasHelperAdd, {from: admin});
+            expectEvent(txResult, 'FeeHandlerUpdated', {
+                newHandler: feeHandler.address
+            });
+            expectEvent(txResult, 'TradeLogicUpdated', {
+                tradeLogic: tempTradeLogic.address
+            });
+            expectEvent(txResult, 'GasHelperUpdated', {
+                gasHelper: gasHelperAdd
+            });
+        });
+
+        it("Add reserve", async() => {
+            let anyWallet = taker;
+            txResult = await tempNetwork.addReserve(mockReserve.address, nwHelper.genReserveID(MOCK_ID, mockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
+            //TODO: reserveId returned by txResult has additional zeroes appended
+            txResult.logs[0].args[1] = txResult.logs[0].args['1'].substring(0,18);
+            txResult.logs[0].args['reserveId'] = txResult.logs[0].args['reserveId'].substring(0,18);
+            expectEvent(txResult, 'AddReserveToNetwork', {
+                reserve: mockReserve.address,
+                reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
+                reserveType: new BN(ReserveType.FPR),
+                rebateWallet: taker,
+                add: true
+            });
+        });
+          
+            //TODO: RemoveReserveFromNetwork
+            //TODO: ListReservePairs
+            //TODO: DAOContractSet 
+            //TODO: KyberNetworkParamsSet
+            //TODO: KyberNetworkSetEnable
+            //TODO: KyberProxyAdded
+            //TODO: KyberProxyRemoved
+            //TODO: HandlePlatformFee
+            //TODO: KyberTrade
     });
 
     describe("test with MockDAO", async() => {
@@ -149,6 +217,7 @@ contract('KyberNetwork', function(accounts) {
             //init tradeLogic
             tradeLogic = await TradeLogic.new(admin);
             await tradeLogic.setNetworkContract(network.address, {from: admin});
+            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: admin});
 
             //setup network
             await network.addOperator(operator, {from: admin});
@@ -160,57 +229,7 @@ contract('KyberNetwork', function(accounts) {
             await network.setEnable(true, {from: admin});
         });
 
-        it("should test events declared in network contract", async() => {
-            let tempNetwork = await KyberNetwork.new(admin);
-            let tempTradeLogic = await TradeLogic.new(admin);
-            let mockReserve = await MockReserve.new();
-
-            await tempNetwork.addOperator(operator, {from: admin});
-            await tempTradeLogic.setNetworkContract(tempNetwork.address, {from: admin});
-            let ethSender = accounts[9];
-
-            txResult = await tempNetwork.send(ethSrcQty, {from: ethSender});
-            expectEvent(txResult, 'EtherReceival', {
-                sender: ethSender,
-                amount: ethSrcQty
-            });
-
-            let gasHelperAdd = accounts[9];
-
-            txResult = await tempNetwork.setContracts(feeHandler.address, tempTradeLogic.address, gasHelperAdd, {from: admin});
-            expectEvent(txResult, 'FeeHandlerUpdated', {
-                newHandler: feeHandler.address
-            });
-            expectEvent(txResult, 'TradeLogicUpdated', {
-                tradeLogic: tempTradeLogic.address
-            });
-            expectEvent(txResult, 'GasHelperUpdated', {
-                gasHelper: gasHelperAdd
-            });
-
-            txResult = await tempNetwork.addReserve(mockReserve.address, nwHelper.genReserveID(MOCK_ID, mockReserve.address), true, taker, {from: operator});
-            //TODO: reserveId returned by txResult has additional zeroes appended
-            txResult.logs[0].args[1] = txResult.logs[0].args['1'].substring(0,18);
-            txResult.logs[0].args['reserveId'] = txResult.logs[0].args['reserveId'].substring(0,18);
-            expectEvent(txResult, 'AddReserveToNetwork', {
-                reserve: mockReserve.address,
-                reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
-                isFeePaying: true,
-                rebateWallet: taker,
-                add: true
-            });
-
-            //TODO: RemoveReserveFromNetwork
-            //TODO: ListReservePairs
-            //TODO: DAOContractSet 
-            //TODO: KyberNetworkParamsSet
-            //TODO: KyberNetworkSetEnable
-            //TODO: KyberProxyAdded
-            //TODO: KyberProxyRemoved
-            //TODO: HandlePlatformFee
-            //TODO: KyberTrade
-        });
-
+        
         it("should test enabling network", async() => {
             let isEnabled = await network.enabled();
             assert.equal(isEnabled, true);

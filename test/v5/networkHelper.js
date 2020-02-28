@@ -30,8 +30,10 @@ const MASK_OUT_HINTTYPE = 1;
 const SPLIT_HINTTYPE = 2;
 const EMPTY_HINTTYPE = 3;
 
+const ReserveType = {NONE: 0, FPR: 1, APR: 2, BRIDGE: 3, UTILITY: 4};
+
 module.exports = {NULL_ID, APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, 
-    MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE};
+    MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, ReserveType};
     
     
 module.exports.setupReserves = async function 
@@ -62,7 +64,7 @@ module.exports.setupReserves = async function
             'address': reserve.address,
             'instance': reserve,
             'reserveId': reserveId,
-            'isFeePaying': true,
+            'onChainType': ReserveType.FPR,
             'rate': new BN(0),
             'type': type_MOCK,
             'pricing': "none",
@@ -112,7 +114,7 @@ module.exports.setupReserves = async function
             'address': reserve.address,
             'instance': reserve,
             'reserveId': reserveId,
-            'isFeePaying': true,
+            'onChainType': ReserveType.FPR,
             'rate': new BN(0),
             'type': type_fpr,
             'pricing': pricing.address,
@@ -241,7 +243,7 @@ module.exports.addReservesToNetwork = async function (networkInstance, reserveIn
         console.log("add reserve type: " + reserve.type + " ID: " + reserve.reserveId);
         let rebateWallet = (reserve.rebateWallet == zeroAddress || reserve.rebateWallet == undefined) 
              ? reserve.address : reserve.rebateWallet;
-        await networkInstance.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, rebateWallet, {from: operator});
+        await networkInstance.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, rebateWallet, {from: operator});
         for (let j = 0; j < tokens.length; j++) {
             await networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, true, {from: operator});
         }

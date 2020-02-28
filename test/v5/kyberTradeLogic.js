@@ -7,20 +7,17 @@ const nwHelper = require("./networkHelper.js");
 const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN} = require("../v4/helper.js");
-const {NULL_ID, EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE}  = require('./networkHelper.js');
+const {NULL_ID, EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, ReserveType}  = require('./networkHelper.js');
 
 //global variables
 //////////////////
-const gasPrice = (new BN(10).pow(new BN(9)).mul(new BN(50)));
 const negligibleRateDiffBps = new BN(5); //0.05% 
-const maxDestAmt = new BN(2).pow(new BN(255));
 const minConversionRate = new BN(0);
 
 let networkFeeArray = [new BN(0), new BN(250), new BN(400)];
 let platformFeeArray = [new BN(0), new BN(250, new BN(400))];
 let networkFeeBps;
 let platformFeeBps;
-let networkFeeAmount;
 let txResult;
 
 let admin;
@@ -97,6 +94,16 @@ contract('KyberTradeLogic', function(accounts) {
                 tradeLogic.setNetworkContract(network, {from: operator}),
                 "ONLY_ADMIN"
             );
+
+            await expectRevert(
+                tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: operator}),
+                "ONLY_ADMIN"
+            );
+
+            await expectRevert(
+                tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: network}),
+                "ONLY_ADMIN"
+            );
         });
 
         it("should have admin set network contract", async() => {
@@ -130,27 +137,29 @@ contract('KyberTradeLogic', function(accounts) {
 
         it("should not have unauthorized personnel add reserve", async() => {
             await expectRevert(
-                tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, {from: user}),
+                tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: user}),
                 "ONLY_NETWORK"
             );
 
             await expectRevert(
-                tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, {from: operator}),
+                tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: operator}),
                 "ONLY_NETWORK"
             );
 
             await expectRevert(
-                tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, {from: admin}),
+                tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: admin}),
                 "ONLY_NETWORK"
             );
         });
 
         it("should have network add reserve", async() => {
-            await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, {from: network});
-            reserveId = await tradeLogic.reserveAddressToId(reserve.address);
-            reserveAddress = await tradeLogic.reserveIdToAddresses(reserve.reserveId, 0);
-            Helper.assertEqual(reserve.reserveId, reserveId, "reserve not added by network");
-            Helper.assertEqual(reserve.address, reserveAddress, "reserve not added by network");
+            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: admin});
+            await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+            let reserveDetails = await tradeLogic.getReserveDetails(reserve.address);
+            let reserveId = reserveDetails.reserveId;
+            let reserveAddress = await tradeLogic.reserveIdToAddresses(reserve.reserveId, 0);
+            Helper.assertEqual(reserve.reserveId, reserveId, "wrong address to ID");
+            Helper.assertEqual(reserve.address, reserveAddress, "wrong ID to address");
         });
 
         it("should not have unauthorized personnel list token pair for reserve", async() => {
@@ -191,10 +200,84 @@ contract('KyberTradeLogic', function(accounts) {
         //TODO
     });
 
+    describe("test fee paying data per reserve", async() => {
+        let token;
+        let reserveInstances;
+
+        before("setup tradeLogic instance and 4 reserves 4 types", async() => {
+            tradeLogic = await TradeLogic.new(admin);
+            await tradeLogic.setNetworkContract(network, {from: admin});
+            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: admin});
+
+            //init token
+            token = await TestToken.new("Token", "TOK", 18);
+            
+            let result = await nwHelper.setupReserves(network, [token], 4,0,0,0, accounts, admin, operator);
+            reserveInstances = result.reserveInstances;
+            
+            //add reserves as 4 different types.
+            let type = 1;
+            for (reserve of Object.values(reserveInstances)) {
+                await tradeLogic.addReserve(reserve.address, reserve.reserveId, type, {from: network});
+                type++;
+                //iterate all 4 types
+            }
+        });
+
+        it("get reserve details while modifying fee paying per type. see as expected", async() => {
+            let pay = [true, true, false, false];
+            await tradeLogic.setFeePayingPerReserveType(pay[0], pay[1], pay[2], pay[3], {from: admin});
+
+            let index = 0;
+
+            for (reserve of Object.values(reserveInstances)) {
+                let details = await tradeLogic.getReserveDetails(reserve.address);
+                Helper.assertEqual(reserve.reserveId, details.reserveId)
+                Helper.assertEqual(index + 1, details.resType)
+                Helper.assertEqual(pay[index], details.isFeePaying);
+                ++index;
+            }
+
+            pay = [false, false, true, true];
+            await tradeLogic.setFeePayingPerReserveType(pay[0], pay[1], pay[2], pay[3], {from: admin});
+
+            index = 0;
+
+            for (reserve of Object.values(reserveInstances)) {
+                let details = await tradeLogic.getReserveDetails(reserve.address);
+                Helper.assertEqual(pay[index], details.isFeePaying);
+                ++index;
+            }
+
+            pay = [true, false, true, false];
+            await tradeLogic.setFeePayingPerReserveType(pay[0], pay[1], pay[2], pay[3], {from: admin});
+
+            index = 0;
+
+            for (reserve of Object.values(reserveInstances)) {
+                let details = await tradeLogic.getReserveDetails(reserve.address);
+                Helper.assertEqual(pay[index], details.isFeePaying);
+                ++index;
+            }
+
+            pay = [false, true, false, true];
+            await tradeLogic.setFeePayingPerReserveType(pay[0], pay[1], pay[2], pay[3], {from: admin});
+
+            index = 0;
+
+            for (reserve of Object.values(reserveInstances)) {
+                let details = await tradeLogic.getReserveDetails(reserve.address);
+                Helper.assertEqual(pay[index], details.isFeePaying);
+                ++index;
+            }
+        });
+    });
+ 
     describe("test getRatesForToken", async() => {
         before("setup tradeLogic instance and 2 tokens", async() => {
             tradeLogic = await TradeLogic.new(admin);
-            tradeLogic.setNetworkContract(network, {from: admin});
+            await tradeLogic.setNetworkContract(network, {from: admin});
+            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: admin});
 
             //init 2 tokens
             srcDecimals = new BN(8);
@@ -202,6 +285,7 @@ contract('KyberTradeLogic', function(accounts) {
             srcToken = await TestToken.new("srcToken", "SRC", srcDecimals);
             destToken = await TestToken.new("destToken", "DEST", destDecimals);
         });
+
         describe("3 mock reserves (all fee paying)", async() => {
             before("setup reserves", async() => {
                 //init 3 mock reserves
@@ -209,9 +293,11 @@ contract('KyberTradeLogic', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
+                tradeLogic.setFeePayingPerReserveType(true, true, true, true, {from: admin});
+
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, {from: network});
+                    await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
                     await tradeLogic.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
                     await tradeLogic.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
                 };
@@ -232,7 +318,7 @@ contract('KyberTradeLogic', function(accounts) {
                 tokenQty = new BN(1000).mul(new BN(10).pow(tokenDecimals));
             });
     
-            it("should get rates for token (different taker fee amounts)", async() => {
+            it("should get rates for token (different network fee amounts)", async() => {
                 for (networkFeeBps of networkFeeArray) {
                     actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, networkFeeBps);
                     for (let i=0; i < actualResult.buyReserves.length; i++) {
@@ -240,7 +326,7 @@ contract('KyberTradeLogic', function(accounts) {
                         reserve = reserveInstances[reserveAddress];
                         Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
         
-                        queryQty = nwHelper.minusNetworkFees(ethSrcQty, reserve.isFeePaying, false, networkFeeBps);
+                        queryQty = nwHelper.minusNetworkFees(ethSrcQty, reserve.onChainType, false, networkFeeBps);
                         expectedReserveRate = await reserve.instance.getConversionRate(ethAddress, token.address, queryQty, 0);
                         expectedDestAmt = Helper.calcDstQty(queryQty, ethDecimals, tokenDecimals, expectedReserveRate);
                         expectedRate = Helper.calcRateFromQty(ethSrcQty, expectedDestAmt, ethDecimals, tokenDecimals);
@@ -254,7 +340,7 @@ contract('KyberTradeLogic', function(accounts) {
         
                         expectedReserveRate = await reserve.instance.getConversionRate(token.address, ethAddress, tokenQty, 0);
                         expectedDestAmt = Helper.calcDstQty(tokenQty, tokenDecimals, ethDecimals, expectedReserveRate);
-                        expectedDestAmt = nwHelper.minusNetworkFees(expectedDestAmt, false, reserve.isFeePaying, networkFeeBps);
+                        expectedDestAmt = nwHelper.minusNetworkFees(expectedDestAmt, false, reserve.onChainType, networkFeeBps);
                         expectedRate = Helper.calcRateFromQty(tokenQty, expectedDestAmt, tokenDecimals, ethDecimals);
                         Helper.assertEqual(expectedRate, actualResult.sellRates[i], "rate not equal");
                     }  
@@ -270,13 +356,11 @@ contract('KyberTradeLogic', function(accounts) {
                 numReserves = result.numAddedReserves * 1;
 
                 //set fee paying to false
-                for ([key, reserve] of Object.entries(reserveInstances)) {
-                    reserve.isFeePaying = false;
-                }
+                await tradeLogic.setFeePayingPerReserveType(false, false, false, false, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, {from: network});
+                    await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
                     await tradeLogic.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
                     await tradeLogic.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
                 };
@@ -297,7 +381,7 @@ contract('KyberTradeLogic', function(accounts) {
                 tokenQty = new BN(1000).mul(new BN(10).pow(tokenDecimals));
             });
     
-            it("should get rates for token (different taker fee amounts)", async() => {
+            it("should get rates for token (different network fee amounts)", async() => {
                 for (networkFeeBps of networkFeeArray) {
                     actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, networkFeeBps);
                     for (let i=0; i < actualResult.buyReserves.length; i++) {
@@ -305,7 +389,7 @@ contract('KyberTradeLogic', function(accounts) {
                         reserve = reserveInstances[reserveAddress];
                         Helper.assertEqual(reserve.address, reserveAddress, "reserve not found");
         
-                        queryQty = nwHelper.minusNetworkFees(ethSrcQty, reserve.isFeePaying, false, networkFeeBps);
+                        queryQty = nwHelper.minusNetworkFees(ethSrcQty, false, false, networkFeeBps);
                         expectedReserveRate = await reserve.instance.getConversionRate(ethAddress, token.address, queryQty, 0);
                         expectedDestAmt = Helper.calcDstQty(queryQty, ethDecimals, tokenDecimals, expectedReserveRate);
                         expectedRate = Helper.calcRateFromQty(ethSrcQty, expectedDestAmt, ethDecimals, tokenDecimals);
@@ -319,7 +403,7 @@ contract('KyberTradeLogic', function(accounts) {
         
                         expectedReserveRate = await reserve.instance.getConversionRate(token.address, ethAddress, tokenQty, 0);
                         expectedDestAmt = Helper.calcDstQty(tokenQty, tokenDecimals, ethDecimals, expectedReserveRate);
-                        expectedDestAmt = nwHelper.minusNetworkFees(expectedDestAmt, false, reserve.isFeePaying, networkFeeBps);
+                        expectedDestAmt = nwHelper.minusNetworkFees(expectedDestAmt, false, false, networkFeeBps);
                         expectedRate = Helper.calcRateFromQty(tokenQty, expectedDestAmt, tokenDecimals, ethDecimals);
                         Helper.assertEqual(expectedRate, actualResult.sellRates[i], "rate not equal");
                     }
@@ -334,6 +418,8 @@ contract('KyberTradeLogic', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
+                await tradeLogic.setFeePayingPerReserveType(true, true, true, true, {from: admin});
+
                 //set zero rates
                 for ([key, reserve] of Object.entries(reserveInstances)) {
                     await reserve.instance.setRate(srcToken.address, zeroBN, zeroBN);
@@ -342,7 +428,7 @@ contract('KyberTradeLogic', function(accounts) {
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, {from: network});
+                    await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
                     await tradeLogic.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
                     await tradeLogic.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
                 };
@@ -363,7 +449,7 @@ contract('KyberTradeLogic', function(accounts) {
                 tokenQty = new BN(1000).mul(new BN(10).pow(tokenDecimals));
             });
     
-            it("should get rates for token (different taker fee amounts)", async() => {
+            it("should get rates for token (different network fee amounts)", async() => {
                 for (networkFeeBps of networkFeeArray) {
                     actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, networkFeeBps);
                     for (let i=0; i < actualResult.buyReserves.length; i++) {
@@ -387,7 +473,8 @@ contract('KyberTradeLogic', function(accounts) {
     describe("test calcRatesAndAmounts", async() => {
         before("setup tradeLogic instance and 2 tokens", async() => {
             tradeLogic = await TradeLogic.new(admin);
-            tradeLogic.setNetworkContract(network, {from: admin});
+            await tradeLogic.setNetworkContract(network, {from: admin});
+            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: admin});
 
             //init 2 tokens
             srcDecimals = new BN(8);
@@ -409,9 +496,11 @@ contract('KyberTradeLogic', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
+                tradeLogic.setFeePayingPerReserveType(true, true, true, true, {from: admin});
+
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.isFeePaying, {from: network});
+                    await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
                     await tradeLogic.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
                     await tradeLogic.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
                 };
@@ -446,7 +535,7 @@ contract('KyberTradeLogic', function(accounts) {
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestReserve], [bestReserve.rateNoFee], [],
                             ethDecimals, [], [], [],
-                            srcQty, networkFeeBps, platformFeeBps);
+                            srcQty, networkFeeBps, platformFeeBps, true);
                         
                         expectedOutput = getExpectedOutput(
                             [bestReserve], [BPS],
@@ -1228,7 +1317,7 @@ async function getHintedReserves(
 function getTradeResult(
     srcDecimals, t2eReserves, t2eRates, t2eSplits,
     destDecimals, e2tReserves, e2tRates, e2tSplits,
-    srcQty, networkFeeBps, platformFeeBps
+    srcQty, networkFeeBps, platformFeeBps, isFeePaying
 ) {
     let result = {
         t2eNumReserves: (t2eSplits.length > 0) ? t2eReserves.length : new BN(1),
@@ -1262,7 +1351,7 @@ function getTradeResult(
             destAmt = Helper.calcDstQty(splitAmount, srcDecimals, ethDecimals, t2eRates[i]);
             result.tradeWei = result.tradeWei.add(destAmt);
             amountSoFar = amountSoFar.add(splitAmount);
-            if (reserve.isFeePaying) {
+            if (isFeePaying) {
                 result.feePayingReservesBps = result.feePayingReservesBps.add(t2eSplits[i]);
                 result.numFeePayingReserves = result.numFeePayingReserves.add(new BN(1));
             }
@@ -1270,7 +1359,7 @@ function getTradeResult(
     } else if (t2eReserves.length > 0) {
         reserve = t2eReserves[0];
         result.tradeWei = Helper.calcDstQty(srcQty, srcDecimals, ethDecimals, t2eRates[0]);
-        if (reserve.isFeePaying) {
+        if (reserve.onChainType) {
             result.feePayingReservesBps = result.feePayingReservesBps.add(BPS);
             result.numFeePayingReserves = result.numFeePayingReserves.add(new BN(1));
         }
@@ -1281,7 +1370,7 @@ function getTradeResult(
     //add e2t reserve splits (doesn't matter if split or not, cos we already know best reserve)
     for (let i=0; i<e2tReserves.length; i++) {
         reserve = e2tReserves[i];
-        if (reserve.isFeePaying) {
+        if (isFeePaying) {
             feePayingBps = (e2tSplits[i] == undefined) ? BPS : e2tSplits[i];
             result.feePayingReservesBps = result.feePayingReservesBps.add(feePayingBps);
             result.numFeePayingReserves = result.numFeePayingReserves.add(new BN(1));
@@ -1344,7 +1433,7 @@ function getExpectedOutput(sellReserves, sellSplits, buyReserves, buySplits) {
             result.rates.concat(sellReserves.map(reserve => reserve.rateNoFee));
         result.rates = result.rates.concat(precisionUnits);
         result.splitValuesBps = sellSplits.concat(BPS);
-        result.isFeePaying = sellReserves.map(reserve => reserve.isFeePaying);
+        result.isFeePaying = sellReserves.map(reserve => reserve.onChainType);
         result.isFeePaying = result.isFeePaying.concat(false);
     //ethToToken
     } else if (sellReserves.length == 0) {
@@ -1359,7 +1448,7 @@ function getExpectedOutput(sellReserves, sellSplits, buyReserves, buySplits) {
         result.splitValuesBps = [BPS];
         result.splitValuesBps = result.splitValuesBps.concat(buySplits);
         result.isFeePaying = [false];
-        result.isFeePaying = result.isFeePaying.concat(buyReserves.map(reserve => reserve.isFeePaying));
+        result.isFeePaying = result.isFeePaying.concat(buyReserves.map(reserve => reserve.onChainType));
     //tokenToToken
     } else {
         result.addresses = sellReserves.map(reserve => reserve.address);
@@ -1374,8 +1463,8 @@ function getExpectedOutput(sellReserves, sellSplits, buyReserves, buySplits) {
             result.rates.concat(buyReserves.map(reserve => reserve.rateNoFee));
         result.splitValuesBps = sellSplits;
         result.splitValuesBps = result.splitValuesBps.concat(buySplits);
-        result.isFeePaying = sellReserves.map(reserve => reserve.isFeePaying);
-        result.isFeePaying = result.isFeePaying.concat(buyReserves.map(reserve => reserve.isFeePaying));
+        result.isFeePaying = sellReserves.map(reserve => reserve.onChainType);
+        result.isFeePaying = result.isFeePaying.concat(buyReserves.map(reserve => reserve.onChainType));
     }
     return result;
 }
@@ -1437,4 +1526,8 @@ function printCalcRatesAmtsResult(tradeResult) {
     console.log(`destAmountNoFee: ${tradeResult[4].toString()} (${tradeResult[4].div(precisionUnits)} ETH)`);
     console.log(`actualDestAmount: ${tradeResult[5].toString()} (${tradeResult[5].div(precisionUnits)} ETH)`);
     console.log(`destAmountWithNetworkFee: ${tradeResult[6].toString()} (${tradeResult[6].div(precisionUnits)} ETH)`);
+}
+
+function log(string) {
+    console.log(string);
 }
