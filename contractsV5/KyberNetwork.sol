@@ -459,7 +459,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         unpackResults(results, reserveAddresses, rates, splitValuesBps, isFeePaying, ids, tData);
 
         //cheaper to calculate than pack and unpack these values
-        tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps * tData.feePayingReservesBps / (BPS * BPS);
+        tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
         tData.platformFeeWei = tData.tradeWei * tData.input.platformFeeBps / BPS;
         tData.rateOnlyNetworkFee = calcRateFromQty(srcAmount, tData.destAmountWithNetworkFee, tData.tokenToEth.decimals, tData.ethToToken.decimals);
     }
@@ -663,7 +663,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
             actualSrcAmount = tData.input.srcAmount;
         }
 
-        subtractFeesFromTradeWei(tData);
         // destAmount = printGas("calc to trade", destAmount, Module.NETWORK);
         require(doReserveTrades(     //src to ETH
                 tData.input.src,
@@ -671,11 +670,11 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
                 ETH_TOKEN_ADDRESS,
                 address(this),
                 tData,
-                tData.tradeWei));
+                tData.tradeWei)); //tData.tradeWei (expectedDestAmount) not used if destAddress == address(this)
 
         require(doReserveTrades(     //Eth to dest
                 ETH_TOKEN_ADDRESS,
-                tData.tradeWei,
+                tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei,
                 tData.input.dest,
                 tData.input.destAddress,
                 tData,
@@ -703,10 +702,6 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
     }
     /* solhint-enable function-max-lines */
 
-    function subtractFeesFromTradeWei(TradeData memory tData) internal pure {
-        tData.tradeWei -= (tData.networkFeeWei + tData.platformFeeWei);
-    }
-
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev do one trade with a reserve
     /// @param src Src token
@@ -726,7 +721,7 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         returns(bool)
     {
         if (src == dest) {
-            //this is for a "fake" trade when both src and dest are ethers.
+            //E2E, need not do anything except for T2E, transfer ETH to destAddress
             if (destAddress != (address(this)))
                 destAddress.transfer(amount);
             return true;
@@ -747,12 +742,8 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         }
 
         if (destAddress != address(this)) {
-            //for token to token dest address is network. and Ether / token already here...
-            if (dest == ETH_TOKEN_ADDRESS) {
-                destAddress.transfer(expectedDestAmount);
-            } else {
-                require(dest.transfer(destAddress, expectedDestAmount));
-            }
+            //for E2T, T2T, transfer tokens to destAddress
+            require(dest.transfer(destAddress, expectedDestAmount));
         }
 
         return true;
