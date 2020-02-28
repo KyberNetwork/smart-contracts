@@ -2,6 +2,7 @@
 pragma  solidity 0.5.11;
 
 import "./IKyberReserve.sol";
+import "./IKyberNetwork.sol";
 
 
 interface IKyberTradeLogic {
@@ -28,7 +29,7 @@ interface IKyberTradeLogic {
 
     function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external returns (bool);
 
-    function addReserve(address reserve, bytes8 reserveId, bool isFeePaying) external returns (bool);
+    function addReserve(address reserve, bytes8 reserveId, IKyberNetwork.ReserveType resType) external returns (bool);
 
     function removeReserve(address reserve) external returns (bytes8);
 
