@@ -123,7 +123,7 @@ contract('KyberNetworkProxy', function(accounts) {
             it("verify getExpectedRate (backward compatible) for t2e.", async() => {
                 let tokenAdd = tokens[4].address; 
                 let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[4])));
-                let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, 0, emptyHint)
+                let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, 0, emptyHint);
                 let proxyRate = await networkProxy.getExpectedRate(tokenAdd, ethAddress, srcQty);
                 Helper.assertEqual(networkRate.rateAfterNetworkFee, proxyRate.expectedRate, 
                     "expected rate network not equal rate proxy");
@@ -351,7 +351,7 @@ contract('KyberNetworkProxy', function(accounts) {
             let fee = 123;
 
             it("should perform a t2e trade with hint", async() => {
-                let tokenId = 3;
+                let tokenId = i;
                 let tokenAdd = tokens[tokenId].address;
                 let token = tokens[tokenId];
                 let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[tokenId])));
