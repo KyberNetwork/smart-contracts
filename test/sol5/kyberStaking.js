@@ -3,11 +3,11 @@ const MockKyberDAO = artifacts.require("MockKyberDAOTestHandleWithdrawal.sol");
 const MockDAOWithdrawFailed = artifacts.require("MockKyberDaoWithdrawFailed.sol");
 const StakingContract = artifacts.require("MockStakingContract.sol");
 const MaliciousStaking = artifacts.require("MockKyberStakingMalicious.sol");
-const Helper = require("../sol4/helper.js");
+const Helper = require("../helper.js");
 
 const BN = web3.utils.BN;
 
-const { precisionUnits, zeroAddress } = require("../sol4/helper.js");
+const { precisionUnits, zeroAddress } = require("../helper.js");
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
 let daoSetter;

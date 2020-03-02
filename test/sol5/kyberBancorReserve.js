@@ -2,7 +2,7 @@ let TestToken = artifacts.require("Token.sol");
 let MockBancorNetwork = artifacts.require("MockBancorNetwork.sol");
 let KyberBancorReserve = artifacts.require("KyberBancorReserve.sol");
 
-let Helper = require("../sol4/helper.js");
+let Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 

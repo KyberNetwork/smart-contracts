@@ -1,5 +1,5 @@
 const MockHintHandler = artifacts.require('MockHintHandler.sol');
-const Helper = require('../sol4/helper.js');
+const Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 const SEPARATOR_OPCODE = '0x77';

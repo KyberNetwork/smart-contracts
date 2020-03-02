@@ -6,13 +6,13 @@ const MockNetwork = artifacts.require("MockNetwork.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const TradeLogic = artifacts.require("KyberTradeLogic.sol");
 
-const Helper = require("../sol4/helper.js");
+const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
 
 const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
-const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN} = require("../sol4/helper.js");
+const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN} = require("../helper.js");
 const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, 
     MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, ReserveType}  = require('./networkHelper.js');
 

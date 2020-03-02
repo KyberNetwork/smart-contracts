@@ -3,7 +3,7 @@ let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 let Reserve = artifacts.require("./KyberReserve");
 let SanityRates = artifacts.require("./SanityRates");
 
-let Helper = require("./helper.js");
+let Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';

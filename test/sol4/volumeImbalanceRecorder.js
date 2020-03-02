@@ -1,7 +1,7 @@
 let MockImbalanceRecorder = artifacts.require("./mockContracts/MockImbalanceRecorder.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 
-const Helper = require("./helper.js");
+const Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 //global variables

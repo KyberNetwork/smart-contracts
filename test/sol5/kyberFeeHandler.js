@@ -1,4 +1,4 @@
-const Helper = require("../sol4/helper.js");
+const Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 const MockDAO = artifacts.require("MockDAO.sol");
@@ -6,7 +6,7 @@ const FeeHandler = artifacts.require("MockFeeHandler.sol");
 const Token = artifacts.require("Token.sol");
 const Proxy = artifacts.require("SimpleKyberProxy.sol");
 
-const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint} = require("../sol4/helper.js");
+const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint} = require("../helper.js");
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
 const BITS_PER_PARAM = 64;

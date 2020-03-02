@@ -2,7 +2,7 @@ const MockUtils2 = artifacts.require("./mockContracts/MockUtils2.sol");
 const TokenNoDecimal = artifacts.require("./mockContracts/TokenNoDecimal.sol");
 const TestToken = artifacts.require("./mockContracts/TestToken.sol");
 
-const Helper = require("./helper.js");
+const Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';

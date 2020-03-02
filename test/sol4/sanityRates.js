@@ -1,6 +1,6 @@
 let SanityRates = artifacts.require("./SanityRates.sol")
 
-let Helper = require("./helper.js");
+let Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 //global variables

@@ -1,7 +1,7 @@
 const OrderIdManager = artifacts.require("MockOrderIdManager.sol");
 const TestToken = artifacts.require("TestToken.sol");
 
-const Helper = require("./helper.js");
+const Helper = require("../helper.js");
 
 let orderIdManager;
 

@@ -4,7 +4,7 @@ const MockWeth = artifacts.require("./wethContracts/mockContracts/WETH9.sol");
 const KyberWethReserve = artifacts.require("./wethContracts/KyberWethReserve");
 const TestToken = artifacts.require("./mockContracts/TestToken.sol");
 
-const Helper = require("./helper.js");
+const Helper = require("../helper.js");
 
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 const zeroAddress = '0x0000000000000000000000000000000000000000';

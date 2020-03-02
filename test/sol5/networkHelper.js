@@ -1,5 +1,5 @@
 const BN = web3.utils.BN;
-const Helper = require("../sol4/helper.js");
+const Helper = require("../helper.js");
 
 const Reserve = artifacts.require("KyberReserve.sol");
 const ConversionRates = artifacts.require("ConversionRates.sol");
@@ -12,7 +12,7 @@ require("chai")
 
 
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN,
-    calcRateFromQty, assertEqual, getBalancePromise}  = require("../sol4/helper.js")
+    calcRateFromQty, assertEqual, getBalancePromise}  = require("../helper.js")
 
 //// reserve types
 const NULL_ID = '0x0000000000000000';

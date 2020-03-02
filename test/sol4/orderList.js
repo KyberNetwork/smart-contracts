@@ -4,7 +4,7 @@ require("chai")
     .use(require("chai-as-promised"))
     .should()
 
-const Helper = require("./helper.js");
+const Helper = require("../helper.js");
 
 const OrderList = artifacts.require("OrderList.sol");
 

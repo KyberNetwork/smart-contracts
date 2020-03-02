@@ -2,7 +2,7 @@ const TestToken = artifacts.require("TestToken.sol");
 const MockExchange = artifacts.require("MockExchange.sol")
 const MockCentralBank = artifacts.require("MockCentralBank.sol");
 const MockDepositAddressEther = artifacts.require("MockDepositAddressEther.sol");
-const Helper = require("./helper.js")
+const Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';

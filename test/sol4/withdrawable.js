@@ -3,7 +3,7 @@ const Withdrawable = artifacts.require("./Withdrawable.sol");
 const TestToken = artifacts.require("./mockContracts/TestToken.sol");
 const MockWithdrawable = artifacts.require("./mockContracts/MockWithdrawable.sol");
 
-const Helper = require("./helper.js");
+const Helper = require("../helper.js");
 
 let token;
 

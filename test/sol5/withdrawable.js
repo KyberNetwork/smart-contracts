@@ -3,7 +3,7 @@ const Withdrawable = artifacts.require("./Withdrawable.sol");
 const MockWithdrawable = artifacts.require("./MockWithdrawable.sol");
 const TestToken = artifacts.require("Token.sol");
 
-const Helper = require("../sol4/helper.js");
+const Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 let token;
@@ -15,7 +15,7 @@ let tokenWithdrawAmt = new BN(60);
 let initialEtherBalance = new BN(10);
 let etherWithdrawAmt = new BN(3);
 
-const {zeroBN} = require("../sol4/helper.js");
+const {zeroBN} = require("../helper.js");
 const { expectRevert } = require('@openzeppelin/test-helpers');
 
 contract('Withdrawable', function(accounts) {

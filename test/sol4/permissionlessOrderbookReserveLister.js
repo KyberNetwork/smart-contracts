@@ -11,7 +11,7 @@
 // const MockMedianizer = artifacts.require("MockMedianizer.sol");
 // const MockKyberNetwork = artifacts.require("./MockKyberNetwork.sol");
 
-// const Helper = require("./helper.js");
+// const Helper = require("../helper.js");
 // const BN = web3.utils.BN;
 
 // const zeroAddress = '0x0000000000000000000000000000000000000000';

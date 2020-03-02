@@ -15,7 +15,7 @@ const PermissionlessOrderbookReserveLister = artifacts.require("PermissionlessOr
 const OrderListFactory = artifacts.require("OrderListFactory.sol");
 const MockMedianizer = artifacts.require("MockMedianizer.sol");
 
-const Helper = require("./helper.js");
+const Helper = require("../helper.js");
 const BN = web3.utils.BN;
 const truffleAssert = require('truffle-assertions');
 
