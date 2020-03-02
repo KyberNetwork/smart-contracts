@@ -252,7 +252,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, Withdrawable2 {
     }
 
     function parseTradeDataHint(IERC20 src, IERC20 dest, TradeData memory tData, bytes memory hint) internal view {
-        
+        uint failedIndex;
+
         tData.tokenToEth.addresses = (src == ETH_TOKEN_ADDRESS) ?
             new IKyberReserve[](1) : reservesPerTokenSrc[address(src)];
         tData.ethToToken.addresses = (dest == ETH_TOKEN_ADDRESS) ?
@@ -267,13 +268,15 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, Withdrawable2 {
             (
                 tData.ethToToken.tradeType,
                 tData.ethToToken.addresses,
-                tData.ethToToken.splitValuesBps
+                tData.ethToToken.splitValuesBps,
+                failedIndex
             ) = parseHintE2T(hint);
         } else if (dest == ETH_TOKEN_ADDRESS) {
             (
                 tData.tokenToEth.tradeType,
                 tData.tokenToEth.addresses,
-                tData.tokenToEth.splitValuesBps
+                tData.tokenToEth.splitValuesBps,
+                failedIndex
             ) = parseHintT2E(hint);
         } else {
             (
@@ -282,9 +285,12 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, Withdrawable2 {
                 tData.tokenToEth.splitValuesBps,
                 tData.ethToToken.tradeType,
                 tData.ethToToken.addresses,
-                tData.ethToToken.splitValuesBps
+                tData.ethToToken.splitValuesBps,
+                failedIndex
             ) = parseHintT2T(hint);
         }
+
+        require(failedIndex > 0, "Hint error");
         // start = printGas("parse hint", start, Module.LOGIC);
 
         // T2E: apply masking out logic if mask out
