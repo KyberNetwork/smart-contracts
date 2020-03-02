@@ -1,5 +1,6 @@
 usePlugin("@nomiclabs/buidler-truffle5");
 usePlugin("@nomiclabs/buidler-web3");
+usePlugin("solidity-coverage");
 
 module.exports = {
   defaultNetwork: "buidlerevm",
@@ -16,13 +17,13 @@ module.exports = {
     version: "0.5.11",
     optimizer: {
       enabled: true,
-      runs: 200
+      runs: 9000
     }
   },
 
   paths: {
-    sources: "./contractsSol5",
-    tests: "./test",
+    sources: "./contractsV5",
+    tests: "./test/sol5"
   },
 
   mocha: {

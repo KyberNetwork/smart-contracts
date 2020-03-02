@@ -8,7 +8,7 @@ const solc511 = "v0.5.11+commit.c082d0b4";
 let compiler;
 let config;
 
-const v4SourceFiles = {
+const sol4SourceFiles = {
     "ConversionRates.sol" : {content: fs.readFileSync(contractV4Path + 'reserves/fprConversionRate/ConversionRates.sol','utf8')},
     "ConversionRateEnhancedSteps.sol" : {content: fs.readFileSync(contractV4Path + 'reserves/fprConversionRate/ConversionRateEnhancedSteps.sol', 'utf8')},
     "ConversionRatesInterface.sol" : {content: fs.readFileSync(contractV4Path + 'ConversionRatesInterface.sol', 'utf8')},
@@ -49,10 +49,10 @@ const v4SourceFiles = {
     "WrapReadTokenData.sol" : {content: fs.readFileSync(contractV4Path + 'wrappers/WrapReadTokenData.sol', 'utf8')}
 }
 
-const v5SourceFiles = {
+const sol5SourceFiles = {
     'KyberFeeHandler.sol' : {content: fs.readFileSync(contractV5Path + 'KyberFeeHandler.sol', 'utf8')},
     'GasHelper.sol' : {content: fs.readFileSync(contractV5Path + 'GasHelper.sol', 'utf8')},
-    'PermissionGroupsV5.sol' : {content: fs.readFileSync(contractV5Path + 'PermissionGroupsV5.sol', 'utf8')},
+    'PermissionGroups2.sol' : {content: fs.readFileSync(contractV5Path + 'PermissionGroups2.sol', 'utf8')},
     'BytesLib.sol' : {content: fs.readFileSync(contractV5Path + 'BytesLib.sol', 'utf8')},
     'IGasHelper.sol': {content: fs.readFileSync(contractV5Path + 'IGasHelper.sol', 'utf8')},
     'IERC20.sol' : {content: fs.readFileSync(contractV5Path + 'IERC20.sol', 'utf8')},
@@ -70,8 +70,8 @@ const v5SourceFiles = {
     'KyberTradeLogic.sol' : {content: fs.readFileSync(contractV5Path + 'KyberTradeLogic.sol', 'utf8')}, 
     'KyberHintHandler.sol' : {content: fs.readFileSync(contractV5Path + 'KyberHintHandler.sol', 'utf8')},
     'ReentrancyGuard.sol' : {content: fs.readFileSync(contractV5Path + 'ReentrancyGuard.sol', 'utf8')},
-    'UtilsV5.sol' : {content: fs.readFileSync(contractV5Path + 'UtilsV5.sol', 'utf8')},
-    'WithdrawableV5.sol' : {content: fs.readFileSync(contractV5Path + 'WithdrawableV5.sol', 'utf8')} 
+    'Utils4.sol' : {content: fs.readFileSync(contractV5Path + 'Utils4.sol', 'utf8')},
+    'Withdrawable2.sol' : {content: fs.readFileSync(contractV5Path + 'Withdrawable2.sol', 'utf8')} 
 }
 
 function compilingPreparations() {
@@ -137,12 +137,12 @@ module.exports.compileContracts = compileContracts;
 async function compileContracts(versionNum) {
     let solcVersionNum;
     let sourceFiles;
-    if (versionNum == "v4") {
+    if (versionNum == "sol4") {
         solcVersionNum = solc418;
-        sourceFiles = v4SourceFiles;
-    } else if (versionNum == "v5") {
+        sourceFiles = sol4SourceFiles;
+    } else if (versionNum == "sol5") {
         solcVersionNum = solc511;
-        sourceFiles = v5SourceFiles;
+        sourceFiles = sol5SourceFiles;
     } else {
       console.log(`invalid version number ${versionNum}`);
       process.exit(0);
@@ -160,21 +160,21 @@ async function compileContracts(versionNum) {
     return output;
 }
 
-module.exports.compileV4Contracts = compileV4Contracts;
-async function compileV4Contracts() {
-    return await compileContracts("v4");
+module.exports.compileSol4Contracts = compileSol4Contracts;
+async function compileSol4Contracts() {
+    return await compileContracts("sol4");
 }
 
-module.exports.compileV5Contracts = compileV5Contracts;
-async function compileV5Contracts() {
-    return await compileContracts("v5");
+module.exports.compileSol5Contracts = compileSol5Contracts;
+async function compileSol5Contracts() {
+    return await compileContracts("sol5");
 }
 
 module.exports.compileAllContracts = main;
 async function main() {
     let output = {'contracts': {}, 'sources': {}};
     //TODO: combine outputs
-    let v4Output = await compileContracts("v4");
-    let v5Output = await await compileContracts("v5");
+    let v4Output = await compileContracts("sol4");
+    let v5Output = await await compileContracts("sol5");
     return [v4Output, v5Output];
 }
