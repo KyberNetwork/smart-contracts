@@ -15,7 +15,8 @@ interface IKyberHint {
         returns(
             TradeType ethToTokenType,
             bytes8[] memory ethToTokenReserveIds,
-            uint[] memory ethToTokenSplits
+            uint[] memory ethToTokenSplits,
+            uint failedIndex
         );
 
     function parseTokenToEthHint(bytes calldata hint)
@@ -24,7 +25,8 @@ interface IKyberHint {
         returns(
             TradeType tokenToEthType,
             bytes8[] memory tokenToEthReserveIds,
-            uint[] memory tokenToEthSplits
+            uint[] memory tokenToEthSplits,
+            uint failedIndex
         );
 
     function parseTokenToTokenHint(bytes calldata hint)
@@ -36,7 +38,8 @@ interface IKyberHint {
             uint[] memory tokenToEthSplits,
             TradeType ethToTokenType,
             bytes8[] memory ethToTokenReserveIds,
-            uint[] memory ethToTokenSplits
+            uint[] memory ethToTokenSplits,
+            uint failedIndex
         );
 
     function buildEthToTokenHint(
