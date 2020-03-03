@@ -1,4 +1,4 @@
-const MockWithdrawable = artifacts.require("./MockWithdrawable.sol");
+const MockWithdrawable = artifacts.require("./MockWithdrawable2.sol");
 const TestToken = artifacts.require("Token.sol");
 
 const Helper = require("../helper.js");
@@ -47,13 +47,10 @@ contract('Withdrawable', function(accounts) {
         });
 
         it("should test withdraw token reject for non admin.", async function () {
-            await expectRevert.unspecified(
-                withdrawableInst.withdrawToken(token.address, tokenWithdrawAmt, user, {from: user})
+            await expectRevert(
+                withdrawableInst.withdrawToken(token.address, tokenWithdrawAmt, user, {from: user}),
+                "ONLY_ADMIN"
             );
-            // await expectRevert(
-            //     withdrawableInst.withdrawToken(token.address, tokenWithdrawAmt, user, {from: user}),
-            //     "ONLY_ADMIN"
-            // );
         });
 
         it("should test withdraw token reject when amount too high.", async function () {
@@ -87,13 +84,10 @@ contract('Withdrawable', function(accounts) {
         
         it("should test withdraw ether reject for non admin.", async function () {
             // try to withdraw the ether from withdrawableInst
-            await expectRevert.unspecified(
-                withdrawableInst.withdrawEther(etherWithdrawAmt, user, {from: user})
+            await expectRevert(
+                withdrawableInst.withdrawEther(etherWithdrawAmt, user, {from: user}),
+                "ONLY_ADMIN"
             );
-            // await expectRevert(
-            //     withdrawableInst.withdrawEther(etherWithdrawAmt, user, {from: user}),
-            //     "ONLY_ADMIN"
-            // );
         });
 
         it("should test withdraw ether reject when amount too high.", async function () {

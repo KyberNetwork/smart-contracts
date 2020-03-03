@@ -60,7 +60,7 @@ let reserve;
 let numReserves;
 let info;
 let hint;
-const tradeTypesArray = [EMPTY_HINTTYPE]//, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE];
+const tradeTypesArray = [EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE];
 const tradeStr = ["MASK IN", "MASK OUT", "SPLIT", "NONE"];
 
 //tokens data
@@ -196,7 +196,7 @@ contract('KyberNetwork', function(accounts) {
         
         it("List pair For reserve", async() => {
             let anyWallet = taker;
-            let anotherMockReserve = MockReserve.new();
+            let anotherMockReserve = await MockReserve.new();
             await tempNetwork.addReserve(anotherMockReserve.address, nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
             txResult = await tempNetwork.listPairForReserve(anotherMockReserve.address, KNC.address, true, true, true, {from: operator});
             expectEvent(txResult, 'ListReservePairs', {
@@ -241,7 +241,8 @@ contract('KyberNetwork', function(accounts) {
 
         it("Remove proxy", async() => {
             let fakeProxy = accounts[4];
-            txResult = await tempNetwork.addKyberProxy(fakeProxy, {from: admin});
+            await tempNetwork.addKyberProxy(fakeProxy, {from: admin});
+            let txResult = await tempNetwork.removeKyberProxy(fakeProxy, {from: admin});
             expectEvent(txResult, 'KyberProxyRemoved', {
                 proxy: fakeProxy
             });
@@ -560,22 +561,39 @@ contract('KyberNetwork', function(accounts) {
             });
 
             it("should emit KyberTrade event for a test T2T split trade", async() => {
+                hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, SPLIT_HINTTYPE, undefined, srcToken.address, destToken.address, srcQty);
+                info = [srcQty, networkFeeBps, platformFeeBps];
+                expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
+                expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
+
                 await srcToken.transfer(network.address, srcQty);
-                let txResult = await network.tradeWithHint(networkProxy, srcToken.address, srcQty, ethAddress, taker, 
-                    maxDestAmt, minConversionRate, platformWallet, emptyHint);
-                // expectEvent(txResult, 'KyberTrade', {
-                //     trader: networkProxy,
-                //     src:
-                //     dest:
-                //     srcAmount:
-                //     dstAmount:
-                //     destAddress:
-                //     ethWeiValue:
-                //     networkFeeWei:
-                //     t2eIds:
-                //     e2tIds:
-                //     hint:
-                // })
+                let txResult = await network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, destToken.address, taker, 
+                    maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
+                
+                //have to check ids separately, because expectEvent does not support arrays
+                expectEvent(txResult, 'KyberTrade', {
+                    trader: networkProxy,
+                    src: srcToken.address,
+                    dest: destToken.address,
+                    srcAmount: srcQty,
+                    dstAmount: expectedResult.actualDestAmount,
+                    destAddress: taker,
+                    ethWeiValue: expectedResult.tradeWei,
+                    networkFeeWei: expectedResult.networkFeeWei,
+                    customPlatformFeeWei: expectedResult.platformFeeWei,
+                    hint: hint
+                });
+
+                let actualT2Eids = txResult.logs[3].args.t2eIds;
+                let actualE2Tids = txResult.logs[3].args.e2tIds;
+                Helper.assertEqual(expectedResult.t2eIds.length, actualT2Eids.length, "T2E id length not equal");
+                Helper.assertEqual(expectedResult.e2tIds.length, actualE2Tids.length, "E2T id length not equal");
+                for (let i = 0; i < expectedResult.t2eIds.length; i++) {
+                    Helper.assertEqual(expectedResult.t2eIds[i], actualT2Eids[i], "T2E id not equal");
+                }
+                for (let i = 0; i < expectedResult.e2tIds.length; i++) {
+                    Helper.assertEqual(expectedResult.e2tIds[i], actualE2Tids[i], "T2E id not equal");
+                }
             });
 
             it("should perform a T2E trade (backwards compatible, different hint types) and check balances change as expected", async() => {
@@ -717,7 +735,7 @@ contract('KyberNetwork', function(accounts) {
 
                     let expectedWalletFee = initialWalletFee.add(expectedResult.platformFeeWei);
                     let actualWalletFee = await feeHandler.feePerPlatformWallet(platformWallet);
-                    await Helper.assertEqual(actualWalletFee, expectedWalletFee, "platform fee did not receive fees");
+                    Helper.assertEqual(actualWalletFee, expectedWalletFee, "platform fee did not receive fees");
                 }
             });
 
