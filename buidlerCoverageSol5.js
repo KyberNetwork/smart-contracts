@@ -15,10 +15,7 @@ module.exports = {
 
   solc: {
     version: "0.5.11",
-    optimizer: {
-      enabled: true,
-      runs: 9000
-    }
+    optimizer: require("./solcOptimiserSettings.js")
   },
 
   paths: {
