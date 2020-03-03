@@ -597,7 +597,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     }
 
     function calcTradeSrcAmountFromDest (TradeData memory tData)
-        internal view returns(uint actualSrcAmount)
+        internal pure returns(uint actualSrcAmount)
     {
         uint weiAfterFees;
         if (tData.input.dest != ETH_TOKEN_ADDRESS) {
@@ -624,7 +624,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     }
 
     event KyberTrade(address indexed trader, IERC20 src, IERC20 dest, uint srcAmount, uint dstAmount,
-        address destAddress, uint ethWeiValue, uint networkFeeWei, uint customPlatformFeeWei, 
+        address destAddress, uint ethWeiValue, uint networkFeeWei, uint customPlatformFeeWei,
         bytes8[] t2eIds, bytes8[] e2tIds, bytes hint);
 
     /* solhint-disable function-max-lines */
