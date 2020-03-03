@@ -202,7 +202,7 @@ async function main() {
   chainId = chainId || await web3.eth.net.getId()
   console.log('chainId', chainId);
   console.log('starting compilation');
-  output = await require("../compileContracts.js").compileContracts("v5");
+  output = await require("../compileContracts.js").compileContracts("sol5");
   console.log(output);
   console.log("finished compilation");
 
