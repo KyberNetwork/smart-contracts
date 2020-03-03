@@ -1,11 +1,12 @@
 pragma  solidity 0.5.11;
 
 import "./Withdrawable2.sol";
-import "./IKyberTradeLogic.sol";
+import "./IKyberMatchingEngine.sol";
+import "./IKyberNetwork.sol";
 import "./KyberHintHandler.sol";
 
 
-contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, Withdrawable2 {
+contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdrawable2 {
     uint            public negligibleRateDiffBps = 5; // 1 bps is 0.01%
     IKyberNetwork   public networkContract;
 
@@ -220,7 +221,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, Withdrawable2 {
         TradeData memory tData;
         tData.tokenToEth.decimals = srcDecimals;
         tData.ethToToken.decimals = destDecimals;
-        tData.networkFeeBps = info[uint(IKyberTradeLogic.InfoIndex.networkFeeBps)];
+        tData.networkFeeBps = info[uint(IKyberMatchingEngine.InfoIndex.networkFeeBps)];
 
         parseTradeDataHint(src, dest, tData, hint);
 
@@ -231,7 +232,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, Withdrawable2 {
             return packResults(tData);
         }
 
-        calcRatesAndAmountsTokenToEth(src, info[uint(IKyberTradeLogic.InfoIndex.srcAmount)], tData);
+        calcRatesAndAmountsTokenToEth(src, info[uint(IKyberMatchingEngine.InfoIndex.srcAmount)], tData);
 
         if (tData.tradeWei == 0) {
             //initialise ethToToken and store as zero
@@ -254,7 +255,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, Withdrawable2 {
         //fee deduction
         //no fee deduction occurs for masking of ETH -> token reserves, or if no ETH -> token reserve was specified
         tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
-        tData.platformFeeWei = tData.tradeWei * info[uint(IKyberTradeLogic.InfoIndex.platformFeeBps)] / BPS;
+        tData.platformFeeWei = tData.tradeWei * info[uint(IKyberMatchingEngine.InfoIndex.platformFeeBps)] / BPS;
 
         require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
         calcRatesAndAmountsEthToToken(dest, tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei, tData);

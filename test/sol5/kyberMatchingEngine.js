@@ -1,5 +1,5 @@
 const TestToken = artifacts.require("Token.sol");
-const TradeLogic = artifacts.require("KyberTradeLogic.sol");
+const TradeLogic = artifacts.require("KyberMatchingEngine.sol");
 
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -23,7 +23,7 @@ let txResult;
 let admin;
 let operator;
 let network;
-let tradeLogic;
+let matchingEngine;
 let user;
 
 //reserve data
@@ -61,7 +61,7 @@ let expectedTradeResult;
 let expectedOutput;
 let actualResult;
 
-contract('KyberTradeLogic', function(accounts) {
+contract('KyberMatchingEngine', function(accounts) {
     before("one time global init", async() => {
         //init accounts
         user = accounts[0];
@@ -71,8 +71,8 @@ contract('KyberTradeLogic', function(accounts) {
     });
 
     describe("test onlyAdmin and onlyNetwork permissions", async() => {
-        before("deploy tradeLogic instance, 1 mock reserve and 1 mock token", async() => {
-            tradeLogic = await TradeLogic.new(admin);
+        before("deploy matchingEngine instance, 1 mock reserve and 1 mock token", async() => {
+            matchingEngine = await TradeLogic.new(admin);
             token = await TestToken.new("test", "tst", 18);
 
             //init 1 mock reserve
@@ -86,105 +86,105 @@ contract('KyberTradeLogic', function(accounts) {
 
         it("should not have unauthorized personnel set network contract", async() => {
             await expectRevert(
-                tradeLogic.setNetworkContract(network, {from: user}),
+                matchingEngine.setNetworkContract(network, {from: user}),
                 "ONLY_ADMIN"
             );
 
             await expectRevert(
-                tradeLogic.setNetworkContract(network, {from: operator}),
+                matchingEngine.setNetworkContract(network, {from: operator}),
                 "ONLY_ADMIN"
             );
 
             await expectRevert(
-                tradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: operator}),
+                matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: operator}),
                 "ONLY_ADMIN"
             );
 
             await expectRevert(
-                tradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: network}),
+                matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: network}),
                 "ONLY_ADMIN"
             );
         });
 
         it("should have admin set network contract", async() => {
-            await tradeLogic.setNetworkContract(network, {from: admin});
-            let result = await tradeLogic.networkContract();
+            await matchingEngine.setNetworkContract(network, {from: admin});
+            let result = await matchingEngine.networkContract();
             Helper.assertEqual(network, result, "network not set by admin");
         });
 
         it("should not have unauthorized personnel set negligble rate diff bps", async() => {
             await expectRevert(
-                tradeLogic.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: user}),
+                matchingEngine.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: user}),
                 "ONLY_NETWORK"
             );
 
             await expectRevert(
-                tradeLogic.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: operator}),
+                matchingEngine.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: operator}),
                 "ONLY_NETWORK"
             );
 
             await expectRevert(
-                tradeLogic.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: admin}),
+                matchingEngine.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: admin}),
                 "ONLY_NETWORK"
             );
         });
 
         it("should have network set negligble rate diff bps", async() => {
-            await tradeLogic.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: network});
-            let result = await tradeLogic.negligibleRateDiffBps();
+            await matchingEngine.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: network});
+            let result = await matchingEngine.negligibleRateDiffBps();
             Helper.assertEqual(negligibleRateDiffBps, result, "negligbleRateDiffInBps not set by network");
         });
 
         it("should not have unauthorized personnel add reserve", async() => {
             await expectRevert(
-                tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: user}),
+                matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: user}),
                 "ONLY_NETWORK"
             );
 
             await expectRevert(
-                tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: operator}),
+                matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: operator}),
                 "ONLY_NETWORK"
             );
 
             await expectRevert(
-                tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: admin}),
+                matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: admin}),
                 "ONLY_NETWORK"
             );
         });
 
         it("should have network add reserve", async() => {
-            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
-            await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
-            let reserveDetails = await tradeLogic.getReserveDetails(reserve.address);
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+            await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+            let reserveDetails = await matchingEngine.getReserveDetails(reserve.address);
             let reserveId = reserveDetails.reserveId;
-            let reserveAddress = await tradeLogic.reserveIdToAddresses(reserve.reserveId, 0);
+            let reserveAddress = await matchingEngine.reserveIdToAddresses(reserve.reserveId, 0);
             Helper.assertEqual(reserve.reserveId, reserveId, "wrong address to ID");
             Helper.assertEqual(reserve.address, reserveAddress, "wrong ID to address");
         });
 
         it("should not have unauthorized personnel list token pair for reserve", async() => {
             await expectRevert(
-                tradeLogic.listPairForReserve(reserve.address, token.address, true, true, true, {from: user}),
+                matchingEngine.listPairForReserve(reserve.address, token.address, true, true, true, {from: user}),
                 "ONLY_NETWORK"
             );
 
             await expectRevert(
-                tradeLogic.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator}),
+                matchingEngine.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator}),
                 "ONLY_NETWORK"
             );
 
             await expectRevert(
-                tradeLogic.listPairForReserve(reserve.address, token.address, true, true, true, {from: admin}),
+                matchingEngine.listPairForReserve(reserve.address, token.address, true, true, true, {from: admin}),
                 "ONLY_NETWORK"
             );
         });
 
         it("should have network list pair for reserve", async() => {
-            let result = await tradeLogic.listPairForReserve(reserve.address, token.address, true, true, true, {from: network});
+            let result = await matchingEngine.listPairForReserve(reserve.address, token.address, true, true, true, {from: network});
             assert.isTrue(result, "pair should have listed");
-            result = await tradeLogic.reservesPerTokenSrc(token.address,0);
+            result = await matchingEngine.reservesPerTokenSrc(token.address,0);
             Helper.assertEqual(result, reserve.address, "reserve should have supported token");
-            result = await tradeLogic.reservesPerTokenDest(token.address,0);
+            result = await matchingEngine.reservesPerTokenDest(token.address,0);
             Helper.assertEqual(result, reserve.address, "reserve should have supported token");
         });
 
@@ -198,12 +198,12 @@ contract('KyberTradeLogic', function(accounts) {
     });
 
     describe("test contract event", async() => {
-        before("deploy and setup tradeLogic instance", async() => {
-            tradeLogic = await TradeLogic.new(admin);
+        before("deploy and setup matchingEngine instance", async() => {
+            matchingEngine = await TradeLogic.new(admin);
         });
 
         it("shoud test set network event", async() => {
-            txResult = await tradeLogic.setNetworkContract(network, {from: admin});
+            txResult = await matchingEngine.setNetworkContract(network, {from: admin});
             expectEvent(txResult, "NetworkContractUpdate", {
                 newNetwork: network
             });
@@ -223,10 +223,10 @@ contract('KyberTradeLogic', function(accounts) {
         let reserveInstances;
         let result;
 
-        before("setup tradeLogic instance and 4 reserves 4 types", async() => {
-            tradeLogic = await TradeLogic.new(admin);
-            await tradeLogic.setNetworkContract(network, {from: admin});
-            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+        before("setup matchingEngine instance and 4 reserves 4 types", async() => {
+            matchingEngine = await TradeLogic.new(admin);
+            await matchingEngine.setNetworkContract(network, {from: admin});
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
             //init token
             token = await TestToken.new("Token", "TOK", 18);
@@ -237,7 +237,7 @@ contract('KyberTradeLogic', function(accounts) {
             //add reserves as 5 different types.
             let type = 1;
             for (reserve of Object.values(reserveInstances)) {
-                await tradeLogic.addReserve(reserve.address, reserve.reserveId, type, {from: network});
+                await matchingEngine.addReserve(reserve.address, reserve.reserveId, type, {from: network});
                 type++;
                 //iterate all 5 types
             }
@@ -260,10 +260,10 @@ contract('KyberTradeLogic', function(accounts) {
                     pay = pay.concat([false]);
                 }
                 
-                await tradeLogic.setFeePayingPerReserveType(pay[0], pay[1], pay[2], pay[3], pay[4], {from: admin});
+                await matchingEngine.setFeePayingPerReserveType(pay[0], pay[1], pay[2], pay[3], pay[4], {from: admin});
                 let index = 0;
                 for (reserve of Object.values(reserveInstances)) {
-                    let details = await tradeLogic.getReserveDetails(reserve.address);
+                    let details = await matchingEngine.getReserveDetails(reserve.address);
                     Helper.assertEqual(reserve.reserveId, details.reserveId)
                     Helper.assertEqual(index + 1, details.resType)
                     Helper.assertEqual(pay[index], details.isFeePaying);
@@ -274,10 +274,10 @@ contract('KyberTradeLogic', function(accounts) {
     });
  
     describe("test getRatesForToken", async() => {
-        before("setup tradeLogic instance and 2 tokens", async() => {
-            tradeLogic = await TradeLogic.new(admin);
-            await tradeLogic.setNetworkContract(network, {from: admin});
-            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+        before("setup matchingEngine instance and 2 tokens", async() => {
+            matchingEngine = await TradeLogic.new(admin);
+            await matchingEngine.setNetworkContract(network, {from: admin});
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
             //init 2 tokens
             srcDecimals = new BN(8);
@@ -293,21 +293,21 @@ contract('KyberTradeLogic', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
-                await tradeLogic.setFeePayingPerReserveType(true, true, true, true, true, {from: admin});
+                await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
-                    await tradeLogic.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
-                    await tradeLogic.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
+                    await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
                 };
             });
 
             after("unlist and remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await tradeLogic.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: network});
-                    await tradeLogic.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: network});
-                    await tradeLogic.removeReserve(reserve.address, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: network});
+                    await matchingEngine.removeReserve(reserve.address, {from: network});
                 };
             });
 
@@ -320,7 +320,7 @@ contract('KyberTradeLogic', function(accounts) {
     
             it("should get rates for token (different network fee amounts)", async() => {
                 for (networkFeeBps of networkFeeArray) {
-                    actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, networkFeeBps);
+                    actualResult = await matchingEngine.getRatesForToken(token.address, ethSrcQty, tokenQty, networkFeeBps);
                     for (let i=0; i < actualResult.buyReserves.length; i++) {
                         reserveAddress = actualResult.buyReserves[i];
                         reserve = reserveInstances[reserveAddress];
@@ -356,21 +356,21 @@ contract('KyberTradeLogic', function(accounts) {
                 numReserves = result.numAddedReserves * 1;
 
                 //set fee paying to false
-                await tradeLogic.setFeePayingPerReserveType(false, false, false, false, false, {from: admin});
+                await matchingEngine.setFeePayingPerReserveType(false, false, false, false, false, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
-                    await tradeLogic.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
-                    await tradeLogic.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
+                    await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
                 };
             });
 
             after("unlist and remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await tradeLogic.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: network});
-                    await tradeLogic.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: network});
-                    await tradeLogic.removeReserve(reserve.address, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: network});
+                    await matchingEngine.removeReserve(reserve.address, {from: network});
                 };
             });
 
@@ -383,7 +383,7 @@ contract('KyberTradeLogic', function(accounts) {
     
             it("should get rates for token (different network fee amounts)", async() => {
                 for (networkFeeBps of networkFeeArray) {
-                    actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, networkFeeBps);
+                    actualResult = await matchingEngine.getRatesForToken(token.address, ethSrcQty, tokenQty, networkFeeBps);
                     for (let i=0; i < actualResult.buyReserves.length; i++) {
                         reserveAddress = actualResult.buyReserves[i];
                         reserve = reserveInstances[reserveAddress];
@@ -418,7 +418,7 @@ contract('KyberTradeLogic', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
-                await tradeLogic.setFeePayingPerReserveType(true, true, true, true, true, {from: admin});
+                await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, {from: admin});
 
                 //set zero rates
                 for ([key, reserve] of Object.entries(reserveInstances)) {
@@ -428,17 +428,17 @@ contract('KyberTradeLogic', function(accounts) {
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
-                    await tradeLogic.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
-                    await tradeLogic.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
+                    await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
                 };
             });
 
             after("unlist and remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await tradeLogic.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: network});
-                    await tradeLogic.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: network});
-                    await tradeLogic.removeReserve(reserve.address, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: network});
+                    await matchingEngine.removeReserve(reserve.address, {from: network});
                 };
             });
 
@@ -451,7 +451,7 @@ contract('KyberTradeLogic', function(accounts) {
     
             it("should get rates for token (different network fee amounts)", async() => {
                 for (networkFeeBps of networkFeeArray) {
-                    actualResult = await tradeLogic.getRatesForToken(token.address, ethSrcQty, tokenQty, networkFeeBps);
+                    actualResult = await matchingEngine.getRatesForToken(token.address, ethSrcQty, tokenQty, networkFeeBps);
                     for (let i=0; i < actualResult.buyReserves.length; i++) {
                         reserveAddress = actualResult.buyReserves[i];
                         reserve = reserveInstances[reserveAddress];
@@ -471,10 +471,10 @@ contract('KyberTradeLogic', function(accounts) {
     });
 
     describe("test calcRatesAndAmounts", async() => {
-        before("setup tradeLogic instance and 2 tokens", async() => {
-            tradeLogic = await TradeLogic.new(admin);
-            await tradeLogic.setNetworkContract(network, {from: admin});
-            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+        before("setup matchingEngine instance and 2 tokens", async() => {
+            matchingEngine = await TradeLogic.new(admin);
+            await matchingEngine.setNetworkContract(network, {from: admin});
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
             //init 2 tokens
             srcDecimals = new BN(8);
@@ -496,21 +496,21 @@ contract('KyberTradeLogic', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
-                await tradeLogic.setFeePayingPerReserveType(true, true, true, true, true, {from: admin});
+                await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
-                    await tradeLogic.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
-                    await tradeLogic.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
+                    await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
                 };
             });
 
             after("unlist and remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await tradeLogic.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: network});
-                    await tradeLogic.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: network});
-                    await tradeLogic.removeReserve(reserve.address, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: network});
+                    await matchingEngine.removeReserve(reserve.address, {from: network});
                 };
             });
 
@@ -530,7 +530,7 @@ contract('KyberTradeLogic', function(accounts) {
                     it("T2E, no hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
-                        reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, srcToken.address, srcQty, 0, true);
+                        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, reserveInstances, srcToken.address, srcQty, 0, true);
                         bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestReserve], [bestReserve.rateNoFee], [],
@@ -542,14 +542,14 @@ contract('KyberTradeLogic', function(accounts) {
                             [], []
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
                     it("E2T, no hint", async() => {
                         info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
-                        reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, destToken.address, ethSrcQty, 0, false);
+                        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, reserveInstances, destToken.address, ethSrcQty, 0, false);
                         bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             ethDecimals, [], [], [],
@@ -561,16 +561,16 @@ contract('KyberTradeLogic', function(accounts) {
                             [bestReserve], [BPS]
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, emptyHint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, emptyHint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });   
 
                     it("T2T, no hint", async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
-                        reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, srcToken.address, srcQty, 0, true);
+                        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, reserveInstances, srcToken.address, srcQty, 0, true);
                         bestSellReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, networkFeeBps);
-                        reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, destToken.address, ethSrcQty, 0, false);
+                        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, reserveInstances, destToken.address, ethSrcQty, 0, false);
                         bestBuyReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         
                         //get trade result
@@ -584,7 +584,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [bestBuyReserve], [BPS]
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, emptyHint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, emptyHint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -593,7 +593,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             MASK_IN_HINTTYPE, numMaskedReserves, [], srcQty,
                             undefined, 0, undefined, 0,
                             srcToken.address, ethAddress
@@ -610,7 +610,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [], [],
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -619,7 +619,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             undefined, 0, undefined, 0,
                             MASK_IN_HINTTYPE, numMaskedReserves, [], ethSrcQty,
                             ethAddress, destToken.address
@@ -636,7 +636,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [bestReserve], [BPS]
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -645,7 +645,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             MASK_IN_HINTTYPE, numMaskedReserves, [], srcQty,
                             MASK_IN_HINTTYPE, numMaskedReserves, [], ethSrcQty,
                             srcToken.address, destToken.address
@@ -663,7 +663,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [bestBuyReserve], [BPS]
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -672,7 +672,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             MASK_OUT_HINTTYPE, numMaskedReserves, [], srcQty,
                             undefined, 0, undefined, 0,
                             srcToken.address, ethAddress
@@ -689,7 +689,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [], []
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -698,7 +698,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             undefined, 0, undefined, 0,
                             MASK_OUT_HINTTYPE, numMaskedReserves, [], ethSrcQty,
                             ethAddress, destToken.address
@@ -715,7 +715,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [bestReserve], [BPS]
                         );
 
-                        actualResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -724,7 +724,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             MASK_OUT_HINTTYPE, numMaskedReserves, [], srcQty,
                             MASK_OUT_HINTTYPE, numMaskedReserves, [], ethSrcQty,
                             srcToken.address, destToken.address
@@ -742,7 +742,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [bestBuyReserve], [BPS]
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -750,7 +750,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             SPLIT_HINTTYPE, undefined, undefined, srcQty,
                             undefined, 0, undefined, 0,
                             srcToken.address, ethAddress
@@ -767,7 +767,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [], [],
                         );
 
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -775,7 +775,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             undefined, 0, undefined, 0,
                             SPLIT_HINTTYPE, undefined, undefined, ethSrcQty,
                             ethAddress, destToken.address
@@ -792,7 +792,7 @@ contract('KyberTradeLogic', function(accounts) {
                             hintedReserves.reservesE2T.reservesForFetchRate, hintedReserves.reservesE2T.splits,
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -800,7 +800,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             SPLIT_HINTTYPE, undefined, undefined, srcQty,
                             SPLIT_HINTTYPE, undefined, undefined, ethSrcQty,
                             srcToken.address, destToken.address
@@ -819,7 +819,7 @@ contract('KyberTradeLogic', function(accounts) {
                             hintedReserves.reservesE2T.reservesForFetchRate, hintedReserves.reservesE2T.splits,
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -827,7 +827,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             EMPTY_HINTTYPE, undefined, undefined, srcQty,
                             MASK_IN_HINTTYPE, undefined, undefined, ethSrcQty,
                             srcToken.address, destToken.address
@@ -845,7 +845,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [bestBuyReserve], [BPS]
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -853,7 +853,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             EMPTY_HINTTYPE, undefined, undefined, srcQty,
                             MASK_OUT_HINTTYPE, undefined, undefined, ethSrcQty,
                             srcToken.address, destToken.address
@@ -871,7 +871,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [bestBuyReserve], [BPS]
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -879,7 +879,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             EMPTY_HINTTYPE, undefined, undefined, srcQty,
                             SPLIT_HINTTYPE, undefined, undefined, ethSrcQty,
                             srcToken.address, destToken.address
@@ -898,7 +898,7 @@ contract('KyberTradeLogic', function(accounts) {
                             hintedReserves.reservesE2T.reservesForFetchRate, hintedReserves.reservesE2T.splits,
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -906,7 +906,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             MASK_IN_HINTTYPE, undefined, undefined, srcQty,
                             EMPTY_HINTTYPE, undefined, undefined, ethSrcQty,
                             srcToken.address, destToken.address
@@ -924,7 +924,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [bestBuyReserve], [BPS]
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -932,7 +932,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             MASK_IN_HINTTYPE, undefined, undefined, srcQty,
                             MASK_OUT_HINTTYPE, undefined, undefined, ethSrcQty,
                             srcToken.address, destToken.address
@@ -950,7 +950,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [bestBuyReserve], [BPS]
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -958,7 +958,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             MASK_IN_HINTTYPE, undefined, undefined, srcQty,
                             SPLIT_HINTTYPE, undefined, undefined, ethSrcQty,
                             srcToken.address, destToken.address
@@ -977,7 +977,7 @@ contract('KyberTradeLogic', function(accounts) {
                             hintedReserves.reservesE2T.reservesForFetchRate, hintedReserves.reservesE2T.splits,
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -985,7 +985,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             MASK_OUT_HINTTYPE, undefined, undefined, srcQty,
                             EMPTY_HINTTYPE, undefined, undefined, ethSrcQty,
                             srcToken.address, destToken.address
@@ -1003,7 +1003,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [bestBuyReserve], [BPS]
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -1011,7 +1011,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             MASK_OUT_HINTTYPE, undefined, undefined, srcQty,
                             MASK_IN_HINTTYPE, undefined, undefined, ethSrcQty,
                             srcToken.address, destToken.address
@@ -1029,7 +1029,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [bestBuyReserve], [BPS]
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -1037,7 +1037,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             MASK_OUT_HINTTYPE, undefined, undefined, srcQty,
                             SPLIT_HINTTYPE, undefined, undefined, ethSrcQty,
                             srcToken.address, destToken.address
@@ -1056,7 +1056,7 @@ contract('KyberTradeLogic', function(accounts) {
                             hintedReserves.reservesE2T.reservesForFetchRate, hintedReserves.reservesE2T.splits,
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -1064,7 +1064,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             SPLIT_HINTTYPE, undefined, undefined, srcQty,
                             EMPTY_HINTTYPE, undefined, undefined, ethSrcQty,
                             srcToken.address, destToken.address
@@ -1082,7 +1082,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [bestBuyReserve], [BPS],
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -1090,7 +1090,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             SPLIT_HINTTYPE, undefined, undefined, srcQty,
                             MASK_IN_HINTTYPE, undefined, undefined, ethSrcQty,
                             srcToken.address, destToken.address
@@ -1108,7 +1108,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [bestBuyReserve], [BPS],
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
@@ -1116,7 +1116,7 @@ contract('KyberTradeLogic', function(accounts) {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
-                            tradeLogic, reserveInstances,
+                            matchingEngine, reserveInstances,
                             SPLIT_HINTTYPE, undefined, undefined, srcQty,
                             MASK_OUT_HINTTYPE, undefined, undefined, ethSrcQty,
                             srcToken.address, destToken.address
@@ -1134,7 +1134,7 @@ contract('KyberTradeLogic', function(accounts) {
                             [bestBuyReserve], [BPS],
                         );
                         
-                        actualResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
                 }
@@ -1181,7 +1181,7 @@ async function fetchReservesRatesFromTradeLogic(tradeLogicInstance, reserveInsta
 }
 
 async function getHintedReserves(
-    tradeLogic, reserveInstances, 
+    matchingEngine, reserveInstances, 
     t2eHintType, t2eNumReserves, t2eSplits, t2eQty,
     e2tHintType, e2tNumReserves, e2tSplits, e2tQty,
     srcAdd, destAdd) 
@@ -1196,26 +1196,26 @@ async function getHintedReserves(
     e2tHintType = (e2tHintType == EMPTY_HINTTYPE) ? emptyHint : e2tHintType;
 
     if(srcAdd != ethAddress) {
-        reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, srcAdd, t2eQty, 0, true);        
+        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, reserveInstances, srcAdd, t2eQty, 0, true);        
         res.reservesT2E = nwHelper.applyHintToReserves(t2eHintType, reserveCandidates, t2eNumReserves, t2eSplits);
         if(destAdd == ethAddress) {
-            res.hint = await tradeLogic.buildTokenToEthHint(
+            res.hint = await matchingEngine.buildTokenToEthHint(
                 res.reservesT2E.tradeType, res.reservesT2E.reservesForHint, res.reservesT2E.splits);
             return res;
         }
     }
     
     if(destAdd != ethAddress) {
-        reserveCandidates = await fetchReservesRatesFromTradeLogic(tradeLogic, reserveInstances, destAdd, e2tQty, 0, false);
+        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, reserveInstances, destAdd, e2tQty, 0, false);
         res.reservesE2T = nwHelper.applyHintToReserves(e2tHintType, reserveCandidates, e2tNumReserves, e2tSplits);
         if(srcAdd == ethAddress) {
-            res.hint = await tradeLogic.buildEthToTokenHint(
+            res.hint = await matchingEngine.buildEthToTokenHint(
                 res.reservesE2T.tradeType, res.reservesE2T.reservesForHint, res.reservesE2T.splits);
             return res;
         }
     }
 
-    res.hint = await tradeLogic.buildTokenToTokenHint(
+    res.hint = await matchingEngine.buildTokenToTokenHint(
         res.reservesT2E.tradeType, res.reservesT2E.reservesForHint, res.reservesT2E.splits,
         res.reservesE2T.tradeType, res.reservesE2T.reservesForHint, res.reservesE2T.splits
     );

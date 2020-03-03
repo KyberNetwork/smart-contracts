@@ -398,7 +398,7 @@ function applyHintToReserves(tradeType, reserves, numReserves, splitValues) {
 }
 
 module.exports.getHint = getHint;
-async function getHint(network, tradeLogic, reserveInstances, hintType, numReserves, srcAdd, destAdd, qty) {
+async function getHint(network, matchingEngine, reserveInstances, hintType, numReserves, srcAdd, destAdd, qty) {
     if (hintType == EMPTY_HINTTYPE) return emptyHint;
     
     let reserveCandidates;
@@ -410,7 +410,7 @@ async function getHint(network, tradeLogic, reserveInstances, hintType, numReser
         reserveCandidates = await fetchReservesRatesFromNetwork(network, reserveInstances, srcAdd, qty, true);
         hintedReservest2e = applyHintToReserves(hintType, reserveCandidates, numReserves);
         if(destAdd == ethAddress) {
-            return (await tradeLogic.buildTokenToEthHint(
+            return (await matchingEngine.buildTokenToEthHint(
                 hintedReservest2e.tradeType, hintedReservest2e.reservesForHint, hintedReservest2e.splits));
         }
     }
@@ -420,12 +420,12 @@ async function getHint(network, tradeLogic, reserveInstances, hintType, numReser
         hintedReservese2t = applyHintToReserves(hintType, reserveCandidates, numReserves);
 
         if(srcAdd == ethAddress) {
-            return (await tradeLogic.buildEthToTokenHint(
+            return (await matchingEngine.buildEthToTokenHint(
                 hintedReservese2t.tradeType, hintedReservese2t.reservesForHint, hintedReservese2t.splits));
         }
     }
 
-    hint = await tradeLogic.buildTokenToTokenHint(
+    hint = await matchingEngine.buildTokenToTokenHint(
         hintedReservest2e.tradeType, hintedReservest2e.reservesForHint, hintedReservest2e.splits,
         hintedReservese2t.tradeType, hintedReservese2t.reservesForHint, hintedReservese2t.splits
     );

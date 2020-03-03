@@ -4,7 +4,7 @@ pragma  solidity 0.5.11;
 import "./IKyberReserve.sol";
 
 
-interface IKyberTradeLogic {
+interface IKyberMatchingEngine {
 
     enum ReserveType {
         NONE,
