@@ -185,31 +185,37 @@ module.exports.addBps = function(rate, bps) {
 
 module.exports.calcSrcQty = function(dstQty, srcDecimals, dstDecimals, rate) {
     //source quantity is rounded up. to avoid dest quantity being too low.
+    dstQty = new BN(dstQty);
     srcDecimals = new BN(srcDecimals);
+    dstDecimals = new BN(dstDecimals);
+    rate = new BN(rate);
+
     let numerator;
     let denominator;
     let precisionUnits = (new BN(10).pow(new BN(18)));
     if (srcDecimals.gte(dstDecimals)) {
-        numerator = precisionUnits.mul(dstQty).mul((new BN(10)).pow(new BN(srcDecimals - dstDecimals)));
+        numerator = precisionUnits.mul(dstQty).mul((new BN(10)).pow(new BN(srcDecimals.sub(dstDecimals))));
         denominator = new BN(rate);
     } else {
         numerator = precisionUnits.mul(dstQty);
-        denominator = (new BN(rate)).mul((new BN(10)).pow(new BN(dstDecimals - srcDecimals)));
+        denominator = (new BN(rate)).mul((new BN(10)).pow(new BN(dstDecimals.sub(srcDecimals))));
     }
     return numerator.add(denominator).sub(new BN(1)).div(denominator);;
 }
 
 module.exports.calcDstQty = function(srcQty, srcDecimals, dstDecimals, rate) {
     srcQty = new BN(srcQty);
-    rate = new BN(rate);
+    srcDecimals = new BN(srcDecimals);
     dstDecimals = new BN(dstDecimals);
+    rate = new BN(rate);
+
     let precisionUnits = (new BN(10).pow(new BN(18)));
     let result;
 
     if (dstDecimals.gte(srcDecimals)) {
-        result = ((srcQty.mul(rate).mul((new BN(10)).pow(new BN(dstDecimals - srcDecimals)))).div(precisionUnits));
+        result = ((srcQty.mul(rate).mul((new BN(10)).pow(new BN(dstDecimals.sub(srcDecimals))))).div(precisionUnits));
     } else {
-        result = (srcQty).mul(rate).div(precisionUnits.mul((new BN(10)).pow(new BN(srcDecimals - dstDecimals))));
+        result = (srcQty).mul(rate).div(precisionUnits.mul((new BN(10)).pow(new BN(srcDecimals.sub(dstDecimals)))));
     }
     return result;
 }
