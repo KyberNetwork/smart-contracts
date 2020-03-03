@@ -124,9 +124,6 @@ contract('KyberNetwork', function(accounts) {
 
     describe("should test adding removing proxy.", async() => { 
         let tempNetwork;
-        let tempTradeLogic;
-        let feeHandler;
-        let KNC;
         let proxy1 = accounts[9];
         let proxy2 = accounts[8];
         let proxy3 = accounts[7];
