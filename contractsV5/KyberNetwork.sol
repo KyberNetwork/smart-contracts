@@ -632,11 +632,10 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         nonReentrant
         returns(uint destAmount) 
     {
-        // destAmount = printGas("start_tr", 0, Module.NETWORK);
-        require(verifyTradeValid(tData.input.src, tData.input.srcAmount, 
-            tData.input.dest, tData.input.destAddress), "invalid");
-        
         tData.networkFeeBps = getAndUpdateNetworkFee();
+
+        // destAmount = printGas("start_tr", 0, Module.NETWORK);
+        require(verifyTradeInputValid(tData.input, tData.networkFeeBps), "invalid");
         
         // amounts excluding fees
         // destAmount = printGas("start to calc", destAmount, Module.NETWORK);
@@ -764,30 +763,28 @@ contract KyberNetwork is Withdrawable, Utils, IKyberNetwork, ReentrancyGuard {
         return true;
     }
 
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev checks that user sent ether/tokens to contract before trade
-    /// @param src Src token
-    /// @param srcAmount amount of src tokens
+    /// @dev checks a trade input validity. including correct src amounts
+    /// @param input Trade input structure
+    /// @param networkFeeBps network fee in bps.
     /// @return true if tradeInput is valid
-    function verifyTradeValid(IERC20 src, uint srcAmount, IERC20 dest, address destAddress)
-        internal
-        view
-        returns(bool)
-    {
+    function verifyTradeInputValid(TradeInput memory input, uint networkFeeBps) internal view returns(bool) {
+        // IERC20 src, uint srcAmount, IERC20 dest, address destAddress)
+        
         require(isEnabled, "!network");
         require(kyberProxyContracts[msg.sender], "bad sender");
         require(tx.gasprice <= maxGasPriceValue, "gas price");
-        require(srcAmount <= MAX_QTY, "srcAmt > MAX_QTY");
-        require(srcAmount != 0, "0 srcAmt");
-        require(destAddress != address(0), "dest add 0");
-        require(src != dest, "src = dest");
-
-        if (src == ETH_TOKEN_ADDRESS) {
-            require(msg.value == srcAmount, "eth qty !=");
+        require(input.srcAmount <= MAX_QTY, "srcAmt > MAX_QTY");
+        require(input.srcAmount != 0, "0 srcAmt");
+        require(input.destAddress != address(0), "dest add 0");
+        require(input.src != input.dest, "src = dest");
+        require(input.platformFeeBps + networkFeeBps < BPS, "fees high");
+        
+        if (input.src == ETH_TOKEN_ADDRESS) {
+            require(msg.value == input.srcAmount, "bad Eth qty");
         } else {
-            require(msg.value == 0, "Eth qty >");
+            require(msg.value == 0, "big Eth qty");
             //funds should have been moved to this contract already.
-            require(src.balanceOf(address(this)) >= srcAmount, "srcTok low");
+            require(input.src.balanceOf(address(this)) >= input.srcAmount, "srcTok low");
         }
 
         return true;
