@@ -2,7 +2,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const solc = require('solc');
 const contractV4Path = path.join(__dirname, "../contracts/");
-const contractV5Path = path.join(__dirname, '../contractsV5/');
+const contractV5Path = path.join(__dirname, '../contractsSol5/');
 const solc418 = "v0.4.18+commit.9cf6e910";
 const solc511 = "v0.5.11+commit.c082d0b4";
 let compiler;
