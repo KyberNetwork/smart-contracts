@@ -11,7 +11,7 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, Withdrawable2 {
 
     mapping(bytes8=>address[]) public reserveIdToAddresses;
     mapping(address=>bytes8) internal reserveAddressToId;
-    mapping(address=>uint) internal reserveType; //type from enum IKyberNetwork.ReserveType
+    mapping(address=>uint) internal reserveType; //type from enum ReserveType
     mapping(address=>IKyberReserve[]) public reservesPerTokenSrc; // reserves supporting token to eth
     mapping(address=>IKyberReserve[]) public reservesPerTokenDest;// reserves support eth to token
 
@@ -39,12 +39,13 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, Withdrawable2 {
         networkContract = _networkContract;
     }
 
-    function addReserve(address reserve, bytes8 reserveId, IKyberNetwork.ReserveType resType) external 
+    function addReserve(address reserve, bytes8 reserveId, ReserveType resType) external 
         onlyNetwork returns (bool) 
     {
         require(reserveAddressToId[reserve] == bytes8(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
-        require(resType != IKyberNetwork.ReserveType.NONE, "bad res type");
+        require(resType != ReserveType.NONE, "bad res type");
+        require(uint(resType) <= uint(ReserveType.LAST));
         require(feePayingPerType !=  0xffffffff, "Fee paying not set");
 
         if (reserveIdToAddresses[reserveId].length == 0) {
@@ -69,22 +70,23 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, Withdrawable2 {
         return reserveId;
     }
 
-    function setFeePayingPerReserveType(bool fpr, bool apr, bool bridge, bool utility) external onlyAdmin {
+    function setFeePayingPerReserveType(bool fpr, bool apr, bool bridge, bool utility, bool custom) external onlyAdmin {
         uint feePayingData;
 
-        if (apr) feePayingData |= 1 << uint(IKyberNetwork.ReserveType.APR);
-        if (fpr) feePayingData |= 1 << uint(IKyberNetwork.ReserveType.FPR);
-        if (bridge) feePayingData |= 1 << uint(IKyberNetwork.ReserveType.BRIDGE);
-        if (utility) feePayingData |= 1 << uint(IKyberNetwork.ReserveType.UTILITY);
+        if (apr) feePayingData |= 1 << uint(ReserveType.APR);
+        if (fpr) feePayingData |= 1 << uint(ReserveType.FPR);
+        if (bridge) feePayingData |= 1 << uint(ReserveType.BRIDGE);
+        if (utility) feePayingData |= 1 << uint(ReserveType.UTILITY);
+        if (custom) feePayingData |= 1 << uint(ReserveType.CUSTOM);
 
         feePayingPerType = feePayingData;
     }
 
     function getReserveDetails(address reserve) public view
-        returns(bytes8 reserveId, IKyberNetwork.ReserveType resType, bool isFeePaying)
+        returns(bytes8 reserveId, ReserveType resType, bool isFeePaying)
     {
         reserveId = reserveAddressToId[reserve];
-        resType = IKyberNetwork.ReserveType(reserveType[reserve]);
+        resType = ReserveType(reserveType[reserve]);
         isFeePaying = (feePayingPerType & (1 << reserveType[reserve])) > 0;
     }
     struct Amounts {

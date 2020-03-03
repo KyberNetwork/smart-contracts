@@ -135,7 +135,7 @@ contract('KyberNetwork', function(accounts) {
         
             await tempNetwork.addOperator(operator, {from: admin});
             await tempTradeLogic.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempTradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: admin});
+            await tempTradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
@@ -275,7 +275,7 @@ contract('KyberNetwork', function(accounts) {
             //init tradeLogic
             tradeLogic = await TradeLogic.new(admin);
             await tradeLogic.setNetworkContract(network.address, {from: admin});
-            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: admin});
+            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
             //setup network
             await network.addOperator(operator, {from: admin});

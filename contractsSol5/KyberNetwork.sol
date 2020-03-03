@@ -87,14 +87,14 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     event AddReserveToNetwork (
         address indexed reserve,
         bytes8 indexed reserveId,
-        ReserveType reserveType,
+        IKyberTradeLogic.ReserveType reserveType,
         address indexed rebateWallet,
         bool add);
 
     /// @notice can be called only by operator
     /// @dev adds a reserve to/from the network.
     /// @param reserve The reserve address.
-    function addReserve(address reserve, bytes8 reserveId, ReserveType reserveType, address wallet) external onlyOperator returns(bool) {
+    function addReserve(address reserve, bytes8 reserveId, IKyberTradeLogic.ReserveType reserveType, address wallet) external onlyOperator returns(bool) {
         require(tradeLogic.addReserve(reserve, reserveId, reserveType));
         reserves.push(IKyberReserve(reserve));
 

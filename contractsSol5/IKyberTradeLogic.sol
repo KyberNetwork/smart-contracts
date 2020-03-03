@@ -2,10 +2,19 @@
 pragma  solidity 0.5.11;
 
 import "./IKyberReserve.sol";
-import "./IKyberNetwork.sol";
 
 
 interface IKyberTradeLogic {
+
+    enum ReserveType {
+        NONE,
+        FPR,
+        APR,
+        BRIDGE,
+        UTILITY,
+        CUSTOM,
+        LAST
+    }
 
     enum ResultIndex {
         t2eNumReserves,
@@ -29,7 +38,7 @@ interface IKyberTradeLogic {
 
     function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external returns (bool);
 
-    function addReserve(address reserve, bytes8 reserveId, IKyberNetwork.ReserveType resType) external returns (bool);
+    function addReserve(address reserve, bytes8 reserveId, ReserveType resType) external returns (bool);
 
     function removeReserve(address reserve) external returns (bytes8);
 

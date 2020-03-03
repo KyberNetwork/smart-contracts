@@ -81,7 +81,7 @@ contract('KyberNetworkProxy', function(accounts) {
         //init tradeLogic
         tradeLogic = await TradeLogic.new(admin);
         await tradeLogic.setNetworkContract(network.address, {from: admin});
-        await tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: admin});
+        await tradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
