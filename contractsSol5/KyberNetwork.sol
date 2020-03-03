@@ -515,46 +515,40 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         //no need to handle fees if no fee paying reserves
         if ((tData.numFeePayingReserves == 0) && (tData.platformFeeWei == 0)) return true;
 
-        // create array of rebate wallets + fee percent per reserve
-        // fees should add up to 100%.
-        address[] memory eligibleWallets = new address[](tData.numFeePayingReserves);
-        uint[] memory rebatePercentBps = new uint[](tData.numFeePayingReserves);
-
         // Updates reserve eligibility and rebate percentages
-        updateEligibilityAndRebates(eligibleWallets, rebatePercentBps, tData);
+        (address[] memory rebateWallets, uint[] memory rebatePercentBps) = calcualteRebateSplitPerWallet(tData);
 
         uint sentFee = tData.networkFeeWei + tData.platformFeeWei;
 
         // Send total fee amount to fee handler with reserve data.
         require(
-            feeHandler.handleFees.value(sentFee)(eligibleWallets, rebatePercentBps,
+            feeHandler.handleFees.value(sentFee)(rebateWallets, rebatePercentBps,
             tData.input.platformWallet, tData.platformFeeWei),
             "handle fee fail"
         );
         return true;
     }
 
-    function updateEligibilityAndRebates(
-        address[] memory eligibleWallets,
-        uint[] memory rebatePercentBps,
-        TradeData memory tData
-    ) internal view
+    function calcualteRebateSplitPerWallet(TradeData memory tData) internal view
+        returns (address[] memory rebateWallets, uint[] memory rebatePercentBps)
     {
-        if(eligibleWallets.length == 0) return;
+        rebateWallets = new address[](tData.numFeePayingReserves);
+        rebatePercentBps = new uint[](tData.numFeePayingReserves);
 
         uint index;
-        // Parse ethToToken list
-        index = parseReserveList(
-            eligibleWallets,
+        
+        // ethToToken
+        index = populateRebateWalletList(
+            rebateWallets,
             rebatePercentBps,
             tData.ethToToken,
             index,
             tData.feePayingReservesBps
         );
 
-        // Parse tokenToEth list
-        index = parseReserveList(
-            eligibleWallets,
+        // tokenToEth
+        index = populateRebateWalletList(
+            rebateWallets,
             rebatePercentBps,
             tData.tokenToEth,
             index,
@@ -562,8 +556,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         );
     }
 
-    function parseReserveList(
-        address[] memory eligibleWallets,
+    function populateRebateWalletList(
+        address[] memory rebateWallets,
         uint[] memory rebatePercentBps,
         TradingReserves memory resList,
         uint index,
@@ -573,7 +567,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
         for(uint i = 0; i < resList.isFeePaying.length; i ++) {
             if(resList.isFeePaying[i]) {
-                eligibleWallets[_index] = reserveRebateWallet[address(resList.addresses[i])];
+                rebateWallets[_index] = reserveRebateWallet[address(resList.addresses[i])];
                 rebatePercentBps[_index] = resList.splitValuesBps[i] * BPS / feePayingReservesBps;
                 _index ++;
             }
