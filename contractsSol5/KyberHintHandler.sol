@@ -7,17 +7,17 @@ import "./IKyberReserve.sol";
 
 
 contract KyberHintHandler is IKyberHint, Utils4 {
+    uint8 public constant RESERVE_ID_LENGTH = 8;
     bytes public constant SEPARATOR_OPCODE = "\x77";
     bytes public constant MASK_IN_OPCODE = "\x01";
     bytes public constant MASK_OUT_OPCODE = "\x02";
     bytes public constant SPLIT_TRADE_OPCODE = "\x03";
     bytes public constant END_OPCODE = "\xee";
-    bytes32 public constant SEPARATOR_KECCAK = keccak256(SEPARATOR_OPCODE);
-    bytes32 public constant MASK_IN_KECCAK = keccak256(MASK_IN_OPCODE);
-    bytes32 public constant MASK_OUT_KECCAK = keccak256(MASK_OUT_OPCODE);
-    bytes32 public constant SPLIT_TRADE_KECCAK = keccak256(SPLIT_TRADE_OPCODE);
-    bytes32 public constant END_KECCAK = keccak256(END_OPCODE);
-    uint8 public constant RESERVE_ID_LENGTH = 8;
+    bytes32 internal constant SEPARATOR_KECCAK = keccak256(SEPARATOR_OPCODE);
+    bytes32 internal constant MASK_IN_KECCAK = keccak256(MASK_IN_OPCODE);
+    bytes32 internal constant MASK_OUT_KECCAK = keccak256(MASK_OUT_OPCODE);
+    bytes32 internal constant SPLIT_TRADE_KECCAK = keccak256(SPLIT_TRADE_OPCODE);
+    bytes32 internal constant END_KECCAK = keccak256(END_OPCODE);
 
     using BytesLib for bytes;
 
@@ -176,7 +176,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
                     bpsSoFar += bps[i];
                 }
             }
-            require((bpsSoFar == BPS) || (bpsSoFar == 0), "BPS > 10000");
+            require((bpsSoFar == BPS) || (bpsSoFar == 0), "BPS <> 10000");
         }
     }
 
@@ -210,7 +210,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             decodeOperation(hint, tradeHint, isTokenToEth);
         } else {
             tradeHint.hintError = true;
-        }        
+        }
     }
 
     function decodeReservesFromHint(
@@ -272,6 +272,8 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             return MASK_OUT_OPCODE;
         } else if (tradeType == TradeType.Split) {
             return SPLIT_TRADE_OPCODE;
+        } else {
+            revert("Invalid trade type");
         }
     }
 

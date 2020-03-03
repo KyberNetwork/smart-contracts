@@ -201,6 +201,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, Withdrawable2 {
         uint destAmountNoFee;
         uint destAmountWithNetworkFee;
         uint actualDestAmount; // all fees
+
+        uint failedIndex; // index of error in hint
     }
 
     function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcDecimals, uint destDecimals, uint[] calldata info, bytes calldata hint)
@@ -219,6 +221,13 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, Withdrawable2 {
         tData.networkFeeBps = info[uint(IKyberTradeLogic.InfoIndex.networkFeeBps)];
 
         parseTradeDataHint(src, dest, tData, hint);
+
+        if (tData.failedIndex > 0) {
+            storeTradeReserveData(tData.tokenToEth, IKyberReserve(0), 0, false);
+            storeTradeReserveData(tData.ethToToken, IKyberReserve(0), 0, false);
+
+            return packResults(tData);
+        }
 
         calcRatesAndAmountsTokenToEth(src, info[uint(IKyberTradeLogic.InfoIndex.srcAmount)], tData);
 
@@ -251,9 +260,15 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, Withdrawable2 {
         return packResults(tData);
     }
 
-    function parseTradeDataHint(IERC20 src, IERC20 dest, TradeData memory tData, bytes memory hint) internal view {
-        uint failedIndex;
-
+    function parseTradeDataHint(
+        IERC20 src,
+        IERC20 dest,
+        TradeData memory tData,
+        bytes memory hint
+    )
+        internal
+        view
+    {
         tData.tokenToEth.addresses = (src == ETH_TOKEN_ADDRESS) ?
             new IKyberReserve[](1) : reservesPerTokenSrc[address(src)];
         tData.ethToToken.addresses = (dest == ETH_TOKEN_ADDRESS) ?
@@ -269,14 +284,14 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, Withdrawable2 {
                 tData.ethToToken.tradeType,
                 tData.ethToToken.addresses,
                 tData.ethToToken.splitValuesBps,
-                failedIndex
+                tData.failedIndex
             ) = parseHintE2T(hint);
         } else if (dest == ETH_TOKEN_ADDRESS) {
             (
                 tData.tokenToEth.tradeType,
                 tData.tokenToEth.addresses,
                 tData.tokenToEth.splitValuesBps,
-                failedIndex
+                tData.failedIndex
             ) = parseHintT2E(hint);
         } else {
             (
@@ -286,12 +301,9 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, Withdrawable2 {
                 tData.ethToToken.tradeType,
                 tData.ethToToken.addresses,
                 tData.ethToToken.splitValuesBps,
-                failedIndex
+                tData.failedIndex
             ) = parseHintT2T(hint);
         }
-
-        require(failedIndex > 0, "Hint error");
-        // start = printGas("parse hint", start, Module.LOGIC);
 
         // T2E: apply masking out logic if mask out
         if (tData.tokenToEth.tradeType == TradeType.MaskOut) {
