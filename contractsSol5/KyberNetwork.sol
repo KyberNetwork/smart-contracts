@@ -15,8 +15,9 @@ import "./IGasHelper.sol";
 /// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
-    uint  constant PERM_HINT_GET_RATE = 1 << 255; //for backwards compatibility
-    uint  constant DEFAULT_NETWORK_FEE_BPS = 25; //for backwards compatibility
+    uint  constant PERM_HINT_GET_RATE = 1 << 255;   // for backwards compatibility
+    uint  constant DEFAULT_NETWORK_FEE_BPS = 25;    // till we read value from DAO
+    uint  constant MAX_APPROVED_PROXIES = 2;        // limit number of proxies that can trade here.
 
     IKyberFeeHandler       internal feeHandler;
     IKyberDAO         internal kyberDAO;
@@ -234,7 +235,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     
     function addKyberProxy(address networkProxy) external onlyAdmin {
         require(networkProxy != address(0), "proxy 0");
-        require(!kyberProxyContracts[networkProxy], "proxy exist");
+        require(!kyberProxyContracts[networkProxy], "proxy exists");
+        require(kyberProxyArray.length < MAX_APPROVED_PROXIES);
         
         kyberProxyArray.push(networkProxy);
         
@@ -243,7 +245,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     }
     
     function removeKyberProxy(address networkProxy) external onlyAdmin {
-        require(kyberProxyContracts[networkProxy], "proxy ?");
+        require(kyberProxyContracts[networkProxy], "proxy not found");
         
         uint proxyIndex = 2 ** 255;
         
@@ -256,7 +258,6 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         
         kyberProxyArray[proxyIndex] = kyberProxyArray[kyberProxyArray.length - 1];
         kyberProxyArray.length--;
-
         
         kyberProxyContracts[networkProxy] = false;
         emit KyberProxyRemoved(networkProxy);
@@ -267,6 +268,10 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @return An array of all reserves
     function getReserves() external view returns(IKyberReserve[] memory) {
         return reserves;
+    }
+
+    function getKyberProxies() external view returns(address[] proxies) {
+        return kyberProxyArray
     }
     
     //backward compatible
