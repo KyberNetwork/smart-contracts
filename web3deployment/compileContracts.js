@@ -57,7 +57,7 @@ const sol5SourceFiles = {
     'IGasHelper.sol': {content: fs.readFileSync(contractV5Path + 'IGasHelper.sol', 'utf8')},
     'IERC20.sol' : {content: fs.readFileSync(contractV5Path + 'IERC20.sol', 'utf8')},
     'IBurnableToken.sol' : {content: fs.readFileSync(contractV5Path + 'IBurnableToken.sol', 'utf8')},
-    'IFeeHandler.sol' : {content: fs.readFileSync(contractV5Path + 'IFeeHandler.sol', 'utf8')},
+    'IKyberFeeHandler.sol' : {content: fs.readFileSync(contractV5Path + 'IKyberFeeHandler.sol', 'utf8')},
     'IKyberDAO.sol' : {content: fs.readFileSync(contractV5Path + 'IKyberDAO.sol', 'utf8')},
     'IKyberHint.sol' : {content: fs.readFileSync(contractV5Path + 'IKyberHint.sol', 'utf8')},
     'IKyberNetwork.sol' : {content: fs.readFileSync(contractV5Path + 'IKyberNetwork.sol', 'utf8')},
@@ -150,7 +150,7 @@ async function compileContracts(versionNum) {
 
     while (compiler == undefined) {
         compiler = await loadSpecificCompiler(solcVersionNum);
-        await sleep(30000); //change time based on internet connection
+        await sleep(10000); //change time based on internet connection
     }
     compilingPreparations();
     const config = createConfiguration(sourceFiles);
