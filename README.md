@@ -27,4 +27,4 @@ For more details, please visit our [developer portal](https://developer.kyber.ne
 2. Use `-f` for running a specific test file.
 
 ### Example Commands
-`./coverage.sh -f ./test/v5/kyberNetwork.js`
+`./coverage.sh -f ./test/sol5/kyberNetwork.js`
