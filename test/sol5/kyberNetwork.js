@@ -206,6 +206,20 @@ contract('KyberNetwork', function(accounts) {
 
             await tempNetwork.addKyberProxy(proxy3, {from: admin});
         });
+
+        it("test events for add remove proxy.", async() => {
+            let txResult = await tempNetwork.addKyberProxy(proxy1, {from: admin});
+            
+            expectEvent(txResult, 'KyberProxyAdded', {
+                proxy: proxy1
+            });
+
+            txResult = await tempNetwork.removeKyberProxy(proxy1, {from: admin});
+            
+            expectEvent(txResult, 'KyberProxyRemoved', {
+                proxy: proxy1
+            });
+        });
     });
 
     describe("should test events declared in network contract", async() => { 

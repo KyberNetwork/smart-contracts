@@ -19,7 +19,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     uint  constant DEFAULT_NETWORK_FEE_BPS = 25;    // till we read value from DAO
     uint  constant MAX_APPROVED_PROXIES = 2;        // limit number of proxies that can trade here.
 
-    IKyberFeeHandler       internal feeHandler;
+    IKyberFeeHandler  internal feeHandler;
     IKyberDAO         internal kyberDAO;
     IKyberTradeLogic  internal tradeLogic;
     IGasHelper        internal gasHelper;
@@ -44,7 +44,6 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         emit EtherReceival(msg.sender, msg.value);
     }
 
-    // the new trade with hint
     function tradeWithHintAndFee(address payable trader, IERC20 src, uint srcAmount, IERC20 dest, address payable destAddress,
         uint maxDestAmount, uint minConversionRate, address payable platformWallet, uint platformFeeBps, bytes calldata hint)
         external payable
@@ -113,7 +112,6 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param reserve The reserve address.
     /// @param startIndex to search in reserve array.
     function removeReserve(address reserve, uint startIndex) public onlyOperator returns(bool) {
-        //TODO: handle all db
         bytes8 reserveId = tradeLogic.removeReserve(reserve);
 
         uint reserveIndex = 2 ** 255;
@@ -230,13 +228,13 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         emit KyberNetworkSetEnable(isEnabled);
     }
 
-    event KyberProxyAdded(address proxy, address sender);
+    event KyberProxyAdded(address proxy);
     event KyberProxyRemoved(address proxy);
     
     function addKyberProxy(address networkProxy) external onlyAdmin {
         require(networkProxy != address(0), "proxy 0");
         require(!kyberProxyContracts[networkProxy], "proxy exists");
-        require(kyberProxyArray.length < MAX_APPROVED_PROXIES);
+        require(kyberProxyArray.length < MAX_APPROVED_PROXIES, "Max 2 proxy");
         
         kyberProxyArray.push(networkProxy);
         
@@ -747,7 +745,6 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
             callValue = (src == ETH_TOKEN_ADDRESS)? splitAmount : 0;
 
             // reserve sends tokens/eth to network. network sends it to destination
-            // todo: if reserve supports returning destTokens call accordingly
             require(reservesData.addresses[i].trade.value(callValue)(src, splitAmount, dest, address(this), reservesData.rates[i], true));
         }
 
@@ -809,7 +806,6 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         if (expiryBlock < block.number && kyberDAO != IKyberDAO(0)) {
             (networkFeeBps, expiryBlock) = kyberDAO.getLatestNetworkFeeData();
         }
-        // todo: don't revert if DAO reverts. just return exsiting value.
     }
     
     // get fee function for trade. get fee and update data if expired.
