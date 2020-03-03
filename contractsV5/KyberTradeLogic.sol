@@ -242,7 +242,8 @@ contract KyberTradeLogic is KyberHintHandler, IKyberTradeLogic, PermissionGroups
 
         //fee deduction
         //no fee deduction occurs for masking of ETH -> token reserves, or if no ETH -> token reserve was specified
-        tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
+        tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps * tData.feePayingReservesBps / (BPS * BPS);
+        // tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
         tData.platformFeeWei = tData.tradeWei * info[uint(IKyberTradeLogic.InfoIndex.platformFeeBps)] / BPS;
 
         require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");

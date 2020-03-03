@@ -60,7 +60,7 @@ let reserve;
 let numReserves;
 let info;
 let hint;
-const tradeTypesArray = [EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE];
+const tradeTypesArray = [EMPTY_HINTTYPE]//, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE];
 const tradeStr = ["MASK IN", "MASK OUT", "SPLIT", "NONE"];
 
 //tokens data
@@ -117,7 +117,7 @@ contract('KyberNetwork', function(accounts) {
         srcDecimals = tokenDecimals[srcTokenId];
         destDecimals = tokenDecimals[destTokenId];
 
-        srcQty = new BN(10).mul(new BN(10).pow(srcDecimals));
+        srcQty = new BN(50).mul(new BN(10).pow(srcDecimals));
 
         //fees
         networkFeeBps = new BN(20);
@@ -143,8 +143,7 @@ contract('KyberNetwork', function(accounts) {
             feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
         });
 
-        it("eth recieval", async() => {
-        
+        it("ETH recieval", async() => {
             let ethSender = accounts[9];
 
             txResult = await tempNetwork.send(ethSrcQty, {from: ethSender});
@@ -154,8 +153,7 @@ contract('KyberNetwork', function(accounts) {
             });
         });
 
-        it("set contracts", async() => {
-        
+        it("Set contracts", async() => {
             let gasHelperAdd = accounts[9];
 
             txResult = await tempNetwork.setContracts(feeHandler.address, tempTradeLogic.address, gasHelperAdd, {from: admin});
@@ -184,16 +182,77 @@ contract('KyberNetwork', function(accounts) {
                 add: true
             });
         });
-          
-            //TODO: RemoveReserveFromNetwork
-            //TODO: ListReservePairs
-            //TODO: DAOContractSet 
-            //TODO: KyberNetworkParamsSet
-            //TODO: KyberNetworkSetEnable
-            //TODO: KyberProxyAdded
-            //TODO: KyberProxyRemoved
-            //TODO: HandlePlatformFee
-            //TODO: KyberTrade
+        
+        it("Remove reserve", async() => {
+            txResult = await tempNetwork.removeReserve(mockReserve.address, 0, {from: operator});
+            //TODO: reserveId returned by txResult has additional zeroes appended
+            txResult.logs[0].args[1] = txResult.logs[0].args['1'].substring(0,18);
+            txResult.logs[0].args['reserveId'] = txResult.logs[0].args['reserveId'].substring(0,18);
+            expectEvent(txResult, 'RemoveReserveFromNetwork', {
+                reserve: mockReserve.address,
+                reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase()
+            });
+        });
+        
+        it("List pair For reserve", async() => {
+            let anyWallet = taker;
+            let anotherMockReserve = MockReserve.new();
+            await tempNetwork.addReserve(anotherMockReserve.address, nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
+            txResult = await tempNetwork.listPairForReserve(anotherMockReserve.address, KNC.address, true, true, true, {from: operator});
+            expectEvent(txResult, 'ListReservePairs', {
+                reserve: anotherMockReserve.address,
+                src: ethAddress,
+                dest: KNC.address,
+                add: true
+            });
+
+            expectEvent(txResult, 'ListReservePairs', {
+                reserve: anotherMockReserve.address,
+                src: KNC.address,
+                dest: ethAddress,
+                add: true
+            });
+        });
+        
+        it("Add DAO contract", async() => {
+            let fakeDAO = accounts[3];
+            txResult = await tempNetwork.setDAOContract(fakeDAO, {from: admin});
+            expectEvent(txResult, 'KyberDAOUpdated', {
+                newDAO: fakeDAO
+            });
+        });
+
+        it("Set params", async() => {
+            txResult = await tempNetwork.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
+            expectEvent(txResult, 'KyberNetworkParamsSet', {
+                maxGasPrice: gasPrice,
+                negligibleRateDiffBps: negligibleRateDiffBps
+            });
+        });
+
+        it("Add proxy", async() => {
+            let fakeProxy = accounts[3];
+            txResult = await tempNetwork.addKyberProxy(fakeProxy, {from: admin});
+            expectEvent(txResult, 'KyberProxyAdded', {
+                proxy: fakeProxy,
+                sender: admin
+            });
+        });
+
+        it("Remove proxy", async() => {
+            let fakeProxy = accounts[4];
+            txResult = await tempNetwork.addKyberProxy(fakeProxy, {from: admin});
+            expectEvent(txResult, 'KyberProxyRemoved', {
+                proxy: fakeProxy
+            });
+        });
+
+        it("Set enable", async() => {
+            txResult = await tempNetwork.setEnable(true, {from: admin});
+            expectEvent(txResult, 'KyberNetworkSetEnable', {
+                isEnabled: true
+            });
+        });
     });
 
     describe("test with MockDAO", async() => {
@@ -207,8 +266,6 @@ contract('KyberNetwork', function(accounts) {
             network = await KyberNetwork.new(admin);
             // set proxy same as network
             proxyForFeeHandler = network;
-            //transfer tokens to network instance
-            await transferTokensToNetwork(network);
 
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
@@ -228,7 +285,6 @@ contract('KyberNetwork', function(accounts) {
             await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
             await network.setEnable(true, {from: admin});
         });
-
         
         it("should test enabling network", async() => {
             let isEnabled = await network.enabled();
@@ -328,6 +384,29 @@ contract('KyberNetwork', function(accounts) {
                     Helper.assertEqual(actualResult.rateAfterAllFees, zeroBN, "rate with all fees not 0");
                 }
             });
+
+            it("expected rate (different hint types) should be zero with zero srcQty, and all reserves return zero rate", async() => {
+                srcQty = zeroBN;
+                for (hintType of tradeTypesArray) {
+                    hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                    actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, ethAddress, srcQty, platformFeeBps, hint);
+                    Helper.assertEqual(actualResult.rateNoFees, zeroBN, "expected rate not 0");
+                    Helper.assertEqual(actualResult.rateAfterNetworkFee, zeroBN, "rate with network fee not 0");
+                    Helper.assertEqual(actualResult.rateAfterAllFees, zeroBN, "rate with all fees not 0");
+
+                    hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
+                    actualResult = await network.getExpectedRateWithHintAndFee(ethAddress, destToken.address, ethSrcQty, platformFeeBps, emptyHint);
+                    Helper.assertEqual(actualResult.rateNoFees, zeroBN, "expected rate not 0");
+                    Helper.assertEqual(actualResult.rateAfterNetworkFee, zeroBN, "rate with network fee not 0");
+                    Helper.assertEqual(actualResult.rateAfterAllFees, zeroBN, "rate with all fees not 0");
+
+                    hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, MASK_IN_HINTTYPE, undefined, srcToken.address, destToken.address, srcQty);
+                    actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, destToken.address, srcQty, platformFeeBps, emptyHint);
+                    Helper.assertEqual(actualResult.rateNoFees, zeroBN, "expected rate not 0");
+                    Helper.assertEqual(actualResult.rateAfterNetworkFee, zeroBN, "rate with network fee not 0");
+                    Helper.assertEqual(actualResult.rateAfterAllFees, zeroBN, "rate with all fees not 0");
+                }
+            });
         });
 
         describe("test with 3 mock reserves", async() => {
@@ -348,6 +427,42 @@ contract('KyberNetwork', function(accounts) {
             });
             
             it("should get expected rate, no fees at all for T2E, E2T & T2T", async() => {
+                //setup mockDAO with zero network bps
+                expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
+                let tempDAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+                await tempDAO.setNetworkFeeBps(zeroBN);
+                await network.setDAOContract(tempDAO.address, {from: admin});
+
+                info = [srcQty, zeroBN, zeroBN];
+                expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint);
+                expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, ethDecimals, expectedResult);
+                actualResult = await network.getExpectedRate(srcToken.address, ethAddress, srcQty);
+                Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2E");
+        
+                info = [ethSrcQty, zeroBN, zeroBN];
+                expectedResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, emptyHint);
+                expectedResult = await nwHelper.unpackRatesAndAmounts(info, ethDecimals, destDecimals, expectedResult);
+                actualResult = await network.getExpectedRate(ethAddress, destToken.address, ethSrcQty);
+                Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for E2T");
+        
+                info = [srcQty, zeroBN, zeroBN];
+                expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, emptyHint);
+                expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
+                actualResult = await network.getExpectedRate(srcToken.address, destToken.address, srcQty);
+                Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2T");
+
+                await network.setDAOContract(DAO.address, {from: admin});
+            });
+
+            it("should return zero rate for zero srcQty", async() => {
+                actualResult = await network.getExpectedRate(srcToken.address, ethAddress, zeroBN);
+                Helper.assertEqual(expectedResult.rateAfterNetworkFee, zeroBN, "expected rate with network fee != actual rate for T2E");
+        
+                actualResult = await network.getExpectedRate(ethAddress, destToken.address, zeroBN);
+                Helper.assertEqual(expectedResult.rateAfterNetworkFee, zeroBN, "expected rate with network fee != actual rate for E2T");
+
+                actualResult = await network.getExpectedRate(srcToken.address, destToken.address, zeroBN);
+                Helper.assertEqual(expectedResult.rateAfterNetworkFee, zeroBN, "expected rate with network fee != actual rate for T2T");
             });
 
             it("should get expected rate (no hint, backwards compatible) for T2E, E2T & T2T", async() => {
@@ -442,6 +557,25 @@ contract('KyberNetwork', function(accounts) {
                 console.log(ratesForToken.buyRates[1].valueOf().toString())
                 console.log(ratesForToken.buyRates[2].valueOf().toString())
                 console.log(ratesForToken.buyRates[3].valueOf().toString())
+            });
+
+            it("should emit KyberTrade event for a test T2T split trade", async() => {
+                await srcToken.transfer(network.address, srcQty);
+                let txResult = await network.tradeWithHint(networkProxy, srcToken.address, srcQty, ethAddress, taker, 
+                    maxDestAmt, minConversionRate, platformWallet, emptyHint);
+                // expectEvent(txResult, 'KyberTrade', {
+                //     trader: networkProxy,
+                //     src:
+                //     dest:
+                //     srcAmount:
+                //     dstAmount:
+                //     destAddress:
+                //     ethWeiValue:
+                //     networkFeeWei:
+                //     t2eIds:
+                //     e2tIds:
+                //     hint:
+                // })
             });
 
             it("should perform a T2E trade (backwards compatible, different hint types) and check balances change as expected", async() => {
@@ -586,6 +720,76 @@ contract('KyberNetwork', function(accounts) {
                     await Helper.assertEqual(actualWalletFee, expectedWalletFee, "platform fee did not receive fees");
                 }
             });
+
+            it("should perform a T2E trade (different hint types, with maxDestAmount) and check balances change as expected", async() => {
+                let platformFeeBps = new BN(50);
+                let maxDestAmt = new BN(20).mul(new BN(10).pow(destDecimals));
+                
+                for (hintType of tradeTypesArray) {
+                    info = [srcQty, networkFeeBps, platformFeeBps];
+                    hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                    expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hint);
+                    expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, ethDecimals, expectedResult);
+
+                    await srcToken.transfer(network.address, srcQty);
+                    let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, ethAddress, expectedResult);
+                    let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, ethAddress, taker, network.address);
+                    [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, ethAddress, expectedResult, info, maxDestAmt);
+
+                    let txResult = await network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker, 
+                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
+                    console.log(`token -> ETH (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
+                    await nwHelper.compareBalancesAfterTrade(srcToken, ethAddress, actualSrcQty, 
+                        initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
+                }
+            });
+
+            it("should perform a E2T trade (different hint types, with maxDestAmount) and check balances change as expected", async() => {
+                let platformFeeBps = new BN(50);
+                let maxDestAmt = new BN(20).mul(new BN(10).pow(destDecimals));
+                
+                for (hintType of tradeTypesArray) {
+                    hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
+                    info = [ethSrcQty, networkFeeBps, platformFeeBps];
+                    expectedResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hint);
+                    expectedResult = await nwHelper.unpackRatesAndAmounts(info, ethDecimals, destDecimals, expectedResult);
+
+                    let initialReserveBalances = await nwHelper.getReserveBalances(ethAddress, destToken, expectedResult);
+                    let initialTakerBalances = await nwHelper.getTakerBalances(ethAddress, destToken, taker, networkProxy);
+                    [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(ethAddress, destToken, expectedResult, info, maxDestAmt);
+
+                    let txResult = await network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker, 
+                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint, {value: ethSrcQty});
+                    console.log(`ETH -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
+
+                    await nwHelper.compareBalancesAfterTrade(ethAddress, destToken, actualSrcQty, 
+                        initialReserveBalances, initialTakerBalances, expectedResult, taker, undefined);
+                }
+            });
+
+            it("should perform a T2T trade (different hint types, with maxDestAmount) and check balances change as expected", async() => {
+                let platformFeeBps = new BN(50);
+                let maxDestAmt = new BN(20).mul(new BN(10).pow(destDecimals));
+                
+                for (hintType of tradeTypesArray) {
+                    hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
+                    info = [srcQty, networkFeeBps, platformFeeBps];
+                    expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
+                    expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
+                    [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, destToken, expectedResult, info, maxDestAmt);
+
+                    await srcToken.transfer(network.address, srcQty);
+                    let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, destToken, expectedResult);
+                    let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, destToken, taker, network.address);
+
+                    let txResult = await network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, destToken.address, taker, 
+                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
+                    console.log(`token -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
+
+                    await nwHelper.compareBalancesAfterTrade(srcToken, destToken, actualSrcQty, 
+                        initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
+                }
+            });
         });
 
         describe("test trades with very small and very big numbers", async() => {
@@ -664,7 +868,6 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("et2 trade. see rebate per wallet updated in fee handler.", async() => {
-
             let payoutBalance0 = await feeHandler.totalPayoutBalance();
             let rebateWalletBalance0 = {};
             for (let i = 0; i < rebateWallets.length; i++) {
@@ -689,7 +892,6 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("et2 trade. see total payout amount updated in fee handler.", async() => {
-
             let payoutBalance0 = await feeHandler.totalPayoutBalance();
 
             let srcQty = oneEth;
@@ -705,15 +907,6 @@ contract('KyberNetwork', function(accounts) {
         });
     });
 })
-
-async function transferTokensToNetwork(networkInstance) {
-    for (let i = 0; i < numTokens; i++) {
-        token = tokens[i];
-        tokenAmountForTrades = new BN(10000).mul(new BN(10).pow(tokenDecimals[i]));
-        //transfer tokens to network
-        await token.transfer(networkInstance.address, tokenAmountForTrades);
-    }
-}
 
 //returns random integer between min (inclusive) and max (inclusive)
 function getRandomInt(min, max) {

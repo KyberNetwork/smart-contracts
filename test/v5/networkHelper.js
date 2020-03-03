@@ -669,3 +669,50 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
         }
     }
 }
+
+module.exports.calcParamsFromMaxDestAmt = calcParamsFromMaxDestAmt;
+async function calcParamsFromMaxDestAmt(srcToken, destToken, unpackedOutput, info, maxDestAmt) {
+    let actualSrcAmt = info[0];
+    let networkFeeBps = info[1];
+    let platformFeeBps = info[2];
+    let tradeWeiAfterFees;
+
+    if (unpackedOutput.actualDestAmount.gte(maxDestAmt)) {
+        unpackedOutput.actualDestAmount = maxDestAmt;
+        // E2T side
+        if (destToken != ethAddress) {
+            tradeWeiAfterFees = calcTradeSrcAmount(ethDecimals, await destToken.decimals(), maxDestAmt,
+                unpackedOutput.e2tRates, unpackedOutput.e2tSplits);
+        } else {
+            tradeWeiAfterFees = maxDestAmt;
+        }
+
+        unpackedOutput.tradeWei = tradeWeiAfterFees.mul(BPS).mul(BPS).div(
+            (BPS.mul(BPS)).sub(networkFeeBps.mul(unpackedOutput.feePayingReservesBps)).sub(platformFeeBps.mul(BPS))
+        );
+        unpackedOutput.networkFeeWei = unpackedOutput.tradeWei.mul(networkFeeBps).div(BPS).mul(unpackedOutput.feePayingReservesBps).div(BPS);
+        unpackedOutput.platformFeeWei = unpackedOutput.tradeWei.mul(platformFeeBps).div(BPS);
+
+        // T2E side
+        if (srcToken != ethAddress) {
+            actualSrcAmt = calcTradeSrcAmount(await srcToken.decimals(), ethDecimals, unpackedOutput.tradeWei,
+                unpackedOutput.t2eRates, unpackedOutput.t2eSplits);
+        } else {
+            actualSrcAmt = unpackedOutput.tradeWei;
+        }
+    }
+
+    return [unpackedOutput, actualSrcAmt];
+}
+
+function calcTradeSrcAmount(srcDecimals, destDecimals, destAmt, rates, splits) {
+    let srcAmt = zeroBN;
+    let amtSoFar = zeroBN;
+    let destAmtSplit = zeroBN;
+    for (let i = 0; i < rates.length; i++) {
+        destAmtSplit = i == (splits.length - 1) ? (destAmt.sub(amtSoFar)) : splits[i].mul(destAmt).div(BPS);
+        amtSoFar = amtSoFar.add(destAmtSplit);
+        srcAmt = srcAmt.add(Helper.calcSrcQty(destAmtSplit, srcDecimals, destDecimals, rates[i]));
+    }
+    return srcAmt;
+}
