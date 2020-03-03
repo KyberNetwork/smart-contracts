@@ -16,7 +16,7 @@ let etherWithdrawAmt = new BN(3);
 const {zeroBN} = require("../helper.js");
 const { expectRevert } = require('@openzeppelin/test-helpers');
 
-contract('Withdrawable', function(accounts) {
+contract('Withdrawable2', function(accounts) {
     before("should init globals, deploy test token", async function () {
         user = accounts[0];
         admin = accounts[1];
