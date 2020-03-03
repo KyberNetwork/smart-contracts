@@ -1,6 +1,4 @@
-const Permissions = artifacts.require("./PermissionGroups.sol");
-const Withdrawable = artifacts.require("./Withdrawable.sol");
-const MockWithdrawable = artifacts.require("./MockWithdrawable.sol");
+const MockWithdrawable = artifacts.require("./MockWithdrawable2.sol");
 const TestToken = artifacts.require("Token.sol");
 
 const Helper = require("../helper.js");
@@ -18,7 +16,7 @@ let etherWithdrawAmt = new BN(3);
 const {zeroBN} = require("../helper.js");
 const { expectRevert } = require('@openzeppelin/test-helpers');
 
-contract('Withdrawable', function(accounts) {
+contract('Withdrawable2', function(accounts) {
     before("should init globals, deploy test token", async function () {
         user = accounts[0];
         admin = accounts[1];
@@ -27,7 +25,7 @@ contract('Withdrawable', function(accounts) {
 
     describe("test token transfer permissions", async() => {
         beforeEach("deploy a new withdrawable inst, with some initial tokens", async function () {
-            withdrawableInst = await Withdrawable.new(admin);
+            withdrawableInst = await MockWithdrawable.new({from: admin});
             // transfer some tokens to withdrawable.
             await token.transfer(withdrawableInst.address, initialTokenBalance, {from: accounts[2]});
             let balance = await token.balanceOf(withdrawableInst.address);
@@ -50,21 +48,15 @@ contract('Withdrawable', function(accounts) {
 
         it("should test withdraw token reject for non admin.", async function () {
             await expectRevert(
-                withdrawableInst.withdrawToken(token.address, tokenWithdrawAmt, accounts[3], {from: user}),
+                withdrawableInst.withdrawToken(token.address, tokenWithdrawAmt, user, {from: user}),
                 "ONLY_ADMIN"
             );
-
-            let balance = await token.balanceOf(withdrawableInst.address);
-            Helper.assertEqual(balance, initialTokenBalance, "unexpected balance in withdrawble contract.");
-
-            balance = await token.balanceOf(accounts[3]);
-            Helper.assertEqual(balance, zeroBN, "unexpected balance in accounts[3].");
         });
 
         it("should test withdraw token reject when amount too high.", async function () {
             tokenWithdrawAmt = tokenWithdrawAmt.add(initialTokenBalance);
             await expectRevert.unspecified(
-                withdrawableInst.withdrawToken(token.address, tokenWithdrawAmt, accounts[3], {from: admin})
+                withdrawableInst.withdrawToken(token.address, tokenWithdrawAmt, user, {from: admin})
             );
 
             let balance = await token.balanceOf(withdrawableInst.address);
@@ -84,21 +76,18 @@ contract('Withdrawable', function(accounts) {
 
         it("should test withdraw ether success for admin.", async function () {
             // withdraw the ether from withdrawableInst
-            await withdrawableInst.withdrawEther(etherWithdrawAmt, accounts[4], {from: admin});
+            await withdrawableInst.withdrawEther(etherWithdrawAmt, user, {from: admin});
 
             let balance = await Helper.getBalancePromise(withdrawableInst.address);
             Helper.assertEqual(balance, initialEtherBalance.sub(etherWithdrawAmt), "unexpected balance in withdrawble contract.");
         });
-
+        
         it("should test withdraw ether reject for non admin.", async function () {
             // try to withdraw the ether from withdrawableInst
             await expectRevert(
                 withdrawableInst.withdrawEther(etherWithdrawAmt, user, {from: user}),
                 "ONLY_ADMIN"
             );
-            
-            let balance = await Helper.getBalancePromise(withdrawableInst.address);
-            Helper.assertEqual(balance, initialEtherBalance, "unexpected balance in withdrawble contract.");
         });
 
         it("should test withdraw ether reject when amount too high.", async function () {
@@ -106,11 +95,8 @@ contract('Withdrawable', function(accounts) {
 
             // try to withdraw the ether from withdrawableInst
             await expectRevert.unspecified(
-                withdrawableInst.withdrawEther(etherWithdrawAmt, accounts[7], {from: admin}),
+                withdrawableInst.withdrawEther(etherWithdrawAmt, user, {from: admin}),
             );
-            
-            let balance = await Helper.getBalancePromise(withdrawableInst.address);
-            Helper.assertEqual(balance, initialEtherBalance, "unexpected balance in withdrawble contract.");
         });
     });
 });

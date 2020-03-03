@@ -108,7 +108,7 @@ contract('KyberTradeLogic', function(accounts) {
 
         it("should have admin set network contract", async() => {
             await tradeLogic.setNetworkContract(network, {from: admin});
-            result = await tradeLogic.networkContract();
+            let result = await tradeLogic.networkContract();
             Helper.assertEqual(network, result, "network not set by admin");
         });
 
@@ -131,7 +131,7 @@ contract('KyberTradeLogic', function(accounts) {
 
         it("should have network set negligble rate diff bps", async() => {
             await tradeLogic.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: network});
-            result = await tradeLogic.negligibleRateDiffBps();
+            let result = await tradeLogic.negligibleRateDiffBps();
             Helper.assertEqual(negligibleRateDiffBps, result, "negligbleRateDiffInBps not set by network");
         });
 
@@ -163,11 +163,29 @@ contract('KyberTradeLogic', function(accounts) {
         });
 
         it("should not have unauthorized personnel list token pair for reserve", async() => {
-            //TODO
+            await expectRevert(
+                tradeLogic.listPairForReserve(reserve.address, token.address, true, true, true, {from: user}),
+                "ONLY_NETWORK"
+            );
+
+            await expectRevert(
+                tradeLogic.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator}),
+                "ONLY_NETWORK"
+            );
+
+            await expectRevert(
+                tradeLogic.listPairForReserve(reserve.address, token.address, true, true, true, {from: admin}),
+                "ONLY_NETWORK"
+            );
         });
 
         it("should have network list pair for reserve", async() => {
-            //TODO
+            let result = await tradeLogic.listPairForReserve(reserve.address, token.address, true, true, true, {from: network});
+            assert.isTrue(result, "pair should have listed");
+            result = await tradeLogic.reservesPerTokenSrc(token.address,0);
+            Helper.assertEqual(result, reserve.address, "reserve should have supported token");
+            result = await tradeLogic.reservesPerTokenDest(token.address,0);
+            Helper.assertEqual(result, reserve.address, "reserve should have supported token");
         });
 
         it("should not have unauthorized personnel remove reserve", async() => {

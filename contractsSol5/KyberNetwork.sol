@@ -599,18 +599,23 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     function calcTradeSrcAmountFromDest (TradeData memory tData)
         internal pure returns(uint actualSrcAmount)
     {
+        uint weiAfterFees;
         if (tData.input.dest != ETH_TOKEN_ADDRESS) {
-            tData.tradeWei = calcTradeSrcAmount(tData.ethToToken.decimals, ETH_DECIMALS, tData.input.maxDestAmount, 
+            weiAfterFees = calcTradeSrcAmount(ETH_DECIMALS, tData.ethToToken.decimals, tData.input.maxDestAmount,
                 tData.ethToToken.rates, tData.ethToToken.splitValuesBps);
         } else {
-            tData.tradeWei = tData.input.maxDestAmount;
+            weiAfterFees = tData.input.maxDestAmount;
         }
 
-        tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps * tData.feePayingReservesBps / (BPS * BPS);
+        //reverse calculation, because we are working backwards
+        tData.tradeWei = weiAfterFees * BPS * BPS /
+            ((BPS * BPS) - tData.networkFeeBps * tData.feePayingReservesBps - tData.input.platformFeeBps * BPS);
+        tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
         tData.platformFeeWei = tData.tradeWei * tData.input.platformFeeBps / BPS;
 
         if (tData.input.src != ETH_TOKEN_ADDRESS) {
-            actualSrcAmount = calcTradeSrcAmount(ETH_DECIMALS, tData.tokenToEth.decimals, tData.tradeWei, tData.tokenToEth.rates, tData.tokenToEth.splitValuesBps);
+            actualSrcAmount = calcTradeSrcAmount(tData.tokenToEth.decimals, ETH_DECIMALS, tData.tradeWei,
+                tData.tokenToEth.rates, tData.tokenToEth.splitValuesBps);
         } else {
             actualSrcAmount = tData.tradeWei;
         }
@@ -619,7 +624,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     }
 
     event KyberTrade(address indexed trader, IERC20 src, IERC20 dest, uint srcAmount, uint dstAmount,
-        address destAddress, uint ethWeiValue, uint networkFeeWei, uint customPlatformFeeWei, 
+        address destAddress, uint ethWeiValue, uint networkFeeWei, uint customPlatformFeeWei,
         bytes8[] t2eIds, bytes8[] e2tIds, bytes hint);
 
     /* solhint-disable function-max-lines */
@@ -655,6 +660,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
         if (tData.actualDestAmount > tData.input.maxDestAmount) {
             // notice tData passed by reference. and updated
+            tData.actualDestAmount = tData.input.maxDestAmount;
             actualSrcAmount = calcTradeSrcAmountFromDest(tData);
 
             require(handleChange(tData.input.src, tData.input.srcAmount, actualSrcAmount, tData.input.trader));
