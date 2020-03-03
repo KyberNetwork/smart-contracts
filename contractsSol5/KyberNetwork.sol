@@ -270,8 +270,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         return reserves;
     }
 
-    function getKyberProxies() external view returns(address[] proxies) {
-        return kyberProxyArray
+    function getKyberProxies() external view returns(address[] memory proxies) {
+        return kyberProxyArray;
     }
     
     //backward compatible

@@ -122,6 +122,95 @@ contract('KyberNetwork', function(accounts) {
         platformFeeBps = new BN(0);
     });
 
+    describe("should test adding removing proxy.", async() => { 
+        let tempNetwork;
+        let tempTradeLogic;
+        let feeHandler;
+        let KNC;
+        let proxy1 = accounts[9];
+        let proxy2 = accounts[8];
+        let proxy3 = accounts[7];
+
+        beforeEach("create new network", async() =>{
+            tempNetwork = await KyberNetwork.new(admin);
+        })
+
+        it("test can add max two proxies", async() => {
+            await tempNetwork.addKyberProxy(proxy1, {from: admin});
+            await tempNetwork.addKyberProxy(proxy2, {from: admin});
+            
+            await expectRevert(
+                tempNetwork.addKyberProxy(proxy3, {from: admin}),
+                "Max 2 proxy"
+            );
+        });
+
+        it("test only admin can add proxies", async() => {
+            await expectRevert(
+                tempNetwork.addKyberProxy(proxy1, {from: operator}),
+                "ONLY_ADMIN"
+            );
+        });
+
+        it("test can't add same proxy twice", async() => {
+            await tempNetwork.addKyberProxy(proxy1, {from: admin});
+
+            await expectRevert(
+                tempNetwork.addKyberProxy(proxy1, {from: admin}),
+                "proxy exists"
+            );
+        });
+
+        it("test can't add proxy zero address", async() => {            
+            await expectRevert(
+                tempNetwork.addKyberProxy(zeroAddress, {from: admin}),
+                "proxy 0"
+            );
+        });
+
+        it("test added proxies returned in get proxies.", async() => {
+            await tempNetwork.addKyberProxy(proxy1, {from: admin});
+            
+            let rxProxy = await tempNetwork.getKyberProxies();
+            Helper.assertEqual(rxProxy[0], proxy1);
+
+            await tempNetwork.addKyberProxy(proxy2, {from: admin});
+            rxProxy = await tempNetwork.getKyberProxies();
+            Helper.assertEqual(rxProxy[0], proxy1);
+            Helper.assertEqual(rxProxy[1], proxy2);
+        });
+
+        it("test remove proxy, getter updated.", async() => {
+            await tempNetwork.addKyberProxy(proxy1, {from: admin});
+            await tempNetwork.removeKyberProxy(proxy1, {from: admin});
+            
+            let rxProxy = await tempNetwork.getKyberProxies();
+            Helper.assertEqual(rxProxy.length, 0);
+
+            await tempNetwork.addKyberProxy(proxy1, {from: admin});
+            await tempNetwork.addKyberProxy(proxy2, {from: admin});
+
+            await tempNetwork.removeKyberProxy(proxy1, {from: admin});
+            
+            rxProxy = await tempNetwork.getKyberProxies();
+            Helper.assertEqual(rxProxy[0], proxy2);
+        });
+
+        it("test can add proxy after removing 2nd one.", async() => {
+            await tempNetwork.addKyberProxy(proxy1, {from: admin});
+            await tempNetwork.addKyberProxy(proxy2, {from: admin});
+
+            await expectRevert(
+                tempNetwork.addKyberProxy(proxy3, {from: admin}),
+                "Max 2 proxy"
+            );
+
+            await tempNetwork.removeKyberProxy(proxy1, {from: admin});
+
+            await tempNetwork.addKyberProxy(proxy3, {from: admin});
+        });
+    });
+
     describe("should test events declared in network contract", async() => { 
         let tempNetwork;
         let tempTradeLogic;
