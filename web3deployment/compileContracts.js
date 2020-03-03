@@ -150,7 +150,7 @@ async function compileContracts(versionNum) {
 
     while (compiler == undefined) {
         compiler = await loadSpecificCompiler(solcVersionNum);
-        await sleep(10000); //change time based on internet connection
+        await sleep(30000); //change time based on internet connection
     }
     compilingPreparations();
     const config = createConfiguration(sourceFiles);
