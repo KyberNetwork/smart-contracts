@@ -22,7 +22,7 @@ module.exports = {
   },
 
   paths: {
-    sources: "./contractsV5",
+    sources: "./contractsSol5",
     tests: "./test/sol5"
   },
 
