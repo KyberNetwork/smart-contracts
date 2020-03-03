@@ -1,6 +1,6 @@
 const Liquidity = artifacts.require("./LiquidityFormula.sol");
 
-const Helper = require("./helper.js");
+const Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 const e = 2.7182818284590452353602874713527;

@@ -1,6 +1,6 @@
 const BN = web3.utils.BN;
 
-const helper = require("./helper.js");
+const helper = require("../helper.js");
 const truffleAssert = require("truffle-assertions");
 
 const MockUniswapFactory = artifacts.require("MockUniswapFactory");

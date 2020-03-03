@@ -2,7 +2,7 @@
 let Permissions = artifacts.require("./PermissionGroups.sol");
 let MockPermission = artifacts.require("./mockContracts/MockPermission.sol");
 
-let Helper = require("./helper.js");
+let Helper = require("../helper.js");
 
 let permissionsInst;
 let mockPermissionsInst;

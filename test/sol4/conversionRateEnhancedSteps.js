@@ -2,7 +2,7 @@
 let MockEnhancedStepFunctions = artifacts.require("./mockContracts/MockEnhancedStepFunctions.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
 
-let Helper = require("./helper.js");
+let Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 //global variables

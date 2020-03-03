@@ -1,6 +1,6 @@
 const MockUtils3 = artifacts.require("./mockContracts/MockUtils3.sol");
 
-const Helper = require("./helper.js");
+const Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 const PRECISION = new BN(10).pow(new BN(18));

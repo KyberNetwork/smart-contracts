@@ -1,7 +1,7 @@
 const WrapperBase = artifacts.require("WrapperBase.sol");
 const PermissionGroups = artifacts.require("PermissionGroups.sol");
 
-const Helper = require("./helper.js");
+const Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 const precisionUnits = (new BN(10)).pow(new BN(18));

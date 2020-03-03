@@ -1,12 +1,12 @@
 const TestToken = artifacts.require("Token.sol");
 const TradeLogic = artifacts.require("KyberTradeLogic.sol");
 
-const Helper = require("../sol4/helper.js");
+const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
 
 const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
-const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN} = require("../sol4/helper.js");
+const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN} = require("../helper.js");
 const {NULL_ID, EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, ReserveType}  = require('./networkHelper.js');
 
 //global variables

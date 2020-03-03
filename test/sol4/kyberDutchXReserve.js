@@ -1,7 +1,7 @@
 const BN = web3.utils.BN;
 const truffleAssert = require('truffle-assertions');
 
-const helper = require("./helper.js");
+const helper = require("../helper.js");
 const WETH9 = artifacts.require("WETH9");
 const KyberDutchXReserve = artifacts.require("KyberDutchXReserve");
 const MockDutchX = artifacts.require("MockDutchX");

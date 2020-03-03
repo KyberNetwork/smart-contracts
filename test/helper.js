@@ -185,6 +185,7 @@ module.exports.addBps = function(rate, bps) {
 
 module.exports.calcSrcQty = function(dstQty, srcDecimals, dstDecimals, rate) {
     //source quantity is rounded up. to avoid dest quantity being too low.
+    srcDecimals = new BN(srcDecimals);
     let numerator;
     let denominator;
     let precisionUnits = (new BN(10).pow(new BN(18)));
@@ -201,6 +202,7 @@ module.exports.calcSrcQty = function(dstQty, srcDecimals, dstDecimals, rate) {
 module.exports.calcDstQty = function(srcQty, srcDecimals, dstDecimals, rate) {
     srcQty = new BN(srcQty);
     rate = new BN(rate);
+    dstDecimals = new BN(dstDecimals);
     let precisionUnits = (new BN(10).pow(new BN(18)));
     let result;
 
@@ -225,6 +227,8 @@ module.exports.assertSameTokenBalance = async function (accountAddress, token, e
 
 module.exports.calcRateFromQty = function(srcQty, dstQty, srcDecimals, dstDecimals) {
     let decimals;
+    dstDecimals = new BN(dstDecimals);
+    
     if (dstDecimals.gte(srcDecimals)) {
         decimals = new BN(10).pow(new BN(dstDecimals - srcDecimals));
         return precisionUnits.mul(new BN(dstQty)).div((decimals).mul(new BN(srcQty)));

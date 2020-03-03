@@ -13,7 +13,7 @@
 // const PermissionlessOrderbookReserveLister = artifacts.require("PermissionlessOrderbookReserveLister.sol");
 // const MockUtils = artifacts.require("MockUtils.sol");
 
-// const Helper = require("./helper.js");
+// const Helper = require("../helper.js");
 // const BN = web3.utils.BN;
 // const lowRate = new BN(42);
 

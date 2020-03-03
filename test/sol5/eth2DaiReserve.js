@@ -2,7 +2,7 @@ const TestToken = artifacts.require("Token.sol");
 const WethToken = artifacts.require("WethToken.sol");
 const MockOtcOrderbook = artifacts.require("MockOtcOrderbook.sol");
 const Eth2DaiReserve = artifacts.require("Eth2DaiReserve.sol");
-const Helper = require("../sol4/helper.js");
+const Helper = require("../helper.js");
 
 const BN = web3.utils.BN;
 
