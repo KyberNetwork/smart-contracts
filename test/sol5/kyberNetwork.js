@@ -5,6 +5,7 @@ const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const MockNetwork = artifacts.require("MockNetwork.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const TradeLogic = artifacts.require("KyberMatchingEngine.sol");
+const RateHelper = artifacts.require("KyberRateHelper.sol");
 
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -224,21 +225,24 @@ contract('KyberNetwork', function(accounts) {
 
     describe("should test events declared in network contract", async() => { 
         let tempNetwork;
-        let tempTradeLogic;
+        let tempMatchingEngine;
         let mockReserve;
         let feeHandler;
+        let rateHelper;
     
         before("global setup ", async() => {
             tempNetwork = await KyberNetwork.new(admin);
-            tempTradeLogic = await TradeLogic.new(admin);
+            tempMatchingEngine = await TradeLogic.new(admin);
             mockReserve = await MockReserve.new();
         
             await tempNetwork.addOperator(operator, {from: admin});
-            await tempTradeLogic.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempTradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+            await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
+            await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            rateHelper = await RateHelper.new(admin);
+            await rateHelper.setMatchingEngineContract(tempMatchingEngine.address, {from: admin});
         });
 
         it("ETH recieval", async() => {
@@ -254,15 +258,18 @@ contract('KyberNetwork', function(accounts) {
         it("Set contracts", async() => {
             let gasHelperAdd = accounts[9];
 
-            let txResult = await tempNetwork.setContracts(feeHandler.address, tempTradeLogic.address, gasHelperAdd, {from: admin});
+            let txResult = await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, rateHelper.address, {from: admin});
             expectEvent(txResult, 'FeeHandlerUpdated', {
                 newHandler: feeHandler.address
             });
             expectEvent(txResult, 'TradeLogicUpdated', {
-                matchingEngine: tempTradeLogic.address
+                matchingEngine: tempMatchingEngine.address
             });
             expectEvent(txResult, 'GasHelperUpdated', {
                 gasHelper: gasHelperAdd
+            });
+            expectEvent(txResult, 'RateHelperUpdated', {
+                rateHelper: rateHelper.address
             });
         });
 
@@ -332,8 +339,7 @@ contract('KyberNetwork', function(accounts) {
             let fakeProxy = accounts[3];
             let txResult = await tempNetwork.addKyberProxy(fakeProxy, {from: admin});
             expectEvent(txResult, 'KyberProxyAdded', {
-                proxy: fakeProxy,
-                sender: admin
+                proxy: fakeProxy
             });
         });
 
@@ -377,10 +383,14 @@ contract('KyberNetwork', function(accounts) {
             await matchingEngine.setNetworkContract(network.address, {from: admin});
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
+            // init rateHelper
+            rateHelper = await RateHelper.new(admin);
+            await rateHelper.setMatchingEngineContract(matchingEngine.address, {from: admin});
+
             //setup network
             await network.addOperator(operator, {from: admin});
             await network.addKyberProxy(networkProxy, {from: admin});
-            await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
+            await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, rateHelper.address, {from: admin});
             await network.setDAOContract(DAO.address, {from: admin});
             //set params, enable network
             await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
@@ -873,7 +883,7 @@ contract('KyberNetwork', function(accounts) {
         it("test encode decode network fee data with mock setter getter", async() => {
             let tempNetwork = await MockNetwork.new(admin);
             await tempNetwork.setContracts(feeHandler.address, matchingEngine.address, 
-                zeroAddress, {from: admin});
+                zeroAddress, zeroAddress, {from: admin});
     
             let networkData = await tempNetwork.getNetworkData();
          
