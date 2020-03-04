@@ -50,6 +50,7 @@ const sol4SourceFiles = {
 }
 
 const sol5SourceFiles = {
+    'EpochUtils.sol' : {content: fs.readFileSync(contractsSol5Path + 'stakingAndDao/EpochUtils.sol', 'utf8')},
     'KyberFeeHandler.sol' : {content: fs.readFileSync(contractsSol5Path + 'KyberFeeHandler.sol', 'utf8')},
     'GasHelper.sol' : {content: fs.readFileSync(contractsSol5Path + 'GasHelper.sol', 'utf8')},
     'PermissionGroups2.sol' : {content: fs.readFileSync(contractsSol5Path + 'PermissionGroups2.sol', 'utf8')},
@@ -64,12 +65,16 @@ const sol5SourceFiles = {
     'IKyberNetworkProxy.sol' : {content: fs.readFileSync(contractsSol5Path + 'IKyberNetworkProxy.sol', 'utf8')},
     'IKyberReserve.sol' : {content: fs.readFileSync(contractsSol5Path + 'IKyberReserve.sol', 'utf8')},
     'IKyberMatchingEngine.sol' : {content: fs.readFileSync(contractsSol5Path + 'IKyberMatchingEngine.sol', 'utf8')},
+    'IKyberStaking.sol' : {content: fs.readFileSync(contractsSol5Path + 'stakingAndDao/IKyberStaking.sol', 'utf8')},
     'ISimpleKyberProxy.sol' : {content: fs.readFileSync(contractsSol5Path + 'ISimpleKyberProxy.sol', 'utf8')},
+    'KyberDAO.sol' : {content: fs.readFileSync(contractsSol5Path + 'stakingAndDao/KyberDAO.sol', 'utf8')},
     'KyberNetwork.sol' : {content: fs.readFileSync(contractsSol5Path + 'KyberNetwork.sol', 'utf8')},
     'KyberNetworkProxy.sol' : {content: fs.readFileSync(contractsSol5Path + 'KyberNetworkProxy.sol', 'utf8')},
     'KyberMatchingEngine.sol' : {content: fs.readFileSync(contractsSol5Path + 'KyberMatchingEngine.sol', 'utf8')}, 
     'KyberHintHandler.sol' : {content: fs.readFileSync(contractsSol5Path + 'KyberHintHandler.sol', 'utf8')},
+    'KyberStaking.sol' : {content: fs.readFileSync(contractsSol5Path + 'stakingAndDao/KyberStaking.sol', 'utf8')},
     'ReentrancyGuard.sol' : {content: fs.readFileSync(contractsSol5Path + 'ReentrancyGuard.sol', 'utf8')},
+    'SafeMath.sol' : {content: fs.readFileSync(contractsSol5Path + 'stakingAndDao/SafeMath.sol', 'utf8')},
     'Utils4.sol' : {content: fs.readFileSync(contractsSol5Path + 'Utils4.sol', 'utf8')},
     'Withdrawable2.sol' : {content: fs.readFileSync(contractsSol5Path + 'Withdrawable2.sol', 'utf8')} 
 }
@@ -91,13 +96,7 @@ function createConfiguration(sourceFiles) {
                 }
             },
             // Optional: Optimizer settings
-            'optimizer': {
-                'enabled': true,
-                // Optimize for how many times you intend to run the code.
-                // Lower values will optimize more for initial deployment cost, higher
-                // values will optimize more for high-frequency usage.
-                'runs': 9000,
-            }
+            'optimizer': require("../solcOptimiserSettings.js"),
         }
     };
 }
@@ -150,7 +149,7 @@ async function compileContracts(versionNum) {
 
     while (compiler == undefined) {
         compiler = await loadSpecificCompiler(solcVersionNum);
-        await sleep(30000); //change time based on internet connection
+        await sleep(12000); //change time based on internet connection
     }
     compilingPreparations();
     const config = createConfiguration(sourceFiles);

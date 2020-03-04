@@ -1,4 +1,12 @@
 {
+    "reserveTypes": {
+        "FPR": 1,
+        "APR": 2,
+        "BRIDGE": 3,
+        "UTILITY": 4,
+        "CUSTOM": 5
+    },
+
     "tokens": {
         "DAI": {
             "name": "DAI Stablecoin",
@@ -8,7 +16,7 @@
         "KNC": {
             "name": "KyberNetwork",
             "decimals": 18,
-            "address": "0xa67bba948bd8372bc9e60b1acfafb8e2db3cc57c"
+            "address": "0x4e470dc7321e84ca96fcaedd0c8abcebbaeb68c6"
         },
         "WBTC": {
             "name": "Wrapped BTC",
@@ -18,7 +26,7 @@
     },
 
     "addresses": {
-        "knc": "0xa67bba948bd8372bc9e60b1acfafb8e2db3cc57c",
+        "knc": "0x4e470dc7321e84ca96fcaedd0c8abcebbaeb68c6",
         "gasHelper": "0x0000000000000000000000000000000000000000"
     },
 
@@ -26,6 +34,7 @@
         {
             "address": "0x39C30B03799DB870e9C01747f68e24D2b38A30C9",
             "id": "0xff00004b79626572",
+            "type": "FPR",
             "isFeePaying": true,
             "rebateWallet": "0xDd102CeDa27a2283dC85028f9bF7d022d8a640d2",
             "tokens": [
@@ -35,7 +44,7 @@
                     "tokenToEth":true
                 },
                 {
-                    "address":"0xa67bba948bd8372bc9e60b1acfafb8e2db3cc57c",
+                    "address":"0x4e470dc7321e84ca96fcaedd0c8abcebbaeb68c6",
                     "ethToToken":true,
                     "tokenToEth":true
                 },
@@ -49,8 +58,9 @@
         {
             "address": "0x43bC6b5fa717cf3d663C722F6520b39D24CD6AE1",
             "id": "0xff53706561726f53",
+            "type": "FPR",
             "isFeePaying": false,
-            "rebateWallet": "0xDd102CeDa27a2283dC85028f9bF7d022d8a640d2",
+            "rebateWallet": "0x6E4843E90ecacd3a3BBcED74A5235363762D5100",
             "tokens": [
                 {
                     "address":"0xad6d458402f60fd3bd25163575031acdce07538d",
@@ -58,7 +68,7 @@
                     "tokenToEth":true
                 },
                 {
-                    "address":"0xa67bba948bd8372bc9e60b1acfafb8e2db3cc57c",
+                    "address":"0x4e470dc7321e84ca96fcaedd0c8abcebbaeb68c6",
                     "ethToToken":true,
                     "tokenToEth":true
                 },
@@ -70,13 +80,14 @@
             ]
         },
         {
-            "address": "0x199570B965a446aBF284731873dbbf6b09269338",
-            "id": "0xaa00004e61716962",
+            "address": "0xc4684f4FbfC3db0A24CFFe35821b12e55BeaEF7A",
+            "id": "0xaa4b4e4320415052",
+            "type": "APR",
             "isFeePaying": true,
-            "rebateWallet": "0xDd102CeDa27a2283dC85028f9bF7d022d8a640d2",
+            "rebateWallet": "0x7de9bC2cDfa6B7Ee7088a4f5848A86A26Cd5aFD1",
             "tokens": [
                 {
-                    "address":"0xa67bba948bd8372bc9e60b1acfafb8e2db3cc57c",
+                    "address":"0x4e470dc7321e84ca96fcaedd0c8abcebbaeb68c6",
                     "ethToToken":true,
                     "tokenToEth":true
                 }
@@ -87,7 +98,7 @@
     "wallets": [],
 
     "permission" : {
-        "TradeLogic" : {
+        "MatchingEngine" : {
             "admin" : "0xbDd33F411DA0B40018922a3BC69001B458227f5c",
             "operators" : ["0xbDd33F411DA0B40018922a3BC69001B458227f5c","0xBE2F0354D970265BFc36D383af77F72736b81B54","0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA"],
             "alerters" : ["0xbDd33F411DA0B40018922a3BC69001B458227f5c","0xBE2F0354D970265BFc36D383af77F72736b81B54","0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA"]
@@ -106,11 +117,23 @@
         },
         "FeeHandler" : {
             "DAOSetter": "0xbDd33F411DA0B40018922a3BC69001B458227f5c"
+        },
+        "Staking": {
+            "DAOSetter": "0xbDd33F411DA0B40018922a3BC69001B458227f5c"
+        },
+        "DAO": {
+            "CampaignCreator": "0xbDd33F411DA0B40018922a3BC69001B458227f5c"
         }
     },
+
     "max gas price" : 50000000000,
     "neg diff in bps" : 20,
-    "burn block interval": 10,
     
+    "epoch period": 50,
+    "start block": 5000000,
+    "network fee bps": 5000,
+    "reward fee bps": 2500,
+    "rebate bps": 2500,
+    "burn block interval": 10,
     "output filename" : "katalystRopsten.json"
 }
