@@ -279,6 +279,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     {
         if (src == dest) return (0, 0);
         uint qty = srcQty & ~PERM_HINT_GET_RATE;
+        if (qty == 0) qty = 1;
 
         TradeData memory tData = initTradeInput({
             trader: address(uint160(0)),
@@ -301,12 +302,13 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     }
 
     // new APIs
-    function getExpectedRateWithHintAndFee(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps, bytes calldata hint) 
-        external view
+    function getExpectedRateWithHintAndFee(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps, bytes memory hint) 
+        public view
         returns (uint rateNoFees, uint rateAfterNetworkFee, uint rateAfterAllFees)
     {
         if (src == dest) return (0, 0, 0);
-        
+        if (srcQty == 0) srcQty = 1;
+
         TradeData memory tData = initTradeInput({
             trader: address(uint160(0)),
             src: src,

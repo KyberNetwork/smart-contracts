@@ -332,8 +332,7 @@ contract('KyberNetwork', function(accounts) {
             let fakeProxy = accounts[3];
             let txResult = await tempNetwork.addKyberProxy(fakeProxy, {from: admin});
             expectEvent(txResult, 'KyberProxyAdded', {
-                proxy: fakeProxy,
-                sender: admin
+                proxy: fakeProxy
             });
         });
 
@@ -554,14 +553,23 @@ contract('KyberNetwork', function(accounts) {
             });
 
             it("should return rates for zero srcQty", async() => {
+                let modifiedSrcQty = new BN(1);
+                info = [modifiedSrcQty, networkFeeBps, platformFee];
+                
+                expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint);
+                expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, ethDecimals, expectedResult);
                 actualResult = await network.getExpectedRate(srcToken.address, ethAddress, zeroBN);
-                Helper.assertEqual(expectedResult.rateAfterNetworkFee, zeroBN, "expected rate with network fee != actual rate for T2E");
+                Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2E");
         
+                expectedResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, emptyHint);
+                expectedResult = await nwHelper.unpackRatesAndAmounts(info, ethDecimals, destDecimals, expectedResult);
                 actualResult = await network.getExpectedRate(ethAddress, destToken.address, zeroBN);
-                Helper.assertEqual(expectedResult.rateAfterNetworkFee, zeroBN, "expected rate with network fee != actual rate for E2T");
+                Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for E2T");
 
+                expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, emptyHint);
+                expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
                 actualResult = await network.getExpectedRate(srcToken.address, destToken.address, zeroBN);
-                Helper.assertEqual(expectedResult.rateAfterNetworkFee, zeroBN, "expected rate with network fee != actual rate for T2T");
+                Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2T");
             });
 
             for (platformFee of platformFeeArray) {
