@@ -30,12 +30,19 @@
         "gasHelper": "0x0000000000000000000000000000000000000000"
     },
 
+    "isFeePaying": {
+        "FPR": true,
+        "APR": true,
+        "BRIDGE": false,
+        "UTILITY": false,
+        "CUSTOM": true
+    },
+
     "reserves": [
         {
             "address": "0x39C30B03799DB870e9C01747f68e24D2b38A30C9",
             "id": "0xff00004b79626572",
             "type": "FPR",
-            "isFeePaying": true,
             "rebateWallet": "0xDd102CeDa27a2283dC85028f9bF7d022d8a640d2",
             "tokens": [
                 {
@@ -59,7 +66,6 @@
             "address": "0x43bC6b5fa717cf3d663C722F6520b39D24CD6AE1",
             "id": "0xff53706561726f53",
             "type": "FPR",
-            "isFeePaying": false,
             "rebateWallet": "0x6E4843E90ecacd3a3BBcED74A5235363762D5100",
             "tokens": [
                 {
@@ -83,7 +89,6 @@
             "address": "0xc4684f4FbfC3db0A24CFFe35821b12e55BeaEF7A",
             "id": "0xaa4b4e4320415052",
             "type": "APR",
-            "isFeePaying": true,
             "rebateWallet": "0x7de9bC2cDfa6B7Ee7088a4f5848A86A26Cd5aFD1",
             "tokens": [
                 {
@@ -115,25 +120,19 @@
                         "0x7985405a348baa90c92164b86b383c8f43ad2d96"],
             "alerters" : []
         },
-        "FeeHandler" : {
-            "DAOSetter": "0xbDd33F411DA0B40018922a3BC69001B458227f5c"
-        },
-        "Staking": {
-            "DAOSetter": "0xbDd33F411DA0B40018922a3BC69001B458227f5c"
-        },
         "DAO": {
-            "CampaignCreator": "0xbDd33F411DA0B40018922a3BC69001B458227f5c"
+            "CampaignCreator": "0xBE2F0354D970265BFc36D383af77F72736b81B54"
         }
     },
 
     "max gas price" : 50000000000,
     "neg diff in bps" : 20,
     
-    "epoch period": 50,
-    "start block": 5000000,
-    "network fee bps": 5000,
-    "reward fee bps": 2500,
-    "rebate bps": 2500,
+    "epoch period": 1000,
+    "start block": 7452300,
+    "network fee bps": 30,
+    "reward fee bps": 3850,
+    "rebate bps": 3000,
     "burn block interval": 10,
     "output filename" : "katalystRopsten.json"
 }

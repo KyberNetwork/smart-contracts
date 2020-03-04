@@ -27,7 +27,7 @@ if (printPrivateKey) {
   });
 }
 //REPLACE PRIVATE KEY HERE
-privateKey = "0xc0f1c53d0e859045f2274f69d64fe6d5db014dafa0cf25326b0be2126c7ef628";
+// privateKey = "";
 
 //contract addresses: REPLACE IF SOMETHING BREAKS DURING DEPLOYMENT
 let matchingEngineAddress = "";
@@ -119,11 +119,10 @@ let DAOContract;
 let matchingEnginePermissions;
 let networkPermissions;
 let proxyPermissions;
-let feeHandlerDaoSetter;
-let stakingDaoSetter;
 let daoCampaignCreator;
 
 //misc variables needed for contracts deployment, should be obtained from input json
+let isFeePaying;
 let maxGasPrice = (new BN(50).mul(new BN(10).pow(new BN(9)))).toString();
 let negDiffInBps;
 let burnBlockInterval;
@@ -139,8 +138,7 @@ class Reserve {
     this.type = reserveTypes[jsonInput["type"]],
     this.tokens = jsonInput["tokens"],
     this.wallet = jsonInput["rebateWallet"],
-    this.id = jsonInput["id"],
-    this.isFeePaying = jsonInput["isFeePaying"]
+    this.id = jsonInput["id"]
   }
 }
 
@@ -173,13 +171,14 @@ function parseInput( jsonInput ) {
       walletDataArray.push(new Wallet(wallet));
     });
 
+    //permissions
     matchingEnginePermissions = jsonInput.permission["MatchingEngine"];
     networkPermissions = jsonInput.permission["Network"];
     proxyPermissions = jsonInput.permission["Proxy"];
-    feeHandlerDaoSetter = jsonInput.permission["FeeHandler"]["DAOSetter"];
-    stakingDaoSetter = jsonInput.permission["Staking"]["DAOSetter"];
     daoCampaignCreator = jsonInput.permission["DAO"]["CampaignCreator"]
 
+    //constants
+    isFeePaying = jsonInput["isFeePaying"];
     maxGasPrice = jsonInput["max gas price"].toString();
     negDiffInBps = jsonInput["neg diff in bps"].toString();
     burnBlockInterval = jsonInput["burn block interval"].toString();
@@ -295,6 +294,8 @@ async function fullDeployment() {
   await setNetworkAddressInMatchingEngine();
   await set_Fee_Logic_Gas_ContractsInNetwork();
   await setDAOInNetwork();
+  await setDAOInFeeHandler();
+  await setDAOInStaking();
   await setProxyInNetwork();
   await setNetworkInProxy();
   await setTempOperatorToNetwork();
@@ -303,6 +304,7 @@ async function fullDeployment() {
   // BREAK //
   ///////////
   await pressToContinue();
+  await setFeePayingDataInMatchingEngine();
   await addReservesToNetwork();
   await listTokensForReservesNetwork();
   await configureAndEnableNetwork();
@@ -377,11 +379,11 @@ async function waitForEth() {
 
 async function deploymatchingEngineContract(output) {
   if (matchingEngineAddress == "") {
-    console.log("deploying trade logic");
+    console.log("deploying matching engine");
     [matchingEngineAddress, matchingEngineContract] = await deployContract(output, "KyberMatchingEngine.sol", "KyberMatchingEngine", [sender]);
     console.log(`matchingEngine: ${matchingEngineAddress}`);
   } else {
-    console.log("Instantiating trade logic...");
+    console.log("Instantiating matching engine...");
     matchingEngineContract = new web3.eth.Contract(
       output.contracts["KyberMatchingEngine.sol"]["KyberMatchingEngine"].abi, matchingEngineAddress
     );
@@ -419,7 +421,7 @@ async function deployFeeHandlerContract(output) {
     console.log("deploying feeHandler");
     [feeHandlerAddress, feeHandlerContract] = await deployContract(
       output, "KyberFeeHandler.sol", "KyberFeeHandler", 
-      [feeHandlerDaoSetter, proxyAddress, networkAddress, kncTokenAddress, burnBlockInterval]
+      [sender, proxyAddress, networkAddress, kncTokenAddress, burnBlockInterval]
     );
     console.log(`Fee Handler: ${feeHandlerAddress}`);
   } else {
@@ -435,7 +437,7 @@ async function deployStakingContract(output) {
         console.log("deploying staking contract");
         [stakingAddress, stakingContract] = await deployContract(
             output, "KyberStaking.sol", "KyberStaking", 
-            [kncTokenAddress, epochPeriod, startBlock, stakingDaoSetter]
+            [kncTokenAddress, epochPeriod, startBlock, sender]
         );
         console.log(`Staking: ${stakingAddress}`);
     } else {
@@ -477,13 +479,23 @@ async function setNetworkAddressInMatchingEngine(tempAddress) {
 async function set_Fee_Logic_Gas_ContractsInNetwork() {
   console.log("set feeHandler, matchingEngine and gas helper in network");
   await sendTx(networkContract.methods.setContracts(
-    feeHandlerAddress, matchingEngineAddress, gasHelperAddress, zeroAddress
+    feeHandlerAddress, matchingEngineAddress, gasHelperAddress,
   ));
 }
 
 async function setDAOInNetwork() {
   console.log("Setting DAO address in network");
   await sendTx(networkContract.methods.setDAOContract(daoAddress));
+}
+
+async function setDAOInFeeHandler() {
+  console.log("Setting DAO address in fee handler");
+  await sendTx(feeHandlerContract.methods.setDaoContract(daoAddress));
+}
+
+async function setDAOInStaking() {
+  console.log("Setting DAO address in staking");
+  await sendTx(stakingContract.methods.updateDAOAddressAndRemoveSetter(daoAddress));
 }
 
 async function setProxyInNetwork() {
@@ -502,10 +514,11 @@ async function setTempOperatorToNetwork() {
   await sendTx(networkContract.methods.addOperator(sender));
 }
 
-async function addPermissionlessListerToNetwork() {
-  // set permissionless orderbook lister as network operator
-  console.log("network - set permissionless lister");
-  await sendTx(networkContract.methods.addOperator(permissionlessOrderbookReserveListerAddress));
+async function setFeePayingDataInMatchingEngine() {
+  console.log("set fee paying data: matching engine");
+  await sendTx(matchingEngineContract.methods.setFeePayingPerReserveType(
+    isFeePaying["FPR"], isFeePaying["APR"], isFeePaying["BRIDGE"], isFeePaying["UTILITY"], isFeePaying["CUSTOM"]
+  ));
 }
 
 async function addReservesToNetwork(reserveIndex) {
@@ -516,7 +529,7 @@ async function addReservesToNetwork(reserveIndex) {
     const reserve = reserveDataArray[i];
     console.log(`Reserve array index ${i}`);
     console.log(`Adding reserve ${reserve.address}`);
-    await sendTx(networkContract.methods.addReserve(reserve.address, reserve.id, reserve.type, reserve.isFeePaying, reserve.wallet));
+    await sendTx(networkContract.methods.addReserve(reserve.address, reserve.id, reserve.type, reserve.wallet));
     await pressToContinue();
   }
 }
@@ -549,7 +562,7 @@ async function configureAndEnableNetwork() {
 
 async function removeTempOperator(contractInstances) {
     for (let contractInstance of contractInstances) {
-      console.log(`remove temp operator - ${contractInstance.address}`);
+      console.log(`remove temp operator`);
       await sendTx(contractInstance.methods.removeOperator(sender));
     }
 }
@@ -567,7 +580,6 @@ async function setPermissionsInMatchingEngine() {
 }
 
 function lastFewThings() {
-  console.log("DAO Setter: Pls set contracts in feeHandler and staking!!");
   console.log("\x1b[41m%s\x1b[0m" ,"REMINDER: Don't forget to send DGX to network contract!!");
 }
 
