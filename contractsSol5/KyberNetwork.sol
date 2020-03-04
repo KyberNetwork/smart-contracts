@@ -240,7 +240,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         kyberProxyArray.push(networkProxy);
         
         kyberProxyContracts[networkProxy] = true;
-        emit KyberProxyAdded(networkProxy, msg.sender);
+        emit KyberProxyAdded(networkProxy);
     }
     
     function removeKyberProxy(address networkProxy) external onlyAdmin {
