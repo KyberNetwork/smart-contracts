@@ -83,7 +83,7 @@ module.exports.setupReserves = async function
 
         for (let j = 0; j < tokens.length; j++) {
             token = tokens[j];
-            //set rates and send tokens based on eth -> token rate
+            //set rates and send tokens
             await reserve.setRate(token.address, tokensPerEther, ethersPerToken);
             let initialTokenAmount = new BN(200000).mul(new BN(10).pow(new BN(await token.decimals())));
             await token.transfer(reserve.address, initialTokenAmount);
