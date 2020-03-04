@@ -10,11 +10,11 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     uint            public negligibleRateDiffBps = 5; // 1 bps is 0.01%
     IKyberNetwork   public networkContract;
 
-    mapping(bytes8=>address[]) public reserveIdToAddresses;
-    mapping(address=>bytes8) internal reserveAddressToId;
-    mapping(address=>uint) internal reserveType; //type from enum ReserveType
-    mapping(address=>IKyberReserve[]) public reservesPerTokenSrc; // reserves supporting token to eth
-    mapping(address=>IKyberReserve[]) public reservesPerTokenDest;// reserves support eth to token
+    mapping(bytes8=>address[])          public reserveIdToAddresses;
+    mapping(address=>bytes8)            internal reserveAddressToId;
+    mapping(address=>uint)              internal reserveType; //type from enum ReserveType
+    mapping(address=>IKyberReserve[])   internal reservesPerTokenSrc; // reserves supporting token to eth
+    mapping(address=>IKyberReserve[])   internal reservesPerTokenDest;// reserves support eth to token
 
     uint internal feePayingPerType = 0xffffffff;
     

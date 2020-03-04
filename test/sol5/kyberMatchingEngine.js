@@ -187,10 +187,10 @@ contract('KyberMatchingEngine', function(accounts) {
 
         it("should have network list pair for reserve", async() => {
             await matchingEngine.listPairForReserve(reserve.address, token.address, true, true, true, {from: network});
-            let result = await matchingEngine.reservesPerTokenSrc(token.address,0);
-            Helper.assertEqual(result, reserve.address, "reserve should have supported token");
-            result = await matchingEngine.reservesPerTokenDest(token.address,0);
-            Helper.assertEqual(result, reserve.address, "reserve should have supported token");
+            let result = await matchingEngine.getReservesPerTokenSrc(token.address);
+            Helper.assertEqual(result[0], reserve.address, "reserve should have supported token");
+            result = await matchingEngine.getReservesPerTokenDest(token.address);
+            Helper.assertEqual(result[0], reserve.address, "reserve should have supported token");
         });
 
         it("should not have unauthorized personnel remove reserve", async() => {
@@ -217,7 +217,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
     describe("test contract event", async() => {
         before("deploy and setup matchingEngine instance", async() => {
-            matchingEngine = await TradeLogic.new(admin);
+            matchingEngine = await KyberMatchingEngine.new(admin);
             await rateHelper.setMatchingEngineContract(matchingEngine.address, {from: admin});
         });
 
@@ -680,7 +680,7 @@ contract('KyberMatchingEngine', function(accounts) {
                     it(`T2E, no hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
-                        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, rateHelper, reserveInstances, srcToken.address, srcQty, 0, true);
+                        reserveCandidates = await fetchReservesRatesFromRateHelper(matchingEngine, rateHelper, reserveInstances, srcToken.address, srcQty, 0, true);
                         bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestReserve], [bestReserve.rateNoFee], [],
@@ -699,7 +699,7 @@ contract('KyberMatchingEngine', function(accounts) {
                     it(`E2T, no hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
-                        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, rateHelper, reserveInstances, destToken.address, ethSrcQty, 0, false);
+                        reserveCandidates = await fetchReservesRatesFromRateHelper(matchingEngine, rateHelper, reserveInstances, destToken.address, ethSrcQty, 0, false);
                         bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             ethDecimals, [], [], [],
@@ -718,9 +718,9 @@ contract('KyberMatchingEngine', function(accounts) {
                     it(`T2T, no hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
-                        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, rateHelper, reserveInstances, srcToken.address, srcQty, 0, true);
+                        reserveCandidates = await fetchReservesRatesFromRateHelper(matchingEngine, rateHelper, reserveInstances, srcToken.address, srcQty, 0, true);
                         bestSellReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, networkFeeBps);
-                        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, rateHelper, reserveInstances, destToken.address, ethSrcQty, 0, false);
+                        reserveCandidates = await fetchReservesRatesFromRateHelper(matchingEngine, rateHelper, reserveInstances, destToken.address, ethSrcQty, 0, false);
                         bestBuyReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         
                         //get trade result
@@ -1302,7 +1302,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
 });
 
-async function fetchReservesRatesFromTradeLogic(matchingEngineInstance, rateHelperInstance, reserveInstances, tokenAddress, qty, networkFeeBps, isTokenToEth) {
+async function fetchReservesRatesFromRateHelper(matchingEngineInstance, rateHelperInstance, reserveInstances, tokenAddress, qty, networkFeeBps, isTokenToEth) {
     let reservesArray = [];
     let result;
     let reserves;
@@ -1346,7 +1346,7 @@ async function getHintedReserves(
     e2tHintType = (e2tHintType == EMPTY_HINTTYPE) ? emptyHint : e2tHintType;
 
     if(srcAdd != ethAddress) {
-        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, rateHelper, reserveInstances, srcAdd, t2eQty, 0, true);
+        reserveCandidates = await fetchReservesRatesFromRateHelper(matchingEngine, rateHelper, reserveInstances, srcAdd, t2eQty, 0, true);
         res.reservesT2E = nwHelper.applyHintToReserves(t2eHintType, reserveCandidates, t2eNumReserves, t2eSplits);
         if(destAdd == ethAddress) {
             res.hint = await matchingEngine.buildTokenToEthHint(
@@ -1356,7 +1356,7 @@ async function getHintedReserves(
     }
 
     if(destAdd != ethAddress) {
-        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, rateHelper, reserveInstances, destAdd, e2tQty, 0, false);
+        reserveCandidates = await fetchReservesRatesFromRateHelper(matchingEngine, rateHelper, reserveInstances, destAdd, e2tQty, 0, false);
         res.reservesE2T = nwHelper.applyHintToReserves(e2tHintType, reserveCandidates, e2tNumReserves, e2tSplits);
         if(srcAdd == ethAddress) {
             res.hint = await matchingEngine.buildEthToTokenHint(
