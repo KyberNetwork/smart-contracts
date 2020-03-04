@@ -331,12 +331,12 @@ async function waitForEth() {
 async function deployTradeLogicContract(output) {
     if (tradeLogicAddress == "") {
         console.log("deploying trade logic");
-        [tradeLogicAddress, tradeLogicContract] = await deployContract(output, "KyberTradeLogic.sol", "KyberTradeLogic", [sender]);
-        console.log(`tradeLogic: ${tradeLogicAddress}`);
+        [tradeLogicAddress, tradeLogicContract] = await deployContract(output, "KyberMatchingEngine.sol", "KyberMatchingEngine", [sender]);
+        console.log(`matchingEngine: ${tradeLogicAddress}`);
     } else {
         console.log("Instantiating trade logic...");
         tradeLogicContract = new web3.eth.Contract(
-            output.contracts["KyberTradeLogic.sol"]["KyberTradeLogic"].abi, tradeLogicAddress
+            output.contracts["KyberMatchingEngine.sol"]["KyberMatchingEngine"].abi, tradeLogicAddress
         );
     }
 }
@@ -393,7 +393,7 @@ async function setNetworkAddressInTradeLogic(tempAddress) {
 }
 
 async function set_Fee_Logic_Gas_ContractsInNetwork() {
-  console.log("set feeHandler, tradeLogic and gas helper in network");
+  console.log("set feeHandler, matchingEngine and gas helper in network");
   await sendTx(networkContract.methods.setContracts(
     feeHandlerAddress, tradeLogicAddress, gasHelperAddress
   ));

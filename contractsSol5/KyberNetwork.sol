@@ -7,7 +7,7 @@ import "./IKyberNetwork.sol";
 import "./IKyberReserve.sol";
 import "./IKyberFeeHandler.sol";
 import "./IKyberDAO.sol";
-import "./IKyberTradeLogic.sol";
+import "./IKyberMatchingEngine.sol";
 import "./IGasHelper.sol";
 
 
@@ -21,7 +21,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
     IKyberFeeHandler  internal feeHandler;
     IKyberDAO         internal kyberDAO;
-    IKyberTradeLogic  internal tradeLogic;
+    IKyberMatchingEngine  internal matchingEngine;
     IGasHelper        internal gasHelper;
 
     uint            networkFeeData; // data is feeBps and expiry block
@@ -87,15 +87,15 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     event AddReserveToNetwork (
         address indexed reserve,
         bytes8 indexed reserveId,
-        IKyberTradeLogic.ReserveType reserveType,
+        IKyberMatchingEngine.ReserveType reserveType,
         address indexed rebateWallet,
         bool add);
 
     /// @notice can be called only by operator
     /// @dev adds a reserve to/from the network.
     /// @param reserve The reserve address.
-    function addReserve(address reserve, bytes8 reserveId, IKyberTradeLogic.ReserveType reserveType, address wallet) external onlyOperator returns(bool) {
-        require(tradeLogic.addReserve(reserve, reserveId, reserveType));
+    function addReserve(address reserve, bytes8 reserveId, IKyberMatchingEngine.ReserveType reserveType, address wallet) external onlyOperator returns(bool) {
+        require(matchingEngine.addReserve(reserve, reserveId, reserveType));
         reserves.push(IKyberReserve(reserve));
 
         reserveRebateWallet[reserve] = wallet;
@@ -112,7 +112,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param reserve The reserve address.
     /// @param startIndex to search in reserve array.
     function removeReserve(address reserve, uint startIndex) public onlyOperator returns(bool) {
-        bytes8 reserveId = tradeLogic.removeReserve(reserve);
+        //TODO: handle all db
+        bytes8 reserveId = matchingEngine.removeReserve(reserve);
 
         uint reserveIndex = 2 ** 255;
         
@@ -153,7 +154,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         onlyOperator
         returns(bool)
     {
-        require(tradeLogic.listPairForReserve(IKyberReserve(reserve), token, ethToToken, tokenToEth, add));
+        require(matchingEngine.listPairForReserve(IKyberReserve(reserve), token, ethToToken, tokenToEth, add));
 
         if (ethToToken) {
             emit ListReservePairs(reserve, ETH_TOKEN_ADDRESS, token, add);
@@ -172,25 +173,25 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     }
 
     event FeeHandlerUpdated(IKyberFeeHandler newHandler);
-    event TradeLogicUpdated(IKyberTradeLogic tradeLogic);
+    event TradeLogicUpdated(IKyberMatchingEngine matchingEngine);
     event GasHelperUpdated(IGasHelper gasHelper);
     
     function setContracts(IKyberFeeHandler _feeHandler, 
-        IKyberTradeLogic _tradeLogic,
+        IKyberMatchingEngine _tradeLogic,
         IGasHelper _gasHelper) 
         external onlyAdmin 
     {
         require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
-        require(_tradeLogic != IKyberTradeLogic(0), "tradeLogic 0");
+        require(_tradeLogic != IKyberMatchingEngine(0), "matchingEngine 0");
 
         if(_feeHandler != feeHandler) {
             emit FeeHandlerUpdated(_feeHandler);
             feeHandler = _feeHandler;
         }
 
-        if(_tradeLogic != tradeLogic) {
+        if(_tradeLogic != matchingEngine) {
             emit TradeLogicUpdated(_tradeLogic);
-            tradeLogic = _tradeLogic;
+            matchingEngine = _tradeLogic;
         }
 
         if((_gasHelper != IGasHelper(0)) && (_gasHelper != gasHelper)) {
@@ -211,7 +212,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
     function setParams(uint _maxGasPrice, uint _negligibleRateDiffBps) external onlyAdmin {
         maxGasPriceValue = _maxGasPrice;
-        require(tradeLogic.setNegligbleRateDiffBps(_negligibleRateDiffBps));
+        require(matchingEngine.setNegligbleRateDiffBps(_negligibleRateDiffBps));
         emit KyberNetworkParamsSet(maxGasPriceValue, _negligibleRateDiffBps);
     }
 
@@ -220,7 +221,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     function setEnable(bool _enable) external onlyAdmin {
         if (_enable) {
             require(feeHandler != IKyberFeeHandler(0), "feeHandler 0");
-            require(tradeLogic != IKyberTradeLogic(0), "tradeLogic 0");
+            require(matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
             require(kyberProxyArray.length > 0, "proxy 0");
         }
         isEnabled = _enable;
@@ -357,7 +358,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     function getContracts() external view 
         returns(address kyberDaoAddress, address feeHandlerAddress, address tradeLogicAddress) 
     {
-        return(address(kyberDAO), address(feeHandler), address(tradeLogic));
+        return(address(kyberDAO), address(feeHandler), address(matchingEngine));
     }
 
     function getNetworkData() external view returns(
@@ -366,7 +367,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         uint expiryBlock)
     {
         (networkFeeBps, expiryBlock) = decodeNetworkFee(networkFeeData);
-        negligibleDiffBps = tradeLogic.negligibleRateDiffBps();
+        negligibleDiffBps = matchingEngine.negligibleRateDiffBps();
         return(negligibleDiffBps, networkFeeBps, expiryBlock);
     }
 
@@ -382,14 +383,14 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates,
             IKyberReserve[] memory sellReserves, uint[] memory sellRates)
     {
-        return tradeLogic.getRatesForToken(token, optionalBuyAmount, optionalSellAmount, getNetworkFee());
+        return matchingEngine.getRatesForToken(token, optionalBuyAmount, optionalSellAmount, getNetworkFee());
     }
 
     function getPricesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount) external view
         returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, 
             uint[] memory sellRates)
     {
-        return tradeLogic.getRatesForToken(token, optionalBuyAmount, optionalSellAmount, 0);
+        return matchingEngine.getRatesForToken(token, optionalBuyAmount, optionalSellAmount, 0);
     }
 
     struct TradingReserves {
@@ -444,10 +445,10 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     // function should set all TradeData so it can later be used without any ambiguity
     {
         //init info structure
-        uint[] memory info = new uint[](uint(IKyberTradeLogic.InfoIndex.infoLength));
-        info[uint(IKyberTradeLogic.InfoIndex.networkFeeBps)] = tData.networkFeeBps;
-        info[uint(IKyberTradeLogic.InfoIndex.platformFeeBps)] = tData.input.platformFeeBps;
-        info[uint(IKyberTradeLogic.InfoIndex.srcAmount)] = srcAmount;
+        uint[] memory info = new uint[](uint(IKyberMatchingEngine.InfoIndex.infoLength));
+        info[uint(IKyberMatchingEngine.InfoIndex.networkFeeBps)] = tData.networkFeeBps;
+        info[uint(IKyberMatchingEngine.InfoIndex.platformFeeBps)] = tData.input.platformFeeBps;
+        info[uint(IKyberMatchingEngine.InfoIndex.srcAmount)] = srcAmount;
 
         uint[] memory results;
         IKyberReserve[] memory reserveAddresses;
@@ -457,7 +458,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         bytes8[] memory ids;
 
         (results, reserveAddresses, rates, splitValuesBps, isFeePaying, ids) = 
-            tradeLogic.calcRatesAndAmounts(src, dest, tData.tokenToEth.decimals, tData.ethToToken.decimals, info, hint);
+            matchingEngine.calcRatesAndAmounts(src, dest, tData.tokenToEth.decimals, tData.ethToToken.decimals, info, hint);
         
         unpackResults(results, reserveAddresses, rates, splitValuesBps, isFeePaying, ids, tData);
 
@@ -478,18 +479,18 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         ) internal pure
     {
         //uint start = printGas("start unpack", 0);
-        uint tokenToEthNumReserves = results[uint(IKyberTradeLogic.ResultIndex.t2eNumReserves)];
+        uint tokenToEthNumReserves = results[uint(IKyberMatchingEngine.ResultIndex.t2eNumReserves)];
         
         storeTradeData(tData.tokenToEth, reserveAddresses, rates, splitValuesBps, isFeePaying, ids, 0, tokenToEthNumReserves);
         storeTradeData(tData.ethToToken, reserveAddresses, rates, splitValuesBps, isFeePaying, ids,
             tokenToEthNumReserves, reserveAddresses.length - tokenToEthNumReserves);
         
-        tData.tradeWei = results[uint(IKyberTradeLogic.ResultIndex.tradeWei)];
-        tData.numFeePayingReserves = results[uint(IKyberTradeLogic.ResultIndex.numFeePayingReserves)];
-        tData.feePayingReservesBps = results[uint(IKyberTradeLogic.ResultIndex.feePayingReservesBps)];
-        tData.destAmountNoFee = results[uint(IKyberTradeLogic.ResultIndex.destAmountNoFee)];
-        tData.destAmountWithNetworkFee = results[uint(IKyberTradeLogic.ResultIndex.destAmountWithNetworkFee)];
-        tData.actualDestAmount = results[uint(IKyberTradeLogic.ResultIndex.actualDestAmount)];
+        tData.tradeWei = results[uint(IKyberMatchingEngine.ResultIndex.tradeWei)];
+        tData.numFeePayingReserves = results[uint(IKyberMatchingEngine.ResultIndex.numFeePayingReserves)];
+        tData.feePayingReservesBps = results[uint(IKyberMatchingEngine.ResultIndex.feePayingReservesBps)];
+        tData.destAmountNoFee = results[uint(IKyberMatchingEngine.ResultIndex.destAmountNoFee)];
+        tData.destAmountWithNetworkFee = results[uint(IKyberMatchingEngine.ResultIndex.destAmountWithNetworkFee)];
+        tData.actualDestAmount = results[uint(IKyberMatchingEngine.ResultIndex.actualDestAmount)];
         
         //printGas("end unpack", start);
     }
