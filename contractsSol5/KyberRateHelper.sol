@@ -2,6 +2,7 @@ pragma  solidity 0.5.11;
 
 import "./IKyberMatchingEngine.sol";
 import "./IKyberRateHelper.sol";
+import "./IKyberDAO.sol";
 import "./Utils4.sol";
 import "./Withdrawable2.sol";
 
@@ -9,19 +10,28 @@ import "./Withdrawable2.sol";
 contract KyberRateHelper is IKyberRateHelper, Withdrawable2, Utils4 {
 
     IKyberMatchingEngine public matchingEngine;
+    IKyberDAO public kyberDAO;
 
     constructor(address _admin) public
         Withdrawable2(_admin)
     { /* empty body */ }
 
     event MatchingEngineContractSet(IKyberMatchingEngine matchingEngine);
+    event KyberDAOContractSet(IKyberDAO kyberDAO);
 
-    function setMatchingEngineContract(IKyberMatchingEngine _matchingEngine) public onlyAdmin {
+    function setContracts(IKyberMatchingEngine _matchingEngine, IKyberDAO _kyberDAO) public onlyAdmin {
         require(_matchingEngine != IKyberMatchingEngine(0), "missing addr");
+        require(_kyberDAO != IKyberDAO(0), "missing addr");
 
-        matchingEngine = _matchingEngine;
+        if (matchingEngine != _matchingEngine) {
+            matchingEngine = _matchingEngine;
+            emit MatchingEngineContractSet(_matchingEngine);
+        }
 
-        emit MatchingEngineContractSet(_matchingEngine);
+        if (kyberDAO != _kyberDAO) {
+            kyberDAO = _kyberDAO;
+            emit KyberDAOContractSet(_kyberDAO);
+        }
     }
 
     struct Amounts {
@@ -30,8 +40,25 @@ contract KyberRateHelper is IKyberRateHelper, Withdrawable2, Utils4 {
         uint destAmount;
     }
 
-    function getRatesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount, uint networkFeeBps) external view
-        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, uint[] memory sellRates)
+    function getRatesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount) public view
+        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates,
+            IKyberReserve[] memory sellReserves, uint[] memory sellRates)
+    {
+        (uint feeBps, ) = kyberDAO.getLatestNetworkFeeData();
+        return getRatesForTokenWithCustomFee(token, optionalBuyAmount, optionalSellAmount, feeBps);
+    }
+
+    function getPricesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount) public view
+        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, 
+            uint[] memory sellRates)
+    {
+        return getRatesForTokenWithCustomFee(token, optionalBuyAmount, optionalSellAmount, 0);
+    }
+
+    function getRatesForTokenWithCustomFee(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount, uint networkFeeBps)
+        public view
+        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates,
+            IKyberReserve[] memory sellReserves, uint[] memory sellRates)
     {
         Amounts memory A;
 

@@ -9,7 +9,6 @@ import "./IKyberFeeHandler.sol";
 import "./IKyberDAO.sol";
 import "./IKyberMatchingEngine.sol";
 import "./IGasHelper.sol";
-import "./IKyberRateHelper.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -23,7 +22,6 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     IKyberFeeHandler        internal feeHandler;
     IKyberDAO               internal kyberDAO;
     IKyberMatchingEngine    internal matchingEngine;
-    IKyberRateHelper        internal rateHelper;
     IGasHelper              internal gasHelper;
 
     uint            networkFeeData; // data is feeBps and expiry block
@@ -177,12 +175,10 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     event FeeHandlerUpdated(IKyberFeeHandler newHandler);
     event TradeLogicUpdated(IKyberMatchingEngine matchingEngine);
     event GasHelperUpdated(IGasHelper gasHelper);
-    event RateHelperUpdated(IKyberRateHelper rateHelper);
     
     function setContracts(IKyberFeeHandler _feeHandler, 
         IKyberMatchingEngine _tradeLogic,
-        IGasHelper _gasHelper,
-        IKyberRateHelper _rateHelper
+        IGasHelper _gasHelper
     )
         external onlyAdmin 
     {
@@ -202,11 +198,6 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         if((_gasHelper != IGasHelper(0)) && (_gasHelper != gasHelper)) {
             emit GasHelperUpdated(_gasHelper);
             gasHelper = _gasHelper;
-        }
-
-        if ((_rateHelper != IKyberRateHelper(0)) && (_rateHelper != rateHelper)) {
-            emit RateHelperUpdated(_rateHelper);
-            rateHelper = _rateHelper;
         }
     }
 
@@ -387,20 +378,6 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
     function enabled() external view returns(bool) {
         return isEnabled;
-    }
-
-    function getRatesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount) external view
-        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates,
-            IKyberReserve[] memory sellReserves, uint[] memory sellRates)
-    {
-        return rateHelper.getRatesForToken(token, optionalBuyAmount, optionalSellAmount, getNetworkFee());
-    }
-
-    function getPricesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount) external view
-        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, 
-            uint[] memory sellRates)
-    {
-        return rateHelper.getRatesForToken(token, optionalBuyAmount, optionalSellAmount, 0);
     }
 
     struct TradingReserves {
