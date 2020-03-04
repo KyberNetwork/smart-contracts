@@ -302,18 +302,17 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     }
 
     // new APIs
-    function getExpectedRateWithHintAndFee(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps, bytes memory hint) 
-        public view
+    function getExpectedRateWithHintAndFee(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps, bytes calldata hint) 
+        external view
         returns (uint rateNoFees, uint rateAfterNetworkFee, uint rateAfterAllFees)
     {
         if (src == dest) return (0, 0, 0);
-        if (srcQty == 0) srcQty = 1;
 
         TradeData memory tData = initTradeInput({
             trader: address(uint160(0)),
             src: src,
             dest: dest,
-            srcAmount: srcQty,
+            srcAmount: (srcQty == 0) ? 1 : srcQty,
             destAddress: address(uint160(0)),
             maxDestAmount: 2 ** 255,
             minConversionRate: 0,
@@ -323,11 +322,11 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         
         tData.networkFeeBps = getNetworkFee();
         
-        calcRatesAndAmounts(src, dest, srcQty, tData, hint);
+        calcRatesAndAmounts(src, dest, tData.input.srcAmount, tData, hint);
         
-        rateNoFees = calcRateFromQty(srcQty, tData.destAmountNoFee, tData.tokenToEth.decimals, tData.ethToToken.decimals);
+        rateNoFees = calcRateFromQty(tData.input.srcAmount, tData.destAmountNoFee, tData.tokenToEth.decimals, tData.ethToToken.decimals);
         rateAfterNetworkFee = tData.rateOnlyNetworkFee;
-        rateAfterAllFees = calcRateFromQty(srcQty, tData.actualDestAmount, tData.tokenToEth.decimals, tData.ethToToken.decimals);
+        rateAfterAllFees = calcRateFromQty(tData.input.srcAmount, tData.actualDestAmount, tData.tokenToEth.decimals, tData.ethToToken.decimals);
     }
 
     function initTradeInput(
