@@ -158,6 +158,7 @@ const input = {
   ),
   'Utils.sol': fs.readFileSync(contractPath + 'Utils.sol', 'utf8'),
   'Utils2.sol': fs.readFileSync(contractPath + 'Utils2.sol', 'utf8'),
+  'Utils3.sol': fs.readFileSync(contractPath + 'Utils3.sol', 'utf8'),
   'FeeBurnerInterface.sol': fs.readFileSync(
     contractPath + 'FeeBurnerInterface.sol',
     'utf8'
