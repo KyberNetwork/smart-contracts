@@ -96,12 +96,12 @@ contract('KyberTradeLogic', function(accounts) {
             );
 
             await expectRevert(
-                tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: operator}),
+                tradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: operator}),
                 "ONLY_ADMIN"
             );
 
             await expectRevert(
-                tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: network}),
+                tradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: network}),
                 "ONLY_ADMIN"
             );
         });
@@ -153,7 +153,7 @@ contract('KyberTradeLogic', function(accounts) {
         });
 
         it("should have network add reserve", async() => {
-            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: admin});
+            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
             await tradeLogic.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
             let reserveDetails = await tradeLogic.getReserveDetails(reserve.address);
             let reserveId = reserveDetails.reserveId;
@@ -221,30 +221,31 @@ contract('KyberTradeLogic', function(accounts) {
     describe("test fee paying data per reserve", async() => {
         let token;
         let reserveInstances;
+        let result;
 
         before("setup tradeLogic instance and 4 reserves 4 types", async() => {
             tradeLogic = await TradeLogic.new(admin);
             await tradeLogic.setNetworkContract(network, {from: admin});
-            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: admin});
+            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
             //init token
             token = await TestToken.new("Token", "TOK", 18);
             
-            let result = await nwHelper.setupReserves(network, [token], 4,0,0,0, accounts, admin, operator);
+            result = await nwHelper.setupReserves(network, [token], 5,0,0,0, accounts, admin, operator);
             reserveInstances = result.reserveInstances;
             
-            //add reserves as 4 different types.
+            //add reserves as 5 different types.
             let type = 1;
             for (reserve of Object.values(reserveInstances)) {
                 await tradeLogic.addReserve(reserve.address, reserve.reserveId, type, {from: network});
                 type++;
-                //iterate all 4 types
+                //iterate all 5 types
             }
         });
 
         it("get reserve details while modifying fee paying per type. see as expected", async() => {
             let pay = [];
-            let totalReserveTypes = 4;
+            let totalReserveTypes = 5;
             let numCombinations = totalReserveTypes ** 2;
             //generate different pay combinations
             for (let i = 0; i < numCombinations; i++) {
@@ -259,7 +260,7 @@ contract('KyberTradeLogic', function(accounts) {
                     pay = pay.concat([false]);
                 }
                 
-                await tradeLogic.setFeePayingPerReserveType(pay[0], pay[1], pay[2], pay[3], {from: admin});
+                await tradeLogic.setFeePayingPerReserveType(pay[0], pay[1], pay[2], pay[3], pay[4], {from: admin});
                 let index = 0;
                 for (reserve of Object.values(reserveInstances)) {
                     let details = await tradeLogic.getReserveDetails(reserve.address);
@@ -276,7 +277,7 @@ contract('KyberTradeLogic', function(accounts) {
         before("setup tradeLogic instance and 2 tokens", async() => {
             tradeLogic = await TradeLogic.new(admin);
             await tradeLogic.setNetworkContract(network, {from: admin});
-            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: admin});
+            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
             //init 2 tokens
             srcDecimals = new BN(8);
@@ -292,7 +293,7 @@ contract('KyberTradeLogic', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
-                await tradeLogic.setFeePayingPerReserveType(true, true, true, true, {from: admin});
+                await tradeLogic.setFeePayingPerReserveType(true, true, true, true, true, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
@@ -355,7 +356,7 @@ contract('KyberTradeLogic', function(accounts) {
                 numReserves = result.numAddedReserves * 1;
 
                 //set fee paying to false
-                await tradeLogic.setFeePayingPerReserveType(false, false, false, false, {from: admin});
+                await tradeLogic.setFeePayingPerReserveType(false, false, false, false, false, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
@@ -417,7 +418,7 @@ contract('KyberTradeLogic', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
-                await tradeLogic.setFeePayingPerReserveType(true, true, true, true, {from: admin});
+                await tradeLogic.setFeePayingPerReserveType(true, true, true, true, true, {from: admin});
 
                 //set zero rates
                 for ([key, reserve] of Object.entries(reserveInstances)) {
@@ -473,7 +474,7 @@ contract('KyberTradeLogic', function(accounts) {
         before("setup tradeLogic instance and 2 tokens", async() => {
             tradeLogic = await TradeLogic.new(admin);
             await tradeLogic.setNetworkContract(network, {from: admin});
-            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: admin});
+            await tradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
             //init 2 tokens
             srcDecimals = new BN(8);
@@ -495,7 +496,7 @@ contract('KyberTradeLogic', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
-                await tradeLogic.setFeePayingPerReserveType(true, true, true, true, {from: admin});
+                await tradeLogic.setFeePayingPerReserveType(true, true, true, true, true, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {

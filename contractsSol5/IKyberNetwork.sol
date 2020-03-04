@@ -6,14 +6,6 @@ import "./IERC20.sol";
 /// @title Kyber Network interface
 interface IKyberNetwork {
 
-    enum ReserveType {
-        NONE,
-        FPR,
-        APR,
-        BRIDGE,
-        UTILITY
-    }
-    
     // backward compatible: don't modify
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
         returns (uint expectedRate, uint worstRate);
