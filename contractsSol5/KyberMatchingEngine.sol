@@ -46,7 +46,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         require(reserveAddressToId[reserve] == bytes8(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
         require(resType != ReserveType.NONE, "bad res type");
-        require(uint(resType) <= uint(ReserveType.LAST));
+        require(uint(resType) < uint(ReserveType.LAST), "bad res type");
         require(feePayingPerType !=  0xffffffff, "Fee paying not set");
 
         if (reserveIdToAddresses[reserveId].length == 0) {
@@ -67,6 +67,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
         reserveIdToAddresses[reserveId][0] = address(0);
+        reserveAddressToId[reserve] = bytes8(0);
 
         return reserveId;
     }
