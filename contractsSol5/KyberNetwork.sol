@@ -279,13 +279,12 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     {
         if (src == dest) return (0, 0);
         uint qty = srcQty & ~PERM_HINT_GET_RATE;
-        if (qty == 0) qty = 1;
 
         TradeData memory tData = initTradeInput({
             trader: address(uint160(0)),
             src: src,
             dest: dest,
-            srcAmount: qty,
+            srcAmount: (qty == 0) ? 1 : qty,
             destAddress: address(uint160(0)),
             maxDestAmount: 2 ** 255,
             minConversionRate: 0,
