@@ -1,12 +1,13 @@
 const TestToken = artifacts.require("Token.sol");
-const TradeLogic = artifacts.require("KyberMatchingEngine.sol");
+const MockReserve = artifacts.require("MockReserve.sol");
+const KyberMatchingEngine = artifacts.require("KyberMatchingEngine.sol");
 
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
 
 const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
-const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN} = require("../helper.js");
+const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN, MAX_QTY} = require("../helper.js");
 const {NULL_ID, EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, ReserveType}  = require('./networkHelper.js');
 
 //global variables
@@ -72,7 +73,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
     describe("test onlyAdmin and onlyNetwork permissions", async() => {
         before("deploy matchingEngine instance, 1 mock reserve and 1 mock token", async() => {
-            matchingEngine = await TradeLogic.new(admin);
+            matchingEngine = await KyberMatchingEngine.new(admin);
             token = await TestToken.new("test", "tst", 18);
 
             //init 1 mock reserve
@@ -180,8 +181,7 @@ contract('KyberMatchingEngine', function(accounts) {
         });
 
         it("should have network list pair for reserve", async() => {
-            let result = await matchingEngine.listPairForReserve(reserve.address, token.address, true, true, true, {from: network});
-            assert.isTrue(result, "pair should have listed");
+            await matchingEngine.listPairForReserve(reserve.address, token.address, true, true, true, {from: network});
             result = await matchingEngine.reservesPerTokenSrc(token.address,0);
             Helper.assertEqual(result, reserve.address, "reserve should have supported token");
             result = await matchingEngine.reservesPerTokenDest(token.address,0);
@@ -189,17 +189,30 @@ contract('KyberMatchingEngine', function(accounts) {
         });
 
         it("should not have unauthorized personnel remove reserve", async() => {
-            //TODO
+            await expectRevert(
+                matchingEngine.removeReserve(reserve.address, {from: user}),
+                "ONLY_NETWORK"
+            );
+
+            await expectRevert(
+                matchingEngine.removeReserve(reserve.address, {from: operator}),
+                "ONLY_NETWORK"
+            );
+
+            await expectRevert(
+                matchingEngine.removeReserve(reserve.address, {from: admin}),
+                "ONLY_NETWORK"
+            );
         });
 
         it("should have network remove reserve", async() => {
-            //TODO
+            await matchingEngine.removeReserve(reserve.address, {from: network});
         });
     });
 
     describe("test contract event", async() => {
         before("deploy and setup matchingEngine instance", async() => {
-            matchingEngine = await TradeLogic.new(admin);
+            matchingEngine = await KyberMatchingEngine.new(admin);
         });
 
         it("shoud test set network event", async() => {
@@ -211,11 +224,136 @@ contract('KyberMatchingEngine', function(accounts) {
     });
 
     describe("test setting contracts and params", async() => {
-        //TODO
+        before("deploy and setup matchingEngine instance", async() => {
+            matchingEngine = await KyberMatchingEngine.new(admin);
+        });
     });
 
-    describe("test adding, removing and listing pairs for reserves", async() => {
-        //TODO
+    describe("test adding reserves", async() => {
+        before("deploy and setup matchingEngine instance & 1 mock reserve", async() => {
+            matchingEngine = await KyberMatchingEngine.new(admin);
+            await matchingEngine.setNetworkContract(network, {from: admin});
+
+            //init 1 mock reserve
+            let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
+            reserveInstances = result.reserveInstances;
+            numReserves = result.numAddedReserves * 1;
+            for (const value of Object.values(reserveInstances)) {
+                reserve = value;
+            }
+        });
+
+        describe("test cases where reserve has never been added", async() => {
+            it("should revert for zero reserve id", async() => {
+                let zeroReserveId = "0x0";
+                await expectRevert(
+                    matchingEngine.addReserve(reserve.address, zeroReserveId, reserve.onChainType, {from: network}),
+                    "reserveId = 0"
+                );
+            });
+    
+            it("should revert for NONE reserve type", async() => {
+                await expectRevert(
+                    matchingEngine.addReserve(reserve.address, reserve.reserveId, 0, {from: network}),
+                    "bad res type"
+                );
+            });
+    
+            it("should revert for LAST reserve type", async() => {
+                await expectRevert(
+                    matchingEngine.addReserve(reserve.address, reserve.reserveId, 0, {from: network}),
+                    "bad res type"
+                );
+            });
+    
+            it("should revert for valid reserve because fee paying data not set", async() => {
+                await expectRevert(
+                    matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network}),
+                    "Fee paying not set"
+                );
+            });    
+        });
+
+        describe("test cases for an already added reserve", async() => {
+            before("add fee paying type and add reserve", async() => {
+                await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+                await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+            });
+
+            it("should revert for adding an existing reserve", async() => {
+                await expectRevert(
+                    matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network}),
+                    "reserve has id"
+                );
+            });
+
+            it("should revert for a new reserve with an already taken reserve id", async() => {
+                let newReserve = await MockReserve.new();
+                await expectRevert(
+                    matchingEngine.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, {from: network}),
+                    "reserveId taken"
+                );
+            });
+
+            it("should be able to re-add a reserve after its removal", async() => {
+                await matchingEngine.removeReserve(reserve.address, {from: network});
+                await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+            });
+
+            it("should be able to add a new reserve address for an existing id after removing an old one", async() => {
+                let newReserve = await MockReserve.new();
+                await matchingEngine.removeReserve(reserve.address, {from: network});
+                await matchingEngine.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                let actualNewReserveAddress = await matchingEngine.reserveIdToAddresses(reserve.reserveId, 0);
+                let actualOldReserveAddress = await matchingEngine.reserveIdToAddresses(reserve.reserveId, 1);
+
+                Helper.assertEqual(newReserve.address, actualNewReserveAddress, "new reserve address not equal to expected");
+                Helper.assertEqual(reserve.address, actualOldReserveAddress, "old reserve address not equal to expected");
+            })
+        });
+    });
+
+    describe("test listing token pair and removing reserve", async() => {
+        before("deploy and setup matchingEngine instance & add 1 mock reserve, & 1 mock token", async() => {
+            matchingEngine = await KyberMatchingEngine.new(admin);
+            await matchingEngine.setNetworkContract(network, {from: admin});
+
+            //init 1 mock reserve
+            let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
+            reserveInstances = result.reserveInstances;
+            numReserves = result.numAddedReserves * 1;
+            for (const value of Object.values(reserveInstances)) {
+                reserve = value;
+            }
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+            await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+
+            //create token
+            token = await TestToken.new("test", "tst", 18);
+        });
+
+        it("should revert when listing token for non-reserve", async() => {
+            await expectRevert(
+                matchingEngine.listPairForReserve(user, token.address, true, true, true, {from: network}),
+                "reserve -> 0 reserveId"
+           );
+        });
+
+        it("should revert when removing non-reserve", async() => {
+            await expectRevert(
+                matchingEngine.removeReserve(user, {from : network}),
+                "reserve -> 0 reserveId"
+           );
+        });
+
+        it("should have reserveId reset to zero after removal", async() => {
+            await matchingEngine.removeReserve(reserve.address, {from: network});
+            let result = await matchingEngine.getReserveDetails(reserve.address);
+            Helper.assertEqual(result.reserveId, "0x0000000000000000", "reserve id was not reset to zero");
+
+            //reset
+            await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+        })
     });
 
     describe("test fee paying data per reserve", async() => {
@@ -224,7 +362,7 @@ contract('KyberMatchingEngine', function(accounts) {
         let result;
 
         before("setup matchingEngine instance and 4 reserves 4 types", async() => {
-            matchingEngine = await TradeLogic.new(admin);
+            matchingEngine = await KyberMatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
@@ -275,7 +413,7 @@ contract('KyberMatchingEngine', function(accounts) {
  
     describe("test getRatesForToken", async() => {
         before("setup matchingEngine instance and 2 tokens", async() => {
-            matchingEngine = await TradeLogic.new(admin);
+            matchingEngine = await KyberMatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
@@ -471,8 +609,8 @@ contract('KyberMatchingEngine', function(accounts) {
     });
 
     describe("test calcRatesAndAmounts", async() => {
-        before("setup matchingEngine instance and 2 tokens", async() => {
-            matchingEngine = await TradeLogic.new(admin);
+        before("setup matchingEngine instance and 2 tokens", async() => { 
+            matchingEngine = await KyberMatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
@@ -527,10 +665,10 @@ contract('KyberMatchingEngine', function(accounts) {
 
             for (networkFeeBps of networkFeeArray) {
                 for (platformFeeBps of platformFeeArray) {
-                    it("T2E, no hint", async() => {
+                    it(`T2E, no hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
-                        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, reserveInstances, srcToken.address, srcQty, 0, true);
+                        reserveCandidates = await fetchReservesRatesFromMatchingEngine(matchingEngine, reserveInstances, srcToken.address, srcQty, 0, true);
                         bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             srcDecimals, [bestReserve], [bestReserve.rateNoFee], [],
@@ -546,10 +684,10 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("E2T, no hint", async() => {
+                    it(`E2T, no hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
-                        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, reserveInstances, destToken.address, ethSrcQty, 0, false);
+                        reserveCandidates = await fetchReservesRatesFromMatchingEngine(matchingEngine, reserveInstances, destToken.address, ethSrcQty, 0, false);
                         bestReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         expectedTradeResult = getTradeResult(
                             ethDecimals, [], [], [],
@@ -565,12 +703,12 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });   
 
-                    it("T2T, no hint", async() => {
+                    it(`T2T, no hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
-                        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, reserveInstances, srcToken.address, srcQty, 0, true);
+                        reserveCandidates = await fetchReservesRatesFromMatchingEngine(matchingEngine, reserveInstances, srcToken.address, srcQty, 0, true);
                         bestSellReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, srcToken.address, ethAddress, srcQty, networkFeeBps);
-                        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, reserveInstances, destToken.address, ethSrcQty, 0, false);
+                        reserveCandidates = await fetchReservesRatesFromMatchingEngine(matchingEngine, reserveInstances, destToken.address, ethSrcQty, 0, false);
                         bestBuyReserve = await nwHelper.getBestReserveAndRate(reserveCandidates, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
                         
                         //get trade result
@@ -588,7 +726,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2E, mask in hint", async() => {
+                    it(`T2E, mask in hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         numMaskedReserves = 2;
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
@@ -614,7 +752,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("E2T, mask in hint", async() => {
+                    it(`E2T, mask in hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         numMaskedReserves = 2;
                         info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
@@ -640,7 +778,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2T, mask in hint (both ways)", async() => {
+                    it(`T2T, mask in hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         numMaskedReserves = 2;
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
@@ -667,7 +805,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2E, mask out hint", async() => {
+                    it(`T2E, mask out hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         numMaskedReserves = 2;
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
@@ -693,7 +831,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("E2T, mask out hint", async() => {
+                    it(`E2T, mask out hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         numMaskedReserves = 2;
                         info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
@@ -719,7 +857,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2T, mask out hint", async() => {
+                    it(`T2T, mask out hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         numMaskedReserves = 2;
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
@@ -746,7 +884,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2E, split hint", async() => {
+                    it(`T2E, split hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -771,7 +909,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("E2T, split hint", async() => {
+                    it(`E2T, split hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [ethSrcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -796,7 +934,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2T, split hint", async() => {
+                    it(`T2T, split hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -823,7 +961,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2T, no hint | mask in hint", async() => {
+                    it(`T2T, no hint | mask in hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -849,7 +987,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2T, no hint | mask out hint", async() => {
+                    it(`T2T, no hint | mask out hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -875,7 +1013,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2T, no hint | split hint", async() => {
+                    it(`T2T, no hint | split hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -902,7 +1040,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2T, mask in hint | no hint", async() => {
+                    it(`T2T, mask in hint | no hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -928,7 +1066,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2T, mask in hint | mask out hint", async() => {
+                    it(`T2T, mask in hint | mask out hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -954,7 +1092,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2T, mask in hint | split hint", async() => {
+                    it(`T2T, mask in hint | split hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -981,7 +1119,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2T, mask out hint | no hint", async() => {
+                    it(`T2T, mask out hint | no hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -1007,7 +1145,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2T, mask out hint | mask in hint", async() => {
+                    it(`T2T, mask out hint | mask in hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -1033,7 +1171,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2T, mask out hint | split hint", async() => {
+                    it(`T2T, mask out hint | split hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -1060,7 +1198,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2T, split hint | no hint", async() => {
+                    it(`T2T, split hint | no hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -1086,7 +1224,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2T, split hint | mask in hint", async() => {
+                    it(`T2T, split hint | mask in hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -1112,7 +1250,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         compareResults(expectedTradeResult, expectedOutput, actualResult);
                     });
 
-                    it("T2T, split hint | mask out hint", async() => {
+                    it(`T2T, split hint | mask out hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         //search with no fees
                         hintedReserves = await getHintedReserves(
@@ -1143,6 +1281,131 @@ contract('KyberMatchingEngine', function(accounts) {
     });
 
     describe("test calcRatesAndAmounts very small and very big numbers", async() => {
+        before("setup matchingEngine instance, 2 tokens, 2 mock reserves", async() => {
+            matchingEngine = await KyberMatchingEngine.new(admin);
+            await matchingEngine.setNetworkContract(network, {from: admin});
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+
+            //init 2 tokens
+            srcDecimals = new BN(8);
+            destDecimals = new BN(17);
+            srcToken = await TestToken.new("srcToken", "SRC", srcDecimals);
+            destToken = await TestToken.new("destToken", "DEST", destDecimals);
+            
+            //setup 1 mock reserve
+            let result = await nwHelper.setupReserves(network, [srcToken, destToken], 2,0,0,0, accounts, admin, operator);
+            reserveInstances = result.reserveInstances;
+            numReserves = result.numAddedReserves * 1;
+
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, {from: admin});
+
+            //add reserves, list token pairs
+            for (reserve of Object.values(reserveInstances)) {
+                await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                await matchingEngine.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
+                await matchingEngine.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
+            };
+        });
+
+        describe("test with exceeding srcQty", async() => {
+            beforeEach("reset srcQty and expected rate variables", async() => {
+                //MAX_QTY
+                srcQty = MAX_QTY.add(new BN(1));
+                info = [srcQty, zeroBN, zeroBN];
+                expectedReserves = [];
+                expectedIds = [];
+                expectedRates = [];
+                expectedSplitValuesBps = [];
+                expectedFeePaying = [];
+            });
+
+            it(`should revert for T2E, mask out hint`, async() => {
+                numMaskedReserves = 1;
+                hintedReserves = await getHintedReserves(
+                    matchingEngine, reserveInstances,
+                    MASK_OUT_HINTTYPE, numMaskedReserves, [], srcQty,
+                    undefined, 0, undefined, 0,
+                    srcToken.address, ethAddress
+                );
+                await expectRevert(
+                    matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint),
+                    "srcQty > MAX_QTY"
+                );
+            });
+
+            it(`should revert for E2T, mask out hint`, async() => {
+                numMaskedReserves = 1;
+                hintedReserves = await getHintedReserves(
+                    matchingEngine, reserveInstances,
+                    undefined, 0, undefined, 0,
+                    MASK_OUT_HINTTYPE, numMaskedReserves, [], ethSrcQty,
+                    ethAddress, destToken.address
+                    );
+                await expectRevert(
+                    matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint),
+                    "srcQty > MAX_QTY"
+                );
+            });
+
+            it(`should revert for T2T, mask out hint`, async() => {
+                numMaskedReserves = 1;
+                hintedReserves = await getHintedReserves(
+                    matchingEngine, reserveInstances,
+                    MASK_OUT_HINTTYPE, numMaskedReserves, [], srcQty,
+                    MASK_OUT_HINTTYPE, numMaskedReserves, [], ethSrcQty,
+                    srcToken.address, destToken.address
+                    );
+                await expectRevert(
+                    matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint),
+                    "srcQty > MAX_QTY"
+                );
+            });
+
+            it(`should revert for T2E, split hint`, async() => {
+                numMaskedReserves = 1;
+                hintedReserves = await getHintedReserves(
+                    matchingEngine, reserveInstances,
+                    SPLIT_HINTTYPE, undefined, undefined, srcQty,
+                    undefined, 0, undefined, 0,
+                    srcToken.address, ethAddress
+                    );
+                await expectRevert(
+                    matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint),
+                    "srcQty > MAX_QTY"
+                );
+            });
+
+            it(`should revert for E2T, split hint`, async() => {
+                numMaskedReserves = 1;
+                hintedReserves = await getHintedReserves(
+                    matchingEngine, reserveInstances,
+                    undefined, 0, undefined, 0,
+                    SPLIT_HINTTYPE, undefined, undefined, ethSrcQty,
+                    ethAddress, destToken.address
+                    );
+                await expectRevert(
+                    matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint),
+                    "srcQty > MAX_QTY"
+                );
+            });
+
+            it(`should revert for T2T, split hint`, async() => {
+                numMaskedReserves = 1;
+                hintedReserves = await getHintedReserves(
+                    matchingEngine, reserveInstances,
+                    SPLIT_HINTTYPE, undefined, undefined, srcQty,
+                    SPLIT_HINTTYPE, undefined, undefined, ethSrcQty,
+                    srcToken.address, destToken.address
+                    );
+                await expectRevert(
+                    matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint),
+                    "srcQty > MAX_QTY"
+                );
+            });
+        });
+
+        describe("test with small srcQty", async() => {
+        });
     });
 
     describe("test edge cases for fee. very big / small network fee and very / big small custom fee", async() => {
@@ -1152,7 +1415,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
 });
 
-async function fetchReservesRatesFromTradeLogic(tradeLogicInstance, reserveInstances, tokenAddress, qty, networkFeeBps, isTokenToEth) {
+async function fetchReservesRatesFromMatchingEngine(tradeLogicInstance, reserveInstances, tokenAddress, qty, networkFeeBps, isTokenToEth) {
     let reservesArray = [];
     let result;
     let reserves;
@@ -1196,7 +1459,7 @@ async function getHintedReserves(
     e2tHintType = (e2tHintType == EMPTY_HINTTYPE) ? emptyHint : e2tHintType;
 
     if(srcAdd != ethAddress) {
-        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, reserveInstances, srcAdd, t2eQty, 0, true);        
+        reserveCandidates = await fetchReservesRatesFromMatchingEngine(matchingEngine, reserveInstances, srcAdd, t2eQty, 0, true);        
         res.reservesT2E = nwHelper.applyHintToReserves(t2eHintType, reserveCandidates, t2eNumReserves, t2eSplits);
         if(destAdd == ethAddress) {
             res.hint = await matchingEngine.buildTokenToEthHint(
@@ -1206,7 +1469,7 @@ async function getHintedReserves(
     }
     
     if(destAdd != ethAddress) {
-        reserveCandidates = await fetchReservesRatesFromTradeLogic(matchingEngine, reserveInstances, destAdd, e2tQty, 0, false);
+        reserveCandidates = await fetchReservesRatesFromMatchingEngine(matchingEngine, reserveInstances, destAdd, e2tQty, 0, false);
         res.reservesE2T = nwHelper.applyHintToReserves(e2tHintType, reserveCandidates, e2tNumReserves, e2tSplits);
         if(srcAdd == ethAddress) {
             res.hint = await matchingEngine.buildEthToTokenHint(

@@ -13,7 +13,8 @@ const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 const zeroAddress = constants.ZERO_ADDRESS;
 const emptyHint = '0x';
 const zeroBN = new BN(0);
-module.exports = {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN};
+const MAX_QTY = new BN(10).pow(new BN(28));
+module.exports = {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN, MAX_QTY};
 
 module.exports.isRevertErrorMessageContains = function(error, msg) {
     return (error.message.search(msg) >= 0);
