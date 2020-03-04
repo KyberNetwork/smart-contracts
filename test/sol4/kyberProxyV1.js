@@ -2,7 +2,8 @@ const NetworkProxyV1 = artifacts.require("./KyberProxyV1.sol");
 const ConversionRates = artifacts.require("MockConversionRate.sol");
 const MockDao = artifacts.require("MockDAO.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
-const TradeLogic = artifacts.require("KyberTradeLogic.sol");
+const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
+const RateHelper = artifacts.require("KyberRateHelper.sol");
 const TestToken = artifacts.require("TestToken.sol");
 const Reserve = artifacts.require("./KyberReserve.sol");
 const MaliciousReserve = artifacts.require("../MaliciousReserve.sol");
@@ -63,7 +64,8 @@ let mainFeeBurner;
 let proxyForFeeHandler;
 let DAO;
 let feeHandler;
-let tradeLogic;
+let matchingEngine;
+let rateHelper;
 
 //tokens data
 ////////////
@@ -155,14 +157,17 @@ contract('KyberNetworkProxy', function(accounts) {
         KNC = await TestToken.new("kyber network crystal", "KNC", 18);
         feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
 
-        //init tradeLogic
-        tradeLogic = await TradeLogic.new(admin);
-        await tradeLogic.setNetworkContract(network.address, {from: admin});
-        await tradeLogic.setFeePayingPerReserveType(true, true, true, false, {from: admin});
+        //init matchingEngine
+        matchingEngine = await MatchingEngine.new(admin);
+        await matchingEngine.setNetworkContract(network.address, {from: admin});
+        await matchingEngine.setFeePayingPerReserveType(true, true, true, false, {from: admin});
+
+        rateHelper = await RateHelper.new(admin);
+        await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
 
         //setup network
         await network.addOperator(operator, {from: admin});
-        await network.setContracts(feeHandler.address, tradeLogic.address, zeroAddress, {from: admin});
+        await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
         await network.setDAOContract(DAO.address, {from: admin});
         //set params, enable network
         await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
@@ -287,7 +292,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     if (hintType == PERM_HINTTYPE) {
                         hint = web3.utils.fromAscii("PERM");
                     } else {
-                        hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
                     }
                     await expectRevert.unspecified(
                         networkProxyV1.tradeWithHint(
@@ -326,21 +331,21 @@ contract('KyberNetworkProxy', function(accounts) {
             it("should get expected rate for T2E, E2T & T2T", async() => {
                 platformFee = new BN(0);
                 info = [srcQty, networkFeeBps, platformFee];
-                expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint);
+                expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, ethDecimals, expectedResult);
                 actualResult = await networkProxyV1.getExpectedRate(srcToken.address, ethAddress, srcQty);
                 Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2E");
                 Helper.assertEqual(expectedResult.rateAfterNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for T2E");
 
                 info = [ethSrcQty, networkFeeBps, platformFee];
-                expectedResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, emptyHint);
+                expectedResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, emptyHint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, ethDecimals, destDecimals, expectedResult);
                 actualResult = await networkProxyV1.getExpectedRate(ethAddress, destToken.address, ethSrcQty);
                 Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for E2T");
                 Helper.assertEqual(expectedResult.rateAfterNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for E2T");
 
                 info = [srcQty, networkFeeBps, platformFee];
-                expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, emptyHint);
+                expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, emptyHint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
                 actualResult = await networkProxyV1.getExpectedRate(srcToken.address, destToken.address, srcQty);
                 Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2T");
@@ -350,21 +355,21 @@ contract('KyberNetworkProxy', function(accounts) {
             it("should get expected rate for T2E, E2T & T2T", async() => {
                 platformFee = new BN(0);
                 info = [srcQty, networkFeeBps, platformFee];
-                expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint);
+                expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, ethDecimals, expectedResult);
                 actualResult = await networkProxyV1.getExpectedRate(srcToken.address, ethAddress, srcQty.add(new BN(2).pow(new BN(255))));
                 Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2E");
                 Helper.assertEqual(expectedResult.rateAfterNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for T2E");
 
                 info = [ethSrcQty, networkFeeBps, platformFee];
-                expectedResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, emptyHint);
+                expectedResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, emptyHint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, ethDecimals, destDecimals, expectedResult);
                 actualResult = await networkProxyV1.getExpectedRate(ethAddress, destToken.address, ethSrcQty.add(new BN(2).pow(new BN(255))));
                 Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for E2T");
                 Helper.assertEqual(expectedResult.rateAfterNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for E2T");
 
                 info = [srcQty, networkFeeBps, platformFee];
-                expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, emptyHint);
+                expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, emptyHint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
                 actualResult = await networkProxyV1.getExpectedRate(srcToken.address, destToken.address, srcQty.add(new BN(2).pow(new BN(255))));
                 Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2T");
@@ -376,10 +381,10 @@ contract('KyberNetworkProxy', function(accounts) {
                     if (hintType == PERM_HINTTYPE) {
                         hint = web3.utils.fromAscii("PERM");
                     } else {
-                        hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
                     }
                     info = [ethSrcQty, networkFeeBps, zeroBN];
-                    expectedResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hint);
+                    expectedResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hint);
                     expectedResult = await nwHelper.unpackRatesAndAmounts(info, ethDecimals, destDecimals, expectedResult);
 
                     let initialReserveBalances = await nwHelper.getReserveBalances(ethAddress, destToken, expectedResult);
@@ -409,9 +414,9 @@ contract('KyberNetworkProxy', function(accounts) {
                     if (hintType == PERM_HINTTYPE) {
                         hint = web3.utils.fromAscii("PERM");
                     } else {
-                        hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
                     }
-                    expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hint);
+                    expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hint);
                     expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, ethDecimals, expectedResult);
 
                     await srcToken.transfer(taker, srcQty);
@@ -445,10 +450,10 @@ contract('KyberNetworkProxy', function(accounts) {
                     if (hintType == PERM_HINTTYPE) {
                         hint = web3.utils.fromAscii("PERM");
                     } else {
-                        hint = await nwHelper.getHint(network, tradeLogic, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
                     }
                     info = [srcQty, networkFeeBps, zeroBN];
-                    expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
+                    expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
                     expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
 
                     await srcToken.transfer(taker, srcQty);
@@ -478,7 +483,7 @@ contract('KyberNetworkProxy', function(accounts) {
             it("should verify buy with small max dest amount, balances changed as expected", async() => {
                 hint = web3.utils.fromAscii("PERM");
                 info = [ethSrcQty, networkFeeBps, zeroBN];
-                expectedResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hint);
+                expectedResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, ethDecimals, destDecimals, expectedResult);
 
                 let takerEthBal = await Helper.getBalancePromise(taker);
@@ -512,7 +517,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 hint = web3.utils.fromAscii("PERM");
 
                 info = [srcQty, networkFeeBps, zeroBN];
-                expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
+                expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
 
                 await srcToken.transfer(taker, srcQty);
@@ -541,15 +546,11 @@ contract('KyberNetworkProxy', function(accounts) {
                 Helper.assertEqual(takerDstBal.add(smallerDestAmount), await destToken.balanceOf(taker), "invalid dst token");
             });
 
-            it("should revert invalid hint in tradeWithHint (E2T, T2E, T2T)", async function() {
+            it("should revert tradeWithHint reverted when invalid hint (E2T, T2E, T2T)", async function() {
                 hint = web3.utils.fromAscii("P");
                 info = [ethSrcQty, networkFeeBps, zeroBN];
 
                 // E2T trade
-                await expectRevert(
-                    tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hint),
-                    "Invalid hint opcode"
-                );
                 await expectRevert.unspecified(
                     networkProxyV1.tradeWithHint(
                         ethAddress,
@@ -562,15 +563,10 @@ contract('KyberNetworkProxy', function(accounts) {
                         hint,
                         {from: taker, value: ethSrcQty},
                     ),
-                    "Invalid hint opcode"
+                    "0 rate"
                 );
 
                 // T2E trade
-                await expectRevert(
-                    tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hint),
-                    "Invalid hint opcode"
-                );
-
                 await expectRevert.unspecified(
                     networkProxyV1.tradeWithHint(
                         srcToken.address,
@@ -582,14 +578,11 @@ contract('KyberNetworkProxy', function(accounts) {
                         zeroAddress,
                         hint,
                         {from: taker}
-                    )
+                    ),
+                    "0 rate"
                 );
 
                 // T2T trade
-                await expectRevert(
-                    tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint),
-                    "Invalid hint opcode"
-                );
                 await expectRevert.unspecified(
                     networkProxyV1.tradeWithHint(
                         srcToken.address,
@@ -602,7 +595,7 @@ contract('KyberNetworkProxy', function(accounts) {
                         hint,
                         {from: taker},
                     ),
-                    "Invalid hint opcode"
+                    "0 rate"
                 );
                 hint = web3.utils.fromAscii("PERM");
             });
@@ -895,7 +888,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
                 hint = web3.utils.fromAscii("PERM");
                 info = [ethSrcQty, networkFeeBps, zeroBN];
-                expectedResult = await tradeLogic.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hint);
+                expectedResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, ethDecimals, destDecimals, expectedResult);
 
                 let initialReserveBalances = await nwHelper.getReserveBalances(ethAddress, destToken, expectedResult);
@@ -917,7 +910,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     initialReserveBalances, initialTakerBalances, expectedResult, taker, undefined);
 
                 info = [srcQty, networkFeeBps, zeroBN];
-                expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hint);
+                expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, ethDecimals, expectedResult);
 
                 await srcToken.transfer(taker, srcQty);
@@ -970,7 +963,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
                 hint = web3.utils.fromAscii("PERM");
                 info = [srcQty, networkFeeBps, zeroBN];
-                expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
+                expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
 
                 await srcToken.transfer(taker, srcQty);
@@ -1044,7 +1037,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
                 hint = web3.utils.fromAscii("PERM");
                 info = [srcQty, networkFeeBps, zeroBN];
-                expectedResult = await tradeLogic.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
+                expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
 
                 await srcToken.transfer(taker, srcQty);

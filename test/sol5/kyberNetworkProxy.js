@@ -3,7 +3,7 @@ const MockDao = artifacts.require("MockDAO.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
-const TradeLogic = artifacts.require("KyberMatchingEngine.sol");
+const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -80,7 +80,7 @@ contract('KyberNetworkProxy', function(accounts) {
         networkProxy = await KyberNetworkProxy.new(admin);
 
         //init matchingEngine
-        matchingEngine = await TradeLogic.new(admin);
+        matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
         await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
