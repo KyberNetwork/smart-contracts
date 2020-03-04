@@ -19,10 +19,10 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     uint  constant DEFAULT_NETWORK_FEE_BPS = 25;    // till we read value from DAO
     uint  constant MAX_APPROVED_PROXIES = 2;        // limit number of proxies that can trade here.
 
-    IKyberFeeHandler  internal feeHandler;
-    IKyberDAO         internal kyberDAO;
-    IKyberMatchingEngine  internal matchingEngine;
-    IGasHelper        internal gasHelper;
+    IKyberFeeHandler        internal feeHandler;
+    IKyberDAO               internal kyberDAO;
+    IKyberMatchingEngine    internal matchingEngine;
+    IGasHelper              internal gasHelper;
 
     uint            networkFeeData; // data is feeBps and expiry block
     uint            maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
@@ -178,7 +178,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     
     function setContracts(IKyberFeeHandler _feeHandler, 
         IKyberMatchingEngine _tradeLogic,
-        IGasHelper _gasHelper) 
+        IGasHelper _gasHelper
+    )
         external onlyAdmin 
     {
         require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
@@ -377,20 +378,6 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
     function enabled() external view returns(bool) {
         return isEnabled;
-    }
-
-    function getRatesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount) external view
-        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates,
-            IKyberReserve[] memory sellReserves, uint[] memory sellRates)
-    {
-        return matchingEngine.getRatesForToken(token, optionalBuyAmount, optionalSellAmount, getNetworkFee());
-    }
-
-    function getPricesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount) external view
-        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, 
-            uint[] memory sellRates)
-    {
-        return matchingEngine.getRatesForToken(token, optionalBuyAmount, optionalSellAmount, 0);
     }
 
     struct TradingReserves {

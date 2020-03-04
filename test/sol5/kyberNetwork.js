@@ -5,6 +5,7 @@ const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const MockNetwork = artifacts.require("MockNetwork.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const TradeLogic = artifacts.require("KyberMatchingEngine.sol");
+const RateHelper = artifacts.require("KyberRateHelper.sol");
 
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -224,21 +225,24 @@ contract('KyberNetwork', function(accounts) {
 
     describe("should test events declared in network contract", async() => { 
         let tempNetwork;
-        let tempTradeLogic;
+        let tempMatchingEngine;
         let mockReserve;
         let feeHandler;
+        let rateHelper;
     
         before("global setup ", async() => {
             tempNetwork = await KyberNetwork.new(admin);
-            tempTradeLogic = await TradeLogic.new(admin);
+            tempMatchingEngine = await TradeLogic.new(admin);
             mockReserve = await MockReserve.new();
         
             await tempNetwork.addOperator(operator, {from: admin});
-            await tempTradeLogic.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempTradeLogic.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+            await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
+            await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            rateHelper = await RateHelper.new(admin);
+            await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
         });
 
         it("ETH recieval", async() => {
@@ -254,12 +258,12 @@ contract('KyberNetwork', function(accounts) {
         it("Set contracts", async() => {
             let gasHelperAdd = accounts[9];
 
-            let txResult = await tempNetwork.setContracts(feeHandler.address, tempTradeLogic.address, gasHelperAdd, {from: admin});
+            let txResult = await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
             expectEvent(txResult, 'FeeHandlerUpdated', {
                 newHandler: feeHandler.address
             });
             expectEvent(txResult, 'TradeLogicUpdated', {
-                matchingEngine: tempTradeLogic.address
+                matchingEngine: tempMatchingEngine.address
             });
             expectEvent(txResult, 'GasHelperUpdated', {
                 gasHelper: gasHelperAdd
@@ -376,6 +380,10 @@ contract('KyberNetwork', function(accounts) {
             await matchingEngine.setNetworkContract(network.address, {from: admin});
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
+            // init rateHelper
+            rateHelper = await RateHelper.new(admin);
+            await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
+
             //setup network
             await network.addOperator(operator, {from: admin});
             await network.addKyberProxy(networkProxy, {from: admin});
@@ -465,19 +473,19 @@ contract('KyberNetwork', function(accounts) {
 
             for (hintType of tradeTypesArray) {
                 it(`should return 0 rate (${tradeStr[hintType]}) if all reserves return zero rate`, async() => {
-                    hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, ethAddress, srcQty, platformFeeBps, hint);
                     Helper.assertEqual(actualResult.rateNoFees, zeroBN, "expected rate not 0");
                     Helper.assertEqual(actualResult.rateAfterNetworkFee, zeroBN, "rate with network fee not 0");
                     Helper.assertEqual(actualResult.rateAfterAllFees, zeroBN, "rate with all fees not 0");
 
-                    hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
+                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(ethAddress, destToken.address, ethSrcQty, platformFeeBps, emptyHint);
                     Helper.assertEqual(actualResult.rateNoFees, zeroBN, "expected rate not 0");
                     Helper.assertEqual(actualResult.rateAfterNetworkFee, zeroBN, "rate with network fee not 0");
                     Helper.assertEqual(actualResult.rateAfterAllFees, zeroBN, "rate with all fees not 0");
 
-                    hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
+                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, destToken.address, srcQty, platformFeeBps, emptyHint);
                     Helper.assertEqual(actualResult.rateNoFees, zeroBN, "expected rate not 0");
                     Helper.assertEqual(actualResult.rateAfterNetworkFee, zeroBN, "rate with network fee not 0");
@@ -486,19 +494,19 @@ contract('KyberNetwork', function(accounts) {
 
                 it(`should return 0 rate (${tradeStr[hintType]} with zero srcQty, and all reserves return zero rate`, async() => {
                     srcQty = zeroBN;
-                    hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, ethAddress, srcQty, platformFeeBps, hint);
                     Helper.assertEqual(actualResult.rateNoFees, zeroBN, "expected rate not 0");
                     Helper.assertEqual(actualResult.rateAfterNetworkFee, zeroBN, "rate with network fee not 0");
                     Helper.assertEqual(actualResult.rateAfterAllFees, zeroBN, "rate with all fees not 0");
 
-                    hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
+                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(ethAddress, destToken.address, ethSrcQty, platformFeeBps, emptyHint);
                     Helper.assertEqual(actualResult.rateNoFees, zeroBN, "expected rate not 0");
                     Helper.assertEqual(actualResult.rateAfterNetworkFee, zeroBN, "rate with network fee not 0");
                     Helper.assertEqual(actualResult.rateAfterAllFees, zeroBN, "rate with all fees not 0");
 
-                    hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, MASK_IN_HINTTYPE, undefined, srcToken.address, destToken.address, srcQty);
+                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, MASK_IN_HINTTYPE, undefined, srcToken.address, destToken.address, srcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, destToken.address, srcQty, platformFeeBps, emptyHint);
                     Helper.assertEqual(actualResult.rateNoFees, zeroBN, "expected rate not 0");
                     Helper.assertEqual(actualResult.rateAfterNetworkFee, zeroBN, "rate with network fee not 0");
@@ -597,21 +605,21 @@ contract('KyberNetwork', function(accounts) {
             for (platformFee of platformFeeArray) {
                 for (hintType of tradeTypesArray) {
                     it(`should get expected rate (${tradeStr[hintType]} & platform fee ${platformFee.toString()} bps) for T2E, E2T & T2T`, async() => {
-                        hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
                         info = [srcQty, networkFeeBps, platformFee];
                         expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hint);
                         expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, ethDecimals, expectedResult);
                         actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, ethAddress, srcQty, platformFee, hint);
                         nwHelper.assertRatesEqual(expectedResult, actualResult);
 
-                        hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
                         info = [ethSrcQty, networkFeeBps, platformFee];
                         expectedResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hint);
                         expectedResult = await nwHelper.unpackRatesAndAmounts(info, ethDecimals, destDecimals, expectedResult);
                         actualResult = await network.getExpectedRateWithHintAndFee(ethAddress, destToken.address, ethSrcQty, platformFee, hint);
                         nwHelper.assertRatesEqual(expectedResult, actualResult);
 
-                        hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
                         info = [srcQty, networkFeeBps, platformFee];
                         expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
                         expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
@@ -624,7 +632,7 @@ contract('KyberNetwork', function(accounts) {
             xit("should test get all rates for token without fee", async() => {
                 // TODO: get rates from trade logic. verify with, without fees 
 
-                let ratesForToken = await network.getPricesForToken(tokens[0].address, 0);
+                let ratesForToken = await rateHelper.getPricesForToken(tokens[0].address, 0);
 
                 console.log("rates for token: " + tokens[0].address);
                 console.log('ratesForToken');
@@ -638,7 +646,7 @@ contract('KyberNetwork', function(accounts) {
             });
 
             it("should emit KyberTrade event for a test T2T split trade", async() => {
-                hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, SPLIT_HINTTYPE, undefined, srcToken.address, destToken.address, srcQty);
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, SPLIT_HINTTYPE, undefined, srcToken.address, destToken.address, srcQty);
                 info = [srcQty, networkFeeBps, platformFeeBps];
                 expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
@@ -676,7 +684,7 @@ contract('KyberNetwork', function(accounts) {
             for (hintType of tradeTypesArray) {
                 it(`should perform a T2E trade (backwards compatible, ${tradeStr[hintType]}) and check balances change as expected`, async() => {
                     info = [srcQty, networkFeeBps, zeroBN];
-                    hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
                     expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hint);
                     expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, ethDecimals, expectedResult);
 
@@ -693,7 +701,7 @@ contract('KyberNetwork', function(accounts) {
                 });
 
                 it(`should perform a E2T trade (backwards compatible, ${tradeStr[hintType]}) and check balances change as expected`, async() => {
-                    hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
+                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
                     info = [ethSrcQty, networkFeeBps, zeroBN];
                     expectedResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hint);
                     expectedResult = await nwHelper.unpackRatesAndAmounts(info, ethDecimals, destDecimals, expectedResult);
@@ -710,7 +718,7 @@ contract('KyberNetwork', function(accounts) {
                 });
 
                 it(`should perform a T2T trade (backwards compatible,  ${tradeStr[hintType]}) and check balances change as expected`, async() => {
-                    hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
+                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
                     info = [srcQty, networkFeeBps, zeroBN];
                     expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
                     expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
@@ -732,7 +740,7 @@ contract('KyberNetwork', function(accounts) {
                 for (hintType of tradeTypesArray) {
                     it(`should perform a T2E trade (${tradeStr[hintType]} & platform fee ${platformFee.toString()} bps) and check balances change as expected`, async() => {
                         info = [srcQty, networkFeeBps, platformFee];
-                        hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
                         expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hint);
                         expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, ethDecimals, expectedResult);
                         
@@ -749,7 +757,7 @@ contract('KyberNetwork', function(accounts) {
                     });
         
                     it(`should perform a E2T trade (${tradeStr[hintType]} & platform fee ${platformFee.toString()} bps) and check balances change as expected`, async() => {
-                        hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
                         info = [ethSrcQty, networkFeeBps, platformFee];
                         expectedResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hint);
                         expectedResult = await nwHelper.unpackRatesAndAmounts(info, ethDecimals, destDecimals, expectedResult);
@@ -766,7 +774,7 @@ contract('KyberNetwork', function(accounts) {
                     });
 
                     it(`should perform a T2T trade (${tradeStr[hintType]} & platform fee ${platformFee.toString()} bps) and check balances change as expected`, async() => {
-                        hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
                         info = [srcQty, networkFeeBps, platformFee];
                         expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
                         expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
@@ -789,7 +797,7 @@ contract('KyberNetwork', function(accounts) {
                 it(`should perform T2E trades (${tradeStr[hintType]}) with platform fee and check fee wallet receives platform fee`, async() => {   
                     let platformFeeBps = new BN(50); 
                     info = [srcQty, networkFeeBps, platformFeeBps];
-                    hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
                     expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hint);
                     expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, ethDecimals, expectedResult);
 
@@ -809,7 +817,7 @@ contract('KyberNetwork', function(accounts) {
                     let platformFeeBps = new BN(50);
                     let maxDestAmt = new BN(20).mul(new BN(10).pow(destDecimals));
                     info = [srcQty, networkFeeBps, platformFeeBps];
-                    hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
                     expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hint);
                     expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, ethDecimals, expectedResult);
 
@@ -828,7 +836,7 @@ contract('KyberNetwork', function(accounts) {
                 it("should perform a E2T trade (different hint types, with maxDestAmount) and check balances change as expected", async() => {
                     let platformFeeBps = new BN(50);
                     let maxDestAmt = new BN(20).mul(new BN(10).pow(destDecimals));
-                    hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
+                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
                     info = [ethSrcQty, networkFeeBps, platformFeeBps];
                     expectedResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hint);
                     expectedResult = await nwHelper.unpackRatesAndAmounts(info, ethDecimals, destDecimals, expectedResult);
@@ -848,7 +856,7 @@ contract('KyberNetwork', function(accounts) {
                 it("should perform a T2T trade (different hint types, with maxDestAmount) and check balances change as expected", async() => {
                     let platformFeeBps = new BN(50);
                     let maxDestAmt = new BN(20).mul(new BN(10).pow(destDecimals));
-                    hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
+                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
                     info = [srcQty, networkFeeBps, platformFeeBps];
                     expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
                     expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
