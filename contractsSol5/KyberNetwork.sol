@@ -294,7 +294,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         
         tData.networkFeeBps = getNetworkFee();
 
-        calcRatesAndAmounts(src, dest, qty, tData, "");
+        calcRatesAndAmounts(src, dest, tData.input.srcAmount, tData, "");
         
         expectedRate = tData.rateOnlyNetworkFee;
         worstRate = expectedRate * 97 / 100; // backward compatible formula
