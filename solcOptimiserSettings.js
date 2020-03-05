@@ -1,4 +1,4 @@
 module.exports = {
     enabled: true,
-    runs: 11300
+    runs: 13900
 }
