@@ -1,6 +1,7 @@
 const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const MockDao = artifacts.require("MockDAO.sol");
+const MockGasHelper = artifacts.require("MockGasHelper.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const MockNetwork = artifacts.require("MockNetwork.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
@@ -36,6 +37,7 @@ let DAO;
 let networkProxy;
 let feeHandler;
 let matchingEngine;
+let gasHelperAdd;
 let operator;
 let taker;
 let platformWallet;
@@ -256,7 +258,7 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("Set contracts", async() => {
-            let gasHelperAdd = accounts[9];
+            gasHelperAdd = accounts[9];
 
             let txResult = await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
             expectEvent(txResult, 'FeeHandlerUpdated', {
@@ -384,10 +386,13 @@ contract('KyberNetwork', function(accounts) {
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
 
+            // init gas helper
+            gasHelperAdd = await MockGasHelper.new(platformWallet);
+
             //setup network
             await network.addOperator(operator, {from: admin});
             await network.addKyberProxy(networkProxy, {from: admin});
-            await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
+            await network.setContracts(feeHandler.address, matchingEngine.address, gasHelperAdd.address, {from: admin});
             await network.setDAOContract(DAO.address, {from: admin});
             //set params, enable network
             await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
@@ -525,7 +530,7 @@ contract('KyberNetwork', function(accounts) {
                 
                 //add and list pair for reserve
                 await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
-            })
+            });
 
             after("unlist and remove reserve", async() => {
                 await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
@@ -876,6 +881,32 @@ contract('KyberNetwork', function(accounts) {
             };
         });
 
+        describe("test gas helper", async() => {
+            before("setup, add and list reserves", async() => {
+                //init reserves
+                let result = await nwHelper.setupReserves(network, tokens, 3, 0, 0, 0, accounts, admin, operator);
+
+                reserveInstances = result.reserveInstances;
+                numReserves += result.numAddedReserves * 1;
+
+                //add and list pair for reserve
+                await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+            });
+
+            after("unlist and remove reserve", async() => {
+                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                reserveInstances = {};
+            });
+
+            it("test that gas helper can't revert trade even if it reverts", async() => {
+                platformFeeBps = new BN(50);
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
+
+                await network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker, 
+                    maxDestAmt, minConversionRate, zeroAddress, platformFeeBps, hint, {value: ethSrcQty});
+            });
+        });
+
         describe("test trades with very small and very big numbers", async() => {
         });
 
@@ -990,7 +1021,7 @@ contract('KyberNetwork', function(accounts) {
             Helper.assertEqual(payoutBalance0.add(expectedAddedAmount), payoutBalance1);
         });
     });
-})
+});
 
 //returns random integer between min (inclusive) and max (inclusive)
 function getRandomInt(min, max) {
