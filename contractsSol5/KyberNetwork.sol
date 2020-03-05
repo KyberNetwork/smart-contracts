@@ -44,6 +44,19 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         emit EtherReceival(msg.sender, msg.value);
     }
 
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev trade from src to dest token and sends dest token to destAddress
+    /// @param trader Address of the taker side of this trade
+    /// @param src Src token
+    /// @param srcAmount amount of src tokens in twei
+    /// @param dest Destination token
+    /// @param destAddress Address to send tokens to
+    /// @param maxDestAmount A limit on the amount of dest tokens in twei. if limit is passed, srcAmount will be reduced.
+    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverted.
+    /// @param platformWallet is the platform wallet address to send fees too
+    /// @param platformFeeBps part of the trade that will be sent as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%     
+    /// @param hint defines which reserves should be used for this trade.
+    /// @return amount of actual dest tokens in twei
     function tradeWithHintAndFee(address payable trader, IERC20 src, uint srcAmount, IERC20 dest, address payable destAddress,
         uint maxDestAmount, uint minConversionRate, address payable platformWallet, uint platformFeeBps, bytes calldata hint)
         external payable
@@ -64,7 +77,18 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         return trade(tData, hint);
     }
 
-     // backward compatible
+    // backward compatible
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev trade from src to dest token and sends dest token to destAddress
+    /// @param trader Address of the taker side of this trade
+    /// @param src Src token
+    /// @param srcAmount amount of src tokens in twei
+    /// @param dest Destination token
+    /// @param destAddress Address to send tokens to
+    /// @param maxDestAmount A limit on the amount of dest tokens in twei. if limit is passed, srcAmount will be reduced.
+    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverted.
+    /// @param walletId will not be used since no fees are set with this API
+    /// @param hint defines which reserves should be used 
     function tradeWithHint(address trader, ERC20 src, uint srcAmount, ERC20 dest, address destAddress,
         uint maxDestAmount, uint minConversionRate, address walletId, bytes calldata hint)
         external payable returns(uint destAmount)
@@ -94,13 +118,16 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @notice can be called only by operator
     /// @dev adds a reserve to/from the network.
     /// @param reserve The reserve address.
-    function addReserve(address reserve, bytes8 reserveId, IKyberMatchingEngine.ReserveType reserveType, address wallet) external onlyOperator returns(bool) {
+    /// @param reserveId The reserve ID in 8 bytes. 1st byte is reserve type.
+    /// @param reserveType Type of the reserve out of enum ReserveType
+    /// @param rebateWallet Address for the rebate wallet of this reserve. Rebates can later be sent only to this address.
+    function addReserve(address reserve, bytes8 reserveId, IKyberMatchingEngine.ReserveType reserveType, address rebateWallet) external onlyOperator returns(bool) {
         require(matchingEngine[0].addReserve(reserve, reserveId, reserveType));
         reserves.push(IKyberReserve(reserve));
 
-        reserveRebateWallet[reserve] = wallet;
+        reserveRebateWallet[reserve] = rebateWallet;
 
-        emit AddReserveToNetwork(reserve, reserveId, reserveType, wallet, true);
+        emit AddReserveToNetwork(reserve, reserveId, reserveType, rebateWallet, true);
 
         return true;
     }
@@ -112,7 +139,6 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param reserve The reserve address.
     /// @param startIndex to search in reserve array.
     function removeReserve(address reserve, uint startIndex) public onlyOperator returns(bool) {
-        //TODO: handle all db
         bytes8 reserveId = matchingEngine[0].removeReserve(reserve);
 
         uint reserveIndex = 2 ** 255;

@@ -19,6 +19,14 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         {/*empty body*/}
     
     // backward compatible APIs
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev get expected rate for a trade from src to dest tokens, with amount srcQty
+    /// @param src Src token
+    /// @param dest Destination token
+    /// @param srcQty amount of src tokens in twei
+    /// @return expectedRate for a trade after deducting network fee. Rate = destQty (twei) / srcQty (twei) * 10 ** 18
+    /// @return worstRate for a trade. Usually expectedRate * 97 / 100. 
+    ///             Use worstRate value as trade min conversion rate at your own risk.
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
         returns (uint expectedRate, uint worstRate)
     {
@@ -29,17 +37,16 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev makes a trade between src and dest token and send dest token to destAddress
+    /// @dev trade from src to dest token and sends dest token to destAddress
     /// @param src Src token
-    /// @param srcAmount amount of src tokens
+    /// @param srcAmount amount of src tokens in twei
     /// @param dest Destination token
     /// @param destAddress Address to send tokens to
-    /// @param maxDestAmount A limit on the amount of dest tokens
+    /// @param maxDestAmount A limit on the amount of dest tokens in twei
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
     /// @param walletId is the wallet ID to send part of the fees
-    /// @param hint will give hints for the trade.
-    /// @return amount of actual dest tokens
-
+    /// @param hint defines which reserves should be used for this trade.
+    /// @return amount of actual dest tokens in twei
     function tradeWithHint(ERC20 src, uint srcAmount, ERC20 dest, address destAddress, uint maxDestAmount,
         uint minConversionRate, address walletId, bytes calldata hint) 
         external payable 
@@ -50,15 +57,15 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev makes a trade between src and dest token and send dest token to destAddress
+    /// @dev trade from src to dest token and sends dest token to destAddress
     /// @param src Src token
-    /// @param srcAmount amount of src tokens
+    /// @param srcAmount amount of src tokens in twei
     /// @param dest   Destination token
     /// @param destAddress Address to send tokens to
-    /// @param maxDestAmount A limit on the amount of dest tokens
+    /// @param maxDestAmount A limit on the amount of dest tokens in twei
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
     /// @param platformWallet is the wallet ID to send part of the fees
-    /// @return amount of actual dest tokens
+    /// @return amount of actual dest tokens in twei
     function trade(
         IERC20 src,
         uint srcAmount,
@@ -87,12 +94,12 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         );
     }
 
-    /// @dev makes a trade between src and dest token and send dest tokens to msg sender
+    /// @dev trade from src to dest token and sends dest tokens to msg sender
     /// @param src Src token
-    /// @param srcAmount amount of src tokens
+    /// @param srcAmount amount of src tokens in twei
     /// @param dest Destination token
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
-    /// @return amount of actual dest tokens
+    /// @return amount of actual dest tokens in twei
     function swapTokenToToken(
         IERC20 src,
         uint srcAmount,
@@ -117,10 +124,10 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         );
     }
 
-    /// @dev makes a trade from Ether to token. Sends token to msg sender
+    /// @dev trades fromEther to token. Sends token to msg sender
     /// @param token Destination token
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
-    /// @return amount of actual dest tokens
+    /// @return amount of actual dest tokens in twei
     function swapEtherToToken(IERC20 token, uint minConversionRate) public payable returns(uint) {
         bytes memory hint;
 
@@ -137,11 +144,11 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         );
     }
 
-    /// @dev makes a trade from token to Ether, sends Ether to msg sender
+    /// @dev trades fromtoken to Ether, sends Ether to msg sender
     /// @param token Src token
-    /// @param srcAmount amount of src tokens
+    /// @param srcAmount amount of src tokens in twei
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
-    /// @return amount of actual dest tokens
+    /// @return amount of actual dest tokens in twei
     function swapTokenToEther(IERC20 token, uint srcAmount, uint minConversionRate) public returns(uint) {
         bytes memory hint;
 
@@ -159,13 +166,30 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     }
 
     // new APIs
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev get expected rate for a trade from src to dest tokens, with amount srcQty and custom fee
+    /// @param src Src token
+    /// @param dest Destination token
+    /// @param srcQty amount of src tokens in twei
+    /// @param customFeeBps part of the trade that will be sent as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%
+    /// @param hint to define which reserves should be used for a trade.
+    /// @return expectedRate for a trade after deducting network + platform fee. 
+    ///             Rate = destQty (twei) / srcQty (twei) * 10 ** 18
     function getExpectedRateAfterFee(IERC20 src, IERC20 dest, uint srcQty, uint customFeeBps, bytes calldata hint) 
         external view
         returns (uint expectedRate)
     {
         ( , , expectedRate) = kyberNetwork.getExpectedRateWithHintAndFee(src, dest, srcQty, customFeeBps, hint);
     }
-    
+
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev get expected rate for a trade from src to dest tokens, with amount srcQty
+    /// @param src Src token
+    /// @param dest Destination token
+    /// @param srcQty amount of src tokens in twei
+    /// @param hint define which reserves should be used for this trade.
+    /// @return expectedRate for a trade without deducting any fees, network or platform fee. 
+    ///             Rate = destQty (twei) / srcQty (twei) * 10 ** 18
     function getPriceDataNoFees(IERC20 src, IERC20 dest, uint srcQty, bytes calldata hint) external view 
         returns (uint priceNoFee)
     {
@@ -173,16 +197,17 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     }
     
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev makes a trade between src and dest token and send dest token to destAddress
+    /// @dev trade from src to dest token and sends dest token to destAddress
     /// @param src Src token
-    /// @param srcAmount amount of src tokens
+    /// @param srcAmount amount of src tokens in twei
     /// @param dest Destination token
     /// @param destAddress Address to send tokens to
-    /// @param maxDestAmount A limit on the amount of dest tokens
-    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade is canceled.
-    /// @param platformWallet is the wallet ID to send part of the fees
-    /// @param hint will give hints for the trade.
-    /// @return amount of actual dest tokens
+    /// @param maxDestAmount A limit on the amount of dest tokens in twei
+    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverted.
+    /// @param platformWallet is the platform wallet address to send fees too
+    /// @param platformFeeBps part of the trade that will be sent as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%     
+    /// @param hint define which reserves should be used for this trade.
+    /// @return amount of actual dest tokens in twei
     function tradeWithHintAndFee(
         IERC20 src,
         uint srcAmount,
