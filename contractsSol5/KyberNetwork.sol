@@ -19,9 +19,9 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     uint  constant DEFAULT_NETWORK_FEE_BPS = 25;    // till we read value from DAO
     uint  constant MAX_APPROVED_PROXIES = 2;        // limit number of proxies that can trade here.
 
-    IKyberFeeHandler        internal feeHandler;
-    IKyberDAO               internal kyberDAO;
-    IKyberMatchingEngine    internal matchingEngine;
+    IKyberFeeHandler[]      internal feeHandler;
+    IKyberDAO[]             internal kyberDAO;
+    IKyberMatchingEngine[]  internal matchingEngine;
     IGasHelper              internal gasHelper;
 
     uint            networkFeeData; // data is feeBps and expiry block
@@ -95,7 +95,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @dev adds a reserve to/from the network.
     /// @param reserve The reserve address.
     function addReserve(address reserve, bytes8 reserveId, IKyberMatchingEngine.ReserveType reserveType, address wallet) external onlyOperator returns(bool) {
-        require(matchingEngine.addReserve(reserve, reserveId, reserveType));
+        require(matchingEngine[0].addReserve(reserve, reserveId, reserveType));
         reserves.push(IKyberReserve(reserve));
 
         reserveRebateWallet[reserve] = wallet;
@@ -113,12 +113,12 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param startIndex to search in reserve array.
     function removeReserve(address reserve, uint startIndex) public onlyOperator returns(bool) {
         //TODO: handle all db
-        bytes8 reserveId = matchingEngine.removeReserve(reserve);
+        bytes8 reserveId = matchingEngine[0].removeReserve(reserve);
 
         uint reserveIndex = 2 ** 255;
         
         for (uint i = startIndex; i < reserves.length; i++) {
-            if(reserves[i] == IKyberReserve(reserve)) {
+            if (reserves[i] == IKyberReserve(reserve)) {
                 reserveIndex = i;
                 break;
             }
@@ -154,7 +154,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         onlyOperator
         returns(bool)
     {
-        require(matchingEngine.listPairForReserve(IKyberReserve(reserve), token, ethToToken, tokenToEth, add));
+        require(matchingEngine[0].listPairForReserve(IKyberReserve(reserve), token, ethToToken, tokenToEth, add));
 
         if (ethToToken) {
             emit ListReservePairs(reserve, ETH_TOKEN_ADDRESS, token, add);
@@ -173,29 +173,42 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     }
 
     event FeeHandlerUpdated(IKyberFeeHandler newHandler);
-    event TradeLogicUpdated(IKyberMatchingEngine matchingEngine);
+    event MatchingEngineUpdated(IKyberMatchingEngine matchingEngine);
     event GasHelperUpdated(IGasHelper gasHelper);
     
     function setContracts(IKyberFeeHandler _feeHandler, 
-        IKyberMatchingEngine _tradeLogic,
+        IKyberMatchingEngine _matchingEngine,
         IGasHelper _gasHelper
     )
         external onlyAdmin 
     {
         require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
-        require(_tradeLogic != IKyberMatchingEngine(0), "matchingEngine 0");
+        require(_matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
 
-        if(_feeHandler != feeHandler) {
+        if ((feeHandler.length == 0) || (_feeHandler != feeHandler[0])) {
+            
+            if (feeHandler.length > 0) {
+                feeHandler.push(feeHandler[0]);
+                feeHandler[0] = _feeHandler;
+            } else {
+                feeHandler.push(_feeHandler);
+            }
+
             emit FeeHandlerUpdated(_feeHandler);
-            feeHandler = _feeHandler;
         }
 
-        if(_tradeLogic != matchingEngine) {
-            emit TradeLogicUpdated(_tradeLogic);
-            matchingEngine = _tradeLogic;
+        if (matchingEngine.length == 0 || _matchingEngine != matchingEngine[0]) {
+            if (matchingEngine.length > 0) {
+                matchingEngine.push(matchingEngine[0]);
+                matchingEngine[0] = _matchingEngine;
+            } else {
+                matchingEngine.push(_matchingEngine);
+            }    
+
+            emit MatchingEngineUpdated(_matchingEngine);
         }
 
-        if((_gasHelper != IGasHelper(0)) && (_gasHelper != gasHelper)) {
+        if ((_gasHelper != IGasHelper(0)) && (_gasHelper != gasHelper)) {
             emit GasHelperUpdated(_gasHelper);
             gasHelper = _gasHelper;
         }
@@ -205,15 +218,22 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     
     function setDAOContract(IKyberDAO _kyberDAO) external onlyAdmin {
         require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
+        
+        if (kyberDAO.length > 0) {
+            kyberDAO.push(kyberDAO[0]);    
+            kyberDAO[0] = _kyberDAO;
+        } else {
+            kyberDAO.push(_kyberDAO);
+        }
+
         emit KyberDAOUpdated(_kyberDAO);
-        kyberDAO = _kyberDAO;
     }
 
     event KyberNetworkParamsSet(uint maxGasPrice, uint negligibleRateDiffBps);
 
     function setParams(uint _maxGasPrice, uint _negligibleRateDiffBps) external onlyAdmin {
         maxGasPriceValue = _maxGasPrice;
-        require(matchingEngine.setNegligbleRateDiffBps(_negligibleRateDiffBps));
+        require(matchingEngine[0].setNegligbleRateDiffBps(_negligibleRateDiffBps));
         emit KyberNetworkParamsSet(maxGasPriceValue, _negligibleRateDiffBps);
     }
 
@@ -221,8 +241,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
     function setEnable(bool _enable) external onlyAdmin {
         if (_enable) {
-            require(feeHandler != IKyberFeeHandler(0), "feeHandler 0");
-            require(matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
+            require(feeHandler[0] != IKyberFeeHandler(0), "feeHandler 0");
+            require(matchingEngine[0] != IKyberMatchingEngine(0), "matchingEngine 0");
             require(kyberProxyArray.length > 0, "proxy 0");
         }
         isEnabled = _enable;
@@ -250,7 +270,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         uint proxyIndex = 2 ** 255;
         
         for (uint i = 0; i < kyberProxyArray.length; i++) {
-            if(kyberProxyArray[i] == networkProxy) {
+            if (kyberProxyArray[i] == networkProxy) {
                 proxyIndex = i;
                 break;
             }
@@ -357,9 +377,12 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     }
 
     function getContracts() external view 
-        returns(address kyberDaoAddress, address feeHandlerAddress, address tradeLogicAddress) 
+        returns(
+            IKyberDAO[] memory daoAddresses, 
+            IKyberFeeHandler[] memory feeHandlerAddresses, 
+            IKyberMatchingEngine[] memory matchingEngineAddresses) 
     {
-        return(address(kyberDAO), address(feeHandler), address(matchingEngine));
+        return(kyberDAO, feeHandler, matchingEngine);
     }
 
     function getNetworkData() external view returns(
@@ -368,7 +391,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         uint expiryBlock)
     {
         (networkFeeBps, expiryBlock) = decodeNetworkFee(networkFeeData);
-        negligibleDiffBps = matchingEngine.negligibleRateDiffBps();
+        negligibleDiffBps = matchingEngine[0].negligibleRateDiffBps();
         return(negligibleDiffBps, networkFeeBps, expiryBlock);
     }
 
@@ -445,7 +468,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         bytes8[] memory ids;
 
         (results, reserveAddresses, rates, splitValuesBps, isFeePaying, ids) = 
-            matchingEngine.calcRatesAndAmounts(src, dest, tData.tokenToEth.decimals, tData.ethToToken.decimals, info, hint);
+            matchingEngine[0].calcRatesAndAmounts(src, dest, tData.tokenToEth.decimals, tData.ethToToken.decimals, info, hint);
         
         unpackResults(results, reserveAddresses, rates, splitValuesBps, isFeePaying, ids, tData);
 
@@ -513,7 +536,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
         // Send total fee amount to fee handler with reserve data.
         require(
-            feeHandler.handleFees.value(sentFee)(rebateWallets, rebatePercentBps,
+            feeHandler[0].handleFees.value(sentFee)(rebateWallets, rebatePercentBps,
             tData.input.platformWallet, tData.platformFeeWei),
             "handle fee fail"
         );
@@ -557,7 +580,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         uint _index = index;
 
         for(uint i = 0; i < resList.isFeePaying.length; i ++) {
-            if(resList.isFeePaying[i]) {
+            if (resList.isFeePaying[i]) {
                 rebateWallets[_index] = reserveRebateWallet[address(resList.addresses[i])];
                 rebatePercentBps[_index] = resList.splitValuesBps[i] * BPS / feePayingReservesBps;
                 _index ++;
@@ -785,8 +808,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         uint expiryBlock;
         (networkFeeBps, expiryBlock) = decodeNetworkFee(networkFeeData);
 
-        if (expiryBlock < block.number && kyberDAO != IKyberDAO(0)) {
-            (networkFeeBps, expiryBlock) = kyberDAO.getLatestNetworkFeeData();
+        if (expiryBlock < block.number && kyberDAO[0] != IKyberDAO(0)) {
+            (networkFeeBps, expiryBlock) = kyberDAO[0].getLatestNetworkFeeData();
         }
     }
     
@@ -797,8 +820,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
         (networkFeeBps, expiryBlock) = decodeNetworkFee(networkFeeData);
 
-        if (expiryBlock < block.number && kyberDAO != IKyberDAO(0)) {
-            (networkFeeBps, expiryBlock) = kyberDAO.getLatestNetworkFeeDataWithCache();
+        if (expiryBlock < block.number && kyberDAO[0] != IKyberDAO(0)) {
+            (networkFeeBps, expiryBlock) = kyberDAO[0].getLatestNetworkFeeDataWithCache();
             networkFeeData = encodeNetworkFee(expiryBlock, networkFeeBps);
         }
     }
