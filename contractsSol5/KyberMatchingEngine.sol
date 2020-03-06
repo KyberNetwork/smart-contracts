@@ -172,6 +172,18 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint failedIndex; // index of error in hint
     }
 
+    /// @notice determines all the information necessary for a trade (to be returned back to network contract), or by the caller
+    /// such as what reserves were selected (their addresses and ids), what rates they offer, fee paying information
+    /// @param src Source token
+    /// @param dest Destination token
+    /// @param srcDecimals src token decimals
+    /// @param destDecimals dest token decimals
+    /// @param info array of the following: [srcAmt, networkFeeBps, platformFeeBps]
+    /// @param hint which reserves should be used for the trade
+    /// @return returns the trade wei, dest amounts, network and platform wei etc.
+    /// @dev flow is as such: src -> ETH, fee deduction (because we want to take in ETH), ETH -> dest
+    /// For ETH -> dest, if it is a split trade type, we know the reserves and whether they are fee paying, so we can do the fee deduction
+    /// However, for the other trade types, we search for the best reserve, then do the fee deduction if it is fee paying
     function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcDecimals, uint destDecimals, uint[] calldata info, bytes calldata hint)
         external view returns (
             uint[] memory results,
@@ -189,6 +201,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         parseTradeDataHint(src, dest, tData, hint);
 
+        //invalid hint, return zero rate
         if (tData.failedIndex > 0) {
             storeTradeReserveData(tData.tokenToEth, IKyberReserve(0), 0, false);
             storeTradeReserveData(tData.ethToToken, IKyberReserve(0), 0, false);
@@ -199,7 +212,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         calcRatesAndAmountsTokenToEth(src, info[uint(IKyberMatchingEngine.InfoIndex.srcAmount)], tData);
 
         if (tData.tradeWei == 0) {
-            //initialise ethToToken and store as zero
+            //initialise ethToToken properties and store zero rate, will return zero rate since dest amounts are zero
             storeTradeReserveData(tData.ethToToken, IKyberReserve(0), 0, false);
             return packResults(tData);
         }
@@ -217,7 +230,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         }
 
         //fee deduction
-        //no fee deduction occurs for masking of ETH -> token reserves, or if no ETH -> token reserve was specified
+        //ETH -> dest fee deduction has not occured for non-split ETH -> dest trade types
         tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
         tData.platformFeeWei = tData.tradeWei * info[uint(IKyberMatchingEngine.InfoIndex.platformFeeBps)] / BPS;
 
@@ -227,6 +240,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         return packResults(tData);
     }
 
+    /// @notice applies the hint (no hint, mask in, mask out, or split) and stores relevant information into tData
     function parseTradeDataHint(
         IERC20 src,
         IERC20 dest,
@@ -236,16 +250,16 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         internal
         view
     {
+        //if ETH -> ETH, initialise empty array with length of 1, else, get all supporting T2E / E2T reserves
         tData.tokenToEth.addresses = (src == ETH_TOKEN_ADDRESS) ?
             new IKyberReserve[](1) : reservesPerTokenSrc[address(src)];
         tData.ethToToken.addresses = (dest == ETH_TOKEN_ADDRESS) ?
             new IKyberReserve[](1) :reservesPerTokenDest[address(dest)];
 
         // PERM is treated as no hint, so we just return
-        // relevant arrays will be initialised when storing data
+        // relevant arrays will be initialised in storeTradeReserveData
         if (hint.length == 0 || hint.length == 4) return;
 
-        // uint start = printGas("", 0, Module.LOGIC);
         if (src == ETH_TOKEN_ADDRESS) {
             (
                 tData.ethToToken.tradeType,
@@ -275,16 +289,16 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         // T2E: apply masking out logic if mask out
         if (tData.tokenToEth.tradeType == TradeType.MaskOut) {
             tData.tokenToEth.addresses = maskOutReserves(reservesPerTokenSrc[address(src)], tData.tokenToEth.addresses);
-        // initialise relevant arrays if split
+        // T2E: initialise relevant arrays if split
         } else if (tData.tokenToEth.tradeType == TradeType.Split) {
             tData.tokenToEth.rates = new uint[](tData.tokenToEth.addresses.length);
             tData.tokenToEth.isFeePaying = new bool[](tData.tokenToEth.addresses.length);
         }
 
-        //E2T: apply masking out logic if mask out
+        // E2T: apply masking out logic if mask out
         if (tData.ethToToken.tradeType == TradeType.MaskOut) {
             tData.ethToToken.addresses = maskOutReserves(reservesPerTokenDest[address(dest)], tData.ethToToken.addresses);
-        // initialise relevant arrays if split
+        // E2T: initialise relevant arrays if split
         } else if (tData.ethToToken.tradeType == TradeType.Split) {
             tData.ethToToken.rates = new uint[](tData.ethToToken.addresses.length);
             tData.ethToToken.isFeePaying = new bool[](tData.ethToToken.addresses.length);
@@ -294,12 +308,10 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     function maskOutReserves(IKyberReserve[] memory allReservesPerToken, IKyberReserve[] memory maskedOutReserves)
         internal pure returns (IKyberReserve[] memory filteredReserves)
     {
-        // uint start = printGas("", 0, Module.LOGIC);
         require(allReservesPerToken.length >= maskedOutReserves.length, "MASK_OUT_TOO_LONG");
         filteredReserves = new IKyberReserve[](allReservesPerToken.length - maskedOutReserves.length);
         uint currentResultIndex = 0;
 
-        //TODO: optimize mask out algo
         for (uint i = 0; i < allReservesPerToken.length; i++) {
             IKyberReserve reserve = allReservesPerToken[i];
             bool notMaskedOut = true;
@@ -314,21 +326,21 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
             if (notMaskedOut) filteredReserves[currentResultIndex++] = reserve;
         }
-        // printGas("mask out algo", start, Module.LOGIC);
     }
 
+    /// @notice calculates and stores tradeWei, T2E feePayingReservesBps and no. of feePaying T2E reserves
+    /// @dev T2E rate(s) are saved either in the getDestQtyAndFeeDataFromSplits function for split trade types,
+    /// or the storeTradeReserveData function for other types
     function calcRatesAndAmountsTokenToEth(IERC20 src, uint srcAmount, TradeData memory tData) internal view {
         IKyberReserve reserve;
         bool isFeePaying;
         uint rate;
 
-        // token to Eth
-        ///////////////
         // if split reserves, find rates
         if (tData.tokenToEth.splitValuesBps.length > 1) {
             (tData.tradeWei, tData.feePayingReservesBps, tData.numFeePayingReserves) = getDestQtyAndFeeDataFromSplits(tData.tokenToEth, src, srcAmount, true);
         } else {
-            // else find best rate
+            // else, search best rate
             (reserve, rate, isFeePaying) = searchBestRate(
                 tData.tokenToEth.addresses,
                 src,
@@ -413,7 +425,6 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         bytes8[] memory ids
         )
     {
-        // uint start = printGas("pack result Start", 0, Module.LOGIC);
         uint tokenToEthNumReserves = tData.tokenToEth.addresses.length;
         uint totalNumReserves = tokenToEthNumReserves + tData.ethToToken.addresses.length;
         reserveAddresses = new IKyberReserve[](totalNumReserves);
@@ -448,7 +459,6 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             isFeePaying[i] = tData.ethToToken.isFeePaying[i - tokenToEthNumReserves];
             ids[i] = convertAddressToReserveId(address(reserveAddresses[i]));
         }
-        // printGas("pack result end", start, Module.LOGIC);
     }
 
     function calcRatesAndAmountsEthToToken(IERC20 dest, uint actualTradeWei, TradeData memory tData) internal view {
@@ -456,8 +466,6 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint rate;
         bool isFeePaying;
         
-        // Eth to token
-        ///////////////
         // if hinted reserves, find rates and save.
         if (tData.ethToToken.splitValuesBps.length > 1) {
             (tData.actualDestAmount, , ) = getDestQtyAndFeeDataFromSplits(tData.ethToToken, dest, actualTradeWei, false);
@@ -502,11 +510,14 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint numRelevantReserves;
     }
 
-    /* solhint-disable code-complexity */
-    // Regarding complexity. Below code follows the required algorithm for choosing a reserve.
-    //  It has been tested, reviewed and found to be clear enough.
-    //@dev this function always src or dest are ether. can't do token to token
-    //TODO: document networkFee
+    /// @dev When calling this function, either src or dest MUST be ether. Cannot search for token -> token
+    /// @param reserveArr reserve candidates to be iterated over
+    /// @param srcAmount For src -> ETH, user srcAmount. For ETH -> dest, it's tradeWei minus T2E network fee and platform fee,
+    /// as we want to query with the actual amount after fee deductions.
+    /// @dev If the iterated reserve is fee paying, then we have to further subtract the network fee from the srcAmount
+    /// @param networkFee For src -> ETH, network fee = networkFeeBps
+    /// For ETH -> dest, network fee = tradeWei * networkFeeBps / BPS instead of networkFeeBps,
+    /// because the srcAmount passed is not tradeWei. Hence, networkFee has to be calculated beforehand
     function searchBestRate(IKyberReserve[] memory reserveArr, IERC20 src, IERC20 dest, uint srcAmount, uint networkFee)
         internal
         view

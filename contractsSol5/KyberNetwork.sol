@@ -533,7 +533,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// tradeWei amount, network fee wei, platform fee, etc. WITHOUT accounting for maxDestAmount.
     /// This function should set all TradeData information so that it can be used after without any ambiguity
     /// @param src Source token
-    /// @param dest   Destination token
+    /// @param dest Destination token
     /// @param amount amount of src tokens
     /// @param tData main trade data object for trade info to be stored
     /// @param hint which reserves should be used for the trade
