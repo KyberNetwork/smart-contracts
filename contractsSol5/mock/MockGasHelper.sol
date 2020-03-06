@@ -21,5 +21,10 @@ contract MockGasHelper is IGasHelper {
         bytes8[] calldata e2tReserveIds
     ) external {
         require(platformWallet == _platformWallet);
+        src;
+        dest;
+        tradeWei;
+        t2eReserveIds;
+        e2tReserveIds;
     }
 }
