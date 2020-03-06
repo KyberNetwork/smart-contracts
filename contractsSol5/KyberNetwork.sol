@@ -639,7 +639,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         if (gasHelper != IGasHelper(0)) {
             address(gasHelper).call(
                 abi.encodeWithSignature(
-                    "freeGas(address,IERC20,IERC20,uint256,bytes8[],bytes8[])",
+                    "freeGas(address,address,address,uint256,bytes8[],bytes8[])",
                     tData.input.platformWallet,
                     tData.input.src,
                     tData.input.dest,
