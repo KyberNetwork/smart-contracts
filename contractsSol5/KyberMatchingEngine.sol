@@ -431,13 +431,16 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         tradingReserves.isFeePaying[0] = isFeePaying;
     }
 
-    function packResults(TradeData memory tData) internal view returns (
-        uint[] memory results,
-        IKyberReserve[] memory reserveAddresses,
-        uint[] memory rates,
-        uint[] memory splitValuesBps,
-        bool[] memory isFeePaying,
-        bytes8[] memory ids
+    function packResults(TradeData memory tData)
+        internal
+        view
+        returns (
+            uint[] memory results,
+            IKyberReserve[] memory reserveAddresses,
+            uint[] memory rates,
+            uint[] memory splitValuesBps,
+            bool[] memory isFeePaying,
+            bytes8[] memory ids
         )
     {
         // uint start = printGas("pack result Start", 0, Module.LOGIC);
@@ -464,7 +467,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             rates[i] = tData.tokenToEth.rates[i];
             splitValuesBps[i] = tData.tokenToEth.splitValuesBps[i];
             isFeePaying[i] = tData.tokenToEth.isFeePaying[i];
-            ids[i] = convertAddressToReserveId(address(reserveAddresses[i]));
+            ids[i] = tData.tokenToEth.reserveIds[i];
         }
         
         // then store ETH to token information, but need to offset when accessing tradeData
@@ -473,7 +476,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             rates[i] = tData.ethToToken.rates[i - tokenToEthNumReserves];
             splitValuesBps[i] = tData.ethToToken.splitValuesBps[i - tokenToEthNumReserves];
             isFeePaying[i] = tData.ethToToken.isFeePaying[i - tokenToEthNumReserves];
-            ids[i] = convertAddressToReserveId(address(reserveAddresses[i]));
+            ids[i] = tData.ethToToken.reserveIds[i - tokenToEthNumReserves];
         }
         // printGas("pack result end", start, Module.LOGIC);
     }
@@ -631,13 +634,5 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         returns (address)
     {
         return reserveIdToAddresses[reserveId][0];
-    }
-
-    function convertAddressToReserveId(address reserveAddress)
-        internal
-        view
-        returns (bytes8)
-    {
-        return reserveAddressToId[reserveAddress];
     }
 }
