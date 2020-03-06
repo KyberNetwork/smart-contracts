@@ -144,6 +144,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     struct TradingReserves {
         TradeType tradeType;
         IKyberReserve[] addresses;
+        bytes8[] reserveIds;
         uint[] rates;
         uint[] splitValuesBps;
         bool[] isFeePaying;
@@ -187,7 +188,13 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         tData.ethToToken.decimals = destDecimals;
         tData.networkFeeBps = info[uint(IKyberMatchingEngine.InfoIndex.networkFeeBps)];
 
-        parseTradeDataHint(src, dest, tData, hint);
+        // PERM is treated as no hint, so we just return
+        // relevant arrays will be initialised when storing data
+        if (hint.length == 0 || hint.length == 4) {
+            parseTradeDataNoHint(src, dest, tData);
+        } else {
+            parseTradeDataHint(src, dest, tData, hint);
+        }
 
         if (tData.failedIndex > 0) {
             storeTradeReserveData(tData.tokenToEth, IKyberReserve(0), 0, false);
@@ -227,6 +234,20 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         return packResults(tData);
     }
 
+    function parseTradeDataNoHint(
+        IERC20 src,
+        IERC20 dest,
+        TradeData memory tData
+    )
+        internal
+        view
+    {
+        tData.tokenToEth.addresses = (src == ETH_TOKEN_ADDRESS) ?
+            new IKyberReserve[](1) : reservesPerTokenSrc[address(src)];
+        tData.ethToToken.addresses = (dest == ETH_TOKEN_ADDRESS) ?
+            new IKyberReserve[](1) :reservesPerTokenDest[address(dest)];
+    }
+
     function parseTradeDataHint(
         IERC20 src,
         IERC20 dest,
@@ -236,40 +257,12 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         internal
         view
     {
-        tData.tokenToEth.addresses = (src == ETH_TOKEN_ADDRESS) ?
-            new IKyberReserve[](1) : reservesPerTokenSrc[address(src)];
-        tData.ethToToken.addresses = (dest == ETH_TOKEN_ADDRESS) ?
-            new IKyberReserve[](1) :reservesPerTokenDest[address(dest)];
-
-        // PERM is treated as no hint, so we just return
-        // relevant arrays will be initialised when storing data
-        if (hint.length == 0 || hint.length == 4) return;
-
-        // uint start = printGas("", 0, Module.LOGIC);
         if (src == ETH_TOKEN_ADDRESS) {
-            (
-                tData.ethToToken.tradeType,
-                tData.ethToToken.addresses,
-                tData.ethToToken.splitValuesBps,
-                tData.failedIndex
-            ) = parseHintE2T(hint);
+            parseTradeDataE2THint(tData, hint);
         } else if (dest == ETH_TOKEN_ADDRESS) {
-            (
-                tData.tokenToEth.tradeType,
-                tData.tokenToEth.addresses,
-                tData.tokenToEth.splitValuesBps,
-                tData.failedIndex
-            ) = parseHintT2E(hint);
+            parseTradeDataT2EHint(tData, hint);
         } else {
-            (
-                tData.tokenToEth.tradeType,
-                tData.tokenToEth.addresses,
-                tData.tokenToEth.splitValuesBps,
-                tData.ethToToken.tradeType,
-                tData.ethToToken.addresses,
-                tData.ethToToken.splitValuesBps,
-                tData.failedIndex
-            ) = parseHintT2T(hint);
+            parseTradeDataT2THint(tData, hint);
         }
 
         // T2E: apply masking out logic if mask out
@@ -281,7 +274,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             tData.tokenToEth.isFeePaying = new bool[](tData.tokenToEth.addresses.length);
         }
 
-        //E2T: apply masking out logic if mask out
+        // E2T: apply masking out logic if mask out
         if (tData.ethToToken.tradeType == TradeType.MaskOut) {
             tData.ethToToken.addresses = maskOutReserves(reservesPerTokenDest[address(dest)], tData.ethToToken.addresses);
         // initialise relevant arrays if split
@@ -315,6 +308,40 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             if (notMaskedOut) filteredReserves[currentResultIndex++] = reserve;
         }
         // printGas("mask out algo", start, Module.LOGIC);
+    }
+
+    function parseTradeDataE2THint(TradeData memory tData, bytes memory hint) internal view {
+        (
+            tData.ethToToken.tradeType,
+            tData.ethToToken.addresses,
+            tData.ethToToken.reserveIds,
+            tData.ethToToken.splitValuesBps,
+            tData.failedIndex
+        ) = parseHintE2T(hint);
+    }
+
+    function parseTradeDataT2EHint(TradeData memory tData, bytes memory hint) internal view {
+        (
+            tData.tokenToEth.tradeType,
+            tData.tokenToEth.addresses,
+            tData.tokenToEth.reserveIds,
+            tData.tokenToEth.splitValuesBps,
+            tData.failedIndex
+        ) = parseHintT2E(hint);
+    }
+
+    function parseTradeDataT2THint(TradeData memory tData, bytes memory hint) internal view {
+        (
+            tData.tokenToEth.tradeType,
+            tData.tokenToEth.addresses,
+            tData.tokenToEth.reserveIds,
+            tData.tokenToEth.splitValuesBps,
+            tData.ethToToken.tradeType,
+            tData.ethToToken.addresses,
+            tData.ethToToken.reserveIds,
+            tData.ethToToken.splitValuesBps,
+            tData.failedIndex
+        ) = parseHintT2T(hint);
     }
 
     function calcRatesAndAmountsTokenToEth(IERC20 src, uint srcAmount, TradeData memory tData) internal view {

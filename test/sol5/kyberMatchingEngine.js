@@ -621,6 +621,7 @@ contract('KyberMatchingEngine', function(accounts) {
     describe("test calcRatesAndAmounts", async() => {
         before("setup matchingEngine instance and 2 tokens", async() => {
             matchingEngine = await KyberMatchingEngine.new(admin);
+            rateHelper = await RateHelper.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
