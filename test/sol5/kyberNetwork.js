@@ -482,7 +482,7 @@ contract('KyberNetwork', function(accounts) {
             await network.setEnable(true, {from: admin});
         });
 
-        describe("test with 2 mock reserves, zero rate", async() => {
+        describe("test getExpectedRate functions with 2 mock reserves, zero rate", async() => {
             before("setup, add and list mock reserves", async() => {
                 //init reserves
                 let result = await nwHelper.setupReserves(network, tokens, 2,0,0,0, accounts, admin, operator);
@@ -591,7 +591,7 @@ contract('KyberNetwork', function(accounts) {
             };
         });
 
-        describe("test with 3 mock reserves", async() => {
+        describe("test getExpectedRate functions with 3 mock reserves, valid rates", async() => {
             before("setup, add and list reserves", async() => {
                 //init reserves
                 let result = await nwHelper.setupReserves(network, tokens, 3, 0, 0, 0, accounts, admin, operator);
@@ -678,8 +678,10 @@ contract('KyberNetwork', function(accounts) {
                 });
             };
     
-            for (platformFee of platformFeeArray) {
-                for (hintType of tradeTypesArray) {
+            for (platformFeeBps of platformFeeArray) {
+                for (tradeType of tradeTypesArray) {
+                    let platformFee = platformFeeBps;
+                    let hintType = tradeType;
                     it(`should get expected rate (${tradeStr[hintType]} & platform fee ${platformFee.toString()} bps) for T2E, E2T & T2T`, async() => {
                         hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
                         info = [srcQty, networkFeeBps, platformFee];
@@ -741,7 +743,8 @@ contract('KyberNetwork', function(accounts) {
                 }
             });
 
-            for (hintType of tradeTypesArray) {
+            for (tradeType of tradeTypesArray) {
+                let hintType = tradeType;
                 it(`should perform a T2E trade (backwards compatible, ${tradeStr[hintType]}) and check balances change as expected`, async() => {
                     info = [srcQty, networkFeeBps, zeroBN];
                     hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
@@ -796,8 +799,10 @@ contract('KyberNetwork', function(accounts) {
                 });
             };
 
-            for (platformFee of platformFeeArray) {
-                for (hintType of tradeTypesArray) {
+            for (platformFeeBps of platformFeeArray) {
+                for (tradeType of tradeTypesArray) {
+                    let platformFee = platformFeeBps;
+                    let hintType = tradeType;
                     it(`should perform a T2E trade (${tradeStr[hintType]} & platform fee ${platformFee.toString()} bps) and check balances change as expected`, async() => {
                         info = [srcQty, networkFeeBps, platformFee];
                         hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
@@ -853,7 +858,8 @@ contract('KyberNetwork', function(accounts) {
                 };
             };
 
-            for (hintType of tradeTypesArray) {
+            for (tradeType of tradeTypesArray) {
+                let hintType = tradeType;
                 it(`should perform T2E trades (${tradeStr[hintType]}) with platform fee and check fee wallet receives platform fee`, async() => {   
                     let platformFeeBps = new BN(50); 
                     info = [srcQty, networkFeeBps, platformFeeBps];
@@ -872,7 +878,8 @@ contract('KyberNetwork', function(accounts) {
                 });
             }
 
-            for (hintType of tradeTypesArray) {
+            for (tradeType of tradeTypesArray) {
+                let hintType = tradeType;
                 it("should perform a T2E trade (different hint types, with maxDestAmount) and check balances change as expected", async() => {
                     let platformFeeBps = new BN(50);
                     let maxDestAmt = new BN(20).mul(new BN(10).pow(destDecimals));

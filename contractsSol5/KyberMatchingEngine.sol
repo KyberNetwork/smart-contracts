@@ -544,7 +544,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
                 srcAmountWithFee,
                 block.number);
 
-            destAmount = srcAmountWithFee * rates[i] / PRECISION;
+            destAmount = srcAmountWithFee * rates[i];
              //for token -> ETH paying reserve, networkFee is specified in bps
             destAmount = (dest == ETH_TOKEN_ADDRESS && isFeePaying) ? destAmount * (BPS - networkFee) / BPS : destAmount;
 
