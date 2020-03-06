@@ -17,7 +17,7 @@ contract Withdrawable2 is PermissionGroups2 {
      * @param token IERC20 The address of the token contract
      */
     function withdrawToken(IERC20 token, uint amount, address sendTo) external onlyAdmin {
-        require(token.transfer(sendTo, amount));
+        token.transfer(sendTo, amount);
         emit TokenWithdraw(token, amount, sendTo);
     }
 
