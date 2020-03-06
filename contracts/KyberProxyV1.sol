@@ -11,11 +11,11 @@ import "./SimpleNetworkInterface.sol";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network proxy for main contract
-contract KyberProxyOld is KyberNetworkProxyInterface, SimpleNetworkInterface, Withdrawable, Utils2 {
+contract KyberProxyV1 is KyberNetworkProxyInterface, SimpleNetworkInterface, Withdrawable, Utils2 {
 
     KyberNetworkInterface public kyberNetworkContract;
 
-    function KyberProxyOld(address _admin) public {
+    function KyberProxyV1(address _admin) public {
         require(_admin != address(0));
         admin = _admin;
     }
