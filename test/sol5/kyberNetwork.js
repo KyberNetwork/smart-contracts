@@ -482,7 +482,7 @@ contract('KyberNetwork', function(accounts) {
             await network.setEnable(true, {from: admin});
         });
 
-        describe("test with 2 mock reserves, zero rate", async() => {
+        describe("test getExpectedRate functions with 2 mock reserves, zero rate", async() => {
             before("setup, add and list mock reserves", async() => {
                 //init reserves
                 let result = await nwHelper.setupReserves(network, tokens, 2,0,0,0, accounts, admin, operator);
@@ -591,7 +591,7 @@ contract('KyberNetwork', function(accounts) {
             };
         });
 
-        describe("test with 3 mock reserves", async() => {
+        describe("test getExpectedRate functions with 3 mock reserves, valid rates", async() => {
             before("setup, add and list reserves", async() => {
                 //init reserves
                 let result = await nwHelper.setupReserves(network, tokens, 3, 0, 0, 0, accounts, admin, operator);
