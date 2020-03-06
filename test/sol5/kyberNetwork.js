@@ -363,21 +363,21 @@ contract('KyberNetwork', function(accounts) {
 
     describe("test with MockDAO", async() => {
         before("initialise DAO, network and reserves", async() => {
-            //DAO related init.
+            // DAO related init.
             expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
             DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
             await DAO.setNetworkFeeBps(networkFeeBps);
 
-            //init network
+            // init network
             network = await KyberNetwork.new(admin);
             // set proxy same as network
             proxyForFeeHandler = network;
 
-            //init feeHandler
+            // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
 
-            //init matchingEngine
+            // init matchingEngine
             matchingEngine = await TradeLogic.new(admin);
             await matchingEngine.setNetworkContract(network.address, {from: admin});
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
@@ -387,9 +387,10 @@ contract('KyberNetwork', function(accounts) {
             await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
 
             // init gas helper
+            // tests gasHelper when gasHelper != address(0), and when a trade is being done
             gasHelperAdd = await MockGasHelper.new(platformWallet);
 
-            //setup network
+            // setup network
             await network.addOperator(operator, {from: admin});
             await network.addKyberProxy(networkProxy, {from: admin});
             await network.setContracts(feeHandler.address, matchingEngine.address, gasHelperAdd.address, {from: admin});
@@ -902,6 +903,8 @@ contract('KyberNetwork', function(accounts) {
                 platformFeeBps = new BN(50);
                 hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
 
+                // If any other wallet is used other than platformWallet, gasHelper will revert;
+                // Below will revert gasHelper internally because platformWallet is zeroAddress
                 await network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker, 
                     maxDestAmt, minConversionRate, zeroAddress, platformFeeBps, hint, {value: ethSrcQty});
             });
