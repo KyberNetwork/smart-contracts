@@ -816,7 +816,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         require(input.srcAmount != 0, "0 srcAmt");
         require(input.destAddress != address(0), "dest add 0");
         require(input.src != input.dest, "src = dest");
-        require(input.platformFeeBps + networkFeeBps < BPS, "fees high");
+        require(input.platformFeeBps + networkFeeBps + networkFeeBps < BPS, "fees high");
         
         if (input.src == ETH_TOKEN_ADDRESS) {
             require(msg.value == input.srcAmount, "bad Eth qty");
