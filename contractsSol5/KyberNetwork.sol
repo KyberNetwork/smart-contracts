@@ -14,7 +14,6 @@ import "./zeppelin/SafeERC20.sol";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
-/// @dev Inherits SafeERC20 from Withdrawal2
 contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
     using SafeERC20 for IERC20;
