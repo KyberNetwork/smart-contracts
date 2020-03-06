@@ -30,11 +30,13 @@ if (printPrivateKey) {
 // privateKey = "";
 
 //contract addresses: REPLACE IF SOMETHING BREAKS DURING DEPLOYMENT
-let tradeLogicAddress = "";
+let matchingEngineAddress = "";
 let networkAddress = "";
 let proxyAddress = "";
 let feeHandlerAddress = "";
 let gasHelperAddress = "";
+let stakingAddress = "";
+let daoAddress = "";
 
 const account = web3.eth.accounts.privateKeyToAccount(privateKey);
 const sender = account.address;
@@ -106,29 +108,37 @@ async function deployContract(solcOutput, contractName, name, ctorArgs) {
 let kncTokenAddress;
 
 //contracts
-let tradeLogicContract;
+let matchingEngineContract;
 let networkContract;
 let proxyContract;
 let feeHandlerContract;
+let stakingContract;
+let DAOContract;
 
 //permissions
-let tradeLogicPermissions;
+let matchingEnginePermissions;
 let networkPermissions;
 let proxyPermissions;
-let daoSetter;
+let daoCampaignCreator;
 
 //misc variables needed for contracts deployment, should be obtained from input json
+let isFeePaying;
 let maxGasPrice = (new BN(50).mul(new BN(10).pow(new BN(9)))).toString();
-let negDiffInBps = '15';
-let burnBlockInterval = '100';
+let negDiffInBps;
+let burnBlockInterval;
+let epochPeriod;
+let startBlock;
+let networkFeeBps;
+let rewardFeeBps;
+let rebateFeeBps;
 
 class Reserve {
-  constructor(jsonInput) {
+  constructor(jsonInput, reserveTypes) {
     this.address = jsonInput["address"],
+    this.type = reserveTypes[jsonInput["type"]],
     this.tokens = jsonInput["tokens"],
     this.wallet = jsonInput["rebateWallet"],
-    this.id = jsonInput["id"],
-    this.isFeePaying = jsonInput["isFeePaying"]
+    this.id = jsonInput["id"]
   }
 }
 
@@ -147,12 +157,13 @@ const ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 const zeroAddress = "0x0000000000000000000000000000000000000000";
 
 function parseInput( jsonInput ) {
+    const reserveTypes = jsonInput["reserveTypes"];
     const reserveData = jsonInput["reserves"];
     const walletData = jsonInput["wallets"];
 
     // reserve array
     Object.values(reserveData).forEach(function(reserve) {
-      reserveDataArray.push(new Reserve(reserve));
+      reserveDataArray.push(new Reserve(reserve, reserveTypes));
     });
 
     // wallet array
@@ -160,14 +171,22 @@ function parseInput( jsonInput ) {
       walletDataArray.push(new Wallet(wallet));
     });
 
-    tradeLogicPermissions = jsonInput.permission["TradeLogic"];
+    //permissions
+    matchingEnginePermissions = jsonInput.permission["MatchingEngine"];
     networkPermissions = jsonInput.permission["Network"];
     proxyPermissions = jsonInput.permission["Proxy"];
-    daoSetter = jsonInput.permission["FeeHandler"]["DAOSetter"];
+    daoCampaignCreator = jsonInput.permission["DAO"]["CampaignCreator"]
 
+    //constants
+    isFeePaying = jsonInput["isFeePaying"];
     maxGasPrice = jsonInput["max gas price"].toString();
     negDiffInBps = jsonInput["neg diff in bps"].toString();
     burnBlockInterval = jsonInput["burn block interval"].toString();
+    epochPeriod = jsonInput["epoch period"].toString();
+    startBlock = jsonInput["start block"].toString();;
+    networkFeeBps = jsonInput["network fee bps"].toString();;
+    rewardFeeBps = jsonInput["reward fee bps"].toString();;
+    rebateFeeBps = jsonInput["rebate bps"].toString();;
 
     kncTokenAddress = jsonInput["addresses"].knc;
     gasHelperAddress = jsonInput["addresses"].gasHelper;
@@ -194,6 +213,18 @@ async function setPermissions(contract, permJson) {
     await sendTx(contract.methods.transferAdminQuickly(admin));
   }
 
+const keypress = async () => {
+  process.stdin.setRawMode(true)
+  return new Promise(resolve => process.stdin.once('data', () => {
+    process.stdin.setRawMode(false)
+    resolve()
+  }))
+}
+
+async function pressToContinue() {
+  console.log("Checkpoint... Press any key to continue!");
+  await keypress();
+}
 
 async function main() {
   nonce = await web3.eth.getTransactionCount(sender);
@@ -215,22 +246,25 @@ async function main() {
   /////////////////////////////////////////
   // CONTRACT INSTANTIATION / DEPLOYMENT //
   /////////// DO NOT TOUCH ////////////////
-  await deployTradeLogicContract(output);
+  await deploymatchingEngineContract(output);
   await deployNetworkContract(output);
   await deployProxyContract(output);
   await deployFeeHandlerContract(output);
+  await deployStakingContract(output);
+  await deployDAOContract(output);
   /////////////////////////////////////////
 
   //IF DEPLOYMENT BREAKS:
   // 1) Replace relevant contract addresses (if any) variables on top
   // 2) Use ONLY ONE of the following functions below:
   // NOTE: Redeploying network == fullDeployment
+  await pressToContinue();
   await fullDeployment();
 
   //////////////////
   // REDEPLOYMENT //
   //////////////////
-  // await redeployTradeLogic();
+  // await redeployMatchingEngine();
   // await redeployFeeHandler();
 
   /////////////////////
@@ -238,17 +272,17 @@ async function main() {
   /////////////////////
   // NOTE: Replace RESERVE_INDEX if continuing from specific index
   // await addReservesToNetwork(RESERVE_INDEX);
-  // await addReservesToTradeLogic(RESERVE_INDEX);
+  // await addReservesToMatchingEngine(RESERVE_INDEX);
 
   /////////////////////////
   // LISTING TOKEN PAIRS //
   /////////////////////////
   // NOTE: Replace RESERVE_INDEX & TOKEN_INDEX if process stopped halfway, and need to continue from specific index
   // await listTokensForReservesNetwork(RESERVE_INDEX, TOKEN_INDEX);
-  // await listTokensForReservesTradeLogic(RESERVE_INDEX, TOKEN_INDEX);
+  // await listTokensForReservesMatchingEngine(RESERVE_INDEX, TOKEN_INDEX);
 
   console.log("last nonce is", nonce);
-  oneLastThing();
+  lastFewThings();
   //printParams(JSON.parse(content));
   const signedTxsJson = JSON.stringify({ from: sender, txs: signedTxs }, null, 2);
   if (signedTxOutput) {
@@ -257,29 +291,44 @@ async function main() {
 }
 
 async function fullDeployment() {
-  await setNetworkAddressInTradeLogic();
+  await setNetworkAddressInMatchingEngine();
   await set_Fee_Logic_Gas_ContractsInNetwork();
+  await setDAOInNetwork();
+  await setDAOInFeeHandler();
+  await setDAOInStaking();
   await setProxyInNetwork();
   await setNetworkInProxy();
   await setTempOperatorToNetwork();
-  //   await setDAOContractInFeeHandler() and in network;
+
+  ///////////
+  // BREAK //
+  ///////////
+  await pressToContinue();
+  await setFeePayingDataInMatchingEngine();
   await addReservesToNetwork();
   await listTokensForReservesNetwork();
   await configureAndEnableNetwork();
 
+  ///////////
+  // BREAK //
+  ///////////
+  await pressToContinue();
   await removeTempOperator([networkContract]);
+  await pressToContinue();
   await setPermissionsInProxy();
+  await pressToContinue();
   await setPermissionsInNetwork();
-  await setPermissionsInTradeLogic();
+  await pressToContinue();
+  await setPermissionsInMatchingEngine();
 }
 
-async function redeployTradeLogic() {
-  await setNetworkAddressInTradeLogic(sender); //use sender adding and listing reserve pair
-  await addReservesToTradeLogic();
-  await listTokensForReservesTradeLogic();
-  await removeTempOperator([tradeLogicContract]);
-  await setNetworkAddressInTradeLogic(); //set to network address
-  await setPermissionsInTradeLogic();
+async function redeployMatchingEngine() {
+  await setNetworkAddressInMatchingEngine(sender); //use sender adding and listing reserve pair
+  await addReservesToMatchingEngine();
+  await listTokensForReservesMatchingEngine();
+  await removeTempOperator([matchingEngineContract]);
+  await setNetworkAddressInMatchingEngine(); //set to network address
+  await setPermissionsInMatchingEngine();
   console.log(`Set FeeHandler contract to network by calling the setContracts() function!!!`);
 }
 
@@ -298,7 +347,7 @@ function printParams(jsonInput) {
     dictOutput["max gas price"] = jsonInput["max gas price"];
     dictOutput["neg diff in bps"] = jsonInput["neg diff in bps"];
     dictOutput["burn block interval"] = jsonInput["burn block interval"];
-    dictOutput["trade logic"] = tradeLogicAddress;
+    dictOutput["trade logic"] = matchingEngineAddress;
     dictOutput["network"] = networkAddress;
     dictOutput["proxy"] = proxyAddress;
     dictOutput["fee handler"] = feeHandlerAddress;
@@ -328,75 +377,125 @@ async function waitForEth() {
   }
 }
 
-async function deployTradeLogicContract(output) {
-    if (tradeLogicAddress == "") {
-        console.log("deploying trade logic");
-        [tradeLogicAddress, tradeLogicContract] = await deployContract(output, "KyberMatchingEngine.sol", "KyberMatchingEngine", [sender]);
-        console.log(`matchingEngine: ${tradeLogicAddress}`);
-    } else {
-        console.log("Instantiating trade logic...");
-        tradeLogicContract = new web3.eth.Contract(
-            output.contracts["KyberMatchingEngine.sol"]["KyberMatchingEngine"].abi, tradeLogicAddress
-        );
-    }
+async function deploymatchingEngineContract(output) {
+  if (matchingEngineAddress == "") {
+    console.log("deploying matching engine");
+    [matchingEngineAddress, matchingEngineContract] = await deployContract(output, "KyberMatchingEngine.sol", "KyberMatchingEngine", [sender]);
+    console.log(`matchingEngine: ${matchingEngineAddress}`);
+  } else {
+    console.log("Instantiating matching engine...");
+    matchingEngineContract = new web3.eth.Contract(
+      output.contracts["KyberMatchingEngine.sol"]["KyberMatchingEngine"].abi, matchingEngineAddress
+    );
+  }
 }
 
 async function deployNetworkContract(output) {
-    if (networkAddress == "") {
-        console.log("deploying kyber network");
-        [networkAddress, networkContract] = await deployContract(output, "KyberNetwork.sol", "KyberNetwork", [sender]);
-        console.log(`network: ${networkAddress}`);
-    } else {
-        console.log("Instantiating network...");
-        networkContract = new web3.eth.Contract(
-            output.contracts["KyberNetwork.sol"]["KyberNetwork"].abi, networkAddress
-        );
-    }
+  if (networkAddress == "") {
+    console.log("deploying kyber network");
+    [networkAddress, networkContract] = await deployContract(output, "KyberNetwork.sol", "KyberNetwork", [sender]);
+    console.log(`network: ${networkAddress}`);
+  } else {
+    console.log("Instantiating network...");
+    networkContract = new web3.eth.Contract(
+    output.contracts["KyberNetwork.sol"]["KyberNetwork"].abi, networkAddress
+    );
+  }
 }
 
 async function deployProxyContract(output) {
-    if (proxyAddress == "") {
-        console.log("deploying KNProxy");
-        [proxyAddress, proxyContract] = await deployContract(output, "KyberNetworkProxy.sol", "KyberNetworkProxy", [sender]);
-        console.log(`KNProxy: ${proxyAddress}`);
-    } else {
-        console.log("Instantiating proxy...");
-        proxyContract = new web3.eth.Contract(
-            output.contracts["KyberNetworkProxy.sol"]["KyberNetworkProxy"].abi, proxyAddress
-        );
-    }
+  if (proxyAddress == "") {
+    console.log("deploying KNProxy");
+    [proxyAddress, proxyContract] = await deployContract(output, "KyberNetworkProxy.sol", "KyberNetworkProxy", [sender]);
+    console.log(`KNProxy: ${proxyAddress}`);
+  } else {
+    console.log("Instantiating proxy...");
+    proxyContract = new web3.eth.Contract(
+      output.contracts["KyberNetworkProxy.sol"]["KyberNetworkProxy"].abi, proxyAddress
+    );
+  }
 }
 
 async function deployFeeHandlerContract(output) {
-    if (feeHandlerAddress == "") {
-        console.log("deploying feeHandler");
-        [feeHandlerAddress, feeHandlerContract] = await deployContract(
-            output, "KyberFeeHandler.sol", "KyberFeeHandler", 
-            [daoSetter, proxyAddress, networkAddress, kncTokenAddress, burnBlockInterval]
-        );
-        console.log(`Fee Handler: ${feeHandlerAddress}`);
-    } else {
-        console.log("Instantiating feeHandler...");
-        feeHandlerContract = new web3.eth.Contract(
-          output.contracts["KyberFeeHandler.sol"]["KyberFeeHandler"].abi, feeHandlerAddress
-        );
-    }
+  if (feeHandlerAddress == "") {
+    console.log("deploying feeHandler");
+    [feeHandlerAddress, feeHandlerContract] = await deployContract(
+      output, "KyberFeeHandler.sol", "KyberFeeHandler", 
+      [sender, proxyAddress, networkAddress, kncTokenAddress, burnBlockInterval]
+    );
+    console.log(`Fee Handler: ${feeHandlerAddress}`);
+  } else {
+    console.log("Instantiating feeHandler...");
+    feeHandlerContract = new web3.eth.Contract(
+      output.contracts["KyberFeeHandler.sol"]["KyberFeeHandler"].abi, feeHandlerAddress
+    );
+  }
 }
 
-async function setNetworkAddressInTradeLogic(tempAddress) {
+async function deployStakingContract(output) {
+    if (stakingAddress == "") {
+        console.log("deploying staking contract");
+        [stakingAddress, stakingContract] = await deployContract(
+            output, "KyberStaking.sol", "KyberStaking", 
+            [kncTokenAddress, epochPeriod, startBlock, sender]
+        );
+        console.log(`Staking: ${stakingAddress}`);
+    } else {
+        console.log("Instantiating staking...");
+        stakingContract = new web3.eth.Contract(
+        output.contracts["KyberStaking.sol"]["KyberStaking"].abi, stakingAddress
+        );
+    }
+};
+
+async function deployDAOContract(output) {
+    if (daoAddress == "") {
+        console.log("deploying DAO contract");
+        [daoAddress, DAOContract] = await deployContract(
+            output, "KyberDAO.sol", "KyberDAO",
+            [
+              epochPeriod, startBlock, stakingAddress, feeHandlerAddress, kncTokenAddress,
+              networkFeeBps, rewardFeeBps, rebateFeeBps, daoCampaignCreator
+            ]
+        );
+        console.log(`DAO: ${daoAddress}`);
+    } else {
+        console.log("Instantiating DAO...");
+        DAOContract = new web3.eth.Contract(
+        output.contracts["KyberDAO.sol"]["KyberDAO"].abi, daoAddress
+        );
+    }
+};
+
+async function setNetworkAddressInMatchingEngine(tempAddress) {
   console.log("set network in trade logic");
   if (tempAddress == undefined) {
-    await sendTx(tradeLogicContract.methods.setNetworkContract(networkAddress));
+    await sendTx(matchingEngineContract.methods.setNetworkContract(networkAddress));
   } else {
-    await sendTx(tradeLogicContract.methods.setNetworkContract(tempAddress));
+    await sendTx(matchingEngineContract.methods.setNetworkContract(tempAddress));
   }
 }
 
 async function set_Fee_Logic_Gas_ContractsInNetwork() {
   console.log("set feeHandler, matchingEngine and gas helper in network");
   await sendTx(networkContract.methods.setContracts(
-    feeHandlerAddress, tradeLogicAddress, gasHelperAddress
+    feeHandlerAddress, matchingEngineAddress, gasHelperAddress,
   ));
+}
+
+async function setDAOInNetwork() {
+  console.log("Setting DAO address in network");
+  await sendTx(networkContract.methods.setDAOContract(daoAddress));
+}
+
+async function setDAOInFeeHandler() {
+  console.log("Setting DAO address in fee handler");
+  await sendTx(feeHandlerContract.methods.setDaoContract(daoAddress));
+}
+
+async function setDAOInStaking() {
+  console.log("Setting DAO address in staking");
+  await sendTx(stakingContract.methods.updateDAOAddressAndRemoveSetter(daoAddress));
 }
 
 async function setProxyInNetwork() {
@@ -405,20 +504,21 @@ async function setProxyInNetwork() {
 }
 
 async function setNetworkInProxy() {
-    console.log("setting network in proxy");
-    await sendTx(proxyContract.methods.setKyberNetwork(networkAddress));
+  console.log("setting network in proxy");
+  await sendTx(proxyContract.methods.setKyberNetwork(networkAddress));
 }
-  
+
 async function setTempOperatorToNetwork() {
   // add operator to network
   console.log("set temp operator: network");
   await sendTx(networkContract.methods.addOperator(sender));
 }
 
-async function addPermissionlessListerToNetwork() {
-  // set permissionless orderbook lister as network operator
-  console.log("network - set permissionless lister");
-  await sendTx(networkContract.methods.addOperator(permissionlessOrderbookReserveListerAddress));
+async function setFeePayingDataInMatchingEngine() {
+  console.log("set fee paying data: matching engine");
+  await sendTx(matchingEngineContract.methods.setFeePayingPerReserveType(
+    isFeePaying["FPR"], isFeePaying["APR"], isFeePaying["BRIDGE"], isFeePaying["UTILITY"], isFeePaying["CUSTOM"]
+  ));
 }
 
 async function addReservesToNetwork(reserveIndex) {
@@ -429,7 +529,8 @@ async function addReservesToNetwork(reserveIndex) {
     const reserve = reserveDataArray[i];
     console.log(`Reserve array index ${i}`);
     console.log(`Adding reserve ${reserve.address}`);
-    await sendTx(networkContract.methods.addReserve(reserve.address, reserve.id, reserve.isFeePaying, reserve.wallet));
+    await sendTx(networkContract.methods.addReserve(reserve.address, reserve.id, reserve.type, reserve.wallet));
+    await pressToContinue();
   }
 }
 
@@ -445,6 +546,7 @@ async function listTokensForReservesNetwork(reserveIndex, tokenIndex) {
       console.log(`listing token ${token.address} for reserve ${reserve.address}`);
       await sendTx(networkContract.methods.listPairForReserve(reserve.address,token.address,token.ethToToken,token.tokenToEth,true));
     }
+    await pressToContinue();
   }
 }
 
@@ -460,7 +562,7 @@ async function configureAndEnableNetwork() {
 
 async function removeTempOperator(contractInstances) {
     for (let contractInstance of contractInstances) {
-      console.log(`remove temp operator - ${contractInstance.address}`);
+      console.log(`remove temp operator`);
       await sendTx(contractInstance.methods.removeOperator(sender));
     }
 }
@@ -473,15 +575,15 @@ async function setPermissionsInProxy() {
     await setPermissions(proxyContract, proxyPermissions);
 }
 
-async function setPermissionsInTradeLogic() {
-    await setPermissions(tradeLogicContract, tradeLogicPermissions);
+async function setPermissionsInMatchingEngine() {
+    await setPermissions(matchingEngineContract, matchingEnginePermissions);
 }
 
-function oneLastThing() {
+function lastFewThings() {
   console.log("\x1b[41m%s\x1b[0m" ,"REMINDER: Don't forget to send DGX to network contract!!");
 }
 
-async function addReservesToTradeLogic(reserveIndex) {
+async function addReservesToMatchingEngine(reserveIndex) {
   // add reserve to network
   console.log("Add reserves to network");
   reserveIndex = (reserveIndex == undefined) ? 0 : reserveIndex;
@@ -489,11 +591,11 @@ async function addReservesToTradeLogic(reserveIndex) {
     const reserve = reserveDataArray[i];
     console.log(`Reserve array index ${i}`);
     console.log(`Adding reserve ${reserve.address}`);
-    await sendTx(tradeLogicContract.methods.addReserve(reserve.address, reserve.id, reserve.isFeePaying));
+    await sendTx(matchingEngineContract.methods.addReserve(reserve.address, reserve.id, reserve.isFeePaying));
   }
 }
 
-async function listTokensForReservesTradeLogic(reserveIndex, tokenIndex) {
+async function listTokensForReservesMatchingEngine(reserveIndex, tokenIndex) {
   reserveIndex = (reserveIndex == undefined) ? 0 : reserveIndex;
   tokenIndex = (tokenIndex == undefined) ? 0 : tokenIndex;
   for (let i = reserveIndex ; i < reserveDataArray.length ; i++) {
@@ -503,7 +605,7 @@ async function listTokensForReservesTradeLogic(reserveIndex, tokenIndex) {
         token = tokens[j];
         console.log(`Reserve array index ${i}, token array index ${j}`);
         console.log(`listing token ${token.address} for reserve ${reserve.address}`);
-    await sendTx(tradeLogicContract.methods.listPairForReserve(reserve.address,token.address,token.ethToToken,token.tokenToEth,true));
+    await sendTx(matchingEngineContract.methods.listPairForReserve(reserve.address,token.address,token.ethToToken,token.tokenToEth,true));
     }
   }
 }
