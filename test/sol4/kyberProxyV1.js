@@ -98,7 +98,7 @@ const tradeTypesArray = [EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SP
 const tradeStr = ["MASK IN", "MASK OUT", "SPLIT", "NONE", "PERM"];
 
 
-contract('KyberNetworkProxy', function(accounts) {
+contract('KyberProxyV1', function(accounts) {
     it("should init globals. init 2 ConversionRates Inst, init tokens and add to pricing inst. set basic data per token.", async function () {
         // set account addresses
         admin = accounts[0];
@@ -181,7 +181,7 @@ contract('KyberNetworkProxy', function(accounts) {
         await network.setEnable(true, {from: admin});
     });
 
-    describe("Proxy V1", () => {
+    describe("KyberProxyV1", () => {
         it("should test enabling network and correct data returns from proxy", async() => {
             let isEnabled = await networkProxyV1.enabled();
             Helper.assertEqual(true, isEnabled, "incorrect enable status");
@@ -1077,43 +1077,6 @@ contract('KyberNetworkProxy', function(accounts) {
                 await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
             });
 
-            // it("should getUserCapInWei reverts", async function () {
-            //     await expectRevert.unspecified(
-            //         networkProxyV1.getUserCapInWei(taker)
-            //     )
-            // });
-
-            // it("should getUserCapInTokenWei reverts", async function () {
-            //     await expectRevert.unspecified(
-            //         networkProxyV1.getUserCapInTokenWei(taker, srcToken.address)
-            //     )
-            // });
-
-            // it("should verify trade reverted src amount > max src amount (10**28).", async function () {
-            //     let amountTWei = (new BN(10).pow(new BN(28))).add(new BN(1));
-
-            //     // transfer funds to user and approve funds to network - for all trades in this 'it'
-            //     await token.transfer(taker, amountTWei);
-            //     await token.approve(networkProxyV1.address, amountTWei, {from: taker})
-
-            //     let rates = await networkProxyV1.getExpectedRate(srcToken.address, ethAddress, amountTWei);
-            //     console.log(rates.expectedRate.toString(10));
-
-            //     await expectRevert.unspecified(
-            //         networkProxyV1.tradeWithHint(
-            //             srcToken.address,
-            //             amountTWei,
-            //             ethAddress,
-            //             user1,
-            //             maxDestAmt,
-            //             minConversionRate,
-            //             zeroAddress,
-            //             hint,
-            //             {from: taker}
-            //         )
-            //     );
-            // });
-
             it("should test can't init this contract with empty contracts (address 0) or with non admin.", async function () {
                 let proxyTemp;
 
@@ -1157,6 +1120,44 @@ contract('KyberNetworkProxy', function(accounts) {
             });
         });
     });
+
+// ======================== TO BE ADDED ========================
+//     it("should getUserCapInWei reverts", async function () {
+//         await expectRevert.unspecified(
+//             networkProxyV1.getUserCapInWei(taker)
+//         )
+//     });
+
+//     it("should getUserCapInTokenWei reverts", async function () {
+//         await expectRevert.unspecified(
+//             networkProxyV1.getUserCapInTokenWei(taker, srcToken.address)
+//         )
+//     });
+
+//     it("should verify trade reverted src amount > max src amount (10**28).", async function () {
+//         let amountTWei = (new BN(10).pow(new BN(28))).add(new BN(1));
+
+//         // transfer funds to user and approve funds to network - for all trades in this 'it'
+//         await token.transfer(taker, amountTWei);
+//         await token.approve(networkProxyV1.address, amountTWei, {from: taker})
+
+//         let rates = await networkProxyV1.getExpectedRate(srcToken.address, ethAddress, amountTWei);
+//         console.log(rates.expectedRate.toString(10));
+
+//         await expectRevert.unspecified(
+//             networkProxyV1.tradeWithHint(
+//                 srcToken.address,
+//                 amountTWei,
+//                 ethAddress,
+//                 user1,
+//                 maxDestAmt,
+//                 minConversionRate,
+//                 zeroAddress,
+//                 hint,
+//                 {from: taker}
+//             )
+//         );
+//     });
 
 //     it("verify trade is reverted when malicious reserve tries recursive call = tries to call kyber trade function.", async function () {
 
