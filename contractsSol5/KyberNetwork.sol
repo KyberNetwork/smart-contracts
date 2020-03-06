@@ -246,7 +246,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
         
         if (kyberDAO.length > 0) {
-            kyberDAO.push(kyberDAO[0]);    
+            kyberDAO.push(kyberDAO[0]);
             kyberDAO[0] = _kyberDAO;
         } else {
             kyberDAO.push(_kyberDAO);
@@ -834,7 +834,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         uint expiryBlock;
         (networkFeeBps, expiryBlock) = decodeNetworkFee(networkFeeData);
 
-        if (expiryBlock < block.number && kyberDAO[0] != IKyberDAO(0)) {
+        if (expiryBlock < block.number && kyberDAO.length > 0) {
             (networkFeeBps, expiryBlock) = kyberDAO[0].getLatestNetworkFeeData();
         }
     }
@@ -846,7 +846,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
         (networkFeeBps, expiryBlock) = decodeNetworkFee(networkFeeData);
 
-        if (expiryBlock < block.number && kyberDAO[0] != IKyberDAO(0)) {
+        if (expiryBlock < block.number && kyberDAO.length > 0) {
             (networkFeeBps, expiryBlock) = kyberDAO[0].getLatestNetworkFeeDataWithCache();
             networkFeeData = encodeNetworkFee(expiryBlock, networkFeeBps);
         }

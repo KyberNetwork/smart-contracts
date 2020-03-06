@@ -338,7 +338,7 @@ contract('KyberNetwork', function(accounts) {
             expectEvent(txResult, 'FeeHandlerUpdated', {
                 newHandler: feeHandler.address
             });
-            expectEvent(txResult, 'TradeLogicUpdated', {
+            expectEvent(txResult, 'MatchingEngineUpdated', {
                 matchingEngine: tempMatchingEngine.address
             });
             expectEvent(txResult, 'GasHelperUpdated', {
@@ -948,9 +948,9 @@ contract('KyberNetwork', function(accounts) {
 
         it("test contract addresses for fee handler and DAO", async() => {
             let contracts = await network.getContracts();
-            Helper.assertEqual(contracts[0], DAO.address)
-            Helper.assertEqual(contracts[1], feeHandler.address)
-            Helper.assertEqual(contracts[2], matchingEngine.address);
+            Helper.assertEqual(contracts.daoAddresses[0], DAO.address)
+            Helper.assertEqual(contracts.feeHandlerAddresses[0], feeHandler.address)
+            Helper.assertEqual(contracts.matchingEngineAddresses[0], matchingEngine.address);
         });
     
         it("test encode decode network fee data with mock setter getter", async() => {
