@@ -123,11 +123,20 @@ contract('KyberNetwork', function(accounts) {
         platformFeeBps = new BN(0);
     });
 
-    describe("should test adding removing proxy.", async() => { 
+    describe("should test adding contracts, and adding / removing proxy.", async() => { 
         let tempNetwork;
         let proxy1 = accounts[9];
         let proxy2 = accounts[8];
-        let proxy3 = accounts[7];
+        let proxy3 = accounts[7];        
+        let dao1 = accounts[1];
+        let dao2 = accounts[2];
+        let dao3 = accounts[3];
+        let handler1 = accounts[4];
+        let handler2 = accounts[5];
+        let handler3 = accounts[6];
+        let matchingEngine1 = accounts[7];
+        let matchingEngine2 = accounts[8];
+        let matchingEngine3 = accounts[9];
 
         beforeEach("create new network", async() =>{
             tempNetwork = await KyberNetwork.new(admin);
@@ -220,6 +229,73 @@ contract('KyberNetwork', function(accounts) {
             expectEvent(txResult, 'KyberProxyRemoved', {
                 proxy: proxy1
             });
+        });
+
+        it("add a few dao contracts, see event + updated in getter.", async() => {
+            let txResult = await tempNetwork.setDAOContract(dao1, {from: admin});
+            expectEvent(txResult, 'KyberDAOUpdated', {
+                newDAO : dao1
+            });
+            let contracts = await tempNetwork.getContracts();
+            Helper.assertEqual(contracts.daoAddresses[0], dao1);
+
+            txResult = await tempNetwork.setDAOContract(dao2, {from: admin});
+            expectEvent(txResult, 'KyberDAOUpdated', {
+                newDAO : dao2
+            });
+            contracts = await tempNetwork.getContracts();
+            Helper.assertEqual(contracts.daoAddresses[0], dao2);
+            Helper.assertEqual(contracts.daoAddresses[1], dao1);
+
+            txResult = await tempNetwork.setDAOContract(dao3, {from: admin});
+            expectEvent(txResult, 'KyberDAOUpdated', {
+                newDAO : dao3
+            });
+            contracts = await tempNetwork.getContracts();
+            Helper.assertEqual(contracts.daoAddresses[0], dao3);
+            Helper.assertEqual(contracts.daoAddresses[1], dao1);
+            Helper.assertEqual(contracts.daoAddresses[2], dao2);
+        });
+
+        it("add a few matchingEngine + feeHandler contracts, see event + updated in getter.", async() => {
+            let txResult = await tempNetwork.setContracts(handler1, matchingEngine1, zeroAddress, {from: admin});
+            expectEvent(txResult, 'MatchingEngineUpdated', {
+                matchingEngine : matchingEngine1
+            });
+            expectEvent(txResult, 'FeeHandlerUpdated', {
+                newHandler : handler1
+            });
+            let contracts = await tempNetwork.getContracts();
+            Helper.assertEqual(contracts.feeHandlerAddresses[0], handler1);
+            Helper.assertEqual(contracts.matchingEngineAddresses[0], matchingEngine1);
+
+            txResult = await tempNetwork.setContracts(handler1, matchingEngine2, zeroAddress, {from: admin});
+            expectEvent(txResult, 'MatchingEngineUpdated', {
+                matchingEngine : matchingEngine2
+            });
+            contracts = await tempNetwork.getContracts();
+            Helper.assertEqual(contracts.feeHandlerAddresses[0], handler1);
+            Helper.assertEqual(contracts.matchingEngineAddresses[0], matchingEngine2);
+            Helper.assertEqual(contracts.matchingEngineAddresses[1], matchingEngine1);
+
+            txResult = await tempNetwork.setContracts(handler2, matchingEngine2, zeroAddress, {from: admin});
+            expectEvent(txResult, 'FeeHandlerUpdated', {
+                newHandler : handler2
+            });
+            contracts = await tempNetwork.getContracts();
+            Helper.assertEqual(contracts.feeHandlerAddresses[0], handler2);
+            Helper.assertEqual(contracts.feeHandlerAddresses[1], handler1);
+            Helper.assertEqual(contracts.matchingEngineAddresses[0], matchingEngine2);
+            Helper.assertEqual(contracts.matchingEngineAddresses[1], matchingEngine1);
+
+            await tempNetwork.setContracts(handler3, matchingEngine3, zeroAddress, {from: admin});
+            contracts = await tempNetwork.getContracts();
+            Helper.assertEqual(contracts.feeHandlerAddresses[0], handler3);
+            Helper.assertEqual(contracts.feeHandlerAddresses[1], handler1);
+            Helper.assertEqual(contracts.feeHandlerAddresses[2], handler2);
+            Helper.assertEqual(contracts.matchingEngineAddresses[0], matchingEngine3);
+            Helper.assertEqual(contracts.matchingEngineAddresses[1], matchingEngine1);
+            Helper.assertEqual(contracts.matchingEngineAddresses[2], matchingEngine2);
         });
     });
 
@@ -630,22 +706,6 @@ contract('KyberNetwork', function(accounts) {
                     });
                 };
             };
-
-            xit("should test get all rates for token without fee", async() => {
-                // TODO: get rates from trade logic. verify with, without fees 
-
-                let ratesForToken = await rateHelper.getPricesForToken(tokens[0].address, 0);
-
-                console.log("rates for token: " + tokens[0].address);
-                console.log('ratesForToken');
-
-                console.log('ratesForToken.buyRates')
-
-                console.log(ratesForToken.buyRates[0].valueOf().toString())
-                console.log(ratesForToken.buyRates[1].valueOf().toString())
-                console.log(ratesForToken.buyRates[2].valueOf().toString())
-                console.log(ratesForToken.buyRates[3].valueOf().toString())
-            });
 
             it("should emit KyberTrade event for a test T2T split trade", async() => {
                 hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, SPLIT_HINTTYPE, undefined, srcToken.address, destToken.address, srcQty);
