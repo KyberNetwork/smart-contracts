@@ -19,10 +19,10 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     uint  constant DEFAULT_NETWORK_FEE_BPS = 25;    // till we read value from DAO
     uint  constant MAX_APPROVED_PROXIES = 2;        // limit number of proxies that can trade here.
 
-    IKyberFeeHandler  internal feeHandler;
-    IKyberDAO         internal kyberDAO;
-    IKyberMatchingEngine  internal matchingEngine;
-    IGasHelper        internal gasHelper;
+    IKyberFeeHandler        internal feeHandler;
+    IKyberDAO               internal kyberDAO;
+    IKyberMatchingEngine    internal matchingEngine;
+    IGasHelper              internal gasHelper;
 
     uint            networkFeeData; // data is feeBps and expiry block
     uint            maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
@@ -178,7 +178,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     
     function setContracts(IKyberFeeHandler _feeHandler, 
         IKyberMatchingEngine _tradeLogic,
-        IGasHelper _gasHelper) 
+        IGasHelper _gasHelper
+    )
         external onlyAdmin 
     {
         require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
@@ -284,7 +285,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
             trader: address(uint160(0)),
             src: src,
             dest: dest,
-            srcAmount: qty,
+            srcAmount: (qty == 0) ? 1 : qty,
             destAddress: address(uint160(0)),
             maxDestAmount: 2 ** 255,
             minConversionRate: 0,
@@ -294,7 +295,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         
         tData.networkFeeBps = getNetworkFee();
 
-        calcRatesAndAmounts(src, dest, qty, tData, "");
+        calcRatesAndAmounts(src, dest, tData.input.srcAmount, tData, "");
         
         expectedRate = tData.rateOnlyNetworkFee;
         worstRate = expectedRate * 97 / 100; // backward compatible formula
@@ -306,12 +307,12 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         returns (uint rateNoFees, uint rateAfterNetworkFee, uint rateAfterAllFees)
     {
         if (src == dest) return (0, 0, 0);
-        
+
         TradeData memory tData = initTradeInput({
             trader: address(uint160(0)),
             src: src,
             dest: dest,
-            srcAmount: srcQty,
+            srcAmount: (srcQty == 0) ? 1 : srcQty,
             destAddress: address(uint160(0)),
             maxDestAmount: 2 ** 255,
             minConversionRate: 0,
@@ -321,11 +322,11 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         
         tData.networkFeeBps = getNetworkFee();
         
-        calcRatesAndAmounts(src, dest, srcQty, tData, hint);
+        calcRatesAndAmounts(src, dest, tData.input.srcAmount, tData, hint);
         
-        rateNoFees = calcRateFromQty(srcQty, tData.destAmountNoFee, tData.tokenToEth.decimals, tData.ethToToken.decimals);
+        rateNoFees = calcRateFromQty(tData.input.srcAmount, tData.destAmountNoFee, tData.tokenToEth.decimals, tData.ethToToken.decimals);
         rateAfterNetworkFee = tData.rateOnlyNetworkFee;
-        rateAfterAllFees = calcRateFromQty(srcQty, tData.actualDestAmount, tData.tokenToEth.decimals, tData.ethToToken.decimals);
+        rateAfterAllFees = calcRateFromQty(tData.input.srcAmount, tData.actualDestAmount, tData.tokenToEth.decimals, tData.ethToToken.decimals);
     }
 
     function initTradeInput(
@@ -377,20 +378,6 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
     function enabled() external view returns(bool) {
         return isEnabled;
-    }
-
-    function getRatesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount) external view
-        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates,
-            IKyberReserve[] memory sellReserves, uint[] memory sellRates)
-    {
-        return matchingEngine.getRatesForToken(token, optionalBuyAmount, optionalSellAmount, getNetworkFee());
-    }
-
-    function getPricesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount) external view
-        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, 
-            uint[] memory sellRates)
-    {
-        return matchingEngine.getRatesForToken(token, optionalBuyAmount, optionalSellAmount, 0);
     }
 
     struct TradingReserves {

@@ -2,6 +2,7 @@
 pragma  solidity 0.5.11;
 
 import "./IKyberReserve.sol";
+import "./IKyberNetwork.sol";
 
 
 interface IKyberMatchingEngine {
@@ -57,7 +58,9 @@ interface IKyberMatchingEngine {
             bytes8[] memory ids
         );
 
-    function getRatesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount, uint networkFee) external view
-        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, 
-        IKyberReserve[] memory sellReserves, uint[] memory sellRates);
+    function getReserveDetails(address reserve) external view
+        returns(bytes8 reserveId, ReserveType resType, bool isFeePaying);
+
+    function getReservesPerTokenSrc(IERC20 token) external view returns(IKyberReserve[] memory reserves);
+    function getReservesPerTokenDest(IERC20 token) external view returns(IKyberReserve[] memory reserves);
 }

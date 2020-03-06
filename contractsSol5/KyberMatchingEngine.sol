@@ -10,11 +10,11 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     uint            public negligibleRateDiffBps = 5; // 1 bps is 0.01%
     IKyberNetwork   public networkContract;
 
-    mapping(bytes8=>address[]) public reserveIdToAddresses;
-    mapping(address=>bytes8) internal reserveAddressToId;
-    mapping(address=>uint) internal reserveType; //type from enum ReserveType
-    mapping(address=>IKyberReserve[]) public reservesPerTokenSrc; // reserves supporting token to eth
-    mapping(address=>IKyberReserve[]) public reservesPerTokenDest;// reserves support eth to token
+    mapping(bytes8=>address[])          public reserveIdToAddresses;
+    mapping(address=>bytes8)            internal reserveAddressToId;
+    mapping(address=>uint)              internal reserveType; //type from enum ReserveType
+    mapping(address=>IKyberReserve[])   internal reservesPerTokenSrc; // reserves supporting token to eth
+    mapping(address=>IKyberReserve[])   internal reservesPerTokenDest;// reserves support eth to token
 
     uint internal feePayingPerType = 0xffffffff;
     
@@ -46,7 +46,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         require(reserveAddressToId[reserve] == bytes8(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
         require(resType != ReserveType.NONE, "bad res type");
-        require(uint(resType) <= uint(ReserveType.LAST));
+        require(uint(resType) < uint(ReserveType.LAST), "bad res type");
         require(feePayingPerType !=  0xffffffff, "Fee paying not set");
 
         if (reserveIdToAddresses[reserveId].length == 0) {
@@ -67,6 +67,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
         reserveIdToAddresses[reserveId][0] = address(0);
+        reserveAddressToId[reserve] = bytes8(0);
 
         return reserveId;
     }
@@ -83,57 +84,20 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         feePayingPerType = feePayingData;
     }
 
-    function getReserveDetails(address reserve) public view
+    function getReserveDetails(address reserve) external view
         returns(bytes8 reserveId, ReserveType resType, bool isFeePaying)
     {
         reserveId = reserveAddressToId[reserve];
         resType = ReserveType(reserveType[reserve]);
         isFeePaying = (feePayingPerType & (1 << reserveType[reserve])) > 0;
     }
-    struct Amounts {
-        uint srcAmount;
-        uint ethSrcAmount;
-        uint destAmount;
+
+    function getReservesPerTokenSrc(IERC20 token) external view returns(IKyberReserve[] memory reserves) {
+        reserves = reservesPerTokenSrc[address(token)];
     }
 
-    function getRatesForToken(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount, uint networkFeeBps) external view
-        returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates, IKyberReserve[] memory sellReserves, uint[] memory sellRates)
-    {
-        Amounts memory A;
-
-        A.srcAmount = optionalBuyAmount > 0 ? optionalBuyAmount : 1000;
-        buyReserves = reservesPerTokenDest[address(token)];
-        buyRates = new uint[](buyReserves.length);
-        bool[] memory isFeePaying = getIsFeePayingReserves(buyReserves);
-
-        uint i;
-        for (i = 0; i < buyReserves.length; i++) {
-            if (networkFeeBps == 0 || !isFeePaying[i]) {
-                buyRates[i] = buyReserves[i].getConversionRate(ETH_TOKEN_ADDRESS, token, A.srcAmount, block.number);
-                continue;
-            }
-
-            A.ethSrcAmount = A.srcAmount - (A.srcAmount * networkFeeBps / BPS);
-            buyRates[i] = buyReserves[i].getConversionRate(ETH_TOKEN_ADDRESS, token, A.ethSrcAmount, block.number);
-            A.destAmount = calcDstQty(A.ethSrcAmount, ETH_DECIMALS, getDecimals(token), buyRates[i]);
-            //use amount instead of ethSrcAmount to account for network fee
-            buyRates[i] = calcRateFromQty(A.srcAmount, A.destAmount, ETH_DECIMALS, getDecimals(token));
-        }
-
-        A.srcAmount = optionalSellAmount > 0 ? optionalSellAmount : 1000;
-        sellReserves = reservesPerTokenSrc[address(token)];
-        sellRates = new uint[](sellReserves.length);
-        isFeePaying = getIsFeePayingReserves(sellReserves);
-
-        for (i = 0; i < sellReserves.length; i++) {
-            sellRates[i] = sellReserves[i].getConversionRate(token, ETH_TOKEN_ADDRESS, A.srcAmount, block.number);
-            if (networkFeeBps == 0 || !isFeePaying[i]) {
-                continue;
-            }
-            A.destAmount = calcDstQty(A.srcAmount, getDecimals(token), ETH_DECIMALS, sellRates[i]);
-            A.destAmount -= networkFeeBps * A.destAmount / BPS;
-            sellRates[i] = calcRateFromQty(A.srcAmount, A.destAmount, getDecimals(token), ETH_DECIMALS);
-        }
+    function getReservesPerTokenDest(IERC20 token) external view returns(IKyberReserve[] memory reserves) {
+        reserves = reservesPerTokenDest[address(token)];
     }
 
     function listPairForReserve(IKyberReserve reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add) onlyNetwork external returns (bool) {
@@ -580,7 +544,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
                 srcAmountWithFee,
                 block.number);
 
-            destAmount = srcAmountWithFee * rates[i] / PRECISION;
+            destAmount = srcAmountWithFee * rates[i];
              //for token -> ETH paying reserve, networkFee is specified in bps
             destAmount = (dest == ETH_TOKEN_ADDRESS && isFeePaying) ? destAmount * (BPS - networkFee) / BPS : destAmount;
 

@@ -7,12 +7,12 @@ import "./IKyberReserve.sol";
 
 
 contract KyberHintHandler is IKyberHint, Utils4 {
-    uint8 public constant RESERVE_ID_LENGTH = 8;
-    bytes public constant SEPARATOR_OPCODE = "\x77";
-    bytes public constant MASK_IN_OPCODE = "\x01";
-    bytes public constant MASK_OUT_OPCODE = "\x02";
-    bytes public constant SPLIT_TRADE_OPCODE = "\x03";
-    bytes public constant END_OPCODE = "\xee";
+    uint8 internal constant RESERVE_ID_LENGTH = 8;
+    bytes internal constant SEPARATOR_OPCODE = "\x77";
+    bytes internal constant MASK_IN_OPCODE = "\x01";
+    bytes internal constant MASK_OUT_OPCODE = "\x02";
+    bytes internal constant SPLIT_TRADE_OPCODE = "\x03";
+    bytes internal constant END_OPCODE = "\xee";
     bytes32 internal constant SEPARATOR_KECCAK = keccak256(SEPARATOR_OPCODE);
     bytes32 internal constant MASK_IN_KECCAK = keccak256(MASK_IN_OPCODE);
     bytes32 internal constant MASK_OUT_KECCAK = keccak256(MASK_OUT_OPCODE);

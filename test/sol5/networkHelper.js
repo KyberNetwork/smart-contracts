@@ -281,16 +281,16 @@ function genReserveID(reserveID, reserveAddress) {
 
 
 module.exports.fetchReservesRatesFromNetwork = fetchReservesRatesFromNetwork;
-async function fetchReservesRatesFromNetwork(networkInstance, reserveInstances, tokenAddress, qty, isTokenToEth) {
+async function fetchReservesRatesFromNetwork(rateHelper, reserveInstances, tokenAddress, qty, isTokenToEth) {
     reservesArray = [];
     //sell
     if (isTokenToEth) {
-        result = await networkInstance.getPricesForToken(tokenAddress, 0, qty);
+        result = await rateHelper.getPricesForToken(tokenAddress, 0, qty);
         reserves = result.sellReserves;
         rates = result.sellRates;
     //buy
     } else {
-        result = await networkInstance.getPricesForToken(tokenAddress, qty, 0);
+        result = await rateHelper.getPricesForToken(tokenAddress, qty, 0);
         reserves = result.buyReserves;
         rates = result.buyRates;
     }
@@ -398,7 +398,7 @@ function applyHintToReserves(tradeType, reserves, numReserves, splitValues) {
 }
 
 module.exports.getHint = getHint;
-async function getHint(network, matchingEngine, reserveInstances, hintType, numReserves, srcAdd, destAdd, qty) {
+async function getHint(rateHelper, matchingEngine, reserveInstances, hintType, numReserves, srcAdd, destAdd, qty) {
     if (hintType == EMPTY_HINTTYPE) return emptyHint;
     
     let reserveCandidates;
@@ -407,7 +407,7 @@ async function getHint(network, matchingEngine, reserveInstances, hintType, numR
     let hint;
 
     if(srcAdd != ethAddress) {
-        reserveCandidates = await fetchReservesRatesFromNetwork(network, reserveInstances, srcAdd, qty, true);
+        reserveCandidates = await fetchReservesRatesFromNetwork(rateHelper, reserveInstances, srcAdd, qty, true);
         hintedReservest2e = applyHintToReserves(hintType, reserveCandidates, numReserves);
         if(destAdd == ethAddress) {
             return (await matchingEngine.buildTokenToEthHint(
@@ -416,7 +416,7 @@ async function getHint(network, matchingEngine, reserveInstances, hintType, numR
     }
     
     if(destAdd != ethAddress) {
-        reserveCandidates = await fetchReservesRatesFromNetwork(network, reserveInstances, destAdd, qty, false);
+        reserveCandidates = await fetchReservesRatesFromNetwork(rateHelper, reserveInstances, destAdd, qty, false);
         hintedReservese2t = applyHintToReserves(hintType, reserveCandidates, numReserves);
 
         if(srcAdd == ethAddress) {

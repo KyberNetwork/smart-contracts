@@ -4,6 +4,7 @@ const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const TradeLogic = artifacts.require("KyberMatchingEngine.sol");
+const RateHelper = artifacts.require("KyberRateHelper.sol");
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
 
@@ -82,6 +83,9 @@ contract('KyberNetworkProxy', function(accounts) {
         matchingEngine = await TradeLogic.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
         await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+
+        rateHelper = await RateHelper.new(admin);
+        await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
@@ -358,7 +362,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 const numResForTest = getNumReservesForType(type);
 
                 //log("testing - numRes: " + numResForTest + " type: " + str + " fee: " + fee);
-                let hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, type, numResForTest, tokenAdd, ethAddress, srcQty);
+                let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, tokenAdd, ethAddress, srcQty);
                 
                 await token.transfer(taker, srcQty);
                 await token.approve(networkProxy.address, srcQty, {from: taker});   
@@ -375,7 +379,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[tokenId])));
                 const numResForTest = getNumReservesForType(type);
                 
-                let hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, type, numResForTest, ethAddress, tokenAdd, srcQty);
+                let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, ethAddress, tokenAdd, srcQty);
                 
                 let rate = await networkProxy.getExpectedRateAfterFee(ethAddress, tokenAdd, srcQty, 0, hint);
                 let txResult = await networkProxy.tradeWithHintAndFee(ethAddress, srcQty, tokenAdd, taker, 
@@ -391,7 +395,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[tokenId])));
                 const numResForTest = getNumReservesForType(type);
                 
-                let hint = await nwHelper.getHint(network, matchingEngine, reserveInstances, type, numResForTest, srcAdd, destAdd, srcQty);
+                let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, srcAdd, destAdd, srcQty);
                 let rate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, 0, hint);
                 
                 await srcToken.transfer(taker, srcQty);

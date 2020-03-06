@@ -59,23 +59,6 @@ contract('KyberHintHandler', function(accounts) {
         }
     });
 
-    it('test globals', async() => {
-        const separator = await hintHandler.SEPARATOR_OPCODE();
-        Helper.assertEqual(separator, SEPARATOR_OPCODE);
-
-        const maskIn = await hintHandler.MASK_IN_OPCODE();
-        Helper.assertEqual(maskIn, MASK_IN_OPCODE);
-
-        const maskOut = await hintHandler.MASK_OUT_OPCODE();
-        Helper.assertEqual(maskOut, MASK_OUT_OPCODE);
-
-        const splitTrade = await hintHandler.SPLIT_TRADE_OPCODE();
-        Helper.assertEqual(splitTrade, SPLIT_TRADE_OPCODE);
-
-        const end = await hintHandler.END_OPCODE();
-        Helper.assertEqual(end, END_OPCODE);
-    });
-
     describe("test building various hints", function() {
         describe("e2t", function() {
             before('one time init of vars', async() => {
