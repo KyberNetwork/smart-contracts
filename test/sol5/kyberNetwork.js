@@ -1,6 +1,7 @@
 const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const MockDao = artifacts.require("MockDAO.sol");
+const MockGasHelper = artifacts.require("MockGasHelper.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const MockNetwork = artifacts.require("MockNetwork.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
@@ -36,6 +37,7 @@ let DAO;
 let networkProxy;
 let feeHandler;
 let matchingEngine;
+let gasHelperAdd;
 let operator;
 let taker;
 let platformWallet;
@@ -332,13 +334,13 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("Set contracts", async() => {
-            let gasHelperAdd = accounts[9];
+            gasHelperAdd = accounts[9];
 
             let txResult = await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
             expectEvent(txResult, 'FeeHandlerUpdated', {
                 newHandler: feeHandler.address
             });
-            expectEvent(txResult, 'TradeLogicUpdated', {
+            expectEvent(txResult, 'MatchingEngineUpdated', {
                 matchingEngine: tempMatchingEngine.address
             });
             expectEvent(txResult, 'GasHelperUpdated', {
@@ -437,21 +439,21 @@ contract('KyberNetwork', function(accounts) {
 
     describe("test with MockDAO", async() => {
         before("initialise DAO, network and reserves", async() => {
-            //DAO related init.
+            // DAO related init.
             expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
             DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
             await DAO.setNetworkFeeBps(networkFeeBps);
 
-            //init network
+            // init network
             network = await KyberNetwork.new(admin);
             // set proxy same as network
             proxyForFeeHandler = network;
 
-            //init feeHandler
+            // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
 
-            //init matchingEngine
+            // init matchingEngine
             matchingEngine = await TradeLogic.new(admin);
             await matchingEngine.setNetworkContract(network.address, {from: admin});
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
@@ -460,10 +462,14 @@ contract('KyberNetwork', function(accounts) {
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
 
-            //setup network
+            // init gas helper
+            // tests gasHelper when gasHelper != address(0), and when a trade is being done
+            gasHelperAdd = await MockGasHelper.new(platformWallet);
+
+            // setup network
             await network.addOperator(operator, {from: admin});
             await network.addKyberProxy(networkProxy, {from: admin});
-            await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
+            await network.setContracts(feeHandler.address, matchingEngine.address, gasHelperAdd.address, {from: admin});
             await network.setDAOContract(DAO.address, {from: admin});
             //set params, enable network
             await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
@@ -601,7 +607,7 @@ contract('KyberNetwork', function(accounts) {
                 
                 //add and list pair for reserve
                 await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
-            })
+            });
 
             after("unlist and remove reserve", async() => {
                 await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
@@ -943,14 +949,42 @@ contract('KyberNetwork', function(accounts) {
             };
         });
 
+        describe("test gas helper", async() => {
+            before("setup, add and list reserves", async() => {
+                //init reserves
+                let result = await nwHelper.setupReserves(network, tokens, 3, 0, 0, 0, accounts, admin, operator);
+
+                reserveInstances = result.reserveInstances;
+                numReserves += result.numAddedReserves * 1;
+
+                //add and list pair for reserve
+                await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+            });
+
+            after("unlist and remove reserve", async() => {
+                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                reserveInstances = {};
+            });
+
+            it("test that gas helper can't revert trade even if it reverts", async() => {
+                platformFeeBps = new BN(50);
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
+
+                // If any other wallet is used other than platformWallet, gasHelper will revert;
+                // Below will revert gasHelper internally because platformWallet is zeroAddress
+                await network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker, 
+                    maxDestAmt, minConversionRate, zeroAddress, platformFeeBps, hint, {value: ethSrcQty});
+            });
+        });
+
         describe("test trades with very small and very big numbers", async() => {
         });
 
         it("test contract addresses for fee handler and DAO", async() => {
             let contracts = await network.getContracts();
-            Helper.assertEqual(contracts[0], DAO.address)
-            Helper.assertEqual(contracts[1], feeHandler.address)
-            Helper.assertEqual(contracts[2], matchingEngine.address);
+            Helper.assertEqual(contracts.daoAddresses[0], DAO.address)
+            Helper.assertEqual(contracts.feeHandlerAddresses[0], feeHandler.address)
+            Helper.assertEqual(contracts.matchingEngineAddresses[0], matchingEngine.address);
         });
     
         it("test encode decode network fee data with mock setter getter", async() => {
@@ -1057,7 +1091,7 @@ contract('KyberNetwork', function(accounts) {
             Helper.assertEqual(payoutBalance0.add(expectedAddedAmount), payoutBalance1);
         });
     });
-})
+});
 
 //returns random integer between min (inclusive) and max (inclusive)
 function getRandomInt(min, max) {

@@ -1,9 +1,10 @@
 const TestToken = artifacts.require("Token.sol");
+const TestTokenNotReturn = artifacts.require("TestTokenNotReturn.sol");
 const MockDao = artifacts.require("MockDAO.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
-const TradeLogic = artifacts.require("KyberMatchingEngine.sol");
+const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -80,7 +81,7 @@ contract('KyberNetworkProxy', function(accounts) {
         networkProxy = await KyberNetworkProxy.new(admin);
 
         //init matchingEngine
-        matchingEngine = await TradeLogic.new(admin);
+        matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
         await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
 
@@ -410,6 +411,172 @@ contract('KyberNetworkProxy', function(accounts) {
 
     describe("test actual rate vs min rate in different scenarios. ", async() => {
         //todo: use minRate = network.getRateWithFee and see why its very different then actual calculated rate in proxy
+    });
+
+    describe("test trade with token does not return values for its functions", async() => {
+        let mockNetwork;
+        let mockProxy;
+        let mockMatchingEngine;
+        let mockRateHelper;
+        let mockTokens = [];
+        let mockTokenDecimals = [];
+        let mockFeeHandler;
+        let mockReserveInstances;
+
+        // loop trades
+        let tradeType = [MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE];
+        let typeStr = ['MASK_IN', 'MASK_OUT', 'SPLIT', 'NO HINT'];
+
+        let srcToken;
+        let srcDecimals;
+        let destToken;
+        let destDecimals;
+
+        before("Setup contracts with token not return any thing", async() => {
+            //DAO related init.
+            let expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
+            let mockDAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+            await mockDAO.setNetworkFeeBps(networkFeeBps);
+
+            //deploy network
+            mockNetwork = await KyberNetwork.new(admin);
+
+            // init proxy
+            mockProxy = await KyberNetworkProxy.new(admin);
+
+            //init matchingEngine
+            mockMatchingEngine = await MatchingEngine.new(admin);
+            await mockMatchingEngine.setNetworkContract(mockNetwork.address, {from: admin});
+            await mockMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+
+            mockRateHelper = await RateHelper.new(admin);
+            await mockRateHelper.setContracts(mockMatchingEngine.address, mockDAO.address, {from: admin});
+
+            // setup proxy
+            await mockProxy.setKyberNetwork(mockNetwork.address, {from: admin});
+            await mockProxy.setHintHandler(mockMatchingEngine.address, {from: admin});
+
+            //init tokens
+            for (let i = 0; i < 5; i++) {
+                mockTokenDecimals[i] = new BN(15).add(new BN(i));
+                token = await TestTokenNotReturn.new("test" + i, "tst" + i, mockTokenDecimals[i]);
+                mockTokens[i] = token;
+            }
+
+            //init feeHandler
+            mockFeeHandler = await FeeHandler.new(mockDAO.address, mockProxy.address, mockNetwork.address, KNC.address, burnBlockInterval);
+
+            // init and setup reserves
+            let result = await nwHelper.setupReserves(mockNetwork, mockTokens, 5, 0, 0, 0, accounts, admin, operator);
+            mockReserveInstances = result.reserveInstances;
+
+            //setup network
+            ///////////////
+            await mockNetwork.addKyberProxy(mockProxy.address, {from: admin});
+            await mockNetwork.addOperator(operator, {from: admin});
+
+            await mockNetwork.setContracts(mockFeeHandler.address, mockMatchingEngine.address, zeroAddress, {from: admin});
+            await mockNetwork.setDAOContract(mockDAO.address, {from: admin});
+
+            //add and list pair for reserve
+            await nwHelper.addReservesToNetwork(mockNetwork, mockReserveInstances, mockTokens, operator);
+
+            //set params, enable network
+            await mockNetwork.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
+            await mockNetwork.setEnable(true, {from: admin});
+
+            srcToken = mockTokens[0];
+            srcDecimals = mockTokenDecimals[0];
+            destToken = mockTokens[1];
+            destDecimals = mockTokenDecimals[1];
+        });
+
+        for(let i = 0; i < tradeType.length; i++) {
+            let type = tradeType[i];
+            let str = typeStr[i];
+            let fee = 123;
+
+            it("should perform a t2e trade with hint", async() => {
+                let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(srcDecimals)));
+                const numResForTest = getNumReservesForType(type);
+
+                //log("testing - numRes: " + numResForTest + " type: " + str + " fee: " + fee);
+                let hint = await nwHelper.getHint(mockRateHelper, mockMatchingEngine, mockReserveInstances, type, numResForTest, srcToken.address, ethAddress, srcQty);
+
+                await srcToken.transfer(taker, srcQty);
+                await srcToken.approve(mockProxy.address, srcQty, {from: taker});
+                let rate = await mockProxy.getExpectedRateAfterFee(srcToken.address, ethAddress, srcQty, 0, hint);
+
+                let txResult = await mockProxy.tradeWithHintAndFee(
+                    srcToken.address,
+                    srcQty, ethAddress,
+                    taker,
+                    maxDestAmt,
+                    calcMinRate(rate),
+                    platformWallet,
+                    fee,
+                    hint,
+                    {from: taker}
+                );
+                console.log(`t2e: ${txResult.receipt.gasUsed} gas used, type: ` + str + ' fee: ' + fee + ` num reserves: ` + numResForTest);
+            });
+
+            it("should perform a e2t trade with hint", async() => {
+                let srcQty = (new BN(10)).pow(new BN(ethDecimals));
+                const numResForTest = getNumReservesForType(type);
+
+                let hint = await nwHelper.getHint(
+                    mockRateHelper,
+                    mockMatchingEngine,
+                    mockReserveInstances,
+                    type,
+                    numResForTest,
+                    ethAddress,
+                    destToken.address,
+                    srcQty
+                );
+
+                let rate = await mockProxy.getExpectedRateAfterFee(ethAddress, destToken.address, srcQty, 0, hint);
+                let txResult = await mockProxy.tradeWithHintAndFee(
+                    ethAddress,
+                    srcQty,
+                    destToken.address,
+                    taker,
+                    maxDestAmt,
+                    calcMinRate(rate),
+                    platformWallet,
+                    fee,
+                    hint,
+                    {from: taker, value: srcQty}
+                );
+                console.log(`e2t: ${txResult.receipt.gasUsed} gas used, type: ` + str + ' fee: ' + fee + " num reserves: " + numResForTest);
+            });
+
+            it("should perform a t2t trade with hint", async() => {
+                let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(srcDecimals)));
+                const numResForTest = getNumReservesForType(type);
+
+                let hint = await nwHelper.getHint(mockRateHelper, mockMatchingEngine, mockReserveInstances, type, numResForTest, srcToken.address, destToken.address, srcQty);
+                let rate = await mockProxy.getExpectedRateAfterFee(srcToken.address, destToken.address, srcQty, 0, hint);
+
+                await srcToken.transfer(taker, srcQty);
+                await srcToken.approve(mockProxy.address, srcQty, {from: taker});
+
+                let txResult = await mockProxy.tradeWithHintAndFee(
+                    srcToken.address,
+                    srcQty,
+                    destToken.address,
+                    taker,
+                    maxDestAmt,
+                    calcMinRate(rate),
+                    platformWallet,
+                    fee,
+                    hint,
+                    {from: taker}
+                );
+                console.log(`t2t: ${txResult.receipt.gasUsed} gas used, type: ` + str + ' fee: ' + fee + " num reserves: " + numResForTest);
+            });
+        }
     });
 })
 

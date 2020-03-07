@@ -2,8 +2,11 @@ pragma solidity 0.5.11;
 
 import "../IKyberReserve.sol";
 import "../Utils4.sol";
+import "../zeppelin/SafeERC20.sol";
 
 contract MockReserve is IKyberReserve, Utils4 {
+    using SafeERC20 for IERC20;
+
     mapping(address=>uint) public buyTokenRates;
     mapping(address=>uint) public sellTokenRates;
     
@@ -53,14 +56,14 @@ contract MockReserve is IKyberReserve, Utils4 {
         
         // collect src tokens
         if (srcToken != ETH_TOKEN_ADDRESS) {
-            require(srcToken.transferFrom(msg.sender, address(this), srcAmount), "failed to trf src tokens to reserve");
+            srcToken.safeTransferFrom(msg.sender, address(this), srcAmount);
         }
 
         // send dest tokens
         if (destToken == ETH_TOKEN_ADDRESS) {
             destAddress.transfer(destAmount);
         } else {
-            require(destToken.transfer(destAddress, destAmount), "failed to trf dest tokens to destAddress");
+            destToken.safeTransfer(destAddress, destAmount);
         }
         return true;
     }

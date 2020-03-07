@@ -9,11 +9,14 @@ import "./IKyberFeeHandler.sol";
 import "./IKyberDAO.sol";
 import "./IKyberMatchingEngine.sol";
 import "./IGasHelper.sol";
+import "./zeppelin/SafeERC20.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
+
+    using SafeERC20 for IERC20;
 
     uint  constant PERM_HINT_GET_RATE = 1 << 255;   // for backwards compatibility
     uint  constant DEFAULT_NETWORK_FEE_BPS = 25;    // till we read value from DAO
@@ -188,9 +191,9 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
         if (tokenToEth) {
             if (add) {
-                require(token.approve(reserve, 2**255), "approve max token amt failed"); // approve infinity
+                token.safeApprove(reserve, 2**255);
             } else {
-                require(token.approve(reserve, 0), "approve 0 token amt failed");
+                token.safeApprove(reserve, 0);
             }
             emit ListReservePairs(reserve, token, ETH_TOKEN_ADDRESS, add);
         }
@@ -752,8 +755,17 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         require(tData.rateOnlyNetworkFee >= tData.input.minConversionRate, "rate < minConvRate");
 
         if (gasHelper != IGasHelper(0)) {
-            gasHelper.freeGas(tData.input.platformWallet, tData.input.src, tData.input.dest, tData.tradeWei,
-            tData.tokenToEth.ids, tData.ethToToken.ids);
+            address(gasHelper).call(
+                abi.encodeWithSignature(
+                    "freeGas(address,address,address,uint256,bytes8[],bytes8[])",
+                    tData.input.platformWallet,
+                    tData.input.src,
+                    tData.input.dest,
+                    tData.tradeWei,
+                    tData.tokenToEth.ids,
+                    tData.ethToToken.ids
+                )
+            );
         }
 
         uint actualSrcAmount;
@@ -845,7 +857,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
         if (destAddress != address(this)) {
             //for E2T, T2T, transfer tokens to destAddress
-            require(dest.transfer(destAddress, expectedDestAmount));
+            dest.safeTransfer(destAddress, expectedDestAmount);
         }
 
         return true;
@@ -860,7 +872,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
             if (src == ETH_TOKEN_ADDRESS) {
                 trader.transfer(srcAmount - requiredSrcAmount);
             } else {
-                require(src.transfer(trader, (srcAmount - requiredSrcAmount)));
+                src.safeTransfer(trader, (srcAmount - requiredSrcAmount));
             }
         }
 
@@ -897,7 +909,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         uint expiryBlock;
         (networkFeeBps, expiryBlock) = decodeNetworkFee(networkFeeData);
 
-        if (expiryBlock < block.number && kyberDAO[0] != IKyberDAO(0)) {
+        if (expiryBlock < block.number && kyberDAO.length > 0) {
             (networkFeeBps, expiryBlock) = kyberDAO[0].getLatestNetworkFeeData();
         }
     }
@@ -911,7 +923,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
         (networkFeeBps, expiryBlock) = decodeNetworkFee(networkFeeData);
 
-        if (expiryBlock < block.number && kyberDAO[0] != IKyberDAO(0)) {
+        if (expiryBlock < block.number && kyberDAO.length > 0) {
             (networkFeeBps, expiryBlock) = kyberDAO[0].getLatestNetworkFeeDataWithCache();
             networkFeeData = encodeNetworkFee(expiryBlock, networkFeeBps);
         }

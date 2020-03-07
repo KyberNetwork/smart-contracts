@@ -8,6 +8,28 @@ import "./Utils4.sol";
 import "./IBurnableToken.sol";
 import "./IERC20.sol";
 
+/*
+ * @title Kyber fee handler
+ * 
+ * @dev Kyber fee Hanlder works tightly with contracts KyberNetwork and KyberDAO.
+ * @dev Terminology:
+ *          Epoch - DAO Voting campaign time frame. 
+ *              Kyber DAO voting campaigns have pre defined time period defined in number of blocks.
+ *          BRR - Burn / Reward / Rebate. Kyber network fee is used for 3 purposes:
+ *              Burning KNC
+ *              Reward addresse that stake KNC in KyberStaking contract. AKA - stakers
+ *              Rebate reserves for supporting trades.
+ *  @dev Code flow:
+ *      1. Accumulating && claiming Fees. Per trade on KyberNetwork, it calls handleFee() function and sends 
+ *          network && platform fees from the trade. Fee ditribution:
+ *              rewards: accumulated per epoch. can be claimed by the DAO after epoch is concluded.
+ *              rebates: accumulated per rebate wallet, can be claimed any time.
+ *              Burn: accumulated in the contract. can be burned with limit on burn value and interval between burn calls.
+ *              Platfrom fee: accumulated per platform wallet, can be claimed any time.
+ *      2. Network Fee distribtuion. per epoch Kyber fee Handler reads current distribution from Kyber DAO. per read 
+*           Expiry block for the data is set. when data expires. Fee handler reads new data from DAO. 
+ */
+
 contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
     uint constant public WEI_TO_BURN = 2 * 10 ** ETH_DECIMALS;
@@ -86,7 +108,11 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         uint burnAmtWei
     );
 
-    // Todo: consider optimize to accumulate rebates is same wallet twice
+/// @dev handleFees function is called per trade on KyberNetwork. unless the trade is not involving any fees.
+/// @param rebateWallets a list of rebate wallets that are entitiled for fee with this trade.
+/// @param rebateBpsPerWallet percentage of the rebate each wallet is entitled to out of total rebate value. BPS uints: 10000 = 100%
+/// @param platformWallet Wallet address that is entitled to platfrom fee.
+/// @param platformFeeWei Fee amount in wei the platfrom wallet is entitled to.
     function handleFees(address[] calldata rebateWallets, uint[] calldata rebateBpsPerWallet,
         address platformWallet, uint platformFeeWei) 
         external payable onlyKyberNetwork returns(bool) 
@@ -126,6 +152,11 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
     event RewardPaid(address staker, uint amountWei);
 
+    /// @dev only Dao can call a claim to staker rewards.
+    /// @param staker address.
+    /// @param percentageInPrecision the relative part of the trade the staker is entitled to for this epoch. 
+    ///             uint Precision: 10 ** 18 = 100%
+    /// @param epoch for which epoch the staker is claiming the rewerad
     function claimStakerReward(address staker, uint percentageInPrecision, uint epoch) 
         external onlyDAO returns(bool) 
     {
@@ -149,7 +180,9 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
     event RebatePaid(address rebateWallet, uint amountWei);
 
-    // Using rebateWallet instead of reserve so I don't have to store KyberNetwork variable.
+    /// @dev claim reabate per reserve wallet. called by any address
+    /// @param rebateWallet the wallet to claim rebates for. Total accumulated rebate sent to this wallet.
+    /// @return amount of rebate claimed
     function claimReserveRebate(address rebateWallet) external returns (uint){
         require(rebatePerWallet[rebateWallet] > 1, "no rebate to claim");
         // Get total amount of rebate accumulated
@@ -170,7 +203,9 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     }
 
     event PlatformFeePaid(address platformWallet, uint amountWei);
-
+    /// @dev claim accumulated fee per platform wallet. Called by any address
+    /// @param platformWallet the wallet to claim fee for. Total accumulated fee sent to this wallet.
+    /// @return amount of fee claimed
     function claimPlatformFee(address platformWallet) external returns(uint feeWei) {
         require(feePerPlatformWallet[platformWallet] > 1, "no fee to claim");
         // Get total amount of rebate accumulated
@@ -189,7 +224,8 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     }
 
     event KyberDaoAddressSet(IKyberDAO kyberDAO);
-
+    /// @dev set dao contract address once and set setter address to zero.
+    /// @param _kyberDAO Dao address.
     function setDaoContract(IKyberDAO _kyberDAO) public {
         require(msg.sender == daoSetter);
 
@@ -201,7 +237,8 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
     event KNCBurned(uint KNCTWei, uint amountWei);
 
-    /// @dev should limit burn amount and create block delay between burns.
+    /// @dev Burn knc. Burn amount limited. Forces block delay between burn calls.
+    /// @return amount of KNC burned
     function burnKNC() public returns(uint) {
         // check if current block > last burn block number + num block interval
         require(block.number > lastBurnBlock + burnBlockInterval, "Wait more block to burn");
@@ -241,11 +278,14 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         require(IBurnableToken(address(KNC)).burn(destQty), "KNC burn failed");
         
         emit KNCBurned(destQty, srcQty);
+        return destQty;
     }
 
     event RewardsRemovedToBurn(uint epoch, uint rewardsWei);
 
-    // if no one voted for an epoch (like epoch 0). no one gets reward. so should burn it.
+    /// @dev if no one voted for an epoch (like epoch 0). no one gets rewards. so should reward amount.
+    ///         call DAO contract to check if for this epoch any votes occured.
+    /// @param epoch epoch number to check if should burn accumulated rewards. 
     function shouldBurnEpochReward(uint epoch) public {
         require(address(kyberDAO) != address(0), "kyberDAO addr missing");
 

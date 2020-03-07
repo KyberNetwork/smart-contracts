@@ -6,11 +6,14 @@ import "./IKyberNetwork.sol";
 import "./IKyberNetworkProxy.sol";
 import "./ISimpleKyberProxy.sol";
 import "./IKyberHint.sol";
+import "./zeppelin/SafeERC20.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network proxy for main contract
 contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawable2, Utils4 {
+
+    using SafeERC20 for IERC20;
 
     IKyberNetwork public kyberNetwork;
     IKyberHint public hintHandler; // hint handler pointer for users.
@@ -319,7 +322,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         if (src == ETH_TOKEN_ADDRESS) {
             balanceBefore.srcTok += msg.value;
         } else {
-            require(src.transferFrom(msg.sender, address(kyberNetwork), srcAmount), "allowance");
+            src.safeTransferFrom(msg.sender, address(kyberNetwork), srcAmount);
         }
     } 
    
