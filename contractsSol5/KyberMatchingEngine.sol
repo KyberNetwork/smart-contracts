@@ -305,6 +305,10 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         }
     }
 
+    /// @notice Logic for masking out reserves
+    /// @param allReservesPerToken arrary of reserves that support the T2E or E2T side of the trade
+    /// @param maskedOutReserves array of reserves to be excluded from allReservesPerToken
+    /// @return Returns an array of reserves that can be used for the trade
     function maskOutReserves(IKyberReserve[] memory allReservesPerToken, IKyberReserve[] memory maskedOutReserves)
         internal pure returns (IKyberReserve[] memory filteredReserves)
     {
@@ -360,6 +364,10 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         }
     }
 
+    /// @notice Calculates the resulting destQty for split trades. For src -> ETH, it additionally returns
+    /// the feePayingReservesBps and numFeePayingReserves. ETH -> dest does not need this information,
+    /// as they would be calculated and accounted for before this function is called.
+    /// @dev Should any reserve return a zero rate, then we nullify the trade by returning zero destQty
     function getDestQtyAndFeeDataFromSplits(
         TradingReserves memory tradingReserves,
         IERC20 token,
@@ -402,6 +410,9 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         }
     }
 
+    /// @notice Stores reserve and rate information, either from searchBestRate function,
+    /// or null reserve and zero rate due to exceptions (Eg. tradeWei is zero, invalid hint)
+    /// @dev Re-initialises the relevant array lengths, and stores the information
     function storeTradeReserveData(TradingReserves memory tradingReserves, IKyberReserve reserve, uint rate, bool isFeePaying) internal pure {
         //init arrays
         tradingReserves.addresses = new IKyberReserve[](1);
@@ -416,6 +427,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         tradingReserves.isFeePaying[0] = isFeePaying;
     }
 
+    /// @notice Packs the results from tData into the return arguments for calcRatesAndAmounts
     function packResults(TradeData memory tData) internal view returns (
         uint[] memory results,
         IKyberReserve[] memory reserveAddresses,
@@ -461,6 +473,11 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         }
     }
 
+    /// @notice calculates and stores the different destAmounts (no fee, only network fee, all fees)
+    /// @dev actualDestAmount and the E2T rate is calculated separately for split and non-split.
+    /// The E2T rate is then used to calculate destAmountWithNetworkFee and destAmountNoFee
+    /// Note that for non-split trades, searchBestRate will take into account the E2T network fee
+    /// when querying reserve rates, but the addition of this fee is only done after the search
     function calcRatesAndAmountsEthToToken(IERC20 dest, uint actualTradeWei, TradeData memory tData) internal view {
         IKyberReserve reserve;
         uint rate;
@@ -514,7 +531,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @param reserveArr reserve candidates to be iterated over
     /// @param srcAmount For src -> ETH, user srcAmount. For ETH -> dest, it's tradeWei minus T2E network fee and platform fee,
     /// as we want to query with the actual amount after fee deductions.
-    /// @dev If the iterated reserve is fee paying, then we have to further subtract the network fee from the srcAmount
+    /// @dev If the iterated reserve is fee paying, then we have to further subtract the network fee from srcAmount
     /// @param networkFee For src -> ETH, network fee = networkFeeBps
     /// For ETH -> dest, network fee = tradeWei * networkFeeBps / BPS instead of networkFeeBps,
     /// because the srcAmount passed is not tradeWei. Hence, networkFee has to be calculated beforehand
