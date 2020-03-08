@@ -46,7 +46,6 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         require(reserveAddressToId[reserve] == bytes8(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
         require(resType != ReserveType.NONE, "bad res type");
-        require(uint(resType) < uint(ReserveType.LAST), "bad res type");
         require(feePayingPerType !=  0xffffffff, "Fee paying not set");
 
         if (reserveIdToAddresses[reserveId].length == 0) {
@@ -72,7 +71,9 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         return reserveId;
     }
 
-    function setFeePayingPerReserveType(bool fpr, bool apr, bool bridge, bool utility, bool custom) external onlyAdmin {
+    function setFeePayingPerReserveType(bool fpr, bool apr, bool bridge, bool utility, bool custom, bool orderbook)
+        external onlyAdmin 
+    {
         uint feePayingData;
 
         if (apr) feePayingData |= 1 << uint(ReserveType.APR);
@@ -80,6 +81,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         if (bridge) feePayingData |= 1 << uint(ReserveType.BRIDGE);
         if (utility) feePayingData |= 1 << uint(ReserveType.UTILITY);
         if (custom) feePayingData |= 1 << uint(ReserveType.CUSTOM);
+        if (orderbook) feePayingData |= 1 << uint(ReserveType.ORDERBOOK);
 
         feePayingPerType = feePayingData;
     }

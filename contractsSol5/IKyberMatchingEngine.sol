@@ -14,6 +14,7 @@ interface IKyberMatchingEngine {
         BRIDGE,
         UTILITY,
         CUSTOM,
+        ORDERBOOK,
         LAST
     }
 

@@ -689,7 +689,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         require(tData.rateOnlyNetworkFee >= tData.input.minConversionRate, "rate < minConvRate");
 
         if (gasHelper != IGasHelper(0)) {
-            address(gasHelper).call(
+            (bool success, ) = address(gasHelper).call(
                 abi.encodeWithSignature(
                     "freeGas(address,address,address,uint256,bytes8[],bytes8[])",
                     tData.input.platformWallet,
@@ -700,6 +700,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
                     tData.ethToToken.ids
                 )
             );
+            success;
         }
 
         uint actualSrcAmount;
@@ -799,7 +800,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         return true;
     }
 
-    /// when user sets max dest amount we have too many source tokens = change. send it back to user.
+    /// @dev when user sets max dest amount we have too many source tokens = change. send it back to user.
     function handleChange (IERC20 src, uint srcAmount, uint requiredSrcAmount, address payable trader) internal returns (bool) {
 
         if (requiredSrcAmount < srcAmount) {
