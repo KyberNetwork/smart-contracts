@@ -14,8 +14,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     mapping(bytes8=>address[])          public reserveIdToAddresses;
     mapping(address=>bytes8)            internal reserveAddressToId;
     mapping(address=>uint)              internal reserveType;           //type from enum ReserveType
-    mapping(address=>IKyberReserve[])   internal reservesPerTokenSrc; // reserves supporting token to eth
-    mapping(address=>IKyberReserve[])   internal reservesPerTokenDest;// reserves support eth to token
+    mapping(address=>IKyberReserve[])   internal reservesPerTokenSrc;   // reserves supporting token to eth
+    mapping(address=>IKyberReserve[])   internal reservesPerTokenDest;  // reserves support eth to token
 
     uint internal feePayingPerType = 0xffffffff;
     
@@ -46,7 +46,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     {
         require(reserveAddressToId[reserve] == bytes8(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
-        require(resType != ReserveType.NONE, "bad res type");
+        require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad type");
         require(feePayingPerType !=  0xffffffff, "Fee paying not set");
 
         if (reserveIdToAddresses[reserveId].length == 0) {
@@ -153,8 +153,9 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint decimals;
     }
 
-    // enable up to x reserves for token to Eth and x for eth to token
-    // if not hinted reserves use 1 reserve for each trade side
+    // struct for trade data.
+    // list of reserve for token to Eth and for eth to token
+    // if not a split trade, will have 1 reserve for each trade side
     struct TradeData {
         TradingReserves tokenToEth;
         TradingReserves ethToToken;

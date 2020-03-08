@@ -260,14 +260,14 @@ contract('KyberMatchingEngine', function(accounts) {
             it("should revert for NONE reserve type", async() => {
                 await expectRevert(
                     matchingEngine.addReserve(reserve.address, reserve.reserveId, 0, {from: network}),
-                    "bad res type"
+                    "bad type"
                 );
             });
     
             it("should revert for LAST reserve type", async() => {
                 await expectRevert(
                     matchingEngine.addReserve(reserve.address, reserve.reserveId, 0, {from: network}),
-                    "bad res type"
+                    "bad type"
                 );
             });
     
@@ -365,8 +365,9 @@ contract('KyberMatchingEngine', function(accounts) {
         let token;
         let reserveInstances;
         let result;
+        let totalReserveTypes = 6;
 
-        before("setup matchingEngine instance and 4 reserves 4 types", async() => {
+        before("setup matchingEngine instance and 6 reserves 6 types", async() => {
             matchingEngine = await KyberMatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
@@ -376,21 +377,19 @@ contract('KyberMatchingEngine', function(accounts) {
             //init token
             token = await TestToken.new("Token", "TOK", 18);
             
-            result = await nwHelper.setupReserves(network, [token], 5,0,0,0, accounts, admin, operator);
+            result = await nwHelper.setupReserves(network, [token], totalReserveTypes,0,0,0, accounts, admin, operator);
             reserveInstances = result.reserveInstances;
             
-            //add reserves as 5 different types.
+            //add reserves for all types.
             let type = 1;
             for (reserve of Object.values(reserveInstances)) {
                 await matchingEngine.addReserve(reserve.address, reserve.reserveId, type, {from: network});
                 type++;
-                //iterate all 5 types
             }
-        });
-
+        });     
+         
         it("get reserve details while modifying fee paying per type. see as expected", async() => {
             let pay = [];
-            let totalReserveTypes = 6;
             let numCombinations = totalReserveTypes ** 2;
             //generate different pay combinations
             for (let i = 0; i < numCombinations; i++) {
