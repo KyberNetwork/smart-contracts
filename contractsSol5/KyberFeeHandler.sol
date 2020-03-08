@@ -24,18 +24,18 @@ import "./IERC20.sol";
  *          network && platform fees from the trade. Fee ditribution:
  *              rewards: accumulated per epoch. can be claimed by the DAO after epoch is concluded.
  *              rebates: accumulated per rebate wallet, can be claimed any time.
- *              Burn: accumulated in the contract. can be burned with limit on burn value and interval between burn calls.
+ *              Burn: accumulated in the contract. Burned value and interval limited.
  *              Platfrom fee: accumulated per platform wallet, can be claimed any time.
- *      2. Network Fee distribtuion. per epoch Kyber fee Handler reads current distribution from Kyber DAO. per read 
-*           Expiry block for the data is set. when data expires. Fee handler reads new data from DAO. 
+ *      2. Network Fee distribtuion. per epoch Kyber fee Handler reads current distribution from Kyber DAO. 
+*           Expiry block for data is set. when data expires. Fee handler reads new data from DAO. 
  */
 
 contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
-    uint constant public WEI_TO_BURN = 2 * 10 ** ETH_DECIMALS;
-    uint constant BITS_PER_PARAM = 64;
-    uint constant DEFAULT_REWARD_BPS = 3000;
-    uint constant DEFAULT_REBATE_BPS = 3000;
+    uint internal constant public WEI_TO_BURN = 2 * 10 ** ETH_DECIMALS;
+    uint internal constant BITS_PER_PARAM = 64;
+    uint internal constant DEFAULT_REWARD_BPS = 3000;
+    uint internal constant DEFAULT_REBATE_BPS = 3000;
 
     IKyberDAO public kyberDAO;
     IKyberNetworkProxy public networkProxy;
@@ -54,23 +54,23 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     uint public totalPayoutBalance; // total balance in the contract that is for rebate, reward, platform fee
 
     constructor(
-        address _daoSetter,
-        IKyberNetworkProxy _networkProxy,
-        address _kyberNetwork,
-        IERC20 _KNC,
-        uint _burnBlockInterval
-    ) public
+            address _daoSetter,
+            IKyberNetworkProxy _networkProxy,
+            address _kyberNetwork,
+            IERC20 _knc,
+            uint _burnBlockInterval
+        ) public
     {
         require(address(_daoSetter) != address(0), "FeeHandler: daoSetter 0");
         require(address(_networkProxy) != address(0), "FeeHandler: KyberNetworkProxy 0");
         require(address(_kyberNetwork) != address(0), "FeeHandler: KyberNetwork 0");
-        require(address(_KNC) != address(0), "FeeHandler: KNC 0");
+        require(address(_knc) != address(0), "FeeHandler: KNC 0");
         require(_burnBlockInterval != 0, "FeeHandler: _burnBlockInterval 0");
 
         daoSetter = _daoSetter;
         networkProxy = _networkProxy;
         kyberNetwork = _kyberNetwork;
-        KNC = _KNC;
+        KNC = _knc;
         burnBlockInterval = _burnBlockInterval;
 
         //start with epoch 0
@@ -78,6 +78,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     }
 
     event EthRecieved(uint amount);
+
     function() external payable {
         emit EthRecieved(msg.value);
     }
@@ -110,7 +111,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
 /// @dev handleFees function is called per trade on KyberNetwork. unless the trade is not involving any fees.
 /// @param rebateWallets a list of rebate wallets that are entitiled for fee with this trade.
-/// @param rebateBpsPerWallet percentage of the rebate each wallet is entitled to out of total rebate value. BPS uints: 10000 = 100%
+/// @param rebateBpsPerWallet percentage of rebate for each wallet, out of total rebate. BPS uints: 10000 = 100%
 /// @param platformWallet Wallet address that is entitled to platfrom fee.
 /// @param platformFeeWei Fee amount in wei the platfrom wallet is entitled to.
     function handleFees(address[] calldata rebateWallets, uint[] calldata rebateBpsPerWallet,
@@ -183,7 +184,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     /// @dev claim reabate per reserve wallet. called by any address
     /// @param rebateWallet the wallet to claim rebates for. Total accumulated rebate sent to this wallet.
     /// @return amount of rebate claimed
-    function claimReserveRebate(address rebateWallet) external returns (uint){
+    function claimReserveRebate(address rebateWallet) external returns(uint) {
         require(rebatePerWallet[rebateWallet] > 1, "no rebate to claim");
         // Get total amount of rebate accumulated
         uint amount = rebatePerWallet[rebateWallet] - 1;
@@ -203,6 +204,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     }
 
     event PlatformFeePaid(address platformWallet, uint amountWei);
+
     /// @dev claim accumulated fee per platform wallet. Called by any address
     /// @param platformWallet the wallet to claim fee for. Total accumulated fee sent to this wallet.
     /// @return amount of fee claimed
@@ -224,6 +226,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     }
 
     event KyberDaoAddressSet(IKyberDAO kyberDAO);
+
     /// @dev set dao contract address once and set setter address to zero.
     /// @param _kyberDAO Dao address.
     function setDaoContract(IKyberDAO _kyberDAO) public {
@@ -253,8 +256,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         uint srcQty = balance - totalPayoutBalance;
         srcQty = srcQty > WEI_TO_BURN ? WEI_TO_BURN : srcQty;
 
-        // Get the rate
-        // If srcQty is too big, get expected rate will return 0 so maybe we should limit how much can be bought at one time.
+        // Get rate
         uint kyberEthKncRate = networkProxy.getExpectedRateAfterFee(ETH_TOKEN_ADDRESS, KNC, srcQty, 0, "");
         uint kyberKncEthRate = networkProxy.getExpectedRateAfterFee(KNC, ETH_TOKEN_ADDRESS, srcQty, 0, "");
 
@@ -303,7 +305,8 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     }
 
     function encodeBRRData(uint _reward, uint _rebate, uint _epoch, uint _expiryBlock) public pure returns (uint) {
-        return (((((_reward << BITS_PER_PARAM) + _rebate) << BITS_PER_PARAM) + _epoch) << BITS_PER_PARAM) + _expiryBlock;
+        return (((((_reward << BITS_PER_PARAM) + _rebate) << BITS_PER_PARAM) + _epoch) << 
+            BITS_PER_PARAM) + _expiryBlock;
     }
 
     function decodeBRRData() public view returns(uint rewardBPS, uint rebateBPS, uint expiryBlock, uint epoch) {

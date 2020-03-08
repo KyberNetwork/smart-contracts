@@ -12,7 +12,6 @@ import "./zeppelin/SafeERC20.sol";
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network proxy for main contract
 contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawable2, Utils4 {
-
     using SafeERC20 for IERC20;
 
     IKyberNetwork public kyberNetwork;
@@ -21,24 +20,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     constructor(address _admin) public Withdrawable2(_admin) 
         {/*empty body*/}
     
-    // backward compatible APIs
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev get expected rate for a trade from src to dest tokens, with amount srcQty
-    /// @param src Src token
-    /// @param dest Destination token
-    /// @param srcQty amount of src tokens in twei
-    /// @return expectedRate for a trade after deducting network fee. Rate = destQty (twei) / srcQty (twei) * 10 ** 18
-    /// @return worstRate for a trade. Usually expectedRate * 97 / 100. 
-    ///             Use worstRate value as trade min conversion rate at your own risk.
-    function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
-        returns (uint expectedRate, uint worstRate)
-    {
-        bytes memory hint;    
-        ( , expectedRate, ) = kyberNetwork.getExpectedRateWithHintAndFee(src, dest, srcQty, 0, hint);
-        // use simple backward compatible optoin.
-        worstRate = expectedRate * 97 / 100;
-    }
-
+    /// @notice backward compatible API
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev trade from src to dest token and sends dest token to destAddress
     /// @param src Src token
@@ -168,7 +150,24 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         );
     }
 
-    // new APIs
+    /// @notice backward compatible API
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev get expected rate for a trade from src to dest tokens, with amount srcQty
+    /// @param src Src token
+    /// @param dest Destination token
+    /// @param srcQty amount of src tokens in twei
+    /// @return expectedRate for a trade after deducting network fee. Rate = destQty (twei) / srcQty (twei) * 10 ** 18
+    /// @return worstRate for a trade. Usually expectedRate * 97 / 100. 
+    ///             Use worstRate value as trade min conversion rate at your own risk.
+    function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
+        returns (uint expectedRate, uint worstRate)
+    {
+        bytes memory hint;    
+        ( , expectedRate, ) = kyberNetwork.getExpectedRateWithHintAndFee(src, dest, srcQty, 0, hint);
+        // use simple backward compatible optoin.
+        worstRate = expectedRate * 97 / 100;
+    }
+
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev get expected rate for a trade from src to dest tokens, with amount srcQty and custom fee
     /// @param src Src token
@@ -208,7 +207,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     /// @param maxDestAmount A limit on the amount of dest tokens in twei
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverted.
     /// @param platformWallet is the platform wallet address to send fees too
-    /// @param platformFeeBps part of the trade that will be sent as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%     
+    /// @param platformFeeBps Percentage of trade to be allocated as platform fee. Ex: 10000 = 100%, 100 = 1%
     /// @param hint define which reserves should be used for this trade.
     /// @return amount of actual dest tokens in twei
     function tradeWithHintAndFee(
@@ -226,7 +225,8 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         payable
         returns(uint destAmount)
     {
-        return doTrade(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, platformWallet, platformFeeBps, hint);
+        return doTrade(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, platformWallet, 
+            platformFeeBps, hint);
     }
     
     struct UserBalance {
