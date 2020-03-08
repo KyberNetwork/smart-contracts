@@ -367,7 +367,7 @@ contract('KyberMatchingEngine', function(accounts) {
         let result;
         let totalReserveTypes = 6;
 
-        before("setup matchingEngine instance and 6 reserves 6 types", async() => {
+        before("setup matchingEngine instance reserve per each reserve type", async() => {
             matchingEngine = await KyberMatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
