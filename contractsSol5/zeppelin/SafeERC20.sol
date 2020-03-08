@@ -31,7 +31,7 @@ library SafeERC20 {
         // 'safeIncreaseAllowance' and 'safeDecreaseAllowance'
         // solhint-disable-next-line max-line-length
         require((value == 0) || (token.allowance(address(this), spender) == 0),
-            "SafeERC20: approve from non-zero to non-zero allowance"
+            "SafeERC20: approve non-0 to 0"
         );
         callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, value));
     }
@@ -61,15 +61,15 @@ library SafeERC20 {
         //  2. The call itself is made, and success asserted
         //  3. The return value is decoded, which in turn checks the size of the returned data.
         // solhint-disable-next-line max-line-length
-        require(address(token).isContract(), "SafeERC20: call to non-contract");
+        require(address(token).isContract(), "SafeERC20: call non-contract");
 
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returndata) = address(token).call(data);
-        require(success, "SafeERC20: low-level call failed");
+        require(success, "SafeERC20: low-level failed");
 
         if (returndata.length > 0) { // Return data is optional
             // solhint-disable-next-line max-line-length
-            require(abi.decode(returndata, (bool)), "SafeERC20: ERC20 operation did not succeed");
+            require(abi.decode(returndata, (bool)), "SafeERC20: ERC20 operation failed");
         }
     }
 }

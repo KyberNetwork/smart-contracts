@@ -83,7 +83,7 @@ contract('KyberNetworkProxy', function(accounts) {
         //init matchingEngine
         matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
-        await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+        await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
         await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
@@ -447,7 +447,7 @@ contract('KyberNetworkProxy', function(accounts) {
             //init matchingEngine
             mockMatchingEngine = await MatchingEngine.new(admin);
             await mockMatchingEngine.setNetworkContract(mockNetwork.address, {from: admin});
-            await mockMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+            await mockMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
 
             mockRateHelper = await RateHelper.new(admin);
             await mockRateHelper.setContracts(mockMatchingEngine.address, mockDAO.address, {from: admin});
