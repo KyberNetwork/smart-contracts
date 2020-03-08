@@ -11,9 +11,14 @@ import "./IKyberMatchingEngine.sol";
 import "./IGasHelper.sol";
 import "./zeppelin/SafeERC20.sol";
 
+/*
+*   @title Kyber Network main contract
+*   Interacts with a few contracts:
+*       KyberDao: to retrieve fee data
+*       KyberFeeHandler: accumulate fees for the trade
+*       KyberMatchingEngine: match reserves and calculate trade data: rates, fees, wei value
+*/
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// @title Kyber Network main contract
 contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
     using SafeERC20 for IERC20;
