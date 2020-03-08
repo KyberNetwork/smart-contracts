@@ -7,7 +7,7 @@ import "./KyberHintHandler.sol";
 
 /*
 *   @title Kyber matching engine contract
-*   Recieves call from KyberNetwork for:
+*   Receives call from KyberNetwork for:
 *       - adding reserves
 *       - listing tokens
 *       - get rate

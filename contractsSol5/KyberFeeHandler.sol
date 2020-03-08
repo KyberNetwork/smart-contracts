@@ -11,7 +11,7 @@ import "./IERC20.sol";
 /*
  * @title Kyber fee handler
  * 
- * @dev Kyber fee Hanlder works tightly with contracts KyberNetwork and KyberDAO.
+ * @dev Kyber fee Handler works tightly with contracts KyberNetwork and KyberDAO.
  * @dev Terminology:
  *          Epoch - DAO Voting campaign time frame. 
  *              Kyber DAO voting campaigns have pre defined time period defined in number of blocks.
@@ -19,15 +19,15 @@ import "./IERC20.sol";
  *              Burning KNC
  *              Reward addresse that stake KNC in KyberStaking contract. AKA - stakers
  *              Rebate reserves for supporting trades.
- *  @dev Code flow:
- *      1. Accumulating && claiming Fees. Per trade on KyberNetwork, it calls handleFee() function and sends 
- *          network && platform fees from the trade. Fee ditribution:
+ * @dev Code flow:
+ *      1. Accumulating && claiming Fees. Per trade on KyberNetwork, it calls handleFees() function which 
+ *          internally accounts for network & platform fees from the trade. Fee distribution:
  *              rewards: accumulated per epoch. can be claimed by the DAO after epoch is concluded.
  *              rebates: accumulated per rebate wallet, can be claimed any time.
  *              Burn: accumulated in the contract. Burned value and interval limited.
  *              Platfrom fee: accumulated per platform wallet, can be claimed any time.
  *      2. Network Fee distribtuion. per epoch Kyber fee Handler reads current distribution from Kyber DAO. 
-*           Expiry block for data is set. when data expires. Fee handler reads new data from DAO. 
+ *          Expiry block for data is set. when data expires. Fee handler reads new data from DAO. 
  */
 
 contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
