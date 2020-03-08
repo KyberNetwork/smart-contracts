@@ -461,7 +461,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         return isEnabled;
     }
 
-    /// @notice Stores useful information about reserves (either for token -> ETH, or ETH -> token)
+    /// @notice Stores word data for reserves (either for token -> ETH, or ETH -> token)
     /// @dev Variables are in-place, ie. reserve with addresses[i] has id of ids[i], offers rate of rates[i], etc.
     /// @param addresses List of reserve addresses selected for the trade
     /// @param ids List of reserve ids, to be used for KyberTrade event
@@ -469,7 +469,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param isFeePaying List of reserves requiring users to pay network fee, or not
     /// @param splitValuesBps List of proportions of trade amount allocated to the different reserves
     /// If there is only 1 reserve, then it should have a value of 10000 bps
-    /// @param decimals src decimals (for src -> ETH) or dest decimals (ETH -> dest) to avoid making decimals API call
+    /// @param decimals  decimals token decimals. Src decimals when for src -> ETH, dest decimals when ETH -> dest
     struct TradingReserves {
         IKyberReserve[] addresses;
         bytes8[] ids;
@@ -537,7 +537,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// This function should set all TradeData information so that it can be used after without any ambiguity
     /// @param src Source token
     /// @param dest Destination token
-    /// @param amount amount of src tokens
+    /// @param srcAmount amount of src tokens
     /// @param tData main trade data object for trade info to be stored
     /// @param hint which reserves should be used for the trade
     function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, TradeData memory tData, bytes memory hint)
@@ -594,7 +594,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     
     /// @notice Stores information inside tradingReserves
     /// @param tradingReserves Either tData.tokenToEth or tData.ethToToken. Object to store the information in
-    /// @param addresses array of T2E and E2T reserve addresses
+    /// @param reserveAddresses array of T2E and E2T reserve addresses
     /// @param splitValuesBps, array of T2E and E2T proportional trade amounts in bps
     /// @param isFeePaying array if T2E and E2T reserves requiring users to pay network fee, or not
     /// @param ids List of proportions of trade amount allocated to the different reserves

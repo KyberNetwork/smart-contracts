@@ -157,7 +157,7 @@ contract('KyberMatchingEngine', function(accounts) {
         });
 
         it("should have network add reserve", async() => {
-            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
             await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
             let reserveDetails = await matchingEngine.getReserveDetails(reserve.address);
             let reserveId = reserveDetails.reserveId;
@@ -281,7 +281,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
         describe("test cases for an already added reserve", async() => {
             before("add fee paying type and add reserve", async() => {
-                await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+                await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
                 await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
             });
 
@@ -330,7 +330,7 @@ contract('KyberMatchingEngine', function(accounts) {
             for (const value of Object.values(reserveInstances)) {
                 reserve = value;
             }
-            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
             await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
 
             //create token
@@ -369,7 +369,7 @@ contract('KyberMatchingEngine', function(accounts) {
         before("setup matchingEngine instance and 4 reserves 4 types", async() => {
             matchingEngine = await KyberMatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
-            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(matchingEngine.address, accounts[9], {from: admin});
 
@@ -390,7 +390,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
         it("get reserve details while modifying fee paying per type. see as expected", async() => {
             let pay = [];
-            let totalReserveTypes = 5;
+            let totalReserveTypes = 6;
             let numCombinations = totalReserveTypes ** 2;
             //generate different pay combinations
             for (let i = 0; i < numCombinations; i++) {
@@ -405,7 +405,7 @@ contract('KyberMatchingEngine', function(accounts) {
                     pay = pay.concat([false]);
                 }
                 
-                await matchingEngine.setFeePayingPerReserveType(pay[0], pay[1], pay[2], pay[3], pay[4], {from: admin});
+                await matchingEngine.setFeePayingPerReserveType(pay[0], pay[1], pay[2], pay[3], pay[4], pay[5], {from: admin});
                 let index = 0;
                 for (reserve of Object.values(reserveInstances)) {
                     let details = await matchingEngine.getReserveDetails(reserve.address);
@@ -422,7 +422,7 @@ contract('KyberMatchingEngine', function(accounts) {
         before("setup matchingEngine instance and 2 tokens", async() => {
             matchingEngine = await KyberMatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
-            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(matchingEngine.address, accounts[9], {from: admin});
 
@@ -440,7 +440,7 @@ contract('KyberMatchingEngine', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
-                await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, {from: admin});
+                await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, true, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
@@ -503,7 +503,7 @@ contract('KyberMatchingEngine', function(accounts) {
                 numReserves = result.numAddedReserves * 1;
 
                 //set fee paying to false
-                await matchingEngine.setFeePayingPerReserveType(false, false, false, false, false, {from: admin});
+                await matchingEngine.setFeePayingPerReserveType(false, false, false, false, false, false, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
@@ -565,7 +565,7 @@ contract('KyberMatchingEngine', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
-                await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, {from: admin});
+                await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, true, {from: admin});
 
                 //set zero rates
                 for ([key, reserve] of Object.entries(reserveInstances)) {
@@ -621,7 +621,7 @@ contract('KyberMatchingEngine', function(accounts) {
         before("setup matchingEngine instance and 2 tokens", async() => {
             matchingEngine = await KyberMatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
-            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(matchingEngine.address, accounts[9], {from: admin});
 
@@ -645,7 +645,7 @@ contract('KyberMatchingEngine', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
-                await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, {from: admin});
+                await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, true, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
@@ -1297,7 +1297,7 @@ contract('KyberMatchingEngine', function(accounts) {
         before("setup matchingEngine instance, 2 tokens, 2 mock reserves", async() => {
             matchingEngine = await KyberMatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
-            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: admin});
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(matchingEngine.address, accounts[9], {from: admin});
 
@@ -1312,7 +1312,7 @@ contract('KyberMatchingEngine', function(accounts) {
             reserveInstances = result.reserveInstances;
             numReserves = result.numAddedReserves * 1;
 
-            await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, {from: admin});
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, true, {from: admin});
 
             //add reserves, list token pairs
             for (reserve of Object.values(reserveInstances)) {
