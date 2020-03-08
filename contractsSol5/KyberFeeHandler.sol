@@ -32,10 +32,10 @@ import "./IERC20.sol";
 
 contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
-    uint internal constant public WEI_TO_BURN = 2 * 10 ** ETH_DECIMALS;
     uint internal constant BITS_PER_PARAM = 64;
     uint internal constant DEFAULT_REWARD_BPS = 3000;
     uint internal constant DEFAULT_REBATE_BPS = 3000;
+    uint public constant   WEI_TO_BURN = 2 * 10 ** ETH_DECIMALS;
 
     IKyberDAO public kyberDAO;
     IKyberNetworkProxy public networkProxy;
@@ -305,8 +305,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     }
 
     function encodeBRRData(uint _reward, uint _rebate, uint _epoch, uint _expiryBlock) public pure returns (uint) {
-        return (((((_reward << BITS_PER_PARAM) + _rebate) << BITS_PER_PARAM) + _epoch) << 
-            BITS_PER_PARAM) + _expiryBlock;
+        return (((((_reward << BITS_PER_PARAM) + _rebate) << BITS_PER_PARAM) + _epoch) << BITS_PER_PARAM) + _expiryBlock;
     }
 
     function decodeBRRData() public view returns(uint rewardBPS, uint rebateBPS, uint expiryBlock, uint epoch) {

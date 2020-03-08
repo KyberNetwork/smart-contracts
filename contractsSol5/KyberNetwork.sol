@@ -490,7 +490,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         return isEnabled;
     }
 
-    /// @notice Stores word data for reserves (either for token -> ETH, or ETH -> token)
+    /// @notice Stores work data for reserves (either for token -> ETH, or ETH -> token)
     /// @dev Variables are in-place, ie. reserve with addresses[i] has id of ids[i], offers rate of rates[i], etc.
     /// @param addresses List of reserve addresses selected for the trade
     /// @param ids List of reserve ids, to be used for KyberTrade event
