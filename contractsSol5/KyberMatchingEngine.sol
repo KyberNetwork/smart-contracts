@@ -222,9 +222,9 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         }
 
         //fee deduction
-        //no fee deduction occurs for masking of ETH -> token reserves, or if no ETH -> token reserve was specified
-        tData.platformFeeWei = tData.tradeWei * info[uint(IKyberMatchingEngine.InfoIndex.platformFeeBps)] / BPS;
-
+        //ETH -> dest fee deduction has not occured for non-split ETH -> dest trade types
+        tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
+        
         require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
         calcRatesAndAmountsEthToToken(dest, tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei, tData);
 
