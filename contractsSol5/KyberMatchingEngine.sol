@@ -5,7 +5,19 @@ import "./IKyberMatchingEngine.sol";
 import "./IKyberNetwork.sol";
 import "./KyberHintHandler.sol";
 
-
+/*
+*   @title Kyber matching engine contract
+*   Recieves call from KyberNetwork for:
+*       - adding reserves
+*       - listing tokens
+*       - get rate
+*
+*       For get Rate calls mathcing engine will:
+*           - parse hint to find if user wants specific reserves
+*           - search best reserve rate if required
+*           - calclutate trade amounts
+*           - return all data to kyber Network 
+*/
 contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdrawable2 {
     uint            public negligibleRateDiffBps = 5; // 1 bps is 0.01%
     IKyberNetwork   public networkContract;

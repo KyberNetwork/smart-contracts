@@ -17,6 +17,14 @@ import "./zeppelin/SafeERC20.sol";
 *       KyberDao: to retrieve fee data
 *       KyberFeeHandler: accumulate fees for the trade
 *       KyberMatchingEngine: match reserves and calculate trade data: rates, fees, wei value
+* 
+*   Kyber network will call matching engine for:
+*       - add reserve
+*       - list tokens
+*       - get rate
+*       - trade.
+*
+*    Matching engine will do all the work of finding which reserve to trade with. Expected rates and fees.
 */
 
 contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
