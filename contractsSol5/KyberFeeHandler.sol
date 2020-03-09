@@ -10,24 +10,24 @@ import "./IERC20.sol";
 
 /*
  * @title Kyber fee handler
- * 
+ *
  * @dev Kyber fee Handler works tightly with contracts KyberNetwork and KyberDAO.
  * @dev Terminology:
- *          Epoch - DAO Voting campaign time frame. 
+ *          Epoch - DAO Voting campaign time frame.
  *              Kyber DAO voting campaigns have pre defined time period defined in number of blocks.
  *          BRR - Burn / Reward / Rebate. Kyber network fee is used for 3 purposes:
  *              Burning KNC
  *              Reward addresse that stake KNC in KyberStaking contract. AKA - stakers
  *              Rebate reserves for supporting trades.
  * @dev Code flow:
- *      1. Accumulating && claiming Fees. Per trade on KyberNetwork, it calls handleFees() function which 
+ *      1. Accumulating && claiming Fees. Per trade on KyberNetwork, it calls handleFees() function which
  *          internally accounts for network & platform fees from the trade. Fee distribution:
  *              rewards: accumulated per epoch. can be claimed by the DAO after epoch is concluded.
  *              rebates: accumulated per rebate wallet, can be claimed any time.
  *              Burn: accumulated in the contract. Burned value and interval limited.
  *              Platfrom fee: accumulated per platform wallet, can be claimed any time.
- *      2. Network Fee distribtuion. per epoch Kyber fee Handler reads current distribution from Kyber DAO. 
- *          Expiry block for data is set. when data expires. Fee handler reads new data from DAO. 
+ *      2. Network Fee distribtuion. per epoch Kyber fee Handler reads current distribution from Kyber DAO.
+ *          Expiry block for data is set. when data expires. Fee handler reads new data from DAO.
  */
 
 contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
@@ -41,7 +41,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     IKyberNetworkProxy public networkProxy;
     address public kyberNetwork;
     IERC20 public KNC;
-    
+
     uint public burnBlockInterval = 15;
     uint public lastBurnBlock;
     uint public brrAndEpochData;
@@ -103,7 +103,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         address platformWallet,
         uint platformFeeWei,
         uint rewardWei,
-        uint rebateWei,        
+        uint rebateWei,
         address[] rebateWallets,
         uint[] rebatePercentBpsPerWallet,
         uint burnAmtWei
@@ -115,13 +115,13 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 /// @param platformWallet Wallet address that is entitled to platfrom fee.
 /// @param platformFeeWei Fee amount in wei the platfrom wallet is entitled to.
     function handleFees(address[] calldata rebateWallets, uint[] calldata rebateBpsPerWallet,
-        address platformWallet, uint platformFeeWei) 
-        external payable onlyKyberNetwork returns(bool) 
+        address platformWallet, uint platformFeeWei)
+        external payable onlyKyberNetwork returns(bool)
     {
         require(msg.value >= platformFeeWei, "msg.value low");
 
         // handle platform fee
-        feePerPlatformWallet[platformWallet] += platformFeeWei; 
+        feePerPlatformWallet[platformWallet] += platformFeeWei;
 
         uint feeBRR = msg.value - platformFeeWei;
 
@@ -145,9 +145,9 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         // update balacne for rewards, rebates, fee
         totalPayoutBalance += (platformFeeWei + rewardWei + rebateWei);
 
-        emit FeeDistributed(platformWallet, platformFeeWei, rewardWei, rebateWei, rebateWallets, rebateBpsPerWallet, 
+        emit FeeDistributed(platformWallet, platformFeeWei, rewardWei, rebateWei, rebateWallets, rebateBpsPerWallet,
             (feeBRR - rewardWei - rebateWei));
-            
+
         return true;
     }
 
@@ -155,11 +155,11 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
     /// @dev only Dao can call a claim to staker rewards.
     /// @param staker address.
-    /// @param percentageInPrecision the relative part of the trade the staker is entitled to for this epoch. 
+    /// @param percentageInPrecision the relative part of the trade the staker is entitled to for this epoch.
     ///             uint Precision: 10 ** 18 = 100%
     /// @param epoch for which epoch the staker is claiming the rewerad
-    function claimStakerReward(address staker, uint percentageInPrecision, uint epoch) 
-        external onlyDAO returns(bool) 
+    function claimStakerReward(address staker, uint percentageInPrecision, uint epoch)
+        external onlyDAO returns(bool)
     {
         // Amount of reward to be sent to staker
         require(percentageInPrecision <= PRECISION, "percentage high");
@@ -278,7 +278,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         );
 
         require(IBurnableToken(address(KNC)).burn(destQty), "KNC burn failed");
-        
+
         emit KNCBurned(destQty, srcQty);
         return destQty;
     }
@@ -287,7 +287,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
     /// @dev if no one voted for an epoch (like epoch 0). no one gets rewards. so should reward amount.
     ///         call DAO contract to check if for this epoch any votes occured.
-    /// @param epoch epoch number to check if should burn accumulated rewards. 
+    /// @param epoch epoch number to check if should burn accumulated rewards.
     function shouldBurnEpochReward(uint epoch) public {
         require(address(kyberDAO) != address(0), "kyberDAO addr missing");
 
@@ -335,7 +335,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         }
     }
 
-    function getRRWeiValues(uint RRAmountWei) internal 
+    function getRRWeiValues(uint RRAmountWei) internal
         returns(uint rewardWei, uint rebateWei, uint epoch)
     {
         // Decoding BRR data

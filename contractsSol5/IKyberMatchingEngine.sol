@@ -1,4 +1,4 @@
-  
+
 pragma  solidity 0.5.11;
 
 import "./IKyberReserve.sol";
@@ -28,7 +28,7 @@ interface IKyberMatchingEngine {
         actualDestAmount,
         resultLength
     }
-    
+
     enum InfoIndex {
         srcAmount,
         networkFeeBps,
@@ -47,7 +47,7 @@ interface IKyberMatchingEngine {
     function listPairForReserve(IKyberReserve reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add)
         external
         returns (bool);
-    
+
     function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcDecimals, uint destDecimals, uint[] calldata info, bytes calldata hint)
         external view
         returns (
