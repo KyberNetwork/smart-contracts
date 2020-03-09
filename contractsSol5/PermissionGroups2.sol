@@ -47,7 +47,7 @@ contract PermissionGroups2 {
      */
     function transferAdmin(address newAdmin) public onlyAdmin {
         require(newAdmin != address(0), "TRANS_ADD_0");
-        emit TransferAdminPending(pendingAdmin);
+        emit TransferAdminPending(newAdmin);
         pendingAdmin = newAdmin;
     }
 
@@ -78,7 +78,7 @@ contract PermissionGroups2 {
 
     function addAlerter(address newAlerter) public onlyAdmin {
         require(!alerters[newAlerter], "ALRTR_EXIST"); // prevent duplicates.
-        require(alertersGroup.length < MAX_GROUP_SIZE);
+        require(alertersGroup.length < MAX_GROUP_SIZE, "MAX_ALRTR_NUM");
 
         emit AlerterAdded(newAlerter, true);
         alerters[newAlerter] = true;
@@ -102,8 +102,8 @@ contract PermissionGroups2 {
     event OperatorAdded(address newOperator, bool isAdd);
 
     function addOperator(address newOperator) public onlyAdmin {
-        require(!operators[newOperator], "OPRTR_EXIS"); // prevent duplicates.
-        require(operatorsGroup.length < MAX_GROUP_SIZE);
+        require(!operators[newOperator], "OPRTR_EXIST"); // prevent duplicates.
+        require(operatorsGroup.length < MAX_GROUP_SIZE, "MAX_OPRTR_NUM");
 
         emit OperatorAdded(newOperator, true);
         operators[newOperator] = true;
