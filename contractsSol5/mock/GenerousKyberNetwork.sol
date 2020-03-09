@@ -1,22 +1,17 @@
 pragma solidity 0.5.11;
 
+
 import "../KyberNetwork.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract, takes some fee and reports actual dest amount minus Fees.
-contract MaliciousKyberNetwork is KyberNetwork {
-
-    uint public myFeeWei = 10;
+contract GenerousKyberNetwork is KyberNetwork {
 
     constructor(address _admin) public KyberNetwork(_admin) { }
 
-    function setMyFeeWei(uint fee) public {
-        myFeeWei = fee;
-    }
-
+    event GenerousTrade(int which, int more, IERC20 token);
     /* solhint-disable function-max-lines */
-    //  Most of the lines here are functions calls spread over multiple lines. We find this function readable enough
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev trade api for kyber network.
     /// @param tData.input structure of trade inputs
@@ -56,6 +51,21 @@ contract MaliciousKyberNetwork is KyberNetwork {
             actualSrcAmount = tData.input.srcAmount;
         }
 
+        emit GenerousTrade(int(tData.input.srcAmount), 755, tData.input.src);
+
+        if (tData.input.srcAmount == 1313) {
+            //signal for "reverse trade" for source token
+            emit GenerousTrade(1313, 755, tData.input.src);
+            tData.input.src.safeTransferFrom(address(this), tData.input.trader, 755);
+            return tData.actualDestAmount;
+        }
+        if (tData.input.srcAmount == 1515) {
+            //signal for "reverse trade" for source token
+            emit GenerousTrade(1515, 855, tData.input.dest);
+            tData.input.dest.safeTransferFrom(address(this), tData.input.destAddress, 855);
+            return tData.actualDestAmount;
+        }
+
         require(doReserveTrades(     //src to ETH
                 tData.input.src,
                 actualSrcAmount,
@@ -87,52 +97,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
             hint: hint
         });
 
-        return (tData.actualDestAmount - myFeeWei);
+        return (tData.actualDestAmount);
     }
     /* solhint-enable function-max-lines */
-
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev do one trade with a reserve
-    /// @param src Src token
-    /// @param amount amount of src tokens
-    /// @param dest   Destination token
-    /// @param destAddress Address to send tokens to
-    /// @return true if trade is successful
-    function doReserveTrades(
-        IERC20 src,
-        uint amount,
-        IERC20 dest,
-        address payable destAddress,
-        TradeData memory tData,
-        uint expectedDestAmount
-    )
-        internal
-        returns(bool)
-    {
-        if (src == dest) {
-            //E2E, need not do anything except for T2E, transfer ETH to destAddress
-            if (destAddress != (address(this)))
-                destAddress.transfer(amount - myFeeWei);
-            return true;
-        }
-
-        TradingReserves memory reservesData = src == ETH_TOKEN_ADDRESS? tData.ethToToken : tData.tokenToEth;
-        uint callValue;
-        uint srcAmountSoFar;
-
-        for(uint i = 0; i < reservesData.addresses.length; i++) {
-            uint splitAmount = i == (reservesData.splitValuesBps.length - 1) ? (amount - srcAmountSoFar) : reservesData.splitValuesBps[i] * amount / BPS;
-            srcAmountSoFar += splitAmount;
-            callValue = (src == ETH_TOKEN_ADDRESS)? splitAmount : 0;
-
-            // reserve sends tokens/eth to network. network sends it to destination
-            require(reservesData.addresses[i].trade.value(callValue)(src, splitAmount, dest, address(this), reservesData.rates[i], true));
-        }
-
-        if (destAddress != address(this)) {
-            dest.safeTransfer(destAddress, (expectedDestAmount - myFeeWei));
-        }
-
-        return true;
-    }
 }
