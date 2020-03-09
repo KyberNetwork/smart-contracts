@@ -191,7 +191,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         if (tradeHint.hintError) return;
 
         bytes memory opcode = hint.slice(tradeHint.hintIndex, 1);
-        bytes32 opcodeKeccak = keccak256(opcode);        
+        bytes32 opcodeKeccak = keccak256(opcode);
 
         tradeHint.hintIndex += 1;
 
@@ -236,7 +236,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             splitValuesBps[0] = BPS;
         }
 
-        tradeHint.hintIndex++;      
+        tradeHint.hintIndex++;
 
         for (uint i = 0; i < reservesLength; i++) {
             addresses[i] = IKyberReserve(convertReserveIdToAddress(hint.slice(tradeHint.hintIndex, RESERVE_ID_LENGTH).toBytes8(0)));
@@ -299,7 +299,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             }
         }
     }
-        
+
     function parseTokenToEthHint(bytes calldata hint)
         external
         view
