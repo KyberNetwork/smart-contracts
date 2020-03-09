@@ -1,7 +1,7 @@
 pragma solidity 0.5.11;
 
-import "./IGasHelper.sol";
-import "./Withdrawable2.sol";
+import "../IGasHelper.sol";
+import "../Withdrawable2.sol";
 
 
 interface IGST2 {
