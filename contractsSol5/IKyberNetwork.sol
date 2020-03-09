@@ -28,7 +28,7 @@ interface IKyberNetwork {
         returns(uint destAmount);
 
     function getNetworkData() external view returns(
-        uint negligibleDiffBps, 
+        uint negligibleDiffBps,
         uint networkFeeBps,
         uint expiryBlock);
 }

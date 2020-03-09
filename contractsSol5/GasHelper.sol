@@ -12,10 +12,10 @@ interface IGST2 {
 
 
 contract GasHelper is IGasHelper, Withdrawable2 {
-    
+
     IGST2 constant GST2 = IGST2(0x0000000000b3F879cb30FE243b4Dfee438691c04);
     uint constant MIN_ACTIVATE_PRICE = 8 * 1000 * 1000 * 1000; // 8 gwei
-    
+
     // todo: consider constant network address
     address kyberNetwork;
 
@@ -25,8 +25,8 @@ contract GasHelper is IGasHelper, Withdrawable2 {
     }
 
     function freeGas(address platformWallet, IERC20 src, IERC20 dest, uint tradeWei,
-        bytes8[] calldata t2eReserveIds, bytes8[] calldata e2tReserveIds) 
-        external 
+        bytes8[] calldata t2eReserveIds, bytes8[] calldata e2tReserveIds)
+        external
     {
         require(msg.sender == kyberNetwork);
         if (tx.gasprice <= MIN_ACTIVATE_PRICE) return;
@@ -37,12 +37,12 @@ contract GasHelper is IGasHelper, Withdrawable2 {
         tradeWei;
         t2eReserveIds;
         e2tReserveIds;
-        
+
         freeGas(gasleft() / 2);
     }
 
     function freeGas(uint num_tokens) internal returns (uint freed) {
-		
+
         uint safe_num_tokens = 0;
 		uint gas = gasleft();
 

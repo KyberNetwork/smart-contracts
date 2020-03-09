@@ -43,7 +43,7 @@ contract Utils4 {
 
         return tokenDecimals;
     }
-    
+
     function getUpdateDecimals(IERC20 token) internal returns(uint) {
         if (token == ETH_TOKEN_ADDRESS) return ETH_DECIMALS; // save storage access
         uint tokenDecimals = decimals[address(token)];
