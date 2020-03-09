@@ -121,13 +121,4 @@ contract Utils4 {
         PROXY,
         NETWORK // internal network
     }
-
-    // function printGas(string memory str, uint refGas, Module module) internal view returns(uint currGas) {
-    //     currGas = gasleft();
-
-    //     // update to your required module
-    //     if (module != Module.NETWORK || refGas == 0) return currGas;
-
-    //     console.log("gas '%d' in '%s' diff: %d", currGas, str, refGas - currGas);
-    // }
 }
