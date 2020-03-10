@@ -1660,72 +1660,81 @@ contract('KyberProxyV1', function(accounts) {
                     {from: taker, value: amountWei}
                 )
             )
-
         });
     });
 
-//     it("init network with no max dest check. set all contracts and params", async function () {
-//         networkNoMaxDest = await NetworkNoMaxDest.new(admin);
-//         await networkNoMaxDest.addOperator(operator);
+    describe("NetworkNoMaxDest + Proxy1", async() => {
+        before("init network with no max dest check. set all contracts and params", async function () {
+            networkNoMaxDest = await NetworkNoMaxDest.new(admin);
 
-//         await reserve1.setContracts(networkNoMaxDest.address, pricing1.address, zeroAddress);
-//         await reserve2.setContracts(networkNoMaxDest.address, pricing2.address, zeroAddress);
+            await transferTokensToNetwork(networkNoMaxDest);
 
-//         // add reserves
-//         await networkNoMaxDest.addReserve(reserve1.address, false, {from: operator});
-//         await networkNoMaxDest.addReserve(reserve2.address, false, {from: operator});
+            //init feeHandler
+            feeHandler = await FeeHandler.new(DAO.address, networkNoMaxDest.address, networkNoMaxDest.address, KNC.address, burnBlockInterval);
 
-//         await networkNoMaxDest.setKyberProxy(networkProxyV1.address);
+            //init matchingEngine
+            matchingEngine = await MatchingEngine.new(admin);
+            await matchingEngine.setNetworkContract(networkNoMaxDest.address, {from: admin});
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
 
-//         await networkProxyV1.setKyberNetworkContract(networkNoMaxDest.address);
+            //setup network
+            await networkNoMaxDest.addOperator(operator, {from: admin});
+            await networkNoMaxDest.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
+            await networkNoMaxDest.setDAOContract(DAO.address, {from: admin});
+            //set params, enable network
+            await networkNoMaxDest.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
 
-//         //set contracts
-//         feeBurner = await FeeBurner.new(admin, tokenAdd[0], networkNoMaxDest.address, ethToKncRatePrecision);
-//         await networkNoMaxDest.setFeeBurner(feeBurner.address);
-//         await networkNoMaxDest.setParams(gasPrice, negligibleRateDiff);
-//         await networkNoMaxDest.setEnable(true);
+            await networkNoMaxDest.addKyberProxy(networkProxyV1.address, {from: admin});
 
-//         let price = await networkNoMaxDest.maxGasPrice();
-//         Helper.assertEqual(price, gasPrice);
+            await networkProxyV1.setKyberNetworkContract(networkNoMaxDest.address, {from: admin});
 
-//         //list tokens per reserve
-//         for (let i = 0; i < numTokens; i++) {
-//             await networkNoMaxDest.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true, {from: operator});
-//             await networkNoMaxDest.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true, {from: operator});
-//         }
-//     });
+            await networkNoMaxDest.setEnable(true, {from: admin});
 
-//     it("verify buy with network without max dest reverts if dest amount is below actual dest amount", async function () {
-//         //trade data
-//         let tokenInd = 2;
-//         let token = tokens[tokenInd]; //choose some token
-//         let amountWei = 960;
+            // add reserves and list tokens
+            let result = await nwHelper.setupReserves(networkNoMaxDest, tokens, 2, 1, 0, 0, accounts, admin, operator);
 
-//         //disable reserve 1
-//         await reserve1.disableTrade({from:alerter});
+            reserveInstances = result.reserveInstances;
 
-//         //get rate
-//         let rate = await networkProxyV1.getExpectedRate(ethAddress, tokenAdd[tokenInd], amountWei);
+            //add and list pair for reserve
+            await nwHelper.addReservesToNetwork(networkNoMaxDest, reserveInstances, tokens, operator);
+        });
 
-//         //eth to token
-//         expected = calculateRateAmount(true, tokenInd, amountWei, 2);
-//         let expectedDestTokensTwei = expected[1];
-//         let lowMaxDest = expectedDestTokensTwei - 13;
+        it("verify buy with network without max dest reverts if dest amount is below actual dest amount", async function () {
+            let amountWei = 960;
 
-//         //see trade reverts
-//         try {
-//             await networkProxyV1.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, lowMaxDest,
-//                  rate[1], walletId, {from:user1, value: amountWei});
-//             assert(false, "throw was expected in line above.")
-//         } catch(e){
-//             assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
-//         }
+            //get rate
+            let rate = await networkProxyV1.getExpectedRate(ethAddress, destToken.address, amountWei);
+            //eth to token
+            let expectedDestTokensTwei = await Helper.calcDstQty(amountWei, ethDecimals, destDecimals, rate[0]);
+            let lowMaxDest = expectedDestTokensTwei.sub(new BN(16));
 
-//         //high max dest shouldn't revert here
-//         await networkProxyV1.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, (expectedDestTokensTwei + 15),
-//                 rate[0], walletId, {from:user1, value: amountWei});
-//         await reserve1.enableTrade({from:admin});
-//     });
+            //see trade reverts
+            await expectRevert.unspecified(
+                networkProxyV1.trade(
+                    ethAddress,
+                    amountWei,
+                    destToken.address,
+                    user1,
+                    lowMaxDest,
+                    rate[1],
+                    walletId,
+                    {from: taker, value: amountWei}
+                )
+            )
+
+            // high max dest shouldn't revert here
+            await networkProxyV1.trade(
+                ethAddress,
+                amountWei,
+                destToken.address,
+                user1,
+                expectedDestTokensTwei.add(new BN(16)),
+                rate[1],
+                walletId,
+                {from: taker, value: amountWei}
+            )
+        });
+    });
 });
 
 async function transferTokensToNetwork(networkInstance) {
