@@ -56,13 +56,13 @@ contract GenerousKyberNetwork is KyberNetwork {
         if (tData.input.srcAmount == 1313) {
             //signal for "reverse trade" for source token
             emit GenerousTrade(1313, 755, tData.input.src);
-            tData.input.src.safeTransferFrom(address(this), tData.input.trader, 755);
+            tData.input.src.safeTransfer(tData.input.trader, 755);
             return tData.actualDestAmount;
         }
         if (tData.input.srcAmount == 1515) {
             //signal for "reverse trade" for source token
             emit GenerousTrade(1515, 855, tData.input.dest);
-            tData.input.dest.safeTransferFrom(address(this), tData.input.destAddress, 855);
+            tData.input.dest.safeTransfer(tData.input.destAddress, 855);
             return tData.actualDestAmount;
         }
 

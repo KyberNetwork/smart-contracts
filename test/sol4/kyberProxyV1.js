@@ -1575,92 +1575,94 @@ contract('KyberProxyV1', function(accounts) {
     });
 
     // ======================== TO BE ADDED LATER ========================
-    // describe("GenerousNetwork + Proxy1", async() => {
-    //     before("init 'generous' network with trade reverse direction, could result in overflow.", async function () {
-    //         // in next tests - testing strange situasions that could cause overflow.
-    //         // 1. if src token amount after trade is higher then src amount before trade.
-    //         // 2. if dest amount for dest toekn after trade is lower then before trade
-    //         generousNetwork = await GenerousNetwork.new(admin);
-    //         await generousNetwork.addOperator(operator);
+    describe("GenerousNetwork + Proxy1", async() => {
+        before("init 'generous' network with trade reverse direction, could result in overflow.", async function () {
+            // in next tests - testing strange situasions that could cause overflow.
+            // 1. if src token amount after trade is higher then src amount before trade.
+            // 2. if dest amount for dest toekn after trade is lower then before trade
+            generousNetwork = await GenerousNetwork.new(admin);
 
-    //         await reserve1.setContracts(generousNetwork.address, pricing1.address, zeroAddress);
-    //         await reserve2.setContracts(generousNetwork.address, pricing2.address, zeroAddress);
+            await transferTokensToNetwork(generousNetwork);
 
-    //         // add reserves
-    //         await generousNetwork.addReserve(reserve1.address, false, {from: operator});
-    //         await generousNetwork.addReserve(reserve2.address, false, {from: operator});
+            //init feeHandler
+            feeHandler = await FeeHandler.new(DAO.address, generousNetwork.address, generousNetwork.address, KNC.address, burnBlockInterval);
 
-    //         await generousNetwork.setKyberProxy(networkProxyV1.address);
+            //init matchingEngine
+            matchingEngine = await MatchingEngine.new(admin);
+            await matchingEngine.setNetworkContract(generousNetwork.address, {from: admin});
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
 
-    //         await networkProxyV1.setKyberNetworkContract(generousNetwork.address);
+            //setup network
+            await generousNetwork.addOperator(operator, {from: admin});
+            await generousNetwork.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
+            await generousNetwork.setDAOContract(DAO.address, {from: admin});
+            //set params, enable network
+            await generousNetwork.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
 
-    //         //set contracts
-    //         feeBurner = await FeeBurner.new(admin, tokenAdd[0], generousNetwork.address, ethToKncRatePrecision);
-    //         await generousNetwork.setFeeBurner(feeBurner.address);
-    //         await generousNetwork.setParams(gasPrice, negligibleRateDiff);
-    //         await generousNetwork.setEnable(true);
+            await generousNetwork.addKyberProxy(networkProxyV1.address, {from: admin});
 
-    //         let price = await generousNetwork.maxGasPrice();
-    //         Helper.assertEqual(price, gasPrice);
+            await networkProxyV1.setKyberNetworkContract(generousNetwork.address, {from: admin});
 
-    //         //list tokens per reserve
-    //         for (let i = 0; i < numTokens; i++) {
-    //             await generousNetwork.listPairForReserve(reserve1.address, tokenAdd[i], true, true, true, {from: operator});
-    //             await generousNetwork.listPairForReserve(reserve2.address, tokenAdd[i], true, true, true, {from: operator});
-    //         }
-    //     });
+            await generousNetwork.setEnable(true, {from: admin});
 
-    //     it("verify trade with reverses trade = (src address before is lower then source address after), reverts.", async function () {
-    //         //trade data
-    //         let tokenInd = numTokens - 1;
-    //         let token = tokens[tokenInd]; //choose some token
-    //         let amountTwei = 1313;
+            // add reserves and list tokens
+            let result = await nwHelper.setupReserves(generousNetwork, tokens, 2, 1, 0, 0, accounts, admin, operator);
 
-    //         //get rate
-    //         let rate = await networkProxyV1.getExpectedRate(tokenAdd[tokenInd], ethAddress, amountTwei);
+            reserveInstances = result.reserveInstances;
 
-    //         let balanceBefore = await token.balanceOf(operator);
-    //         await token.transferFrom(operator, operator, 755)
-    //         balanceBefore = await token.balanceOf(operator);
-    //         await token.transferFrom(operator, operator, 855)
-    //         balanceBefore = await token.balanceOf(operator);
+            //add and list pair for reserve
+            await nwHelper.addReservesToNetwork(generousNetwork, reserveInstances, tokens, operator);
+        });
 
-    //         await token.transfer(user1, amountTwei);
-    //         await token.approve(networkProxyV1.address, amountTwei, {from:user1})
+        it("verify trade with reverses trade = (src address before is lower then source address after), reverts.", async function () {
+            let amountTwei = 1313;
 
-    //         //see trade reverts
-    //         try {
-    //             await networkProxyV1.trade(tokenAdd[tokenInd], amountTwei, ethAddress, user2, 9000000,
-    //                  rate[1], walletId, {from:user1});
-    //             assert(false, "throw was expected in line above.")
-    //         } catch(e){
-    //             assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
-    //         }
-    //     });
+            //get rate
+            let rate = await networkProxyV1.getExpectedRate(srcToken.address, ethAddress, amountTwei);
 
-    //     it("verify trade with reversed trade (malicious token or network) ->dest address after is lower then dest address before, reverts.", async function () {
-    //         //trade data
-    //         let tokenInd = numTokens - 1;
-    //         let token = tokens[tokenInd]; //choose some token
-    //         let amountWei = 1515;
+            await srcToken.transfer(taker, amountTwei);
+            await srcToken.approve(networkProxyV1.address, amountTwei, {from: taker})
 
-    //         //get rate
-    //         let rate = await networkProxyV1.getExpectedRate(ethAddress, tokenAdd[tokenInd], amountWei);
+            //see trade reverts
+            await expectRevert.unspecified(
+                networkProxyV1.trade(
+                    srcToken.address,
+                    amountTwei,
+                    ethAddress,
+                    user1,
+                    maxDestAmt,
+                    rate[1],
+                    zeroAddress,
+                    {from: taker}
+                )
+            )
+        });
 
-    //         //want user 2 to have some initial balance
-    //         await token.transfer(user2, 2000);
+        it("verify trade with reversed trade (malicious token or network) ->dest address after is lower then dest address before, reverts.", async function () {
+            let amountWei = 1515;
 
-    //         //see trade reverts
-    //         try {
-    //             await networkProxyV1.trade(ethAddress, amountWei, tokenAdd[tokenInd], user2, 9000000,
-    //                  rate[1], walletId, {from:user1, value: amountWei});
-    //             assert(false, "throw was expected in line above.")
-    //         } catch(e){
-    //             assert(Helper.isRevertErrorMessage(e), "expected revert but got: " + e);
-    //         }
+            // get rate
+            let rate = await networkProxyV1.getExpectedRate(ethAddress, destToken.address, amountWei);
 
-    //     });
-    // });
+            // want user 1 to have some initial balance
+            await token.transfer(user1, 2000);
+
+            // see trade reverts
+            await expectRevert.unspecified(
+                networkProxyV1.trade(
+                    ethAddress,
+                    amountWei,
+                    destToken.address,
+                    user1,
+                    maxDestAmt,
+                    rate[1],
+                    zeroAddress,
+                    {from: taker, value: amountWei}
+                )
+            )
+
+        });
+    });
 
 //     it("init network with no max dest check. set all contracts and params", async function () {
 //         networkNoMaxDest = await NetworkNoMaxDest.new(admin);
