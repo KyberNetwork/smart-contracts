@@ -61,11 +61,11 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
             uint _burnBlockInterval
         ) public
     {
-        require(address(_daoSetter) != address(0), "FeeHandler: daoSetter 0");
-        require(address(_networkProxy) != address(0), "FeeHandler: KyberNetworkProxy 0");
-        require(address(_kyberNetwork) != address(0), "FeeHandler: KyberNetwork 0");
-        require(address(_knc) != address(0), "FeeHandler: KNC 0");
-        require(_burnBlockInterval != 0, "FeeHandler: _burnBlockInterval 0");
+        require(address(_daoSetter) != address(0), "daoSetter 0");
+        require(address(_networkProxy) != address(0), "KyberNetworkProxy 0");
+        require(address(_kyberNetwork) != address(0), "KyberNetwork 0");
+        require(address(_knc) != address(0), "KNC 0");
+        require(_burnBlockInterval != 0, "burnBlockInterval 0");
 
         daoSetter = _daoSetter;
         networkProxy = _networkProxy;
@@ -77,10 +77,10 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         brrAndEpochData = encodeBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, 0, block.number);
     }
 
-    event EthRecieved(uint amount);
+    event EthReceived(uint amount);
 
     function() external payable {
-        emit EthRecieved(msg.value);
+        emit EthReceived(msg.value);
     }
 
     modifier onlyDAO {
@@ -142,7 +142,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
         rewardsPerEpoch[epoch] += rewardWei;
 
-        // update balacne for rewards, rebates, fee
+        // update balance for rewards, rebates, fee
         totalPayoutBalance += (platformFeeWei + rewardWei + rebateWei);
 
         emit FeeDistributed(platformWallet, platformFeeWei, rewardWei, rebateWei, rebateWallets, rebateBpsPerWallet,
@@ -162,17 +162,17 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         external onlyDAO returns(bool)
     {
         // Amount of reward to be sent to staker
-        require(percentageInPrecision <= PRECISION, "percentage high");
+        require(percentageInPrecision <= PRECISION, "% > PRECISION");
         uint amount = rewardsPerEpoch[epoch] * percentageInPrecision / PRECISION;
 
-        require(totalPayoutBalance >= amount, "Amount underflow");
+        require(totalPayoutBalance >= amount, "Amt underflow");
         require(rewardsPaidPerEpoch[epoch] + amount <= rewardsPerEpoch[epoch], "paid per epoch high");
         rewardsPaidPerEpoch[epoch] += amount;
         totalPayoutBalance -= amount;
 
         // send reward to staker
         (bool success, ) = staker.call.value(amount)("");
-        require(success, "Transfer staker rewards failed.");
+        require(success, "trf staker fail");
 
         emit RewardPaid(staker, amount);
 
@@ -189,14 +189,14 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         // Get total amount of rebate accumulated
         uint amount = rebatePerWallet[rebateWallet] - 1;
 
-        require(totalPayoutBalance >= amount, "amount too high");
+        require(totalPayoutBalance >= amount, "amt too high");
         totalPayoutBalance -= amount;
 
         rebatePerWallet[rebateWallet] = 1; // avoid zero to non zero storage cost
 
         // send rebate to rebate wallet
         (bool success, ) = rebateWallet.call.value(amount)("");
-        require(success, "Transfer rebates failed.");
+        require(success, "trf rebate fail");
 
         emit RebatePaid(rebateWallet, amount);
 
@@ -213,13 +213,13 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         // Get total amount of rebate accumulated
         uint amount = feePerPlatformWallet[platformWallet] - 1;
 
-        require(totalPayoutBalance >= amount, "amount too high");
+        require(totalPayoutBalance >= amount, "amt too high");
         totalPayoutBalance -= amount;
 
         feePerPlatformWallet[platformWallet] = 1; // avoid zero to non zero storage cost
 
         (bool success, ) = platformWallet.call.value(amount)("");
-        require(success, "Transfer fee failed.");
+        require(success, "trf fee fail");
 
         emit PlatformFeePaid(platformWallet, amount);
         return amount;
@@ -230,7 +230,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     /// @dev set dao contract address once and set setter address to zero.
     /// @param _kyberDAO Dao address.
     function setDaoContract(IKyberDAO _kyberDAO) public {
-        require(msg.sender == daoSetter);
+        require(msg.sender == daoSetter, "only DAO setter");
 
         kyberDAO = _kyberDAO;
         emit KyberDaoAddressSet(kyberDAO);
@@ -244,7 +244,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     /// @return amount of KNC burned
     function burnKNC() public returns(uint) {
         // check if current block > last burn block number + num block interval
-        require(block.number > lastBurnBlock + burnBlockInterval, "Wait more block to burn");
+        require(block.number > lastBurnBlock + burnBlockInterval, "wait more blocks");
 
         // update last burn block number
         lastBurnBlock = block.number;
@@ -289,14 +289,14 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     ///         call DAO contract to check if for this epoch any votes occured.
     /// @param epoch epoch number to check if should burn accumulated rewards.
     function shouldBurnEpochReward(uint epoch) public {
-        require(address(kyberDAO) != address(0), "kyberDAO addr missing");
+        require(address(kyberDAO) != address(0), "kyberDAO 0");
 
         require(kyberDAO.shouldBurnRewardForEpoch(epoch), "should not burn reward");
 
         uint rewardAmount = rewardsPerEpoch[epoch];
-        require(rewardAmount > 0, "reward is 0");
+        require(rewardAmount > 0, "0 reward");
 
-        require(totalPayoutBalance >= rewardAmount, "total reward less than epoch reward");
+        require(totalPayoutBalance >= rewardAmount, "total reward < epoch reward");
         totalPayoutBalance -= rewardAmount;
 
         rewardsPerEpoch[epoch] = 0;
