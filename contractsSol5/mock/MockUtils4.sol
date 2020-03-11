@@ -1,0 +1,112 @@
+pragma solidity 0.5.11;
+
+import "../Utils4.sol";
+
+/// @title Kyber utils contract
+contract MockUtils4 is Utils4 {
+    IERC20 internal constant ETH_TOKEN_ADDRESS = IERC20(
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+    );
+    uint256 internal constant MAX_QTY = (10**28); // 10B tokens
+    uint256 internal constant MAX_RATE = (PRECISION * 10**7); // up to 10M tokens per ETH
+    uint256 internal constant MAX_DECIMALS = 18;
+    uint256 internal constant ETH_DECIMALS = 18;
+    uint256 constant BPS = 10000; // Basic Price Steps. 1 step = 0.01%\\
+
+    function mockGetEthTokenAddress() public pure returns (IERC20) {
+        return ETH_TOKEN_ADDRESS;
+    }
+
+    function mockGetPrecision() public pure returns (uint256) {
+        return PRECISION;
+    }
+
+    function mockGetMaxRate() public pure returns (uint256) {
+        return MAX_RATE;
+    }
+
+    function mockGetMaxQty() public pure returns (uint256) {
+        return MAX_QTY;
+    }
+
+    function mockGetMaxDecimals() public pure returns (uint256) {
+        return MAX_DECIMALS;
+    }
+
+    function mockGetEthDecimals() public pure returns (uint256) {
+        return ETH_DECIMALS;
+    }
+
+    function mockGetBPS() public pure returns (uint256) {
+        return BPS;
+    }
+
+    function mockGetBalance(IERC20 token, address user)
+        public
+        view
+        returns (uint256)
+    {
+        return getBalance(token, user);
+    }
+
+    function mockSetDecimals(IERC20 token) public {
+        return setDecimals(token);
+    }
+
+    function mockGetDecimals(IERC20 token) public view returns (uint256) {
+        return getDecimals(token);
+    }
+
+    function mockGetUpdateDecimals(IERC20 token) public returns (uint256) {
+        return getUpdateDecimals(token);
+    }
+
+    function mockCalcDstQty(
+        uint256 srcQty,
+        uint256 srcDecimals,
+        uint256 dstDecimals,
+        uint256 rate
+    ) public pure returns (uint256) {
+        return calcDstQty(srcQty, srcDecimals, dstDecimals, rate);
+    }
+
+    function mockCalcSrcQty(
+        uint256 dstQty,
+        uint256 srcDecimals,
+        uint256 dstDecimals,
+        uint256 rate
+    ) public pure returns (uint256) {
+        return calcSrcQty(dstQty, srcDecimals, dstDecimals, rate);
+    }
+
+    function mockCalcDestAmount(
+        IERC20 src,
+        IERC20 dest,
+        uint256 srcAmount,
+        uint256 rate
+    ) public view returns (uint256) {
+        return calcDestAmount(src, dest, srcAmount, rate);
+    }
+
+    function mockCalcSrcAmount(
+        IERC20 src,
+        IERC20 dest,
+        uint256 destAmount,
+        uint256 rate
+    ) public view returns (uint256) {
+        return calcSrcAmount(src, dest, destAmount, rate);
+    }
+
+    function mockCalcRateFromQty(
+        uint256 srcAmount,
+        uint256 destAmount,
+        uint256 srcDecimals,
+        uint256 dstDecimals
+    ) public pure returns (uint256) {
+        return calcRateFromQty(srcAmount, destAmount, srcDecimals, dstDecimals);
+    }
+
+    function mockMinOf(uint256 x, uint256 y) public pure returns (uint256) {
+        return minOf(x, y);
+    }
+}
