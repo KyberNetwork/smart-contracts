@@ -78,7 +78,7 @@ contract MockDAO is IKyberDAO, Utils4 {
     }
 
     function shouldBurnRewardForEpoch(uint epochNum) external view returns(bool) {
-        if (shouldBurnRewardEpoch[epochNum]) return true; 
+        if (shouldBurnRewardEpoch[epochNum]) return true;
         return false;
     }
 

@@ -6,7 +6,7 @@ import "../KyberFeeHandler.sol";
 contract MockFeeHandler is KyberFeeHandler {
 
     constructor(address daoSetter, IKyberNetworkProxy _kyberNetworkProxy, address _kyberNetwork,
-        IERC20 _knc, uint _burnBlockInterval) 
+        IERC20 _knc, uint _burnBlockInterval)
         public KyberFeeHandler(daoSetter, _kyberNetworkProxy, _kyberNetwork, _knc, _burnBlockInterval)
         {}
     
