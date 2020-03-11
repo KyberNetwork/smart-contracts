@@ -74,7 +74,7 @@ contract('KyberFeeHandler', function(accounts) {
     describe("should test events declared in feeHandler", async() => {
         it("EthRecieved", async() =>{
             let txResult = await feeHandler.send(oneEth, {from: accounts[9]});
-            expectEvent(txResult, 'EthRecieved', {
+            expectEvent(txResult, 'EthReceived', {
                 amount: oneEth
             });
         });
