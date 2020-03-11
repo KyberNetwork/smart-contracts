@@ -1,10 +1,10 @@
 pragma  solidity 0.5.11;
 
-import "./IKyberMatchingEngine.sol";
-import "./IKyberRateHelper.sol";
-import "./IKyberDAO.sol";
-import "./Utils4.sol";
-import "./Withdrawable2.sol";
+import "../IKyberMatchingEngine.sol";
+import "../IKyberRateHelper.sol";
+import "../IKyberDAO.sol";
+import "../utils/Utils4.sol";
+import "../utils/Withdrawable2.sol";
 
 
 contract KyberRateHelper is IKyberRateHelper, Withdrawable2, Utils4 {

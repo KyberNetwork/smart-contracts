@@ -1,6 +1,6 @@
 pragma solidity 0.5.11;
 
-import "../../Utils4.sol";
+import "../../utils/Utils4.sol";
 
 contract MockFeeHandlerNoContructor is Utils4 {
 

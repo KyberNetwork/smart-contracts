@@ -1,8 +1,8 @@
 pragma solidity 0.5.11;
 
-import "../Utils4.sol";
+import "../utils/Utils4.sol";
+import "../utils/zeppelin/SafeERC20.sol";
 import "../IKyberNetworkProxy.sol";
-import "../zeppelin/SafeERC20.sol";
 
 contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
     

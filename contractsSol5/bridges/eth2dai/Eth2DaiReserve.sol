@@ -2,8 +2,8 @@ pragma solidity 0.5.11;
 
 import "../../IERC20.sol";
 import "../../IKyberReserve.sol";
-import "../../Withdrawable2.sol";
-import "../../Utils4.sol";
+import "../../utils/Withdrawable2.sol";
+import "../../utils/Utils4.sol";
 import "./mock/IOtc.sol";
 
 contract IWeth is IERC20 {

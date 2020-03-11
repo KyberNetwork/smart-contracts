@@ -1,15 +1,15 @@
 pragma  solidity 0.5.11;
 
-import "./Withdrawable2.sol";
-import "./Utils4.sol";
-import "./ReentrancyGuard.sol";
+import "./utils/Withdrawable2.sol";
+import "./utils/Utils4.sol";
+import "./utils/zeppelin/ReentrancyGuard.sol";
+import "./utils/zeppelin/SafeERC20.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberReserve.sol";
 import "./IKyberFeeHandler.sol";
 import "./IKyberDAO.sol";
 import "./IKyberMatchingEngine.sol";
 import "./IGasHelper.sol";
-import "./zeppelin/SafeERC20.sol";
 
 /*
 *   @title Kyber Network main contract
