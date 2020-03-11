@@ -578,6 +578,36 @@ contract('KyberNetworkProxy', function(accounts) {
             });
         }
     });
+
+    describe("test swap function (backward compatible)", async () => {
+        it("swapEtherToToken", async () => {
+            let initialTakerBalance = await tokens[1].balanceOf(taker);
+            let tokenAdd = tokens[1].address;
+            let srcQty = (new BN(2)).mul((new BN(10)).pow(ethDecimals));
+            let proxyRate = await networkProxy.getExpectedRate(ethAddress, tokenAdd, srcQty);
+            await networkProxy.swapEtherToToken(tokenAdd, proxyRate.worstRate, { from: taker, value: srcQty });
+            let dstQty = Helper.calcDstQty(srcQty, ethDecimals, tokenDecimals[1], proxyRate.expectedRate);
+            let expectedBalance = new BN(initialTakerBalance).add(dstQty);
+            await Helper.assertSameTokenBalance(taker, tokens[1], expectedBalance);
+        });
+        it("swapTokenToEther", async () => {
+            let initialTakerBalance = await Helper.getBalancePromise(taker);
+            let srcToken = tokens[2]
+            let tokenAdd = tokens[2].address;
+            let srcQty = (new BN(5)).mul((new BN(10)).pow(tokenDecimals[2]));
+            await srcToken.approve(networkProxy.address, srcQty, { from: taker })
+            let proxyRate = await networkProxy.getExpectedRate(tokenAdd, ethAddress, srcQty);
+            let txGasPrice = new BN(2).mul(new BN(10).pow(new BN(10)));
+            let txResult = await networkProxy.swapTokenToEther(tokenAdd, srcQty, proxyRate.worstRate, { from: taker , gasPrice: txGasPrice});
+            
+            let dstQty = Helper.calcDstQty(srcQty, tokenDecimals[2], ethDecimals, proxyRate.expectedRate);
+            let expectedBalance = new BN(initialTakerBalance).add(dstQty);
+            expectedBalance = expectedBalance.sub(txGasPrice.mul(new BN(txResult.receipt.gasUsed)));
+            let currentBalance = await Helper.getBalancePromise(taker);
+            console.log(txResult, initialTakerBalance, currentBalance, expectedBalance);
+            await Helper.assertSameEtherBalance(taker, expectedBalance);
+        });
+    });
 })
 
 function getQtyTokensDecimals(srcTokId, destTokId, qtyDecimals, qtyToken) {
