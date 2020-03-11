@@ -1,7 +1,7 @@
 pragma solidity 0.5.11;
 
 import "../IKyberDAO.sol";
-import "../Utils4.sol";
+import "../utils/Utils4.sol";
 import "../IKyberFeeHandler.sol";
 
 contract MockDAO is IKyberDAO, Utils4 {

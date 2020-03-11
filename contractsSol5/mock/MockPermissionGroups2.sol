@@ -1,6 +1,6 @@
 pragma solidity 0.5.11;
 
-import "../PermissionGroups2.sol";
+import "../utils/PermissionGroups2.sol";
 
 
 contract MockPermission2 is PermissionGroups2 {

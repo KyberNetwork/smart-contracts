@@ -1,6 +1,6 @@
 pragma solidity 0.5.11;
 
-import "../Withdrawable2.sol";
+import "../utils/Withdrawable2.sol";
 
 
 contract MockWithdrawable2 is Withdrawable2 {
