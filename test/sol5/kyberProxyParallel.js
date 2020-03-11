@@ -49,6 +49,7 @@ let burnBlockInterval = new BN(30);
 //reserve data
 //////////////
 let reserveInstances = [];
+let numReserves;
 
 //tokens data
 ////////////
@@ -147,9 +148,11 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         networkFeeBps = new BN(20);
     });
 
-    describe("test get rates - compare proxy v1 rate to new proxy", async() => {
-        describe("getExpectedRate (backward compatible)", async() => {
-            it("verify getExpectedRate (backward compatible) for t2e.", async() => {
+    describe("test get rates - proxy 1 and new proxy", async() => {
+        // check getExpectedRate backward compatible
+        // rates from proxy1 and new proxy should be the same
+        describe("getExpectedRate (backward compatible) - proxy 1 rates and new proxy rates should be the same", async() => {
+            it("verify getExpectedRate (backward compatible) for t2e. same rates from both proxy without fee & hint", async() => {
                 let proxyRate = await networkProxy.getExpectedRate(srcToken.address, ethAddress, srcQty);
                 let proxyRate1 = await networkProxyV1.getExpectedRate(srcToken.address, ethAddress, srcQty);
                 Helper.assertEqual(proxyRate1.expectedRate, proxyRate.expectedRate,
@@ -158,7 +161,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
                     "slippage rate proxy v1 not equal rate proxy");
             });
 
-            it("verify getExpectedRate (backward compatible) for e2t.", async() => {
+            it("verify getExpectedRate (backward compatible) for e2t. same rates from both proxy without fee & hint", async() => {
                 let proxyRate = await networkProxy.getExpectedRate(ethAddress, destToken.address, ethSrcQty);
                 let proxyRate1 = await networkProxyV1.getExpectedRate(ethAddress, destToken.address, ethSrcQty);
                 Helper.assertEqual(proxyRate1.expectedRate, proxyRate.expectedRate,
@@ -167,7 +170,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
                     "slippage rate proxy v1 not equal rate proxy");
             });
 
-            it("verify getExpectedRate (backward compatible) for t2t.", async() => {
+            it("verify getExpectedRate (backward compatible) for t2t. same rates from both proxy without fee & hint", async() => {
                 let proxyRate = await networkProxy.getExpectedRate(srcToken.address, destToken.address, srcQty);
                 let proxyRate1 = await networkProxyV1.getExpectedRate(srcToken.address, destToken.address, srcQty);
                 Helper.assertEqual(proxyRate1.expectedRate, proxyRate.expectedRate,
@@ -177,15 +180,19 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
             });
         });
 
-        describe("test getExpectedRateAfterFee", async() => {
+        // without fee, rate should be the same from proxy 1 and new proxy
+        // with fee, rate from new proxy should be lower than proxy 1
+        describe("test getExpectedRateAfterFee of new proxy and getExpectedRate from proxy1", async() => {
             it("check for e2t, no hint, different fees.", async() => {
                 for (let fee = 0; fee <= 100; fee += 50) {
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(ethAddress, destToken.address, ethSrcQty, fee, emptyHint);
                     let proxyRate1 = await networkProxyV1.getExpectedRate(ethAddress, destToken.address, ethSrcQty);
                     if (fee == 0) {
+                        // should same rates when fee is 0
                         Helper.assertEqual(proxyRate1.expectedRate, proxyRate,
                             "expected rate proxy v1 not equal rate proxy");
                    } else {
+                        // rate from proxy1 should be greater than rate from new proxy with platformFee
                         Helper.assertGreater(proxyRate1.expectedRate, proxyRate,
                             "expected rate proxy v1 not greater than rate proxy with fee");
                     }
@@ -197,9 +204,11 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(srcToken.address, ethAddress, srcQty, fee, emptyHint);
                     let proxyRate1 = await networkProxyV1.getExpectedRate(srcToken.address, ethAddress, srcQty);
                     if (fee == 0) {
+                        // should same rates when fee is 0
                         Helper.assertEqual(proxyRate1.expectedRate, proxyRate,
                             "expected rate proxy v1 not equal rate proxy");
                     } else {
+                        // rate from proxy1 should be greater than rate from new proxy with platformFee
                         Helper.assertGreater(proxyRate1.expectedRate, proxyRate,
                             "expected rate proxy v1 not greater than rate proxy with fee");
                     }
@@ -211,9 +220,11 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(srcToken.address, destToken.address, srcQty, fee, emptyHint);
                     let proxyRate1 = await networkProxyV1.getExpectedRate(srcToken.address, destToken.address, srcQty);
                     if (fee == 0) {
+                        // should same rates when fee is 0
                         Helper.assertEqual(proxyRate1.expectedRate, proxyRate,
                             "expected rate proxy v1 not equal rate proxy");
                     } else {
+                        // rate from proxy1 should be greater than rate from new proxy with platformFee
                         Helper.assertGreater(proxyRate1.expectedRate, proxyRate,
                             "expected rate proxy v1 not greater than rate proxy with fee");
                     }
@@ -222,12 +233,12 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         });
     });
 
-    describe("test trades from both proxies", async() => {
+    describe("test trades from old and new proxies should be both success", async() => {
         for(let i = 0; i < tradeType.length; i++) {
             let type = tradeType[i];
             let fee = 123;
 
-            it("should perform a t2e trade with hint", async() => {
+            it("should perform a t2e trade, proxy1 with empty, new proxy with different hints", async() => {
                 let hint;
                 if (type == PERM_HINTTYPE) {
                     hint = web3.utils.fromAscii("PERM");
@@ -236,6 +247,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
                     hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, srcToken.address, ethAddress, srcQty);
                 }
 
+                // do trade new proxy with hint and fee
                 await srcToken.transfer(taker, srcQty);
                 await srcToken.approve(networkProxy.address, srcQty, {from: taker});
 
@@ -244,6 +256,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
                 await networkProxy.tradeWithHintAndFee(srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, calcMinRate(rate), platformWallet, fee, hint, {from: taker});
 
+                // do trade old proxy with empty hint
                 await srcToken.transfer(taker, srcQty);
                 await srcToken.approve(networkProxyV1.address, srcQty, {from: taker});
 
@@ -252,7 +265,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
                     maxDestAmt, calcMinRate(rate.expectedRate), platformWallet, emptyHint, {from: taker});
             });
 
-            it("should perform a e2t trade with hint", async() => {
+            it("should perform a e2t trade, proxy1 with empty, new proxy with different hints", async() => {
                 let hint;
                 if (type == PERM_HINTTYPE) {
                     hint = web3.utils.fromAscii("PERM");
@@ -261,16 +274,18 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
                     hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, ethAddress, destToken.address, ethSrcQty);
                 }
 
+                // do trade new proxy with hint and fee
                 let rate = await networkProxy.getExpectedRateAfterFee(ethAddress, destToken.address, ethSrcQty, fee, hint);
                 await networkProxy.tradeWithHintAndFee(ethAddress, ethSrcQty, destToken.address, taker,
                     maxDestAmt, calcMinRate(rate), platformWallet, fee, hint, {from: taker, value: ethSrcQty});
 
+                // do trade old proxy with empty hint
                 rate = await networkProxyV1.getExpectedRate(ethAddress, destToken.address, ethSrcQty);
                 await networkProxyV1.tradeWithHint(ethAddress, ethSrcQty, destToken.address, taker,
                     maxDestAmt, calcMinRate(rate.expectedRate), platformWallet, emptyHint, {from: taker, value: ethSrcQty});
             });
 
-            it("should perform a t2t trade with hint", async() => {
+            it("should perform a t2t trade, proxy1 with empty, new proxy with different hints", async() => {
                 let hint;
                 if (type == PERM_HINTTYPE) {
                     hint = web3.utils.fromAscii("PERM");
@@ -279,6 +294,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
                     hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, srcToken.address, destToken.address, srcQty);
                 }
 
+                // do trade new proxy with hint and fee
                 await srcToken.transfer(taker, srcQty);
                 await srcToken.approve(networkProxy.address, srcQty, {from: taker});
 
@@ -286,6 +302,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
                 await networkProxy.tradeWithHintAndFee(srcToken.address, srcQty, destToken.address, taker,
                     maxDestAmt, calcMinRate(rate), platformWallet, fee, hint, {from: taker});
 
+                // do trade old proxy with empty hint
                 await srcToken.transfer(taker, srcQty);
                 await srcToken.approve(networkProxyV1.address, srcQty, {from: taker});
 
@@ -302,6 +319,7 @@ function calcMinRate(rate) {
     return minRate;
 }
 
+// get number of reserves should be used to build hint for different types of trade
 function getNumReservesForType(type) {
     if (type == MASK_OUT_HINTTYPE) return 2;
     if (type == MASK_IN_HINTTYPE) return 3;
