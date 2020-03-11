@@ -1,7 +1,7 @@
 pragma solidity 0.5.11;
 
-import "./BytesLib.sol";
-import "./Utils4.sol";
+import "./utils/BytesLib.sol";
+import "./utils/Utils4.sol";
 import "./IKyberHint.sol";
 import "./IKyberReserve.sol";
 

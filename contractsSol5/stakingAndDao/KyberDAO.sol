@@ -5,8 +5,8 @@ import "./EpochUtils.sol";
 import "../IERC20.sol";
 import "./IKyberStaking.sol";
 import "../IKyberDAO.sol";
-import "../ReentrancyGuard.sol";
-import "../Utils4.sol";
+import "../utils/zeppelin/ReentrancyGuard.sol";
+import "../utils/Utils4.sol";
 
 
 interface IFeeHandler {

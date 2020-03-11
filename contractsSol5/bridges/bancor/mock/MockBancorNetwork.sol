@@ -2,7 +2,7 @@ pragma solidity 0.5.11;
 
 import "../../../IERC20.sol";
 import "./IBancorNetwork.sol";
-import "../../../Utils4.sol";
+import "../../../utils/Utils4.sol";
 
 contract MockBancorNetwork is IBancorNetwork, Utils4 {
 

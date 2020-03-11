@@ -1,7 +1,7 @@
 pragma solidity 0.5.11;
 
 import "../IERC20.sol";
-import "../Utils4.sol";
+import "../utils/Utils4.sol";
 import "../IKyberNetworkProxy.sol";
 
 

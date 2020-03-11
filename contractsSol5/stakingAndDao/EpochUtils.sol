@@ -1,6 +1,6 @@
 pragma solidity 0.5.11;
 
-import "../zeppelin/SafeMath.sol";
+import "../utils/zeppelin/SafeMath.sol";
 
 
 contract EpochUtils {
