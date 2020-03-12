@@ -2,7 +2,7 @@ pragma solidity 0.5.11;
 
 import "./AssertBytes.sol";
 import "./truffle/Assert.sol";
-import "../../../contractsV5/BytesLib.sol";
+import "../../../contractsSol5/utils/BytesLib.sol";
 
 
 contract TestBytesLib2 {

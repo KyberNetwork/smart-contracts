@@ -43,6 +43,7 @@
     "chai": "4.2.0",
     "chai-bn": "0.2.0",
     "mv": "2.1.1",
-    "solidity-coverage": "0.7.0-beta.3"
+    "solidity-coverage": "0.7.0-beta.3",
+    "web3-eth-abi": "^1.2.6"
   }
 }

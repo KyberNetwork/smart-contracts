@@ -1,8 +1,9 @@
+const abi = require('web3-eth-abi');
 const TestBytesLib1 = artifacts.require('TestBytesLib1.sol');
 const TestBytesLib2 = artifacts.require('TestBytesLib2.sol');
 const AssertBool = artifacts.require('AssertBool.sol');
 const AssertUint = artifacts.require('AssertUint.sol');
-const Helper = require('../v4/helper.js');
+const Helper = require('../helper.js');
 
 let assertBool;
 let assertUint;
@@ -21,44 +22,39 @@ contract('BytesLib', function(accounts) {
         });
 
         it('run solidity test testSanityCheck', async function () {
-            await test.testSanityCheck();
-            // todo: Detect failing events
-            // await Helper.expectEvent(test.testSanityCheck());
-            // console.log(test.decodeLogs);
-            // let logs = test.events.TestEvent.processReceipt(await test.testSanityCheck());
-            // console.log(logs);
+            checkSolidityTest(await test.testSanityCheck());
         });
 
         it('run solidity test testMemoryIntegrityCheck4Bytes', async function () {
-            await test.testMemoryIntegrityCheck4Bytes();
+            checkSolidityTest(await test.testMemoryIntegrityCheck4Bytes());
         });
 
         it('run solidity test testMemoryIntegrityCheck31Bytes', async function () {
-            await test.testMemoryIntegrityCheck31Bytes();
+            checkSolidityTest(await test.testMemoryIntegrityCheck31Bytes());
         });
 
         it('run solidity test testMemoryIntegrityCheck32Bytes', async function () {
-            await test.testMemoryIntegrityCheck32Bytes();
+            checkSolidityTest(await test.testMemoryIntegrityCheck32Bytes());
         });
 
         it('run solidity test testMemoryIntegrityCheck33Bytes', async function () {
-            await test.testMemoryIntegrityCheck33Bytes();
+            checkSolidityTest(await test.testMemoryIntegrityCheck33Bytes());
         });
 
         it('run solidity test testConcatMemory4Bytes', async function () {
-            await test.testConcatMemory4Bytes();
+            checkSolidityTest(await test.testConcatMemory4Bytes());
         });
 
         it('run solidity test testConcatMemory31Bytes', async function () {
-            await test.testConcatMemory31Bytes();
+            checkSolidityTest(await test.testConcatMemory31Bytes());
         });
 
         it('run solidity test testConcatMemory32Bytes', async function () {
-            await test.testConcatMemory32Bytes();
+            checkSolidityTest(await test.testConcatMemory32Bytes());
         });
 
         it('run solidity test testConcatMemory33Bytes', async function () {
-            await test.testConcatMemory33Bytes();
+            checkSolidityTest(await test.testConcatMemory33Bytes());
         });
     });
 
@@ -70,11 +66,11 @@ contract('BytesLib', function(accounts) {
         });
 
         it('run solidity test testSanityCheck', async function () {
-            await test.testSanityCheck();
+            checkSolidityTest(await test.testSanityCheck());
         });
 
         it('run solidity test testSlice', async function () {
-            await test.testSlice();
+            checkSolidityTest(await test.testSlice());
         });
 
         it('run solidity test testToUint8', async function () {
@@ -82,7 +78,31 @@ contract('BytesLib', function(accounts) {
         });
 
         it('run solidity test testToUint16', async function () {
-            await test.testToUint16();
+            checkSolidityTest(await test.testToUint16());
         });
     });
 })
+
+function checkSolidityTest(result) {
+    const logs = [];
+    const signature = web3.utils.sha3("TestEvent(bool,string)");
+
+    for (const log of result.receipt.rawLogs) {
+        if (log.topics.length === 2 && log.topics[0] === signature) {
+            const decoded = {
+                event: "TestEvent",
+                args: {
+                    result: abi.decodeLog(["bool"], log.topics[1], log.topics)[0],
+                    message: abi.decodeLog(["string"], log.data, log.topics)[0]
+                }
+            };
+            logs.push(decoded);
+        }
+    }
+    
+    for (const log of logs) {
+        if (log.event === "TestEvent" && !log.args.result) {
+            throw new Error(log.args.message);
+        }
+    }
+}
