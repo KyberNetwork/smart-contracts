@@ -1,9 +1,11 @@
 #!/bin/sh
 YLWBGBLK='\033[1;43;30m'
 NC='\033[0m'
+ALL=false
 
-while getopts "f:k:" arg; do
+while getopts ":a:f:k" arg; do
   case $arg in
+    a) ALL=true;;
     f) FILE=$OPTARG;;
     k) FORK=$OPTARG;;
   esac
@@ -19,10 +21,12 @@ fi
 
 pid=$!
 sleep 3
-if [ -n "$FILE" ]
-then
+if [ -n "$FILE" ]; then
   npx buidler test --no-compile $FILE
-else
+elif [ "$ALL" ]; then
+  echo "Running all tests..."
   npx buidler test --no-compile
+else
+  npx buidler test --no-compile --config ./buidlerCoverageSol5.js
 fi
 kill -9 $pid

@@ -2199,7 +2199,6 @@ contract('KyberMatchingEngine', function(accounts) {
 
     describe("test edge cases for fee. very big / small network fee and very / big small custom fee", async() => {
         //todo: check what happens if fee combination is above 100% or equal 100% or very near 100%
-
     });
 
 });
