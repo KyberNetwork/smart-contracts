@@ -28,30 +28,6 @@ module.exports.isRevertErrorMessage = function( error ) {
     return false;
 };
 
-// todo: Complete this helper
-module.exports.expectEvent = async function (promise, message) {
-    try {
-        let a = await promise;
-        console.log(a.receipt.rawLogs);
-    } catch (error) {
-        // Message is an optional parameter here
-        if (message) {
-            assert(
-                error.message.search(message) >= 0,
-                'Expected \'' + message + '\', got \'' + error + '\' instead',
-            );
-            return;
-        } else {
-            assert(
-                this.isRevertErrorMessage(error),
-                'Expected throw, got \'' + error + '\' instead'
-            );
-            return;
-        }
-    }
-    assert.fail('Error event emitted');
-}
-
 module.exports.expectThrow = async function (promise, message) {
     try {
         await promise;

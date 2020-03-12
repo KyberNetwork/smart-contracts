@@ -1,10 +1,4 @@
 module.exports = {
-  contracts_directory: './contractsV5',
-  compilers: {
-    solc: {
-      version: '0.5.11',
-    },
-  },
   solc: {
     optimizer: require("./solcOptimiserSettings.js")
   },
