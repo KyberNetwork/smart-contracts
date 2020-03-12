@@ -1336,19 +1336,19 @@ contract('KyberProxyV1', function(accounts) {
                 });
             });
 
-            it("should getUserCapInWei revert as network doesn't implement this func but it didn't revert", async function () {
+            it("should getUserCapInWei revert - obsolete function, should revert but actually return random value", async function () {
                 await expectRevert.unspecified(
                     networkProxyV1.getUserCapInWei(taker)
                 )
             });
 
-            it("should getUserCapInTokenWei revert as network doesn't implement this func but it didn't revert", async function () {
+            it("should getUserCapInTokenWei revert - obsolete function, should revert but actually return random value", async function () {
                 await expectRevert.unspecified(
                     networkProxyV1.getUserCapInTokenWei(taker, srcToken.address)
                 )
             });
 
-            it("should info() revert as network doesn't implement this func but it didn't revert", async function () {
+            it("should info() revert - obsolete function, should revert but actually return random value", async function () {
                 await expectRevert.unspecified(
                     networkProxyV1.info(web3.utils.fromAscii("test"))
                 )
