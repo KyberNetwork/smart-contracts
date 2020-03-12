@@ -1,12 +1,12 @@
 pragma solidity 0.5.11;
 
-import "./Withdrawable2.sol";
-import "./Utils4.sol";
+import "./utils/Withdrawable2.sol";
+import "./utils/Utils4.sol";
+import "./utils/zeppelin/SafeERC20.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberNetworkProxy.sol";
 import "./ISimpleKyberProxy.sol";
 import "./IKyberHint.sol";
-import "./zeppelin/SafeERC20.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////

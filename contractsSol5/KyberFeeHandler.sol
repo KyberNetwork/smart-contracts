@@ -1,12 +1,11 @@
 pragma solidity 0.5.11;
 
+import "./utils/PermissionGroups2.sol";
+import "./utils/Utils4.sol";
 import "./IKyberDAO.sol";
 import "./IKyberFeeHandler.sol";
-import "./PermissionGroups2.sol";
 import "./IKyberNetworkProxy.sol";
-import "./Utils4.sol";
 import "./IBurnableToken.sol";
-import "./IERC20.sol";
 
 /*
  * @title Kyber fee handler
@@ -77,10 +76,10 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         brrAndEpochData = encodeBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, 0, block.number);
     }
 
-    event EthRecieved(uint amount);
+    event EthReceived(uint amount);
 
     function() external payable {
-        emit EthRecieved(msg.value);
+        emit EthReceived(msg.value);
     }
 
     modifier onlyDAO {
@@ -142,7 +141,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
         rewardsPerEpoch[epoch] += rewardWei;
 
-        // update balacne for rewards, rebates, fee
+        // update balance for rewards, rebates, fee
         totalPayoutBalance += (platformFeeWei + rewardWei + rebateWei);
 
         emit FeeDistributed(platformWallet, platformFeeWei, rewardWei, rebateWei, rebateWallets, rebateBpsPerWallet,
@@ -230,7 +229,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     /// @dev set dao contract address once and set setter address to zero.
     /// @param _kyberDAO Dao address.
     function setDaoContract(IKyberDAO _kyberDAO) public {
-        require(msg.sender == daoSetter);
+        require(msg.sender == daoSetter, "Only daoSetter");
 
         kyberDAO = _kyberDAO;
         emit KyberDaoAddressSet(kyberDAO);

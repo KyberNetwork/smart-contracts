@@ -2,7 +2,7 @@ pragma solidity 0.5.11;
 
 
 import "../IERC20.sol";
-import "../ReentrancyGuard.sol";
+import "../utils/zeppelin/ReentrancyGuard.sol";
 import "./IKyberStaking.sol";
 import "../IKyberDAO.sol";
 import "./EpochUtils.sol";
