@@ -173,6 +173,13 @@ function assertEqual (val1, val2, errorStr) {
 
 module.exports.assertEqual = assertEqual;
 
+function assertApproximate (val1, val2, errorStr) {
+    assert(new BN(val2).gte(new BN(val1).mul(new BN(9999)).div(new BN(10000))), errorStr);
+    assert(new BN(val2).lte(new BN(val1).mul(new BN(10001)).div(new BN(10000))), errorStr);
+}
+
+module.exports.assertApproximate = assertApproximate;
+
 module.exports.assertGreater = function(val1, val2, errorStr) {
     assert(new BN(val1).should.be.a.bignumber.that.is.greaterThan(new BN(val2)), errorStr);
 }
