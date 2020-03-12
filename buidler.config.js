@@ -14,14 +14,11 @@ module.exports = {
 
   solc: {
     version: "0.5.11",
-    optimizer: {
-      enabled: true,
-      runs: 200
-    }
+    optimizer: require("./solcOptimiserSettings.js")
   },
 
   paths: {
-    sources: "./contractsV5",
+    sources: "./contractsSol5",
     tests: "./test",
   },
 

@@ -1,55 +1,179 @@
-const fs = require("fs");
+const fs = require('fs-extra');
 const path = require('path');
 const solc = require('solc');
-const contractPath = path.join(__dirname, "../contracts/");
-const input = {
-    "ConversionRates.sol" : fs.readFileSync(contractPath + 'reserves/fprConversionRate/ConversionRates.sol','utf8'),
-    "ConversionRateEnhancedSteps.sol" : fs.readFileSync(contractPath + 'reserves/fprConversionRate/ConversionRateEnhancedSteps.sol', 'utf8'),
-    "ConversionRatesInterface.sol" : fs.readFileSync(contractPath + 'ConversionRatesInterface.sol', 'utf8'),
-    "reserves/fprConversionRate/ConversionRates.sol" : fs.readFileSync(contractPath + 'reserves/fprConversionRate/ConversionRates.sol','utf8'),
-    "reserves/VolumeImbalanceRecorder.sol" : fs.readFileSync(contractPath + 'reserves/VolumeImbalanceRecorder.sol', 'utf8'),
-    "VolumeImbalanceRecorder.sol" : fs.readFileSync(contractPath + 'reserves/VolumeImbalanceRecorder.sol', 'utf8'),
-    "PermissionGroups.sol" : fs.readFileSync(contractPath + 'PermissionGroups.sol', 'utf8'),
-    "ERC20Interface.sol" : fs.readFileSync(contractPath + 'ERC20Interface.sol', 'utf8'),
-    "ExpectedRate.sol" : fs.readFileSync(contractPath + 'ExpectedRate.sol', 'utf8'),
-    "ExpectedRateInterface.sol" : fs.readFileSync(contractPath + 'ExpectedRateInterface.sol', 'utf8'),
-    "FeeBurner.sol" : fs.readFileSync(contractPath + 'FeeBurner.sol', 'utf8'),
-    "FeeBurnerInterface.sol" : fs.readFileSync(contractPath + 'FeeBurnerInterface.sol', 'utf8'),
-    "KyberNetwork.sol" : fs.readFileSync(contractPath + 'KyberNetwork.sol', 'utf8'),
-    "KyberNetworkInterface.sol" : fs.readFileSync(contractPath + 'KyberNetworkInterface.sol', 'utf8'),
-    "KyberNetworkProxy.sol" : fs.readFileSync(contractPath + 'KyberNetworkProxy.sol', 'utf8'),
-    "KyberNetworkProxyInterface.sol" : fs.readFileSync(contractPath + 'KyberNetworkProxyInterface.sol','utf8'),
-    "KyberRegisterWallet.sol" : fs.readFileSync(contractPath + 'wrappers/KyberRegisterWallet.sol', 'utf8'),
-    "KyberReserve.sol" : fs.readFileSync(contractPath + 'reserves/KyberReserve.sol','utf8'),
-    "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol','utf8'),
-    "OrderbookReserve.sol" : fs.readFileSync(contractPath + 'reserves/orderBookReserve/permissionless/OrderbookReserve.sol', 'utf8'),
-    "OrderbookReserveInterface.sol" : fs.readFileSync(contractPath + 'reserves/orderBookReserve/permissionless/OrderbookReserveInterface.sol', 'utf8'),
-    "OrderIdManager.sol" : fs.readFileSync(contractPath + 'reserves/orderBookReserve/permissionless/OrderIdManager.sol', 'utf8'),
-    "OrderList.sol" : fs.readFileSync(contractPath + 'reserves/orderBookReserve/permissionless/OrderList.sol', 'utf8'),
-    "OrderListFactory.sol" : fs.readFileSync(contractPath + 'reserves/orderBookReserve/permissionless/OrderListFactory.sol', 'utf8'),
-    "OrderListFactoryInterface.sol" : fs.readFileSync(contractPath + 'reserves/orderBookReserve/permissionless/OrderListFactoryInterface.sol', 'utf8'),
-    "OrderListInterface.sol" : fs.readFileSync(contractPath + 'reserves/orderBookReserve/permissionless/OrderListInterface.sol', 'utf8'),
-    "OrderListFactoryInterface.sol" : fs.readFileSync(contractPath + 'reserves/orderBookReserve/permissionless/OrderListFactoryInterface.sol', 'utf8'),
-    "PermissionGroups.sol" : fs.readFileSync(contractPath + 'PermissionGroups.sol','utf8'),
-    "PermissionlessOrderbookReserveLister.sol" : fs.readFileSync(contractPath + 'reserves/orderBookReserve/permissionless/PermissionlessOrderbookReserveLister.sol', 'utf8'),
-    "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
-    "SanityRates.sol" : fs.readFileSync(contractPath + 'SanityRates.sol', 'utf8'),
-    "SanityRatesInterface.sol" : fs.readFileSync(contractPath + 'SanityRatesInterface.sol', 'utf8'),
-    "SimpleNetworkInterface.sol" : fs.readFileSync(contractPath + 'SimpleNetworkInterface.sol', 'utf8'),
-    "Utils.sol" : fs.readFileSync(contractPath + 'Utils.sol', 'utf8'),
-    "Utils2.sol" : fs.readFileSync(contractPath + 'Utils2.sol', 'utf8'),
-    "Utils3.sol" : fs.readFileSync(contractPath + 'Utils3.sol', 'utf8'),
-    "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
-    "WhiteList.sol" : fs.readFileSync(contractPath + 'WhiteList.sol', 'utf8'),
-    "WhiteListInterface.sol" : fs.readFileSync(contractPath + 'WhiteListInterface.sol', 'utf8'),
-    "WrapFeeBurner.sol" : fs.readFileSync(contractPath + 'wrappers/WrapFeeBurner.sol', 'utf8'),
-    "KyberUniswapReserve.sol" : fs.readFileSync(contractPath + 'reserves/bridgeReserves/uniswap/KyberUniswapReserve.sol', 'utf8'),
-    "WrapperBase.sol" : fs.readFileSync(contractPath + 'wrappers/WrapperBase.sol', 'utf8'),
-    "SetStepFunctionWrapper.sol" : fs.readFileSync(contractPath + 'wrappers/SetStepFunctionWrapper.sol', 'utf8'),
-    "WrapConversionRate.sol" : fs.readFileSync(contractPath + 'wrappers/WrapConversionRate.sol', 'utf8'),
-    "WrapReadTokenData.sol" : fs.readFileSync(contractPath + 'wrappers/WrapReadTokenData.sol', 'utf8')
-  };
+const contractsSol4Path = path.join(__dirname, "../contracts/");
+const contractsSol5Path = path.join(__dirname, '../contractsSol5/');
+const solc418 = "v0.4.18+commit.9cf6e910";
+const solc511 = "v0.5.11+commit.c082d0b4";
+let compiler;
+let config;
 
-module.exports.compileContracts = async function() {
-    return await solc.compile({ sources: input }, 1);
+const sol4SourceFiles = {
+    "ConversionRates.sol" : {content: fs.readFileSync(contractsSol4Path + 'reserves/fprConversionRate/ConversionRates.sol','utf8')},
+    "ConversionRateEnhancedSteps.sol" : {content: fs.readFileSync(contractsSol4Path + 'reserves/fprConversionRate/ConversionRateEnhancedSteps.sol', 'utf8')},
+    "ConversionRatesInterface.sol" : {content: fs.readFileSync(contractsSol4Path + 'ConversionRatesInterface.sol', 'utf8')},
+    "reserves/fprConversionRate/ConversionRates.sol" : {content: fs.readFileSync(contractsSol4Path + 'reserves/fprConversionRate/ConversionRates.sol','utf8')},
+    "reserves/VolumeImbalanceRecorder.sol" : {content: fs.readFileSync(contractsSol4Path + 'reserves/VolumeImbalanceRecorder.sol', 'utf8')},
+    "VolumeImbalanceRecorder.sol" : {content: fs.readFileSync(contractsSol4Path + 'reserves/VolumeImbalanceRecorder.sol', 'utf8')},
+    "PermissionGroups.sol" : {content: fs.readFileSync(contractsSol4Path + 'PermissionGroups.sol', 'utf8')},
+    "ERC20Interface.sol" : {content: fs.readFileSync(contractsSol4Path + 'ERC20Interface.sol', 'utf8')},
+    "KyberNetworkOld.sol" : {content: fs.readFileSync(contractsSol4Path + 'KyberNetworkOld.sol', 'utf8')},
+    "KyberNetworkInterface.sol" : {content: fs.readFileSync(contractsSol4Path + 'KyberNetworkInterface.sol', 'utf8')},
+    "KyberProxyOld.sol" : {content: fs.readFileSync(contractsSol4Path + 'KyberProxyOld.sol', 'utf8')},
+    "KyberNetworkProxyInterface.sol" : {content: fs.readFileSync(contractsSol4Path + 'KyberNetworkProxyInterface.sol','utf8')},
+    "KyberReserve.sol" : {content: fs.readFileSync(contractsSol4Path + 'reserves/KyberReserve.sol','utf8')},
+    "KyberReserveInterface.sol" : {content: fs.readFileSync(contractsSol4Path + 'KyberReserveInterface.sol','utf8')},
+    "LiquidityConversionRates.sol": {content: fs.readFileSync(contractsSol4Path + 'reserves/aprConversionRate/LiquidityConversionRates.sol','utf8')},
+    "LiquidityFormula.sol": {content: fs.readFileSync(contractsSol4Path + 'reserves/aprConversionRate/LiquidityFormula.sol','utf8')},
+    "OrderbookReserve.sol" : {content: fs.readFileSync(contractsSol4Path + 'reserves/orderBookReserve/permissionless/OrderbookReserve.sol', 'utf8')},
+    "OrderbookReserveInterface.sol" : {content: fs.readFileSync(contractsSol4Path + 'reserves/orderBookReserve/permissionless/OrderbookReserveInterface.sol', 'utf8')},
+    "OrderIdManager.sol" : {content: fs.readFileSync(contractsSol4Path + 'reserves/orderBookReserve/permissionless/OrderIdManager.sol', 'utf8')},
+    "OrderList.sol" : {content: fs.readFileSync(contractsSol4Path + 'reserves/orderBookReserve/permissionless/OrderList.sol', 'utf8')},
+    "OrderListFactory.sol" : {content: fs.readFileSync(contractsSol4Path + 'reserves/orderBookReserve/permissionless/OrderListFactory.sol', 'utf8')},
+    "OrderListFactoryInterface.sol" : {content: fs.readFileSync(contractsSol4Path + 'reserves/orderBookReserve/permissionless/OrderListFactoryInterface.sol', 'utf8')},
+    "OrderListInterface.sol" : {content: fs.readFileSync(contractsSol4Path + 'reserves/orderBookReserve/permissionless/OrderListInterface.sol', 'utf8')},
+    "OrderListFactoryInterface.sol" : {content: fs.readFileSync(contractsSol4Path + 'reserves/orderBookReserve/permissionless/OrderListFactoryInterface.sol', 'utf8')},
+    "PermissionGroups.sol" : {content: fs.readFileSync(contractsSol4Path + 'PermissionGroups.sol','utf8')},
+    "KyberReserveInterface.sol" : {content: fs.readFileSync(contractsSol4Path + 'KyberReserveInterface.sol', 'utf8')},
+    "SanityRates.sol" : {content: fs.readFileSync(contractsSol4Path + 'SanityRates.sol', 'utf8')},
+    "SanityRatesInterface.sol" : {content: fs.readFileSync(contractsSol4Path + 'SanityRatesInterface.sol', 'utf8')},
+    "SimpleNetworkInterface.sol" : {content: fs.readFileSync(contractsSol4Path + 'SimpleNetworkInterface.sol', 'utf8')},
+    "Utils.sol" : {content: fs.readFileSync(contractsSol4Path + 'Utils.sol', 'utf8')},
+    "Utils2.sol" : {content: fs.readFileSync(contractsSol4Path + 'Utils2.sol', 'utf8')},
+    "Utils3.sol" : {content: fs.readFileSync(contractsSol4Path + 'Utils3.sol', 'utf8')},
+    "Withdrawable.sol" : {content: fs.readFileSync(contractsSol4Path + 'Withdrawable.sol', 'utf8')},
+    "KyberUniswapReserve.sol" : {content: fs.readFileSync(contractsSol4Path + 'reserves/bridgeReserves/uniswap/KyberUniswapReserve.sol', 'utf8')},
+    "WrapperBase.sol" : {content: fs.readFileSync(contractsSol4Path + 'wrappers/WrapperBase.sol', 'utf8')},
+    "SetStepFunctionWrapper.sol" : {content: fs.readFileSync(contractsSol4Path + 'wrappers/SetStepFunctionWrapper.sol', 'utf8')},
+    "WrapConversionRate.sol" : {content: fs.readFileSync(contractsSol4Path + 'wrappers/WrapConversionRate.sol', 'utf8')},
+    "WrapReadTokenData.sol" : {content: fs.readFileSync(contractsSol4Path + 'wrappers/WrapReadTokenData.sol', 'utf8')}
+}
+
+const sol5SourceFiles = {
+    'EpochUtils.sol' : {content: fs.readFileSync(contractsSol5Path + 'stakingAndDao/EpochUtils.sol', 'utf8')},
+    'KyberFeeHandler.sol' : {content: fs.readFileSync(contractsSol5Path + 'KyberFeeHandler.sol', 'utf8')},
+    'GasHelper.sol' : {content: fs.readFileSync(contractsSol5Path + 'GasHelper.sol', 'utf8')},
+    'PermissionGroups2.sol' : {content: fs.readFileSync(contractsSol5Path + 'PermissionGroups2.sol', 'utf8')},
+    'BytesLib.sol' : {content: fs.readFileSync(contractsSol5Path + 'BytesLib.sol', 'utf8')},
+    'IGasHelper.sol': {content: fs.readFileSync(contractsSol5Path + 'IGasHelper.sol', 'utf8')},
+    'IERC20.sol' : {content: fs.readFileSync(contractsSol5Path + 'IERC20.sol', 'utf8')},
+    'IBurnableToken.sol' : {content: fs.readFileSync(contractsSol5Path + 'IBurnableToken.sol', 'utf8')},
+    'IKyberFeeHandler.sol' : {content: fs.readFileSync(contractsSol5Path + 'IKyberFeeHandler.sol', 'utf8')},
+    'IKyberDAO.sol' : {content: fs.readFileSync(contractsSol5Path + 'IKyberDAO.sol', 'utf8')},
+    'IKyberHint.sol' : {content: fs.readFileSync(contractsSol5Path + 'IKyberHint.sol', 'utf8')},
+    'IKyberNetwork.sol' : {content: fs.readFileSync(contractsSol5Path + 'IKyberNetwork.sol', 'utf8')},
+    'IKyberNetworkProxy.sol' : {content: fs.readFileSync(contractsSol5Path + 'IKyberNetworkProxy.sol', 'utf8')},
+    'IKyberReserve.sol' : {content: fs.readFileSync(contractsSol5Path + 'IKyberReserve.sol', 'utf8')},
+    'IKyberMatchingEngine.sol' : {content: fs.readFileSync(contractsSol5Path + 'IKyberMatchingEngine.sol', 'utf8')},
+    'IKyberStaking.sol' : {content: fs.readFileSync(contractsSol5Path + 'stakingAndDao/IKyberStaking.sol', 'utf8')},
+    'ISimpleKyberProxy.sol' : {content: fs.readFileSync(contractsSol5Path + 'ISimpleKyberProxy.sol', 'utf8')},
+    'KyberDAO.sol' : {content: fs.readFileSync(contractsSol5Path + 'stakingAndDao/KyberDAO.sol', 'utf8')},
+    'KyberNetwork.sol' : {content: fs.readFileSync(contractsSol5Path + 'KyberNetwork.sol', 'utf8')},
+    'KyberNetworkProxy.sol' : {content: fs.readFileSync(contractsSol5Path + 'KyberNetworkProxy.sol', 'utf8')},
+    'KyberMatchingEngine.sol' : {content: fs.readFileSync(contractsSol5Path + 'KyberMatchingEngine.sol', 'utf8')}, 
+    'KyberHintHandler.sol' : {content: fs.readFileSync(contractsSol5Path + 'KyberHintHandler.sol', 'utf8')},
+    'KyberStaking.sol' : {content: fs.readFileSync(contractsSol5Path + 'stakingAndDao/KyberStaking.sol', 'utf8')},
+    'ReentrancyGuard.sol' : {content: fs.readFileSync(contractsSol5Path + 'ReentrancyGuard.sol', 'utf8')},
+    'SafeMath.sol' : {content: fs.readFileSync(contractsSol5Path + 'stakingAndDao/SafeMath.sol', 'utf8')},
+    'Utils4.sol' : {content: fs.readFileSync(contractsSol5Path + 'Utils4.sol', 'utf8')},
+    'Withdrawable2.sol' : {content: fs.readFileSync(contractsSol5Path + 'Withdrawable2.sol', 'utf8')} 
+}
+
+function compilingPreparations() {
+    const buildPath = path.resolve(__dirname, 'build');
+    fs.removeSync(buildPath);
+    return buildPath;
+}
+
+function createConfiguration(sourceFiles) {
+    return {
+        language: 'Solidity',
+        'sources': sourceFiles,
+        settings: {
+            outputSelection: { // return everything
+                '*': {
+                    '*': ['*']
+                }
+            },
+            // Optional: Optimizer settings
+            'optimizer': require("../solcOptimiserSettings.js"),
+        }
+    };
+}
+
+function getImports(dependency) {
+    console.log('Searching for dependency: ', dependency);
+}
+
+async function loadSpecificCompiler(solcVersion) {
+    console.log(`Downloading compiler ${solcVersion}`);
+    return await solc.loadRemoteVersion(solcVersion, async function (err, solc_specific) {
+        if (err) {
+            console.log(err);
+        } else {
+            compiler = solc_specific;
+            return;
+        }
+    });
+};
+
+function errorHandling(compiledSources) {
+    if (!compiledSources) {
+        console.error('>>>>>>>>>>>>>>>>>>>>>>>> ERRORS <<<<<<<<<<<<<<<<<<<<<<<<\n', 'NO OUTPUT');
+    } else if (compiledSources.errors) { // something went wrong.
+        console.error('>>>>>>>>>>>>>>>>>>>>>>>> ERRORS <<<<<<<<<<<<<<<<<<<<<<<<\n');
+        compiledSources.errors.map(error => console.log(error.formattedMessage));
+    }
+}
+
+function sleep(ms){
+    return new Promise(resolve=>{
+        setTimeout(resolve,ms)
+    })
+}
+
+module.exports.compileContracts = compileContracts;
+async function compileContracts(versionNum) {
+    let solcVersionNum;
+    let sourceFiles;
+    if (versionNum == "sol4") {
+        solcVersionNum = solc418;
+        sourceFiles = sol4SourceFiles;
+    } else if (versionNum == "sol5") {
+        solcVersionNum = solc511;
+        sourceFiles = sol5SourceFiles;
+    } else {
+      console.log(`invalid version number ${versionNum}`);
+      process.exit(0);
+    }
+
+    while (compiler == undefined) {
+        compiler = await loadSpecificCompiler(solcVersionNum);
+        await sleep(12000); //change time based on internet connection
+    }
+    compilingPreparations();
+    const config = createConfiguration(sourceFiles);
+    output = JSON.parse(compiler.compile(JSON.stringify(config)));
+    errorHandling(output);
+    // console.log(output.contracts['GasHelper.sol']);
+    return output;
+}
+
+module.exports.compileSol4Contracts = compileSol4Contracts;
+async function compileSol4Contracts() {
+    return await compileContracts("sol4");
+}
+
+module.exports.compileSol5Contracts = compileSol5Contracts;
+async function compileSol5Contracts() {
+    return await compileContracts("sol5");
+}
+
+module.exports.compileAllContracts = main;
+async function main() {
+    let output = {'contracts': {}, 'sources': {}};
+    //TODO: combine outputs
+    let v4Output = await compileContracts("sol4");
+    let v5Output = await await compileContracts("sol5");
+    return [v4Output, v5Output];
 }
