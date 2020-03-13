@@ -1,6 +1,6 @@
 pragma solidity 0.5.11;
 
-import "../Utils4.sol";
+import "../utils/Utils4.sol";
 
 /// @title Kyber utils contract
 contract MockUtils4 is Utils4 {
