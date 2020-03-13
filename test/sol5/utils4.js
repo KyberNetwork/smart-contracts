@@ -78,26 +78,42 @@ contract('utils4', function (accounts) {
     });
 
     it("check dest qty calculation for high quantities.", async function () {
+        let token1 = await TestToken.new("Token1", "1", 10)
+        let token2 = await TestToken.new("Token2", "2", 20)
         let srcQty = MAX_QTY.div(new BN(2));
         let rate = MAX_RATE;
 
         //first check when dest decimals > src decimals
-        let srcDecimal = 10;
-        let dstDecimal = 20;
+        let srcDecimal = await token1.decimals();
+        let dstDecimal = await token2.decimals();
+        let srcAddress = token1.address;
+        let dstAddress = token2.address;
 
         //should work with max Qty
         let expectedDestQty = Helper.calcDstQty(srcQty, srcDecimal, dstDecimal, rate);
         let reportedDstQty = await utils4.mockCalcDstQty(srcQty, srcDecimal, dstDecimal, rate);
         Helper.assertEqual(expectedDestQty, reportedDstQty, "unexpected dst qty");
+        Helper.assertEqual(
+            expectedDestQty,
+            await utils4.mockCalcDestAmount(srcAddress, dstAddress, srcQty, rate),
+            "unexpected destamount"
+        );
 
         //next check when dest decimals > src decimals
-        srcDecimal = 20;
-        dstDecimal = 10;
+        srcDecimal = await token2.decimals();
+        dstDecimal = await token1.decimals();
+        srcAddress = token2.address;
+        dstAddress = token1.address;
 
         //should work with max Qty
         expectedDestQty = Helper.calcDstQty(srcQty, srcDecimal, dstDecimal, rate);
         reportedDstQty = await utils4.mockCalcDstQty(srcQty, srcDecimal, dstDecimal, rate);
         Helper.assertEqual(expectedDestQty, reportedDstQty, "unexpected dst qty");
+        Helper.assertEqual(
+            expectedDestQty,
+            await utils4.mockCalcDestAmount(srcAddress, dstAddress, srcQty, rate),
+            "unexpected destamount"
+        );
 
         //should revert
         rate = MAX_RATE.add(new BN(1));
@@ -115,24 +131,43 @@ contract('utils4', function (accounts) {
 
 
     it("check src qty calculation for high quantities.", async function () {
+        let token1 = await TestToken.new("Token1", "1", 10)
+        let token2 = await TestToken.new("Token2", "2", 20)
         let dstQty = MAX_QTY.div(new BN(2));
         let rate = MAX_RATE;
 
         //first check when dest decimals > src decimals
-        let srcDecimal = 10;
-        let dstDecimal = 20;
+        let srcDecimal = await token1.decimals();
+        let dstDecimal = await token2.decimals();
+        let srcAddress = token1.address;
+        let dstAddress = token2.address;
 
-        let expectedDestQty = Helper.calcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
+        let expectedSrcQty = Helper.calcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
         let reportedDstQty = await utils4.mockCalcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
-        Helper.assertEqual(expectedDestQty, reportedDstQty, "unexpected dst qty");
+        Helper.assertEqual(
+            expectedSrcQty,
+            await utils4.mockCalcSrcQty(dstQty, srcDecimal, dstDecimal, rate),
+            "unexpected dst qty");
+        Helper.assertEqual(
+            expectedSrcQty,
+            await utils4.mockCalcSrcAmount(srcAddress, dstAddress, dstQty, rate),
+            "unexpected srcAmount"
+        );
 
         //next check when dest decimals > src decimals
-        srcDecimal = 20;
-        dstDecimal = 10;
+        srcDecimal = await token2.decimals();
+        dstDecimal = await token1.decimals();
+        srcAddress = token2.address;
+        dstAddress = token1.address;
 
-        expectedDestQty = Helper.calcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
+        expectedSrcQty = Helper.calcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
         reportedDstQty = await utils4.mockCalcSrcQty(dstQty, srcDecimal, dstDecimal, rate);
-        Helper.assertEqual(expectedDestQty, reportedDstQty, "unexpected dst qty");
+        Helper.assertEqual(expectedSrcQty, reportedDstQty, "unexpected dst qty");
+        Helper.assertEqual(
+            expectedSrcQty,
+            await utils4.mockCalcSrcAmount(srcAddress, dstAddress, dstQty, rate),
+            "unexpected srcAmount"
+        );
 
         //should revert
         rate = MAX_RATE.add(new BN(1));
@@ -150,20 +185,22 @@ contract('utils4', function (accounts) {
 
 
     it("should check when decimals diff > 18 calc reverted.", async function () {
+        let smallDecimal = 10
+        let bigDecimal = smallDecimal + MAX_DECIMAL_DIFF + 1
         await expectRevert(
-            utils4.mockCalcDstQty(30, 10, 30, 1500),
+            utils4.mockCalcDstQty(30, smallDecimal, bigDecimal, 1500),
             "dst - src > MAX_DECIMALS"
         )
         await expectRevert(
-            utils4.mockCalcDstQty(30, 30, 10, 1500),
+            utils4.mockCalcDstQty(30, bigDecimal, smallDecimal, 1500),
             "src - dst > MAX_DECIMALS"
         )
         await expectRevert(
-            utils4.mockCalcSrcQty(30, 10, 30, 1500),
+            utils4.mockCalcSrcQty(30, smallDecimal, bigDecimal, 1500),
             "dst - src > MAX_DECIMALS"
         )
         await expectRevert(
-            utils4.mockCalcSrcQty(30, 30, 10, 1500),
+            utils4.mockCalcSrcQty(30, bigDecimal, smallDecimal, 1500),
             "src - dst > MAX_DECIMALS"
         )
     });
@@ -204,12 +241,16 @@ contract('utils4', function (accounts) {
 
         Helper.assertEqual(rxRate, expectedRate);
 
+        Helper.assertEqual(expectedRate)
+
+
         //should revert when qty above max
         srcQty = MAX_QTY.add(new BN(1));
         await expectRevert(
             utils4.mockCalcRateFromQty(srcQty, destQty, srcDecimal, destDecimal),
             "srcAmount > MAX_QTY",
         )
+
     });
 
     it("test calc functionality with high dest quantity.", async function () {
@@ -269,6 +310,11 @@ contract('utils4', function (accounts) {
             utils4.mockCalcRateFromQty(srcQty, destQty, srcDecimal, destDecimal),
             "src - dst > MAX_DECIMALS",
         )
+    });
+
+    it("test min of", async function () {
+        Helper.assertEqual(3, await utils4.mockMinOf(3, 10))
+        Helper.assertEqual(3, await utils4.mockMinOf(10, 3))
     });
 
 })
