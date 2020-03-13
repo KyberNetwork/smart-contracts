@@ -1,5 +1,5 @@
 #!/bin/sh
-while getopts ":f" arg; do
+while getopts "f:" arg; do
   case $arg in
     f) FILE=$OPTARG;;
   esac
