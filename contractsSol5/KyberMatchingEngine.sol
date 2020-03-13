@@ -631,7 +631,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             srcAmountWithFee = ((src == ETH_TOKEN_ADDRESS) && isFeePaying) ? 
                 srcAmount - networkFee : 
                 srcAmount;
-            destAmount = srcAmountWithFee * rates[i] / PRECISION;
+            destAmount = srcAmountWithFee * rates[i];
             destAmount = (dest == ETH_TOKEN_ADDRESS && isFeePaying) ? 
                 destAmount * (BPS - networkFee) / BPS : 
                 destAmount;
