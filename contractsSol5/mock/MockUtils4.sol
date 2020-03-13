@@ -4,15 +4,6 @@ import "../Utils4.sol";
 
 /// @title Kyber utils contract
 contract MockUtils4 is Utils4 {
-    IERC20 internal constant ETH_TOKEN_ADDRESS = IERC20(
-        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
-    );
-    uint256 internal constant MAX_QTY = (10**28); // 10B tokens
-    uint256 internal constant MAX_RATE = (PRECISION * 10**7); // up to 10M tokens per ETH
-    uint256 internal constant MAX_DECIMALS = 18;
-    uint256 internal constant ETH_DECIMALS = 18;
-    uint256 constant BPS = 10000; // Basic Price Steps. 1 step = 0.01%\\
-
     function mockGetEthTokenAddress() public pure returns (IERC20) {
         return ETH_TOKEN_ADDRESS;
     }
@@ -57,7 +48,7 @@ contract MockUtils4 is Utils4 {
         return getDecimals(token);
     }
 
-    function mockGetUpdateDecimals(IERC20 token) public returns (uint256) {
+    function mockCheckGetUpdateDecimals(IERC20 token) public returns (uint256) {
         return getUpdateDecimals(token);
     }
 
