@@ -3,7 +3,7 @@ YLWBGBLK='\033[1;43;30m'
 NC='\033[0m'
 ALL=false
 
-while getopts ":a:f:k" arg; do
+while getopts ":a:f:k:" arg; do
   case $arg in
     a) ALL=true;;
     f) FILE=$OPTARG;;
