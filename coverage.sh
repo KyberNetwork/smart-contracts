@@ -5,7 +5,7 @@ while getopts ":f" arg; do
   esac
 done
 
-npx buidler compile --config ./coverageConfig/buidlerCoverageV4.js
+npx buidler compile --config ./buidlerCoverageSol4.js
 
 if [ -n "$FILE" ]
 then
