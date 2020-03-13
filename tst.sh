@@ -16,4 +16,3 @@ elif [ "$ALL" ]; then
 else
   npx buidler test --no-compile --config ./buidlerCoverageSol5.js
 fi
-
