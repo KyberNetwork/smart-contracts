@@ -237,11 +237,11 @@ module.exports.calcRateFromQty = function(srcQty, dstQty, srcDecimals, dstDecima
     let decimals;
     dstDecimals = new BN(dstDecimals);
     
-    if (dstDecimals.gte(srcDecimals)) {
+    if (dstDecimals.gte(new BN(srcDecimals))) {
         decimals = new BN(10).pow(new BN(dstDecimals - srcDecimals));
         return precisionUnits.mul(new BN(dstQty)).div((decimals).mul(new BN(srcQty)));
     } else {
-        decimals = new BN(10).pow(new BN(dstDecimals - srcDecimals));
+        decimals = new BN(10).pow(new BN(srcDecimals - dstDecimals));
         return (precisionUnits.mul(new BN(dstQty)).mul(decimals)).div(new BN(srcQty));
     }
 }
