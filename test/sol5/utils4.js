@@ -12,6 +12,7 @@ const MAX_QTY = new BN(10).pow(new BN(28));
 const MAX_RATE = new BN(10).pow(new BN(25));
 
 const MAX_DECIMALS = 18;
+const MAX_DECIMAL_DIFF = 18;
 
 contract('utils4', function (accounts) {
     before("should init global", async function () {
@@ -164,6 +165,109 @@ contract('utils4', function (accounts) {
         await expectRevert(
             utils4.mockCalcSrcQty(30, 30, 10, 1500),
             "src - dst > MAX_DECIMALS"
+        )
+    });
+
+    it("test calc rate from qty.", async function () {
+        let srcDecimal = 15;
+        let destDecimal = 17;
+        let srcQty = 531;
+        let destQty = 11531;
+
+        let expectedRate = Helper.calcRateFromQty(srcQty, destQty, srcDecimal, destDecimal);
+        let rxRate = await utils4.mockCalcRateFromQty(srcQty, destQty, srcDecimal, destDecimal);
+
+        Helper.assertEqual(rxRate, expectedRate);
+    });
+
+    it("test calc rate from qty. other numbers", async function () {
+        let srcDecimal = 15;
+        let destDecimal = 9;
+        let srcQty = 5313535;
+        let destQty = 11531;
+
+        let expectedRate = Helper.calcRateFromQty(srcQty, destQty, srcDecimal, destDecimal);
+        let rxRate = await utils4.mockCalcRateFromQty(srcQty, destQty, srcDecimal, destDecimal);
+
+        Helper.assertEqual(rxRate, expectedRate);
+    });
+
+    it("test calc functionality with high src quantity.", async function () {
+        let srcDecimal = 15;
+        let destDecimal = 17;
+        let srcQty = MAX_QTY;
+        let destQty = 11531;
+
+        //should work with max qty.
+        let expectedRate = Helper.calcRateFromQty(srcQty, destQty, srcDecimal, destDecimal);
+        let rxRate = await utils4.mockCalcRateFromQty(srcQty, destQty, srcDecimal, destDecimal);
+
+        Helper.assertEqual(rxRate, expectedRate);
+
+        //should revert when qty above max
+        srcQty = MAX_QTY.add(new BN(1));
+        await expectRevert(
+            utils4.mockCalcRateFromQty(srcQty, destQty, srcDecimal, destDecimal),
+            "srcAmount > MAX_QTY",
+        )
+    });
+
+    it("test calc functionality with high dest quantity.", async function () {
+        let srcDecimal = 15;
+        let destDecimal = 17;
+        let srcQty = 1;
+        let destQty = MAX_QTY;
+
+        //should work with max qty.
+        let expectedRate = Helper.calcRateFromQty(srcQty, destQty, srcDecimal, destDecimal);
+        let rxRate = await utils4.mockCalcRateFromQty(srcQty, destQty, srcDecimal, destDecimal);
+
+        Helper.assertEqual(rxRate, expectedRate);
+
+        //should revert when qty above max
+        destQty = MAX_QTY.add(new BN(1));
+        await expectRevert(
+            utils4.mockCalcRateFromQty(srcQty, destQty, srcDecimal, destDecimal),
+            "destAmount > MAX_QTY",
+        )
+    });
+
+    it("test calc functionality with high decimal diff is reverted.", async function () {
+        let srcDecimal = 4;
+        let destDecimal = srcDecimal + MAX_DECIMAL_DIFF * 1;
+        let srcQty = 795;
+        let destQty = 9853;
+
+        //should work with max decimal diff.
+        let expectedRate = Helper.calcRateFromQty(srcQty, destQty, srcDecimal, destDecimal);
+        let rxRate = await utils4.mockCalcRateFromQty(srcQty, destQty, srcDecimal, destDecimal);
+
+        Helper.assertEqual(rxRate, expectedRate);
+
+        //should revert when decimal diff above max
+        destDecimal += 1;
+        await expectRevert(
+            utils4.mockCalcRateFromQty(srcQty, destQty, srcDecimal, destDecimal),
+            "dst - src > MAX_DECIMALS",
+        )
+    });
+
+    it("test calc functionality with high decimal diff is reverted.", async function () {
+        let destDecimal = 9;
+        let srcDecimal = destDecimal + MAX_DECIMAL_DIFF * 1;
+        let srcQty = 795;
+        let destQty = 9853;
+
+        //should work with max decimal diff.
+        let expectedRate = Helper.calcRateFromQty(srcQty, destQty, srcDecimal, destDecimal);
+        let rxRate = await utils4.mockCalcRateFromQty(srcQty, destQty, srcDecimal, destDecimal);
+        Helper.assertEqual(rxRate, expectedRate);
+
+        //should revert when decimal diff above max
+        srcDecimal += 1;
+        await expectRevert(
+            utils4.mockCalcRateFromQty(srcQty, destQty, srcDecimal, destDecimal),
+            "src - dst > MAX_DECIMALS",
         )
     });
 
