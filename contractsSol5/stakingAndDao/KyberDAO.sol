@@ -157,10 +157,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         staking = IKyberStaking(_staking);
         require(staking.EPOCH_PERIOD_BLOCKS() == _epochPeriod, "ctor: diff epoch period");
-        require(staking.FIRST_EPCOH_START_BLOCK() == _startBlock, "ctor: diff start block");
+        require(staking.FIRST_EPOCH_START_BLOCK() == _startBlock, "ctor: diff start block");
 
         EPOCH_PERIOD_BLOCKS = _epochPeriod;
-        FIRST_EPCOH_START_BLOCK = _startBlock;
+        FIRST_EPOCH_START_BLOCK = _startBlock;
         feeHandler = IFeeHandler(_feeHandler);
         kncToken = IERC20(_knc);
         latestNetworkFeeResult = _defaultNetworkFeeBps;
@@ -388,8 +388,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint curEpoch = getCurrentEpochNumber();
 
         feeInBps = latestNetworkFeeResult;
-        // expiryBlockNumber = FIRST_EPCOH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
-        expiryBlockNumber = FIRST_EPCOH_START_BLOCK.add(curEpoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
+        // expiryBlockNumber = FIRST_EPOCH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
+        expiryBlockNumber = FIRST_EPOCH_START_BLOCK.add(curEpoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
 
         // there is no camp for epoch 0
         if (curEpoch == 0) {
@@ -424,8 +424,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber)
     {
         epoch = getCurrentEpochNumber();
-        // expiryBlockNumber = FIRST_EPCOH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
-        expiryBlockNumber = FIRST_EPCOH_START_BLOCK.add(epoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
+        // expiryBlockNumber = FIRST_EPOCH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
+        expiryBlockNumber = FIRST_EPOCH_START_BLOCK.add(epoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
         uint brrData = latestBrrResult;
         if (epoch > 0) {
             uint campID = brrCampaign[epoch.sub(1)];
@@ -563,8 +563,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     function getLatestNetworkFeeData() public view returns(uint feeInBps, uint expiryBlockNumber) {
         uint curEpoch = getCurrentEpochNumber();
         feeInBps = latestNetworkFeeResult;
-        // expiryBlockNumber = FIRST_EPCOH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
-        expiryBlockNumber = FIRST_EPCOH_START_BLOCK.add(curEpoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
+        // expiryBlockNumber = FIRST_EPOCH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
+        expiryBlockNumber = FIRST_EPOCH_START_BLOCK.add(curEpoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
         if (curEpoch == 0) {
             return (feeInBps, expiryBlockNumber);
         }
@@ -621,8 +621,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber)
     {
         epoch = getCurrentEpochNumber();
-        // expiryBlockNumber = FIRST_EPCOH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
-        expiryBlockNumber = FIRST_EPCOH_START_BLOCK.add(epoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
+        // expiryBlockNumber = FIRST_EPOCH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
+        expiryBlockNumber = FIRST_EPOCH_START_BLOCK.add(epoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
         uint brrData = latestBrrResult;
         if (epoch > 0) {
             uint campID = brrCampaign[epoch.sub(1)];

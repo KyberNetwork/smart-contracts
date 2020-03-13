@@ -42,7 +42,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         require(_daoContractSetter != address(0), "ctor: daoContractSetter address is missing");
 
         EPOCH_PERIOD_BLOCKS = _epochPeriod;
-        FIRST_EPCOH_START_BLOCK = _startBlock;
+        FIRST_EPOCH_START_BLOCK = _startBlock;
         kncToken = IERC20(_kncToken);
         daoContractSetter = _daoContractSetter;
     }
@@ -66,7 +66,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         daoContract = IKyberDAO(_daoAddress);
         // verify the same epoch period + start block
         require(daoContract.EPOCH_PERIOD_BLOCKS() == EPOCH_PERIOD_BLOCKS, "updateDAO: DAO and Staking have different epoch period");
-        require(daoContract.FIRST_EPCOH_START_BLOCK() == FIRST_EPCOH_START_BLOCK, "updateDAO: DAO and Staking have different start block");
+        require(daoContract.FIRST_EPOCH_START_BLOCK() == FIRST_EPOCH_START_BLOCK, "updateDAO: DAO and Staking have different start block");
 
         emit DAOAddressSet(_daoAddress);
 

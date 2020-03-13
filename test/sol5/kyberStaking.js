@@ -49,7 +49,7 @@ contract('KyberStaking', function(accounts) {
         assert.equal(kncToken.address, await stakingContract.kncToken(), "daoSetter address is wrong");
         assert.equal(zeroAddress, await stakingContract.daoContract(), "daoSetter address is wrong");
         assert.equal(epochPeriod, await stakingContract.EPOCH_PERIOD_BLOCKS(), "daoSetter address is wrong");
-        assert.equal(startBlock, await stakingContract.FIRST_EPCOH_START_BLOCK(), "daoSetter address is wrong");
+        assert.equal(startBlock, await stakingContract.FIRST_EPOCH_START_BLOCK(), "daoSetter address is wrong");
 
         let tx = await stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: daoSetter});
         expectEvent(tx, "DAOAddressSet", {_daoAddress: daoContract.address});

@@ -67,7 +67,7 @@ contract MockDAO is IKyberDAO, Utils4 {
         return epochPeriod;
     }
 
-    function FIRST_EPCOH_START_BLOCK() external view returns(uint) {
+    function FIRST_EPOCH_START_BLOCK() external view returns(uint) {
         return startBlock;
     }
 
