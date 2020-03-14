@@ -1,0 +1,20 @@
+sudo: required
+
+language: node_js
+node_js:
+  - 10
+
+before_install:
+  - npm i -g npm
+  
+matrix:
+  include:
+    - env:
+        - TEST_PART: Sol5
+
+install:
+  - npm ci
+
+script:
+  - ./cmp.sh
+  - .travis/test-part.sh
