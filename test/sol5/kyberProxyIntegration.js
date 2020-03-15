@@ -175,10 +175,10 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         currentBlock = await Helper.getCurrentBlock();
     });
 
-    const tradeAndCheckDataChangesAsExpected = async(epoch, expectedNetworkFee, expectedReward, expectedRebate) => {
+    const tradeAndCheckDataChangesAsExpected = async(epoch, expectedNetworkFee, expectedReward, expectedRebate, logGasMsg) => {
         // make a simple swap, make sure data is updated for epoch 4 with concluding campaign
-        let txResult = await networkProxy.swapEtherToToken(destToken.address, 1, {from: taker, value: ethSrcQty});
-        console.log("eth - token, first trade, gas used: " + txResult.receipt.gasUsed);
+        let txResult1 = await networkProxy.swapEtherToToken(destToken.address, 1, {from: taker, value: ethSrcQty});
+        console.log("eth - token, first trade, gas used: " + txResult1.receipt.gasUsed);
 
         // ============ check data should be updated from DAO ============
         // check expected network data from network and dao
@@ -201,8 +201,10 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         Helper.assertEqual(brrData.rebateBPS, daoBrrData.rebateInBps);
 
         // ========= another swap, data unchanges =========
-        txResult = await networkProxy.swapEtherToToken(destToken.address, 1, {from: taker, value: ethSrcQty});
-        console.log("eth - token, second trade, gas used: " + txResult.receipt.gasUsed);
+        let txResult2 = await networkProxy.swapEtherToToken(destToken.address, 1, {from: taker, value: ethSrcQty});
+        console.log("eth - token, second trade, gas used: " + txResult2.receipt.gasUsed);
+        // different gas cost between second and first trade for each scenario
+        console.log("    " + logGasMsg + (txResult1.receipt.gasUsed - txResult2.receipt.gasUsed));
 
         let curNetworkData = await network.getNetworkData();
         Helper.assertEqual(networkData.expiryBlock, curNetworkData.expiryBlock);
@@ -265,7 +267,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             0, // epoch
             daoNetworkFee, // new network fee
             daoBrrData.rewardInBps, // new reward
-            daoBrrData.rebateInBps // new rebate
+            daoBrrData.rebateInBps, // new rebate
+            "gas cost for getting default values at epoch 0: " // log message
         );
     });
 
@@ -290,7 +293,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             1, // epoch
             daoNetworkFee, // new network fee
             daoBrrData.rewardInBps, // new reward
-            daoBrrData.rebateInBps // new rebate
+            daoBrrData.rebateInBps, // new rebate
+            "gas cost for getting default values, no camps: " // log message
         );
     });
 
@@ -326,7 +330,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             2, // epoch
             curNetworkFee, // new network fee
             curBrrData.rewardBPS, // new reward
-            curBrrData.rebateBPS // new rebate
+            curBrrData.rebateBPS, // new rebate
+            "gas cost for concluding camps (fee camp - no winning optin + no brr camp): " // log message
         );
 
         // camp should be concluded with no winning option
@@ -383,7 +388,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             3, // epoch
             curNetworkFee, // new network fee
             curBrrData.rewardBPS, // new reward
-            curBrrData.rebateBPS // new rebate
+            curBrrData.rebateBPS, // new rebate
+            "gas cost for concluding camps (fee + brr camp - no winning option): " // log message
         );
 
         // network fee camp should be concluded without winning option
@@ -444,7 +450,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             4, // epoch
             curNetworkFee, // new network fee
             curBrrData.rewardBPS.add(new BN(1)), // new reward
-            curBrrData.rebateBPS.add(new BN(1)) // new rebate
+            curBrrData.rebateBPS.add(new BN(1)), // new rebate
+            "gas cost for concluding camps (fee camp - no winning option + brr camp - has winning option): " // log message
         );
 
         // network fee camp should be concluded without winning option
@@ -490,7 +497,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             5, // epoch
             newFee1, // new fee
             curBrrData.rewardBPS, // new reward
-            curBrrData.rebateBPS // new rebate
+            curBrrData.rebateBPS, // new rebate
+            "gas cost for concluding camps (fee camp - has winning option + no brr camp): " // log message
         );
 
         // check camp is concluded
@@ -547,7 +555,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             6, // epoch
             newFee1, // new fee
             curBrrData.rewardBPS, // new reward
-            curBrrData.rebateBPS // new rebate
+            curBrrData.rebateBPS, // new rebate
+            "gas cost for concluding camps (fee camp - has winning option + brr camp - no winning option): " // log message
         );
 
         // check camps are concluded
@@ -607,7 +616,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             7, // epoch
             newFee1, // new network fee
             curBrrData.rewardBPS.add(new BN(1)), // new reward
-            curBrrData.rebateBPS.add(new BN(1)) // new rebate
+            curBrrData.rebateBPS.add(new BN(1)), // new rebate
+            "gas cost for concluding camps (network fee + brr camp - has winning option): " // log message
         );
 
         // network fee camp should be concluded with option 1 is the winning option
@@ -634,7 +644,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             10, // epoch
             curNetworkFee, // new network fee
             curBrrData.rewardBPS, // new reward
-            curBrrData.rebateBPS // new rebate
+            curBrrData.rebateBPS, // new rebate
+            "gas cost no network fee + brr camp, fallback previous values: " // log message
         );
     });
 
@@ -687,7 +698,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             12, // epoch
             curNetworkFee, // new network fee
             curBrrData.rewardBPS, // new reward
-            curBrrData.rebateBPS // new rebate
+            curBrrData.rebateBPS, // new rebate
+            "gas cost no network fee + brr camp, fallback previous values: " // log message
         );
 
         // camps shouldn't be concluded
