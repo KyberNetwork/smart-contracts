@@ -123,7 +123,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         ethSrcQty = precisionUnits;
 
         // init and setup reserves
-        let result = await nwHelper.setupReserves(network, tokens, 1, 2, 3, 0, accounts, admin, operator);
+        let result = await nwHelper.setupReserves(network, tokens, 2, 3, 0, 0, accounts, admin, operator);
         reserveInstances = result.reserveInstances;
 
         //setup network
