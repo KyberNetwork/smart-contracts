@@ -64,7 +64,7 @@ contract('KyberStaking', function(accounts) {
         );
     });
 
-    it("Test get epoch number returns correct data", async function() {
+    it.skip("Test get epoch number returns correct data", async function() {
         await deployStakingContract(10, currentBlock + 10);
 
         let currentEpoch = 0;
