@@ -1,6 +1,7 @@
 const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const KyberMatchingEngine = artifacts.require("KyberMatchingEngine.sol");
+const MaliciousKyberEngine = artifacts.require("MaliciousMatchingEngine.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 
 const Helper = require("../helper.js");
@@ -2000,6 +2001,19 @@ contract('KyberMatchingEngine', function(accounts) {
                         [maxNum.div(new BN(2)), maxNum.div(new BN(2)).add(new BN(3))] // overflow
                     ];
 
+                    before("setup badMatchingEngine to cover unreachable line", async() => {
+                        badMatchingEngine = await MaliciousKyberEngine.new(admin);
+                        await badMatchingEngine.setNetworkContract(network, {from: admin});
+                        await badMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
+
+                        //add reserves, list token pairs
+                        for (reserve of Object.values(reserveInstances)) {
+                            await badMatchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                            await badMatchingEngine.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
+                            await badMatchingEngine.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
+                        };
+                    });
+
                     for (const feeConfiguration of feeConfigurations) {
                         let networkFeeBps = feeConfiguration[0];
                         let platformFeeBps = feeConfiguration[1];
@@ -2036,6 +2050,11 @@ contract('KyberMatchingEngine', function(accounts) {
                             await expectRevert(
                                 matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint),
                                 revertMsg
+                            );
+
+                            await expectRevert(
+                                badMatchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint),
+                                "fees exceed trade amt"
                             );
                         });
 
