@@ -183,6 +183,10 @@ async function main() {
     let output = {'contracts': {}, 'sources': {}};
     //TODO: combine outputs
     let v4Output = await compileContracts("sol4");
-    let v5Output = await await compileContracts("sol5");
+    console.log("Resetting compiler...");
+    compiler = undefined;
+    let v5Output = await compileContracts("sol5");
     return [v4Output, v5Output];
 }
+
+main();
