@@ -1,11 +1,13 @@
 pragma solidity 0.5.11;
 
-import "../IERC20.sol";
 import "../utils/Utils4.sol";
+import "../utils/zeppelin/SafeERC20.sol";
 import "../IKyberNetworkProxy.sol";
 
-
 contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
+    
+    using SafeERC20 for IERC20;
+
     mapping(bytes32=>uint) public pairRate; //rate in precision units. i.e. if rate is 10**18 its same as 1:1
     uint networkFeeBps = 25;
 
@@ -71,15 +73,14 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
         uint networkFeeWei;
         uint platformFeeWei;
 
-        uint actualSrcAmount = srcAmount;
         if (src == ETH_TOKEN_ADDRESS) {
             require(srcAmount == msg.value);
             networkFeeWei = srcAmount * networkFeeBps / BPS;
             platformFeeWei = srcAmount * platformFeeBps / BPS;
-            actualSrcAmount = srcAmount - networkFeeWei - platformFeeWei;
+            srcAmount = srcAmount - networkFeeWei - platformFeeWei;
         } else {
             require(msg.value == 0);
-            require(src.transferFrom(msg.sender, address(this), srcAmount));
+            src.safeTransferFrom(msg.sender, address(this), srcAmount);
         }
 
         uint rate = pairRate[keccak256(abi.encodePacked(src, dest))];
@@ -91,7 +92,7 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
         require(rate > 0);
         require(rate > minConversionRate);
     
-        destAmount = actualSrcAmount * rate / PRECISION;
+        destAmount = srcAmount * rate / PRECISION;
         
         //todo: handle max dest amount
         // if (destAmount > maxDestAmount) {
@@ -106,7 +107,7 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
             destAmount -= (networkFeeWei + platformFeeWei);
             destAddress.transfer(destAmount);
         } else {
-            require(dest.transfer(destAddress, destAmount));
+            dest.safeTransfer(destAddress, destAmount);
         }
 
         return destAmount;

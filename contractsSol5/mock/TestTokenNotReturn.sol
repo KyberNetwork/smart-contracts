@@ -186,7 +186,6 @@ contract TestTokenNotReturn is StandardToken {
         totalSupply = totalSupply.sub(_value);
         emit Burn(msg.sender, _value);
         emit Transfer(msg.sender, address(0x0), _value);
-        return true;
     }
 
     // save some gas by making only one contract call

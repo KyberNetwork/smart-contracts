@@ -5,8 +5,8 @@ while getopts "f:" arg; do
   esac
 done
 
-#npx buidler compile --config ./coverageConfig/buidlerCoverageV4.js <-- waiting for buidler fix
-node --max-old-space-size=4096 node_modules/.bin/buidler compile --config ./buidlerCoverageSol4.js
+npx buidler compile --config ./buidlerCoverageSol4.js
+
 if [ -n "$FILE" ]
 then
     npx buidler coverage --config ./buidlerCoverageSol5.js --testfiles $FILE
