@@ -14,13 +14,11 @@ For more details, please visit our [developer portal](https://developer.kyber.ne
 1. If contracts have not been compiled, run `./compilation.sh`. This step can be skipped subsequently.
 2. Run `./tst.sh`
 3. Use `-f` for running a specific test file.
-4. Use `-k` to specify a specific hardfork version. Default: `Istanbul`
 5. Use `-a` to run both sol4 and sol5 tests. Runs only sol5 tests by default.
 
 ### Example Commands
 `./tst.sh` (Run only sol5 tests)
 `./tst.sh -f ./test/kyberReserve.js` (Test only kyberReserve.js)
-`./tst.sh -f ./test/kyberNetworkProxy.js -k petersburg` (Test only kyberNetworkProxy on Petersburg)
 `./tst.sh -a` (Run both sol4 and sol5 tests)
 
 ### Example
