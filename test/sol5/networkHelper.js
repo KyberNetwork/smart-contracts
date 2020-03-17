@@ -150,10 +150,6 @@ async function setupNetwork
     await network.setDAOContract(DAOAddress, { from: admin });
     // point proxy to network
     await network.addKyberProxy(networkProxyAddress, { from: admin });
-    //add and list pair for reserve
-    let result = await setupReserves(network, tokens, 1, 1, 0, 0, accounts, admin, operator);
-    reserveInstances = result.reserveInstances;
-    await addReservesToNetwork(network, reserveInstances, tokens, operator);
     //set params, enable network
     await network.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
     await network.setEnable(true, { from: admin });

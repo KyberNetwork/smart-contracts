@@ -6,7 +6,7 @@ import "../KyberNetwork.sol";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network main contract, takes some fee and reports actual dest amount minus Fees.
-contract GenerousKyberNetwork is KyberNetwork {
+contract GenerousKyberNetwork2 is KyberNetwork {
 
     constructor(address _admin) public KyberNetwork(_admin) { }
 
@@ -51,18 +51,11 @@ contract GenerousKyberNetwork is KyberNetwork {
             actualSrcAmount = tData.input.srcAmount;
         }
 
-        if (tData.input.srcAmount == 1313) {
+        if (tData.input.srcAmount == 1717) {
             //signal for "reverse trade" for source token
-            emit GenerousTrade(1313, 1755, tData.input.src);
-            tData.input.src.safeTransfer(tData.input.trader, 1755);
-            tData.input.dest.safeTransfer(tData.input.destAddress, tData.actualDestAmount);
-            return tData.actualDestAmount;
-        }
-        if (tData.input.srcAmount == 1515) {
-            //signal for "reverse trade" for source token
-            emit GenerousTrade(1515, 855, tData.input.dest);
-            tData.input.dest.safeTransfer(tData.input.destAddress, 855);
-            return tData.actualDestAmount;
+            emit GenerousTrade(1717, 1717, tData.input.dest);
+            tData.input.dest.safeTransfer(tData.input.destAddress, 1717);
+            return 1717;
         }
 
         require(doReserveTrades(     //src to ETH

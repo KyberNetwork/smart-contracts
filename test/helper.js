@@ -174,8 +174,11 @@ function assertEqual (val1, val2, errorStr) {
 module.exports.assertEqual = assertEqual;
 
 function assertApproximate (val1, val2, errorStr) {
-    assert(new BN(val2).gte(new BN(val1).mul(new BN(9999)).div(new BN(10000))), errorStr);
-    assert(new BN(val2).lte(new BN(val1).mul(new BN(10001)).div(new BN(10000))), errorStr);
+    if (new BN(val2).lt(new BN(10).pow(new BN(12)))) 
+        assertEqual(val1, val2, errorStr);
+    else {
+        assertEqual(new BN(val1).div(new BN(1000)), new BN(val2).div(new BN(1000)), errorStr);
+    }
 }
 
 module.exports.assertApproximate = assertApproximate;
