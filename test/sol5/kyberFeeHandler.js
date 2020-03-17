@@ -291,7 +291,7 @@ contract('KyberFeeHandler', function(accounts) {
     });
 
     it("Test decode BRR function", async function() {
-        let results = await feeHandler.decodeBRRData();
+        let results = await feeHandler.readBRRData();
         // console.log(results);
         Helper.assertEqual(results['0'], rewardInBPS, "Actual decoded rewardInBPS is not correct");
         Helper.assertEqual(results['1'], rebateInBPS, "Actual decoded rebateInBPS is not correct");
