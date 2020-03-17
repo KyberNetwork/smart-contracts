@@ -284,13 +284,7 @@ contract('KyberFeeHandler', function(accounts) {
         });
     });
 
-    it("Test encode BRR function", async function() {
-        let expectedEncodedData = rewardInBPS.shln(BITS_PER_PARAM).add(rebateInBPS).shln(BITS_PER_PARAM).add(epoch).shln(BITS_PER_PARAM).add(expiryBlockNumber);
-        let actualEncodedData = await feeHandler.encodeBRRData(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
-        Helper.assertEqual(actualEncodedData, expectedEncodedData, "Actual encoded data is not correct");
-    });
-
-    it("Test decode BRR function", async function() {
+    it("Test read BRR function", async function() {
         let results = await feeHandler.readBRRData();
         // console.log(results);
         Helper.assertEqual(results['0'], rewardInBPS, "Actual decoded rewardInBPS is not correct");

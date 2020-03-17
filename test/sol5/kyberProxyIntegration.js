@@ -191,14 +191,14 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let brrData = await feeHandler.readBRRData();
         Helper.assertEqual(epoch * epochPeriod + startBlock - 1, brrData.expiryBlock);
         Helper.assertEqual(epoch, brrData.epoch);
-        Helper.assertEqual(expectedReward, brrData.rewardBPS);
-        Helper.assertEqual(expectedRebate, brrData.rebateBPS);
+        Helper.assertEqual(expectedReward, brrData.rewardBps);
+        Helper.assertEqual(expectedRebate, brrData.rebateBps);
         // check expected brr data from dao
         let daoBrrData = await daoContract.latestBRRDataDecoded();
         Helper.assertEqual(brrData.expiryBlock, daoBrrData.expiryBlockNumber);
         Helper.assertEqual(brrData.epoch, daoBrrData.epoch);
-        Helper.assertEqual(brrData.rewardBPS, daoBrrData.rewardInBps);
-        Helper.assertEqual(brrData.rebateBPS, daoBrrData.rebateInBps);
+        Helper.assertEqual(brrData.rewardBps, daoBrrData.rewardInBps);
+        Helper.assertEqual(brrData.rebateBps, daoBrrData.rebateInBps);
 
         // ========= another swap, data unchanges =========
         let txResult2 = await networkProxy.swapEtherToToken(destToken.address, 1, {from: taker, value: ethSrcQty});
@@ -213,8 +213,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let curBrrData = await feeHandler.readBRRData();
         Helper.assertEqual(brrData.expiryBlock, curBrrData.expiryBlock);
         Helper.assertEqual(brrData.epoch, curBrrData.epoch);
-        Helper.assertEqual(brrData.rewardBPS, curBrrData.rewardBPS);
-        Helper.assertEqual(brrData.rebateBPS, curBrrData.rebateBPS);
+        Helper.assertEqual(brrData.rewardBps, curBrrData.rewardBps);
+        Helper.assertEqual(brrData.rebateBps, curBrrData.rebateBps);
 
         // ========= another swap, data unchanges =========
         await srcToken.transfer(taker, srcQty);
@@ -229,8 +229,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         curBrrData = await feeHandler.readBRRData();
         Helper.assertEqual(brrData.expiryBlock, curBrrData.expiryBlock);
         Helper.assertEqual(brrData.epoch, curBrrData.epoch);
-        Helper.assertEqual(brrData.rewardBPS, curBrrData.rewardBPS);
-        Helper.assertEqual(brrData.rebateBPS, curBrrData.rebateBPS);
+        Helper.assertEqual(brrData.rewardBps, curBrrData.rewardBps);
+        Helper.assertEqual(brrData.rebateBps, curBrrData.rebateBps);
 
         // ========= another swap, data unchanges =========
         await srcToken.transfer(taker, srcQty);
@@ -245,8 +245,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         curBrrData = await feeHandler.readBRRData();
         Helper.assertEqual(brrData.expiryBlock, curBrrData.expiryBlock);
         Helper.assertEqual(brrData.epoch, curBrrData.epoch);
-        Helper.assertEqual(brrData.rewardBPS, curBrrData.rewardBPS);
-        Helper.assertEqual(brrData.rebateBPS, curBrrData.rebateBPS);
+        Helper.assertEqual(brrData.rewardBps, curBrrData.rewardBps);
+        Helper.assertEqual(brrData.rebateBps, curBrrData.rebateBps);
     }
 
     it("test first trade of epoch 0 records correct default network fee and brr data", async() => {
@@ -329,8 +329,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await tradeAndCheckDataChangesAsExpected(
             2, // epoch
             curNetworkFee, // new network fee
-            curBrrData.rewardBPS, // new reward
-            curBrrData.rebateBPS, // new rebate
+            curBrrData.rewardBps, // new reward
+            curBrrData.rebateBps, // new rebate
             "gas cost for concluding camps (fee camp - no winning optin + no brr camp): " // log message
         );
 
@@ -358,9 +358,9 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
         // create brr camp
         currentBlock = await Helper.getCurrentBlock();
-        let newBrrData1 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(1)), curBrrData.rewardBPS.add(new BN(1)));
-        let newBrrData2 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(2)), curBrrData.rewardBPS.add(new BN(2)));
-        let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(3)), curBrrData.rewardBPS.add(new BN(3)));
+        let newBrrData1 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(1)), curBrrData.rewardBps.add(new BN(1)));
+        let newBrrData2 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(2)), curBrrData.rewardBps.add(new BN(2)));
+        let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(3)), curBrrData.rewardBps.add(new BN(3)));
         await daoContract.submitNewCampaign(
             2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
             0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
@@ -387,8 +387,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await tradeAndCheckDataChangesAsExpected(
             3, // epoch
             curNetworkFee, // new network fee
-            curBrrData.rewardBPS, // new reward
-            curBrrData.rebateBPS, // new rebate
+            curBrrData.rewardBps, // new reward
+            curBrrData.rebateBps, // new rebate
             "gas cost for concluding camps (fee + brr camp - no winning option): " // log message
         );
 
@@ -420,9 +420,9 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
         // create brr camp
         currentBlock = await Helper.getCurrentBlock();
-        let newBrrData1 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(1)), curBrrData.rewardBPS.add(new BN(1)));
-        let newBrrData2 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(2)), curBrrData.rewardBPS.add(new BN(2)));
-        let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(3)), curBrrData.rewardBPS.add(new BN(3)));
+        let newBrrData1 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(1)), curBrrData.rewardBps.add(new BN(1)));
+        let newBrrData2 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(2)), curBrrData.rewardBps.add(new BN(2)));
+        let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(3)), curBrrData.rewardBps.add(new BN(3)));
         await daoContract.submitNewCampaign(
             2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
             0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
@@ -449,8 +449,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await tradeAndCheckDataChangesAsExpected(
             4, // epoch
             curNetworkFee, // new network fee
-            curBrrData.rewardBPS.add(new BN(1)), // new reward
-            curBrrData.rebateBPS.add(new BN(1)), // new rebate
+            curBrrData.rewardBps.add(new BN(1)), // new reward
+            curBrrData.rebateBps.add(new BN(1)), // new rebate
             "gas cost for concluding camps (fee camp - no winning option + brr camp - has winning option): " // log message
         );
 
@@ -496,8 +496,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await tradeAndCheckDataChangesAsExpected(
             5, // epoch
             newFee1, // new fee
-            curBrrData.rewardBPS, // new reward
-            curBrrData.rebateBPS, // new rebate
+            curBrrData.rewardBps, // new reward
+            curBrrData.rebateBps, // new rebate
             "gas cost for concluding camps (fee camp - has winning option + no brr camp): " // log message
         );
 
@@ -525,9 +525,9 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
         // create brr camp
         currentBlock = await Helper.getCurrentBlock();
-        let newBrrData1 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(1)), curBrrData.rewardBPS.add(new BN(1)));
-        let newBrrData2 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(2)), curBrrData.rewardBPS.add(new BN(2)));
-        let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(3)), curBrrData.rewardBPS.add(new BN(3)));
+        let newBrrData1 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(1)), curBrrData.rewardBps.add(new BN(1)));
+        let newBrrData2 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(2)), curBrrData.rewardBps.add(new BN(2)));
+        let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(3)), curBrrData.rewardBps.add(new BN(3)));
         await daoContract.submitNewCampaign(
             2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
             0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
@@ -554,8 +554,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await tradeAndCheckDataChangesAsExpected(
             6, // epoch
             newFee1, // new fee
-            curBrrData.rewardBPS, // new reward
-            curBrrData.rebateBPS, // new rebate
+            curBrrData.rewardBps, // new reward
+            curBrrData.rebateBps, // new rebate
             "gas cost for concluding camps (fee camp - has winning option + brr camp - no winning option): " // log message
         );
 
@@ -586,9 +586,9 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
         // create brr camp
         currentBlock = await Helper.getCurrentBlock();
-        let newBrrData1 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(1)), curBrrData.rewardBPS.add(new BN(1)));
-        let newBrrData2 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(2)), curBrrData.rewardBPS.add(new BN(2)));
-        let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(3)), curBrrData.rewardBPS.add(new BN(3)));
+        let newBrrData1 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(1)), curBrrData.rewardBps.add(new BN(1)));
+        let newBrrData2 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(2)), curBrrData.rewardBps.add(new BN(2)));
+        let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(3)), curBrrData.rewardBps.add(new BN(3)));
         await daoContract.submitNewCampaign(
             2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
             0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
@@ -615,8 +615,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await tradeAndCheckDataChangesAsExpected(
             7, // epoch
             newFee1, // new network fee
-            curBrrData.rewardBPS.add(new BN(1)), // new reward
-            curBrrData.rebateBPS.add(new BN(1)), // new rebate
+            curBrrData.rewardBps.add(new BN(1)), // new reward
+            curBrrData.rebateBps.add(new BN(1)), // new rebate
             "gas cost for concluding camps (network fee + brr camp - has winning option): " // log message
         );
 
@@ -643,8 +643,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await tradeAndCheckDataChangesAsExpected(
             10, // epoch
             curNetworkFee, // new network fee
-            curBrrData.rewardBPS, // new reward
-            curBrrData.rebateBPS, // new rebate
+            curBrrData.rewardBps, // new reward
+            curBrrData.rebateBps, // new rebate
             "gas cost no network fee + brr camp, fallback previous values: " // log message
         );
     });
@@ -667,9 +667,9 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
         // create brr camp
         currentBlock = await Helper.getCurrentBlock();
-        let newBrrData1 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(1)), curBrrData.rewardBPS.add(new BN(1)));
-        let newBrrData2 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(2)), curBrrData.rewardBPS.add(new BN(2)));
-        let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(3)), curBrrData.rewardBPS.add(new BN(3)));
+        let newBrrData1 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(1)), curBrrData.rewardBps.add(new BN(1)));
+        let newBrrData2 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(2)), curBrrData.rewardBps.add(new BN(2)));
+        let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(3)), curBrrData.rewardBps.add(new BN(3)));
         await daoContract.submitNewCampaign(
             2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
             0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
@@ -697,8 +697,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await tradeAndCheckDataChangesAsExpected(
             12, // epoch
             curNetworkFee, // new network fee
-            curBrrData.rewardBPS, // new reward
-            curBrrData.rebateBPS, // new rebate
+            curBrrData.rewardBps, // new reward
+            curBrrData.rebateBps, // new rebate
             "gas cost no network fee + brr camp, fallback previous values: " // log message
         );
 

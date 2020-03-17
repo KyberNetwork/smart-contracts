@@ -1048,8 +1048,8 @@ contract('KyberNetwork', function(accounts) {
             networkFeeBps = data.networkFeeBps;
             const BRRData = await feeHandler.readBRRData();
             // log(BRRData)
-            rebateBps = BRRData.rebateBPS;
-            rewardBps = BRRData.rebateBPS;
+            rebateBps = BRRData.rebateBps;
+            rewardBps = BRRData.rewardBps;
         });
 
         it("et2 trade. see rebate per wallet updated in fee handler.", async() => {
