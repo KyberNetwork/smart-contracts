@@ -1,7 +1,7 @@
 const TestToken = artifacts.require("Token.sol");
 const DAOContract = artifacts.require("MockKyberDaoMoreGetters.sol");
 const StakingContract = artifacts.require("KyberStaking.sol");
-const MockFeeHandler = artifacts.require("MockFeeHandlerNoContructor.sol");
+const FeeHandler = artifacts.require("FeeHandlerNoContructor.sol");
 const MockMaliciousDAO = artifacts.require("MockMaliciousDAO.sol");
 const MockFeeHandlerClaimRewardFailed = artifacts.require("MockFeeHandlerClaimRewardFailed.sol");
 const Helper = require("../helper.js");
@@ -55,7 +55,7 @@ contract('KyberDAO', function(accounts) {
         campCreator = accounts[5];
         poolMaster = accounts[6];
         poolMaster2 = accounts[7];
-        feeHandler = await MockFeeHandler.new();
+        feeHandler = await FeeHandler.new();
 
         await kncToken.transfer(victor, mulPrecision(1000000));
         await kncToken.transfer(mike, mulPrecision(1000000));
@@ -3421,7 +3421,7 @@ contract('KyberDAO', function(accounts) {
             )
 
             await feeHandler.withdrawAllETH({from: accounts[0]});
-            feeHandler = await MockFeeHandler.new();
+            feeHandler = await FeeHandler.new();
         });
 
         it("Test claim reward should revert when claim for epoch in the past that didn't do anything", async function() {

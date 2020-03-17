@@ -2,7 +2,7 @@ const Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 const MockDAO = artifacts.require("MockDAO.sol");
-const FeeHandler = artifacts.require("MockFeeHandler.sol");
+const FeeHandler = artifacts.require("FeeHandler.sol");
 const BadFeeHandler = artifacts.require("MaliciousFeeHandler.sol");
 const Token = artifacts.require("Token.sol");
 const BadToken = artifacts.require("TestTokenNotReturn.sol");
@@ -99,7 +99,7 @@ contract('KyberFeeHandler', function(accounts) {
             let platformFeeWei = oneEth;
             let rebateBpsPerWallet = [new BN(2000), new BN(3000), new BN(5000)];
             let sendVal = oneEth.add(oneEth);
-            const BRRData = await feeHandler.getSavedBRR();   
+            const BRRData = await feeHandler.readBRRData();   
             let currentRewardBps = BRRData.rewardBps;
             let currentRebateBps = BRRData.rebateBps;
 
@@ -127,7 +127,7 @@ contract('KyberFeeHandler', function(accounts) {
             let sendVal = oneEth;
             let rebateBpsPerWallet = [new BN(2000), new BN(3000), new BN(5000)];
 
-            const BRRData = await feeHandler.getSavedBRR();   
+            const BRRData = await feeHandler.readBRRData();   
             let currentRewardBps = BRRData.rewardBps;
             let currentRebateBps = BRRData.rebateBps;
             let currentEpoch = BRRData.epoch;
@@ -152,7 +152,7 @@ contract('KyberFeeHandler', function(accounts) {
         it("RebatePaid", async() => {
             let sendVal = oneEth;
             let rebateBpsPerWallet = [new BN(2000), new BN(3000), new BN(5000)];
-            const BRRData = await feeHandler.getSavedBRR();   
+            const BRRData = await feeHandler.readBRRData();   
             let currentRewardBps = BRRData.rewardBps;
             let currentRebateBps = BRRData.rebateBps;
             let currentEpoch = BRRData.epoch;
@@ -175,7 +175,7 @@ contract('KyberFeeHandler', function(accounts) {
             let platformFeeWei = new BN(50000);
             let rebateWallets = [];
             let rebateBpsPerWallet = [];
-            const BRRData = await feeHandler.getSavedBRR();   
+            const BRRData = await feeHandler.readBRRData();   
             let currentRewardBps = BRRData.rewardBps;
             let currentRebateBps = BRRData.rebateBps;
             let currentEpoch = BRRData.epoch;
@@ -205,7 +205,7 @@ contract('KyberFeeHandler', function(accounts) {
             let sendVal = oneEth.mul(new BN(30));
             let burnPerCall = await feeHandler.WEI_TO_BURN();
             let rebateBpsPerWallet = [new BN(2000), new BN(3000), new BN(5000)];
-            const BRRData = await feeHandler.getSavedBRR();
+            const BRRData = await feeHandler.readBRRData();
             let currentRewardBps = BRRData.rewardBps;
             let currentRebateBps = BRRData.rebateBps;
             let currentEpoch = BRRData.epoch;
@@ -227,7 +227,7 @@ contract('KyberFeeHandler', function(accounts) {
         it("RewardsRemovedToBurn", async() => {
             let sendVal = oneEth.mul(new BN(30));
             let rebateBpsPerWallet = [new BN(2000), new BN(3000), new BN(5000)];
-            const BRRData = await feeHandler.getSavedBRR();   
+            const BRRData = await feeHandler.readBRRData();   
             let currentRewardBps = BRRData.rewardBps;
             let currentRebateBps = BRRData.rebateBps;
             let currentEpoch = BRRData.epoch;
@@ -309,7 +309,7 @@ contract('KyberFeeHandler', function(accounts) {
         });
 
         it("reverts claimStakerReward if called by non-DAO", async() => {
-            const BRRData = await feeHandler.getSavedBRR();   
+            const BRRData = await feeHandler.readBRRData();   
             let currentEpoch = BRRData.epoch;
 
             await expectRevert(
@@ -339,7 +339,7 @@ contract('KyberFeeHandler', function(accounts) {
         let rebateBpsPerWallet = [new BN(2000), new BN(3000), new BN(5000)];
         
         beforeEach("set BRR data", async() => {
-            const BRRData = await feeHandler.getSavedBRR();   
+            const BRRData = await feeHandler.readBRRData();   
             currentRewardBps = BRRData.rewardBps;
             currentRebateBps = BRRData.rebateBps;
             currentEpoch = BRRData.epoch;
@@ -467,7 +467,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let sendVal = oneEth;
                 let rebateWallet = await NoPayableFallback.new();
                 let rebateBpsPerWallet = [BPS];
-                const BRRData = await feeHandler.getSavedBRR();   
+                const BRRData = await feeHandler.readBRRData();   
                 let currentRewardBps = BRRData.rewardBps;
                 let currentRebateBps = BRRData.rebateBps;
                 let currentEpoch = BRRData.epoch;
@@ -556,7 +556,7 @@ contract('KyberFeeHandler', function(accounts) {
                 
                 await mockDAO.advanceEpoch();
                 await feeHandler.getBRR();   
-                const BRRData = await feeHandler.getSavedBRR();   
+                const BRRData = await feeHandler.readBRRData();   
                 
                 currentRewardBps = BRRData.rewardBps;
                 currentRebateBps = BRRData.rebateBps;
@@ -697,7 +697,7 @@ contract('KyberFeeHandler', function(accounts) {
 
                 feeHandler = await BadFeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL);
 
-                const BRRData = await feeHandler.getSavedBRR();   
+                const BRRData = await feeHandler.readBRRData();   
                 currentEpoch = BRRData.epoch;
 
                 await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
@@ -1131,7 +1131,7 @@ contract('KyberFeeHandler', function(accounts) {
                 await feeHandler.setTotalPayoutBalance(zeroBN);
                 await feeHandler.setDaoContract(mockDAO.address, {from: daoSetter});
                 await mockDAO.setFeeHandler(feeHandler.address);
-                currentEpoch = (await feeHandler.getSavedBRR()).epoch;
+                currentEpoch = (await feeHandler.readBRRData()).epoch;
                 await mockDAO.setShouldBurnRewardTrue(currentEpoch);
 
                 await expectRevert(
