@@ -311,13 +311,16 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         emit RewardsRemovedToBurn(epoch, rewardAmount);
     }
 
-    function updateBRRData(uint _reward, uint _rebate, uint _epoch, uint _expiryBlock) public {
-        require(_reward < 2 ** 32 - 1);
+    function updateBRRData(uint reward, uint rebate, uint epoch, uint expiryBlock) public {
+        require(reward < 2 ** 32 - 1);
+        require(rebate < 2 ** 32 - 1);
+        require(epoch < 2 ** 32 - 1);
+        require(expiryBlock < 2 ** 160 - 1);
 
-        brrAndEpochStruct.rewardBps = uint32(_reward);
-        brrAndEpochStruct.rebateBps = uint32(_rebate);
-        brrAndEpochStruct.expiryBlock = uint160(_expiryBlock);
-        brrAndEpochStruct.epoch = uint32(_epoch);
+        brrAndEpochStruct.rewardBps = uint32(reward);
+        brrAndEpochStruct.rebateBps = uint32(rebate);
+        brrAndEpochStruct.expiryBlock = uint160(expiryBlock);
+        brrAndEpochStruct.epoch = uint32(epoch);
     }
 
     function readBRRData() public view returns(uint rewardBps, uint rebateBps, uint expiryBlock, uint epoch) {

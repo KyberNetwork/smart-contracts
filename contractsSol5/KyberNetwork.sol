@@ -982,6 +982,9 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     }
     
     function updateNetworkFee(uint expiryBlock, uint feeBps) internal {
+        require(expiryBlock < 2 ** 160 - 1);
+        require(feeBps < 2 ** 96 - 1);
+        
         networkFeeData.expiryBlock = uint160(expiryBlock);
         networkFeeData.feeBps = uint96(feeBps);
     }
