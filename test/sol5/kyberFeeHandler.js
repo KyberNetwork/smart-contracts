@@ -2,7 +2,7 @@ const Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 const MockDAO = artifacts.require("MockDAO.sol");
-const FeeHandler = artifacts.require("FeeHandler.sol");
+const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const BadFeeHandler = artifacts.require("MaliciousFeeHandler.sol");
 const Token = artifacts.require("Token.sol");
 const BadToken = artifacts.require("TestTokenNotReturn.sol");
