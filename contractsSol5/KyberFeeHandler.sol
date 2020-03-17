@@ -50,8 +50,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
     uint public burnBlockInterval = 15;
     uint public lastBurnBlock;
-    uint public brrAndEpochData;
-    BRRData public brrAndEpochStruct;
+    BRRData public brrAndEpochData;
     address public daoSetter;
 
     mapping(address => uint) public feePerPlatformWallet;
@@ -317,17 +316,17 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         require(epoch < 2 ** 32 - 1);
         require(expiryBlock < 2 ** 160 - 1);
 
-        brrAndEpochStruct.rewardBps = uint32(reward);
-        brrAndEpochStruct.rebateBps = uint32(rebate);
-        brrAndEpochStruct.expiryBlock = uint160(expiryBlock);
-        brrAndEpochStruct.epoch = uint32(epoch);
+        brrAndEpochData.rewardBps = uint32(reward);
+        brrAndEpochData.rebateBps = uint32(rebate);
+        brrAndEpochData.expiryBlock = uint160(expiryBlock);
+        brrAndEpochData.epoch = uint32(epoch);
     }
 
     function readBRRData() public view returns(uint rewardBps, uint rebateBps, uint expiryBlock, uint epoch) {
-        rewardBps = uint(brrAndEpochStruct.rewardBps);
-        rebateBps = uint(brrAndEpochStruct.rebateBps);
-        epoch = uint(brrAndEpochStruct.epoch);
-        expiryBlock = uint(brrAndEpochStruct.expiryBlock);
+        rewardBps = uint(brrAndEpochData.rewardBps);
+        rebateBps = uint(brrAndEpochData.rebateBps);
+        epoch = uint(brrAndEpochData.epoch);
+        expiryBlock = uint(brrAndEpochData.expiryBlock);
     }
 
     event BRRUpdated(uint rewardBps, uint rebateBps, uint burnBps, uint expiryBlock, uint epoch);
