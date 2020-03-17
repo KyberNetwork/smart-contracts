@@ -320,12 +320,13 @@ async function getBestReserveAndRate(reserves, src, dest, srcAmount, networkFeeB
     }
     for (let i=0; i < reserveArr.length; i++) {
         reserve = reserveArr[i];
-        if (reserve.rate.gt(bestReserveData.rateOnlyNetworkFee)) {
+        let rateForComparison = (reserve.isFeePaying) ? reserve.rate.mul(BPS.sub(networkFeeBps)).div(BPS) : reserve.rate;
+        if (rateForComparison.gt(bestReserveData.rateOnlyNetworkFee)) {
             bestReserveData.address = reserve.address;
             bestReserveData.reserveId = reserve.reserveId;
             bestReserveData.rateNoFee = reserve.rate;
             bestReserveData.isFeePaying = reserve.isFeePaying;
-            bestReserveData.rateOnlyNetworkFee = (reserve.isFeePaying) ? reserve.rate.mul(BPS.sub(networkFeeBps)).div(BPS) : reserve.rate;
+            bestReserveData.rateOnlyNetworkFee = rateForComparison;
         }
     }
     return bestReserveData;
