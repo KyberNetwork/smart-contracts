@@ -618,6 +618,13 @@ contract('KyberNetworkProxy', function(accounts) {
             let actualMaxGasPrice = await networkProxy.maxGasPrice();
             Helper.assertEqual(expectedMaxGasPrice, actualMaxGasPrice);
         });
+
+        it("test reading public values", async () => {
+            let networkAddr = await networkProxy.kyberNetwork();
+            assert(networkAddr == network.address, "missmatch network address");
+            let hintHandlerAddr = await networkProxy.hintHandler();
+            assert(hintHandlerAddr == matchingEngine.address, "missmatch network address");
+        });
     });
 
     describe("test events", async () => {
