@@ -1046,7 +1046,7 @@ contract('KyberNetwork', function(accounts) {
             await network.getAndUpdateNetworkFee();
             const data = await network.getNetworkData();
             networkFeeBps = data.networkFeeBps;
-            const BRRData = await feeHandler.decodeBRRData();
+            const BRRData = await feeHandler.readBRRData();
             // log(BRRData)
             rebateBps = BRRData.rebateBPS;
             rewardBps = BRRData.rebateBPS;
