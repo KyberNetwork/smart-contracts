@@ -81,7 +81,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         burnBlockInterval = _burnBlockInterval;
 
         //start with epoch 0
-        brrAndEpochData = encodeBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, 0, block.number);
+        updateBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, 0, block.number);
     }
 
     event EthReceived(uint amount);
@@ -311,9 +311,6 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         emit RewardsRemovedToBurn(epoch, rewardAmount);
     }
 
-    function encodeBRRData(uint _reward, uint _rebate, uint _epoch, uint _expiryBlock) public pure returns (uint) {
-        return (((((_reward << BITS_PER_PARAM) + _rebate) << BITS_PER_PARAM) + _epoch) << BITS_PER_PARAM) + _expiryBlock;
-    }
     function updateBRRData(uint _reward, uint _rebate, uint _epoch, uint _expiryBlock) public {
         require(_reward < 2 ** 32 - 1);
 
@@ -323,26 +320,18 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         brrAndEpochStruct.epoch = uint32(_epoch);
     }
 
-    function readBrrData() public view returns(uint rewardBps, uint rebateBps, uint expiryBlock, uint epoch) {
+    function readBRRData() public view returns(uint rewardBps, uint rebateBps, uint expiryBlock, uint epoch) {
         rewardBps = uint(brrAndEpochStruct.rewardBps);
         rebateBps = uint(brrAndEpochStruct.rebateBps);
         epoch = uint(brrAndEpochStruct.epoch);
         expiryBlock = uint(brrAndEpochStruct.expiryBlock);
     }
 
-    function decodeBRRData() public view returns(uint rewardBps, uint rebateBps, uint expiryBlock, uint epoch) {
-        expiryBlock = brrAndEpochData & (1 << BITS_PER_PARAM) - 1;
-        epoch = (brrAndEpochData / (1 << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        rebateBps = (brrAndEpochData / (1 << (2 * BITS_PER_PARAM))) & (1 << BITS_PER_PARAM) - 1;
-        rewardBps = (brrAndEpochData / (1 << (3 * BITS_PER_PARAM))) & (1 << BITS_PER_PARAM) - 1;
-        return (rewardBps, rebateBps, expiryBlock, epoch);
-    }
-
     event BRRUpdated(uint rewardBps, uint rebateBps, uint burnBps, uint expiryBlock, uint epoch);
 
     function getBRR() public returns(uint rewardBps, uint rebateBps, uint epoch) {
         uint expiryBlock;
-        (rewardBps, rebateBps, expiryBlock, epoch) = readBrrData();
+        (rewardBps, rebateBps, expiryBlock, epoch) = readBRRData();
 
           // Check current block number
         if (block.number > expiryBlock && kyberDAO != IKyberDAO(0)) {

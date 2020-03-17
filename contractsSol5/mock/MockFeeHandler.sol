@@ -12,6 +12,6 @@ contract MockFeeHandler is KyberFeeHandler {
     
     function getSavedBRR() public view returns (uint rewardBps, uint rebateBps, uint expiryBlock, uint epoch)
     {
-        (rewardBps, rebateBps, expiryBlock, epoch) = decodeBRRData();
+        (rewardBps, rebateBps, expiryBlock, epoch) = readBRRData();
     }
 }

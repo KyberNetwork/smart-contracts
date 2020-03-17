@@ -32,10 +32,10 @@ contract MockNetwork is KyberNetwork {
     }
 
     function setNetworkFeeData(uint _networkFeeBps, uint _expiryBlock) public {
-        networkFeeData = encodeNetworkFee(_expiryBlock, _networkFeeBps);
+        updateNetworkFee(_expiryBlock, _networkFeeBps);
     }
 
     function getNetworkFeeData() public view returns(uint _networkFeeBps, uint _expiryBlock) {
-        (_networkFeeBps, _expiryBlock) = decodeNetworkFee(networkFeeData);
+        (_networkFeeBps, _expiryBlock) = readNetworkFeeData();
     }
 }

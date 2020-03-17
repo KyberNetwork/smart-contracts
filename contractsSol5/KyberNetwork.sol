@@ -40,7 +40,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     IKyberMatchingEngine[]  internal matchingEngine;
     IGasHelper              internal gasHelper;
 
-    uint internal networkFeeData; // data is feeBps and expiry block
+    NetworkFeeData internal networkFeeData; // data is feeBps and expiry block
     uint internal maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool internal isEnabled = false; // is network enabled
 
@@ -50,8 +50,13 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     IKyberReserve[] internal reserves;
     mapping(address=>address) public reserveRebateWallet;
 
+    struct NetworkFeeData {
+        uint160 expiryBlock;
+        uint96 feeBps;
+    }
+
     constructor(address _admin) public Withdrawable2(_admin) {
-        networkFeeData = encodeNetworkFee(block.number, DEFAULT_NETWORK_FEE_BPS);
+        updateNetworkFee(block.number, DEFAULT_NETWORK_FEE_BPS);
     }
 
     event EtherReceival(address indexed sender, uint amount);
@@ -475,7 +480,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         uint networkFeeBps,
         uint expiryBlock)
     {
-        (networkFeeBps, expiryBlock) = decodeNetworkFee(networkFeeData);
+        (networkFeeBps, expiryBlock) = readNetworkFeeData();
         negligibleDiffBps = matchingEngine[0].negligibleRateDiffBps();
         return(negligibleDiffBps, networkFeeBps, expiryBlock);
     }
@@ -947,7 +952,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @notice Gets the network fee from the DAO (or use default). View function for getExpectedRate.
     function getNetworkFee() internal view returns(uint networkFeeBps) {
         uint expiryBlock;
-        (networkFeeBps, expiryBlock) = decodeNetworkFee(networkFeeData);
+        (networkFeeBps, expiryBlock) = readNetworkFeeData();
 
         if (expiryBlock < block.number && kyberDAO.length > 0) {
             (networkFeeBps, expiryBlock) = kyberDAO[0].getLatestNetworkFeeData();
@@ -961,20 +966,23 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     function getAndUpdateNetworkFee() public returns(uint networkFeeBps) {
         uint expiryBlock;
 
-        (networkFeeBps, expiryBlock) = decodeNetworkFee(networkFeeData);
+        (networkFeeBps, expiryBlock) = readNetworkFeeData();
 
         if (expiryBlock < block.number && kyberDAO.length > 0) {
             (networkFeeBps, expiryBlock) = kyberDAO[0].getLatestNetworkFeeDataWithCache();
-            networkFeeData = encodeNetworkFee(expiryBlock, networkFeeBps);
+            updateNetworkFee(expiryBlock, networkFeeBps);
         }
     }
     
-    function decodeNetworkFee(uint feeData) internal pure returns(uint feeBps, uint expiryBlock) {
-        feeBps = feeData & ((1 << 128) - 1);
-        expiryBlock = (feeData / (1 << 128)) & ((1 << 128) - 1);
+    function readNetworkFeeData() internal view 
+        returns(uint feeBps, uint expiryBlock)
+    {
+        feeBps = uint(networkFeeData.feeBps);
+        expiryBlock = uint(networkFeeData.expiryBlock);
     }
     
-    function encodeNetworkFee(uint expiryBlock, uint feeBps) internal pure returns(uint feeData) {
-        return ((expiryBlock << 128) + feeBps);
+    function updateNetworkFee(uint expiryBlock, uint feeBps) internal {
+        networkFeeData.expiryBlock = uint160(expiryBlock);
+        networkFeeData.feeBps = uint96(feeBps);
     }
 }
