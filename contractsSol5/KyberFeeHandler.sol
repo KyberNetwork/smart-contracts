@@ -36,6 +36,13 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     uint internal constant DEFAULT_REBATE_BPS = 3000;
     uint public constant   WEI_TO_BURN = 2 * 10 ** ETH_DECIMALS;
 
+    struct BRRData {
+        uint160 expiryBlock;
+        uint32 epoch;
+        uint32 rewardBps;
+        uint32 rebateBps;
+    }
+
     IKyberDAO public kyberDAO;
     IKyberNetworkProxy public networkProxy;
     address public kyberNetwork;
@@ -44,6 +51,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     uint public burnBlockInterval = 15;
     uint public lastBurnBlock;
     uint public brrAndEpochData;
+    BRRData public brrAndEpochStruct;
     address public daoSetter;
 
     mapping(address => uint) public feePerPlatformWallet;
@@ -306,31 +314,46 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     function encodeBRRData(uint _reward, uint _rebate, uint _epoch, uint _expiryBlock) public pure returns (uint) {
         return (((((_reward << BITS_PER_PARAM) + _rebate) << BITS_PER_PARAM) + _epoch) << BITS_PER_PARAM) + _expiryBlock;
     }
+    function updateBRRData(uint _reward, uint _rebate, uint _epoch, uint _expiryBlock) public {
+        require(_reward < 2 ** 32 - 1);
 
-    function decodeBRRData() public view returns(uint rewardBPS, uint rebateBPS, uint expiryBlock, uint epoch) {
-        expiryBlock = brrAndEpochData & (1 << BITS_PER_PARAM) - 1;
-        epoch = (brrAndEpochData / (1 << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        rebateBPS = (brrAndEpochData / (1 << (2 * BITS_PER_PARAM))) & (1 << BITS_PER_PARAM) - 1;
-        rewardBPS = (brrAndEpochData / (1 << (3 * BITS_PER_PARAM))) & (1 << BITS_PER_PARAM) - 1;
-        return (rewardBPS, rebateBPS, expiryBlock, epoch);
+        brrAndEpochStruct.rewardBps = uint32(_reward);
+        brrAndEpochStruct.rebateBps = uint32(_rebate);
+        brrAndEpochStruct.expiryBlock = uint160(_expiryBlock);
+        brrAndEpochStruct.epoch = uint32(_epoch);
     }
 
-    event BRRUpdated(uint rewardBPS, uint rebateBPS, uint burnBPS, uint expiryBlock, uint epoch);
+    function readBrrData() public view returns(uint rewardBps, uint rebateBps, uint expiryBlock, uint epoch) {
+        rewardBps = uint(brrAndEpochStruct.rewardBps);
+        rebateBps = uint(brrAndEpochStruct.rebateBps);
+        epoch = uint(brrAndEpochStruct.epoch);
+        expiryBlock = uint(brrAndEpochStruct.expiryBlock);
+    }
 
-    function getBRR() public returns(uint rewardBPS, uint rebateBPS, uint epoch) {
+    function decodeBRRData() public view returns(uint rewardBps, uint rebateBps, uint expiryBlock, uint epoch) {
+        expiryBlock = brrAndEpochData & (1 << BITS_PER_PARAM) - 1;
+        epoch = (brrAndEpochData / (1 << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
+        rebateBps = (brrAndEpochData / (1 << (2 * BITS_PER_PARAM))) & (1 << BITS_PER_PARAM) - 1;
+        rewardBps = (brrAndEpochData / (1 << (3 * BITS_PER_PARAM))) & (1 << BITS_PER_PARAM) - 1;
+        return (rewardBps, rebateBps, expiryBlock, epoch);
+    }
+
+    event BRRUpdated(uint rewardBps, uint rebateBps, uint burnBps, uint expiryBlock, uint epoch);
+
+    function getBRR() public returns(uint rewardBps, uint rebateBps, uint epoch) {
         uint expiryBlock;
-        (rewardBPS, rebateBPS, expiryBlock, epoch) = decodeBRRData();
+        (rewardBps, rebateBps, expiryBlock, epoch) = readBrrData();
 
           // Check current block number
         if (block.number > expiryBlock && kyberDAO != IKyberDAO(0)) {
-            uint burnBPS;
+            uint burnBps;
 
-            (burnBPS, rewardBPS, rebateBPS, epoch, expiryBlock) = kyberDAO.getLatestBRRData();
+            (burnBps, rewardBps, rebateBps, epoch, expiryBlock) = kyberDAO.getLatestBRRData();
 
-            emit BRRUpdated(rewardBPS, rebateBPS, burnBPS, expiryBlock, epoch);
+            emit BRRUpdated(rewardBps, rebateBps, burnBps, expiryBlock, epoch);
 
             // Update brrAndEpochData
-            brrAndEpochData = encodeBRRData(rewardBPS, rebateBPS, epoch, expiryBlock);
+            updateBRRData(rewardBps, rebateBps, epoch, expiryBlock);
         }
     }
 
@@ -338,11 +361,11 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         returns(uint rewardWei, uint rebateWei, uint epoch)
     {
         // Decoding BRR data
-        uint rewardInBPS;
-        uint rebateInBPS;
-        (rewardInBPS, rebateInBPS, epoch) = getBRR();
+        uint rewardInBps;
+        uint rebateInBps;
+        (rewardInBps, rebateInBps, epoch) = getBRR();
 
-        rebateWei = RRAmountWei * rebateInBPS / BPS;
-        rewardWei = RRAmountWei * rewardInBPS / BPS;
+        rebateWei = RRAmountWei * rebateInBps / BPS;
+        rewardWei = RRAmountWei * rewardInBps / BPS;
     }
 }
