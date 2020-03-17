@@ -143,6 +143,8 @@ function sleep(ms){
 
 module.exports.compileContracts = compileContracts;
 async function compileContracts(versionNum) {
+    console.log("Resetting compiler...");
+    compiler = undefined;
     let solcVersionNum;
     let sourceFiles;
     if (versionNum == "sol4") {
@@ -158,7 +160,7 @@ async function compileContracts(versionNum) {
 
     while (compiler == undefined) {
         compiler = await loadSpecificCompiler(solcVersionNum);
-        await sleep(12000); //change time based on internet connection
+        await sleep(20000); //change time based on internet connection
     }
     compilingPreparations();
     const config = createConfiguration(sourceFiles);
@@ -183,8 +185,6 @@ async function main() {
     let output = {'contracts': {}, 'sources': {}};
     //TODO: combine outputs
     let v4Output = await compileContracts("sol4");
-    console.log("Resetting compiler...");
-    compiler = undefined;
     let v5Output = await compileContracts("sol5");
     return [v4Output, v5Output];
 }
