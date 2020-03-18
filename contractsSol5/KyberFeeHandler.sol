@@ -80,7 +80,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         burnBlockInterval = _burnBlockInterval;
 
         //start with epoch 0
-        updateBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, 0, block.number);
+        updateBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, block.number, 0);
     }
 
     event EthReceived(uint amount);
@@ -310,10 +310,10 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         emit RewardsRemovedToBurn(epoch, rewardAmount);
     }
 
-    function updateBRRData(uint reward, uint rebate, uint epoch, uint expiryBlock) public {
+    function updateBRRData(uint reward, uint rebate, uint expiryBlock, uint epoch) public {
         // reward and rebate combined values < BPS. Tested in calling function.
-        require(epoch < 2 ** 32);
-        require(expiryBlock < 2 ** 160);
+        require(epoch < 2 ** 32, "epoch overflow");
+        require(expiryBlock < 2 ** 160, "Expiry block overflow");
 
         brrAndEpochData.rewardBps = uint32(reward);
         brrAndEpochData.rebateBps = uint32(rebate);
@@ -344,7 +344,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
             emit BRRUpdated(rewardBps, rebateBps, burnBps, expiryBlock, epoch);
 
             // Update brrAndEpochData
-            updateBRRData(rewardBps, rebateBps, epoch, expiryBlock);
+            updateBRRData(rewardBps, rebateBps, expiryBlock, epoch);
         }
     }
 

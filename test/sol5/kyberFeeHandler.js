@@ -284,15 +284,91 @@ contract('KyberFeeHandler', function(accounts) {
         });
     });
 
-    it("Test read BRR function", async function() {
+    it("test read BRR function", async() => {
         let results = await feeHandler.readBRRData();
         // console.log(results);
-        Helper.assertEqual(results['0'], rewardInBPS, "Actual decoded rewardInBPS is not correct");
-        Helper.assertEqual(results['1'], rebateInBPS, "Actual decoded rebateInBPS is not correct");
-        Helper.assertEqual(results['2'], expiryBlockNumber, "Actual decoded expiryBlockNumber is not correct");
-        Helper.assertEqual(results['3'], epoch, "Actual decoded epoch is not correct");
+        Helper.assertEqual(results.rewardBps, rewardInBPS, "Actual decoded rewardInBPS is not correct");
+        Helper.assertEqual(results.rebateBps, rebateInBPS, "Actual decoded rebateInBPS is not correct");
+        Helper.assertEqual(results.expiryBlock, expiryBlockNumber, "Actual decoded expiryBlockNumber is not correct");
+        Helper.assertEqual(results.epoch, epoch, "Actual decoded epoch is not correct");
     });
    
+    describe("test updateBRRData function", async() => {
+        let rewardBps;
+        let rebateBps;
+        beforeEach("get default BRR values", async() => {
+            let results = await feeHandler.readBRRData();
+            rewardBps = results.rewardBps;
+            rebateBps = results.rebateBps;
+            expiryBlock = results.expiryBlock;
+            epoch = results.epoch;
+        });
+
+        after("get default BRR values", async() => {
+            let results = await feeHandler.readBRRData();
+            rewardBps = results.rewardBps;
+            rebateBps = results.rebateBps;
+            expiryBlock = results.expiryBlock;
+            epoch = results.epoch;
+        });
+
+        it("should revert if rewardBps >= 2 ** 32 - 1", async () => {
+            rewardBps = new BN(2).pow(new BN(32)).sub(new BN(1));
+            await expectRevert(
+                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
+                "reward overflow"
+            );
+
+            rewardBps.add(new BN(1));
+            await expectRevert(
+                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
+                "reward overflow"
+            );
+        });
+
+        it("should revert if rebateBps >= 2 ** 32 - 1", async() => {
+            rebateBps = new BN(2).pow(new BN(32)).sub(new BN(1));
+            await expectRevert(
+                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
+                "rebate overflow"
+            );
+
+            rebateBps.add(new BN(1));
+            await expectRevert(
+                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
+                "rebate overflow"
+            );
+        });
+
+        it("should revert if expiryBlock >= 2 ** 160 - 1", async() => {
+            expiryBlock = new BN(2).pow(new BN(160)).sub(new BN(1));
+            await expectRevert(
+                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
+                "expiry overflow"
+            );
+
+            expiryBlock.add(new BN(1));
+            await expectRevert(
+                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
+                "expiry overflow"
+            );
+        });
+
+        it("should revert if epoch >= 2 ** 32 - 1", async() => {
+            epoch = new BN(2).pow(new BN(160)).sub(new BN(1));
+            await expectRevert(
+                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
+                "epoch overflow"
+            );
+
+            epoch.add(new BN(1));
+            await expectRevert(
+                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
+                "epoch overflow"
+            );
+        });
+    });
+
     describe("test permissions: onlyDAO, onlyKyberNetwork, only dao setter", async() => {
         it("reverts handleFees if called by non-network", async() => {
             let platformWallet = accounts[1];
