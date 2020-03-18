@@ -334,10 +334,14 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             "gas cost for concluding camps (fee camp - no winning optin + no brr camp): " // log message
         );
 
-        // camp should be concluded with no winning option
-        let winningOptionData = await daoContract.getWinningOptionData(1);
-        Helper.assertEqual(true, winningOptionData.hasConcluded);
-        Helper.assertEqual(0, winningOptionData.winningOptionID);
+        // network fee camp should be updated without winning option
+        Helper.assertEqual(await daoContract.latestNetworkFeeResult(), curNetworkFee);
+        // brr camp should be updated without winning option
+        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        Helper.assertEqual(2 * epochPeriod + startBlock - 1, daoBrrData.expiryBlockNumber);
+        Helper.assertEqual(2, daoBrrData.epoch);
+        Helper.assertEqual(curBrrData.rewardBPS, daoBrrData.rewardInBps);
+        Helper.assertEqual(curBrrData.rebateBPS, daoBrrData.rebateInBps);
     });
 
     it("test has network fee camp without winning option, has brr camp without winning option, data changes as expected", async() => {
@@ -392,14 +396,14 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             "gas cost for concluding camps (fee + brr camp - no winning option): " // log message
         );
 
-        // network fee camp should be concluded without winning option
-        let winningOptionData = await daoContract.getWinningOptionData(2);
-        Helper.assertEqual(true, winningOptionData.hasConcluded);
-        Helper.assertEqual(0, winningOptionData.winningOptionID);
-        // brr camp should be concluded with no winning option
-        winningOptionData = await daoContract.getWinningOptionData(3);
-        Helper.assertEqual(true, winningOptionData.hasConcluded);
-        Helper.assertEqual(0, winningOptionData.winningOptionID);
+        // network fee camp should be updated without winning option
+        Helper.assertEqual(await daoContract.latestNetworkFeeResult(), curNetworkFee);
+        // brr camp should be updated with no winning option
+        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        Helper.assertEqual(3 * epochPeriod + startBlock - 1, daoBrrData.expiryBlockNumber);
+        Helper.assertEqual(3, daoBrrData.epoch);
+        Helper.assertEqual(curBrrData.rewardBPS, daoBrrData.rewardInBps);
+        Helper.assertEqual(curBrrData.rebateBPS, daoBrrData.rebateInBps);
     });
 
     it("test has network fee camp without winning option, has brr camp with winning option, data changes as expected", async() => {
@@ -454,14 +458,14 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             "gas cost for concluding camps (fee camp - no winning option + brr camp - has winning option): " // log message
         );
 
-        // network fee camp should be concluded without winning option
-        let winningOptionData = await daoContract.getWinningOptionData(4);
-        Helper.assertEqual(true, winningOptionData.hasConcluded);
-        Helper.assertEqual(0, winningOptionData.winningOptionID);
-        // brr camp should be concluded with option 1 is the winning option
-        winningOptionData = await daoContract.getWinningOptionData(5);
-        Helper.assertEqual(true, winningOptionData.hasConcluded);
-        Helper.assertEqual(1, winningOptionData.winningOptionID);
+        // network fee camp should be updated without winning option
+        Helper.assertEqual(await daoContract.latestNetworkFeeResult(), curNetworkFee);
+        // brr camp should be updated with option 1 winning
+        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        Helper.assertEqual(4 * epochPeriod + startBlock - 1, daoBrrData.expiryBlockNumber);
+        Helper.assertEqual(4, daoBrrData.epoch);
+        Helper.assertEqual(curBrrData.rewardBPS.add(new BN(1)), daoBrrData.rewardInBps);
+        Helper.assertEqual(curBrrData.rebateBPS.add(new BN(1)), daoBrrData.rebateInBps);
     });
 
     it("test has network fee camp with winning option, no brr camp, data changes as expected", async() => {
@@ -501,10 +505,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             "gas cost for concluding camps (fee camp - has winning option + no brr camp): " // log message
         );
 
-        // check camp is concluded
-        let winningOptionData = await daoContract.getWinningOptionData(6);
-        Helper.assertEqual(true, winningOptionData.hasConcluded);
-        Helper.assertEqual(1, winningOptionData.winningOptionID);
+        // network fee camp should be updated with winning option
+        Helper.assertEqual(await daoContract.latestNetworkFeeResult(), newFee1);
     });
 
     it("test has network fee camp with winning option, has brr camp without winning option, data changes as expected", async() => {
@@ -559,13 +561,14 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             "gas cost for concluding camps (fee camp - has winning option + brr camp - no winning option): " // log message
         );
 
-        // check camps are concluded
-        let winningOptionData = await daoContract.getWinningOptionData(7);
-        Helper.assertEqual(true, winningOptionData.hasConcluded);
-        Helper.assertEqual(1, winningOptionData.winningOptionID);
-        winningOptionData = await daoContract.getWinningOptionData(8);
-        Helper.assertEqual(true, winningOptionData.hasConcluded);
-        Helper.assertEqual(0, winningOptionData.winningOptionID);
+        // network fee camp should be updated with winning option
+        Helper.assertEqual(await daoContract.latestNetworkFeeResult(), newFee1);
+        // brr camp should be updated without winning option
+        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        Helper.assertEqual(6 * epochPeriod + startBlock - 1, daoBrrData.expiryBlockNumber);
+        Helper.assertEqual(6, daoBrrData.epoch);
+        Helper.assertEqual(curBrrData.rewardBPS, daoBrrData.rewardInBps);
+        Helper.assertEqual(curBrrData.rebateBPS, daoBrrData.rebateInBps);
     });
 
     it("test has network fee camp with winning option, has brr camp with winning option, data changes as expected", async() => {
@@ -620,14 +623,14 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             "gas cost for concluding camps (network fee + brr camp - has winning option): " // log message
         );
 
-        // network fee camp should be concluded with option 1 is the winning option
-        let winningOptionData = await daoContract.getWinningOptionData(9);
-        Helper.assertEqual(true, winningOptionData.hasConcluded);
-        Helper.assertEqual(1, winningOptionData.winningOptionID);
-        // brr camp should be concluded with option 1 is the winning option
-        winningOptionData = await daoContract.getWinningOptionData(10);
-        Helper.assertEqual(true, winningOptionData.hasConcluded);
-        Helper.assertEqual(1, winningOptionData.winningOptionID);
+        // network fee camp should be updated with winning option
+        Helper.assertEqual(await daoContract.latestNetworkFeeResult(), newFee1);
+        // brr camp should be updated with winning option
+        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        Helper.assertEqual(7 * epochPeriod + startBlock - 1, daoBrrData.expiryBlockNumber);
+        Helper.assertEqual(7, daoBrrData.epoch);
+        Helper.assertEqual(curBrrData.rewardBPS.add(new BN(1)), daoBrrData.rewardInBps);
+        Helper.assertEqual(curBrrData.rebateBPS.add(new BN(1)), daoBrrData.rebateInBps);
     });
 
     it("test no network fee and brr camps, data changes only expiry block as expected", async() => {
@@ -702,13 +705,14 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             "gas cost no network fee + brr camp, fallback previous values: " // log message
         );
 
-        // camps shouldn't be concluded
-        let winningOptionData = await daoContract.getWinningOptionData(11);
-        Helper.assertEqual(false, winningOptionData.hasConcluded);
-        Helper.assertEqual(0, winningOptionData.winningOptionID);
-        winningOptionData = await daoContract.getWinningOptionData(12);
-        Helper.assertEqual(false, winningOptionData.hasConcluded);
-        Helper.assertEqual(0, winningOptionData.winningOptionID);
+        // network fee camp should be updated without winning option
+        Helper.assertEqual(await daoContract.latestNetworkFeeResult(), curNetworkFee);
+        // brr camp should be updated without winning option
+        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        Helper.assertEqual(12 * epochPeriod + startBlock - 1, daoBrrData.expiryBlockNumber);
+        Helper.assertEqual(12, daoBrrData.epoch);
+        Helper.assertEqual(curBrrData.rewardBPS, daoBrrData.rewardInBps);
+        Helper.assertEqual(curBrrData.rebateBPS, daoBrrData.rebateInBps);
     });
 })
 
