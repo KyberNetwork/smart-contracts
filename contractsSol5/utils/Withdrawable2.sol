@@ -27,7 +27,8 @@ contract Withdrawable2 is PermissionGroups2 {
      * @dev Withdraw Ethers
      */
     function withdrawEther(uint amount, address payable sendTo) external onlyAdmin {
-        sendTo.transfer(amount);
+        (bool success, ) = sendTo.call.value(amount)("");
+        require(success);
         emit EtherWithdraw(amount, sendTo);
     }
 }
