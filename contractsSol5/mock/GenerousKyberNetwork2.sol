@@ -5,7 +5,8 @@ import "../KyberNetwork.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// @title Kyber Network main contract, takes some fee and reports actual dest amount minus Fees.
+/// @title GenerousKyberNetwork2 transfer the fixed dest amount to destAddress and returns this amount to proxy
+// This would allow us to check the condition of maxDestAmount
 contract GenerousKyberNetwork2 is KyberNetwork {
 
     constructor(address _admin) public KyberNetwork(_admin) { }
