@@ -5,6 +5,8 @@ const contractsSol4Path = path.join(__dirname, "../contracts/");
 const contractsSol5Path = path.join(__dirname, '../contractsSol5/');
 const solc418 = "v0.4.18+commit.9cf6e910";
 const solc511 = "v0.5.11+commit.c082d0b4";
+const solc418Path = path.join(__dirname, "./compilers/soljson-v0.4.18+commit.9cf6e910.js");
+const solc511Path = path.join(__dirname, "./compilers/soljson-v0.5.11+commit.c082d0b4.js");
 let compiler;
 
 const sol4SourceFiles = {
@@ -114,16 +116,9 @@ function getImports(dependency) {
     console.log('Searching for dependency: ', dependency);
 }
 
-async function loadSpecificCompiler(solcVersion) {
-    console.log(`Downloading compiler ${solcVersion}`);
-    return await solc.loadRemoteVersion(solcVersion, async function (err, solc_specific) {
-        if (err) {
-            console.log(err);
-        } else {
-            compiler = solc_specific;
-            return;
-        }
-    });
+function loadSpecificCompiler(solcVersion, solcPath) {
+    console.log(`Loading compiler ${solcVersion}`);
+    return solc.setupMethods(require(solcPath));
 };
 
 function errorHandling(compiledSources) {
@@ -143,25 +138,24 @@ function sleep(ms){
 
 module.exports.compileContracts = compileContracts;
 async function compileContracts(versionNum) {
-    console.log("Resetting compiler...");
     compiler = undefined;
     let solcVersionNum;
+    let solcPath;
     let sourceFiles;
     if (versionNum == "sol4") {
         solcVersionNum = solc418;
+        solcPath = solc418Path;
         sourceFiles = sol4SourceFiles;
     } else if (versionNum == "sol5") {
         solcVersionNum = solc511;
+        solcPath = solc511Path;
         sourceFiles = sol5SourceFiles;
     } else {
       console.log(`invalid version number ${versionNum}`);
       process.exit(0);
     }
 
-    while (compiler == undefined) {
-        compiler = await loadSpecificCompiler(solcVersionNum);
-        await sleep(20000); //change time based on internet connection
-    }
+    compiler = loadSpecificCompiler(solcVersionNum, solcPath);
     compilingPreparations();
     const config = createConfiguration(sourceFiles);
     output = JSON.parse(compiler.compile(JSON.stringify(config)));
