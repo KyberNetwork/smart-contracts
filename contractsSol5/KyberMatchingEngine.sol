@@ -192,14 +192,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         tData.ethToToken.decimals = destDecimals;
         tData.networkFeeBps = info[uint(IKyberMatchingEngine.InfoIndex.networkFeeBps)];
 
-        parseTradeDataHint(src, dest, tData, hint);
-
-        if (tData.failedIndex > 0) {
-            storeTradeReserveData(tData.tokenToEth, IKyberReserve(0), 0, false);
-            storeTradeReserveData(tData.ethToToken, IKyberReserve(0), 0, false);
-
-            return packResults(tData);
-        }
+        parseTradeHint(src, dest, tData, hint);
 
         calcRatesAndAmountsTokenToEth(src, info[uint(IKyberMatchingEngine.InfoIndex.srcAmount)], tData);
 
@@ -260,7 +253,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     }
 
     /// @notice applies the hint (no hint, mask in, mask out, or split) and stores relevant information in tData
-    function parseTradeDataHint(
+    function parseTradeHint(
         IERC20 src,
         IERC20 dest,
         TradeData memory tData,
@@ -283,16 +276,14 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             (
                 tData.ethToToken.tradeType,
                 tData.ethToToken.addresses,
-                tData.ethToToken.splitValuesBps,
-                tData.failedIndex
-            ) = parseHintE2T(hint);
+                tData.ethToToken.splitValuesBps
+            ) = parseHint(hint);
         } else if (dest == ETH_TOKEN_ADDRESS) {
             (
                 tData.tokenToEth.tradeType,
                 tData.tokenToEth.addresses,
-                tData.tokenToEth.splitValuesBps,
-                tData.failedIndex
-            ) = parseHintT2E(hint);
+                tData.tokenToEth.splitValuesBps
+            ) = parseHint(hint);
         } else {
             (
                 tData.tokenToEth.tradeType,
@@ -300,8 +291,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
                 tData.tokenToEth.splitValuesBps,
                 tData.ethToToken.tradeType,
                 tData.ethToToken.addresses,
-                tData.ethToToken.splitValuesBps,
-                tData.failedIndex
+                tData.ethToToken.splitValuesBps
             ) = parseHintT2T(hint);
         }
 

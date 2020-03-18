@@ -1,5 +1,7 @@
 pragma solidity 0.5.11;
 
+import "./IKyberReserve.sol";
+
 
 interface IKyberHint {
 
@@ -9,52 +11,19 @@ interface IKyberHint {
         Split
     }
 
-    function parseEthToTokenHint(bytes calldata hint)
-        external
-        view
-        returns(
-            TradeType ethToTokenType,
-            bytes8[] memory ethToTokenReserveIds,
-            uint[] memory ethToTokenSplits,
-            uint failedIndex
-        );
-
-    function parseTokenToEthHint(bytes calldata hint)
-        external
-        view
-        returns(
-            TradeType tokenToEthType,
-            bytes8[] memory tokenToEthReserveIds,
-            uint[] memory tokenToEthSplits,
-            uint failedIndex
-        );
-
-    function parseTokenToTokenHint(bytes calldata hint)
-        external
-        view
-        returns(
-            TradeType tokenToEthType,
-            bytes8[] memory tokenToEthReserveIds,
-            uint[] memory tokenToEthSplits,
-            TradeType ethToTokenType,
-            bytes8[] memory ethToTokenReserveIds,
-            uint[] memory ethToTokenSplits,
-            uint failedIndex
-        );
-
-    function buildEthToTokenHint(
-        TradeType ethToTokenType,
-        bytes8[] calldata ethToTokenReserveIds,
-        uint[] calldata ethToTokenSplits
+    function buildTokenToEthHint(
+        TradeType tokenToEthType,
+        bytes8[] calldata tokenToEthReserveIds,
+        uint[] calldata tokenToEthSplits
     )
         external
         pure
         returns(bytes memory hint);
 
-    function buildTokenToEthHint(
-        TradeType tokenToEthType,
-        bytes8[] calldata tokenToEthReserveIds,
-        uint[] calldata tokenToEthSplits
+    function buildEthToTokenHint(
+        TradeType ethToTokenType,
+        bytes8[] calldata ethToTokenReserveIds,
+        uint[] calldata ethToTokenSplits
     )
         external
         pure
@@ -71,4 +40,38 @@ interface IKyberHint {
         external
         pure
         returns(bytes memory hint);
+
+    function parseTokenToEthHint(bytes calldata hint)
+        external
+        view
+        returns(
+            TradeType tokenToEthType,
+            bytes8[] memory tokenToEthReserveIds,
+            IKyberReserve[] memory tokenToEthAddresses,
+            uint[] memory tokenToEthSplits
+        );
+
+    function parseEthToTokenHint(bytes calldata hint)
+        external
+        view
+        returns(
+            TradeType ethToTokenType,
+            bytes8[] memory ethToTokenReserveIds,
+            IKyberReserve[] memory ethToTokenAddresses,
+            uint[] memory ethToTokenSplits
+        );
+
+    function parseTokenToTokenHint(bytes calldata hint)
+        external
+        view
+        returns(
+            TradeType tokenToEthType,
+            bytes8[] memory tokenToEthReserveIds,
+            IKyberReserve[] memory tokenToEthAddresses,
+            uint[] memory tokenToEthSplits,
+            TradeType ethToTokenType,
+            bytes8[] memory ethToTokenReserveIds,
+            IKyberReserve[] memory ethToTokenAddresses,
+            uint[] memory ethToTokenSplits
+        );
 }
