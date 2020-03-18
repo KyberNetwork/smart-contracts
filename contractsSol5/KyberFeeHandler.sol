@@ -257,7 +257,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
         // Get srcQty to burn, if greater than WEI_TO_BURN, burn only WEI_TO_BURN per function call.
         uint balance = address(this).balance;
-        require(balance >= totalPayoutBalance, "contract bal too low");
+        require(balance >= totalPayoutBalance, "contract balance too low");
 
         uint srcQty = balance - totalPayoutBalance;
         srcQty = srcQty > WEI_TO_BURN ? WEI_TO_BURN : srcQty;
@@ -339,7 +339,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
             uint burnBps;
 
             (burnBps, rewardBps, rebateBps, epoch, expiryBlock) = kyberDAO.getLatestBRRData();
-            require(burnBps + rewardBps + rebateBps == BPS);
+            require(burnBps + rewardBps + rebateBps == BPS, "Bad BRR values");
 
             emit BRRUpdated(rewardBps, rebateBps, burnBps, expiryBlock, epoch);
 
