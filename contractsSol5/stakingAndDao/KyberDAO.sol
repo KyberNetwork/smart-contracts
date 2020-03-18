@@ -67,7 +67,7 @@ contract CampPermissionGroups {
 /**
 * @dev camp -> campaign
 * @dev Network fee campaign: options are fee in bps
-* @dev BRR fee handler campaign: options are combined of rebate (first 128 bits) + reward (last 128 bits)
+* @dev BRR fee handler campaign: options are combined of rebate (left most 128 bits) + reward (right most 128 bits)
 * @dev General campaign: options are from 1 to num_options
 */
 
@@ -117,9 +117,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     // campOptionPoints[campID]: total points and points of each option for a campaign
     // campOptionPoints[campID][0] is total points, campOptionPoints[campID][1..] for each option ID
     mapping(uint => uint[]) internal campOptionPoints;
-    // winningOptionData[campID]: winning option data for each campaign
-    // 128 bits: has concluded campaign or not, last 128 bits: winning option ID
-    mapping(uint => uint) internal winningOptionData;
 
     /** Mapping from epoch => data */
 
@@ -404,8 +401,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         uint winningOption;
         (winningOption, feeInBps) = getCampaignWinningOptionAndValue(campID);
-        // save latest winning option data
-        winningOptionData[campID] = encodeWinningOptionData(winningOption, true);
 
         if (winningOption == 0) {
             // no winning option, fall back to previous result
@@ -432,8 +427,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             if (campID != 0) {
                 uint winningOption;
                 (winningOption, brrData) = getCampaignWinningOptionAndValue(campID);
-                // save latest winning option data
-                winningOptionData[campID] = encodeWinningOptionData(winningOption, true);
                 if (winningOption == 0) {
                     // no winning option, fallback to previous result
                     brrData = latestBrrResult;
@@ -506,18 +499,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         // not found or not ended yet, return 0 as winning option
         if (camp.endBlock == 0 || camp.endBlock > block.number) { return (0, 0); }
 
-        bool hasConcluded;
-        (hasConcluded, optionID) = decodeWinningOptionData(winningOptionData[campID]);
-        if (hasConcluded) {
-            if (optionID == 0 || optionID > camp.options.length) {
-                // no winning option or invalid winning option
-                return (0, 0);
-            }
-            return (optionID, camp.options[optionID - 1]);
-        }
-
         uint totalSupply = camp.totalKNCSupply;
-        // no one has voted in this epoch
+        // something is wrong here, total KNC supply shouldn't be 0
         if (totalSupply == 0) { return (0, 0); }
 
         uint[] memory voteCounts = campOptionPoints[campID];
@@ -776,17 +759,5 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         require(option <= camp.options.length, "vote: option not in range");
 
         return true;
-    }
-
-    function decodeWinningOptionData(uint data) internal pure returns(bool hasConcluded, uint optionID) {
-        hasConcluded = ((data.div(POWER_128)) & (POWER_128.sub(1))) == 1;
-        optionID = data & (POWER_128.sub(1));
-    }
-
-    function encodeWinningOptionData(uint optionID, bool hasConcluded) internal pure returns(uint data) {
-        data = optionID & (POWER_128.sub(1));
-        if (hasConcluded) {
-            data = data.add(POWER_128);
-        }
     }
 }

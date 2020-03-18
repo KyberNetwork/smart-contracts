@@ -4248,42 +4248,6 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(25, data[1], "winning option value is invalid");
         });
 
-        it("Test get winning option for camp that has concluded the result", async function() {
-            await deployContracts(10, currentBlock + 20, 5);
-            await setupSimpleStakingData();
-
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
-
-            currentBlock = await Helper.getCurrentBlock();
-            // min percentage: 0%, c = 0, t = 0
-            await daoContract.submitNewCampaign(
-                1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [25, 50, 100], '0x', {from: campCreator}
-            );
-
-            await daoContract.vote(1, 1, {from: mike});
-
-            // delay to end of this epocch
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
-
-            let data = await daoContract.getCampaignWinningOptionAndValue(1);
-            Helper.assertEqual(1, data[0], "winning option id is invalid");
-            Helper.assertEqual(25, data[1], "winning option value is invalid");
-
-            data = await daoContract.getWinningOptionData(1);
-            Helper.assertEqual(false, data[0], "shouldn't have concluded");
-            Helper.assertEqual(0, data[0], "winning option id is invalid");
-
-            // conclude result, it is network fee so just call get network fee with cache
-            await daoContract.getLatestNetworkFeeDataWithCache();
-
-            data = await daoContract.getWinningOptionData(1);
-            Helper.assertEqual(true, data[0], "should have concluded");
-            Helper.assertEqual(1, data[1], "winning option id is invalid");
-        });
-
         it("Test get winning option total supply is 0", async function() {
             kncToken = await TestToken.new("test token", 'tst', 18, {from: accounts[0]});
 
@@ -4311,16 +4275,8 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(0, data[0], "winning option id is invalid");
             Helper.assertEqual(0, data[1], "winning option value is invalid");
 
-            data = await daoContract.getWinningOptionData(1);
-            Helper.assertEqual(false, data[0], "shouldn't have concluded");
-            Helper.assertEqual(0, data[0], "winning option id is invalid");
-
             // conclude result, it is network fee so just call get network fee with cache
             await daoContract.getLatestNetworkFeeDataWithCache();
-
-            data = await daoContract.getWinningOptionData(1);
-            Helper.assertEqual(true, data[0], "should have concluded");
-            Helper.assertEqual(0, data[1], "winning option id is invalid");
         });
 
         it("Test get winning option with no vote", async function() {
@@ -4351,16 +4307,8 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(0, data[0], "winning option id is invalid");
             Helper.assertEqual(0, data[1], "winning option value is invalid");
 
-            data = await daoContract.getWinningOptionData(1);
-            Helper.assertEqual(false, data[0], "shouldn't have concluded");
-            Helper.assertEqual(0, data[0], "winning option id is invalid");
-
             // conclude result, it is network fee so just call get network fee with cache
             await daoContract.getLatestNetworkFeeDataWithCache();
-
-            data = await daoContract.getWinningOptionData(1);
-            Helper.assertEqual(true, data[0], "should have concluded");
-            Helper.assertEqual(0, data[1], "winning option id is invalid");
 
             await resetSetupForKNCToken();
         });
@@ -4396,16 +4344,8 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(0, data[0], "winning option id is invalid");
             Helper.assertEqual(0, data[1], "winning option value is invalid");
 
-            data = await daoContract.getWinningOptionData(1);
-            Helper.assertEqual(false, data[0], "shouldn't have concluded");
-            Helper.assertEqual(0, data[0], "winning option id is invalid");
-
             // conclude result, it is network fee so just call get network fee with cache
             await daoContract.getLatestNetworkFeeDataWithCache();
-
-            data = await daoContract.getWinningOptionData(1);
-            Helper.assertEqual(true, data[0], "should have concluded");
-            Helper.assertEqual(0, data[1], "winning option id is invalid");
         });
 
         it("Test get winning option return 0 vote count less than min percentage (20%)", async function() {
@@ -4504,16 +4444,8 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(3, data[0], "winning option id is invalid");
             Helper.assertEqual(100, data[1], "winning option value is invalid");
 
-            data = await daoContract.getWinningOptionData(1);
-            Helper.assertEqual(false, data[0], "shouldn't have concluded");
-            Helper.assertEqual(0, data[0], "winning option id is invalid");
-
             // conclude result, it is network fee so just call get network fee with cache
             await daoContract.getLatestNetworkFeeDataWithCache();
-
-            data = await daoContract.getWinningOptionData(1);
-            Helper.assertEqual(true, data[0], "should have concluded");
-            Helper.assertEqual(3, data[1], "winning option id is invalid");
 
             // resetup data, increase total supply so total votes less than 20%
             totalSupply.iadd(new BN(1));
@@ -5097,10 +5029,7 @@ contract('KyberDAO', function(accounts) {
             // check data
             await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, 2 * epochPeriod + startBlock - 1);
 
-            let data = await daoContract.getWinningOptionData(1);
-            Helper.assertEqual(data[0], 0, "shouldn't conclude this camp");
-
-            // create fee camp, but no winning
+           // create fee camp, but no winning
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
@@ -5115,10 +5044,6 @@ contract('KyberDAO', function(accounts) {
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
             // check data
             await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, 3 * epochPeriod + startBlock - 1);
-
-            data = await daoContract.getWinningOptionData(2);
-            Helper.assertEqual(true, data[0], "should have concluded this camp");
-            Helper.assertEqual(0, data[1], "no winning option");
 
             // delay few epoch, to epoch 5
             currentBlock = await Helper.getCurrentBlock();
@@ -5142,10 +5067,6 @@ contract('KyberDAO', function(accounts) {
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 5 * epochPeriod + startBlock - currentBlock);
             // check data
             await daoContract.checkLatestNetworkFeeData(1, 6 * epochPeriod + startBlock - 1);
-
-            data = await daoContract.getWinningOptionData(3);
-            Helper.assertEqual(true, data[0], "should have concluded this camp");
-            Helper.assertEqual(3, data[1], "has winning option");
 
             // delay to next epoch
             currentBlock = await Helper.getCurrentBlock();
@@ -5909,54 +5830,6 @@ contract('KyberDAO', function(accounts) {
                 daoContract.getDataFromRewardAndRebateWithValidation(reward, rebate),
                 "reward plus rebate high"
             )
-        });
-
-        it("Test encode winning option data returns correct value", async function() {
-            let hasConcluded = false;
-            let optionID = 0;
-            let data;
-            let result;
-
-            for(let id = 0; id <= 10; id++) {
-                hasConcluded = false;
-                optionID = id;
-
-                data = getEncodeWinningOption(optionID, hasConcluded);
-                result = await daoContract.getWinningOptionEncodeData(hasConcluded, optionID);
-
-                Helper.assertEqual(data, result, "encode winning option returns different value");
-
-                hasConcluded = true;
-                data = getEncodeWinningOption(optionID, hasConcluded);
-                result = await daoContract.getWinningOptionEncodeData(hasConcluded, optionID);
-
-                Helper.assertEqual(data, result, "encode winning option returns different value");
-            }
-        });
-
-        it("Test decode winning option data returns correct value", async function() {
-            let hasConcluded = false;
-            let optionID = 0;
-            let data;
-            let result;
-
-            for(let id = 0; id <= 10; id++) {
-                hasConcluded = false;
-                optionID = id;
-
-                data = getEncodeWinningOption(optionID, hasConcluded);
-                result = await daoContract.getWinningOptionDecodeData(data);
-
-                Helper.assertEqual(hasConcluded, result[0], "decode winning option returns different value");
-                Helper.assertEqual(optionID, result[1], "decode winning option returns different value");
-
-                hasConcluded = true;
-                data = getEncodeWinningOption(optionID, hasConcluded);
-                result = await daoContract.getWinningOptionDecodeData(data);
-
-                Helper.assertEqual(hasConcluded, result[0], "decode winning option returns different value");
-                Helper.assertEqual(optionID, result[1], "decode winning option returns different value");
-            }
         });
 
         it("Test decode formula params returns correct values", async function() {

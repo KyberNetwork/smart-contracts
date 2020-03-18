@@ -40,18 +40,6 @@ contract MockKyberDaoMoreGetters is KyberDAO {
         return numberVotes[staker][epoch];
     }
 
-    function getWinningOptionData(uint campID) public view returns(bool hasConcluded, uint winningOptionID) {
-        (hasConcluded, winningOptionID) = decodeWinningOptionData(winningOptionData[campID]);
-    }
-
-    function getWinningOptionDecodeData(uint data) public pure returns(bool hasConcluded, uint winningOptionID) {
-        (hasConcluded, winningOptionID) = decodeWinningOptionData(data);
-    }
-
-    function getWinningOptionEncodeData(bool hasConcluded, uint optionID) public pure returns(uint) {
-        return encodeWinningOptionData(optionID, hasConcluded);
-    }
-
     function getDecodeFormulaParams(uint data) public pure
         returns(uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision)
     {
