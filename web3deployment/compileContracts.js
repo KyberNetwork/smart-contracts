@@ -121,12 +121,14 @@ function loadSpecificCompiler(solcVersion, solcPath) {
     return solc.setupMethods(require(solcPath));
 };
 
-function errorHandling(compiledSources) {
+function errorHandling(compiledSources, versionNum) {
     if (!compiledSources) {
         console.error('>>>>>>>>>>>>>>>>>>>>>>>> ERRORS <<<<<<<<<<<<<<<<<<<<<<<<\n', 'NO OUTPUT');
     } else if (compiledSources.errors) { // something went wrong.
         console.error('>>>>>>>>>>>>>>>>>>>>>>>> ERRORS <<<<<<<<<<<<<<<<<<<<<<<<\n');
         compiledSources.errors.map(error => console.log(error.formattedMessage));
+    } else {
+        console.log(`Successfully compiled ${versionNum} contracts!`)
     }
 }
 
@@ -159,7 +161,7 @@ async function compileContracts(versionNum) {
     compilingPreparations();
     const config = createConfiguration(sourceFiles);
     output = JSON.parse(compiler.compile(JSON.stringify(config)));
-    errorHandling(output);
+    errorHandling(output, versionNum);
     // console.log(output.contracts['GasHelper.sol']);
     return output;
 }
