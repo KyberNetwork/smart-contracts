@@ -306,7 +306,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let link = web3.utils.fromAscii("https://kyberswap.com");
         await daoContract.submitNewCampaign(
             1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-            0, [0, defaultNetworkFee - 1, defaultNetworkFee + 1], link, {from: campCreator}
+            0, 0, 0, [0, defaultNetworkFee - 1, defaultNetworkFee + 1], link, {from: campCreator}
         );
 
         // mike & victor have same vote power
@@ -357,7 +357,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let newFee3 = curNetworkFee.add(new BN(3));
         await daoContract.submitNewCampaign(
             1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-            0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+            0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
         );
 
         // create brr camp
@@ -367,7 +367,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(3)), curBrrData.rewardBPS.add(new BN(3)));
         await daoContract.submitNewCampaign(
             2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-            0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+            0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
         );
 
         // vote for network fee camp, id: 2
@@ -419,7 +419,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let newFee3 = curNetworkFee.add(new BN(3));
         await daoContract.submitNewCampaign(
             1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-            0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+            0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
         );
 
         // create brr camp
@@ -429,7 +429,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(3)), curBrrData.rewardBPS.add(new BN(3)));
         await daoContract.submitNewCampaign(
             2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-            0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+            0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
         );
 
         // vote for network fee camp, id: 4
@@ -481,7 +481,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let newFee3 = curNetworkFee.add(new BN(3));
         await daoContract.submitNewCampaign(
             1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-            0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+            0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
         );
 
         // vote for network fee camp, id: 6
@@ -522,7 +522,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let newFee3 = curNetworkFee.add(new BN(3));
         await daoContract.submitNewCampaign(
             1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-            0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+            0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
         );
 
         // create brr camp
@@ -532,7 +532,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(3)), curBrrData.rewardBPS.add(new BN(3)));
         await daoContract.submitNewCampaign(
             2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-            0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+            0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
         );
 
         // vote for network fee camp, id: 7
@@ -584,7 +584,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let newFee3 = curNetworkFee.add(new BN(3));
         await daoContract.submitNewCampaign(
             1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-            0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+            0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
         );
 
         // create brr camp
@@ -594,7 +594,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(3)), curBrrData.rewardBPS.add(new BN(3)));
         await daoContract.submitNewCampaign(
             2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-            0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+            0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
         );
 
         // vote for network fee camp, id: 9
@@ -665,7 +665,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let newFee3 = curNetworkFee.add(new BN(3));
         await daoContract.submitNewCampaign(
             1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-            0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+            0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
         );
 
         // create brr camp
@@ -675,7 +675,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBPS.add(new BN(3)), curBrrData.rewardBPS.add(new BN(3)));
         await daoContract.submitNewCampaign(
             2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-            0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+            0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
         );
 
         // vote for network fee camp, id: 11
