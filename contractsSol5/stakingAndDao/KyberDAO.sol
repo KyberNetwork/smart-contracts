@@ -77,7 +77,6 @@ contract CampPermissionGroups {
 contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroups, Utils4 {
     // Constants
     uint internal constant POWER_128 = 2 ** 128;
-    uint internal constant POWER_84 = 2 ** 84;
     // max number of camps for each epoch
     uint public constant MAX_EPOCH_CAMPS = 10;
     // max number of options for each campaign
@@ -102,10 +101,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint campID;
         uint startBlock;
         uint endBlock;
-        uint totalKNCSupply;    // total KNC supply at the time campaign was created
-        uint formulaParams;     // squeezing formula params into one number
-        bytes link;             // link to KIP, explaination of options, etc.
-        uint[] options;         // data of options
+        uint totalKNCSupply;        // total KNC supply at the time campaign was created
+        FormulaData formulaData;  // formula params for concluding campaign result
+        bytes link;                 // link to KIP, explaination of options, etc.
+        uint[] options;             // data of options
     }
 
     /* Mapping from campaign ID => data */
@@ -206,7 +205,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     event NewCampaignCreated(
         CampaignType campType, uint campID,
-        uint startBlock, uint endBlock, uint formulaParams,
+        uint startBlock, uint endBlock,
+        uint minPerInPrecision, uint cInPrecision, uint tInPrecision,
         uint[] options, bytes link
     );
 
@@ -215,12 +215,15 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @param campType type of campaign (network fee, brr, general)
     * @param startBlock block to start running the campaign
     * @param endBlock block to end this campaign
-    * @param formulaParams encoded formula params for this campaign (minPercentage, c, t)
+    * @param minPerInPrecision min percentage (in precision) for formula to conclude campaign
+    * @param cInPrecision c value (in precision) for formula to conclude campaign
+    * @param tInPrecision t value (in precision) for formula to conclude campaign
     * @param options list values of options to vote for this campaign
     * @param link additional data for this campaign
     */
     function submitNewCampaign(
-        CampaignType campType, uint startBlock, uint endBlock, uint formulaParams,
+        CampaignType campType, uint startBlock, uint endBlock,
+        uint minPerInPrecision, uint cInPrecision, uint tInPrecision,
         uint[] memory options, bytes memory link
     )
         public onlyCampaignCreator returns(uint campID)
@@ -235,7 +238,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         );
 
         require(
-            validateCampaignParams(campType, startBlock, endBlock, campEpoch, formulaParams, options),
+            validateCampaignParams(
+                campType, startBlock, endBlock, campEpoch,
+                minPerInPrecision, cInPrecision, tInPrecision, options),
             "newCampaign: invalid camp params"
         );
 
@@ -258,6 +263,12 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             brrCampaign[campEpoch] = campID;
         }
 
+        FormulaData memory formulaData = FormulaData({
+            minPercentageInPrecision: minPerInPrecision,
+            cInPrecision: cInPrecision,
+            tInPrecision: tInPrecision
+        });
+
         campaignData[campID] = Campaign({
             campID: campID,
             campType: campType,
@@ -265,14 +276,18 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             endBlock: endBlock,
             totalKNCSupply: kncToken.totalSupply(),
             link: link,
-            formulaParams: formulaParams,
+            formulaData: formulaData,
             options: options
         });
 
         // index 0 for total votes, index 1 -> options.length for each option
         campOptionPoints[campID] = new uint[](options.length + 1);
 
-        emit NewCampaignCreated(campType, campID, startBlock, endBlock, formulaParams, options, link);
+        emit NewCampaignCreated(
+            campType, campID, startBlock, endBlock,
+            minPerInPrecision, cInPrecision, tInPrecision,
+            options, link
+        );
     }
 
     event CancelledCampaign(uint campID);
@@ -455,8 +470,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     function getCampaignDetails(uint campID)
         public view
         returns(
-            CampaignType campType, uint startBlock, uint endBlock,
-            uint totalKNCSupply, uint formulaParams, bytes memory link, uint[] memory options
+            CampaignType campType, uint startBlock, uint endBlock, uint totalKNCSupply,
+            uint minPerInPrecision, uint cInPrecision, uint tInPrecision,
+            bytes memory link, uint[] memory options
         )
     {
         Campaign storage camp = campaignData[campID];
@@ -464,7 +480,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         startBlock = camp.startBlock;
         endBlock = camp.endBlock;
         totalKNCSupply = camp.totalKNCSupply;
-        formulaParams = camp.formulaParams;
+        minPerInPrecision = camp.formulaData.minPercentageInPrecision;
+        cInPrecision = camp.formulaData.cInPrecision;
+        tInPrecision = camp.formulaData.tInPrecision;
         link = camp.link;
         options = camp.options;
     }
@@ -519,7 +537,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         // more than 1 options have same vote count
         if (winningOption == 0) { return (0, 0); }
 
-        FormulaData memory formulaData = decodeFormulaParams(camp.formulaParams);
+        FormulaData memory formulaData = camp.formulaData;
 
         uint totalVotes = voteCounts[0];
         // compute voted percentage (in precision)
@@ -528,6 +546,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         // total voted percentage is below min acceptable percentage, no winning option
         if (formulaData.minPercentageInPrecision > votedPercentage) { return (0, 0); }
 
+        // as we already limit value for c & t, no need to check for overflow here
         uint x = formulaData.tInPrecision.mul(votedPercentage).div(PRECISION);
         if (x <= formulaData.cInPrecision) {
             // threshold is not negative, need to compare with voted count
@@ -644,9 +663,13 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         data = (rebateInBps.mul(POWER_128)).add(rewardInBps);
     }
 
+    /**
+    * Validate params to check if we could submit a new campaign with these params
+    */
     function validateCampaignParams(
-        CampaignType campType, uint startBlock, uint endBlock,
-        uint startEpoch, uint formulaParams, uint[] memory options
+        CampaignType campType, uint startBlock, uint endBlock, uint startEpoch,
+        uint minPerInPrecision, uint cInPrecision, uint tInPrecision,
+        uint[] memory options
     )
         public view returns(bool)
     {
@@ -712,36 +735,24 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             }
         }
 
-        FormulaData memory data = decodeFormulaParams(formulaParams);
         // percentage should be smaller than or equal 100%
         require(
-            data.minPercentageInPrecision <= PRECISION,
+            minPerInPrecision <= PRECISION,
             "validateParams: min percentage high"
         );
 
+        // limit value of c and t to avoid overflow
+        require(
+            cInPrecision <= POWER_128,
+            "validateParams: c high"
+        );
+
+        require(
+            tInPrecision <= POWER_128,
+            "validateParams: t high"
+        );
+
         return true;
-    }
-
-    /**
-    * @dev encode formula params
-    * @dev 84 bits for each value
-    */
-    function encodeFormulaParams(
-        uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision
-    ) public pure returns(uint data) {
-        require(minPercentageInPrecision <= PRECISION, "min percentage high");
-        require(cInPrecision < POWER_84, "c high");
-        require(tInPrecision < POWER_84, "t high");
-
-        data = minPercentageInPrecision & (POWER_84.sub(1));
-        data |= (cInPrecision & (POWER_84.sub(1))).mul(POWER_84);
-        data |= (tInPrecision & (POWER_84.sub(1))).mul(POWER_84).mul(POWER_84);
-    }
-
-    function decodeFormulaParams(uint data) internal pure returns(FormulaData memory formulaData) {
-        formulaData.minPercentageInPrecision = data & (POWER_84.sub(1));
-        formulaData.cInPrecision = (data.div(POWER_84)) & (POWER_84.sub(1));
-        formulaData.tInPrecision = (data.div(POWER_84.mul(POWER_84))) & (POWER_84.sub(1));
     }
 
     /**

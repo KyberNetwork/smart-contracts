@@ -38,7 +38,6 @@ let minPercentageInPrecision = new BN(precisionUnits).div(new BN(5)); // 20%
 // Y = 100% - 1 * 20% = 80%
 let cInPrecision = new BN(precisionUnits); // 100%
 let tInPrecision = new BN(precisionUnits); // 1
-let formulaParamsData = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
 
 let initVictorStake = mulPrecision(1500);
 let initMikeStake = mulPrecision(2000);
@@ -163,7 +162,7 @@ contract('KyberDAO', function(accounts) {
             let link = web3.utils.fromAscii("https://kyberswap.com");
             await daoContract.submitNewCampaign(
                 0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             // withdraw when no votes
@@ -302,14 +301,16 @@ contract('KyberDAO', function(accounts) {
             let link = web3.utils.fromAscii("https://kyberswap.com");
             let txResult = await daoContract.submitNewCampaign(
                 0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             expectEvent(txResult, 'NewCampaignCreated', {
                 campType: new BN(0),
                 campID: new BN(1),
                 startBlock: new BN(currentBlock + 3),
                 endBlock: new BN(currentBlock + 3 + minCampPeriod),
-                formulaParams: new BN(formulaParamsData),
+                minPerInPrecision: new BN(minPercentageInPrecision),
+                cInPrecision: new BN(cInPrecision),
+                tInPrecision: new BN(tInPrecision),
                 link: link
             });
 
@@ -331,14 +332,16 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             txResult = await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             expectEvent(txResult, 'NewCampaignCreated', {
                 campType: new BN(1),
                 campID: new BN(2),
                 startBlock: new BN(currentBlock + 2),
                 endBlock: new BN(currentBlock + 2 + minCampPeriod),
-                formulaParams: new BN(formulaParamsData),
+                minPerInPrecision: minPercentageInPrecision,
+                cInPrecision: cInPrecision,
+                tInPrecision: tInPrecision,
                 link: link
             });
 
@@ -407,14 +410,16 @@ contract('KyberDAO', function(accounts) {
             // create new campaign far from current block
             txResult = await daoContract.submitNewCampaign(
                 2, currentBlock + 20, currentBlock + 20 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             expectEvent(txResult, 'NewCampaignCreated', {
                 campType: new BN(2),
                 campID: new BN(3),
                 startBlock: new BN(currentBlock + 20),
                 endBlock: new BN(currentBlock + 20 + minCampPeriod),
-                formulaParams: new BN(formulaParamsData),
+                minPerInPrecision: minPercentageInPrecision,
+                cInPrecision: cInPrecision,
+                tInPrecision: tInPrecision,
                 link: link
             });
 
@@ -450,7 +455,7 @@ contract('KyberDAO', function(accounts) {
             let link = web3.utils.fromAscii("https://kyberswap.com");
             await daoContract.submitNewCampaign(
                 0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             // deplay to start of first camp
@@ -524,7 +529,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -625,7 +630,7 @@ contract('KyberDAO', function(accounts) {
                 let link = web3.utils.fromAscii(id == 0 ? "" : "some_link");
                 let tx = await daoContract.submitNewCampaign(
                     id, currentBlock + 2 * id + 5, currentBlock + 2 * id + 5 + minCampPeriod,
-                    formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                    minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
                 );
                 gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
                 Helper.assertEqual(id + 1, await daoContract.numberCampaigns(), "number campaign is incorrect");
@@ -636,13 +641,15 @@ contract('KyberDAO', function(accounts) {
                 Helper.assertEqual(currentBlock + 2 * id + 5, data[1], "start block is incorrect");
                 Helper.assertEqual(currentBlock + 2 * id + 5 + minCampPeriod, data[2], "end block is incorrect");
                 Helper.assertEqual(totalSupply, data[3], "total supply is incorrect");
-                Helper.assertEqual(formulaParamsData, data[4], "formulaParamsData is incorrect");
-                Helper.assertEqual(link, data[5].toString(), "link is incorrect");
-                Helper.assertEqual(4, data[6].length, "number options is incorrect");
-                Helper.assertEqual(1, data[6][0], "option value is incorrect");
-                Helper.assertEqual(2, data[6][1], "option value is incorrect");
-                Helper.assertEqual(3, data[6][2], "option value is incorrect");
-                Helper.assertEqual(4, data[6][3], "option value is incorrect");
+                Helper.assertEqual(minPercentageInPrecision, data[4], "formulaParamsData is incorrect");
+                Helper.assertEqual(cInPrecision, data[5], "formulaParamsData is incorrect");
+                Helper.assertEqual(tInPrecision, data[6], "formulaParamsData is incorrect");
+                Helper.assertEqual(link, data[7].toString(), "link is incorrect");
+                Helper.assertEqual(4, data[8].length, "number options is incorrect");
+                Helper.assertEqual(1, data[8][0], "option value is incorrect");
+                Helper.assertEqual(2, data[8][1], "option value is incorrect");
+                Helper.assertEqual(3, data[8][2], "option value is incorrect");
+                Helper.assertEqual(4, data[8][3], "option value is incorrect");
 
                 let voteData = await daoContract.getCampaignVoteCountData(id + 1);
                 Helper.assertEqual(4, voteData[0].length, "number options is incorrect");
@@ -679,7 +686,7 @@ contract('KyberDAO', function(accounts) {
 
             await daoContract.submitNewCampaign(
                 1, currentBlock + 9, currentBlock + 9 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "should have network fee camp");
@@ -687,12 +694,12 @@ contract('KyberDAO', function(accounts) {
 
             await daoContract.submitNewCampaign(
                 0, currentBlock + 9, currentBlock + 9 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             await daoContract.submitNewCampaign(
                 2, currentBlock + 9, currentBlock + 9 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             currentBlock = await Helper.getCurrentBlock();
@@ -701,11 +708,11 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 6, currentBlock + 6 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 1, currentBlock + 6, currentBlock + 6 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "should have network fee camp");
             Helper.assertEqual(5, await daoContract.networkFeeCamp(1), "should have network fee camp");
@@ -723,7 +730,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 6, currentBlock + 6 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             Helper.assertEqual(0, await daoContract.networkFeeCamp(2), "shouldn't have network fee camp");
             Helper.assertEqual(6, await daoContract.networkFeeCamp(3), "should have network fee camp");
@@ -743,7 +750,7 @@ contract('KyberDAO', function(accounts) {
 
             let tx = await daoContract.submitNewCampaign(
                 1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             logInfo("Submit Campaign: First time create network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
             Helper.assertEqual(1, await daoContract.networkFeeCamp(1), "should have network fee camp");
@@ -757,17 +764,17 @@ contract('KyberDAO', function(accounts) {
 
             await daoContract.submitNewCampaign(
                 0, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
 
             tx = await daoContract.submitNewCampaign(
                 1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             logInfo("Submit Campaign: Recreate network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
             Helper.assertEqual(4, await daoContract.networkFeeCamp(1), "should have network fee camp");
@@ -787,7 +794,7 @@ contract('KyberDAO', function(accounts) {
 
             let tx = await daoContract.submitNewCampaign(
                 2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             logInfo("Submit Campaign: First time create brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
             Helper.assertEqual(1, await daoContract.brrCampaign(1), "should have brr camp");
@@ -798,17 +805,17 @@ contract('KyberDAO', function(accounts) {
 
             await daoContract.submitNewCampaign(
                 0, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             Helper.assertEqual(0, await daoContract.brrCampaign(1), "shouldn't have brr camp");
 
             tx = await daoContract.submitNewCampaign(
                 2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             logInfo("Submit Campaign: Recreate brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
             Helper.assertEqual(4, await daoContract.brrCampaign(1), "shouldn't have brr camp");
@@ -821,7 +828,7 @@ contract('KyberDAO', function(accounts) {
 
             await daoContract.submitNewCampaign(
                 2, currentBlock + 9, currentBlock + 9 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             Helper.assertEqual(1, await daoContract.brrCampaign(0), "should have brr camp");
@@ -829,12 +836,12 @@ contract('KyberDAO', function(accounts) {
 
             await daoContract.submitNewCampaign(
                 0, currentBlock + 9, currentBlock + 9 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             await daoContract.submitNewCampaign(
                 1, currentBlock + 9, currentBlock + 9 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
 
             currentBlock = await Helper.getCurrentBlock();
@@ -843,11 +850,11 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 6, currentBlock + 6 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 2, currentBlock + 6, currentBlock + 6 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             Helper.assertEqual(1, await daoContract.brrCampaign(0), "should have brr camp");
             Helper.assertEqual(5, await daoContract.brrCampaign(1), "should have brr camp");
@@ -866,7 +873,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 6, currentBlock + 6 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
             Helper.assertEqual(0, await daoContract.brrCampaign(2), "should have brr camp");
             Helper.assertEqual(6, await daoContract.brrCampaign(3), "shouldn't have brr camp");
@@ -878,7 +885,7 @@ contract('KyberDAO', function(accounts) {
             let link = web3.utils.fromAscii("https://kyberswap.com");
             await daoContract.submitNewCampaign(
                 0, startBlock + 1, startBlock + 1 + minCampPeriod,
-                formulaParamsData, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
 
             // test recorded correct data
@@ -887,12 +894,14 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(startBlock + 1, data[1], "start block is incorrect");
             Helper.assertEqual(startBlock + 1 + minCampPeriod, data[2], "end block is incorrect");
             Helper.assertEqual(await kncToken.totalSupply(), data[3], "total supply is incorrect");
-            Helper.assertEqual(formulaParamsData, data[4], "formulaParamsData is incorrect");
-            Helper.assertEqual(link, data[5].toString(), "link is incorrect");
-            Helper.assertEqual(3, data[6].length, "number options is incorrect");
-            Helper.assertEqual(1, data[6][0], "option value is incorrect");
-            Helper.assertEqual(2, data[6][1], "option value is incorrect");
-            Helper.assertEqual(3, data[6][2], "option value is incorrect");
+            Helper.assertEqual(minPercentageInPrecision, data[4], "minPercentage is incorrect");
+            Helper.assertEqual(cInPrecision, data[5], "minPercentage is incorrect");
+            Helper.assertEqual(tInPrecision, data[6], "minPercentage is incorrect");
+            Helper.assertEqual(link, data[7].toString(), "link is incorrect");
+            Helper.assertEqual(3, data[8].length, "number options is incorrect");
+            Helper.assertEqual(1, data[8][0], "option value is incorrect");
+            Helper.assertEqual(2, data[8][1], "option value is incorrect");
+            Helper.assertEqual(3, data[8][2], "option value is incorrect");
 
             let listCampIDs = await daoContract.getListCampIDs(1);
             Helper.assertEqual(1, listCampIDs.length, "should have added first camp");
@@ -903,7 +912,7 @@ contract('KyberDAO', function(accounts) {
 
             await daoContract.submitNewCampaign(
                 0, startBlock + 4, startBlock + 4 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
             );
 
             listCampIDs = await daoContract.getListCampIDs(1);
@@ -918,7 +927,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, startBlock + 4, startBlock + 4 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
             );
 
             listCampIDs = await daoContract.getListCampIDs(1);
@@ -935,7 +944,7 @@ contract('KyberDAO', function(accounts) {
             // create network fee
             await daoContract.submitNewCampaign(
                 1, startBlock + 1, startBlock + 1 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
             );
             let networkFeeCamp = await daoContract.networkFeeCamp(1);
             Helper.assertEqual(1, networkFeeCamp, "network fee camp is invalid");
@@ -944,7 +953,7 @@ contract('KyberDAO', function(accounts) {
             await expectRevert(
                 daoContract.submitNewCampaign(
                     1, startBlock + 2, startBlock + 2 + minCampPeriod,
-                    formulaParamsData, [1, 2, 3], '0x', {from: campCreator}
+                    minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: campCreator}
                 ),
                 "newCampaign: alr had network fee at the epoch"
             );
@@ -953,7 +962,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
             );
 
             networkFeeCamp = await daoContract.networkFeeCamp(1);
@@ -971,7 +980,7 @@ contract('KyberDAO', function(accounts) {
             await expectRevert(
                 daoContract.submitNewCampaign(
                     1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    formulaParamsData, [1, 2, 3], '0x', {from: campCreator}
+                    minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: campCreator}
                 ),
                 "newCampaign: alr had network fee at the epoch"
             );
@@ -979,12 +988,12 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
             );
             networkFeeCamp = await daoContract.networkFeeCamp(1);
             Helper.assertEqual(1, networkFeeCamp, "network fee camp is invalid");
@@ -995,7 +1004,7 @@ contract('KyberDAO', function(accounts) {
             // create network fee
             await daoContract.submitNewCampaign(
                 2, startBlock + 1, startBlock + 1 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
             );
             let brrCamp = await daoContract.brrCampaign(1);
             Helper.assertEqual(1, brrCamp, "brr camp is invalid");
@@ -1004,7 +1013,7 @@ contract('KyberDAO', function(accounts) {
             await expectRevert(
                 daoContract.submitNewCampaign(
                     2, startBlock + 2, startBlock + 2 + minCampPeriod,
-                    formulaParamsData, [1, 2, 3], '0x', {from: campCreator}
+                    minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: campCreator}
                 ),
                 "newCampaign: alr had brr at the epoch"
             );
@@ -1013,7 +1022,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
             );
 
             brrCamp = await daoContract.brrCampaign(1);
@@ -1030,7 +1039,7 @@ contract('KyberDAO', function(accounts) {
             await expectRevert(
                 daoContract.submitNewCampaign(
                     2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    formulaParamsData, [1, 2, 3], '0x', {from: campCreator}
+                    minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: campCreator}
                 ),
                 "newCampaign: alr had brr at the epoch"
             );
@@ -1038,12 +1047,12 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [1, 2, 3, 4], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
             );
             brrCamp = await daoContract.brrCampaign(1);
             Helper.assertEqual(1, brrCamp, "brr camp is invalid");
@@ -1054,13 +1063,13 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    0, currentBlock + 6, currentBlock + 20, formulaParamsData,
+                    0, currentBlock + 6, currentBlock + 20, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3, 4], '0x', {from: mike}
                 ),
                 "not camp creator"
             )
             await daoContract.submitNewCampaign(
-                0, currentBlock + 6, currentBlock + 20, formulaParamsData,
+                0, currentBlock + 6, currentBlock + 20, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3, 4], '0x', {from: campCreator}
             );
         });
@@ -1071,7 +1080,7 @@ contract('KyberDAO', function(accounts) {
             // start in the past
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    0, currentBlock - 1, currentBlock + 20, formulaParamsData,
+                    0, currentBlock - 1, currentBlock + 20, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3, 4], '0x', {from: campCreator}
                 ),
                 "validateParams: start in the past"
@@ -1079,7 +1088,7 @@ contract('KyberDAO', function(accounts) {
             // start in the next 2 epochs
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    0, startBlock + epochPeriod, startBlock + epochPeriod + 10, formulaParamsData,
+                    0, startBlock + epochPeriod, startBlock + epochPeriod + 10, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3, 4], '0x', {from: campCreator}
                 ),
                 "validateParams: not for current or next epoch"
@@ -1087,7 +1096,7 @@ contract('KyberDAO', function(accounts) {
             // start in the next 10 epochs
             await expectRevert(
                  daoContract.submitNewCampaign(
-                    0, startBlock + 10 * epochPeriod, startBlock + 10 * epochPeriod + 10, formulaParamsData,
+                    0, startBlock + 10 * epochPeriod, startBlock + 10 * epochPeriod + 10, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3, 4], '0x', {from: campCreator}
                 ),
                 "validateParams: not for current or next epoch"
@@ -1095,7 +1104,7 @@ contract('KyberDAO', function(accounts) {
             // start at current epoch but end in the next epoch
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    0, currentBlock + 6, currentBlock + 30, formulaParamsData,
+                    0, currentBlock + 6, currentBlock + 30, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3, 4], '0x', {from: campCreator}
                 ),
                 "validateParams: start & end not same epoch"        
@@ -1103,7 +1112,7 @@ contract('KyberDAO', function(accounts) {
             // start less than end
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    0, currentBlock + 6, currentBlock + 3, formulaParamsData,
+                    0, currentBlock + 6, currentBlock + 3, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3, 4], '0x', {from: campCreator}
                 ),
                 "validateParams: camp duration low"
@@ -1111,18 +1120,18 @@ contract('KyberDAO', function(accounts) {
             // duration is smaller than min camp duration
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    0, currentBlock + 10, currentBlock + 10 + minCampPeriod - 2, formulaParamsData,
+                    0, currentBlock + 10, currentBlock + 10 + minCampPeriod - 2, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3, 4], '0x', {from: campCreator}
                 ),
                 "validateParams: camp duration low"
             )
             await daoContract.submitNewCampaign(
-                0, currentBlock + 10, currentBlock + 10 + minCampPeriod - 1, formulaParamsData,
+                0, currentBlock + 10, currentBlock + 10 + minCampPeriod - 1, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3, 4], '0x', {from: campCreator}
             );
             // start at next epoch, should be ok
             await daoContract.submitNewCampaign(
-                0, startBlock + 1, startBlock + 10, formulaParamsData,
+                0, startBlock + 1, startBlock + 10, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3, 4], '0x', {from: campCreator}
             );
         });
@@ -1133,7 +1142,7 @@ contract('KyberDAO', function(accounts) {
             // no options
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    0, currentBlock + 3, currentBlock + 3 + minCampPeriod, formulaParamsData,
+                    0, currentBlock + 3, currentBlock + 3 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [], '0x', {from: campCreator}
                 ),
                 "validateParams: invalid no. options"
@@ -1141,7 +1150,7 @@ contract('KyberDAO', function(accounts) {
             // one options
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    0, currentBlock + 5, currentBlock + 5 + minCampPeriod, formulaParamsData,
+                    0, currentBlock + 5, currentBlock + 5 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1], '0x', {from: campCreator}
                 ),
                 "validateParams: invalid no. options"
@@ -1149,22 +1158,22 @@ contract('KyberDAO', function(accounts) {
             // more than 4 options (max number options)
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    0, currentBlock + 7, currentBlock + 7 + minCampPeriod, formulaParamsData,
+                    0, currentBlock + 7, currentBlock + 7 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3, 4, 5], '0x', {from: campCreator}
                 ),
                 "validateParams: invalid no. options"
             )
             // should work with 2, 3, 4 options
             await daoContract.submitNewCampaign(
-                0, currentBlock + 9, currentBlock + 9 + minCampPeriod - 1, formulaParamsData,
+                0, currentBlock + 9, currentBlock + 9 + minCampPeriod - 1, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
-                0, currentBlock + 11, currentBlock + 11 + minCampPeriod - 1, formulaParamsData,
+                0, currentBlock + 11, currentBlock + 11 + minCampPeriod - 1, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
-                0, currentBlock + 13, currentBlock + 13 + minCampPeriod - 1, formulaParamsData,
+                0, currentBlock + 13, currentBlock + 13 + minCampPeriod - 1, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3, 4], '0x', {from: campCreator}
             );
         });
@@ -1175,59 +1184,59 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    0, currentBlock + 3, currentBlock + 3 + minCampPeriod, formulaParamsData,
+                    0, currentBlock + 3, currentBlock + 3 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [0, 1, 2], '0x', {from: campCreator}
                 ),
                 "validateParams: general camp options is 0"
             )
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    0, currentBlock + 5, currentBlock + 5 + minCampPeriod, formulaParamsData,
+                    0, currentBlock + 5, currentBlock + 5 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 0], '0x', {from: campCreator}
                 ),
                 "validateParams: general camp options is 0"
             )
             // valid option values
             await daoContract.submitNewCampaign(
-                0, currentBlock + 7, currentBlock + 7 + minCampPeriod, formulaParamsData,
+                0, currentBlock + 7, currentBlock + 7 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
             // network fee: option > 100% (BPS)
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    1, currentBlock + 9, currentBlock + 9 + minCampPeriod, formulaParamsData,
+                    1, currentBlock + 9, currentBlock + 9 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3, 10001], '0x', {from: campCreator}
                 ),
                 "validateParams: Fee camp options high"
             )
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    1, currentBlock + 11, currentBlock + 11 + minCampPeriod, formulaParamsData,
+                    1, currentBlock + 11, currentBlock + 11 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 10010, 2, 3], '0x', {from: campCreator}
                 ),
                 "validateParams: Fee camp options high"
             )
             await daoContract.submitNewCampaign(
-                1, currentBlock + 13, currentBlock + 13 + minCampPeriod, formulaParamsData,
+                1, currentBlock + 13, currentBlock + 13 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 10000, 2, 3], '0x', {from: campCreator}
             );
             // brr campaign: reward + rebate > 100%
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    2, currentBlock + 15, currentBlock + 15 + minCampPeriod, formulaParamsData,
+                    2, currentBlock + 15, currentBlock + 15 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, getDataFromRebateAndReward(100, 10001 - 100), 2, 3], '0x', {from: campCreator}
                 ),
                 "validateParams: RR too high"
             )
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    2, currentBlock + 17, currentBlock + 17 + minCampPeriod, formulaParamsData,
+                    2, currentBlock + 17, currentBlock + 17 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, getDataFromRebateAndReward(20, 10000)], '0x', {from: campCreator}
                 ),
                 "validateParams: RR too high"
             )
             await daoContract.submitNewCampaign(
-                2, currentBlock + 19, currentBlock + 19 + minCampPeriod, formulaParamsData,
+                2, currentBlock + 19, currentBlock + 19 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, getDataFromRebateAndReward(2500, 2500), 2, 3], '0x', {from: campCreator}
             );
         });
@@ -1238,7 +1247,7 @@ contract('KyberDAO', function(accounts) {
             // note: it is reverted as invalid opcode for campaign type, no message here
             try {
                 await daoContract.submitNewCampaign(
-                    3, currentBlock + 3, currentBlock + 3 + minCampPeriod, formulaParamsData,
+                    3, currentBlock + 3, currentBlock + 3 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above");
@@ -1247,7 +1256,7 @@ contract('KyberDAO', function(accounts) {
             }
             try {
                 await daoContract.submitNewCampaign(
-                    5, currentBlock + 5, currentBlock + 5 + minCampPeriod, formulaParamsData,
+                    5, currentBlock + 5, currentBlock + 5 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3], '0x', {from: campCreator}
                 );
                 assert(false, "throw was expected in line above");
@@ -1255,39 +1264,57 @@ contract('KyberDAO', function(accounts) {
                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
             }
             await daoContract.submitNewCampaign(
-                0, currentBlock + 7, currentBlock + 7 + minCampPeriod, formulaParamsData,
+                0, currentBlock + 7, currentBlock + 7 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
-                1, currentBlock + 9, currentBlock + 9 + minCampPeriod, formulaParamsData,
+                1, currentBlock + 9, currentBlock + 9 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 10000, 2, 3], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
-                2, currentBlock + 11, currentBlock + 11 + minCampPeriod, formulaParamsData,
+                2, currentBlock + 11, currentBlock + 11 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, getDataFromRebateAndReward(2500, 2500), 2, 3], '0x', {from: campCreator}
             );
         });
 
         it("Test submit campaign should revert formula params are invalid", async function() {
             await deployContracts(30, currentBlock + 50, 10);
-            let formula = getFormulaParamsData(precisionUnits.add(new BN(1)), cInPrecision, tInPrecision);
             currentBlock = await Helper.getCurrentBlock();
             // invalid min percentage (> 100%)
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    0, currentBlock + 3, currentBlock + 3 + minCampPeriod, formula,
+                    0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                    precisionUnits.add(new BN(1)), cInPrecision, tInPrecision,
                     [1, 2, 3], '0x', {from: campCreator}
                 ),
                 "validateParams: min percentage high"
             )
-            formula = getFormulaParamsData(precisionUnits.sub(new BN(100)), cInPrecision, tInPrecision);
+            // cInPrecision > 2^128
+            await expectRevert(
+                daoContract.submitNewCampaign(
+                    0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                    precisionUnits, new BN(2).pow(new BN(128)).add(new BN(1)), tInPrecision,
+                    [1, 2, 3], '0x', {from: campCreator}
+                ),
+                "validateParams: c high"
+            )
+            // tInPrecision > 2^128
+            await expectRevert(
+                daoContract.submitNewCampaign(
+                    0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
+                    precisionUnits, tInPrecision, new BN(2).pow(new BN(128)).add(new BN(1)),
+                    [1, 2, 3], '0x', {from: campCreator}
+                ),
+                "validateParams: t high"
+            )
             await daoContract.submitNewCampaign(
-                0, currentBlock + 5, currentBlock + 5 + minCampPeriod, formula,
+                0, currentBlock + 5, currentBlock + 5 + minCampPeriod,
+                precisionUnits.sub(new BN(100)), cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
-            formula = getFormulaParamsData(precisionUnits, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
-                0, currentBlock + 7, currentBlock + 7 + minCampPeriod, formula,
+                0, currentBlock + 7, currentBlock + 7 + minCampPeriod,
+                precisionUnits, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
         });
@@ -1296,22 +1323,22 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(30, currentBlock + 20, 4);
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
-                1, currentBlock + 4, currentBlock + 4 + minCampPeriod, formulaParamsData,
+                1, currentBlock + 4, currentBlock + 4 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    1, currentBlock + 6, currentBlock + 6 + minCampPeriod, formulaParamsData,
+                    1, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3], '0x', {from: campCreator}
                 ),
                 "newCampaign: alr had network fee at the epoch"
             )
             await daoContract.submitNewCampaign(
-                0, currentBlock + 8, currentBlock + 8 + minCampPeriod, formulaParamsData,
+                0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
-                2, currentBlock + 10, currentBlock + 10 + minCampPeriod, formulaParamsData,
+                2, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
@@ -1319,18 +1346,18 @@ contract('KyberDAO', function(accounts) {
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock + 1);
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
-                1, currentBlock + 4, currentBlock + 4 + minCampPeriod, formulaParamsData,
+                1, currentBlock + 4, currentBlock + 4 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    1, currentBlock + 6, currentBlock + 6 + minCampPeriod, formulaParamsData,
+                    1, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3], '0x', {from: campCreator}
                 ),
                 "newCampaign: alr had network fee at the epoch"
             )
             await daoContract.submitNewCampaign(
-                0, currentBlock + 8, currentBlock + 8 + minCampPeriod, formulaParamsData,
+                0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
         });
@@ -1339,22 +1366,22 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(30, currentBlock + 20, 4);
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
-                2, currentBlock + 4, currentBlock + 4 + minCampPeriod, formulaParamsData,
+                2, currentBlock + 4, currentBlock + 4 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    2, currentBlock + 6, currentBlock + 6 + minCampPeriod, formulaParamsData,
+                    2, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3], '0x', {from: campCreator}
                 ),
                 "newCampaign: alr had brr at the epoch"
             )
             await daoContract.submitNewCampaign(
-                0, currentBlock + 8, currentBlock + 8 + minCampPeriod, formulaParamsData,
+                0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
-                1, currentBlock + 10, currentBlock + 10 + minCampPeriod, formulaParamsData,
+                1, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
@@ -1362,18 +1389,18 @@ contract('KyberDAO', function(accounts) {
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock + 1);
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
-                2, currentBlock + 4, currentBlock + 4 + minCampPeriod, formulaParamsData,
+                2, currentBlock + 4, currentBlock + 4 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    2, currentBlock + 6, currentBlock + 6 + minCampPeriod, formulaParamsData,
+                    2, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3], '0x', {from: campCreator}
                 ),
                 "newCampaign: alr had brr at the epoch"
             )
             await daoContract.submitNewCampaign(
-                0, currentBlock + 8, currentBlock + 8 + minCampPeriod, formulaParamsData,
+                0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
         });
@@ -1386,13 +1413,13 @@ contract('KyberDAO', function(accounts) {
             for(let id = 0; id < maxCamps; id++) {
                 await daoContract.submitNewCampaign(
                     id <= 2 ? id : 0, currentBlock + 40, currentBlock + 40 + minCampPeriod,
-                    formulaParamsData, [1, 2, 3], '0x', {from: campCreator}
+                    minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: campCreator}
                 );
             }
 
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    0, currentBlock + 40, currentBlock + 40 + minCampPeriod, formulaParamsData,
+                    0, currentBlock + 40, currentBlock + 40 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3], '0x', {from: campCreator}
                 ),
                 "newCampaign: too many camps"
@@ -1401,13 +1428,13 @@ contract('KyberDAO', function(accounts) {
             await daoContract.cancelCampaign(1, {from: campCreator});
 
             await daoContract.submitNewCampaign(
-                0, currentBlock + 40, currentBlock + 40 + minCampPeriod, formulaParamsData,
+                0, currentBlock + 40, currentBlock + 40 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
 
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    0, currentBlock + 40, currentBlock + 40 + minCampPeriod, formulaParamsData,
+                    0, currentBlock + 40, currentBlock + 40 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3], '0x', {from: campCreator}
                 ),
                 "newCampaign: too many camps"
@@ -1416,19 +1443,19 @@ contract('KyberDAO', function(accounts) {
             for(let id = 0; id < maxCamps; id++) {
                 await daoContract.submitNewCampaign(
                     id <= 2 ? id : 0, startBlock + 2, startBlock + 2 + minCampPeriod,
-                    formulaParamsData, [1, 2, 3], '0x', {from: campCreator}
+                    minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: campCreator}
                 );
             }
             await expectRevert(
                 daoContract.submitNewCampaign(
-                    0, startBlock + 2, startBlock + 2 + minCampPeriod, formulaParamsData,
+                    0, startBlock + 2, startBlock + 2 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3], '0x', {from: campCreator}
                 ),
                 "newCampaign: too many camps"
             )
             await daoContract.cancelCampaign(await daoContract.numberCampaigns(), {from: campCreator});
             await daoContract.submitNewCampaign(
-                0, startBlock + 2, startBlock + 2 + minCampPeriod, formulaParamsData,
+                0, startBlock + 2, startBlock + 2 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
         });
@@ -1443,7 +1470,7 @@ contract('KyberDAO', function(accounts) {
             )
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
-                0, currentBlock + 5, currentBlock + 5 + minCampPeriod, formulaParamsData,
+                0, currentBlock + 5, currentBlock + 5 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
             await expectRevert(
@@ -1457,7 +1484,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(10, currentBlock + 20, 2);
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
-                0, currentBlock + 5, currentBlock + 5 + minCampPeriod, formulaParamsData,
+                0, currentBlock + 5, currentBlock + 5 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
             await expectRevert(
@@ -1471,7 +1498,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(10, currentBlock + 20, 5);
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
-                0, currentBlock + 2, currentBlock + 2 + minCampPeriod, formulaParamsData,
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
@@ -1496,19 +1523,19 @@ contract('KyberDAO', function(accounts) {
             for(let id = 0; id < 2; id++) {
                 currentBlock = await Helper.getCurrentBlock();
                 await daoContract.submitNewCampaign(
-                    0, currentBlock + 10, currentBlock + 10 + minCampPeriod, formulaParamsData,
+                    0, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3], '0x', {from: campCreator}
                 );
                 await daoContract.submitNewCampaign(
-                    1, currentBlock + 10, currentBlock + 10 + minCampPeriod, formulaParamsData,
+                    1, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3], '0x', {from: campCreator}
                 );
                 await daoContract.submitNewCampaign(
-                    2, currentBlock + 10, currentBlock + 10 + minCampPeriod, formulaParamsData,
+                    2, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3], '0x', {from: campCreator}
                 );
                 await daoContract.submitNewCampaign(
-                    0, currentBlock + 10, currentBlock + 10 + minCampPeriod, formulaParamsData,
+                    0, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3], '0x', {from: campCreator}
                 );
 
@@ -1582,7 +1609,7 @@ contract('KyberDAO', function(accounts) {
                 Helper.assertEqual(await daoContract.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
 
                 await daoContract.submitNewCampaign(
-                    0, currentBlock + 10, currentBlock + 10 + minCampPeriod, formulaParamsData,
+                    0, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                     [1, 2, 3], '0x', {from: campCreator}
                 );
 
@@ -1609,10 +1636,9 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(0, await daoContract.networkFeeCamp(0), "network fee camp id should be correct");
 
             let link = web3.utils.fromAscii("https://kyberswap.com");
-            let formula = formulaParamsData;
             await daoContract.submitNewCampaign(
                 1, currentBlock + 15, currentBlock + 15 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
 
             Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp id should be correct");
@@ -1622,12 +1648,14 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(campData[1], currentBlock + 15, "camp details should be correct");
             Helper.assertEqual(campData[2], currentBlock + 15 + minCampPeriod, "camp details should be correct");
             Helper.assertEqual(campData[3], await kncToken.totalSupply(), "camp details should be correct");
-            Helper.assertEqual(campData[4], formula, "camp details should be correct");
-            Helper.assertEqual(campData[5], link, "camp details should be correct");
-            Helper.assertEqual(campData[6].length, 3, "camp details should be correct");
-            Helper.assertEqual(campData[6][0], 1, "camp details should be correct");
-            Helper.assertEqual(campData[6][1], 2, "camp details should be correct");
-            Helper.assertEqual(campData[6][2], 3, "camp details should be correct");
+            Helper.assertEqual(campData[4], minPercentageInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData[5], cInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData[6], tInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData[7], link, "camp details should be correct");
+            Helper.assertEqual(campData[8].length, 3, "camp details should be correct");
+            Helper.assertEqual(campData[8][0], 1, "camp details should be correct");
+            Helper.assertEqual(campData[8][1], 2, "camp details should be correct");
+            Helper.assertEqual(campData[8][2], 3, "camp details should be correct");
 
             let tx = await daoContract.cancelCampaign(1, {from: campCreator});
             logInfo("Cancel campaign: cancel network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
@@ -1638,28 +1666,33 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(campData[2], 0, "camp details should be deleted");
             Helper.assertEqual(campData[3], 0, "camp details should be deleted");
             Helper.assertEqual(campData[4], 0, "camp details should be deleted");
-            Helper.assertEqual(campData[6].length, 0, "camp details should be deleted");
+            Helper.assertEqual(campData[5], 0, "camp details should be deleted");
+            Helper.assertEqual(campData[6], 0, "camp details should be deleted");
+            // campData[7] is null, can not use assert equal
+            Helper.assertEqual(campData[8].length, 0, "camp details should be deleted");
 
             Helper.assertEqual(0, await daoContract.networkFeeCamp(0), "network fee camp id should be deleted");
 
             // create a general camp
             await daoContract.submitNewCampaign(
                 0, currentBlock + 20, currentBlock + 20 + minCampPeriod,
-                formula, [25, 50], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: campCreator}
             );
             // create brr camp
             await daoContract.submitNewCampaign(
                 2, currentBlock + 20, currentBlock + 20 + minCampPeriod,
-                formula, [25, 50], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: campCreator}
             );
             Helper.assertEqual(0, await daoContract.networkFeeCamp(0), "network fee camp id should be deleted");
 
             link = web3.utils.fromAscii("https://google.com");
-            formula = getFormulaParamsData(precisionUnits.div(new BN(10)), precisionUnits.div(new BN(2)), precisionUnits.div(new BN(4)));
+            minPercentageInPrecision = precisionUnits.div(new BN(10));
+            cInPrecision = precisionUnits.div(new BN(2));
+            tInPrecision = precisionUnits.div(new BN(4));
             await kncToken.burn(mulPrecision(100));
             await daoContract.submitNewCampaign(
                 1, currentBlock + 20, currentBlock + 20 + minCampPeriod,
-                formula, [25, 50], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: campCreator}
             );
 
             Helper.assertEqual(4, await daoContract.networkFeeCamp(0), "network fee camp id should be correct");
@@ -1669,11 +1702,13 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(campData[1], currentBlock + 20, "camp details should be correct");
             Helper.assertEqual(campData[2], currentBlock + 20 + minCampPeriod, "camp details should be correct");
             Helper.assertEqual(campData[3], await kncToken.totalSupply(), "camp details should be correct");
-            Helper.assertEqual(campData[4], formula, "camp details should be correct");
-            Helper.assertEqual(campData[5], link, "camp details should be correct");
-            Helper.assertEqual(campData[6].length, 2, "camp details should be correct");
-            Helper.assertEqual(campData[6][0], 25, "camp details should be correct");
-            Helper.assertEqual(campData[6][1], 50, "camp details should be correct");
+            Helper.assertEqual(campData[4], minPercentageInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData[5], cInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData[6], tInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData[7], link, "camp details should be correct");
+            Helper.assertEqual(campData[8].length, 2, "camp details should be correct");
+            Helper.assertEqual(campData[8][0], 25, "camp details should be correct");
+            Helper.assertEqual(campData[8][1], 50, "camp details should be correct");
         });
 
         it("Test cancel campaign correctly for brr camp", async function() {
@@ -1682,10 +1717,9 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(0, await daoContract.brrCampaign(0), "brr camp id should be correct");
 
             let link = web3.utils.fromAscii("https://kyberswap.com");
-            let formula = formulaParamsData;
             await daoContract.submitNewCampaign(
                 2, currentBlock + 15, currentBlock + 15 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
 
             Helper.assertEqual(1, await daoContract.brrCampaign(0), "brr camp id should be correct");
@@ -1695,12 +1729,14 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(campData[1], currentBlock + 15, "camp details should be correct");
             Helper.assertEqual(campData[2], currentBlock + 15 + minCampPeriod, "camp details should be correct");
             Helper.assertEqual(campData[3], await kncToken.totalSupply(), "camp details should be correct");
-            Helper.assertEqual(campData[4], formula, "camp details should be correct");
-            Helper.assertEqual(campData[5], link, "camp details should be correct");
-            Helper.assertEqual(campData[6].length, 3, "camp details should be correct");
-            Helper.assertEqual(campData[6][0], 1, "camp details should be correct");
-            Helper.assertEqual(campData[6][1], 2, "camp details should be correct");
-            Helper.assertEqual(campData[6][2], 3, "camp details should be correct");
+            Helper.assertEqual(campData[4], minPercentageInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData[5], cInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData[6], tInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData[7], link, "camp details should be correct");
+            Helper.assertEqual(campData[8].length, 3, "camp details should be correct");
+            Helper.assertEqual(campData[8][0], 1, "camp details should be correct");
+            Helper.assertEqual(campData[8][1], 2, "camp details should be correct");
+            Helper.assertEqual(campData[8][2], 3, "camp details should be correct");
 
             let tx = await daoContract.cancelCampaign(1, {from: campCreator});
             logInfo("Cancel campaign: cancel brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
@@ -1711,28 +1747,34 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(campData[2], 0, "camp details should be deleted");
             Helper.assertEqual(campData[3], 0, "camp details should be deleted");
             Helper.assertEqual(campData[4], 0, "camp details should be deleted");
-            Helper.assertEqual(campData[6].length, 0, "camp details should be deleted");
+            Helper.assertEqual(campData[5], 0, "camp details should be deleted");
+            Helper.assertEqual(campData[6], 0, "camp details should be deleted");
+            // campData[7] is null, can not use assert equal
+            Helper.assertEqual(campData[8].length, 0, "camp details should be deleted");
 
             Helper.assertEqual(0, await daoContract.brrCampaign(0), "brr camp id should be deleted");
 
             // create a general camp
             await daoContract.submitNewCampaign(
                 0, currentBlock + 20, currentBlock + 20 + minCampPeriod,
-                formula, [25, 50], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: campCreator}
             );
             // create network fee camp
             await daoContract.submitNewCampaign(
                 1, currentBlock + 20, currentBlock + 20 + minCampPeriod,
-                formula, [25, 50], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: campCreator}
             );
             Helper.assertEqual(0, await daoContract.brrCampaign(0), "brr camp id should be deleted");
 
             link = web3.utils.fromAscii("https://google.com");
-            formula = getFormulaParamsData(precisionUnits.div(new BN(10)), precisionUnits.div(new BN(2)), precisionUnits.div(new BN(4)));
+
+            minPercentageInPrecision = precisionUnits.div(new BN(10));
+            cInPrecision = precisionUnits.div(new BN(2));
+            tInPrecision = precisionUnits.div(new BN(4));
             await kncToken.burn(mulPrecision(100));
             await daoContract.submitNewCampaign(
                 2, currentBlock + 20, currentBlock + 20 + minCampPeriod,
-                formula, [25, 50], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: campCreator}
             );
 
             Helper.assertEqual(4, await daoContract.brrCampaign(0), "brr camp id should be correct");
@@ -1742,49 +1784,50 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(campData[1], currentBlock + 20, "camp details should be correct");
             Helper.assertEqual(campData[2], currentBlock + 20 + minCampPeriod, "camp details should be correct");
             Helper.assertEqual(campData[3], await kncToken.totalSupply(), "camp details should be correct");
-            Helper.assertEqual(campData[4], formula, "camp details should be correct");
-            Helper.assertEqual(campData[5], link, "camp details should be correct");
-            Helper.assertEqual(campData[6].length, 2, "camp details should be correct");
-            Helper.assertEqual(campData[6][0], 25, "camp details should be correct");
-            Helper.assertEqual(campData[6][1], 50, "camp details should be correct");
+            Helper.assertEqual(campData[4], minPercentageInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData[5], cInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData[6], tInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData[7], link, "camp details should be correct");
+            Helper.assertEqual(campData[8].length, 2, "camp details should be correct");
+            Helper.assertEqual(campData[8][0], 25, "camp details should be correct");
+            Helper.assertEqual(campData[8][1], 50, "camp details should be correct");
         });
 
         it("Test cancel campaign of next epoch campaign, data changes as expected", async function() {
             await deployContracts(50, currentBlock + 50, 5);
 
             let link = web3.utils.fromAscii("https://kyberswap.com");
-            let formula = formulaParamsData;
 
             await daoContract.submitNewCampaign(
                 0, currentBlock + 15, currentBlock + 15 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 1, currentBlock + 15, currentBlock + 15 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 2, currentBlock + 15, currentBlock + 15 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
 
             let epoch1Block = startBlock + 1;
 
             await daoContract.submitNewCampaign(
                 0, epoch1Block + 15, epoch1Block + 15 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 1, epoch1Block + 15, epoch1Block + 15 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 2, epoch1Block + 15, epoch1Block + 15 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 0, epoch1Block + 15, epoch1Block + 15 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
 
             let campIDs = await daoContract.getListCampIDs(0);
@@ -1845,11 +1888,10 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(20, currentBlock + 20, 5);
 
             let link = web3.utils.fromAscii("https://kyberswap.com");
-            let formula = formulaParamsData;
 
             await daoContract.submitNewCampaign(
                 1, currentBlock + 5, currentBlock + 5 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
 
             Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp is wrong");
@@ -1858,7 +1900,7 @@ contract('KyberDAO', function(accounts) {
             // create network fee for next epoch
             await daoContract.submitNewCampaign(
                 1, startBlock + 5, startBlock + 5 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
 
             Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp is wrong");
@@ -1872,7 +1914,7 @@ contract('KyberDAO', function(accounts) {
             // create network fee for next epoch again
             await daoContract.submitNewCampaign(
                 1, startBlock + 5, startBlock + 5 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
 
             Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp is wrong");
@@ -1888,7 +1930,7 @@ contract('KyberDAO', function(accounts) {
             // create network fee for epoch 1 again
             await daoContract.submitNewCampaign(
                 1, startBlock + 5, startBlock + 5 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
             Helper.assertEqual(4, await daoContract.networkFeeCamp(1), "network fee camp is wrong");
         });
@@ -1897,11 +1939,10 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(20, currentBlock + 20, 5);
 
             let link = web3.utils.fromAscii("https://kyberswap.com");
-            let formula = formulaParamsData;
 
             await daoContract.submitNewCampaign(
                 2, currentBlock + 5, currentBlock + 5 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
 
             Helper.assertEqual(1, await daoContract.brrCampaign(0), "brr camp is wrong");
@@ -1910,7 +1951,7 @@ contract('KyberDAO', function(accounts) {
             // create brr for next epoch
             await daoContract.submitNewCampaign(
                 2, startBlock + 5, startBlock + 5 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
 
             Helper.assertEqual(1, await daoContract.brrCampaign(0), "brr camp is wrong");
@@ -1924,7 +1965,7 @@ contract('KyberDAO', function(accounts) {
             // create brr for next epoch again
             await daoContract.submitNewCampaign(
                 2, startBlock + 5, startBlock + 5 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
 
             Helper.assertEqual(1, await daoContract.brrCampaign(0), "brr camp is wrong");
@@ -1940,7 +1981,7 @@ contract('KyberDAO', function(accounts) {
             // create brr for epoch 1 again
             await daoContract.submitNewCampaign(
                 2, startBlock + 5, startBlock + 5 + minCampPeriod,
-                formula, [1, 2, 3], link, {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
             );
             Helper.assertEqual(4, await daoContract.brrCampaign(1), "brr camp is wrong");
         });
@@ -1957,7 +1998,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -2064,7 +2105,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -2121,12 +2162,12 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 4, currentBlock + 4 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -2298,7 +2339,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -2440,7 +2481,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -2503,7 +2544,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -2544,7 +2585,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -2580,13 +2621,13 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -2713,13 +2754,13 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
 
@@ -2782,7 +2823,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -2816,12 +2857,12 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await stakingContract.withdraw(mulPrecision(100), {from: mike});
@@ -2894,7 +2935,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3);
@@ -2912,7 +2953,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 5, currentBlock + 5 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             // camp not started yet
@@ -2941,7 +2982,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 5, currentBlock + 5 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3);
@@ -2979,11 +3020,11 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3079,11 +3120,11 @@ contract('KyberDAO', function(accounts) {
                 currentBlock = await Helper.getCurrentBlock();
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    formulaParamsData, [25, 50], '0x', {from: campCreator}
+                    0, 0, 0, [25, 50], '0x', {from: campCreator}
                 );
                 await daoContract.submitNewCampaign(
                     0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                    formulaParamsData, [25, 50], '0x', {from: campCreator}
+                    0, 0, 0, [25, 50], '0x', {from: campCreator}
                 );
                 campCount += 2;
 
@@ -3167,7 +3208,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3233,7 +3274,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -3278,7 +3319,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -3330,7 +3371,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: poolMaster});
@@ -3372,7 +3413,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -3405,7 +3446,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -3435,7 +3476,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -3464,7 +3505,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3509,7 +3550,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3552,7 +3593,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3603,7 +3644,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3662,7 +3703,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3721,17 +3762,17 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3809,7 +3850,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -3819,12 +3860,12 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50], '0x', {from: campCreator}
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
             await daoContract.vote(2, 1, {from: mike});
@@ -3874,7 +3915,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -3902,12 +3943,12 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await stakingContract.withdraw(mulPrecision(100), {from: mike});
@@ -3957,7 +3998,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -3994,7 +4035,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -4032,7 +4073,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -4076,7 +4117,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             let totalEpochPoints = new BN(0);
@@ -4117,7 +4158,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(2, 1, {from: poolMaster2});
@@ -4186,7 +4227,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formulaParamsData, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
             await daoContract.vote(1, 2, {from: mike});
 
@@ -4223,7 +4264,7 @@ contract('KyberDAO', function(accounts) {
             // min percentage: 0%, c = 0, t = 0
             await daoContract.submitNewCampaign(
                 1, currentBlock + 4, currentBlock + 4 + minCampPeriod,
-                0, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             // not started yet
@@ -4264,7 +4305,7 @@ contract('KyberDAO', function(accounts) {
             // min percentage: 0%, c = 0, t = 0
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             // delay to end of this epocch
@@ -4296,7 +4337,7 @@ contract('KyberDAO', function(accounts) {
             // min percentage: 0%, c = 0, t = 0
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             // delay to end of this epocch
@@ -4330,7 +4371,7 @@ contract('KyberDAO', function(accounts) {
             // min percentage: 0%, c = 0, t = 0
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -4356,12 +4397,11 @@ contract('KyberDAO', function(accounts) {
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
 
             // 20% of total supply
-            let formula = getFormulaParamsData(precisionUnits.div(new BN(5)), 0, 0);
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 0%, c = 0, t = 0
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [25, 50, 100], '0x', {from: campCreator}
+                precisionUnits.div(new BN(5)), 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -4397,7 +4437,7 @@ contract('KyberDAO', function(accounts) {
             // min percentage: 0%, c = 0, t = 0
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [25, 50, 100], '0x', {from: campCreator}
+                0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 2, {from: mike});
@@ -4426,10 +4466,9 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 20%, c = 0, t = 0
-            let formula = getFormulaParamsData(precisionUnits.div(new BN(5)), 0, 0);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [25, 50, 100], '0x', {from: campCreator}
+                precisionUnits.div(new BN(5)), 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 3, {from: mike});
@@ -4461,7 +4500,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [25, 50, 100], '0x', {from: campCreator}
+                precisionUnits.div(new BN(5)), 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 3, {from: mike});
@@ -4492,10 +4531,9 @@ contract('KyberDAO', function(accounts) {
             minPercentageInPrecision = mulPrecision(20).div(new BN(100));
             cInPrecision = precisionUnits; // 100%
             tInPrecision = precisionUnits; // 1
-            let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 2, {from: mike});
@@ -4529,10 +4567,9 @@ contract('KyberDAO', function(accounts) {
             minPercentageInPrecision = mulPrecision(20).div(new BN(100));
             cInPrecision = precisionUnits; // 100%
             tInPrecision = precisionUnits; // 1
-            let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 2, {from: mike});
@@ -4567,10 +4604,9 @@ contract('KyberDAO', function(accounts) {
             minPercentageInPrecision = mulPrecision(40).div(new BN(100));
             cInPrecision = precisionUnits; // 100%
             tInPrecision = precisionUnits; // 1
-            let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -4605,10 +4641,9 @@ contract('KyberDAO', function(accounts) {
             minPercentageInPrecision = mulPrecision(40).div(new BN(100));
             cInPrecision = precisionUnits.div(new BN(10)); // 10%
             tInPrecision = precisionUnits; // 1
-            let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 3, {from: mike});
@@ -4642,10 +4677,9 @@ contract('KyberDAO', function(accounts) {
             minPercentageInPrecision = mulPrecision(40).div(new BN(100));
             cInPrecision = mulPrecision(2); // 10%
             tInPrecision = precisionUnits; // 1
-            let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -4679,10 +4713,9 @@ contract('KyberDAO', function(accounts) {
             minPercentageInPrecision = mulPrecision(40).div(new BN(100));
             cInPrecision = precisionUnits; // 100%
             tInPrecision = 0; // 1
-            let formula = getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision);
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 2, {from: mike});
@@ -4701,7 +4734,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: campCreator}
             );
 
             // one person voted differently
@@ -4780,14 +4813,14 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: campCreator}
+                0, 0, 0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(1, 2, {from: mike});
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [22, 23, 24], '0x', {from: campCreator}
+                0, 0, 0, [22, 23, 24], '0x', {from: campCreator}
             );
             await daoContract.vote(2, 3, {from: mike});
 
@@ -4812,10 +4845,12 @@ contract('KyberDAO', function(accounts) {
             await simpleSetupToTestThreshold(410, 410, 180, 40);
             currentBlock = await Helper.getCurrentBlock();
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
+            minPercentageInPrecision = precisionUnits.mul(new BN(40)).div(new BN(100));
+            cInPrecision = precisionUnits;
+            tInPrecision = precisionUnits;
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 50, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [32, 50, 44], '0x', {from: campCreator}
             );
 
             // option 2 should win
@@ -4849,7 +4884,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: campCreator}
+                0, 0, 0, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 2, {from: mike});
@@ -4879,10 +4914,10 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 41%, C = 0, t = 0
-            let formula = getFormulaParamsData(precisionUnits.mul(new BN(41)).div(new BN(100)), 0, 0);
+            minPercentageInPrecision = precisionUnits.mul(new BN(41)).div(new BN(100));
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, 0, 0, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(2, 1, {from: mike});
@@ -4907,10 +4942,12 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
+            minPercentageInPrecision = precisionUnits.mul(new BN(40)).div(new BN(100));
+            cInPrecision = precisionUnits;
+            tInPrecision = precisionUnits;
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(3, 1, {from: mike});
@@ -4935,10 +4972,12 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
+            minPercentageInPrecision = precisionUnits.mul(new BN(40)).div(new BN(100));
+            cInPrecision = precisionUnits;
+            tInPrecision = precisionUnits;
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(4, 1, {from: mike});
@@ -4967,10 +5006,12 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
+            minPercentageInPrecision = precisionUnits.mul(new BN(40)).div(new BN(100));
+            cInPrecision = precisionUnits;
+            tInPrecision = precisionUnits;
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(5, 1, {from: mike});
@@ -5017,7 +5058,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: campCreator}
+                0, 0, 0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(1, 1, {from: mike});
             await daoContract.vote(1, 1, {from: loi});
@@ -5033,7 +5074,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: campCreator}
+                0, 0, 0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(2, 1, {from: mike});
             await daoContract.vote(2, 2, {from: loi});
@@ -5053,7 +5094,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 1], '0x', {from: campCreator}
+                0, 0, 0, [32, 26, 1], '0x', {from: campCreator}
             );
             await daoContract.vote(3, 3, {from: mike});
             await daoContract.vote(3, 3, {from: loi});
@@ -5185,14 +5226,14 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: campCreator}
+                0, 0, 0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(1, 2, {from: mike});
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [22, 23, 24], '0x', {from: campCreator}
+                0, 0, 0, [22, 23, 24], '0x', {from: campCreator}
             );
             await daoContract.vote(2, 3, {from: mike});
 
@@ -5223,7 +5264,9 @@ contract('KyberDAO', function(accounts) {
             defaultBrrData = getDataFromRebateAndReward(rebate, reward);
             await simpleSetupToTestThreshold(410, 410, 180, 40);
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
+            minPercentageInPrecision = precisionUnits.mul(new BN(40)).div(new BN(100));
+            cInPrecision = precisionUnits;
+            tInPrecision = precisionUnits;
 
             let newReward = 36;
             let newRebate = 44;
@@ -5232,7 +5275,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, brrData, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [32, brrData, 44], '0x', {from: campCreator}
             );
 
             // option 2 should win
@@ -5291,7 +5334,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: campCreator}
+                0, 0, 0, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 2, {from: mike});
@@ -5328,10 +5371,12 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 41%, C = 0, t = 0
-            let formula = getFormulaParamsData(precisionUnits.mul(new BN(41)).div(new BN(100)), 0, 0);
+            minPercentageInPrecision = precisionUnits.mul(new BN(41)).div(new BN(100));
+            cInPrecision = precisionUnits;
+            tInPrecision = precisionUnits;
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(2, 1, {from: mike});
@@ -5357,10 +5402,12 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
+            minPercentageInPrecision = precisionUnits.mul(new BN(40)).div(new BN(100));
+            cInPrecision = precisionUnits;
+            tInPrecision = precisionUnits;
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision , [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(3, 1, {from: mike});
@@ -5386,10 +5433,12 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
+            minPercentageInPrecision = precisionUnits.mul(new BN(40)).div(new BN(100));
+            cInPrecision = precisionUnits;
+            tInPrecision = precisionUnits;
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(4, 1, {from: mike});
@@ -5412,10 +5461,12 @@ contract('KyberDAO', function(accounts) {
 
             currentBlock = await Helper.getCurrentBlock();
             // min per: 40%, C = 100%, t = 1
-            formula = getFormulaParamsData(precisionUnits.mul(new BN(40)).div(new BN(100)), precisionUnits, precisionUnits);
+            minPercentageInPrecision = precisionUnits.mul(new BN(40)).div(new BN(100));
+            cInPrecision = precisionUnits;
+            tInPrecision = precisionUnits;
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                formula, [32, 26, 44], '0x', {from: campCreator}
+                minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(5, 1, {from: mike});
@@ -5461,7 +5512,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: campCreator}
+                0, 0, 0, [32, 26, 44], '0x', {from: campCreator}
             );
 
             await daoContract.vote(1, 1, {from: mike});
@@ -5495,7 +5546,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: campCreator}
+                0, 0, 0, [32, 26, 44], '0x', {from: campCreator}
             );
 
             // delay to epoch 2
@@ -5508,7 +5559,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: campCreator}
+                0, 0, 0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(2, 1, {from: poolMaster});
 
@@ -5522,7 +5573,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: campCreator}
+                0, 0, 0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(3, 1, {from: mike});
             await stakingContract.withdraw(initMikeStake, {from: mike});
@@ -5539,7 +5590,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: campCreator}
+                0, 0, 0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(4, 1, {from: poolMaster});
             await stakingContract.withdraw(initLoiStake, {from: loi});
@@ -5554,7 +5605,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: campCreator}
+                0, 0, 0, [32, 26, 44], '0x', {from: campCreator}
             );
             await daoContract.vote(5, 1, {from: victor});
 
@@ -5831,141 +5882,6 @@ contract('KyberDAO', function(accounts) {
                 "reward plus rebate high"
             )
         });
-
-        it("Test decode formula params returns correct values", async function() {
-            let minPercent = 0;
-            let cInPre = 0;
-            let tInPre = 0;
-
-            let data = getFormulaParamsData(minPercent, cInPre, tInPre);
-            let result = await daoContract.getDecodeFormulaParams(data);
-
-            Helper.assertEqual(minPercent, result[0], "min percentage in precision is wrong");
-            Helper.assertEqual(cInPre, result[1], "c in precision is wrong");
-            Helper.assertEqual(tInPre, result[2], "t in precision is wrong");
-
-            minPercent = precisionUnits;
-            cInPre = precisionUnits;
-            t = precisionUnits;
-
-            data = getFormulaParamsData(minPercent, cInPre, tInPre);
-            result = await daoContract.getDecodeFormulaParams(data);
-
-            Helper.assertEqual(minPercent, result[0], "min percentage in precision is wrong");
-            Helper.assertEqual(cInPre, result[1], "c in precision is wrong");
-            Helper.assertEqual(tInPre, result[2], "t in precision is wrong");
-
-            minPercent = precisionUnits.div(new BN(5));
-            cInPre = precisionUnits;
-            t = precisionUnits.div(new BN(2));
-
-            data = getFormulaParamsData(minPercent, cInPre, tInPre);
-            result = await daoContract.getDecodeFormulaParams(data);
-
-            Helper.assertEqual(minPercent, result[0], "min percentage in precision is wrong");
-            Helper.assertEqual(cInPre, result[1], "c in precision is wrong");
-            Helper.assertEqual(tInPre, result[2], "t in precision is wrong");
-
-            minPercent = precisionUnits.div(new BN(10));
-            cInPre = precisionUnits.div(new BN(5));
-            t = precisionUnits;
-
-            data = getFormulaParamsData(minPercent, cInPre, tInPre);
-            result = await daoContract.getDecodeFormulaParams(data);
-
-            Helper.assertEqual(minPercent, result[0], "min percentage in precision is wrong");
-            Helper.assertEqual(cInPre, result[1], "c in precision is wrong");
-            Helper.assertEqual(tInPre, result[2], "t in precision is wrong");
-
-            minPercent = precisionUnits;
-            cInPre = precisionUnits;
-            t = 0;
-
-            data = getFormulaParamsData(minPercent, cInPre, tInPre);
-            result = await daoContract.getDecodeFormulaParams(data);
-
-            Helper.assertEqual(minPercent, result[0], "min percentage in precision is wrong");
-            Helper.assertEqual(cInPre, result[1], "c in precision is wrong");
-            Helper.assertEqual(tInPre, result[2], "t in precision is wrong");
-        });
-
-        it("Test encode formula params returns correct values", async function() {
-            let minPercent = 0;
-            let cInPre = 0;
-            let tInPre = 0;
-
-            let data = getFormulaParamsData(minPercent, cInPre, tInPre);
-            let result = await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
-
-            Helper.assertEqual(data, result, "encode data is wrong");
-
-            minPercent = precisionUnits;
-            cInPre = precisionUnits;
-            t = precisionUnits;
-
-            data = getFormulaParamsData(minPercent, cInPre, tInPre);
-            result = await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
-
-            Helper.assertEqual(data, result, "encode data is wrong");
-
-            minPercent = precisionUnits.div(new BN(5));
-            cInPre = precisionUnits;
-            t = precisionUnits.div(new BN(2));
-
-            data = getFormulaParamsData(minPercent, cInPre, tInPre);
-            result = await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
-
-            Helper.assertEqual(data, result, "encode data is wrong");
-
-            minPercent = precisionUnits.div(new BN(10));
-            cInPre = precisionUnits.div(new BN(5));
-            t = precisionUnits;
-
-            data = getFormulaParamsData(minPercent, cInPre, tInPre);
-            result = await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
-
-            Helper.assertEqual(data, result, "encode data is wrong");
-
-            minPercent = precisionUnits;
-            cInPre = precisionUnits;
-            t = 0;
-
-            data = getFormulaParamsData(minPercent, cInPre, tInPre);
-            result = await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
-            Helper.assertEqual(data, result, "encode data is wrong");
-        });
-
-        it("Test encode formula params should revert when data is invalid", async function() {
-            let power84 = new BN(2).pow(new BN(84));
-            let minPercent = new BN(0).add(precisionUnits);
-            let cInPre = 0;
-            let tInPre = 0;
-
-            minPercent.iadd(new BN(1));
-            await expectRevert(
-                daoContract.encodeFormulaParams(minPercent, cInPre, tInPre),
-                "min percentage high"
-            )
-
-            minPercent.isub(new BN(1));
-            cInPre = power84;
-            await expectRevert(
-                daoContract.encodeFormulaParams(minPercent, cInPre, tInPre),
-                "c high"
-            )
-
-            cInPre = 0;
-            tInPre = power84;
-            await expectRevert(
-                daoContract.encodeFormulaParams(minPercent, cInPre, tInPre),
-                "t high"
-            )
-
-            cInPre = power84.sub(new BN(1));
-            tInPre = power84.sub(new BN(1));
-
-            await daoContract.encodeFormulaParams(minPercent, cInPre, tInPre);
-        });
     });
 
     describe("#Change campaign creator", () => {
@@ -6019,7 +5935,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: campCreator}
+                0, 0, 0, [32, 26, 44], '0x', {from: campCreator}
             );
 
             let newCampCreator = accounts[9];
@@ -6028,7 +5944,7 @@ contract('KyberDAO', function(accounts) {
             await expectRevert(
                 daoContract.submitNewCampaign(
                     0, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                    0, [32, 26, 44], '0x', {from: newCampCreator}
+                    0, 0, 0, [32, 26, 44], '0x', {from: newCampCreator}
                 ),
                 "not camp creator"
             )
@@ -6039,14 +5955,14 @@ contract('KyberDAO', function(accounts) {
             await expectRevert(
                 daoContract.submitNewCampaign(
                     0, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                    0, [32, 26, 44], '0x', {from: campCreator}
+                    0, 0, 0, [32, 26, 44], '0x', {from: campCreator}
                 ),
                 "not camp creator"
             )
 
             await daoContract.submitNewCampaign(
                 0, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: newCampCreator}
+                0, 0, 0, [32, 26, 44], '0x', {from: newCampCreator}
             );
         })
 
@@ -6056,7 +5972,7 @@ contract('KyberDAO', function(accounts) {
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
-                0, [32, 26, 44], '0x', {from: campCreator}
+                0, 0, 0, [32, 26, 44], '0x', {from: campCreator}
             );
 
             let newCampCreator = accounts[9];
@@ -6095,21 +6011,4 @@ function mulPrecision(value) {
 function getDataFromRebateAndReward(rebate, reward) {
     let power128 = new BN(2).pow(new BN(128));
     return (new BN(rebate).mul(power128)).add(new BN(reward));
-}
-
-function getFormulaParamsData(minPercentageInPrecision, cInPrecision, tInPrecision) {
-    let power84 = new BN(2).pow(new BN(84));
-    let data = (new BN(0)).add(new BN(minPercentageInPrecision));
-    data.iadd(new BN(cInPrecision).mul(power84));
-    data.iadd(new BN(tInPrecision).mul(power84).mul(power84));
-    return data;
-}
-
-function getEncodeWinningOption(option, concluded) {
-    let power128 = new BN(2).pow(new BN(128));
-    let data = new BN(option);
-    if (concluded) {
-        data.iadd(power128);
-    }
-    return data;
 }
