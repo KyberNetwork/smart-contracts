@@ -5,8 +5,9 @@ import "../KyberNetwork.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// @title Kyber Network main contract, takes some fee and reports actual dest amount minus Fees.
-contract GenerousKyberNetwork is KyberNetwork {
+/// @title GenerousKyberNetwork2 transfer the fixed dest amount to destAddress and returns this amount to proxy
+// This would allow us to check the condition of maxDestAmount
+contract GenerousKyberNetwork2 is KyberNetwork {
 
     constructor(address _admin) public KyberNetwork(_admin) { }
 
@@ -22,7 +23,6 @@ contract GenerousKyberNetwork is KyberNetwork {
     {
         tData.networkFeeBps = getAndUpdateNetworkFee();
 
-        // destAmount = printGas("start_tr", 0, Module.NETWORK);
         require(verifyTradeInputValid(tData.input, tData.networkFeeBps), "invalid");
 
         // amounts excluding fees
@@ -51,20 +51,11 @@ contract GenerousKyberNetwork is KyberNetwork {
             actualSrcAmount = tData.input.srcAmount;
         }
 
-        if (tData.input.srcAmount == 1313) {
+        if (tData.input.srcAmount == 1717) {
             //signal for "reverse trade" for source token
-            emit GenerousTrade(1313, 1755, tData.input.src);
-            // since 1313 src token is transfered to proxy, we must transfer a bigger number to trader to break the check of src Amount
-            tData.input.src.safeTransfer(tData.input.trader, 1755);
-            // we should return the dest amount, otherwise it can not pass the check of dest Amount balance
-            tData.input.dest.safeTransfer(tData.input.destAddress, tData.actualDestAmount);
-            return tData.actualDestAmount;
-        }
-        if (tData.input.srcAmount == 1515) {
-            //signal for "reverse trade" for source token
-            emit GenerousTrade(1515, 855, tData.input.dest);
-            tData.input.dest.safeTransfer(tData.input.destAddress, 855);
-            return tData.actualDestAmount;
+            emit GenerousTrade(1717, 1717, tData.input.dest);
+            tData.input.dest.safeTransfer(tData.input.destAddress, 1717);
+            return 1717;
         }
 
         require(doReserveTrades(     //src to ETH
