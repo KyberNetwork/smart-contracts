@@ -37,10 +37,10 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     uint public constant   WEI_TO_BURN = 2 * 10 ** ETH_DECIMALS;
 
     struct BRRData {
-        uint160 expiryBlock;
+        uint64 expiryBlock;
         uint32 epoch;
-        uint32 rewardBps;
-        uint32 rebateBps;
+        uint16 rewardBps;
+        uint16 rebateBps;
     }
 
     IKyberDAO public kyberDAO;
@@ -310,17 +310,6 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         emit RewardsRemovedToBurn(epoch, rewardAmount);
     }
 
-    function updateBRRData(uint reward, uint rebate, uint expiryBlock, uint epoch) public {
-        // reward and rebate combined values < BPS. Tested in calling function.
-        require(epoch < 2 ** 32, "epoch overflow");
-        require(expiryBlock < 2 ** 160, "Expiry block overflow");
-
-        brrAndEpochData.rewardBps = uint32(reward);
-        brrAndEpochData.rebateBps = uint32(rebate);
-        brrAndEpochData.expiryBlock = uint160(expiryBlock);
-        brrAndEpochData.epoch = uint32(epoch);
-    }
-
     function readBRRData() public view returns(uint rewardBps, uint rebateBps, uint expiryBlock, uint epoch) {
         rewardBps = uint(brrAndEpochData.rewardBps);
         rebateBps = uint(brrAndEpochData.rebateBps);
@@ -346,6 +335,17 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
             // Update brrAndEpochData
             updateBRRData(rewardBps, rebateBps, expiryBlock, epoch);
         }
+    }
+
+    function updateBRRData(uint reward, uint rebate, uint expiryBlock, uint epoch) internal {
+        // reward and rebate combined values <= BPS. Tested in getBRR.
+        require(expiryBlock < 2 ** 64, "expiry block overflow");
+        require(epoch < 2 ** 32, "epoch overflow");
+
+        brrAndEpochData.rewardBps = uint16(reward);
+        brrAndEpochData.rebateBps = uint16(rebate);
+        brrAndEpochData.expiryBlock = uint64(expiryBlock);
+        brrAndEpochData.epoch = uint32(epoch);
     }
 
     function getRRWeiValues(uint RRAmountWei) internal
