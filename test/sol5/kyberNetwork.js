@@ -498,6 +498,41 @@ contract('KyberNetwork', function(accounts) {
         });
     });
 
+    describe("test enable network", async function(){
+        let tempNetwork
+        let tempMatchingEngine
+        before("global setup", async function(){
+            tempNetwork = await MockNetwork.new(admin);
+            tempMatchingEngine = await TradeLogic.new(admin);
+            mockReserve = await MockReserve.new();
+            gasHelperAdd = accounts[9];
+
+            await tempNetwork.addOperator(operator, {from: admin});
+            await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
+            await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
+            //init feeHandler
+            KNC = await TestToken.new("kyber network crystal", "KNC", 18);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            rateHelper = await RateHelper.new(admin);
+            await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
+        });
+
+        it("set enable without feeHandler", async function(){
+            await tempNetwork.setContracts(zeroAddress, tempMatchingEngine.address, gasHelperAdd, {from: admin});
+            await expectRevert(tempNetwork.setEnable(true, {from: admin}),  "feeHandler 0");
+        });
+
+        it("set enable without matching engine", async function(){
+            await tempNetwork.setContracts(feeHandler.address, zeroAddress, gasHelperAdd, {from: admin});
+            await expectRevert(tempNetwork.setEnable(true, {from: admin}), "matchingEngine 0");
+        });
+
+        it("set enable without proxy contract", async function(){
+            await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
+            await expectRevert(tempNetwork.setEnable(true, {from: admin}), "revert proxy 0");
+        });
+    });
+
     describe("test adding and removing reserves with fault matching engine", async() => {
         beforeEach("global setup ", async() => {
             tempNetwork = await KyberNetwork.new(admin);
@@ -553,6 +588,21 @@ contract('KyberNetwork', function(accounts) {
                 "reserve ?"
             )
         });
+
+        it("List pair For unlisted reserve eth to token", async function() {
+            let anotherMockReserve = await MockReserve.new();
+            await expectRevert.unspecified(
+                tempNetwork.listPairForReserve(anotherMockReserve.address, KNC.address, true, true, true, {from: operator})
+            );
+        });
+
+        it("set invalid neligible rate diff bps", async function(){
+            let bps = BPS.add(new BN(1))
+            await expectRevert.unspecified(
+                tempNetwork.setParams(gasPrice, bps, {from: admin})
+            );
+        })
+
     });
 
     describe("test with MockDAO", async() => {

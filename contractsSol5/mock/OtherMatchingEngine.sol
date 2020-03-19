@@ -21,7 +21,10 @@ contract OtherMatchingEngine is KyberMatchingEngine {
         if (reserveIdToAddresses[reserveId].length == 0) {
             reserveIdToAddresses[reserveId].push(reserve);
         } else {
-            require(reserveIdToAddresses[reserveId][0] == address(0), "reserveId taken");
+            require(
+                reserveIdToAddresses[reserveId][0] == address(0),
+                "reserveId taken"
+            );
             reserveIdToAddresses[reserveId][0] = reserve;
         }
 
@@ -48,5 +51,31 @@ contract OtherMatchingEngine is KyberMatchingEngine {
         reserveAddressToId[reserve] = bytes8(0);
 
         return reserveId;
+    }
+
+    function listPairForReserve(
+        IKyberReserve reserve,
+        IERC20 token,
+        bool ethToToken,
+        bool tokenToEth,
+        bool add
+    ) external onlyNetwork returns (bool) {
+        if(reserveAddressToId[address(reserve)] == bytes8(0)) return false;
+        if (ethToToken) {
+            listPairs(IKyberReserve(reserve), token, false, add);
+        }
+
+        if (tokenToEth) {
+            listPairs(IKyberReserve(reserve), token, true, add);
+        }
+
+        setDecimals(token);
+        return true;
+    }
+
+    function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external onlyNetwork returns (bool) {
+        if (_negligibleRateDiffBps > BPS) return false; // at most 100%
+        negligibleRateDiffBps = _negligibleRateDiffBps;
+        return true;
     }
 }

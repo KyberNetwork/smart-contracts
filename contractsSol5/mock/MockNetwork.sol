@@ -5,9 +5,9 @@ import "../KyberNetwork.sol";
 
 contract MockNetwork is KyberNetwork {
 
-    constructor(address _admin) public KyberNetwork(_admin) 
+    constructor(address _admin) public KyberNetwork(_admin)
         {}
-    
+
     //over ride some functions to reduce contract size.
     function doReserveTrades(
         IERC20 src,
@@ -37,5 +37,44 @@ contract MockNetwork is KyberNetwork {
 
     function getNetworkFeeData() public view returns(uint _networkFeeBps, uint _expiryBlock) {
         (_networkFeeBps, _expiryBlock) = decodeNetworkFee(networkFeeData);
+    }
+
+    function setContracts(IKyberFeeHandler _feeHandler,
+        IKyberMatchingEngine _matchingEngine,
+        IGasHelper _gasHelper
+    )
+        external onlyAdmin
+    {
+        // allow set zero contract
+        // require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
+        // require(_matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
+
+        if ((feeHandler.length == 0) || (_feeHandler != feeHandler[0])) {
+
+            if (feeHandler.length > 0) {
+                feeHandler.push(feeHandler[0]);
+                feeHandler[0] = _feeHandler;
+            } else {
+                feeHandler.push(_feeHandler);
+            }
+
+            emit FeeHandlerUpdated(_feeHandler);
+        }
+
+        if (matchingEngine.length == 0 || _matchingEngine != matchingEngine[0]) {
+            if (matchingEngine.length > 0) {
+                matchingEngine.push(matchingEngine[0]);
+                matchingEngine[0] = _matchingEngine;
+            } else {
+                matchingEngine.push(_matchingEngine);
+            }
+
+            emit MatchingEngineUpdated(_matchingEngine);
+        }
+
+        if ((_gasHelper != IGasHelper(0)) && (_gasHelper != gasHelper)) {
+            emit GasHelperUpdated(_gasHelper);
+            gasHelper = _gasHelper;
+        }
     }
 }
