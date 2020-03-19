@@ -302,6 +302,50 @@ contract('KyberNetwork', function(accounts) {
         });
     });
 
+    describe("test add contract nil address", async function(){
+        let tempMatchingEngine
+        let mockReserve
+        let gasHelperAdd
+        before("const setup", async function(){
+            tempMatchingEngine = await TradeLogic.new(admin);
+            mockReserve = await MockReserve.new();
+            gasHelperAdd = accounts[9];
+        })
+        beforeEach("global setup", async function(){
+            tempNetwork = await KyberNetwork.new(admin);
+
+            await tempNetwork.addOperator(operator, {from: admin});
+            await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
+            await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
+            //init feeHandler
+            KNC = await TestToken.new("kyber network crystal", "KNC", 18);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            rateHelper = await RateHelper.new(admin);
+            await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
+        });
+
+        it("set empty fee handler contract", async function(){
+            await expectRevert(
+                tempNetwork.setContracts(zeroAddress, tempMatchingEngine.address, gasHelperAdd, {from: admin}),
+                "feeHandler 0"
+            );
+        });
+
+        it("set empty matching engine contract", async function(){
+            await expectRevert(
+                tempNetwork.setContracts(feeHandler.address, zeroAddress, gasHelperAdd, {from: admin}),
+                "matchingEngine 0"
+            );
+        });
+
+        it("set empty dao contract", async function(){
+            await expectRevert(
+                tempNetwork.setDAOContract(zeroAddress, {from: admin}),
+                "kyberDAO 0"
+            );
+        });
+    });
+
     describe("should test events declared in network contract", async() => {
         let tempNetwork;
         let tempMatchingEngine;
