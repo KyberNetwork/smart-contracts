@@ -462,6 +462,11 @@ contract('KyberNetwork', function(accounts) {
                 maxGasPrice: gasPrice,
                 negligibleRateDiffBps: negligibleRateDiffBps
             });
+            Helper.assertEqual(
+                gasPrice,
+                await tempNetwork.maxGasPrice(),
+                "Max gas price is not as expected"
+            )
         });
 
         it("Add proxy", async() => {
