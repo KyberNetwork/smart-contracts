@@ -2,7 +2,7 @@ const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const MockDao = artifacts.require("MockDAO.sol");
 const MockGasHelper = artifacts.require("MockGasHelper.sol");
-const MockMaliciousMatchingEngine = artifacts.require("MockMaliciousMatchingEngine.sol");
+const MockMatchingEngineManipulateRate = artifacts.require("MockMatchingEngineManipulateRate.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const MockNetwork = artifacts.require("MockNetwork.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
@@ -1121,7 +1121,7 @@ contract('KyberNetwork', function(accounts) {
             feeHandler = await FeeHandler.new(DAO.address, tempNetwork.address, tempNetwork.address, KNC.address, burnBlockInterval);
 
             // init matchingEngine
-            maliciousMatchingEngine = await MockMaliciousMatchingEngine.new(admin);
+            maliciousMatchingEngine = await MockMatchingEngineManipulateRate.new(admin);
             await maliciousMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
             await maliciousMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
 
