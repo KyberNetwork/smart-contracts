@@ -424,6 +424,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
         calcRatesAndAmounts(src, dest, tData.input.srcAmount, tData, hint);
 
+
         rateNoFees = calcRateFromQty(tData.input.srcAmount, tData.destAmountNoFee, tData.tokenToEth.decimals,
             tData.ethToToken.decimals);
         rateAfterNetworkFee = tData.rateOnlyNetworkFee;
@@ -878,8 +879,10 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     {
         if (src == dest) {
             //E2E, need not do anything except for T2E, transfer ETH to destAddress
-            if (destAddress != (address(this)))
-                destAddress.transfer(amount);
+            if (destAddress != (address(this))) {
+                (bool success, ) = destAddress.call.value(amount)("");
+                require(success);
+            }
             return true;
         }
 
@@ -915,7 +918,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         if (requiredSrcAmount < srcAmount) {
             //if there is "change" send back to trader
             if (src == ETH_TOKEN_ADDRESS) {
-                trader.transfer(srcAmount - requiredSrcAmount);
+                (bool success, ) = trader.call.value(srcAmount - requiredSrcAmount)("");
+                require(success);
             } else {
                 src.safeTransfer(trader, (srcAmount - requiredSrcAmount));
             }
