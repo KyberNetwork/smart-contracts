@@ -478,6 +478,10 @@ contract('KyberNetwork', function(accounts) {
             });
         });
 
+        it("Remove proxy not avaiable", async() => {
+            await expectRevert(tempNetwork.removeKyberProxy(ethAddress, {from: admin}), "proxy not found");
+        });
+
         it("Set enable", async() => {
             let txResult = await tempNetwork.setEnable(true, {from: admin});
             expectEvent(txResult, 'KyberNetworkSetEnable', {
