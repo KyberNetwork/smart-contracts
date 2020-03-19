@@ -51,8 +51,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     mapping(address=>address) public reserveRebateWallet;
 
     struct NetworkFeeData {
-        uint160 expiryBlock;
-        uint96 feeBps;
+        uint64 expiryBlock;
+        uint16 feeBps;
     }
 
     constructor(address _admin) public Withdrawable2(_admin) {
@@ -936,6 +936,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         require(input.srcAmount != 0, "0 srcAmt");
         require(input.destAddress != address(0), "dest add 0");
         require(input.src != input.dest, "src = dest");
+        require(input.platformFeeBps < BPS, "platformFee high");
         require(input.platformFeeBps + networkFeeBps + networkFeeBps < BPS, "fees high");
 
         if (input.src == ETH_TOKEN_ADDRESS) {
@@ -982,10 +983,10 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     }
 
     function updateNetworkFee(uint expiryBlock, uint feeBps) internal {
-        require(expiryBlock < 2 ** 160 - 1);
-        require(feeBps < 2 ** 96 - 1);
+        require(expiryBlock < 2 ** 64, "expiry overflow");
+        require(2 * feeBps < BPS, "fees exceed BPS");
 
-        networkFeeData.expiryBlock = uint160(expiryBlock);
-        networkFeeData.feeBps = uint96(feeBps);
+        networkFeeData.expiryBlock = uint64(expiryBlock);
+        networkFeeData.feeBps = uint16(feeBps);
     }
 }

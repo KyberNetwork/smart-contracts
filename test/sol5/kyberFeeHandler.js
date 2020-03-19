@@ -2,6 +2,7 @@ const Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 const MockDAO = artifacts.require("MockDAO.sol");
+const BadDAO = artifacts.require("MaliciousDAO.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const BadFeeHandler = artifacts.require("MaliciousFeeHandler.sol");
 const Token = artifacts.require("Token.sol");
@@ -11,7 +12,6 @@ const NoPayableFallback = artifacts.require("NoPayableFallback.sol");
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, zeroBN, MAX_RATE} = require("../helper.js");
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
-const BITS_PER_PARAM = 64;
 const KNC_DECIMALS = 18;
 const BURN_BLOCK_INTERVAL = 3;
 
@@ -284,7 +284,7 @@ contract('KyberFeeHandler', function(accounts) {
         });
     });
 
-    it("test read BRR function", async() => {
+    it("test read BRR function", async() => {    
         let results = await feeHandler.readBRRData();
         // console.log(results);
         Helper.assertEqual(results.rewardBps, rewardInBPS, "Actual decoded rewardInBPS is not correct");
@@ -293,10 +293,23 @@ contract('KyberFeeHandler', function(accounts) {
         Helper.assertEqual(results.epoch, epoch, "Actual decoded epoch is not correct");
     });
    
-    describe("test updateBRRData function", async() => {
-        let rewardBps;
-        let rebateBps;
-        beforeEach("get default BRR values", async() => {
+    describe("test getBRR and updateBRRData functions", async() => {
+        let defaultEpoch;
+        let defaultExpiryBlock;
+
+        before("init variables", async() => {
+            defaultEpoch = zeroBN;
+            defaultExpiryBlock = new BN(5);
+            await mockDAO.setMockBRR(rewardInBPS, rebateInBPS);
+            await mockDAO.setMockEpochAndExpiryBlock(defaultEpoch, defaultExpiryBlock);
+        });
+
+        afterEach("reset to default BRR values", async() => {
+            await mockDAO.setMockBRR(rewardInBPS, rebateInBPS);
+            await mockDAO.setMockEpochAndExpiryBlock(defaultEpoch, defaultExpiryBlock);
+        });
+
+        after("set default values", async() => {
             let results = await feeHandler.readBRRData();
             rewardBps = results.rewardBps;
             rebateBps = results.rebateBps;
@@ -304,68 +317,64 @@ contract('KyberFeeHandler', function(accounts) {
             epoch = results.epoch;
         });
 
-        after("get default BRR values", async() => {
-            let results = await feeHandler.readBRRData();
-            rewardBps = results.rewardBps;
-            rebateBps = results.rebateBps;
-            expiryBlock = results.expiryBlock;
-            epoch = results.epoch;
-        });
+        it("should revert if bad BRR values are returned", async() => {
+            let badDAO = await BadDAO.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+            feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL);
+            await feeHandler.setDaoContract(badDAO.address, {from: daoSetter});
+            await badDAO.setFeeHandler(feeHandler.address);
 
-        it("should revert if rewardBps >= 2 ** 32 - 1", async () => {
-            rewardBps = new BN(2).pow(new BN(32)).sub(new BN(1));
             await expectRevert(
-                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
-                "reward overflow"
-            );
-
-            rewardBps.add(new BN(1));
-            await expectRevert(
-                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
-                "reward overflow"
+                feeHandler.getBRR(),
+                "Bad BRR values"
             );
         });
 
-        it("should revert if rebateBps >= 2 ** 32 - 1", async() => {
-            rebateBps = new BN(2).pow(new BN(32)).sub(new BN(1));
+        it("should revert if expiry block >= 2 ** 64", async() => {
+            let badExpiryBlock = new BN(2).pow(new BN(64));
+            await mockDAO.setMockEpochAndExpiryBlock(defaultEpoch, badExpiryBlock);
             await expectRevert(
-                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
-                "rebate overflow"
+                feeHandler.getBRR(),
+                "expiry block overflow"
             );
 
-            rebateBps.add(new BN(1));
+            badExpiryBlock = badExpiryBlock.add(new BN(1));
+            await mockDAO.setMockEpochAndExpiryBlock(defaultEpoch, badExpiryBlock);
             await expectRevert(
-                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
-                "rebate overflow"
-            );
-        });
-
-        it("should revert if expiryBlock >= 2 ** 160 - 1", async() => {
-            expiryBlock = new BN(2).pow(new BN(160)).sub(new BN(1));
-            await expectRevert(
-                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
-                "expiry overflow"
-            );
-
-            expiryBlock.add(new BN(1));
-            await expectRevert(
-                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
-                "expiry overflow"
+                feeHandler.getBRR(),
+                "expiry block overflow"
             );
         });
 
-        it("should revert if epoch >= 2 ** 32 - 1", async() => {
-            epoch = new BN(2).pow(new BN(160)).sub(new BN(1));
+        it("should revert if epoch >= 2 ** 32", async() => {
+            let badEpoch = new BN(2).pow(new BN(32));
+            await mockDAO.setMockEpochAndExpiryBlock(badEpoch, defaultExpiryBlock);
             await expectRevert(
-                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
+                feeHandler.getBRR(),
                 "epoch overflow"
             );
 
-            epoch.add(new BN(1));
+            badEpoch = badEpoch.add(new BN(1));
+            await mockDAO.setMockEpochAndExpiryBlock(badEpoch, defaultExpiryBlock);
             await expectRevert(
-                feeHandler.updateBRRData(rewardBps, rebateBps, expiryBlock, epoch),
+                feeHandler.getBRR(),
                 "epoch overflow"
             );
+        });
+
+        it("should have updated BRR if epoch == 2 ** 32 - 1", async() => {
+            let maxEpoch = (new BN(2).pow(new BN(32))).sub(new BN(1));
+            await mockDAO.setMockEpochAndExpiryBlock(maxEpoch, defaultExpiryBlock);
+            await feeHandler.getBRR();
+            let result = await feeHandler.readBRRData();
+            Helper.assertEqual(result.epoch, maxEpoch, "epoch was not updated");
+        });
+
+        it("should have updated BRR if expiryBlock == 2 ** 64 - 1", async() => {
+            let maxEpiryBlock = new BN(2).pow(new BN(64)).sub(new BN(1));
+            await mockDAO.setMockEpochAndExpiryBlock(defaultEpoch, maxEpiryBlock);
+            await feeHandler.getBRR();
+            let result = await feeHandler.readBRRData();
+            Helper.assertEqual(result.expiryBlock, maxEpiryBlock, "expiry block was not updated");
         });
     });
 
@@ -994,7 +1003,7 @@ contract('KyberFeeHandler', function(accounts) {
                 
                 await expectRevert(
                     feeHandler.burnKNC(),
-                    "contract bal too low"
+                    "contract balance too low"
                 );
             });
 
