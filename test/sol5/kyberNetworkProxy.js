@@ -677,11 +677,11 @@ contract('KyberNetworkProxy', function(accounts) {
 
     describe("test reverting when using contract zero address", async () => {
         it("test set network to zero address", async () => {
-            await expectRevert.unspecified(networkProxy.setKyberNetwork(zeroAddress, { from: admin }));
+            await expectRevert(networkProxy.setKyberNetwork(zeroAddress, { from: admin }), "KyberNetwork 0");
         });
 
         it("test set hint handler to zero address", async () => {
-            await expectRevert.unspecified(networkProxy.setHintHandler(zeroAddress, { from: admin }));
+            await expectRevert(networkProxy.setHintHandler(zeroAddress, { from: admin }), "Hint handler 0");
         });
     });
     
@@ -788,7 +788,7 @@ contract('KyberNetworkProxy', function(accounts) {
             await srcToken.approve(networkProxy.address, srcQty, { from: taker });
 
             //see trade reverts 
-            await expectRevert.unspecified(networkProxy.trade(
+            await expectRevert(networkProxy.trade(
                 srcToken.address,
                 srcQty,
                 tokens[2].address,
@@ -797,7 +797,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 rate.expectedRate,
                 zeroAddress,
                 { from: taker, value: new BN(2) }
-            ));
+            ), "msg.value should be 0");
             // see trade is ok if msg.value == 0
             await networkProxy.trade.call(
                 srcToken.address,
@@ -835,7 +835,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     rate.expectedRate,
                     zeroAddress,
                     { from: taker }
-                ), "wrong ret amount"
+                ), "Kyber network returned wrong amount"
             );
             // change the amount and see trade success
             await networkProxy.trade(
@@ -874,7 +874,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     rate.expectedRate,
                     zeroAddress,
                     { from: taker }
-                ), "srcAdd bad qty"
+                ), "Wrong amount in source address"
             );
             // change the amount and see trade success
             await networkProxy.trade(
@@ -916,7 +916,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     rate.expectedRate,
                     destAddress,
                     { from: taker }
-                ), "destAdd bad qty"
+                ), "Wrong amount in destination address"
             );
         });
 
@@ -944,7 +944,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     rate.expectedRate,
                     zeroAddress,
                     { from: taker }
-                ), "Amount > maxDest"
+                ), "Destination amount bigger then max destination amount"
             );
             // change the amount and see trade success
             await networkProxy.trade(

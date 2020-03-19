@@ -268,8 +268,8 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
 
         TradeOutcome memory tradeOutcome = calculateTradeOutcome(src, dest, destAddress, platformFeeBps, balanceBefore);
 
-        require(tradeOutcome.userDeltaDestToken == reportedDestAmount, "wrong ret amount");
-        require(tradeOutcome.userDeltaDestToken <= maxDestAmount, "Amount > maxDest");
+        require(tradeOutcome.userDeltaDestToken == reportedDestAmount, "Kyber network returned wrong amount");
+        require(tradeOutcome.userDeltaDestToken <= maxDestAmount, "Destination amount bigger then max destination amount");
         require(tradeOutcome.actualRate >= minConversionRate, "rate < minRate");
 
         emit ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcToken, tradeOutcome.userDeltaDestToken,
@@ -281,7 +281,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     event KyberNetworkSet(IKyberNetwork newNetwork, IKyberNetwork oldNetwork);
 
     function setKyberNetwork(IKyberNetwork _kyberNetwork) public onlyAdmin {
-        require(_kyberNetwork != IKyberNetwork(0));
+        require(_kyberNetwork != IKyberNetwork(0), "KyberNetwork 0");
         emit KyberNetworkSet(_kyberNetwork, kyberNetwork);
 
         kyberNetwork = _kyberNetwork;
@@ -314,7 +314,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         internal returns
         (UserBalance memory balanceBefore) 
     {
-        require(src == ETH_TOKEN_ADDRESS || msg.value == 0);
+        require(src == ETH_TOKEN_ADDRESS || msg.value == 0, "msg.value should be 0");
 
         balanceBefore.srcTok = getBalance(src, msg.sender);
         balanceBefore.destTok = getBalance(dest, destAddress);
@@ -337,8 +337,8 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         destTokenBalanceAfter = getBalance(dest, destAddress);
 
         //protect from underflow
-        require(destTokenBalanceAfter > balanceBefore.destTok, "destAdd bad qty");
-        require(balanceBefore.srcTok > srcTokenBalanceAfter, "srcAdd bad qty");
+        require(destTokenBalanceAfter > balanceBefore.destTok, "Wrong amount in destination address");
+        require(balanceBefore.srcTok > srcTokenBalanceAfter, "Wrong amount in source address");
 
         outcome.userDeltaSrcToken = balanceBefore.srcTok - srcTokenBalanceAfter;
         outcome.userDeltaDestToken = destTokenBalanceAfter - balanceBefore.destTok;

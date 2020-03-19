@@ -23,7 +23,6 @@ contract GenerousKyberNetwork2 is KyberNetwork {
     {
         tData.networkFeeBps = getAndUpdateNetworkFee();
 
-        // destAmount = printGas("start_tr", 0, Module.NETWORK);
         require(verifyTradeInputValid(tData.input, tData.networkFeeBps), "invalid");
 
         // amounts excluding fees
