@@ -102,7 +102,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint startBlock;
         uint endBlock;
         uint totalKNCSupply;        // total KNC supply at the time campaign was created
-        FormulaData formulaData;  // formula params for concluding campaign result
+        FormulaData formulaData;    // formula params for concluding campaign result
         bytes link;                 // link to KIP, explaination of options, etc.
         uint[] options;             // data of options
     }
@@ -206,7 +206,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     event NewCampaignCreated(
         CampaignType campType, uint campID,
         uint startBlock, uint endBlock,
-        uint minPerInPrecision, uint cInPrecision, uint tInPrecision,
+        uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision,
         uint[] options, bytes link
     );
 
@@ -215,7 +215,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @param campType type of campaign (network fee, brr, general)
     * @param startBlock block to start running the campaign
     * @param endBlock block to end this campaign
-    * @param minPerInPrecision min percentage (in precision) for formula to conclude campaign
+    * @param minPercentageInPrecision min percentage (in precision) for formula to conclude campaign
     * @param cInPrecision c value (in precision) for formula to conclude campaign
     * @param tInPrecision t value (in precision) for formula to conclude campaign
     * @param options list values of options to vote for this campaign
@@ -223,7 +223,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     */
     function submitNewCampaign(
         CampaignType campType, uint startBlock, uint endBlock,
-        uint minPerInPrecision, uint cInPrecision, uint tInPrecision,
+        uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision,
         uint[] memory options, bytes memory link
     )
         public onlyCampaignCreator returns(uint campID)
@@ -240,7 +240,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         require(
             validateCampaignParams(
                 campType, startBlock, endBlock, campEpoch,
-                minPerInPrecision, cInPrecision, tInPrecision, options),
+                minPercentageInPrecision, cInPrecision, tInPrecision, options),
             "newCampaign: invalid campaign params"
         );
 
@@ -264,7 +264,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         }
 
         FormulaData memory formulaData = FormulaData({
-            minPercentageInPrecision: minPerInPrecision,
+            minPercentageInPrecision: minPercentageInPrecision,
             cInPrecision: cInPrecision,
             tInPrecision: tInPrecision
         });
@@ -285,7 +285,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         emit NewCampaignCreated(
             campType, campID, startBlock, endBlock,
-            minPerInPrecision, cInPrecision, tInPrecision,
+            minPercentageInPrecision, cInPrecision, tInPrecision,
             options, link
         );
     }
@@ -471,7 +471,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         public view
         returns(
             CampaignType campType, uint startBlock, uint endBlock, uint totalKNCSupply,
-            uint minPerInPrecision, uint cInPrecision, uint tInPrecision,
+            uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision,
             bytes memory link, uint[] memory options
         )
     {
@@ -480,7 +480,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         startBlock = camp.startBlock;
         endBlock = camp.endBlock;
         totalKNCSupply = camp.totalKNCSupply;
-        minPerInPrecision = camp.formulaData.minPercentageInPrecision;
+        minPercentageInPrecision = camp.formulaData.minPercentageInPrecision;
         cInPrecision = camp.formulaData.cInPrecision;
         tInPrecision = camp.formulaData.tInPrecision;
         link = camp.link;
@@ -668,7 +668,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     */
     function validateCampaignParams(
         CampaignType campType, uint startBlock, uint endBlock, uint startEpoch,
-        uint minPerInPrecision, uint cInPrecision, uint tInPrecision,
+        uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision,
         uint[] memory options
     )
         public view returns(bool)
@@ -737,7 +737,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         // percentage should be smaller than or equal 100%
         require(
-            minPerInPrecision <= PRECISION,
+            minPercentageInPrecision <= PRECISION,
             "validateParams: min percentage is high"
         );
 

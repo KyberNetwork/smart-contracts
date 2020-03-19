@@ -180,9 +180,9 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
 
             let voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalPoints, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount1, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], 0, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], 0, "option voted count is incorrect");
 
             await stakingContract.withdraw(mulPrecision(100), {from: victor});
 
@@ -192,18 +192,18 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
 
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalPoints, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount1, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], 0, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], 0, "option voted count is incorrect");
 
             await stakingContract.withdraw(mulPrecision(100), {from: mike});
 
             Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
 
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalPoints, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount1, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], 0, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], 0, "option voted count is incorrect");
 
             await daoContract.vote(1, 2, {from: mike});
             totalPoints.iadd(initMikeStake).isub(mulPrecision(100));
@@ -212,10 +212,10 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
 
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalPoints, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount1, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount2, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][2], 0, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount2, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[2], 0, "option voted count is incorrect");
 
             await stakingContract.withdraw(mulPrecision(100), {from: mike});
             totalPoints.isub(mulPrecision(100));
@@ -224,20 +224,20 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
 
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalPoints, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount1, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount2, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][2], 0, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount2, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[2], 0, "option voted count is incorrect");
 
             await stakingContract.deposit(mulPrecision(200), {from: victor});
 
             Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
 
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalPoints, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount1, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount2, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][2], 0, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount2, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[2], 0, "option voted count is incorrect");
 
             // less than new deposit (200)
             await stakingContract.withdraw(mulPrecision(100), {from: victor});
@@ -245,10 +245,10 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
 
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalPoints, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount1, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount2, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][2], 0, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount2, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[2], 0, "option voted count is incorrect");
 
             // total withdraw is 400 more than new deposit (200)
             await stakingContract.withdraw(mulPrecision(300), {from: victor});
@@ -258,10 +258,10 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
 
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalPoints, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount1, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount2, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][2], 0, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount2, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[2], 0, "option voted count is incorrect");
 
             // change vote of victor from 1 to 2, make sure vote counts change correctly after withdraw
             await daoContract.vote(1, 2, {from: victor});
@@ -271,10 +271,10 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
 
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalPoints, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount1, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount2, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][2], 0, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount2, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[2], 0, "option voted count is incorrect");
 
             await stakingContract.withdraw(mulPrecision(100), {from: victor});
 
@@ -284,10 +284,10 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
 
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalPoints, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount1, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount2, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][2], 0, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount2, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[2], 0, "option voted count is incorrect");
         });
 
         it("Test handle withdrawal updates correct points with multiple voted campaigns - no delegation", async function() {
@@ -308,7 +308,7 @@ contract('KyberDAO', function(accounts) {
                 campID: new BN(1),
                 startBlock: new BN(currentBlock + 3),
                 endBlock: new BN(currentBlock + 3 + minCampPeriod),
-                minPerInPrecision: new BN(minPercentageInPrecision),
+                minPercentageInPrecision: new BN(minPercentageInPrecision),
                 cInPrecision: new BN(cInPrecision),
                 tInPrecision: new BN(tInPrecision),
                 link: link
@@ -326,8 +326,8 @@ contract('KyberDAO', function(accounts) {
             // check pts and vote counts
             Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
             let voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalCampPoint1, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount11, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
 
             currentBlock = await Helper.getCurrentBlock();
             txResult = await daoContract.submitNewCampaign(
@@ -339,7 +339,7 @@ contract('KyberDAO', function(accounts) {
                 campID: new BN(2),
                 startBlock: new BN(currentBlock + 2),
                 endBlock: new BN(currentBlock + 2 + minCampPeriod),
-                minPerInPrecision: minPercentageInPrecision,
+                minPercentageInPrecision: minPercentageInPrecision,
                 cInPrecision: cInPrecision,
                 tInPrecision: tInPrecision,
                 link: link
@@ -355,11 +355,11 @@ contract('KyberDAO', function(accounts) {
             // check pts and vote counts
             Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalCampPoint1, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount11, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
             voteData = await daoContract.getCampaignVoteCountData(2);
-            Helper.assertEqual(voteData[1], totalCampPoint2, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount22, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount22, "option voted count is incorrect");
 
             await stakingContract.withdraw(mulPrecision(100), {from: victor});
             // update points and vote counts
@@ -372,21 +372,21 @@ contract('KyberDAO', function(accounts) {
             // check pts and vote counts
             Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalCampPoint1, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount11, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
             voteData = await daoContract.getCampaignVoteCountData(2);
-            Helper.assertEqual(voteData[1], totalCampPoint2, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount22, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount22, "option voted count is incorrect");
 
             await daoContract.vote(1, 2, {from: victor});
             // check pts and vote counts
             Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalCampPoint1, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount11, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount11, "option voted count is incorrect");
             voteData = await daoContract.getCampaignVoteCountData(2);
-            Helper.assertEqual(voteData[1], totalCampPoint2, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount22, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount22, "option voted count is incorrect");
 
             // delay to end of campaign 1
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 5);
@@ -400,11 +400,11 @@ contract('KyberDAO', function(accounts) {
             // check pts and vote counts
             Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalCampPoint1, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount11, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount11, "option voted count is incorrect");
             voteData = await daoContract.getCampaignVoteCountData(2);
-            Helper.assertEqual(voteData[1], totalCampPoint2, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount22, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount22, "option voted count is incorrect");
 
             currentBlock = await Helper.getCurrentBlock();
             // create new campaign far from current block
@@ -417,7 +417,7 @@ contract('KyberDAO', function(accounts) {
                 campID: new BN(3),
                 startBlock: new BN(currentBlock + 20),
                 endBlock: new BN(currentBlock + 20 + minCampPeriod),
-                minPerInPrecision: minPercentageInPrecision,
+                minPercentageInPrecision: minPercentageInPrecision,
                 cInPrecision: cInPrecision,
                 tInPrecision: tInPrecision,
                 link: link
@@ -432,14 +432,14 @@ contract('KyberDAO', function(accounts) {
             // check pts and vote counts
             Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalCampPoint1, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount11, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount11, "option voted count is incorrect");
             voteData = await daoContract.getCampaignVoteCountData(2);
-            Helper.assertEqual(voteData[1], totalCampPoint2, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount22, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount22, "option voted count is incorrect");
             // data for camp 3 should be 0
             voteData = await daoContract.getCampaignVoteCountData(3);
-            Helper.assertEqual(voteData[1], 0, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, 0, "total camp votes is incorrect");
         });
 
         it("Test handle withdrawal updates correct data after withdraw - with delegation", async function() {
@@ -472,8 +472,8 @@ contract('KyberDAO', function(accounts) {
             // check pts and vote counts
             Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
             let voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalCampPoint1, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount11, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
 
             let victorWithdrewAmt = mulPrecision(100);
             await stakingContract.withdraw(victorWithdrewAmt, {from: victor});
@@ -485,16 +485,16 @@ contract('KyberDAO', function(accounts) {
             // check pts and vote counts
             Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalCampPoint1, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount11, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
 
             // withdraw from staker with no votes
             await stakingContract.withdraw(mulPrecision(10), {from: loi});
             // check pts and vote counts
             Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalCampPoint1, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount11, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
 
             await daoContract.vote(1, 2, {from: victor});
             // note: Loi already withdraw 10 knc
@@ -505,26 +505,26 @@ contract('KyberDAO', function(accounts) {
             // check pts and vote counts
             Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalCampPoint1, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount11, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount12, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount12, "option voted count is incorrect");
 
             await daoContract.vote(1, 3, {from: loi});
             // check pts and vote counts, nothing should be changed
             Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalCampPoint1, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount11, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount12, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount12, "option voted count is incorrect");
 
             await stakingContract.delegate(loi, {from: victor});
 
             // check pts and vote counts, nothing should be changed
             Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalCampPoint1, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount11, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount12, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount12, "option voted count is incorrect");
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -541,12 +541,12 @@ contract('KyberDAO', function(accounts) {
             // check pts and vote counts
             Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalCampPoint1, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount11, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount12, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount12, "option voted count is incorrect");
             voteData = await daoContract.getCampaignVoteCountData(2);
-            Helper.assertEqual(voteData[1], totalCampPoint2, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount21, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount21, "option voted count is incorrect");
 
             await stakingContract.withdraw(mulPrecision(200), {from: victor});
             victorWithdrewAmt.iadd(mulPrecision(200));
@@ -561,18 +561,17 @@ contract('KyberDAO', function(accounts) {
             // check pts and vote counts
             Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalCampPoint1, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount11, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount12, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount12, "option voted count is incorrect");
             voteData = await daoContract.getCampaignVoteCountData(2);
-            Helper.assertEqual(voteData[1], totalCampPoint2, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount21, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount21, "option voted count is incorrect");
 
             // delay until first camp is ended
             let data = await daoContract.getCampaignDetails(1);
             currentBlock = await Helper.getCurrentBlock();
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], data[2] - currentBlock);
-            data = await daoContract.getCampaignDetails(1);
 
             await stakingContract.withdraw(mulPrecision(100), {from: victor});
 
@@ -583,12 +582,12 @@ contract('KyberDAO', function(accounts) {
 
             Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
             voteData = await daoContract.getCampaignVoteCountData(1);
-            Helper.assertEqual(voteData[1], totalCampPoint1, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount11, "option voted count is incorrect");
-            Helper.assertEqual(voteData[0][1], voteCount12, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
+            Helper.assertEqual(voteData.voteCounts[1], voteCount12, "option voted count is incorrect");
             voteData = await daoContract.getCampaignVoteCountData(2);
-            Helper.assertEqual(voteData[1], totalCampPoint2, "total camp votes is incorrect");
-            Helper.assertEqual(voteData[0][0], voteCount21, "option voted count is incorrect");
+            Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
+            Helper.assertEqual(voteData.voteCounts[0], voteCount21, "option voted count is incorrect");
         });
 
         it("Test handle withdrawal should revert when sender is not staking", async function() {
@@ -637,27 +636,27 @@ contract('KyberDAO', function(accounts) {
                 Helper.assertEqual(true, await daoContract.campExists(id + 1), "campaign should be existed");
 
                 let data = await daoContract.getCampaignDetails(id + 1);
-                Helper.assertEqual(id, data[0], "campType is incorrect");
-                Helper.assertEqual(currentBlock + 2 * id + 5, data[1], "start block is incorrect");
-                Helper.assertEqual(currentBlock + 2 * id + 5 + minCampPeriod, data[2], "end block is incorrect");
-                Helper.assertEqual(totalSupply, data[3], "total supply is incorrect");
-                Helper.assertEqual(minPercentageInPrecision, data[4], "formulaParamsData is incorrect");
-                Helper.assertEqual(cInPrecision, data[5], "formulaParamsData is incorrect");
-                Helper.assertEqual(tInPrecision, data[6], "formulaParamsData is incorrect");
-                Helper.assertEqual(link, data[7].toString(), "link is incorrect");
-                Helper.assertEqual(4, data[8].length, "number options is incorrect");
-                Helper.assertEqual(1, data[8][0], "option value is incorrect");
-                Helper.assertEqual(2, data[8][1], "option value is incorrect");
-                Helper.assertEqual(3, data[8][2], "option value is incorrect");
-                Helper.assertEqual(4, data[8][3], "option value is incorrect");
+                Helper.assertEqual(id, data.campType, "campType is incorrect");
+                Helper.assertEqual(currentBlock + 2 * id + 5, data.startBlock, "start block is incorrect");
+                Helper.assertEqual(currentBlock + 2 * id + 5 + minCampPeriod, data.endBlock, "end block is incorrect");
+                Helper.assertEqual(totalSupply, data.totalKNCSupply, "total supply is incorrect");
+                Helper.assertEqual(minPercentageInPrecision, data.minPercentageInPrecision, "formulaParamsData is incorrect");
+                Helper.assertEqual(cInPrecision, data.cInPrecision, "formulaParamsData is incorrect");
+                Helper.assertEqual(tInPrecision, data.tInPrecision, "formulaParamsData is incorrect");
+                Helper.assertEqual(link, data.link.toString(), "link is incorrect");
+                Helper.assertEqual(4, data.options.length, "number options is incorrect");
+                Helper.assertEqual(1, data.options[0], "option value is incorrect");
+                Helper.assertEqual(2, data.options[1], "option value is incorrect");
+                Helper.assertEqual(3, data.options[2], "option value is incorrect");
+                Helper.assertEqual(4, data.options[3], "option value is incorrect");
 
                 let voteData = await daoContract.getCampaignVoteCountData(id + 1);
-                Helper.assertEqual(4, voteData[0].length, "number options is incorrect");
-                Helper.assertEqual(0, voteData[0][0], "option voted point is incorrect");
-                Helper.assertEqual(0, voteData[0][1], "option voted point is incorrect");
-                Helper.assertEqual(0, voteData[0][2], "option voted point is incorrect");
-                Helper.assertEqual(0, voteData[0][3], "option voted point is incorrect");
-                Helper.assertEqual(0, voteData[1], "total voted points is incorrect");
+                Helper.assertEqual(4, voteData.voteCounts.length, "number options is incorrect");
+                Helper.assertEqual(0, voteData.voteCounts[0], "option voted point is incorrect");
+                Helper.assertEqual(0, voteData.voteCounts[1], "option voted point is incorrect");
+                Helper.assertEqual(0, voteData.voteCounts[2], "option voted point is incorrect");
+                Helper.assertEqual(0, voteData.voteCounts[3], "option voted point is incorrect");
+                Helper.assertEqual(0, voteData.totalVoteCount, "total voted points is incorrect");
 
                 let listCamps = await daoContract.getListCampIDs(0);
                 Helper.assertEqual(id + 1, listCamps.length, "number camps is incorrect");
@@ -890,18 +889,18 @@ contract('KyberDAO', function(accounts) {
 
             // test recorded correct data
             let data = await daoContract.getCampaignDetails(1);
-            Helper.assertEqual(0, data[0], "campType is incorrect");
-            Helper.assertEqual(startBlock + 1, data[1], "start block is incorrect");
-            Helper.assertEqual(startBlock + 1 + minCampPeriod, data[2], "end block is incorrect");
-            Helper.assertEqual(await kncToken.totalSupply(), data[3], "total supply is incorrect");
-            Helper.assertEqual(minPercentageInPrecision, data[4], "minPercentage is incorrect");
-            Helper.assertEqual(cInPrecision, data[5], "minPercentage is incorrect");
-            Helper.assertEqual(tInPrecision, data[6], "minPercentage is incorrect");
-            Helper.assertEqual(link, data[7].toString(), "link is incorrect");
-            Helper.assertEqual(3, data[8].length, "number options is incorrect");
-            Helper.assertEqual(1, data[8][0], "option value is incorrect");
-            Helper.assertEqual(2, data[8][1], "option value is incorrect");
-            Helper.assertEqual(3, data[8][2], "option value is incorrect");
+            Helper.assertEqual(0, data.campType, "campType is incorrect");
+            Helper.assertEqual(startBlock + 1, data.startBlock, "start block is incorrect");
+            Helper.assertEqual(startBlock + 1 + minCampPeriod, data.endBlock, "end block is incorrect");
+            Helper.assertEqual(await kncToken.totalSupply(), data.totalKNCSupply, "total supply is incorrect");
+            Helper.assertEqual(minPercentageInPrecision, data.minPercentageInPrecision, "minPercentage is incorrect");
+            Helper.assertEqual(cInPrecision, data.cInPrecision, "c is incorrect");
+            Helper.assertEqual(tInPrecision, data.tInPrecision, "t is incorrect");
+            Helper.assertEqual(link, data.link.toString(), "link is incorrect");
+            Helper.assertEqual(3, data.options.length, "number options is incorrect");
+            Helper.assertEqual(1, data.options[0], "option value is incorrect");
+            Helper.assertEqual(2, data.options[1], "option value is incorrect");
+            Helper.assertEqual(3, data.options[2], "option value is incorrect");
 
             let listCampIDs = await daoContract.getListCampIDs(1);
             Helper.assertEqual(1, listCampIDs.length, "should have added first camp");
@@ -1567,15 +1566,17 @@ contract('KyberDAO', function(accounts) {
                 Helper.assertEqual(false, await daoContract.campExists(campCounts), "camp shouldn't be existed after cancel");
 
                 let campData = await daoContract.getCampaignDetails(campCounts);
-                Helper.assertEqual(campData[0], 0, "camp details should be deleted");
-                Helper.assertEqual(campData[1], 0, "camp details should be deleted");
-                Helper.assertEqual(campData[2], 0, "camp details should be deleted");
-                Helper.assertEqual(campData[3], 0, "camp details should be deleted");
-                Helper.assertEqual(campData[4], 0, "camp details should be deleted");
+                Helper.assertEqual(campData.campType, 0, "camp details should be deleted");
+                Helper.assertEqual(campData.startBlock, 0, "camp details should be deleted");
+                Helper.assertEqual(campData.endBlock, 0, "camp details should be deleted");
+                Helper.assertEqual(campData.totalKNCSupply, 0, "camp details should be deleted");
+                Helper.assertEqual(campData.minPercentageInPrecision, 0, "camp details should be deleted");
+                Helper.assertEqual(campData.cInPrecision, 0, "camp details should be deleted");
+                Helper.assertEqual(campData.tInPrecision, 0, "camp details should be deleted");
 
                 let voteData = await daoContract.getCampaignVoteCountData(campCounts);
-                Helper.assertEqual(voteData[0].length, 0, "camp vote data should be deleted");
-                Helper.assertEqual(voteData[1], 0, "camp vote data be deleted");
+                Helper.assertEqual(voteData.voteCounts.length, 0, "camp vote data should be deleted");
+                Helper.assertEqual(voteData.totalVoteCount, 0, "camp vote data be deleted");
 
                 // numberCampaigns value shouldn't be changed
                 Helper.assertEqual(await daoContract.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
@@ -1593,15 +1594,17 @@ contract('KyberDAO', function(accounts) {
                 Helper.assertEqual(listCamps[1], campCounts - 2, "camp id for this epoch is incorrect");
 
                 campData = await daoContract.getCampaignDetails(campCounts - 3);
-                Helper.assertEqual(campData[0], 0, "camp details should be deleted");
-                Helper.assertEqual(campData[1], 0, "camp details should be deleted");
-                Helper.assertEqual(campData[2], 0, "camp details should be deleted");
-                Helper.assertEqual(campData[3], 0, "camp details should be deleted");
-                Helper.assertEqual(campData[4], 0, "camp details should be deleted");
+                Helper.assertEqual(campData.campType, 0, "camp details should be deleted");
+                Helper.assertEqual(campData.startBlock, 0, "camp details should be deleted");
+                Helper.assertEqual(campData.endBlock, 0, "camp details should be deleted");
+                Helper.assertEqual(campData.totalKNCSupply, 0, "camp details should be deleted");
+                Helper.assertEqual(campData.minPercentageInPrecision, 0, "camp details should be deleted");
+                Helper.assertEqual(campData.cInPrecision, 0, "camp details should be deleted");
+                Helper.assertEqual(campData.tInPrecision, 0, "camp details should be deleted");
 
                 voteData = await daoContract.getCampaignVoteCountData(campCounts - 3);
-                Helper.assertEqual(voteData[0].length, 0, "camp vote data should be deleted");
-                Helper.assertEqual(voteData[1], 0, "camp vote data be deleted");
+                Helper.assertEqual(voteData.voteCounts.length, 0, "camp vote data should be deleted");
+                Helper.assertEqual(voteData.totalVoteCount, 0, "camp vote data be deleted");
 
                 Helper.assertEqual(false, await daoContract.campExists(campCounts - 3), "camp shouldn't be existed after cancel");
 
@@ -1644,30 +1647,30 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp id should be correct");
 
             let campData = await daoContract.getCampaignDetails(1);
-            Helper.assertEqual(campData[0], 1, "camp details should be correct");
-            Helper.assertEqual(campData[1], currentBlock + 15, "camp details should be correct");
-            Helper.assertEqual(campData[2], currentBlock + 15 + minCampPeriod, "camp details should be correct");
-            Helper.assertEqual(campData[3], await kncToken.totalSupply(), "camp details should be correct");
-            Helper.assertEqual(campData[4], minPercentageInPrecision, "camp details should be correct");
-            Helper.assertEqual(campData[5], cInPrecision, "camp details should be correct");
-            Helper.assertEqual(campData[6], tInPrecision, "camp details should be correct");
-            Helper.assertEqual(campData[7], link, "camp details should be correct");
-            Helper.assertEqual(campData[8].length, 3, "camp details should be correct");
-            Helper.assertEqual(campData[8][0], 1, "camp details should be correct");
-            Helper.assertEqual(campData[8][1], 2, "camp details should be correct");
-            Helper.assertEqual(campData[8][2], 3, "camp details should be correct");
+            Helper.assertEqual(campData.campType, 1, "camp details should be correct");
+            Helper.assertEqual(campData.startBlock, currentBlock + 15, "camp details should be correct");
+            Helper.assertEqual(campData.endBlock, currentBlock + 15 + minCampPeriod, "camp details should be correct");
+            Helper.assertEqual(campData.totalKNCSupply, await kncToken.totalSupply(), "camp details should be correct");
+            Helper.assertEqual(campData.minPercentageInPrecision, minPercentageInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData.cInPrecision, cInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData.tInPrecision, tInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData.link, link, "camp details should be correct");
+            Helper.assertEqual(campData.options.length, 3, "camp details should be correct");
+            Helper.assertEqual(campData.options[0], 1, "camp details should be correct");
+            Helper.assertEqual(campData.options[1], 2, "camp details should be correct");
+            Helper.assertEqual(campData.options[2], 3, "camp details should be correct");
 
             let tx = await daoContract.cancelCampaign(1, {from: campCreator});
             logInfo("Cancel campaign: cancel network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
 
             campData = await daoContract.getCampaignDetails(1);
-            Helper.assertEqual(campData[0], 0, "camp details should be deleted");
-            Helper.assertEqual(campData[1], 0, "camp details should be deleted");
-            Helper.assertEqual(campData[2], 0, "camp details should be deleted");
-            Helper.assertEqual(campData[3], 0, "camp details should be deleted");
-            Helper.assertEqual(campData[4], 0, "camp details should be deleted");
-            Helper.assertEqual(campData[5], 0, "camp details should be deleted");
-            Helper.assertEqual(campData[6], 0, "camp details should be deleted");
+            Helper.assertEqual(campData.campType, 0, "camp details should be deleted");
+            Helper.assertEqual(campData.startBlock, 0, "camp details should be deleted");
+            Helper.assertEqual(campData.endBlock, 0, "camp details should be deleted");
+            Helper.assertEqual(campData.totalKNCSupply, 0, "camp details should be deleted");
+            Helper.assertEqual(campData.minPercentageInPrecision, 0, "camp details should be deleted");
+            Helper.assertEqual(campData.cInPrecision, 0, "camp details should be deleted");
+            Helper.assertEqual(campData.tInPrecision, 0, "camp details should be deleted");
             // campData[7] is null, can not use assert equal
             Helper.assertEqual(campData[8].length, 0, "camp details should be deleted");
 
@@ -1698,17 +1701,17 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(4, await daoContract.networkFeeCamp(0), "network fee camp id should be correct");
 
             campData = await daoContract.getCampaignDetails(4);
-            Helper.assertEqual(campData[0], 1, "camp details should be correct");
-            Helper.assertEqual(campData[1], currentBlock + 20, "camp details should be correct");
-            Helper.assertEqual(campData[2], currentBlock + 20 + minCampPeriod, "camp details should be correct");
-            Helper.assertEqual(campData[3], await kncToken.totalSupply(), "camp details should be correct");
-            Helper.assertEqual(campData[4], minPercentageInPrecision, "camp details should be correct");
-            Helper.assertEqual(campData[5], cInPrecision, "camp details should be correct");
-            Helper.assertEqual(campData[6], tInPrecision, "camp details should be correct");
-            Helper.assertEqual(campData[7], link, "camp details should be correct");
-            Helper.assertEqual(campData[8].length, 2, "camp details should be correct");
-            Helper.assertEqual(campData[8][0], 25, "camp details should be correct");
-            Helper.assertEqual(campData[8][1], 50, "camp details should be correct");
+            Helper.assertEqual(campData.campType, 1, "camp details should be correct");
+            Helper.assertEqual(campData.startBlock, currentBlock + 20, "camp details should be correct");
+            Helper.assertEqual(campData.endBlock, currentBlock + 20 + minCampPeriod, "camp details should be correct");
+            Helper.assertEqual(campData.totalKNCSupply, await kncToken.totalSupply(), "camp details should be correct");
+            Helper.assertEqual(campData.minPercentageInPrecision, minPercentageInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData.cInPrecision, cInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData.tInPrecision, tInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData.link, link, "camp details should be correct");
+            Helper.assertEqual(campData.options.length, 2, "camp details should be correct");
+            Helper.assertEqual(campData.options[0], 25, "camp details should be correct");
+            Helper.assertEqual(campData.options[1], 50, "camp details should be correct");
         });
 
         it("Test cancel campaign correctly for brr camp", async function() {
@@ -1725,30 +1728,30 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(1, await daoContract.brrCampaign(0), "brr camp id should be correct");
 
             let campData = await daoContract.getCampaignDetails(1);
-            Helper.assertEqual(campData[0], 2, "camp details should be correct");
-            Helper.assertEqual(campData[1], currentBlock + 15, "camp details should be correct");
-            Helper.assertEqual(campData[2], currentBlock + 15 + minCampPeriod, "camp details should be correct");
-            Helper.assertEqual(campData[3], await kncToken.totalSupply(), "camp details should be correct");
-            Helper.assertEqual(campData[4], minPercentageInPrecision, "camp details should be correct");
-            Helper.assertEqual(campData[5], cInPrecision, "camp details should be correct");
-            Helper.assertEqual(campData[6], tInPrecision, "camp details should be correct");
-            Helper.assertEqual(campData[7], link, "camp details should be correct");
-            Helper.assertEqual(campData[8].length, 3, "camp details should be correct");
-            Helper.assertEqual(campData[8][0], 1, "camp details should be correct");
-            Helper.assertEqual(campData[8][1], 2, "camp details should be correct");
-            Helper.assertEqual(campData[8][2], 3, "camp details should be correct");
+            Helper.assertEqual(campData.campType, 2, "camp details should be correct");
+            Helper.assertEqual(campData.startBlock, currentBlock + 15, "camp details should be correct");
+            Helper.assertEqual(campData.endBlock, currentBlock + 15 + minCampPeriod, "camp details should be correct");
+            Helper.assertEqual(campData.totalKNCSupply, await kncToken.totalSupply(), "camp details should be correct");
+            Helper.assertEqual(campData.minPercentageInPrecision, minPercentageInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData.cInPrecision, cInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData.tInPrecision, tInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData.link, link, "camp details should be correct");
+            Helper.assertEqual(campData.options.length, 3, "camp details should be correct");
+            Helper.assertEqual(campData.options[0], 1, "camp details should be correct");
+            Helper.assertEqual(campData.options[1], 2, "camp details should be correct");
+            Helper.assertEqual(campData.options[2], 3, "camp details should be correct");
 
             let tx = await daoContract.cancelCampaign(1, {from: campCreator});
             logInfo("Cancel campaign: cancel brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
 
             campData = await daoContract.getCampaignDetails(1);
-            Helper.assertEqual(campData[0], 0, "camp details should be deleted");
-            Helper.assertEqual(campData[1], 0, "camp details should be deleted");
-            Helper.assertEqual(campData[2], 0, "camp details should be deleted");
-            Helper.assertEqual(campData[3], 0, "camp details should be deleted");
-            Helper.assertEqual(campData[4], 0, "camp details should be deleted");
-            Helper.assertEqual(campData[5], 0, "camp details should be deleted");
-            Helper.assertEqual(campData[6], 0, "camp details should be deleted");
+            Helper.assertEqual(campData.campType, 0, "camp details should be deleted");
+            Helper.assertEqual(campData.startBlock, 0, "camp details should be deleted");
+            Helper.assertEqual(campData.endBlock, 0, "camp details should be deleted");
+            Helper.assertEqual(campData.totalKNCSupply, 0, "camp details should be deleted");
+            Helper.assertEqual(campData.minPercentageInPrecision, 0, "camp details should be deleted");
+            Helper.assertEqual(campData.cInPrecision, 0, "camp details should be deleted");
+            Helper.assertEqual(campData.tInPrecision, 0, "camp details should be deleted");
             // campData[7] is null, can not use assert equal
             Helper.assertEqual(campData[8].length, 0, "camp details should be deleted");
 
@@ -1780,17 +1783,17 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(4, await daoContract.brrCampaign(0), "brr camp id should be correct");
 
             campData = await daoContract.getCampaignDetails(4);
-            Helper.assertEqual(campData[0], 2, "camp details should be correct");
-            Helper.assertEqual(campData[1], currentBlock + 20, "camp details should be correct");
-            Helper.assertEqual(campData[2], currentBlock + 20 + minCampPeriod, "camp details should be correct");
-            Helper.assertEqual(campData[3], await kncToken.totalSupply(), "camp details should be correct");
-            Helper.assertEqual(campData[4], minPercentageInPrecision, "camp details should be correct");
-            Helper.assertEqual(campData[5], cInPrecision, "camp details should be correct");
-            Helper.assertEqual(campData[6], tInPrecision, "camp details should be correct");
-            Helper.assertEqual(campData[7], link, "camp details should be correct");
-            Helper.assertEqual(campData[8].length, 2, "camp details should be correct");
-            Helper.assertEqual(campData[8][0], 25, "camp details should be correct");
-            Helper.assertEqual(campData[8][1], 50, "camp details should be correct");
+            Helper.assertEqual(campData.campType, 2, "camp details should be correct");
+            Helper.assertEqual(campData.startBlock, currentBlock + 20, "camp details should be correct");
+            Helper.assertEqual(campData.endBlock, currentBlock + 20 + minCampPeriod, "camp details should be correct");
+            Helper.assertEqual(campData.totalKNCSupply, await kncToken.totalSupply(), "camp details should be correct");
+            Helper.assertEqual(campData.minPercentageInPrecision, minPercentageInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData.cInPrecision, cInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData.tInPrecision, tInPrecision, "camp details should be correct");
+            Helper.assertEqual(campData.link, link, "camp details should be correct");
+            Helper.assertEqual(campData.options.length, 2, "camp details should be correct");
+            Helper.assertEqual(campData.options[0], 25, "camp details should be correct");
+            Helper.assertEqual(campData.options[1], 50, "camp details should be correct");
         });
 
         it("Test cancel campaign of next epoch campaign, data changes as expected", async function() {
