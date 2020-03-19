@@ -417,7 +417,7 @@ contract('KyberFeeHandler', function(accounts) {
 
         let rebateBpsPerWallet = [new BN(2000), new BN(3000), new BN(5000)];
         
-        beforeEach("set BRR data", async() => {        
+        beforeEach("set BRR data", async() => {
             const BRRData = await feeHandler.readBRRData();   
             currentRewardBps = BRRData.rewardBps;
             currentRebateBps = BRRData.rebateBps;
