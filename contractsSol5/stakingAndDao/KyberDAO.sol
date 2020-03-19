@@ -113,9 +113,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     uint public numberCampaigns = 0;
     mapping(uint => bool) public campExists;
     mapping(uint => Campaign) internal campaignData;
-    // campOptionPoints[campID]: total points and points of each option for a campaign
-    // campOptionPoints[campID][0] is total points, campOptionPoints[campID][1..] for each option ID
-    mapping(uint => uint[]) internal campOptionPoints;
+    // campOptionVotes[campID]: total votes and vote of each option for a campaign
+    // campOptionVotes[campID][0]: total votes, campOptionVotes[campID][1..]: vote for each option ID
+    mapping(uint => uint[]) internal campOptionVotes;
 
     /** Mapping from epoch => data */
 
@@ -172,7 +172,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     /**
     * @dev called by staking contract when staker wanted to withdraw
     * @param staker address of staker to reduce reward
-    * @param reduceAmount amount point to be reduced for each campaign staker has voted at this epoch
+    * @param reduceAmount amount voting power to be reduced for each campaign staker has voted at this epoch
     */
     function handleWithdrawal(address staker, uint reduceAmount) public onlyStakingContract returns(bool) {
         // staking shouldn't call this func with reduce amount = 0
@@ -195,8 +195,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             // deduce vote count for current running campaign that this staker has voted
             if (votedOption > 0 && campaignData[campID].endBlock >= block.number) {
                 // user already voted for this camp and the camp is not ended
-                campOptionPoints[campID][0] = campOptionPoints[campID][0].sub(reduceAmount);
-                campOptionPoints[campID][votedOption] = campOptionPoints[campID][votedOption].sub(reduceAmount);
+                campOptionVotes[campID][0] = campOptionVotes[campID][0].sub(reduceAmount);
+                campOptionVotes[campID][votedOption] = campOptionVotes[campID][votedOption].sub(reduceAmount);
             }
         }
 
@@ -281,7 +281,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         });
 
         // index 0 for total votes, index 1 -> options.length for each option
-        campOptionPoints[campID] = new uint[](options.length + 1);
+        campOptionVotes[campID] = new uint[](options.length + 1);
 
         emit NewCampaignCreated(
             campType, campID, startBlock, endBlock,
@@ -315,7 +315,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         }
 
         delete campaignData[campID];
-        delete campOptionPoints[campID];
+        delete campOptionVotes[campID];
 
         uint[] storage campIDs = epochCampaigns[epoch];
         for (uint i = 0; i < campIDs.length; i++) {
@@ -355,14 +355,14 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
             totalEpochPoints[curEpoch] = totalEpochPoints[curEpoch].add(totalStake);
             // increase voted points for this option
-            campOptionPoints[campID][option] = campOptionPoints[campID][option].add(totalStake);
-            // increase total voted points
-            campOptionPoints[campID][0] = campOptionPoints[campID][0].add(totalStake);
+            campOptionVotes[campID][option] = campOptionVotes[campID][option].add(totalStake);
+            // increase total votes
+            campOptionVotes[campID][0] = campOptionVotes[campID][0].add(totalStake);
         } else if (lastVotedOption != option) {
             // deduce previous option voted count
-            campOptionPoints[campID][lastVotedOption] = campOptionPoints[campID][lastVotedOption].sub(totalStake);
+            campOptionVotes[campID][lastVotedOption] = campOptionVotes[campID][lastVotedOption].sub(totalStake);
             // increase new option voted count
-            campOptionPoints[campID][option] = campOptionPoints[campID][option].add(totalStake);
+            campOptionVotes[campID][option] = campOptionVotes[campID][option].add(totalStake);
         }
 
         stakerVotedOption[staker][campID] = option;
@@ -394,7 +394,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     /**
     * @dev get latest network fee data + expiry block number
-    * @dev also save winning option data and latest network fee result
+    * @dev conclude network fee campaign if needed and caching latest result in DAO
     */
     function getLatestNetworkFeeDataWithCache() public returns(uint feeInBps, uint expiryBlockNumber) {
         uint curEpoch = getCurrentEpochNumber();
@@ -410,7 +410,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         uint campID = networkFeeCamp[curEpoch.sub(1)];
         if (campID == 0) {
-            // not have network fee campaign, return latest result
+            // don't have network fee campaign, return latest result
             return (feeInBps, expiryBlockNumber);
         }
 
@@ -428,6 +428,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     /**
     * @dev return latest burn/reward/rebate data, also affecting epoch + expiry block number
+    * @dev conclude brr campaign if needed and caching latest result in DAO
     */
     function getLatestBRRData()
         public
@@ -488,7 +489,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     function getCampaignVoteCountData(uint campID) public view returns(uint[] memory voteCounts, uint totalVoteCount) {
-        uint[] memory votes = campOptionPoints[campID];
+        uint[] memory votes = campOptionVotes[campID];
         if (votes.length == 0) {
             return (voteCounts, totalVoteCount);
         }
@@ -521,7 +522,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         // something is wrong here, total KNC supply shouldn't be 0
         if (totalSupply == 0) { return (0, 0); }
 
-        uint[] memory voteCounts = campOptionPoints[campID];
+        uint[] memory voteCounts = campOptionVotes[campID];
 
         // Finding option with most votes
         uint winningOption = 0;
@@ -572,7 +573,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         }
         uint campID = networkFeeCamp[curEpoch.sub(1)];
         if (campID == 0) {
-            // not have network fee campaign, return latest result
+            // don't have network fee campaign, return latest result
             return (feeInBps, expiryBlockNumber);
         }
 
