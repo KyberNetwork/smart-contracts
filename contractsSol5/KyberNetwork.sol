@@ -881,7 +881,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
             //E2E, need not do anything except for T2E, transfer ETH to destAddress
             if (destAddress != (address(this))) {
                 (bool success, ) = destAddress.call.value(amount)("");
-                require(success);
+                require(success, "send dest qty failed");
             }
             return true;
         }
@@ -919,7 +919,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
             //if there is "change" send back to trader
             if (src == ETH_TOKEN_ADDRESS) {
                 (bool success, ) = trader.call.value(srcAmount - requiredSrcAmount)("");
-                require(success);
+                require(success, "Send change failed");
             } else {
                 src.safeTransfer(trader, (srcAmount - requiredSrcAmount));
             }
