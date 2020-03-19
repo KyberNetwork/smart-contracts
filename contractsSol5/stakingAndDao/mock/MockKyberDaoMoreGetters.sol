@@ -40,27 +40,6 @@ contract MockKyberDaoMoreGetters is KyberDAO {
         return numberVotes[staker][epoch];
     }
 
-    function getWinningOptionData(uint campID) public view returns(bool hasConcluded, uint winningOptionID) {
-        (hasConcluded, winningOptionID) = decodeWinningOptionData(winningOptionData[campID]);
-    }
-
-    function getWinningOptionDecodeData(uint data) public pure returns(bool hasConcluded, uint winningOptionID) {
-        (hasConcluded, winningOptionID) = decodeWinningOptionData(data);
-    }
-
-    function getWinningOptionEncodeData(bool hasConcluded, uint optionID) public pure returns(uint) {
-        return encodeWinningOptionData(optionID, hasConcluded);
-    }
-
-    function getDecodeFormulaParams(uint data) public pure
-        returns(uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision)
-    {
-        FormulaData memory formulaData = decodeFormulaParams(data);
-        minPercentageInPrecision = formulaData.minPercentageInPrecision;
-        cInPrecision = formulaData.cInPrecision;
-        tInPrecision = formulaData.tInPrecision;
-    }
-
     function checkLatestBrrData(uint _rewardInBps, uint _rebateInBps, uint _burnInBps, uint _epoch, uint _expiryBlockNumber) public returns(bool) {
         (uint burn, uint reward, uint rebate, uint epoch, uint expiryBN) = getLatestBRRData();
         require(_rewardInBps == reward, "reward bps is wrong");
