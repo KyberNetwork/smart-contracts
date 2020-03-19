@@ -51,7 +51,7 @@ contract CampPermissionGroups {
         campaignCreator = newCampCreator;
     }
 
-    event CampaignCreatorClaimed( address newAdmin, address previousAdmin);
+    event CampaignCreatorClaimed(address newCampaignCreator, address previousCampaignCreator);
 
     /**
      * @dev Allows the pendingCampCreator address to finalize the change campaign creator process.

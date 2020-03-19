@@ -5898,7 +5898,15 @@ contract('KyberDAO', function(accounts) {
                 "only campaign creator"
             )
 
-            await daoContract.transferCampaignCreatorQuickly(newCampCreator, {from: campCreator});
+            let txResult = await daoContract.transferCampaignCreatorQuickly(newCampCreator, {from: campCreator});
+            expectEvent(txResult, 'TransferCampaignCreatorPending', {
+                pendingCampCreator: newCampCreator
+            });
+            expectEvent(txResult, 'CampaignCreatorClaimed', {
+                newCampaignCreator: newCampCreator,
+                previousCampaignCreator: campCreator
+            });
+
             Helper.assertEqual(newCampCreator, await daoContract.campaignCreator(), "campaign creator address is wrong");
 
             // can not transfer from non camp creator
@@ -5907,7 +5915,10 @@ contract('KyberDAO', function(accounts) {
                 "only campaign creator"
             )
 
-            await daoContract.transferCampaignCreator(campCreator, {from: newCampCreator});
+            txResult = await daoContract.transferCampaignCreator(campCreator, {from: newCampCreator});
+            expectEvent(txResult, 'TransferCampaignCreatorPending', {
+                pendingCampCreator: campCreator
+            });
             Helper.assertEqual(campCreator, await daoContract.pendingCampCreator(), "pending campaign creator address is wrong");
             Helper.assertEqual(newCampCreator, await daoContract.campaignCreator(), "campaign creator address is wrong");
 
@@ -5916,7 +5927,11 @@ contract('KyberDAO', function(accounts) {
                 daoContract.claimCampaignCreator({from: mike}),
                 "only pending campaign creator"
             )
-            await daoContract.claimCampaignCreator({from: campCreator});
+            txResult = await daoContract.claimCampaignCreator({from: campCreator});
+            expectEvent(txResult, 'CampaignCreatorClaimed', {
+                newCampaignCreator: campCreator,
+                previousCampaignCreator: newCampCreator
+            });
             Helper.assertEqual(campCreator, await daoContract.campaignCreator(), "campaign creator address is wrong");
             Helper.assertEqual(zeroAddress, await daoContract.pendingCampCreator(), "pending campaign creator address is wrong");
 
