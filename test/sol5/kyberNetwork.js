@@ -406,6 +406,9 @@ contract('KyberNetwork', function(accounts) {
                 rebateWallet: taker,
                 add: true
             });
+            reserves = await tempNetwork.getReserves();
+            Helper.assertEqual(reserves.length, 1, "number of reserve is not expected");
+            Helper.assertEqual(reserves[0], mockReserve.address, "reserve addr is not expected");
         });
 
         it("Remove reserve", async() => {
