@@ -931,6 +931,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         require(input.srcAmount != 0, "0 srcAmt");
         require(input.destAddress != address(0), "dest add 0");
         require(input.src != input.dest, "src = dest");
+        require(input.platformFeeBps < BPS, "platformFee high");
         require(input.platformFeeBps + networkFeeBps + networkFeeBps < BPS, "fees high");
         
         if (input.src == ETH_TOKEN_ADDRESS) {
@@ -965,6 +966,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
         if (expiryBlock < block.number && kyberDAO.length > 0) {
             (networkFeeBps, expiryBlock) = kyberDAO[0].getLatestNetworkFeeDataWithCache();
+            require(networkFeeBps < BPS / 2, "networkFee high");
             networkFeeData = encodeNetworkFee(expiryBlock, networkFeeBps);
         }
     }
