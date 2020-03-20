@@ -329,7 +329,9 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
             (burnBps, rewardBps, rebateBps, epoch, expiryBlock) = kyberDAO.getLatestBRRData();
             require(burnBps + rewardBps + rebateBps == BPS, "Bad BRR values");
-
+            require(burnBps <= BPS, "burnBps overflow");
+            require(rewardBps <= BPS, "rewardBps overflow");
+            require(rebateBps <= BPS, "rebateBps overflow");
             emit BRRUpdated(rewardBps, rebateBps, burnBps, expiryBlock, epoch);
 
             // Update brrAndEpochData
