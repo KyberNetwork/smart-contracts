@@ -340,8 +340,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let daoBrrData = await daoContract.latestBRRDataDecoded();
         Helper.assertEqual(2 * epochPeriod + startBlock - 1, daoBrrData.expiryBlockNumber);
         Helper.assertEqual(2, daoBrrData.epoch);
-        Helper.assertEqual(curBrrData.rewardBPS, daoBrrData.rewardInBps);
-        Helper.assertEqual(curBrrData.rebateBPS, daoBrrData.rebateInBps);
+        Helper.assertEqual(curBrrData.rewardBps, daoBrrData.rewardInBps);
+        Helper.assertEqual(curBrrData.rebateBps, daoBrrData.rebateInBps);
     });
 
     it("test has network fee camp without winning option, has brr camp without winning option, data changes as expected", async() => {
@@ -402,8 +402,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let daoBrrData = await daoContract.latestBRRDataDecoded();
         Helper.assertEqual(3 * epochPeriod + startBlock - 1, daoBrrData.expiryBlockNumber);
         Helper.assertEqual(3, daoBrrData.epoch);
-        Helper.assertEqual(curBrrData.rewardBPS, daoBrrData.rewardInBps);
-        Helper.assertEqual(curBrrData.rebateBPS, daoBrrData.rebateInBps);
+        Helper.assertEqual(curBrrData.rewardBps, daoBrrData.rewardInBps);
+        Helper.assertEqual(curBrrData.rebateBps, daoBrrData.rebateInBps);
     });
 
     it("test has network fee camp without winning option, has brr camp with winning option, data changes as expected", async() => {
@@ -464,8 +464,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let daoBrrData = await daoContract.latestBRRDataDecoded();
         Helper.assertEqual(4 * epochPeriod + startBlock - 1, daoBrrData.expiryBlockNumber);
         Helper.assertEqual(4, daoBrrData.epoch);
-        Helper.assertEqual(curBrrData.rewardBPS.add(new BN(1)), daoBrrData.rewardInBps);
-        Helper.assertEqual(curBrrData.rebateBPS.add(new BN(1)), daoBrrData.rebateInBps);
+        Helper.assertEqual(curBrrData.rewardBps.add(new BN(1)), daoBrrData.rewardInBps);
+        Helper.assertEqual(curBrrData.rebateBps.add(new BN(1)), daoBrrData.rebateInBps);
     });
 
     it("test has network fee camp with winning option, no brr camp, data changes as expected", async() => {
@@ -567,8 +567,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let daoBrrData = await daoContract.latestBRRDataDecoded();
         Helper.assertEqual(6 * epochPeriod + startBlock - 1, daoBrrData.expiryBlockNumber);
         Helper.assertEqual(6, daoBrrData.epoch);
-        Helper.assertEqual(curBrrData.rewardBPS, daoBrrData.rewardInBps);
-        Helper.assertEqual(curBrrData.rebateBPS, daoBrrData.rebateInBps);
+        Helper.assertEqual(curBrrData.rewardBps, daoBrrData.rewardInBps);
+        Helper.assertEqual(curBrrData.rebateBps, daoBrrData.rebateInBps);
     });
 
     it("test has network fee camp with winning option, has brr camp with winning option, data changes as expected", async() => {
@@ -629,8 +629,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let daoBrrData = await daoContract.latestBRRDataDecoded();
         Helper.assertEqual(7 * epochPeriod + startBlock - 1, daoBrrData.expiryBlockNumber);
         Helper.assertEqual(7, daoBrrData.epoch);
-        Helper.assertEqual(curBrrData.rewardBPS.add(new BN(1)), daoBrrData.rewardInBps);
-        Helper.assertEqual(curBrrData.rebateBPS.add(new BN(1)), daoBrrData.rebateInBps);
+        Helper.assertEqual(curBrrData.rewardBps.add(new BN(1)), daoBrrData.rewardInBps);
+        Helper.assertEqual(curBrrData.rebateBps.add(new BN(1)), daoBrrData.rebateInBps);
     });
 
     it("test no network fee and brr camps, data changes only expiry block as expected", async() => {
@@ -711,8 +711,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let daoBrrData = await daoContract.latestBRRDataDecoded();
         Helper.assertEqual(12 * epochPeriod + startBlock - 1, daoBrrData.expiryBlockNumber);
         Helper.assertEqual(12, daoBrrData.epoch);
-        Helper.assertEqual(curBrrData.rewardBPS, daoBrrData.rewardInBps);
-        Helper.assertEqual(curBrrData.rebateBPS, daoBrrData.rebateInBps);
+        Helper.assertEqual(curBrrData.rewardBps, daoBrrData.rewardInBps);
+        Helper.assertEqual(curBrrData.rebateBps, daoBrrData.rebateInBps);
     });
 })
 
