@@ -1627,6 +1627,53 @@ contract('KyberNetwork', function(accounts) {
             );
         });
     });
+
+    describe("test update Network fee", async function(){
+        let tempNetwork
+        beforeEach("setup", async function(){
+            tempNetwork = await MockNetwork.new(admin);
+        });
+
+        it("expiryBlock too large", async function(){
+            expirtyBlock = ((new BN(2)).pow(new BN(64))).add(new BN(1));
+            feeBPS = new BN(100);
+            await expectRevert(
+                tempNetwork.setNetworkFeeData(feeBPS, expirtyBlock),
+                "expiry overflow"
+            );
+        });
+
+        it("fee BPS too large", async function(){
+            expiryBlock = new BN(5000000);
+            feeBPS = (BPS.div(new BN(2))).add(new BN(1));
+            await expectRevert(
+                tempNetwork.setNetworkFeeData(feeBPS, expiryBlock),
+                "fees exceed BPS"
+            );
+        });
+
+        it("set expiry block", async function(){
+            currentBlock = await Helper.getCurrentBlock();
+            feeBPS = new BN(100);
+            expiryBlock = currentBlock + 10;
+            await tempNetwork.setNetworkFeeData(feeBPS, expiryBlock);
+            actualFeeBPS = await tempNetwork.getAndUpdateNetworkFee.call();
+            Helper.assertEqual(actualFeeBPS, feeBPS, "fee bps not correct");
+            Helper.assertEqual(await tempNetwork.mockGetNetworkFee(), feeBPS, "getNetworkfee not correct")
+        });
+
+        it("test get network fee from DAO", async function(){
+            currentBlock = await Helper.getCurrentBlock();
+            expiryBlock = currentBlock;
+            feeBPS = new BN(99);
+            DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlock);
+            await DAO.setNetworkFeeBps(feeBPS);
+            await tempNetwork.setDAOContract(DAO.address, {from: admin});
+            actualFeeBPS = await tempNetwork.getAndUpdateNetworkFee.call();
+            Helper.assertEqual(actualFeeBPS, feeBPS, "fee bps not correct");
+            await tempNetwork.getAndUpdateNetworkFee.call();
+        });
+    });
 });
 
 //returns random integer between min (inclusive) and max (inclusive)

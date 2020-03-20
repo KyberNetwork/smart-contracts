@@ -39,6 +39,10 @@ contract MockNetwork is KyberNetwork {
         (_networkFeeBps, _expiryBlock) = readNetworkFeeData();
     }
 
+    function mockGetNetworkFee() public view returns(uint networkFeeBps) {
+        return getNetworkFee();
+    }
+
     // allow set zero contract
     function setContracts(IKyberFeeHandler _feeHandler,
         IKyberMatchingEngine _matchingEngine,
