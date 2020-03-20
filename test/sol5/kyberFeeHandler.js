@@ -317,12 +317,48 @@ contract('KyberFeeHandler', function(accounts) {
             epoch = results.epoch;
         });
 
+        it("should revert if burnBps causes overflow", async() => {
+            let badDAO = await BadDAO.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+            feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL);
+            await feeHandler.setDaoContract(badDAO.address, {from: daoSetter});
+            await badDAO.setFeeHandler(feeHandler.address);
+            await badDAO.setMockBRR(new BN(2).pow(new BN(256)).sub(new BN(1)), BPS, new BN(1));
+            await expectRevert(
+                feeHandler.getBRR(),
+                "burnBps overflow"
+            );
+        });
+
+        it("should revert if rewardBps causes overflow", async() => {
+            let badDAO = await BadDAO.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+            feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL);
+            await feeHandler.setDaoContract(badDAO.address, {from: daoSetter});
+            await badDAO.setFeeHandler(feeHandler.address);
+            await badDAO.setMockBRR(BPS, new BN(2).pow(new BN(256)).sub(new BN(1)), new BN(1));
+            await expectRevert(
+                feeHandler.getBRR(),
+                "rewardBps overflow"
+            );
+        });
+
+        it("should revert if rebateBps overflows", async() => {
+            let badDAO = await BadDAO.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+            feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL);
+            await feeHandler.setDaoContract(badDAO.address, {from: daoSetter});
+            await badDAO.setFeeHandler(feeHandler.address);
+            await badDAO.setMockBRR(BPS, new BN(1), new BN(2).pow(new BN(256)).sub(new BN(1)));
+            await expectRevert(
+                feeHandler.getBRR(),
+                "rebateBps overflow"
+            );
+        });
+
         it("should revert if bad BRR values are returned", async() => {
             let badDAO = await BadDAO.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
             feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL);
             await feeHandler.setDaoContract(badDAO.address, {from: daoSetter});
             await badDAO.setFeeHandler(feeHandler.address);
-
+            await badDAO.setMockBRR(zeroBN, zeroBN, zeroBN);
             await expectRevert(
                 feeHandler.getBRR(),
                 "Bad BRR values"
