@@ -29,7 +29,6 @@
     "secp256k1": "3.8.0",
     "sha3": "2.1.1",
     "solc": "0.5.11",
-    "solhint": "1.4.0",
     "truffle-assertions": "0.7.2",
     "truffle-flattener": "1.4.2",
     "web3": "1.2.4",
@@ -42,7 +41,20 @@
     "@openzeppelin/test-helpers": "0.5.4",
     "chai": "4.2.0",
     "chai-bn": "0.2.0",
+    "eslint": "^6.8.0",
+    "eslint-config-prettier": "^6.10.0",
+    "eslint-config-standard": "^14.1.0",
+    "eslint-friendly-formatter": "^4.0.1",
+    "eslint-import-resolver-node": "^0.3.3",
+    "eslint-loader": "^3.0.3",
+    "eslint-plugin-json": "^2.1.1",
+    "eslint-plugin-node": "^11.0.0",
+    "eslint-plugin-prettier": "^3.1.2",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
     "mv": "2.1.1",
+    "prettier": "^1.19.1",
+    "solhint": "^2.3.1",
     "solidity-coverage": "0.7.0-beta.3"
   }
 }
