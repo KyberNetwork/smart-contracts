@@ -17,7 +17,7 @@ const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN, MAX_QTY} = require("../helper.js");
-const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, 
+const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK,
     MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, ReserveType}  = require('./networkHelper.js');
 
 //global variables
@@ -530,7 +530,7 @@ contract('KyberNetwork', function(accounts) {
 
         it("set enable without proxy contract", async function(){
             await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
-            await expectRevert(tempNetwork.setEnable(true, {from: admin}), "revert proxy 0");
+            await expectRevert(tempNetwork.setEnable(true, {from: admin}), "proxy 0");
         });
     });
 
@@ -1486,34 +1486,34 @@ contract('KyberNetwork', function(accounts) {
             network = await KyberNetwork.new(admin);
             // // set proxy same as network
             // proxyForFeeHandler = network;
-    
+
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
-    
+
             // init matchingEngine
             matchingEngine = await TradeLogic.new(admin);
             await matchingEngine.setNetworkContract(network.address, { from: admin });
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
-    
+
             // // init gas helper
             gasHelperAdd = await MockGasHelper.new(platformWallet);
-    
+
             // setup network
             await network.addOperator(operator, { from: admin });
             await network.addKyberProxy(networkProxy, { from: admin });
             await network.setContracts(feeHandler.address, matchingEngine.address, gasHelperAdd.address, { from: admin });
             await network.setDAOContract(DAO.address, { from: admin });
-    
+
             //set params, enable network
             await network.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
             await network.setEnable(true, { from: admin });
         });
-    
+
         it("test can not trade when network is disabled", async () => {
             let isEnabled = await network.enabled();
             assert.equal(isEnabled, true);
-    
+
             await network.setEnable(false, { from: admin });
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
@@ -1522,13 +1522,13 @@ contract('KyberNetwork', function(accounts) {
             );
             await network.setEnable(true, { from: admin });
         });
-    
+
         it("test can not trade when caller is not proxy", async () => {
             let notAProxy = accounts[9];
             let proxies = await network.getKyberProxies();
             Helper.assertEqual(proxies.length, 1);
             assert.notEqual(proxies, notAProxy)
-    
+
             // calling network from non proxy, expect revert
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
@@ -1536,7 +1536,7 @@ contract('KyberNetwork', function(accounts) {
                 "bad sender"
             );
         });
-    
+
         it("test can not trade when setting gas price too high", async () => {
             let maxGasPrice = new BN(100);
             // set network max gas price to 100 wei
@@ -1552,37 +1552,37 @@ contract('KyberNetwork', function(accounts) {
             // change network max gas price back to 50 gwei
             await network.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
         });
-    
+
         it("test can not trade when src amount too high", async () => {
             let invalidSrcQty = MAX_QTY.add(new BN(1));
-    
+
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, invalidSrcQty, ethAddress, taker,
                     maxDestAmt, minConversionRate, platformWallet, platformFee, emptyHint),
                 "srcAmt > MAX_QTY"
             );
         });
-    
+
         it("test can not trade when src amount is zero", async () => {
             let invalidSrcQty = new BN(0);
-    
+
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, invalidSrcQty, ethAddress, taker,
                     maxDestAmt, minConversionRate, platformWallet, platformFee, emptyHint),
                 "0 srcAmt"
             );
         });
-    
+
         it("test can not trade when dst addr is 0", async () => {
             let invalidTaker = zeroAddress;
-    
+
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, invalidTaker,
                     maxDestAmt, minConversionRate, platformWallet, platformFee, emptyHint),
                 "dest add 0"
             );
         });
-    
+
         it("test can not trade when src === dst", async () => {
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, srcToken.address, taker,
@@ -1590,16 +1590,16 @@ contract('KyberNetwork', function(accounts) {
                 "src = dest"
             );
         });
-    
+
         it("test can not trade when fee is too high", async () => {
             let invalidPlatformFee = new BN(10001); // 10001 BPS = 100.01%
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, minConversionRate, platformWallet, invalidPlatformFee, emptyHint),
-                "fees high"
+                "platformFee high"
             );
         });
-    
+
         it("test can not trade E2T when missing ETH", async () => {
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
@@ -1607,7 +1607,7 @@ contract('KyberNetwork', function(accounts) {
                 "bad Eth qty"
             );
         });
-    
+
         it("test can not trade T2T or T2E when passing ETH", async () => {
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
@@ -1615,11 +1615,11 @@ contract('KyberNetwork', function(accounts) {
                 "big Eth qty"
             );
         });
-    
+
         it("test can not trade T2T or T2E when src token is not transfered to network yet", async () => {
             const networkTokenBalance = await srcToken.balanceOf(network.address);
             Helper.assertEqual(networkTokenBalance, new BN(0));
-    
+
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, minConversionRate, platformWallet, platformFee, emptyHint),

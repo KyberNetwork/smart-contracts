@@ -2,11 +2,13 @@ pragma solidity 0.5.11;
 
 import "../KyberMatchingEngine.sol";
 
+// overide only some of original contract. mostly return value instead of revert
 contract OtherMatchingEngine is KyberMatchingEngine {
     constructor(address _admin) public KyberMatchingEngine(_admin) {
         /* empty body */
     }
 
+// return false instead of revert
     function addReserve(address reserve, bytes8 reserveId, ReserveType resType)
         external
         onlyNetwork
@@ -40,7 +42,7 @@ contract OtherMatchingEngine is KyberMatchingEngine {
     {
         // return zero id instead of revert
         if (reserveAddressToId[reserve] == bytes8(0)) {
-            return bytes8(0);
+            return bytes8(0); // return id 0 instead of revert
         }
         bytes8 reserveId = reserveAddressToId[reserve];
 
@@ -60,7 +62,7 @@ contract OtherMatchingEngine is KyberMatchingEngine {
         bool tokenToEth,
         bool add
     ) external onlyNetwork returns (bool) {
-        if(reserveAddressToId[address(reserve)] == bytes8(0)) return false;
+        if(reserveAddressToId[address(reserve)] == bytes8(0)) return false; // return false instead of revert
         if (ethToToken) {
             listPairs(IKyberReserve(reserve), token, false, add);
         }
@@ -74,7 +76,7 @@ contract OtherMatchingEngine is KyberMatchingEngine {
     }
 
     function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external onlyNetwork returns (bool) {
-        if (_negligibleRateDiffBps > BPS) return false; // at most 100%
+        if (_negligibleRateDiffBps > BPS) return false; // return false instead of revert
         negligibleRateDiffBps = _negligibleRateDiffBps;
         return true;
     }

@@ -2,7 +2,7 @@ pragma solidity 0.5.11;
 
 import "../KyberNetwork.sol";
 
-
+// override some of original KyberNetwork contract
 contract MockNetwork is KyberNetwork {
 
     constructor(address _admin) public KyberNetwork(_admin)
@@ -39,13 +39,13 @@ contract MockNetwork is KyberNetwork {
         (_networkFeeBps, _expiryBlock) = readNetworkFeeData();
     }
 
+    // allow set zero contract
     function setContracts(IKyberFeeHandler _feeHandler,
         IKyberMatchingEngine _matchingEngine,
         IGasHelper _gasHelper
     )
         external onlyAdmin
     {
-        // allow set zero contract
         // require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
         // require(_matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
 
