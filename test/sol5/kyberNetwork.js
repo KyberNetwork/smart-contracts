@@ -16,8 +16,8 @@ const nwHelper = require("./networkHelper.js");
 const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
-const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN} = require("../helper.js");
-const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK,
+const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN, MAX_QTY} = require("../helper.js");
+const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, 
     MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, ReserveType}  = require('./networkHelper.js');
 
 //global variables
@@ -28,7 +28,6 @@ const maxDestAmt = new BN(2).pow(new BN(255));
 const minConversionRate = new BN(0);
 const oneEth = new BN(10).pow(ethDecimals);
 const defaultNetworkFeeBps = new BN(25);
-const KYBER_MAX_QTY = new BN(10).pow(new BN(28)); // 10B tokens
 
 let networkFeeBps = new BN(20);
 let platformFeeBps = zeroBN;
@@ -1538,18 +1537,24 @@ contract('KyberNetwork', function(accounts) {
             );
         });
     
-        it.skip("test can not trade when setting gas price too high", async () => {
-            let invalidGasPrice = gasPrice.add(new BN(1));
-    
+        it("test can not trade when setting gas price too high", async () => {
+            let maxGasPrice = new BN(100);
+            // set network max gas price to 100 wei
+            await network.setParams(maxGasPrice, negligibleRateDiffBps, { from: admin });
+
+            let invalidGasPrice = maxGasPrice.add(new BN(1));
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, minConversionRate, platformWallet, platformFee, emptyHint, { gasPrice: invalidGasPrice }),
                 "gas price"
             );
+
+            // change network max gas price back to 50 gwei
+            await network.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
         });
     
         it("test can not trade when src amount too high", async () => {
-            let invalidSrcQty = KYBER_MAX_QTY.add(new BN(1));
+            let invalidSrcQty = MAX_QTY.add(new BN(1));
     
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, invalidSrcQty, ethAddress, taker,
@@ -1586,7 +1591,7 @@ contract('KyberNetwork', function(accounts) {
             );
         });
     
-        it("test can not trade when fee is to high", async () => {
+        it("test can not trade when fee is too high", async () => {
             let invalidPlatformFee = new BN(10001); // 10001 BPS = 100.01%
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
