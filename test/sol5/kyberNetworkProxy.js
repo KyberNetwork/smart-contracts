@@ -444,7 +444,7 @@ contract('KyberNetworkProxy', function(accounts) {
         let mockRateHelper;
         let mockTokens = [];
         let mockTokenDecimals = [];
-        let mockFeeHandler;
+        let feeHandler;
         let mockReserveInstances;
 
         // loop trades
@@ -488,7 +488,7 @@ contract('KyberNetworkProxy', function(accounts) {
             }
 
             //init feeHandler
-            mockFeeHandler = await FeeHandler.new(mockDAO.address, mockProxy.address, mockNetwork.address, KNC.address, burnBlockInterval);
+            feeHandler = await FeeHandler.new(mockDAO.address, mockProxy.address, mockNetwork.address, KNC.address, burnBlockInterval);
 
             // init and setup reserves
             let result = await nwHelper.setupReserves(mockNetwork, mockTokens, 5, 0, 0, 0, accounts, admin, operator);
@@ -499,7 +499,7 @@ contract('KyberNetworkProxy', function(accounts) {
             await mockNetwork.addKyberProxy(mockProxy.address, {from: admin});
             await mockNetwork.addOperator(operator, {from: admin});
 
-            await mockNetwork.setContracts(mockFeeHandler.address, mockMatchingEngine.address, zeroAddress, {from: admin});
+            await mockNetwork.setContracts(feeHandler.address, mockMatchingEngine.address, zeroAddress, {from: admin});
             await mockNetwork.setDAOContract(mockDAO.address, {from: admin});
 
             //add and list pair for reserve

@@ -36,6 +36,13 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
     uint internal constant DEFAULT_REBATE_BPS = 3000;
     uint public constant   WEI_TO_BURN = 2 * 10 ** ETH_DECIMALS;
 
+    struct BRRData {
+        uint64 expiryBlock;
+        uint32 epoch;
+        uint16 rewardBps;
+        uint16 rebateBps;
+    }
+
     IKyberDAO public kyberDAO;
     IKyberNetworkProxy public networkProxy;
     address public kyberNetwork;
@@ -43,7 +50,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
     uint public burnBlockInterval = 15;
     uint public lastBurnBlock;
-    uint public brrAndEpochData;
+    BRRData public brrAndEpochData;
     address public daoSetter;
 
     mapping(address => uint) public feePerPlatformWallet;
@@ -73,7 +80,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         burnBlockInterval = _burnBlockInterval;
 
         //start with epoch 0
-        brrAndEpochData = encodeBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, 0, block.number);
+        updateBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, block.number, 0);
     }
 
     event EthReceived(uint amount);
@@ -250,7 +257,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
         // Get srcQty to burn, if greater than WEI_TO_BURN, burn only WEI_TO_BURN per function call.
         uint balance = address(this).balance;
-        require(balance >= totalPayoutBalance, "contract bal too low");
+        require(balance >= totalPayoutBalance, "contract balance too low");
 
         uint srcQty = balance - totalPayoutBalance;
         srcQty = srcQty > WEI_TO_BURN ? WEI_TO_BURN : srcQty;
@@ -303,46 +310,55 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         emit RewardsRemovedToBurn(epoch, rewardAmount);
     }
 
-    function encodeBRRData(uint _reward, uint _rebate, uint _epoch, uint _expiryBlock) public pure returns (uint) {
-        return (((((_reward << BITS_PER_PARAM) + _rebate) << BITS_PER_PARAM) + _epoch) << BITS_PER_PARAM) + _expiryBlock;
+    function readBRRData() public view returns(uint rewardBps, uint rebateBps, uint expiryBlock, uint epoch) {
+        rewardBps = uint(brrAndEpochData.rewardBps);
+        rebateBps = uint(brrAndEpochData.rebateBps);
+        epoch = uint(brrAndEpochData.epoch);
+        expiryBlock = uint(brrAndEpochData.expiryBlock);
     }
 
-    function decodeBRRData() public view returns(uint rewardBPS, uint rebateBPS, uint expiryBlock, uint epoch) {
-        expiryBlock = brrAndEpochData & (1 << BITS_PER_PARAM) - 1;
-        epoch = (brrAndEpochData / (1 << BITS_PER_PARAM)) & (1 << BITS_PER_PARAM) - 1;
-        rebateBPS = (brrAndEpochData / (1 << (2 * BITS_PER_PARAM))) & (1 << BITS_PER_PARAM) - 1;
-        rewardBPS = (brrAndEpochData / (1 << (3 * BITS_PER_PARAM))) & (1 << BITS_PER_PARAM) - 1;
-        return (rewardBPS, rebateBPS, expiryBlock, epoch);
-    }
+    event BRRUpdated(uint rewardBps, uint rebateBps, uint burnBps, uint expiryBlock, uint epoch);
 
-    event BRRUpdated(uint rewardBPS, uint rebateBPS, uint burnBPS, uint expiryBlock, uint epoch);
-
-    function getBRR() public returns(uint rewardBPS, uint rebateBPS, uint epoch) {
+    function getBRR() public returns(uint rewardBps, uint rebateBps, uint epoch) {
         uint expiryBlock;
-        (rewardBPS, rebateBPS, expiryBlock, epoch) = decodeBRRData();
+        (rewardBps, rebateBps, expiryBlock, epoch) = readBRRData();
 
           // Check current block number
         if (block.number > expiryBlock && kyberDAO != IKyberDAO(0)) {
-            uint burnBPS;
+            uint burnBps;
 
-            (burnBPS, rewardBPS, rebateBPS, epoch, expiryBlock) = kyberDAO.getLatestBRRData();
-
-            emit BRRUpdated(rewardBPS, rebateBPS, burnBPS, expiryBlock, epoch);
+            (burnBps, rewardBps, rebateBps, epoch, expiryBlock) = kyberDAO.getLatestBRRData();
+            require(burnBps + rewardBps + rebateBps == BPS, "Bad BRR values");
+            require(burnBps <= BPS, "burnBps overflow");
+            require(rewardBps <= BPS, "rewardBps overflow");
+            require(rebateBps <= BPS, "rebateBps overflow");
+            emit BRRUpdated(rewardBps, rebateBps, burnBps, expiryBlock, epoch);
 
             // Update brrAndEpochData
-            brrAndEpochData = encodeBRRData(rewardBPS, rebateBPS, epoch, expiryBlock);
+            updateBRRData(rewardBps, rebateBps, expiryBlock, epoch);
         }
+    }
+
+    function updateBRRData(uint reward, uint rebate, uint expiryBlock, uint epoch) internal {
+        // reward and rebate combined values <= BPS. Tested in getBRR.
+        require(expiryBlock < 2 ** 64, "expiry block overflow");
+        require(epoch < 2 ** 32, "epoch overflow");
+
+        brrAndEpochData.rewardBps = uint16(reward);
+        brrAndEpochData.rebateBps = uint16(rebate);
+        brrAndEpochData.expiryBlock = uint64(expiryBlock);
+        brrAndEpochData.epoch = uint32(epoch);
     }
 
     function getRRWeiValues(uint RRAmountWei) internal
         returns(uint rewardWei, uint rebateWei, uint epoch)
     {
         // Decoding BRR data
-        uint rewardInBPS;
-        uint rebateInBPS;
-        (rewardInBPS, rebateInBPS, epoch) = getBRR();
+        uint rewardInBps;
+        uint rebateInBps;
+        (rewardInBps, rebateInBps, epoch) = getBRR();
 
-        rebateWei = RRAmountWei * rebateInBPS / BPS;
-        rewardWei = RRAmountWei * rewardInBPS / BPS;
+        rebateWei = RRAmountWei * rebateInBps / BPS;
+        rewardWei = RRAmountWei * rewardInBps / BPS;
     }
 }
