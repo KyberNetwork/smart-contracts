@@ -1538,6 +1538,11 @@ contract('KyberFeeHandler', function(accounts) {
                     feeHandler.transferBurnConfigSetter(user, {from: user2}),
                     "only burnConfigSetter"
                 )
+                // new setter is 0
+                await expectRevert(
+                    feeHandler.transferBurnConfigSetter(zeroAddress, {from: burnConfigSetter}),
+                    "newSetter is 0"
+                )
 
                 // can not claim pending setter when it is zero
                 await expectRevert(
