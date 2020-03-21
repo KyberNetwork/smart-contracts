@@ -137,7 +137,6 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         kyberNetwork = _kyberNetwork;
         KNC = _knc;
         burnBlockInterval = _burnBlockInterval;
-        burnConfigSetter = _burnConfigSetter;
 
         //start with epoch 0
         updateBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, block.number, 0);

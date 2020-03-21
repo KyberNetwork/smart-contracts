@@ -264,10 +264,10 @@ contract('KyberFeeHandler', function(accounts) {
                 sanityRate: sanityRate.address,
                 weiToBurn: weiToBurn
             });
-            txResult = await feeHandler.setBurnConfigParams(sanityRate.address, 10000, {from: burnConfigSetter});
+            txResult = await feeHandler.setBurnConfigParams(sanityRate.address, new BN(10000), {from: burnConfigSetter});
             expectEvent(txResult, "BurnConfigSet", {
                 sanityRate: sanityRate.address,
-                weiToBurn: 10000
+                weiToBurn: new BN(10000)
             });
             await feeHandler.setBurnConfigParams(sanityRate.address, weiToBurn, {from: burnConfigSetter});
         });
@@ -1040,6 +1040,7 @@ contract('KyberFeeHandler', function(accounts) {
                 );
 
                 let totalPayout0 = await feeHandler.totalPayoutBalance();
+                let feeHandlerBalance = await Helper.getBalancePromise(feeHandler.address);
                 const maxBurn = feeHandlerBalance.sub(totalPayout0);
 
                 let newWeiToBurn = maxBurn.sub(new BN(1));
@@ -1047,7 +1048,7 @@ contract('KyberFeeHandler', function(accounts) {
                 await feeHandler.setBurnConfigParams(sanityRate.address, newWeiToBurn, {from: burnConfigSetter});
                 await sanityRate.setKncEthRate(kncToEthPrecision);
 
-                let feeHandlerBalance = await Helper.getBalancePromise(feeHandler.address);
+                // expect to burn only weiToBurn
                 const expectedBurn = newWeiToBurn;
 
                 await feeHandler.burnKNC();
@@ -1066,6 +1067,7 @@ contract('KyberFeeHandler', function(accounts) {
                 );
 
                 let totalPayout0 = await feeHandler.totalPayoutBalance();
+                let feeHandlerBalance = await Helper.getBalancePromise(feeHandler.address);
                 const maxBurn = feeHandlerBalance.sub(totalPayout0);
 
                 let newWeiToBurn = maxBurn.add(new BN(1));
@@ -1073,8 +1075,8 @@ contract('KyberFeeHandler', function(accounts) {
                 await feeHandler.setBurnConfigParams(sanityRate.address, newWeiToBurn, {from: burnConfigSetter});
                 await sanityRate.setKncEthRate(kncToEthPrecision);
 
-                let feeHandlerBalance = await Helper.getBalancePromise(feeHandler.address);
-                const expectedBurn = feeHandlerBalance.sub(maxBurn);
+                // expect to burn all
+                const expectedBurn = maxBurn;
 
                 await feeHandler.burnKNC();
 
@@ -1382,7 +1384,7 @@ contract('KyberFeeHandler', function(accounts) {
             });
         });
 
-        describe.only("burn config params test", async() => {
+        describe("burn config params test", async() => {
             it("test reverts burn config params invalid", async() => {
                 // revert when sanity is zero
                 await expectRevert(
