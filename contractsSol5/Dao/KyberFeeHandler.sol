@@ -1,11 +1,21 @@
 pragma solidity 0.5.11;
 
+<<<<<<< HEAD:contractsSol5/Dao/KyberFeeHandler.sol
 import "../utils/PermissionGroups2.sol";
 import "../utils/Utils4.sol";
 import "../IKyberDAO.sol";
 import "../IKyberFeeHandler.sol";
 import "../IKyberNetworkProxy.sol";
 import "../IBurnableToken.sol";
+=======
+import "./utils/PermissionGroups2.sol";
+import "./utils/Utils4.sol";
+import "./IKyberDAO.sol";
+import "./IKyberFeeHandler.sol";
+import "./IKyberNetworkProxy.sol";
+import "./IBurnableToken.sol";
+import "./IBurnKncSanityRate.sol";
+>>>>>>> Add burn knc sanity rate check for FeeHandler:contractsSol5/KyberFeeHandler.sol
 
 /*
  * @title Kyber fee handler
@@ -23,18 +33,58 @@ import "../IBurnableToken.sol";
  *          internally accounts for network & platform fees from the trade. Fee distribution:
  *              rewards: accumulated per epoch. can be claimed by the DAO after epoch is concluded.
  *              rebates: accumulated per rebate wallet, can be claimed any time.
- *              Burn: accumulated in the contract. Burned value and interval limited.
+ *              Burn: accumulated in the contract. Burned value and interval limited with safe check using sanity rate
  *              Platfrom fee: accumulated per platform wallet, can be claimed any time.
  *      2. Network Fee distribtuion. per epoch Kyber fee Handler reads current distribution from Kyber DAO.
  *          Expiry block for data is set. when data expires. Fee handler reads new data from DAO.
  */
 
-contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
+ contract BurnConfigPermission {
+
+    address public burnConfigSetter;
+    address public pendingBurnConfigSetter;
+
+    constructor(address _burnConfigSetter) public {
+        require(_burnConfigSetter != address(0), "burnConfigSetter is 0");
+        burnConfigSetter = _burnConfigSetter;
+    }
+
+    modifier onlyBurnConfigSetter() {
+        require(msg.sender == burnConfigSetter, "only burnConfigSetter");
+        _;
+    }
+
+    event TransferBurnConfigSetter(address pendingBurnConfigSetter);
+
+    /**
+     * @dev Allows the current burnConfigSetter to set the pendingBurnConfigSetter address.
+     * @param newSetter The address to transfer ownership to.
+     */
+    function transferBurnConfigSetter(address newSetter) public onlyBurnConfigSetter {
+        require(newSetter != address(0), "newSetter is 0");
+        emit TransferBurnConfigSetter(newSetter);
+        pendingBurnConfigSetter = newSetter;
+    }
+
+    event BurnConfigSetterClaimed(address newBurnConfigSetter, address previousBurnConfigSetter);
+
+    /**
+     * @dev Allows the pendingBurnConfigSetter address to finalize the change burn config setter process.
+     */
+    function claimBurnConfigSetter() public {
+        require(pendingBurnConfigSetter == msg.sender, "only pending burn config setter");
+        emit BurnConfigSetterClaimed(pendingBurnConfigSetter, burnConfigSetter);
+        burnConfigSetter = pendingBurnConfigSetter;
+        pendingBurnConfigSetter = address(0);
+    }
+}
+
+contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
 
     uint internal constant BITS_PER_PARAM = 64;
     uint internal constant DEFAULT_REWARD_BPS = 3000;
     uint internal constant DEFAULT_REBATE_BPS = 3000;
-    uint public constant   WEI_TO_BURN = 2 * 10 ** ETH_DECIMALS;
+    uint internal constant SANITY_RATE_DIFF_BPS = 1000; // 10%
 
     struct BRRData {
         uint64 expiryBlock;
@@ -50,8 +100,16 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
     uint public burnBlockInterval = 15;
     uint public lastBurnBlock;
+
     BRRData public brrAndEpochData;
     address public daoSetter;
+
+    /// @dev amount of eth to burn for each burn KNC call
+    uint public weiToBurn = 2 * 10 ** ETH_DECIMALS;
+
+    /// @dev use to get rate of KNC/ETH to check if rate to burn KNC is normal
+    /// @dev index 0 is currently used contract address, indexes > 0 are older versions
+    IBurnKncSanityRate[] internal sanityRateContract;
 
     mapping(address => uint) public feePerPlatformWallet;
     mapping(address => uint) public rebatePerWallet;
@@ -64,8 +122,9 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
             IKyberNetworkProxy _networkProxy,
             address _kyberNetwork,
             IERC20 _knc,
-            uint _burnBlockInterval
-        ) public
+            uint _burnBlockInterval,
+            address _burnConfigSetter
+        ) BurnConfigPermission(_burnConfigSetter) public
     {
         require(address(_daoSetter) != address(0), "FeeHandler: daoSetter 0");
         require(address(_networkProxy) != address(0), "FeeHandler: KyberNetworkProxy 0");
@@ -78,6 +137,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         kyberNetwork = _kyberNetwork;
         KNC = _knc;
         burnBlockInterval = _burnBlockInterval;
+        burnConfigSetter = _burnConfigSetter;
 
         //start with epoch 0
         updateBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, block.number, 0);
@@ -244,6 +304,32 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         daoSetter = address(0);
     }
 
+    event BurnConfigSet(IBurnKncSanityRate sanityRate, uint weiToBurn);
+
+    /// @dev set burn KNC sanity rate contract and amount wei to burn
+    /// @param _sanityRate new sanity rate contract
+    /// @param _weiToBurn new amount of wei to burn
+    function setBurnConfigParams(IBurnKncSanityRate _sanityRate, uint _weiToBurn)
+        public onlyBurnConfigSetter
+    {
+        require(_sanityRate != IBurnKncSanityRate(0), "_sanityRate is 0");
+        require(_weiToBurn > 0, "_weiToBurn is 0");
+
+        if (sanityRateContract.length == 0 || (_sanityRate != sanityRateContract[0])) {
+            // it is a new sanity rate contract
+            if (sanityRateContract.length == 0) {
+                sanityRateContract.push(_sanityRate);
+            } else {
+                sanityRateContract.push(sanityRateContract[0]);
+                sanityRateContract[0] = _sanityRate;
+            }
+        }
+
+        weiToBurn = _weiToBurn;
+
+        emit BurnConfigSet(_sanityRate, _weiToBurn);
+    }
+
     event KNCBurned(uint KNCTWei, uint amountWei);
 
     /// @dev Burn knc. Burn amount limited. Forces block delay between burn calls.
@@ -255,20 +341,17 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         // update last burn block number
         lastBurnBlock = block.number;
 
-        // Get srcQty to burn, if greater than WEI_TO_BURN, burn only WEI_TO_BURN per function call.
+        // Get srcQty to burn, if greater than weiToBurn, burn only weiToBurn per function call.
         uint balance = address(this).balance;
         require(balance >= totalPayoutBalance, "contract balance too low");
 
         uint srcQty = balance - totalPayoutBalance;
-        srcQty = srcQty > WEI_TO_BURN ? WEI_TO_BURN : srcQty;
+        srcQty = srcQty > weiToBurn ? weiToBurn : srcQty;
 
         // Get rate
         uint kyberEthKncRate = networkProxy.getExpectedRateAfterFee(ETH_TOKEN_ADDRESS, KNC, srcQty, 0, "");
-        uint kyberKncEthRate = networkProxy.getExpectedRateAfterFee(KNC, ETH_TOKEN_ADDRESS, srcQty, 0, "");
 
-        require(kyberEthKncRate <= MAX_RATE && kyberKncEthRate <= MAX_RATE, "KNC rate out of bounds");
-        require(kyberEthKncRate * kyberKncEthRate <= PRECISION ** 2, "internal KNC arb");
-        require(kyberEthKncRate * kyberKncEthRate > PRECISION ** 2 / 2, "high KNC spread");
+        require(validateEthToKncRateToBurn(kyberEthKncRate), "rate is bad");
 
         // Buy some KNC and burn
         uint destQty = networkProxy.tradeWithHintAndFee.value(srcQty)(
@@ -350,6 +433,20 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         brrAndEpochData.epoch = uint32(epoch);
     }
 
+    /// @notice should be called off chain
+    /// @dev returns list of sanity rate contracts
+    /// @dev index 0 is currently used contract address, indexes > 0 are older versions
+    function getSanityRateContracts() external view returns (IBurnKncSanityRate[] memory sanityRates) {
+       sanityRates = sanityRateContract;
+    }
+
+    /// @dev return latest knc/eth rate from sanity rate contract
+    function getLatestSanityRate() external view returns(uint kncToEthSanityRate) {
+        if (sanityRateContract.length > 0) {
+            kncToEthSanityRate = sanityRateContract[0].latestAnswer();
+        }
+    }
+
     function getRRWeiValues(uint RRAmountWei) internal
         returns(uint rewardWei, uint rebateWei, uint epoch)
     {
@@ -360,5 +457,24 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
 
         rebateWei = RRAmountWei * rebateInBps / BPS;
         rewardWei = RRAmountWei * rewardInBps / BPS;
+    }
+
+    function validateEthToKncRateToBurn(uint rateEthToKnc) internal view returns(bool) {
+        require(rateEthToKnc <= MAX_RATE, "ethToKnc rate out of bounds");
+        require(rateEthToKnc > 0, "ethToKnc rate is 0");
+        require(sanityRateContract.length > 0, "no sanity rate contract");
+
+        // get latest knc/eth rate from sanity contract
+        uint kncToEthRate = sanityRateContract[0].latestAnswer();
+        require(kncToEthRate > 0, "sanity rate is 0");
+        require(kncToEthRate <= MAX_RATE, "sanity rate out of bounds");
+
+        uint sanityEthToKncRate = PRECISION * PRECISION / kncToEthRate;
+
+        // rate should be different at most 10% compare to sanity rate
+        require(rateEthToKnc * BPS <= sanityEthToKncRate * (BPS + SANITY_RATE_DIFF_BPS), "rate is too high");
+        require(rateEthToKnc * BPS >= sanityEthToKncRate * (BPS - SANITY_RATE_DIFF_BPS), "rate is too low");
+
+        return true;
     }
 }

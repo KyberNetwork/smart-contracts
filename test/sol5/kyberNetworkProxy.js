@@ -106,7 +106,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //init feeHandler
         KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-        feeHandler = await FeeHandler.new(DAO.address, networkProxy.address, network.address, KNC.address, burnBlockInterval);
+        feeHandler = await FeeHandler.new(DAO.address, networkProxy.address, network.address, KNC.address, burnBlockInterval, DAO.address);
 
         // init and setup reserves
         let result = await nwHelper.setupReserves(network, tokens, 0, 5, 0, 0, accounts, admin, operator);
@@ -488,7 +488,7 @@ contract('KyberNetworkProxy', function(accounts) {
             }
 
             //init feeHandler
-            feeHandler = await FeeHandler.new(mockDAO.address, mockProxy.address, mockNetwork.address, KNC.address, burnBlockInterval);
+            mockFeeHandler = await FeeHandler.new(mockDAO.address, mockProxy.address, mockNetwork.address, KNC.address, burnBlockInterval, mockDAO.address);
 
             // init and setup reserves
             let result = await nwHelper.setupReserves(mockNetwork, mockTokens, 5, 0, 0, 0, accounts, admin, operator);
@@ -499,7 +499,7 @@ contract('KyberNetworkProxy', function(accounts) {
             await mockNetwork.addKyberProxy(mockProxy.address, {from: admin});
             await mockNetwork.addOperator(operator, {from: admin});
 
-            await mockNetwork.setContracts(feeHandler.address, mockMatchingEngine.address, zeroAddress, {from: admin});
+            await mockNetwork.setContracts(mockFeeHandler.address, mockMatchingEngine.address, zeroAddress, {from: admin});
             await mockNetwork.setDAOContract(mockDAO.address, {from: admin});
 
             //add and list pair for reserve

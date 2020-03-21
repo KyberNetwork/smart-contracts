@@ -88,7 +88,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         networkProxy = await KyberNetworkProxy.new(admin);
 
         // FeeHandler init
-        feeHandler = await FeeHandler.new(daoSetter, networkProxy.address, network.address, KNC.address, burnBlockInterval);
+        feeHandler = await FeeHandler.new(daoSetter, networkProxy.address, network.address, KNC.address, burnBlockInterval, daoSetter);
         // Staking & DAO init
         currentBlock = await Helper.getCurrentBlock();
         await deployContracts(40, currentBlock + 350, 10);

@@ -320,7 +320,7 @@ contract('KyberNetwork', function(accounts) {
             await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
         });
@@ -364,7 +364,7 @@ contract('KyberNetwork', function(accounts) {
             await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
         });
@@ -513,7 +513,7 @@ contract('KyberNetwork', function(accounts) {
             await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
         });
@@ -545,7 +545,7 @@ contract('KyberNetwork', function(accounts) {
             await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
             await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
@@ -620,7 +620,7 @@ contract('KyberNetwork', function(accounts) {
 
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
 
             // init matchingEngine
             matchingEngine = await TradeLogic.new(admin);
@@ -1286,7 +1286,7 @@ contract('KyberNetwork', function(accounts) {
 
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, tempNetwork.address, tempNetwork.address, KNC.address, burnBlockInterval);
+            feeHandler = await FeeHandler.new(DAO.address, tempNetwork.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
 
             // init matchingEngine
             maliciousMatchingEngine = await MockMatchingEngineManipulateRate.new(admin);
@@ -1489,7 +1489,7 @@ contract('KyberNetwork', function(accounts) {
 
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
 
             // init matchingEngine
             matchingEngine = await TradeLogic.new(admin);
