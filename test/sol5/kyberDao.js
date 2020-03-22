@@ -1204,20 +1204,20 @@ contract('KyberDAO', function(accounts) {
             await expectRevert(
                 daoContract.submitNewCampaign(
                     1, currentBlock + 9, currentBlock + 9 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
-                    [1, 2, 3, 10001], '0x', {from: campCreator}
+                    [1, 2, 3, 5000], '0x', {from: campCreator}
                 ),
                 "validateParams: Fee campaign option value is too high"
             )
             await expectRevert(
                 daoContract.submitNewCampaign(
                     1, currentBlock + 11, currentBlock + 11 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
-                    [1, 10010, 2, 3], '0x', {from: campCreator}
+                    [1, 10000, 2, 3], '0x', {from: campCreator}
                 ),
                 "validateParams: Fee campaign option value is too high"
             )
             await daoContract.submitNewCampaign(
                 1, currentBlock + 13, currentBlock + 13 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
-                [1, 10000, 2, 3], '0x', {from: campCreator}
+                [1, 4999, 2, 3], '0x', {from: campCreator}
             );
             // brr campaign: reward + rebate > 100%
             await expectRevert(
@@ -1268,7 +1268,7 @@ contract('KyberDAO', function(accounts) {
             );
             await daoContract.submitNewCampaign(
                 1, currentBlock + 9, currentBlock + 9 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
-                [1, 10000, 2, 3], '0x', {from: campCreator}
+                [1, 4999, 2, 3], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 2, currentBlock + 11, currentBlock + 11 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -5726,12 +5726,12 @@ contract('KyberDAO', function(accounts) {
                 ),
                 "ctor: knc token is missing"
             )
-            // network fee is high
+            // network fee is high (>= 50%)
             await expectRevert(
                 DAOContract.new(
                     10, currentBlock + 50,
                     stakingContract.address,  feeHandler.address, kncToken.address,
-                    maxCampOptions, minCampPeriod, 10001, defaultRewardBps, defaultRebateBps,
+                    maxCampOptions, minCampPeriod, 5000, defaultRewardBps, defaultRebateBps,
                     campCreator
                 ),
                 "ctor: network fee high"
