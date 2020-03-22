@@ -1082,7 +1082,7 @@ contract('KyberDAO', function(accounts) {
                     0, startBlock + epochPeriod, startBlock + epochPeriod + 10, formulaParamsData,
                     [1, 2, 3, 4], '0x', {from: campCreator}
                 ),
-                "validateParams: not for current or next epoch"
+                "validateParams: only for current or next epochs"
             )
             // start in the next 10 epochs
             await expectRevert(
@@ -1090,7 +1090,7 @@ contract('KyberDAO', function(accounts) {
                     0, startBlock + 10 * epochPeriod, startBlock + 10 * epochPeriod + 10, formulaParamsData,
                     [1, 2, 3, 4], '0x', {from: campCreator}
                 ),
-                "validateParams: not for current or next epoch"
+                "validateParams: only for current or next epochs"
             )
             // start at current epoch but end in the next epoch
             await expectRevert(
@@ -1196,20 +1196,20 @@ contract('KyberDAO', function(accounts) {
             await expectRevert(
                 daoContract.submitNewCampaign(
                     1, currentBlock + 9, currentBlock + 9 + minCampPeriod, formulaParamsData,
-                    [1, 2, 3, 10001], '0x', {from: campCreator}
+                    [1, 2, 3, 5000], '0x', {from: campCreator}
                 ),
-                "validateParams: Fee camp options high"
+                "validateParams: Fee campaign option value is too high"
             )
             await expectRevert(
                 daoContract.submitNewCampaign(
                     1, currentBlock + 11, currentBlock + 11 + minCampPeriod, formulaParamsData,
-                    [1, 10010, 2, 3], '0x', {from: campCreator}
+                    [1, 10000, 2, 3], '0x', {from: campCreator}
                 ),
-                "validateParams: Fee camp options high"
+                "validateParams: Fee campaign option value is too high"
             )
             await daoContract.submitNewCampaign(
                 1, currentBlock + 13, currentBlock + 13 + minCampPeriod, formulaParamsData,
-                [1, 10000, 2, 3], '0x', {from: campCreator}
+                [1, 4999, 2, 3], '0x', {from: campCreator}
             );
             // brr campaign: reward + rebate > 100%
             await expectRevert(
@@ -1217,14 +1217,14 @@ contract('KyberDAO', function(accounts) {
                     2, currentBlock + 15, currentBlock + 15 + minCampPeriod, formulaParamsData,
                     [1, getDataFromRebateAndReward(100, 10001 - 100), 2, 3], '0x', {from: campCreator}
                 ),
-                "validateParams: RR too high"
+                "validateParams: RR values are too high"
             )
             await expectRevert(
                 daoContract.submitNewCampaign(
                     2, currentBlock + 17, currentBlock + 17 + minCampPeriod, formulaParamsData,
                     [1, 2, getDataFromRebateAndReward(20, 10000)], '0x', {from: campCreator}
                 ),
-                "validateParams: RR too high"
+                "validateParams: RR values are too high"
             )
             await daoContract.submitNewCampaign(
                 2, currentBlock + 19, currentBlock + 19 + minCampPeriod, formulaParamsData,
@@ -1260,7 +1260,7 @@ contract('KyberDAO', function(accounts) {
             );
             await daoContract.submitNewCampaign(
                 1, currentBlock + 9, currentBlock + 9 + minCampPeriod, formulaParamsData,
-                [1, 10000, 2, 3], '0x', {from: campCreator}
+                [1, 4999, 2, 3], '0x', {from: campCreator}
             );
             await daoContract.submitNewCampaign(
                 2, currentBlock + 11, currentBlock + 11 + minCampPeriod, formulaParamsData,
@@ -5751,12 +5751,12 @@ contract('KyberDAO', function(accounts) {
                 ),
                 "ctor: knc token is missing"
             )
-            // network fee is high
+            // network fee is high (>= 50%)
             await expectRevert(
                 DAOContract.new(
                     10, currentBlock + 50,
                     stakingContract.address,  feeHandler.address, kncToken.address,
-                    maxCampOptions, minCampPeriod, 10001, defaultRewardBps, defaultRebateBps,
+                    maxCampOptions, minCampPeriod, 5000, defaultRewardBps, defaultRebateBps,
                     campCreator
                 ),
                 "ctor: network fee high"
