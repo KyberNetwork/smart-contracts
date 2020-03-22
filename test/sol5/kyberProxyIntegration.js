@@ -652,6 +652,211 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         );
     });
 
+    it("test update network fee from DAO with fee 0, network updates network fee, feeHandler doesn't update brr data", async() => {
+        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curBrrData = await feeHandler.readBRRData();
+
+        let link = web3.utils.fromAscii("https://kyberswap.com");
+
+        // create network fee campaign
+        currentBlock = await Helper.getCurrentBlock();
+        let newFee1 = 0;
+        let newFee2 = curNetworkFee.add(new BN(2));
+        let newFee3 = curNetworkFee.add(new BN(3));
+        await daoContract.submitNewCampaign(
+            1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+            0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+        );
+
+        // vote for network fee to be 0
+        await daoContract.vote(11, 1, {from: mike});
+        await daoContract.vote(11, 1, {from: victor});
+
+        // delay until epoch 11
+        currentBlock = await Helper.getCurrentBlock();
+        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 10 * epochPeriod + startBlock - currentBlock);
+        Helper.assertEqual(11, await daoContract.getCurrentEpochNumber());
+
+        // make a simple swap, make sure data is updated for epoch 4 with concluding campaign
+        await networkProxy.swapEtherToToken(destToken.address, 1, {from: taker, value: ethSrcQty});
+
+        // ============ check data should be updated from DAO ============
+        // check expected network data from network and dao
+        networkData = await network.getNetworkData();
+        Helper.assertEqual(11 * epochPeriod + startBlock - 1, networkData.expiryBlock);
+        Helper.assertEqual(0, networkData.networkFeeBps);
+        Helper.assertEqual(0, await daoContract.latestNetworkFeeResult());
+
+        // brr is not updated as there is no fee
+        let brrData = await feeHandler.readBRRData();
+        Helper.assertEqual(10 * epochPeriod + startBlock - 1, brrData.expiryBlock);
+        Helper.assertEqual(10, brrData.epoch);
+        Helper.assertEqual(curBrrData.rewardBps, brrData.rewardBps);
+        Helper.assertEqual(curBrrData.rebateBps, brrData.rebateBps);
+        // check expected brr data from dao
+        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        Helper.assertEqual(11 * epochPeriod + startBlock - 1, daoBrrData.expiryBlockNumber);
+        Helper.assertEqual(11, daoBrrData.epoch);
+        Helper.assertEqual(brrData.rewardBps, daoBrrData.rewardInBps);
+        Helper.assertEqual(brrData.rebateBps, daoBrrData.rebateInBps);
+    });
+
+    it("test update network fee from DAO with fee 49.99% - max fee", async() => {
+        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curBrrData = await feeHandler.readBRRData();
+
+        let link = web3.utils.fromAscii("https://kyberswap.com");
+
+        // create network fee campaign
+        currentBlock = await Helper.getCurrentBlock();
+        let newFee1 = 4999;
+        let newFee2 = curNetworkFee.add(new BN(2));
+        let newFee3 = curNetworkFee.add(new BN(3));
+        await daoContract.submitNewCampaign(
+            1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+            0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+        );
+
+        // vote for network fee to be max
+        await daoContract.vote(12, 1, {from: mike});
+        await daoContract.vote(12, 1, {from: victor});
+
+        // delay until epoch 12
+        currentBlock = await Helper.getCurrentBlock();
+        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 11 * epochPeriod + startBlock - currentBlock);
+        Helper.assertEqual(12, await daoContract.getCurrentEpochNumber());
+
+        // make a first trade and check data changes as expected
+        await tradeAndCheckDataChangesAsExpected(
+            12, // epoch
+            4999, // new network fee
+            curBrrData.rewardBps, // new reward
+            curBrrData.rebateBps, // new rebate
+            "gas cost change network fee to max (49.99%): " // log message
+        );
+
+        // create network fee campaign
+        currentBlock = await Helper.getCurrentBlock();
+        newFee1 = defaultNetworkFee;
+        newFee2 = defaultNetworkFee;
+        newFee3 = defaultNetworkFee;
+        await daoContract.submitNewCampaign(
+            1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+            0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+        );
+
+        // vote for network fee to be option 1
+        await daoContract.vote(13, 1, {from: mike});
+        await daoContract.vote(13, 1, {from: victor});
+
+        // delay until epoch 13
+        currentBlock = await Helper.getCurrentBlock();
+        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 12 * epochPeriod + startBlock - currentBlock);
+        Helper.assertEqual(13, await daoContract.getCurrentEpochNumber());
+
+        await networkProxy.swapEtherToToken(destToken.address, 1, {from: taker, value: ethSrcQty});
+    });
+
+    it("test update reward to 100%", async() => {
+        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curBrrData = await feeHandler.readBRRData();
+
+        let link = web3.utils.fromAscii("https://kyberswap.com");
+
+        // create brr camp
+        currentBlock = await Helper.getCurrentBlock();
+        let newBrrData1 = getDataFromRebateAndReward(0, 10000);
+        let newBrrData2 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(2)), curBrrData.rewardBps.add(new BN(2)));
+        let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(3)), curBrrData.rewardBps.add(new BN(3)));
+        await daoContract.submitNewCampaign(
+            2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+            0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+        );
+
+        await daoContract.vote(14, 1, {from: mike});
+        await daoContract.vote(14, 1, {from: victor});
+
+        // delay until epoch 14
+        currentBlock = await Helper.getCurrentBlock();
+        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 13 * epochPeriod + startBlock - currentBlock);
+        Helper.assertEqual(14, await daoContract.getCurrentEpochNumber());
+
+        // make a first trade and check data changes as expected
+        await tradeAndCheckDataChangesAsExpected(
+            14, // epoch
+            curNetworkFee, // new network fee
+            10000, // new reward
+            0, // new rebate
+            "gas cost change reward to 100%: " // log message
+        );
+    });
+
+    it("test update rebate to 100%", async() => {
+        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+
+        let link = web3.utils.fromAscii("https://kyberswap.com");
+
+        // create brr camp
+        currentBlock = await Helper.getCurrentBlock();
+        let newBrrData1 = getDataFromRebateAndReward(10000, 0);
+        let newBrrData2 = getDataFromRebateAndReward(5000, 4900);
+        let newBrrData3 = getDataFromRebateAndReward(6000, 3000);
+        await daoContract.submitNewCampaign(
+            2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+            0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+        );
+
+        await daoContract.vote(15, 1, {from: mike});
+        await daoContract.vote(15, 1, {from: victor});
+
+        // delay until epoch 15
+        currentBlock = await Helper.getCurrentBlock();
+        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 14 * epochPeriod + startBlock - currentBlock);
+        Helper.assertEqual(15, await daoContract.getCurrentEpochNumber());
+
+        // make a first trade and check data changes as expected
+        await tradeAndCheckDataChangesAsExpected(
+            15, // epoch
+            curNetworkFee, // new network fee
+            0, // new reward
+            10000, // new rebate
+            "gas cost change reward to 100%: " // log message
+        );
+    });
+
+    it("test update reward and rebate to 0", async() => {
+        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+
+        let link = web3.utils.fromAscii("https://kyberswap.com");
+
+        // create brr camp
+        currentBlock = await Helper.getCurrentBlock();
+        let newBrrData1 = getDataFromRebateAndReward(0, 0);
+        let newBrrData2 = getDataFromRebateAndReward(5000, 4900);
+        let newBrrData3 = getDataFromRebateAndReward(6000, 3000);
+        await daoContract.submitNewCampaign(
+            2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+            0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+        );
+
+        await daoContract.vote(16, 1, {from: mike});
+        await daoContract.vote(16, 1, {from: victor});
+
+        // delay until epoch 16
+        currentBlock = await Helper.getCurrentBlock();
+        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 15 * epochPeriod + startBlock - currentBlock);
+        Helper.assertEqual(16, await daoContract.getCurrentEpochNumber());
+
+        // make a first trade and check data changes as expected
+        await tradeAndCheckDataChangesAsExpected(
+            16, // epoch
+            curNetworkFee, // new network fee
+            0, // new reward
+            0, // new rebate
+            "gas cost change reward and rebate to 0: " // log message
+        );
+    });
+
     it("test can not record new data for DAO as no trade for more than 1 epoch", async() => {
         let curNetworkFee = await daoContract.latestNetworkFeeResult();
         let curBrrData = await feeHandler.readBRRData();
@@ -670,35 +875,35 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
         // create brr camp
         currentBlock = await Helper.getCurrentBlock();
-        let newBrrData1 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(1)), curBrrData.rewardBps.add(new BN(1)));
-        let newBrrData2 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(2)), curBrrData.rewardBps.add(new BN(2)));
-        let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(3)), curBrrData.rewardBps.add(new BN(3)));
+        let newBrrData1 = getDataFromRebateAndReward(5000, 5000);
+        let newBrrData2 = getDataFromRebateAndReward(5000, 4900);
+        let newBrrData3 = getDataFromRebateAndReward(6000, 3000);
         await daoContract.submitNewCampaign(
             2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
             0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
         );
 
-        // vote for network fee camp, id: 11
+        // vote for network fee camp, id: 17
         // mike & victor voted for option 1, so it is the winning option
-        await daoContract.vote(11, 1, {from: mike});
-        await daoContract.vote(11, 1, {from: victor});
+        await daoContract.vote(17, 1, {from: mike});
+        await daoContract.vote(17, 1, {from: victor});
 
-        // vote for brr camp, id: 12
+        // vote for brr camp, id: 18
         // mike & victor voted for option 1, so it is the winning option
-        await daoContract.vote(12, 1, {from: mike});
-        await daoContract.vote(12, 1, {from: victor});
+        await daoContract.vote(18, 1, {from: mike});
+        await daoContract.vote(18, 1, {from: victor});
 
         await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], minCampPeriod);
 
-        // delay until epoch 12
+        // delay until epoch 18
         currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 11 * epochPeriod + startBlock - currentBlock);
-        Helper.assertEqual(12, await daoContract.getCurrentEpochNumber());
+        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 17 * epochPeriod + startBlock - currentBlock);
+        Helper.assertEqual(18, await daoContract.getCurrentEpochNumber());
 
         // make a first trade and check data changes as expected
-        // no trade at epoch 11, so can not update new data for DAO from previous network fee + brr camps
+        // no trade at epoch 17, so can not update new data for DAO from previous network fee + brr camps
         await tradeAndCheckDataChangesAsExpected(
-            12, // epoch
+            18, // epoch
             curNetworkFee, // new network fee
             curBrrData.rewardBps, // new reward
             curBrrData.rebateBps, // new rebate
@@ -709,8 +914,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         Helper.assertEqual(await daoContract.latestNetworkFeeResult(), curNetworkFee);
         // brr camp should be updated without winning option
         let daoBrrData = await daoContract.latestBRRDataDecoded();
-        Helper.assertEqual(12 * epochPeriod + startBlock - 1, daoBrrData.expiryBlockNumber);
-        Helper.assertEqual(12, daoBrrData.epoch);
+        Helper.assertEqual(18 * epochPeriod + startBlock - 1, daoBrrData.expiryBlockNumber);
+        Helper.assertEqual(18, daoBrrData.epoch);
         Helper.assertEqual(curBrrData.rewardBps, daoBrrData.rewardInBps);
         Helper.assertEqual(curBrrData.rebateBps, daoBrrData.rebateInBps);
     });
