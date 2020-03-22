@@ -6,7 +6,7 @@ import "../IKyberDAO.sol";
 import "../IKyberFeeHandler.sol";
 import "../IKyberNetworkProxy.sol";
 import "../IBurnableToken.sol";
-import "./IBurnKncSanityRate.sol";
+import "./ISanityRate.sol";
 
 /*
  * @title Kyber fee handler
@@ -100,7 +100,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
 
     /// @dev use to get rate of KNC/ETH to check if rate to burn KNC is normal
     /// @dev index 0 is currently used contract address, indexes > 0 are older versions
-    IBurnKncSanityRate[] internal sanityRateContract;
+    ISanityRate[] internal sanityRateContract;
 
     mapping(address => uint) public feePerPlatformWallet;
     mapping(address => uint) public rebatePerWallet;
@@ -128,7 +128,6 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         kyberNetwork = _kyberNetwork;
         KNC = _knc;
         burnBlockInterval = _burnBlockInterval;
-        burnConfigSetter = _burnConfigSetter;
 
         //start with epoch 0
         updateBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, block.number, 0);
@@ -303,12 +302,12 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         daoSetter = address(0);
     }
 
-    event BurnConfigSet(IBurnKncSanityRate sanityRate, uint weiToBurn);
+    event BurnConfigSet(ISanityRate sanityRate, uint weiToBurn);
 
     /// @dev set burn KNC sanity rate contract and amount wei to burn
     /// @param _sanityRate new sanity rate contract
     /// @param _weiToBurn new amount of wei to burn
-    function setBurnConfigParams(IBurnKncSanityRate _sanityRate, uint _weiToBurn)
+    function setBurnConfigParams(ISanityRate _sanityRate, uint _weiToBurn)
         public onlyBurnConfigSetter
     {
         require(_weiToBurn > 0, "_weiToBurn is 0");
@@ -350,7 +349,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         // Get rate
         uint kyberEthKncRate = networkProxy.getExpectedRateAfterFee(ETH_TOKEN_ADDRESS, KNC, srcQty, 0, "");
 
-        require(validateEthToKncRateToBurn(kyberEthKncRate), "rate is bad");
+        require(validateEthToKncRateToBurn(kyberEthKncRate), "Kyber KNC rate invalid");
 
         // Buy some KNC and burn
         uint destQty = networkProxy.tradeWithHintAndFee.value(srcQty)(
@@ -435,7 +434,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
     /// @notice should be called off chain
     /// @dev returns list of sanity rate contracts
     /// @dev index 0 is currently used contract address, indexes > 0 are older versions
-    function getSanityRateContracts() external view returns (IBurnKncSanityRate[] memory sanityRates) {
+    function getSanityRateContracts() external view returns (ISanityRate[] memory sanityRates) {
        sanityRates = sanityRateContract;
     }
 
@@ -471,9 +470,8 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
 
         uint sanityEthToKncRate = PRECISION * PRECISION / kncToEthRate;
 
-        // rate should be different at most 10% compare to sanity rate
-        require(rateEthToKnc * BPS <= sanityEthToKncRate * (BPS + SANITY_RATE_DIFF_BPS), "rate is too high");
-        require(rateEthToKnc * BPS >= sanityEthToKncRate * (BPS - SANITY_RATE_DIFF_BPS), "rate is too low");
+        // rate shouldn't be 10% lower than sanity rate
+        require(rateEthToKnc * BPS >= sanityEthToKncRate * (BPS - SANITY_RATE_DIFF_BPS), "Kyber Eth To KNC rate too low");
 
         return true;
     }
