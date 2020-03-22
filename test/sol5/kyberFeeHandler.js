@@ -4,8 +4,9 @@ const BN = web3.utils.BN;
 const MockDAO = artifacts.require("MockDAO.sol");
 const BadDAO = artifacts.require("MaliciousDAO.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
-const BurnKncSanityRate = artifacts.require("MockBurnKncSanityRate.sol");
+const BurnKncSanityRate = artifacts.require("MockChainLinkSanityRate.sol");
 const BadFeeHandler = artifacts.require("MaliciousFeeHandler.sol");
+const MockContractCallBurnKNC = artifacts.require("MockContractCallBurnKNC.sol");
 const Token = artifacts.require("Token.sol");
 const BadToken = artifacts.require("TestTokenNotReturn.sol");
 const Proxy = artifacts.require("SimpleKyberProxy.sol");
@@ -73,7 +74,7 @@ contract('KyberFeeHandler', function(accounts) {
     beforeEach("Deploy new feeHandler instance", async() => {
         // deploy new sanity rate instance
         sanityRate = await BurnKncSanityRate.new();
-        await sanityRate.setKncEthRate(kncToEthPrecision);
+        await sanityRate.setLatestKncToEthRate(kncToEthPrecision);
 
         feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, burnConfigSetter);
         await feeHandler.setDaoContract(mockDAO.address, {from: daoSetter});
@@ -1046,7 +1047,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let newWeiToBurn = maxBurn.sub(new BN(1));
 
                 await feeHandler.setBurnConfigParams(sanityRate.address, newWeiToBurn, {from: burnConfigSetter});
-                await sanityRate.setKncEthRate(kncToEthPrecision);
+                await sanityRate.setLatestKncToEthRate(kncToEthPrecision);
 
                 // expect to burn only weiToBurn
                 const expectedBurn = newWeiToBurn;
@@ -1073,7 +1074,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let newWeiToBurn = maxBurn.add(new BN(1));
 
                 await feeHandler.setBurnConfigParams(sanityRate.address, newWeiToBurn, {from: burnConfigSetter});
-                await sanityRate.setKncEthRate(kncToEthPrecision);
+                await sanityRate.setLatestKncToEthRate(kncToEthPrecision);
 
                 // expect to burn all
                 const expectedBurn = maxBurn;
@@ -1181,11 +1182,11 @@ contract('KyberFeeHandler', function(accounts) {
                 );
             });
 
-            it("reverts no sanity rate", async() => {
+            it("reverts sanity rate 0", async() => {
                 feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, burnConfigSetter);
                 await feeHandler.setDaoContract(mockDAO.address, {from: daoSetter});
                 sanityRate = await BurnKncSanityRate.new();
-                await sanityRate.setKncEthRate(0);
+                await sanityRate.setLatestKncToEthRate(0);
                 await feeHandler.setBurnConfigParams(sanityRate.address, weiToBurn, {from: burnConfigSetter});
 
                 let sendVal = oneEth;
@@ -1207,7 +1208,7 @@ contract('KyberFeeHandler', function(accounts) {
                 feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, burnConfigSetter);
                 await feeHandler.setDaoContract(mockDAO.address, {from: daoSetter});
                 sanityRate = await BurnKncSanityRate.new();
-                await sanityRate.setKncEthRate(MAX_RATE.add(new BN(1)));
+                await sanityRate.setLatestKncToEthRate(MAX_RATE.add(new BN(1)));
                 await feeHandler.setBurnConfigParams(sanityRate.address, weiToBurn, {from: burnConfigSetter});
 
                 let sendVal = oneEth;
@@ -1229,7 +1230,7 @@ contract('KyberFeeHandler', function(accounts) {
                 feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, burnConfigSetter);
                 await feeHandler.setDaoContract(mockDAO.address, {from: daoSetter});
                 sanityRate = await BurnKncSanityRate.new();
-                await sanityRate.setKncEthRate(MAX_RATE.add(new BN(1)));
+                await sanityRate.setLatestKncToEthRate(MAX_RATE.add(new BN(1)));
                 await feeHandler.setBurnConfigParams(sanityRate.address, weiToBurn, {from: burnConfigSetter});
 
                 let sendVal = oneEth;
@@ -1241,34 +1242,39 @@ contract('KyberFeeHandler', function(accounts) {
 
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
 
-                // compare: revertRate * bps <= sanity * (bps + 10)
-                // => revertRate * bps / (bps + 10) <= sanity
-                // => take sanity < revertRate * bps / (bps + 10) should revert
-                let ethToKncRate = ethToKncPrecision;
-                ethToKncRate = ethToKncRate.mul(BPS).div(BPS.add(new BN(SANITY_RATE_DIFF)));
-                ethToKncRate.isub(new BN(1));
-                await sanityRate.setKncEthRate(precisionUnits.mul(precisionUnits).div(ethToKncRate));
-                let rateValue = await feeHandler.getLatestSanityRate();
-                rateValue = precisionUnits.mul(precisionUnits).div(rateValue);
-
-                await expectRevert(
-                    feeHandler.burnKNC(),
-                    "rate is too high"
-                );
-
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
-                    {from: kyberNetwork, value: sendVal})
-
                 // make sanity rate more than 10% higher
                 ethToKncRate = ethToKncPrecision;
                 ethToKncRate = ethToKncRate.mul(BPS).div(BPS.sub(new BN(SANITY_RATE_DIFF)));
                 ethToKncRate.iadd(new BN(1));
-                await sanityRate.setKncEthRate(precisionUnits.mul(precisionUnits).div(ethToKncRate));
+                await sanityRate.setLatestKncToEthRate(precisionUnits.mul(precisionUnits).div(ethToKncRate));
 
                 await expectRevert(
                     feeHandler.burnKNC(),
-                    "rate is too low"
+                    "Kyber Eth To KNC rate too low"
                 );
+            });
+
+            it("reverts only normal address can call burn", async() => {
+                feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, burnConfigSetter);
+                await feeHandler.setDaoContract(mockDAO.address, {from: daoSetter});
+                sanityRate = await BurnKncSanityRate.new();
+                await sanityRate.setLatestKncToEthRate(MAX_RATE.add(new BN(1)));
+                await feeHandler.setBurnConfigParams(sanityRate.address, weiToBurn, {from: burnConfigSetter});
+
+                let sendVal = oneEth;
+                let platformWallet = accounts[9];
+                let platformFeeWei = zeroBN;
+
+                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                    {from: kyberNetwork, value: sendVal})
+
+                await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
+
+                let contract = await MockContractCallBurnKNC.new(feeHandler.address);
+                await expectRevert(
+                    contract.callBurnKNC(),
+                    "Only normal address"
+                )
             });
 
             it("reverts if malicious KNC token is used, and burning fails", async() => {
@@ -1281,7 +1287,7 @@ contract('KyberFeeHandler', function(accounts) {
                 feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, badKNC.address, BURN_BLOCK_INTERVAL, burnConfigSetter);
                 await feeHandler.setDaoContract(mockDAO.address, {from: daoSetter});
                 sanityRate = await BurnKncSanityRate.new();
-                await sanityRate.setKncEthRate(kncToEthPrecision);
+                await sanityRate.setLatestKncToEthRate(kncToEthPrecision);
                 await feeHandler.setBurnConfigParams(sanityRate.address, weiToBurn, {from: burnConfigSetter});
 
                 let sendVal = oneEth;
@@ -1411,7 +1417,7 @@ contract('KyberFeeHandler', function(accounts) {
             it("test records correct burn config params", async() => {
                 // redeploy
                 sanityRate = await BurnKncSanityRate.new();
-                await sanityRate.setKncEthRate(kncToEthPrecision);
+                await sanityRate.setLatestKncToEthRate(kncToEthPrecision);
 
                 feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, burnConfigSetter);
                 await feeHandler.setDaoContract(mockDAO.address, {from: daoSetter});
@@ -1488,7 +1494,7 @@ contract('KyberFeeHandler', function(accounts) {
             it("test returns correct latest kncToEth rate from sanity rate", async function() {
                 // redeploy
                 sanityRate = await BurnKncSanityRate.new();
-                await sanityRate.setKncEthRate(kncToEthPrecision);
+                await sanityRate.setLatestKncToEthRate(kncToEthPrecision);
 
                 feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, burnConfigSetter);
                 await feeHandler.setDaoContract(mockDAO.address, {from: daoSetter});
@@ -1500,13 +1506,13 @@ contract('KyberFeeHandler', function(accounts) {
 
                 await feeHandler.setBurnConfigParams(sanityRate.address, weiToBurn, {from: burnConfigSetter});
 
-                await sanityRate.setKncEthRate(0);
+                await sanityRate.setLatestKncToEthRate(0);
                 Helper.assertEqual(0, await feeHandler.getLatestSanityRate());
-                await sanityRate.setKncEthRate(10);
+                await sanityRate.setLatestKncToEthRate(10);
                 Helper.assertEqual(10, await feeHandler.getLatestSanityRate());
-                await sanityRate.setKncEthRate(1000);
+                await sanityRate.setLatestKncToEthRate(1000);
                 Helper.assertEqual(1000, await feeHandler.getLatestSanityRate());
-                await sanityRate.setKncEthRate(kncToEthPrecision);
+                await sanityRate.setLatestKncToEthRate(kncToEthPrecision);
                 Helper.assertEqual(kncToEthPrecision, await feeHandler.getLatestSanityRate());
 
                 // change new sanity rate
@@ -1514,14 +1520,14 @@ contract('KyberFeeHandler', function(accounts) {
                 await feeHandler.setBurnConfigParams(newSanity.address, weiToBurn, {from: burnConfigSetter});
 
                 Helper.assertEqual(0, await feeHandler.getLatestSanityRate());
-                await newSanity.setKncEthRate(10000);
+                await newSanity.setLatestKncToEthRate(10000);
                 Helper.assertEqual(10000, await feeHandler.getLatestSanityRate());
 
                 // change old sanity rate, value shouldn't be affected
-                await sanityRate.setKncEthRate(20000);
+                await sanityRate.setLatestKncToEthRate(20000);
                 Helper.assertEqual(10000, await feeHandler.getLatestSanityRate());
                 // change new sanity rate, value should be updated
-                await newSanity.setKncEthRate(kncToEthPrecision);
+                await newSanity.setLatestKncToEthRate(kncToEthPrecision);
                 Helper.assertEqual(kncToEthPrecision, await feeHandler.getLatestSanityRate());
             });
 

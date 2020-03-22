@@ -1,21 +1,12 @@
 pragma solidity 0.5.11;
 
-<<<<<<< HEAD:contractsSol5/Dao/KyberFeeHandler.sol
 import "../utils/PermissionGroups2.sol";
 import "../utils/Utils4.sol";
 import "../IKyberDAO.sol";
 import "../IKyberFeeHandler.sol";
 import "../IKyberNetworkProxy.sol";
 import "../IBurnableToken.sol";
-=======
-import "./utils/PermissionGroups2.sol";
-import "./utils/Utils4.sol";
-import "./IKyberDAO.sol";
-import "./IKyberFeeHandler.sol";
-import "./IKyberNetworkProxy.sol";
-import "./IBurnableToken.sol";
 import "./IBurnKncSanityRate.sol";
->>>>>>> Add burn knc sanity rate check for FeeHandler:contractsSol5/KyberFeeHandler.sol
 
 /*
  * @title Kyber fee handler
@@ -137,6 +128,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         kyberNetwork = _kyberNetwork;
         KNC = _knc;
         burnBlockInterval = _burnBlockInterval;
+        burnConfigSetter = _burnConfigSetter;
 
         //start with epoch 0
         updateBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, block.number, 0);
