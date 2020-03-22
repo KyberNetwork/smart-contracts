@@ -652,7 +652,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         );
     });
 
-    it("test update network fee from DAO with new fee is 0, network updates network fee, feeHandler doesn't update brr data", async() => {
+    it("test update network fee from DAO with fee 0, network updates network fee, feeHandler doesn't update brr data", async() => {
         let curNetworkFee = await daoContract.latestNetworkFeeResult();
         let curBrrData = await feeHandler.readBRRData();
 
@@ -701,7 +701,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         Helper.assertEqual(brrData.rebateBps, daoBrrData.rebateInBps);
     });
 
-    it("test update network fee from DAO with new fee is max fee of 49.99%", async() => {
+    it("test update network fee from DAO with fee 49.99% - max fee", async() => {
         let curNetworkFee = await daoContract.latestNetworkFeeResult();
         let curBrrData = await feeHandler.readBRRData();
 
