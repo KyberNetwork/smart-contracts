@@ -1983,6 +1983,283 @@ contract('KyberMatchingEngine', function(accounts) {
                 });
             });
 
+            describe("test fees close to zero / BPS", async() => {
+                describe("T2E and E2T", async() => {
+                    //(networkFeeBps, platformFeeBps)
+                    let feeConfigurations = [
+                        [BPS.sub(new BN(1)), zeroBN], // 9999, 0
+                        [zeroBN, BPS.sub(new BN(1))], // 0, 9999
+                        [new BN(5000), new BN(4999)], // 5000, 4999
+                        [new BN(4999), new BN(5000)], // 4999, 5000
+                        [new BN(1), new BN(1)] // 1, 1
+                    ];
+
+                    for (const feeConfiguration of feeConfigurations) {
+                        let networkFeeBps = feeConfiguration[0];
+                        let platformFeeBps = feeConfiguration[1];
+
+                        it(`T2E, mask out hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
+                            numMaskedReserves = 2;
+                            info = [srcQty, networkFeeBps, platformFeeBps];
+                            
+                            hintedReserves = await getHintedReserves(
+                                matchingEngine, reserveInstances,
+                                MASK_OUT_HINTTYPE, numMaskedReserves, [], srcQty,
+                                undefined, 0, undefined, 0,
+                                srcToken.address, ethAddress
+                                );
+    
+                            bestReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps);
+                            expectedTradeResult = getTradeResult(
+                                srcDecimals, [bestReserve], [bestReserve.rateNoFee], [],
+                                ethDecimals, [], [], [],
+                                srcQty, networkFeeBps, platformFeeBps);
+                            
+                            expectedOutput = getExpectedOutput(
+                                [bestReserve], [BPS],
+                                [], []
+                            );
+                            
+                            actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
+                            compareResults(expectedTradeResult, expectedOutput, actualResult);
+                        });
+    
+                        it(`E2T, mask out hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
+                            numMaskedReserves = 2;
+                            info = [ethSrcQty, networkFeeBps, platformFeeBps];
+                            
+                            hintedReserves = await getHintedReserves(
+                                matchingEngine, reserveInstances,
+                                undefined, 0, undefined, 0,
+                                MASK_OUT_HINTTYPE, numMaskedReserves, [], ethSrcQty,
+                                ethAddress, destToken.address
+                                );
+    
+                            bestReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
+                            expectedTradeResult = getTradeResult(
+                                ethDecimals, [], [], [],
+                                destDecimals, [bestReserve], [bestReserve.rateNoFee], [],
+                                ethSrcQty, networkFeeBps, platformFeeBps);
+    
+                            expectedOutput = getExpectedOutput(
+                                [], [],
+                                [bestReserve], [BPS]
+                            );
+    
+                            actualResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint);
+                            compareResults(expectedTradeResult, expectedOutput, actualResult);
+                        });
+
+                        it(`T2E, split hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
+                            info = [srcQty, networkFeeBps, platformFeeBps];
+                            
+                            hintedReserves = await getHintedReserves(
+                                matchingEngine, reserveInstances,
+                                SPLIT_HINTTYPE, undefined, undefined, srcQty,
+                                undefined, 0, undefined, 0,
+                                srcToken.address, ethAddress
+                                );
+                            
+                            reserveRates = hintedReserves.reservesT2E.reservesForFetchRate.map(reserve => reserve.rate);
+                            expectedTradeResult = getTradeResult(
+                                srcDecimals, hintedReserves.reservesT2E.reservesForFetchRate, reserveRates, hintedReserves.reservesT2E.splits,
+                                ethDecimals, [], [], [],
+                                srcQty, networkFeeBps, platformFeeBps);
+                            
+                            expectedOutput = getExpectedOutput(
+                                hintedReserves.reservesT2E.reservesForFetchRate, hintedReserves.reservesT2E.splits,
+                                [], [],
+                            );
+    
+                            actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
+                            compareResults(expectedTradeResult, expectedOutput, actualResult);
+                        });
+    
+                        it(`E2T, split hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
+                            info = [ethSrcQty, networkFeeBps, platformFeeBps];
+                            
+                            hintedReserves = await getHintedReserves(
+                                matchingEngine, reserveInstances,
+                                undefined, 0, undefined, 0,
+                                SPLIT_HINTTYPE, undefined, undefined, ethSrcQty,
+                                ethAddress, destToken.address
+                                );
+    
+                            reserveRates = hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.rate);
+                            expectedTradeResult = getTradeResult(
+                                ethDecimals, [], [], [],
+                                destDecimals, hintedReserves.reservesE2T.reservesForFetchRate, reserveRates, hintedReserves.reservesE2T.splits,
+                                ethSrcQty, networkFeeBps, platformFeeBps);
+                            
+                            expectedOutput = getExpectedOutput(
+                                [], [],
+                                hintedReserves.reservesE2T.reservesForFetchRate, hintedReserves.reservesE2T.splits,
+                            );
+                            
+                            actualResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint);
+                            compareResults(expectedTradeResult, expectedOutput, actualResult);
+                        });
+                    }
+                });
+
+                describe("T2T", async() => {
+                    //(networkFeeBps, platformFeeBps)
+                    let feeConfigurations = [
+                        [new BN(4999), new BN(1)], // 2 * 4999, 1
+                        [zeroBN, BPS.sub(new BN(1))], // 0, 9999
+                        [new BN(2500), new BN(4999)], // 2 * 2500, 4999
+                        [new BN(1), new BN(1)] // 1, 1
+                    ];
+
+                    for (const feeConfiguration of feeConfigurations) {
+                        let networkFeeBps = feeConfiguration[0];
+                        let platformFeeBps = feeConfiguration[1];
+
+                        it(`T2T, mask out hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
+                            numMaskedReserves = 2;
+                            info = [srcQty, networkFeeBps, platformFeeBps];
+                            
+                            hintedReserves = await getHintedReserves(
+                                matchingEngine, reserveInstances,
+                                MASK_OUT_HINTTYPE, numMaskedReserves, [], srcQty,
+                                MASK_OUT_HINTTYPE, numMaskedReserves, [], ethSrcQty,
+                                srcToken.address, destToken.address
+                                );
+    
+                            bestSellReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesT2E.reservesForFetchRate, srcToken.address, ethAddress, srcQty, networkFeeBps); 
+                            bestBuyReserve = await nwHelper.getBestReserveAndRate(hintedReserves.reservesE2T.reservesForFetchRate, ethAddress, destToken.address, ethSrcQty, networkFeeBps);
+                            expectedTradeResult = getTradeResult(
+                                srcDecimals, [bestSellReserve], [bestSellReserve.rateNoFee], [],
+                                destDecimals, [bestBuyReserve], [bestBuyReserve.rateNoFee], [],
+                                srcQty, networkFeeBps, platformFeeBps);
+    
+                            expectedOutput = getExpectedOutput(
+                                [bestSellReserve], [BPS],
+                                [bestBuyReserve], [BPS]
+                            );
+                            
+                            actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                            compareResults(expectedTradeResult, expectedOutput, actualResult);
+                        });
+
+                        it(`T2T, split hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
+                            info = [srcQty, networkFeeBps, platformFeeBps];
+                            
+                            hintedReserves = await getHintedReserves(
+                                matchingEngine, reserveInstances,
+                                SPLIT_HINTTYPE, undefined, undefined, srcQty,
+                                SPLIT_HINTTYPE, undefined, undefined, ethSrcQty,
+                                srcToken.address, destToken.address
+                                );
+    
+                            reserveRatesT2E = hintedReserves.reservesT2E.reservesForFetchRate.map(reserve => reserve.rate);
+                            reserveRatesE2T = hintedReserves.reservesE2T.reservesForFetchRate.map(reserve => reserve.rate);
+    
+                            expectedTradeResult = getTradeResult(
+                                srcDecimals, hintedReserves.reservesT2E.reservesForFetchRate, reserveRatesT2E, hintedReserves.reservesT2E.splits,
+                                destDecimals, hintedReserves.reservesE2T.reservesForFetchRate, reserveRatesE2T, hintedReserves.reservesE2T.splits,
+                                srcQty, networkFeeBps, platformFeeBps);
+                            
+                            expectedOutput = getExpectedOutput(
+                                hintedReserves.reservesT2E.reservesForFetchRate, hintedReserves.reservesT2E.splits,
+                                hintedReserves.reservesE2T.reservesForFetchRate, hintedReserves.reservesE2T.splits,
+                            );
+                            
+                            actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint);
+                            compareResults(expectedTradeResult, expectedOutput, actualResult);
+                        });
+                    }
+                });
+            });
+
+            describe("test fees = BPS", async() => {
+                //(networkFeeBps, platformFeeBps)
+                let feeConfigurations = [
+                    [BPS, zeroBN], // 10000, 0
+                    [zeroBN, BPS], // 0, 10000
+                    [new BN(1), BPS.sub(new BN(1))], // 1, 9999
+                    [BPS.sub(new BN(1)), new BN(1)], // 9999, 1
+                    [new BN(5000), new BN(5000)], // 5000, 5000
+                ];
+
+                for (const feeConfiguration of feeConfigurations) {
+                    let networkFeeBps = feeConfiguration[0];
+                    let platformFeeBps = feeConfiguration[1];
+
+                    it(`should return zero rate for T2E, mask out hint, networkBps: ${networkFeeBps.toString()}, platformBps: ${platformFeeBps.toString()}`, async() => {
+                        numMaskedReserves = 2;
+                        info = [srcQty, networkFeeBps, platformFeeBps];
+                        
+                        hintedReserves = await getHintedReserves(
+                            matchingEngine, reserveInstances,
+                            MASK_OUT_HINTTYPE, numMaskedReserves, [], srcQty,
+                            undefined, 0, undefined, 0,
+                            srcToken.address, ethAddress
+                            );
+                        
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
+                        let actualDestAmt = actualResult.results[6];
+                        let actualRate = actualDestAmt.eq(zeroBN) ? zeroBN : Helper.calcRateFromQty(srcQty, actualDestAmt, srcDecimals, ethDecimals);
+                        Helper.assertEqual(actualRate, zeroBN, "rate not zero"); 
+                    });
+
+                    it(`should revert for E2T, mask out hint (fee >= E2T tradeAmt), networkBps: ${networkFeeBps.toString()}, platformBps: ${platformFeeBps.toString()}`, async() => {
+                        numMaskedReserves = 2;
+                        info = [ethSrcQty, networkFeeBps, platformFeeBps];
+                        
+                        hintedReserves = await getHintedReserves(
+                            matchingEngine, reserveInstances,
+                            undefined, 0, undefined, 0,
+                            MASK_OUT_HINTTYPE, numMaskedReserves, [], ethSrcQty,
+                            ethAddress, destToken.address
+                            );
+
+                        await expectRevert(
+                            matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint),
+                            "fee >= e2t tradeAmt"
+                        );
+                    });
+
+                    it(`should return zero rate for T2E, split hint, networkBps: ${networkFeeBps.toString()}, platformBps: ${platformFeeBps.toString()}`, async() => {
+                        info = [srcQty, networkFeeBps, platformFeeBps];
+                        
+                        hintedReserves = await getHintedReserves(
+                            matchingEngine, reserveInstances,
+                            SPLIT_HINTTYPE, undefined, undefined, srcQty,
+                            undefined, 0, undefined, 0,
+                            srcToken.address, ethAddress
+                            );
+
+                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
+                        let actualDestAmt = actualResult.results[6];
+                        let actualRate = actualDestAmt.eq(zeroBN) ? zeroBN : Helper.calcRateFromQty(srcQty, actualDestAmt, srcDecimals, ethDecimals);
+                        Helper.assertEqual(actualRate, zeroBN, "rate not zero"); 
+                    });
+
+                    it(`should revert for E2T, split hint (calcRateFromQty error), networkBps: ${networkFeeBps.toString()}, platformBps: ${platformFeeBps.toString()}`, async() => {
+                        info = [ethSrcQty, networkFeeBps, platformFeeBps];
+                        
+                        hintedReserves = await getHintedReserves(
+                            matchingEngine, reserveInstances,
+                            undefined, 0, undefined, 0,
+                            SPLIT_HINTTYPE, undefined, undefined, ethSrcQty,
+                            ethAddress, destToken.address
+                            );
+                        
+                        // will revert in calcRateFromQty, cos srcAmount is zero
+                        // special case: using await expectRevert.unspecified fails for coverage
+                        // expect revert, but get invalid opcode
+                        // use traditional method of try-catch 
+                        try {
+                            await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint)
+                            assert(false, "throw was expected in line above.")
+                        } catch(e){
+                            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                        }
+                    });
+                }
+            });
+
             describe("test fees > BPS", async() => {
                 let maxNum = (new BN(2).pow(new BN(256))).sub(new BN(1));
                 describe("T2E and E2T", async() => {
@@ -3210,7 +3487,7 @@ function getTradeResult(
             result.actualDestAmount = result.actualDestAmount.add(destAmt);
             amountSoFar = amountSoFar.add(splitAmount);
         }
-        rate = Helper.calcRateFromQty(actualTradeWei, result.actualDestAmount, ethDecimals, destDecimals);
+        rate = actualTradeWei.eq(zeroBN) ? zeroBN : Helper.calcRateFromQty(actualTradeWei, result.actualDestAmount, ethDecimals, destDecimals);
     } else if (e2tReserves.length > 0) {
         reserve = e2tReserves[0];
         rate = e2tRates[0];

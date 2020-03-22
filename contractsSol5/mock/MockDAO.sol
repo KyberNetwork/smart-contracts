@@ -58,7 +58,7 @@ contract MockDAO is IKyberDAO, Utils4 {
     }
 
     function claimStakerReward(address staker, uint percentageInPrecision, uint forEpoch) 
-        external returns(bool) 
+        external returns(bool)
     {
         return feeHandler.claimStakerReward(staker, percentageInPrecision, forEpoch);
     }
@@ -88,6 +88,6 @@ contract MockDAO is IKyberDAO, Utils4 {
 
     function advanceEpoch() public {
         epoch++;
-        expiryBlockNumber = block.number + epochPeriod; 
+        expiryBlockNumber = block.number + epochPeriod;
     }
 }

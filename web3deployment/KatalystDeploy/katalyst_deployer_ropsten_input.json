@@ -129,7 +129,7 @@
     "neg diff in bps" : 20,
     
     "epoch period": 1000,
-    "start block": 7452300,
+    "start block": 7518770,
     "network fee bps": 30,
     "reward fee bps": 3850,
     "rebate bps": 3000,

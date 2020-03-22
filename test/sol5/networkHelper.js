@@ -3,6 +3,8 @@ const Helper = require("../helper.js");
 
 const Reserve = artifacts.require("KyberReserve.sol");
 const ConversionRates = artifacts.require("ConversionRates.sol");
+const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
+const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 
 require("chai")
@@ -32,11 +34,18 @@ const EMPTY_HINTTYPE = 3;
 
 const ReserveType = {NONE: 0, FPR: 1, APR: 2, BRIDGE: 3, UTILITY: 4};
 
+//global variables
+//////////////////
+const gasPrice = (new BN(10).pow(new BN(9)).mul(new BN(50)));
+const negligibleRateDiffBps = new BN(10); //0.01%;
+const burnBlockInterval = new BN(30);
+
 module.exports = {NULL_ID, APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, 
     MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, ReserveType};
+
     
-    
-module.exports.setupReserves = async function 
+module.exports.setupReserves = setupReserves;
+async function setupReserves
     (network, tokens, numMock, numFpr, numEnhancedFpr, numApr, accounts, admin, operator, rebateWallets) {
     let result = {
         'numAddedReserves': numMock * 1 + numFpr * 1 + numEnhancedFpr * 1 + numApr * 1,
@@ -126,6 +135,25 @@ module.exports.setupReserves = async function
     //TODO: implement logic for other reserve types
     return result;
 }
+
+module.exports.setupNetwork = setupNetwork;
+async function setupNetwork
+    (network, networkProxyAddress, KNCAddress, DAOAddress, tokens, accounts, admin, operator){
+    await network.addOperator(operator, { from: admin });
+    //init matchingEngine, feeHandler
+    let matchingEngine = await MatchingEngine.new(admin);
+    await matchingEngine.setNetworkContract(network.address, { from: admin });
+    await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
+    let feeHandler = await FeeHandler.new(DAOAddress, network.address, network.address, KNCAddress, burnBlockInterval);
+    await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
+    // set DAO contract
+    await network.setDAOContract(DAOAddress, { from: admin });
+    // point proxy to network
+    await network.addKyberProxy(networkProxyAddress, { from: admin });
+    //set params, enable network
+    await network.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
+    await network.setEnable(true, { from: admin });
+} 
 
 module.exports.setupFprReserve = setupFprReserve;
 async function setupFprReserve(network, tokens, ethSender, pricingAdd, ethInit, admin, operator) {
@@ -237,7 +265,8 @@ async function setupFprPricing (tokens, numImbalanceSteps, numQtySteps, tokensPe
     return pricing;
 }
 
-module.exports.addReservesToNetwork = async function (networkInstance, reserveInstances, tokens, operator) {
+module.exports.addReservesToNetwork = addReservesToNetwork;
+async function addReservesToNetwork(networkInstance, reserveInstances, tokens, operator) {
     for (const [key, value] of Object.entries(reserveInstances)) {
         reserve = value;
         console.log("add reserve type: " + reserve.type + " ID: " + reserve.reserveId);
@@ -320,12 +349,13 @@ async function getBestReserveAndRate(reserves, src, dest, srcAmount, networkFeeB
     }
     for (let i=0; i < reserveArr.length; i++) {
         reserve = reserveArr[i];
-        if (reserve.rate.gt(bestReserveData.rateOnlyNetworkFee)) {
+        let rateForComparison = (reserve.isFeePaying) ? reserve.rate.mul(BPS.sub(networkFeeBps)).div(BPS) : reserve.rate;
+        if (rateForComparison.gt(bestReserveData.rateOnlyNetworkFee)) {
             bestReserveData.address = reserve.address;
             bestReserveData.reserveId = reserve.reserveId;
             bestReserveData.rateNoFee = reserve.rate;
             bestReserveData.isFeePaying = reserve.isFeePaying;
-            bestReserveData.rateOnlyNetworkFee = (reserve.isFeePaying) ? reserve.rate.mul(BPS.sub(networkFeeBps)).div(BPS) : reserve.rate;
+            bestReserveData.rateOnlyNetworkFee = rateForComparison;
         }
     }
     return bestReserveData;

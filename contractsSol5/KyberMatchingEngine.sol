@@ -30,7 +30,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     mapping(address=>IKyberReserve[])   internal reservesPerTokenDest;  // reserves support eth to token
 
     uint internal feePayingPerType = 0xffffffff;
-    
+
     constructor(address _admin) public
         Withdrawable2(_admin)
     { /* empty body */ }
@@ -152,10 +152,10 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint platformFeeWei;
 
         uint networkFeeBps;
-        
+
         uint numFeePayingReserves;
         uint feePayingReservesBps; // what part of this trade is fee paying. for token to token - up to 200%
-        
+
         uint destAmountNoFee;
         uint destAmountWithNetworkFee;
         uint actualDestAmount; // all fees
@@ -225,7 +225,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         //ETH -> dest fee deduction has not occured for non-split ETH -> dest trade types
         tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
         tData.platformFeeWei = tData.tradeWei * info[uint(IKyberMatchingEngine.InfoIndex.platformFeeBps)] / BPS;
-        
+
         require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
         calcRatesAndAmountsEthToToken(dest, tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei, tData);
 
@@ -490,7 +490,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             isFeePaying[i] = tData.tokenToEth.isFeePaying[i];
             ids[i] = convertAddressToReserveId(address(reserveAddresses[i]));
         }
-        
+
         // then store ETH to token information, but need to offset when accessing tradeData
         for (uint i = tokenToEthNumReserves; i < totalNumReserves; i++) {
             reserveAddresses[i] = tData.ethToToken.addresses[i - tokenToEthNumReserves];
@@ -505,7 +505,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         IKyberReserve reserve;
         uint rate;
         bool isFeePaying;
-        
+
         // Eth to token
         ///////////////
         // if hinted reserves, find rates and save.
@@ -583,7 +583,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint[] memory rates = new uint[](reserveArr.length);
         uint[] memory reserveCandidates = new uint[](reserveArr.length);
         bool[] memory feePayingPerReserve = getIsFeePayingReserves(reserveArr);
-        
+
         uint destAmount;
         uint srcAmountWithFee;
 
@@ -617,9 +617,9 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         }
 
         if (bestReserve.destAmount == 0) return (reserveArr[bestReserve.index], 0, false);
-        
+
         reserveCandidates[0] = bestReserve.index;
-        
+
         // if this reserve pays fee its actual rate is less. so smallestRelevantRate is smaller.
         bestReserve.destAmount = bestReserve.destAmount * BPS / (BPS + negligibleRateDiffBps);
 

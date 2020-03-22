@@ -6,11 +6,17 @@ node_js:
 
 before_install:
   - npm i -g npm
+
+env:
+  global:
+    - COVERAGE_BRANCH=Katalyst
   
 matrix:
   include:
     - env:
         - TEST_PART: Sol5
+    - env:
+        - TEST_PART: Coverage
 
 install:
   - npm ci
@@ -18,3 +24,16 @@ install:
 script:
   - ./cmp.sh
   - .travis/test-part.sh
+
+deploy:
+  - provider: s3
+    access_key_id: $AWS_ACCESS_KEY_ID
+    secret_access_key: $AWS_SECRET_ACCESS_KEY
+    bucket: katalyst-coverage.knstats.com
+    region: ap-southeast-1
+    acl: public_read
+    local_dir: coverage
+    skip_cleanup: true
+    on:
+      branch: $COVERAGE_BRANCH
+      condition: $TEST_PART = Coverage

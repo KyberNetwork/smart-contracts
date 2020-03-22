@@ -24,7 +24,7 @@ contract CampPermissionGroups {
     }
 
     modifier onlyCampaignCreator() {
-        require(msg.sender == campaignCreator, "not camp creator");
+        require(msg.sender == campaignCreator, "only campaign creator");
         _;
     }
 
@@ -45,19 +45,19 @@ contract CampPermissionGroups {
      * @param newCampCreator The address to transfer ownership to.
      */
     function transferCampaignCreatorQuickly(address newCampCreator) public onlyCampaignCreator {
-        require(newCampCreator != address(0), "new camp creator is 0");
+        require(newCampCreator != address(0), "newCampCreator is 0");
         emit TransferCampaignCreatorPending(newCampCreator);
         emit CampaignCreatorClaimed(newCampCreator, campaignCreator);
         campaignCreator = newCampCreator;
     }
 
-    event CampaignCreatorClaimed( address newAdmin, address previousAdmin);
+    event CampaignCreatorClaimed(address newCampaignCreator, address previousCampaignCreator);
 
     /**
      * @dev Allows the pendingCampCreator address to finalize the change campaign creator process.
      */
     function claimCampaignCreator() public {
-        require(pendingCampCreator == msg.sender, "not pending camp creator");
+        require(pendingCampCreator == msg.sender, "only pending campaign creator");
         emit CampaignCreatorClaimed(pendingCampCreator, campaignCreator);
         campaignCreator = pendingCampCreator;
         pendingCampCreator = address(0);
@@ -67,7 +67,7 @@ contract CampPermissionGroups {
 /**
 * @dev camp -> campaign
 * @dev Network fee campaign: options are fee in bps
-* @dev BRR fee handler campaign: options are combined of rebate (first 128 bits) + reward (last 128 bits)
+* @dev BRR fee handler campaign: options are combined of rebate (left most 128 bits) + reward (right most 128 bits)
 * @dev General campaign: options are from 1 to num_options
 */
 
@@ -77,7 +77,6 @@ contract CampPermissionGroups {
 contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroups, Utils4 {
     // Constants
     uint internal constant POWER_128 = 2 ** 128;
-    uint internal constant POWER_84 = 2 ** 84;
     // max number of camps for each epoch
     uint public constant MAX_EPOCH_CAMPS = 10;
     // max number of options for each campaign
@@ -102,10 +101,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint campID;
         uint startBlock;
         uint endBlock;
-        uint totalKNCSupply;    // total KNC supply at the time campaign was created
-        uint formulaParams;     // squeezing formula params into one number
-        bytes link;             // link to KIP, explaination of options, etc.
-        uint[] options;         // data of options
+        uint totalKNCSupply;        // total KNC supply at the time campaign was created
+        FormulaData formulaData;    // formula params for concluding campaign result
+        bytes link;                 // link to KIP, explaination of options, etc.
+        uint[] options;             // data of options
     }
 
     /* Mapping from campaign ID => data */
@@ -114,12 +113,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     uint public numberCampaigns = 0;
     mapping(uint => bool) public campExists;
     mapping(uint => Campaign) internal campaignData;
-    // campOptionPoints[campID]: total points and points of each option for a campaign
-    // campOptionPoints[campID][0] is total points, campOptionPoints[campID][1..] for each option ID
-    mapping(uint => uint[]) internal campOptionPoints;
-    // winningOptionData[campID]: winning option data for each campaign
-    // 128 bits: has concluded campaign or not, last 128 bits: winning option ID
-    mapping(uint => uint) internal winningOptionData;
+    // campOptionVotes[campID]: total votes and vote of each option for a campaign
+    // campOptionVotes[campID][0]: total votes, campOptionVotes[campID][1..]: vote for each option ID
+    mapping(uint => uint[]) internal campOptionVotes;
 
     /** Mapping from epoch => data */
 
@@ -153,7 +149,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         require(_staking != address(0), "ctor: staking is missing");
         require(_feeHandler != address(0), "ctor: feeHandler is missing");
         require(_knc != address(0), "ctor: knc token is missing");
-        require(_defaultNetworkFeeBps <= BPS, "ctor: network fee high");
+        // in Network, maximum fee that can be taken from 1 tx is (platform fee + 2 * network fee)
+        // so netwofk fee should be less than 50%
+        require(_defaultNetworkFeeBps < BPS / 2, "ctor: network fee high");
 
         staking = IKyberStaking(_staking);
         require(staking.EPOCH_PERIOD_BLOCKS() == _epochPeriod, "ctor: diff epoch period");
@@ -169,14 +167,14 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     modifier onlyStakingContract {
-        require(msg.sender == address(staking), "sender is not staking");
+        require(msg.sender == address(staking), "only staking contract");
         _;
     }
 
     /**
     * @dev called by staking contract when staker wanted to withdraw
     * @param staker address of staker to reduce reward
-    * @param reduceAmount amount point to be reduced for each campaign staker has voted at this epoch
+    * @param reduceAmount amount voting power to be reduced for each campaign staker has voted at this epoch
     */
     function handleWithdrawal(address staker, uint reduceAmount) public onlyStakingContract returns(bool) {
         // staking shouldn't call this func with reduce amount = 0
@@ -199,8 +197,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             // deduce vote count for current running campaign that this staker has voted
             if (votedOption > 0 && campaignData[campID].endBlock >= block.number) {
                 // user already voted for this camp and the camp is not ended
-                campOptionPoints[campID][0] = campOptionPoints[campID][0].sub(reduceAmount);
-                campOptionPoints[campID][votedOption] = campOptionPoints[campID][votedOption].sub(reduceAmount);
+                campOptionVotes[campID][0] = campOptionVotes[campID][0].sub(reduceAmount);
+                campOptionVotes[campID][votedOption] = campOptionVotes[campID][votedOption].sub(reduceAmount);
             }
         }
 
@@ -209,7 +207,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     event NewCampaignCreated(
         CampaignType campType, uint campID,
-        uint startBlock, uint endBlock, uint formulaParams,
+        uint startBlock, uint endBlock,
+        uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision,
         uint[] options, bytes link
     );
 
@@ -218,12 +217,15 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @param campType type of campaign (network fee, brr, general)
     * @param startBlock block to start running the campaign
     * @param endBlock block to end this campaign
-    * @param formulaParams encoded formula params for this campaign (minPercentage, c, t)
+    * @param minPercentageInPrecision min percentage (in precision) for formula to conclude campaign
+    * @param cInPrecision c value (in precision) for formula to conclude campaign
+    * @param tInPrecision t value (in precision) for formula to conclude campaign
     * @param options list values of options to vote for this campaign
     * @param link additional data for this campaign
     */
     function submitNewCampaign(
-        CampaignType campType, uint startBlock, uint endBlock, uint formulaParams,
+        CampaignType campType, uint startBlock, uint endBlock,
+        uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision,
         uint[] memory options, bytes memory link
     )
         public onlyCampaignCreator returns(uint campID)
@@ -234,18 +236,20 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         require(
             epochCampaigns[campEpoch].length < MAX_EPOCH_CAMPS,
-            "newCampaign: too many camps"
+            "newCampaign: too many campaigns"
         );
 
         require(
-            validateCampaignParams(campType, startBlock, endBlock, campEpoch, formulaParams, options),
-            "newCampaign: invalid camp params"
+            validateCampaignParams(
+                campType, startBlock, endBlock, campEpoch,
+                minPercentageInPrecision, cInPrecision, tInPrecision, options),
+            "newCampaign: invalid campaign params"
         );
 
         if (campType == CampaignType.NETWORK_FEE) {
-            require(networkFeeCamp[campEpoch] == 0, "newCampaign: alr had network fee at the epoch");
+            require(networkFeeCamp[campEpoch] == 0, "newCampaign: alr had network fee for this epoch");
         } else if (campType == CampaignType.FEE_HANDLER_BRR) {
-            require(brrCampaign[campEpoch] == 0, "newCampaign: alr had brr at the epoch");
+            require(brrCampaign[campEpoch] == 0, "newCampaign: alr had brr for this epoch");
         }
 
         numberCampaigns = numberCampaigns.add(1);
@@ -261,6 +265,12 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             brrCampaign[campEpoch] = campID;
         }
 
+        FormulaData memory formulaData = FormulaData({
+            minPercentageInPrecision: minPercentageInPrecision,
+            cInPrecision: cInPrecision,
+            tInPrecision: tInPrecision
+        });
+
         campaignData[campID] = Campaign({
             campID: campID,
             campType: campType,
@@ -268,14 +278,18 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             endBlock: endBlock,
             totalKNCSupply: kncToken.totalSupply(),
             link: link,
-            formulaParams: formulaParams,
+            formulaData: formulaData,
             options: options
         });
 
         // index 0 for total votes, index 1 -> options.length for each option
-        campOptionPoints[campID] = new uint[](options.length + 1);
+        campOptionVotes[campID] = new uint[](options.length + 1);
 
-        emit NewCampaignCreated(campType, campID, startBlock, endBlock, formulaParams, options, link);
+        emit NewCampaignCreated(
+            campType, campID, startBlock, endBlock,
+            minPercentageInPrecision, cInPrecision, tInPrecision,
+            options, link
+        );
     }
 
     event CancelledCampaign(uint campID);
@@ -286,11 +300,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @param campID id of the campaign to cancel
     */
     function cancelCampaign(uint campID) public onlyCampaignCreator {
-        require(campExists[campID], "cancelCamp: campID not exist");
+        require(campExists[campID], "cancelCampaign: campID doesn't exist");
 
         Campaign storage camp = campaignData[campID];
 
-        require(camp.startBlock > block.number, "cancelCamp: camp alr started");
+        require(camp.startBlock > block.number, "cancelCampaign: campaign alr started");
 
         uint epoch = getEpochNumber(camp.startBlock);
 
@@ -303,7 +317,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         }
 
         delete campaignData[campID];
-        delete campOptionPoints[campID];
+        delete campOptionVotes[campID];
 
         uint[] storage campIDs = epochCampaigns[epoch];
         for (uint i = 0; i < campIDs.length; i++) {
@@ -343,14 +357,14 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
             totalEpochPoints[curEpoch] = totalEpochPoints[curEpoch].add(totalStake);
             // increase voted points for this option
-            campOptionPoints[campID][option] = campOptionPoints[campID][option].add(totalStake);
-            // increase total voted points
-            campOptionPoints[campID][0] = campOptionPoints[campID][0].add(totalStake);
+            campOptionVotes[campID][option] = campOptionVotes[campID][option].add(totalStake);
+            // increase total votes
+            campOptionVotes[campID][0] = campOptionVotes[campID][0].add(totalStake);
         } else if (lastVotedOption != option) {
             // deduce previous option voted count
-            campOptionPoints[campID][lastVotedOption] = campOptionPoints[campID][lastVotedOption].sub(totalStake);
+            campOptionVotes[campID][lastVotedOption] = campOptionVotes[campID][lastVotedOption].sub(totalStake);
             // increase new option voted count
-            campOptionPoints[campID][option] = campOptionPoints[campID][option].add(totalStake);
+            campOptionVotes[campID][option] = campOptionVotes[campID][option].add(totalStake);
         }
 
         stakerVotedOption[staker][campID] = option;
@@ -367,7 +381,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     */
     function claimReward(address staker, uint epoch) public nonReentrant {
         uint curEpoch = getCurrentEpochNumber();
-        require(epoch < curEpoch, "claimReward: not past epoch");
+        require(epoch < curEpoch, "claimReward: only for past epochs");
         require(!hasClaimedReward[staker][epoch], "claimReward: alr claimed");
 
         uint perInPrecision = getStakerRewardPercentageInPrecision(staker, epoch);
@@ -382,7 +396,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     /**
     * @dev get latest network fee data + expiry block number
-    * @dev also save winning option data and latest network fee result
+    * @dev conclude network fee campaign if needed and caching latest result in DAO
     */
     function getLatestNetworkFeeDataWithCache() public returns(uint feeInBps, uint expiryBlockNumber) {
         uint curEpoch = getCurrentEpochNumber();
@@ -398,14 +412,12 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         uint campID = networkFeeCamp[curEpoch.sub(1)];
         if (campID == 0) {
-            // not have network fee campaign, return latest result
+            // don't have network fee campaign, return latest result
             return (feeInBps, expiryBlockNumber);
         }
 
         uint winningOption;
         (winningOption, feeInBps) = getCampaignWinningOptionAndValue(campID);
-        // save latest winning option data
-        winningOptionData[campID] = encodeWinningOptionData(winningOption, true);
 
         if (winningOption == 0) {
             // no winning option, fall back to previous result
@@ -418,6 +430,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     /**
     * @dev return latest burn/reward/rebate data, also affecting epoch + expiry block number
+    * @dev conclude brr campaign if needed and caching latest result in DAO
     */
     function getLatestBRRData()
         public
@@ -432,8 +445,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             if (campID != 0) {
                 uint winningOption;
                 (winningOption, brrData) = getCampaignWinningOptionAndValue(campID);
-                // save latest winning option data
-                winningOptionData[campID] = encodeWinningOptionData(winningOption, true);
                 if (winningOption == 0) {
                     // no winning option, fallback to previous result
                     brrData = latestBrrResult;
@@ -462,8 +473,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     function getCampaignDetails(uint campID)
         public view
         returns(
-            CampaignType campType, uint startBlock, uint endBlock,
-            uint totalKNCSupply, uint formulaParams, bytes memory link, uint[] memory options
+            CampaignType campType, uint startBlock, uint endBlock, uint totalKNCSupply,
+            uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision,
+            bytes memory link, uint[] memory options
         )
     {
         Campaign storage camp = campaignData[campID];
@@ -471,13 +483,15 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         startBlock = camp.startBlock;
         endBlock = camp.endBlock;
         totalKNCSupply = camp.totalKNCSupply;
-        formulaParams = camp.formulaParams;
+        minPercentageInPrecision = camp.formulaData.minPercentageInPrecision;
+        cInPrecision = camp.formulaData.cInPrecision;
+        tInPrecision = camp.formulaData.tInPrecision;
         link = camp.link;
         options = camp.options;
     }
 
     function getCampaignVoteCountData(uint campID) public view returns(uint[] memory voteCounts, uint totalVoteCount) {
-        uint[] memory votes = campOptionPoints[campID];
+        uint[] memory votes = campOptionVotes[campID];
         if (votes.length == 0) {
             return (voteCounts, totalVoteCount);
         }
@@ -506,21 +520,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         // not found or not ended yet, return 0 as winning option
         if (camp.endBlock == 0 || camp.endBlock > block.number) { return (0, 0); }
 
-        bool hasConcluded;
-        (hasConcluded, optionID) = decodeWinningOptionData(winningOptionData[campID]);
-        if (hasConcluded) {
-            if (optionID == 0 || optionID > camp.options.length) {
-                // no winning option or invalid winning option
-                return (0, 0);
-            }
-            return (optionID, camp.options[optionID - 1]);
-        }
-
         uint totalSupply = camp.totalKNCSupply;
-        // no one has voted in this epoch
+        // something is wrong here, total KNC supply shouldn't be 0
         if (totalSupply == 0) { return (0, 0); }
 
-        uint[] memory voteCounts = campOptionPoints[campID];
+        uint[] memory voteCounts = campOptionVotes[campID];
 
         // Finding option with most votes
         uint winningOption = 0;
@@ -536,7 +540,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         // more than 1 options have same vote count
         if (winningOption == 0) { return (0, 0); }
 
-        FormulaData memory formulaData = decodeFormulaParams(camp.formulaParams);
+        FormulaData memory formulaData = camp.formulaData;
 
         uint totalVotes = voteCounts[0];
         // compute voted percentage (in precision)
@@ -545,6 +549,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         // total voted percentage is below min acceptable percentage, no winning option
         if (formulaData.minPercentageInPrecision > votedPercentage) { return (0, 0); }
 
+        // as we already limit value for c & t, no need to check for overflow here
         uint x = formulaData.tInPrecision.mul(votedPercentage).div(PRECISION);
         if (x <= formulaData.cInPrecision) {
             // threshold is not negative, need to compare with voted count
@@ -570,7 +575,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         }
         uint campID = networkFeeCamp[curEpoch.sub(1)];
         if (campID == 0) {
-            // not have network fee campaign, return latest result
+            // don't have network fee campaign, return latest result
             return (feeInBps, expiryBlockNumber);
         }
 
@@ -661,22 +666,26 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         data = (rebateInBps.mul(POWER_128)).add(rewardInBps);
     }
 
+    /**
+    * Validate params to check if we could submit a new campaign with these params
+    */
     function validateCampaignParams(
-        CampaignType campType, uint startBlock, uint endBlock,
-        uint startEpoch, uint formulaParams, uint[] memory options
+        CampaignType campType, uint startBlock, uint endBlock, uint startEpoch,
+        uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision,
+        uint[] memory options
     )
         public view returns(bool)
     {
         // block number <= start block < end block
         require(
             startBlock >= block.number,
-            "validateParams: start in the past"
+            "validateParams: can't start in the past"
         );
         // camp duration must be at least min camp duration
         // endBlock - startBlock + 1 >= MIN_CAMP_DURATION_BLOCKS,
         require(
             endBlock.add(1) >= startBlock.add(MIN_CAMP_DURATION_BLOCKS),
-            "validateParams: camp duration low"
+            "validateParams: campaign duration is low"
         );
 
         uint currentEpoch = getCurrentEpochNumber();
@@ -688,15 +697,15 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         );
         // start + end blocks must be in the same epoch
         require(
-            startEpoch <= currentEpoch + 1,
-            "validateParams: not for current or next epoch"
+            startEpoch <= currentEpoch.add(1),
+            "validateParams: only for current or next epochs"
         );
 
         // verify number of options
         uint numOptions = options.length;
         require(
             numOptions > 1 && numOptions <= MAX_CAMP_OPTIONS,
-            "validateParams: invalid no. options"
+            "validateParams: invalid number of options"
         );
 
         // Validate option values based on campaign type
@@ -705,16 +714,17 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             for (uint i = 0; i < options.length; i++) {
                 require(
                     options[i] > 0,
-                    "validateParams: general camp options is 0"
+                    "validateParams: general campaign option is 0"
                 );
             }
         } else if (campType == CampaignType.NETWORK_FEE) {
             // network fee campaign, option must be fee in bps
             for (uint i = 0; i < options.length; i++) {
-                // fee must <= 100%
+                // in Network, maximum fee that can be taken from 1 tx is (platform fee + 2 * network fee)
+                // so netwofk fee should be less than 50%
                 require(
-                    options[i] <= BPS,
-                    "validateParams: Fee camp options high"
+                    options[i] < BPS / 2,
+                    "validateParams: Fee campaign option value is too high"
                 );
             }
         } else {
@@ -723,70 +733,46 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
                 // first 128 bits is rebate, last 128 bits is reward
                 (uint rebateInBps, uint rewardInBps) = getRebateAndRewardFromData(options[i]);
                 require(
-                    rewardInBps + rebateInBps <= BPS,
-                    "validateParams: RR too high"
+                    rewardInBps.add(rebateInBps) <= BPS,
+                    "validateParams: RR values are too high"
                 );
             }
         }
 
-        FormulaData memory data = decodeFormulaParams(formulaParams);
         // percentage should be smaller than or equal 100%
         require(
-            data.minPercentageInPrecision <= PRECISION,
-            "validateParams: min percentage high"
+            minPercentageInPrecision <= PRECISION,
+            "validateParams: min percentage is high"
+        );
+
+        // limit value of c and t to avoid overflow
+        require(
+            cInPrecision <= POWER_128,
+            "validateParams: c is high"
+        );
+
+        require(
+            tInPrecision <= POWER_128,
+            "validateParams: t is high"
         );
 
         return true;
     }
 
     /**
-    * @dev encode formula params
-    * @dev 84 bits for each value
-    */
-    function encodeFormulaParams(
-        uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision
-    ) public pure returns(uint data) {
-        require(minPercentageInPrecision <= PRECISION, "min percentage high");
-        require(cInPrecision < POWER_84, "c high");
-        require(tInPrecision < POWER_84, "t high");
-
-        data = minPercentageInPrecision & (POWER_84.sub(1));
-        data |= (cInPrecision & (POWER_84.sub(1))).mul(POWER_84);
-        data |= (tInPrecision & (POWER_84.sub(1))).mul(POWER_84).mul(POWER_84);
-    }
-
-    function decodeFormulaParams(uint data) internal pure returns(FormulaData memory formulaData) {
-        formulaData.minPercentageInPrecision = data & (POWER_84.sub(1));
-        formulaData.cInPrecision = (data.div(POWER_84)) & (POWER_84.sub(1));
-        formulaData.tInPrecision = (data.div(POWER_84.mul(POWER_84))) & (POWER_84.sub(1));
-    }
-
-    /**
     * @dev options are indexed from 1
     */
     function validateVoteOption(uint campID, uint option) internal view returns(bool) {
-        require(campExists[campID], "vote: camp not exist");
+        require(campExists[campID], "vote: campaign doesn't exist");
 
         Campaign storage camp = campaignData[campID];
 
-        require(camp.startBlock <= block.number, "vote: camp not started");
-        require(camp.endBlock >= block.number, "vote: camp alr ended");
+        require(camp.startBlock <= block.number, "vote: campaign not started");
+        require(camp.endBlock >= block.number, "vote: campaign alr ended");
 
         require(option > 0, "vote: option is 0");
-        require(option <= camp.options.length, "vote: option not in range");
+        require(option <= camp.options.length, "vote: option is not in range");
 
         return true;
-    }
-
-    function decodeWinningOptionData(uint data) internal pure returns(bool hasConcluded, uint optionID) {
-        hasConcluded = ((data.div(POWER_128)) & (POWER_128.sub(1))) == 1;
-        optionID = data & (POWER_128.sub(1));
-    }
-
-    function encodeWinningOptionData(uint optionID, bool hasConcluded) internal pure returns(uint data) {
-        data = optionID & (POWER_128.sub(1));
-        if (hasConcluded) {
-            data = data.add(POWER_128);
-        }
     }
 }
