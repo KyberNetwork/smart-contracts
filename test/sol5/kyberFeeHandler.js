@@ -1293,7 +1293,7 @@ contract('KyberFeeHandler', function(accounts) {
 
                 await expectRevert(
                     feeHandler.burnKNC(),
-                    "sanity rate is 0x0, burn is block"
+                    "sanity rate is 0x0, burning is blocked"
                 )
             });
 

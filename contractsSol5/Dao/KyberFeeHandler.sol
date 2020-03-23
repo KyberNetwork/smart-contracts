@@ -462,7 +462,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         require(rateEthToKnc <= MAX_RATE, "ethToKnc rate out of bounds");
         require(rateEthToKnc > 0, "ethToKnc rate is 0");
         require(sanityRateContract.length > 0, "no sanity rate contract");
-        require(sanityRateContract[0] != ISanityRate(0), "sanity rate is 0x0, burn is block");
+        require(sanityRateContract[0] != ISanityRate(0), "sanity rate is 0x0, burning is blocked");
 
         // get latest knc/eth rate from sanity contract
         uint kncToEthRate = sanityRateContract[0].latestAnswer();
