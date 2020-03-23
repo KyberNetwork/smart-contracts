@@ -517,7 +517,7 @@ async function setTempOperatorToNetwork() {
 async function setFeePayingDataInMatchingEngine() {
   console.log("set fee paying data: matching engine");
   await sendTx(matchingEngineContract.methods.setFeePayingPerReserveType(
-    isFeePaying["FPR"], isFeePaying["APR"], isFeePaying["BRIDGE"], isFeePaying["UTILITY"], isFeePaying["CUSTOM"]
+    isFeePaying["FPR"], isFeePaying["APR"], isFeePaying["BRIDGE"], isFeePaying["UTILITY"], isFeePaying["CUSTOM"], isFeePaying["ORDERBOOK"]
   ));
 }
 
