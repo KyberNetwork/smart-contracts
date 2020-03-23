@@ -1277,6 +1277,26 @@ contract('KyberFeeHandler', function(accounts) {
                 )
             });
 
+            it("reverts if sanity rate is 0", async() => {
+                feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, burnConfigSetter);
+                await feeHandler.setDaoContract(mockDAO.address, {from: daoSetter});
+                await feeHandler.setBurnConfigParams(zeroAddress, weiToBurn, {from: burnConfigSetter});
+
+                let sendVal = oneEth;
+                let platformWallet = accounts[9];
+                let platformFeeWei = zeroBN;
+
+                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                    {from: kyberNetwork, value: sendVal})
+
+                await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
+
+                await expectRevert(
+                    feeHandler.burnKNC(),
+                    "sanity rate is 0x0, burn is block"
+                )
+            });
+
             it("reverts if malicious KNC token is used, and burning fails", async() => {
                 //setup bad KNC
                 let badKNC = await BadToken.new("KyberNetworkCrystal", "KNC", KNC_DECIMALS);
@@ -1392,11 +1412,6 @@ contract('KyberFeeHandler', function(accounts) {
 
         describe("burn config params test", async() => {
             it("test reverts burn config params invalid", async() => {
-                // revert when sanity is zero
-                await expectRevert(
-                    feeHandler.setBurnConfigParams(zeroAddress, weiToBurn, {from: burnConfigSetter}),
-                    "_sanityRate is 0"
-                )
                 // revert weiToBurn is zero
                 await expectRevert(
                     feeHandler.setBurnConfigParams(sanityRate.address, 0, {from: burnConfigSetter}),
@@ -1529,6 +1544,10 @@ contract('KyberFeeHandler', function(accounts) {
                 // change new sanity rate, value should be updated
                 await newSanity.setLatestKncToEthRate(kncToEthPrecision);
                 Helper.assertEqual(kncToEthPrecision, await feeHandler.getLatestSanityRate());
+
+                // set sanity rate to 0
+                await feeHandler.setBurnConfigParams(zeroAddress, weiToBurn, {from: burnConfigSetter});
+                Helper.assertEqual(0, await feeHandler.getLatestSanityRate());
             });
 
             it("test transfer burnConfigSetter", async() => {

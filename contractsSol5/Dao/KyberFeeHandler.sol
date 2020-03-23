@@ -303,7 +303,6 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
     function setBurnConfigParams(IBurnKncSanityRate _sanityRate, uint _weiToBurn)
         public onlyBurnConfigSetter
     {
-        require(_sanityRate != IBurnKncSanityRate(0), "_sanityRate is 0");
         require(_weiToBurn > 0, "_weiToBurn is 0");
 
         if (sanityRateContract.length == 0 || (_sanityRate != sanityRateContract[0])) {
@@ -433,7 +432,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
 
     /// @dev return latest knc/eth rate from sanity rate contract
     function getLatestSanityRate() external view returns(uint kncToEthSanityRate) {
-        if (sanityRateContract.length > 0) {
+        if (sanityRateContract.length > 0 && sanityRateContract[0] != ISanityRate(0)) {
             kncToEthSanityRate = sanityRateContract[0].latestAnswer();
         }
     }
@@ -454,6 +453,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         require(rateEthToKnc <= MAX_RATE, "ethToKnc rate out of bounds");
         require(rateEthToKnc > 0, "ethToKnc rate is 0");
         require(sanityRateContract.length > 0, "no sanity rate contract");
+        require(sanityRateContract[0] != ISanityRate(0), "sanity rate is 0x0, burn is block");
 
         // get latest knc/eth rate from sanity contract
         uint kncToEthRate = sanityRateContract[0].latestAnswer();
