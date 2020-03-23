@@ -156,6 +156,14 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         _;
     }
 
+    modifier onlyNormalAddress {
+        require(
+            tx.origin == msg.sender,
+            "Only normal address"
+        );
+        _;
+    }
+
     event FeeDistributed(
         address platformWallet,
         uint platformFeeWei,
@@ -323,6 +331,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
     event KNCBurned(uint KNCTWei, uint amountWei);
 
     /// @dev Burn knc. Burn amount limited. Forces block delay between burn calls.
+    /// @dev only normal address can call this function
     /// @return amount of KNC burned
     function burnKNC() public returns(uint) {
         // check if current block > last burn block number + num block interval
