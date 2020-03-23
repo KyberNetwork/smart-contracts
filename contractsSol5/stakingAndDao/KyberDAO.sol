@@ -153,7 +153,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         require(_staking != address(0), "ctor: staking is missing");
         require(_feeHandler != address(0), "ctor: feeHandler is missing");
         require(_knc != address(0), "ctor: knc token is missing");
-        require(_defaultNetworkFeeBps <= BPS, "ctor: network fee high");
+        // in Network, maximum fee that can be taken from 1 tx is (platform fee + 2 * network fee)
+        // so network fee should be less than 50%
+        require(_defaultNetworkFeeBps < BPS / 2, "ctor: network fee high");
 
         staking = IKyberStaking(_staking);
         require(staking.EPOCH_PERIOD_BLOCKS() == _epochPeriod, "ctor: diff epoch period");
@@ -711,10 +713,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         } else if (campType == CampaignType.NETWORK_FEE) {
             // network fee campaign, option must be fee in bps
             for (uint i = 0; i < options.length; i++) {
-                // fee must <= 100%
+                // in Network, maximum fee that can be taken from 1 tx is (platform fee + 2 * network fee)
+                // so network fee should be less than 50%
                 require(
-                    options[i] <= BPS,
-                    "validateParams: Fee camp options high"
+                    options[i] < BPS / 2,
+                    "validateParams: Fee campaign option value is too high"
                 );
             }
         } else {
