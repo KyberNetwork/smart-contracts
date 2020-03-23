@@ -4,6 +4,7 @@ const StakingContract = artifacts.require("KyberStaking.sol");
 const MockFeeHandler = artifacts.require("MockFeeHandlerNoContructor.sol");
 const MockMaliciousDAO = artifacts.require("MockMaliciousDAO.sol");
 const MockFeeHandlerClaimRewardFailed = artifacts.require("MockFeeHandlerClaimRewardFailed.sol");
+const MockMaliciousFeeHandlerReentrancy = artifacts.require("MockMaliciousFeeHandlerReentrancy.sol");
 const Helper = require("../helper.js");
 
 const BN = web3.utils.BN;
@@ -3468,7 +3469,44 @@ contract('KyberDAO', function(accounts) {
             feeHandler = await MockFeeHandler.new();
         });
 
+        it("Test claim reward should revert fee handler tries to re-enter claim reward in DAO", async function() {
+            feeHandler = await MockMaliciousFeeHandlerReentrancy.new();
+            await deployContracts(15, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+
+            // delay to epoch 1
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            currentBlock = await Helper.getCurrentBlock();
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+
+            await feeHandler.setKyberDAO(daoContract.address);
+            // set tries to re-enter claimReward func in DAO
+            await feeHandler.setNumberCalls(1);
+
+            await expectRevert(
+                daoContract.claimReward(mike, 1),
+                "ReentrancyGuard: reentrant call"
+            )
+
+            // no re-enter
+            await feeHandler.setNumberCalls(0);
+            await daoContract.claimReward(mike, 1);
+
+            feeHandler = await MockFeeHandler.new();
+        });
+
         it("Test claim reward should revert when claim for epoch in the past that didn't do anything", async function() {
+            feeHandler = await MockFeeHandler.new();
             await deployContracts(15, currentBlock + 15, 5);
             await setupSimpleStakingData();
 
