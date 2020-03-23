@@ -1179,6 +1179,20 @@ contract('KyberNetwork', function(accounts) {
             Helper.assertEqual(networkFeeData[1], newExpiryBlock);
         });
 
+        it("test revert with high networkFee", async () => {
+            let tempNetwork = await MockNetwork.new(admin);
+            await tempNetwork.setContracts(feeHandler.address, matchingEngine.address,
+                zeroAddress, { from: admin });
+
+            let DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+            await DAO.setNetworkFeeBps(networkFeeBps);
+
+            await tempNetwork.setDAOContract(DAO.address, { from: admin });
+            let highNetworkFee = new BN(5001);
+            await DAO.setNetworkFeeBps(highNetworkFee, { from: admin });
+            await expectRevert(tempNetwork.getAndUpdateNetworkFee(), "fees exceed BPS");
+        });
+
         it("update fee in DAO and see updated in network on correct block", async() => {
             //TODO:
         });

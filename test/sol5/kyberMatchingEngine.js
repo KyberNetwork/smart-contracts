@@ -2,6 +2,7 @@ const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const KyberMatchingEngine = artifacts.require("KyberMatchingEngine.sol");
 const MaliciousKyberEngine = artifacts.require("MaliciousMatchingEngine.sol");
+const MockMatchingEngine = artifacts.require("MockMatchingEngine.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 
 const Helper = require("../helper.js");
@@ -2426,6 +2427,30 @@ contract('KyberMatchingEngine', function(accounts) {
                         });
                     }
                 });
+            });
+
+            it("test overflow by calcRatesAndAmountsEthToToken", async () => {
+                let matchingEngine = await MockMatchingEngine.new(admin);
+                await matchingEngine.setNetworkContract(network, { from: admin });
+                await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
+                let rateHelper = await RateHelper.new(admin);
+                await rateHelper.setContracts(matchingEngine.address, accounts[9], { from: admin });
+                let result = await nwHelper.setupReserves(network, [srcToken, destToken], 1,0,0,0, accounts, admin, operator);
+                let reserveInstances = result.reserveInstances;
+
+                await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, true, {from: admin});
+
+                //add reserves, list token pairs
+                for (reserve of Object.values(reserveInstances)) {
+                    await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
+                    await matchingEngine.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
+                };
+
+                let networkFeeBps = new BN(2);
+                let platformFeeBps = new BN(0);
+                let info = [srcQty, networkFeeBps, platformFeeBps];
+                await expectRevert(matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint), "fee overflow");
             });
         });
     });
