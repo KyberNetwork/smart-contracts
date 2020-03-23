@@ -1254,7 +1254,7 @@ contract('KyberFeeHandler', function(accounts) {
                 );
             });
 
-            it("reverts only normal address can call burn", async() => {
+            it("reverts only none contract can call burn", async() => {
                 feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, burnConfigSetter);
                 await feeHandler.setDaoContract(mockDAO.address, {from: daoSetter});
                 sanityRate = await BurnKncSanityRate.new();
@@ -1273,7 +1273,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let contract = await MockContractCallBurnKNC.new(feeHandler.address);
                 await expectRevert(
                     contract.callBurnKNC(),
-                    "Only normal address"
+                    "Only none contract"
                 )
             });
 
