@@ -690,8 +690,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         );
         // start + end blocks must be in the same epoch
         require(
-            startEpoch <= currentEpoch.add(1),
-            "validateParams: only for current or next epochs"
+            startEpoch <= currentEpoch + 1,
+            "validateParams: not for current or next epoch"
         );
 
         // verify number of options
@@ -726,8 +726,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
                 // first 128 bits is rebate, last 128 bits is reward
                 (uint rebateInBps, uint rewardInBps) = getRebateAndRewardFromData(options[i]);
                 require(
-                    rewardInBps.add(rebateInBps) <= BPS,
-                    "validateParams: RR values are too high"
+                    rewardInBps + rebateInBps <= BPS,
+                    "validateParams: RR too high"
                 );
             }
         }

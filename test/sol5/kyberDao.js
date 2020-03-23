@@ -1082,7 +1082,7 @@ contract('KyberDAO', function(accounts) {
                     0, startBlock + epochPeriod, startBlock + epochPeriod + 10, formulaParamsData,
                     [1, 2, 3, 4], '0x', {from: campCreator}
                 ),
-                "validateParams: only for current or next epochs"
+                "validateParams: not for current or next epoch"
             )
             // start in the next 10 epochs
             await expectRevert(
@@ -1090,7 +1090,7 @@ contract('KyberDAO', function(accounts) {
                     0, startBlock + 10 * epochPeriod, startBlock + 10 * epochPeriod + 10, formulaParamsData,
                     [1, 2, 3, 4], '0x', {from: campCreator}
                 ),
-                "validateParams: only for current or next epochs"
+                "validateParams: not for current or next epoch"
             )
             // start at current epoch but end in the next epoch
             await expectRevert(
@@ -1217,14 +1217,14 @@ contract('KyberDAO', function(accounts) {
                     2, currentBlock + 15, currentBlock + 15 + minCampPeriod, formulaParamsData,
                     [1, getDataFromRebateAndReward(100, 10001 - 100), 2, 3], '0x', {from: campCreator}
                 ),
-                "validateParams: RR values are too high"
+                "validateParams: RR too high"
             )
             await expectRevert(
                 daoContract.submitNewCampaign(
                     2, currentBlock + 17, currentBlock + 17 + minCampPeriod, formulaParamsData,
                     [1, 2, getDataFromRebateAndReward(20, 10000)], '0x', {from: campCreator}
                 ),
-                "validateParams: RR values are too high"
+                "validateParams: RR too high"
             )
             await daoContract.submitNewCampaign(
                 2, currentBlock + 19, currentBlock + 19 + minCampPeriod, formulaParamsData,
