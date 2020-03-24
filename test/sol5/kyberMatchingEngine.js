@@ -2,7 +2,6 @@ const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const KyberMatchingEngine = artifacts.require("KyberMatchingEngine.sol");
 const MaliciousKyberEngine = artifacts.require("MaliciousMatchingEngine.sol");
-const MockMatchingEngine = artifacts.require("MockMatchingEngine.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 
 const Helper = require("../helper.js");
@@ -1988,10 +1987,10 @@ contract('KyberMatchingEngine', function(accounts) {
                 describe("T2E and E2T", async() => {
                     //(networkFeeBps, platformFeeBps)
                     let feeConfigurations = [
-                        [BPS.sub(new BN(1)), zeroBN], // 9999, 0
+                        [BPS.div(new BN(2)).sub(new BN(1)), zeroBN], // 9999, 0
                         [zeroBN, BPS.sub(new BN(1))], // 0, 9999
-                        [new BN(5000), new BN(4999)], // 5000, 4999
-                        [new BN(4999), new BN(5000)], // 4999, 5000
+                        [new BN(2500), new BN(4999)], // 2500, 4999
+                        [new BN(4999), new BN(1)], // 4999, 1
                         [new BN(1), new BN(1)] // 1, 1
                     ];
 
@@ -2173,110 +2172,22 @@ contract('KyberMatchingEngine', function(accounts) {
                 });
             });
 
-            describe("test fees = BPS", async() => {
-                //(networkFeeBps, platformFeeBps)
-                let feeConfigurations = [
-                    [BPS, zeroBN], // 10000, 0
-                    [zeroBN, BPS], // 0, 10000
-                    [new BN(1), BPS.sub(new BN(1))], // 1, 9999
-                    [BPS.sub(new BN(1)), new BN(1)], // 9999, 1
-                    [new BN(5000), new BN(5000)], // 5000, 5000
-                ];
-
-                for (const feeConfiguration of feeConfigurations) {
-                    let networkFeeBps = feeConfiguration[0];
-                    let platformFeeBps = feeConfiguration[1];
-
-                    it(`should return zero rate for T2E, mask out hint, networkBps: ${networkFeeBps.toString()}, platformBps: ${platformFeeBps.toString()}`, async() => {
-                        numMaskedReserves = 2;
-                        info = [srcQty, networkFeeBps, platformFeeBps];
-                        
-                        hintedReserves = await getHintedReserves(
-                            matchingEngine, reserveInstances,
-                            MASK_OUT_HINTTYPE, numMaskedReserves, [], srcQty,
-                            undefined, 0, undefined, 0,
-                            srcToken.address, ethAddress
-                            );
-                        
-                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
-                        let actualDestAmt = actualResult.results[6];
-                        let actualRate = actualDestAmt.eq(zeroBN) ? zeroBN : Helper.calcRateFromQty(srcQty, actualDestAmt, srcDecimals, ethDecimals);
-                        Helper.assertEqual(actualRate, zeroBN, "rate not zero"); 
-                    });
-
-                    it(`should revert for E2T, mask out hint (fee >= E2T tradeAmt), networkBps: ${networkFeeBps.toString()}, platformBps: ${platformFeeBps.toString()}`, async() => {
-                        numMaskedReserves = 2;
-                        info = [ethSrcQty, networkFeeBps, platformFeeBps];
-                        
-                        hintedReserves = await getHintedReserves(
-                            matchingEngine, reserveInstances,
-                            undefined, 0, undefined, 0,
-                            MASK_OUT_HINTTYPE, numMaskedReserves, [], ethSrcQty,
-                            ethAddress, destToken.address
-                            );
-
-                        await expectRevert(
-                            matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint),
-                            "fee >= e2t tradeAmt"
-                        );
-                    });
-
-                    it(`should return zero rate for T2E, split hint, networkBps: ${networkFeeBps.toString()}, platformBps: ${platformFeeBps.toString()}`, async() => {
-                        info = [srcQty, networkFeeBps, platformFeeBps];
-                        
-                        hintedReserves = await getHintedReserves(
-                            matchingEngine, reserveInstances,
-                            SPLIT_HINTTYPE, undefined, undefined, srcQty,
-                            undefined, 0, undefined, 0,
-                            srcToken.address, ethAddress
-                            );
-
-                        actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint);
-                        let actualDestAmt = actualResult.results[6];
-                        let actualRate = actualDestAmt.eq(zeroBN) ? zeroBN : Helper.calcRateFromQty(srcQty, actualDestAmt, srcDecimals, ethDecimals);
-                        Helper.assertEqual(actualRate, zeroBN, "rate not zero"); 
-                    });
-
-                    it(`should revert for E2T, split hint (calcRateFromQty error), networkBps: ${networkFeeBps.toString()}, platformBps: ${platformFeeBps.toString()}`, async() => {
-                        info = [ethSrcQty, networkFeeBps, platformFeeBps];
-                        
-                        hintedReserves = await getHintedReserves(
-                            matchingEngine, reserveInstances,
-                            undefined, 0, undefined, 0,
-                            SPLIT_HINTTYPE, undefined, undefined, ethSrcQty,
-                            ethAddress, destToken.address
-                            );
-                        
-                        // will revert in calcRateFromQty, cos srcAmount is zero
-                        // special case: using await expectRevert.unspecified fails for coverage
-                        // expect revert, but get invalid opcode
-                        // use traditional method of try-catch 
-                        try {
-                            await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint)
-                            assert(false, "throw was expected in line above.")
-                        } catch(e){
-                            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                        }
-                    });
-                }
-            });
-
             describe("test fees > BPS", async() => {
                 let maxNum = (new BN(2).pow(new BN(256))).sub(new BN(1));
                 describe("T2E and E2T", async() => {
                     //(networkFeeBps, platformFeeBps)
                     //Note: if networkFee = BPS, destAmount is zero, so it is "valid"
                     let feeConfigurations = [
-                        [BPS.sub(new BN(1)), BPS.sub(new BN(1))], // 9999, 9999
-                        [BPS.sub(new BN(1)), new BN(2)], // 9999, 2
-                        [BPS.add(new BN(1)), zeroBN], // 10001, 0
-                        [zeroBN, BPS.add(new BN(1))], // 0, 10001
-                        [new BN(2), BPS.sub(new BN(1))], // 2, 9999
-                        [new BN(5000), new BN(5001)], // 5000, 5001
-                        [new BN(5001), new BN(5000)], // 5001, 5000
-                        [maxNum, new BN(2)], // overflow
-                        [new BN(2), maxNum], // overflow
-                        [maxNum.div(new BN(2)), maxNum.div(new BN(2)).add(new BN(3))] // overflow
+                        [BPS.sub(new BN(1)), BPS.sub(new BN(1)), "networkFee high"], // 9999, 9999
+                        [BPS.div(new BN(2)).sub(new BN(1)), new BN(2), "fees high"], // 4999, 2
+                        [BPS.div(new BN(2)).add(new BN(1)), zeroBN, "networkFee high"], // 5001, 0
+                        [zeroBN, BPS.add(new BN(1)), "platformFee high"], // 0, 10001
+                        [new BN(2), BPS.sub(new BN(1)), "fees high"], // 2, 9999
+                        [new BN(4999), new BN(5001), "fees high"], // 4999, 5001
+                        [new BN(5001), new BN(5000), "networkFee high"], // 5001, 5000
+                        [maxNum, new BN(2), "networkFee high"], // overflow
+                        [new BN(2), maxNum, "platformFee high"], // overflow
+                        [maxNum.div(new BN(2)), maxNum.div(new BN(2)).add(new BN(3)), "platformFee high"] // overflow
                     ];
 
                     before("setup badMatchingEngine to cover unreachable line", async() => {
@@ -2295,6 +2206,7 @@ contract('KyberMatchingEngine', function(accounts) {
                     for (const feeConfiguration of feeConfigurations) {
                         let networkFeeBps = feeConfiguration[0];
                         let platformFeeBps = feeConfiguration[1];
+                        let revertMsg = feeConfiguration[2];
     
                         it(`T2E, mask in hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                             numMaskedReserves = 2;
@@ -2309,7 +2221,7 @@ contract('KyberMatchingEngine', function(accounts) {
                             
                             await expectRevert(
                                 matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint),
-                                "fees exceed trade amt"
+                                revertMsg
                             );
                         });
 
@@ -2324,7 +2236,6 @@ contract('KyberMatchingEngine', function(accounts) {
                                 ethAddress, destToken.address
                                 );
                             
-                            let revertMsg = (networkFeeBps.lt(BPS) && platformFeeBps.gt(BPS)) ? "fees exceed trade amt" : "fee >= e2t tradeAmt"
                             await expectRevert(
                                 matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint),
                                 revertMsg
@@ -2332,7 +2243,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
                             await expectRevert(
                                 badMatchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint),
-                                "fees exceed trade amt"
+                                revertMsg
                             );
                         });
 
@@ -2348,7 +2259,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
                             await expectRevert(
                                 matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint),
-                                "fees exceed trade amt"
+                                revertMsg
                             );
                         });
 
@@ -2364,7 +2275,7 @@ contract('KyberMatchingEngine', function(accounts) {
                             
                             await expectRevert(
                                 matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint),
-                                "fees exceed trade amt"
+                                revertMsg
                             );
                         });
                     }
@@ -2374,22 +2285,23 @@ contract('KyberMatchingEngine', function(accounts) {
                     //(networkFeeBps, platformFeeBps)
                     let halfMaxNum = maxNum.div(new BN(2));
                     let feeConfigurations = [
-                        [BPS.sub(new BN(1)), BPS.sub(new BN(1))], // 9999, 9999
-                        [BPS.sub(new BN(1)), new BN(2)], // 9999, 2
-                        [new BN(1), BPS.sub(new BN(1))], // 2 * 1, 9999
-                        [BPS.add(new BN(1)), zeroBN], // 10001, 0
-                        [zeroBN, BPS.add(new BN(1))], // 0, 10001
-                        [new BN(5000), new BN(1)], // 2 * 5000 + 1
-                        [new BN(2500), new BN(5001)], // 2 * 2500 + 5001
-                        [maxNum, maxNum], // overflow
-                        [halfMaxNum, maxNum], // overflow
-                        [halfMaxNum, new BN(2)], // overflow
-                        [new BN(1), maxNum] // overflow
+                        [BPS.sub(new BN(1)), BPS.sub(new BN(1)), "networkFee high"], // 9999, 9999
+                        [BPS.sub(new BN(1)), new BN(2), "networkFee high"], // 9999, 2
+                        [new BN(1), BPS.sub(new BN(1)), "fees high"], // 2 * 1, 9999
+                        [BPS.add(new BN(1)), zeroBN, "networkFee high"], // 10001, 0
+                        [zeroBN, BPS.add(new BN(1)), "platformFee high"], // 0, 10001
+                        [new BN(5000), new BN(1), "networkFee high"], // 2 * 5000 + 1
+                        [new BN(2500), new BN(5001), "fees high"], // 2 * 2500 + 5001
+                        [maxNum, maxNum, "platformFee high"], // overflow
+                        [halfMaxNum, maxNum, "platformFee high"], // overflow
+                        [halfMaxNum, new BN(2), "networkFee high"], // overflow
+                        [new BN(1), maxNum, "platformFee high"] // overflow
                     ];
 
                     for (const feeConfiguration of feeConfigurations) {
                         let networkFeeBps = feeConfiguration[0];
                         let platformFeeBps = feeConfiguration[1];
+                        let revertMsg = feeConfiguration[2];
 
                         it(`T2T, mask in hint, network fee ${networkFeeBps} bps, platform fee ${platformFeeBps} bps`, async() => {
                             numMaskedReserves = 2;
@@ -2401,8 +2313,6 @@ contract('KyberMatchingEngine', function(accounts) {
                                 MASK_IN_HINTTYPE, numMaskedReserves, [], ethSrcQty,
                                 srcToken.address, destToken.address
                                 );
-                            
-                            let revertMsg = (networkFeeBps.add(platformFeeBps).lte(BPS)) ? "fee >= e2t tradeAmt" : "fees exceed trade amt";
                             
                             await expectRevert(
                                 matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint),
@@ -2422,36 +2332,13 @@ contract('KyberMatchingEngine', function(accounts) {
                             
                             await expectRevert(
                                 matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint),
-                                "fees exceed trade amt"
+                                revertMsg
                             );
                         });
                     }
                 });
             });
 
-            it("test overflow by calcRatesAndAmountsEthToToken", async () => {
-                let matchingEngine = await MockMatchingEngine.new(admin);
-                await matchingEngine.setNetworkContract(network, { from: admin });
-                await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
-                let rateHelper = await RateHelper.new(admin);
-                await rateHelper.setContracts(matchingEngine.address, accounts[9], { from: admin });
-                let result = await nwHelper.setupReserves(network, [srcToken, destToken], 1,0,0,0, accounts, admin, operator);
-                let reserveInstances = result.reserveInstances;
-
-                await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, true, {from: admin});
-
-                //add reserves, list token pairs
-                for (reserve of Object.values(reserveInstances)) {
-                    await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
-                    await matchingEngine.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
-                    await matchingEngine.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
-                };
-
-                let networkFeeBps = new BN(2);
-                let platformFeeBps = new BN(0);
-                let info = [srcQty, networkFeeBps, platformFeeBps];
-                await expectRevert(matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint), "fee overflow");
-            });
         });
     });
 

@@ -152,6 +152,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint platformFeeWei;
 
         uint networkFeeBps;
+        uint platformFeeBps;
 
         uint numFeePayingReserves;
         uint feePayingReservesBps; // what part of this trade is fee paying. for token to token - up to 200%
@@ -191,6 +192,10 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         tData.tokenToEth.decimals = srcDecimals;
         tData.ethToToken.decimals = destDecimals;
         tData.networkFeeBps = info[uint(IKyberMatchingEngine.InfoIndex.networkFeeBps)];
+        tData.platformFeeBps = info[uint(IKyberMatchingEngine.InfoIndex.platformFeeBps)];
+        require(tData.platformFeeBps < BPS, "platformFee high");
+        require(tData.networkFeeBps < BPS / 2, "networkFee high");
+        require(tData.platformFeeBps + tData.networkFeeBps * 2 < BPS, "fees high");
 
         parseTradeDataHint(src, dest, tData, hint);
 
@@ -224,10 +229,9 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         //fee deduction
         //ETH -> dest fee deduction has not occured for non-split ETH -> dest trade types
         tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
-        tData.platformFeeWei = tData.tradeWei * info[uint(IKyberMatchingEngine.InfoIndex.platformFeeBps)] / BPS;
+        tData.platformFeeWei = tData.tradeWei * tData.platformFeeBps / BPS;
 
-        // this line we can not reach full coverage due to networkFeeWei and platformFeeWei <= max uint256 /BPS
-        require(tData.networkFeeWei + tData.platformFeeWei >= tData.networkFeeWei, "fee wei overflow");
+        // this line we can not reach full coverage due to networkFeeWei * 2 + platformFeeWei < BPS and feePayingReservesBps < 2 *BPS
         require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
         calcRatesAndAmountsEthToToken(dest, tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei, tData);
 
@@ -539,9 +543,9 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
                 tData.numFeePayingReserves++;
             }
 
-            //take into account possible additional networkFee
-            require(tData.networkFeeWei + tData.platformFeeWei >= tData.networkFeeWei, "fee overflow");
+            // this line we can not reach full coverage due to networkFeeWei * 2 + platformFeeWei < BPS and feePayingReservesBps < 2 *BPS
             require(tData.tradeWei >= tData.networkFeeWei + tData.platformFeeWei, "fees exceed trade amt");
+            //take into account possible additional networkFee
             tData.actualDestAmount = calcDstQty(tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei, 
                 ETH_DECIMALS, tData.ethToToken.decimals, rate);
         }
@@ -595,7 +599,6 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             isFeePaying = feePayingPerReserve[i];
             //for ETH -> token paying reserve, networkFee is specified in amount
             if (src == ETH_TOKEN_ADDRESS && isFeePaying) {
-                require(srcAmount > networkFee, "fee >= e2t tradeAmt");
                 srcAmountWithFee = srcAmount - networkFee;
             } else {
                 srcAmountWithFee = srcAmount;
