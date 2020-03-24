@@ -79,6 +79,25 @@ contract('KyberHintHandler', function(accounts) {
             });
 
             Object.keys(TRADE_TYPES).forEach(tradeType => {
+                it(`should revert the T2E hint for ${tradeType} due to empty reserveIds`, async() => {
+                    t2eOpcode = TRADE_TYPES[tradeType];
+
+                    if (tradeType == 'SPLIT') {
+                        t2eSplits = BPS_SPLIT;
+                    } else {
+                        t2eSplits = [];
+                    }
+                    
+                    try {
+                        await hintHandler.buildTokenToEthHint(t2eOpcode, [], t2eSplits);                        
+                        assert(false, "throw was expected in line above.");
+                    } catch(e){
+                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                    }
+                });
+            });
+
+            Object.keys(TRADE_TYPES).forEach(tradeType => {
                 it(`should revert the T2E hint for ${tradeType} due to invalid split values`, async() => {
                     t2eOpcode = TRADE_TYPES[tradeType];
 
@@ -143,6 +162,25 @@ contract('KyberHintHandler', function(accounts) {
                     const expectedResult = buildHint(e2tOpcode, e2tReserves, e2tSplits);                
             
                     Helper.assertEqual(hintResult, expectedResult);
+                });
+            });
+
+            Object.keys(TRADE_TYPES).forEach(tradeType => {
+                it(`should revert the E2T hint for ${tradeType} due to empty reserveIds`, async() => {
+                    e2tOpcode = TRADE_TYPES[tradeType];
+
+                    if (tradeType == 'SPLIT') {
+                        e2tSplits = BPS_SPLIT;
+                    } else {
+                        e2tSplits = [];
+                    }
+                    
+                    try {
+                        await hintHandler.buildEthToTokenHint(e2tOpcode, [], e2tSplits);                        
+                        assert(false, "throw was expected in line above.");
+                    } catch(e){
+                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                    }
                 });
             });
 
@@ -263,6 +301,39 @@ contract('KyberHintHandler', function(accounts) {
                                 t2eSplits,
                                 e2tOpcode,
                                 e2tReserves,
+                                e2tSplits,
+                            );
+                            assert(false, "throw was expected in line above.");
+                        } catch(e){
+                            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                        }
+                    });
+
+                    it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to empty reserveIds`, async() => {
+                        t2eOpcode = TRADE_TYPES[t2eTradeType];
+                        t2eSplits = [];
+                        e2tOpcode = TRADE_TYPES[e2tTradeType];
+                        e2tSplits = [];
+    
+                        if (t2eTradeType == 'SPLIT') {
+                            t2eSplits = BPS_SPLIT;
+                        } else {
+                            t2eSplits = [];
+                        }
+
+                        if (e2tTradeType == 'SPLIT') {
+                            e2tSplits = BPS_SPLIT;
+                        } else {
+                            e2tSplits = [];
+                        }
+                        
+                        try {
+                            await hintHandler.buildTokenToTokenHint(
+                                t2eOpcode,
+                                [],
+                                t2eSplits,
+                                e2tOpcode,
+                                [],
                                 e2tSplits,
                             );
                             assert(false, "throw was expected in line above.");
@@ -519,6 +590,25 @@ contract('KyberHintHandler', function(accounts) {
                     assert.deepEqual(parseResult.tokenToEthAddresses, []);
                     Helper.assertEqual(parseResult.tokenToEthSplits, []);
                 });
+
+                it(`should return no data for T2E hint for ${tradeType} due to empty reserveIds`, async() => {
+                    t2eOpcode = TRADE_TYPES[tradeType];
+
+                    if (tradeType == 'SPLIT') {
+                        t2eSplits = BPS_SPLIT;
+                    } else {
+                        t2eSplits = [];
+                    }
+                    
+                    const hint = buildHint(t2eOpcode, [], t2eSplits);            
+                    const parseResult = await hintHandler.parseTokenToEthHint(hint);
+                    const expectedResult = parseHint(hint);
+    
+                    Helper.assertEqual(parseResult.tokenToEthType, expectedResult.tradeType);
+                    assert.deepEqual(parseResult.tokenToEthReserveIds, []);
+                    assert.deepEqual(parseResult.tokenToEthAddresses, []);
+                    Helper.assertEqual(parseResult.tokenToEthSplits, []);
+                });
             });
 
             Object.keys(INVALID_SPLIT_BPS).forEach(invalidSplit => {
@@ -568,6 +658,25 @@ contract('KyberHintHandler', function(accounts) {
                     }
                     
                     const hint = buildHint(e2tOpcode, e2tReserves, e2tSplits);
+                    const parseResult = await hintHandler.parseEthToTokenHint(hint);
+                    const expectedResult = parseHint(hint);
+    
+                    Helper.assertEqual(parseResult.ethToTokenType, expectedResult.tradeType);
+                    assert.deepEqual(parseResult.ethToTokenReserveIds, []);
+                    assert.deepEqual(parseResult.ethToTokenAddresses, []);
+                    Helper.assertEqual(parseResult.ethToTokenSplits, []);
+                });
+
+                it(`should return no data for E2T hint for ${tradeType} due to empty reserveIds`, async() => {
+                    e2tOpcode = TRADE_TYPES[tradeType];
+
+                    if (tradeType == 'SPLIT') {
+                        e2tSplits = BPS_SPLIT;
+                    } else {
+                        e2tSplits = [];
+                    }
+                    
+                    const hint = buildHint(e2tOpcode, [], e2tSplits);
                     const parseResult = await hintHandler.parseEthToTokenHint(hint);
                     const expectedResult = parseHint(hint);
     
@@ -641,6 +750,45 @@ contract('KyberHintHandler', function(accounts) {
                             t2eSplits,
                             e2tOpcode,
                             e2tReserves,
+                            e2tSplits,
+                        );
+                        const parseResult = await hintHandler.parseTokenToTokenHint(hint);
+                        const expectedResult = parseHintT2T(hint);
+        
+                        Helper.assertEqual(parseResult.tokenToEthType, expectedResult.t2eType);
+                        assert.deepEqual(parseResult.tokenToEthReserveIds, []);
+                        assert.deepEqual(parseResult.tokenToEthAddresses, []);
+                        Helper.assertEqual(parseResult.tokenToEthSplits, []);
+                        Helper.assertEqual(parseResult.ethToTokenType, expectedResult.e2tType);
+                        assert.deepEqual(parseResult.ethToTokenReserveIds, []);
+                        assert.deepEqual(parseResult.ethToTokenAddresses, []);
+                        Helper.assertEqual(parseResult.ethToTokenSplits, []);
+                    });
+
+                    it(`should return no data for T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to empty reserveIds`, async() => {
+                        t2eOpcode = TRADE_TYPES[t2eTradeType];
+                        t2eSplits = [];
+                        e2tOpcode = TRADE_TYPES[e2tTradeType];
+                        e2tSplits = [];
+    
+                        if (t2eTradeType == 'SPLIT') {
+                            t2eSplits = BPS_SPLIT;
+                        } else {
+                            t2eSplits = [];
+                        }
+
+                        if (e2tTradeType == 'SPLIT') {
+                            e2tSplits = BPS_SPLIT;
+                        } else {
+                            e2tSplits = [];
+                        }
+                        
+                        const hint = buildHintT2T(
+                            t2eOpcode,
+                            [],
+                            t2eSplits,
+                            e2tOpcode,
+                            [],
                             e2tSplits,
                         );
                         const parseResult = await hintHandler.parseTokenToTokenHint(hint);

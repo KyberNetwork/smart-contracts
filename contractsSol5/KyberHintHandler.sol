@@ -251,9 +251,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         pure
         returns (bool)
     {
-        if (!(uint8(tradeType) <= uint8(TradeType.Split))) return false;
         if (!(reserveIds.length > 0)) return false;
-
         if (tradeType == TradeType.Split) {
             if (reserveIds.length != splits.length) return false;
 
