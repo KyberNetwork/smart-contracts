@@ -144,7 +144,7 @@ async function setupNetwork
     let matchingEngine = await MatchingEngine.new(admin);
     await matchingEngine.setNetworkContract(network.address, { from: admin });
     await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
-    let feeHandler = await FeeHandler.new(DAOAddress, network.address, network.address, KNCAddress, burnBlockInterval);
+    let feeHandler = await FeeHandler.new(DAOAddress, network.address, network.address, KNCAddress, burnBlockInterval, DAOAddress);
     await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
     // set DAO contract
     await network.setDAOContract(DAOAddress, { from: admin });

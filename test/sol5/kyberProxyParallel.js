@@ -69,6 +69,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         platformWallet = accounts[4];
         admin = accounts[5]; // we don't want admin as account 0.
         hintParser = accounts[6];
+        daoSetter = accounts[7];
 
         //DAO related init.
         expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
@@ -108,7 +109,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
 
         //init feeHandler
         KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-        feeHandler = await FeeHandler.new(DAO.address, networkProxy.address, network.address, KNC.address, burnBlockInterval);
+        feeHandler = await FeeHandler.new(daoSetter, networkProxy.address, network.address, KNC.address, burnBlockInterval, daoSetter);
 
         // init and setup reserves
         let result = await nwHelper.setupReserves(network, tokens, 0, 5, 0, 0, accounts, admin, operator);
