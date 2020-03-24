@@ -52,7 +52,7 @@ const sol4SourceFiles = {
 const sol5SourceFiles = {
     'Address.sol': {content: fs.readFileSync(contractsSol5Path + 'utils/zeppelin/Address.sol', 'utf8')},
     'BytesLib.sol' : {content: fs.readFileSync(contractsSol5Path + 'utils/BytesLib.sol', 'utf8')},
-    'EpochUtils.sol' : {content: fs.readFileSync(contractsSol5Path + 'stakingAndDao/EpochUtils.sol', 'utf8')},
+    'EpochUtils.sol' : {content: fs.readFileSync(contractsSol5Path + 'Dao/EpochUtils.sol', 'utf8')},
     'GasHelper.sol' : {content: fs.readFileSync(contractsSol5Path + 'mock/GasHelper.sol', 'utf8')},
     'IGasHelper.sol': {content: fs.readFileSync(contractsSol5Path + 'IGasHelper.sol', 'utf8')},
     'IERC20.sol' : {content: fs.readFileSync(contractsSol5Path + 'IERC20.sol', 'utf8')},
@@ -65,15 +65,15 @@ const sol5SourceFiles = {
     'IKyberRateHelper.sol' : {content: fs.readFileSync(contractsSol5Path + 'IKyberRateHelper.sol', 'utf8')},
     'IKyberReserve.sol' : {content: fs.readFileSync(contractsSol5Path + 'IKyberReserve.sol', 'utf8')},
     'IKyberMatchingEngine.sol' : {content: fs.readFileSync(contractsSol5Path + 'IKyberMatchingEngine.sol', 'utf8')},
-    'IKyberStaking.sol' : {content: fs.readFileSync(contractsSol5Path + 'stakingAndDao/IKyberStaking.sol', 'utf8')},
+    'IKyberStaking.sol' : {content: fs.readFileSync(contractsSol5Path + 'Dao/IKyberStaking.sol', 'utf8')},
     'ISimpleKyberProxy.sol' : {content: fs.readFileSync(contractsSol5Path + 'ISimpleKyberProxy.sol', 'utf8')},
-    'KyberDAO.sol' : {content: fs.readFileSync(contractsSol5Path + 'stakingAndDao/KyberDAO.sol', 'utf8')},
-    'KyberFeeHandler.sol' : {content: fs.readFileSync(contractsSol5Path + 'KyberFeeHandler.sol', 'utf8')},
+    'KyberDAO.sol' : {content: fs.readFileSync(contractsSol5Path + 'Dao/KyberDAO.sol', 'utf8')},
+    'KyberFeeHandler.sol' : {content: fs.readFileSync(contractsSol5Path + 'Dao/KyberFeeHandler.sol', 'utf8')},
     'KyberNetwork.sol' : {content: fs.readFileSync(contractsSol5Path + 'KyberNetwork.sol', 'utf8')},
     'KyberNetworkProxy.sol' : {content: fs.readFileSync(contractsSol5Path + 'KyberNetworkProxy.sol', 'utf8')},
     'KyberMatchingEngine.sol' : {content: fs.readFileSync(contractsSol5Path + 'KyberMatchingEngine.sol', 'utf8')}, 
     'KyberHintHandler.sol' : {content: fs.readFileSync(contractsSol5Path + 'KyberHintHandler.sol', 'utf8')},
-    'KyberStaking.sol' : {content: fs.readFileSync(contractsSol5Path + 'stakingAndDao/KyberStaking.sol', 'utf8')},
+    'KyberStaking.sol' : {content: fs.readFileSync(contractsSol5Path + 'Dao/KyberStaking.sol', 'utf8')},
     'PermissionGroups2.sol' : {content: fs.readFileSync(contractsSol5Path + 'utils/PermissionGroups2.sol', 'utf8')},
     'ReentrancyGuard.sol' : {content: fs.readFileSync(contractsSol5Path + 'utils/zeppelin/ReentrancyGuard.sol', 'utf8')},
     'SafeERC20.sol' : {content: fs.readFileSync(contractsSol5Path + 'utils/zeppelin/SafeERC20.sol', 'utf8')},
@@ -160,9 +160,9 @@ async function compileContracts(versionNum) {
     compiler = loadSpecificCompiler(solcVersionNum, solcPath);
     compilingPreparations();
     const config = createConfiguration(sourceFiles);
+    console.log("started compilation");
     output = JSON.parse(compiler.compile(JSON.stringify(config)));
     errorHandling(output, versionNum);
-    // console.log(output.contracts['GasHelper.sol']);
     return output;
 }
 
