@@ -1291,7 +1291,6 @@ contract('KyberFeeHandler', function(accounts) {
 
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
 
-                let contract = await MockContractCallBurnKNC.new(feeHandler.address);
                 await expectRevert(
                     feeHandler.burnKNC(),
                     "sanity rate is 0x0, burning is blocked"
