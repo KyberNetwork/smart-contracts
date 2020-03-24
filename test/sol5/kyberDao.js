@@ -1245,6 +1245,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(30, currentBlock + 50, 10);
             currentBlock = await Helper.getCurrentBlock();
             // note: it is reverted as invalid opcode for campaign type, no message here
+            // running normal test and coverage are returning different type of exception
             try {
                 await daoContract.submitNewCampaign(
                     3, currentBlock + 3, currentBlock + 3 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -5895,12 +5896,10 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(10, currentBlock + 10, 10);
             let reward = 10001;
             let rebate = 0;
-            try {
-                await daoContract.getDataFromRewardAndRebateWithValidation(reward, rebate);
-                assert(false, "throw was expected in line above");
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                daoContract.getDataFromRewardAndRebateWithValidation(reward, rebate),
+                "reward plus rebate high"
+            )
 
             reward = 0;
             rebate = 10001;

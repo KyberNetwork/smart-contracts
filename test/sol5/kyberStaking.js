@@ -635,12 +635,10 @@ contract('KyberStaking', function(accounts) {
             Helper.assertEqual(0, await stakingContract.getStakesValue(victor, 9), "stake at epoch 9 should be correct");
             Helper.assertEqual(0, await stakingContract.getLatestStakeBalance(victor), "latest stake balance should be correct");
 
-            try {
-                await stakingContract.withdraw(mulPrecision(10), {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.withdraw(mulPrecision(10), {from: victor}),
+                "withdraw: latest amount staked < withdrawal amount"
+            )
         });
 
         it("Test withdraw (partial + full), stakes change as expected - with delegation", async function() {
@@ -2329,8 +2327,9 @@ contract('KyberStaking', function(accounts) {
             await stakingContract.withdraw(mulPrecision(100), {from: victor});
 
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod);
-            await expectRevert.unspecified(
-                stakingContract.withdraw(mulPrecision(100), {from: victor})
+            await expectRevert(
+                stakingContract.withdraw(mulPrecision(100), {from: victor}),
+                "withdraw: dao returns false for handle withdrawal"
             )
         });
 
@@ -2347,6 +2346,8 @@ contract('KyberStaking', function(accounts) {
             await stakingContract.withdraw(mulPrecision(100), {from: victor});
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod);
 
+            // Transaction reverted: function call to a non-contract account
+            // so use unspecified here
             await expectRevert.unspecified(
                 stakingContract.withdraw(mulPrecision(100), {from: victor})
             )
