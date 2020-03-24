@@ -2172,6 +2172,89 @@ contract('KyberMatchingEngine', function(accounts) {
                 });
             });
 
+            describe("test fees = BPS", async() => {
+                //(networkFeeBps, platformFeeBps)
+                let feeConfigurations = [
+                    [BPS.div(new BN(2)), zeroBN, "networkFee high"], // 10000, 0
+                    [zeroBN, BPS, "platformFee high"], // 0, 10000
+                    [new BN(1), BPS.sub(new BN(2)), "fees high"], // 1, 9999
+                    [BPS.div(new BN(2)).sub(new BN(1)), new BN(2), "fees high"], // 4999, 2
+                    [new BN(2500), new BN(5000), "fees high"], // 2500, 5000
+                ];
+
+                for (const feeConfiguration of feeConfigurations) {
+                    let networkFeeBps = feeConfiguration[0];
+                    let platformFeeBps = feeConfiguration[1];
+                    let revertMsg = feeConfiguration[2];
+
+                    it(`should revert for T2E, mask out hint, networkBps: ${networkFeeBps.toString()}, platformBps: ${platformFeeBps.toString()}`, async() => {
+                        numMaskedReserves = 2;
+                        info = [srcQty, networkFeeBps, platformFeeBps];
+                        
+                        hintedReserves = await getHintedReserves(
+                            matchingEngine, reserveInstances,
+                            MASK_OUT_HINTTYPE, numMaskedReserves, [], srcQty,
+                            undefined, 0, undefined, 0,
+                            srcToken.address, ethAddress
+                            );
+                        
+                        await expectRevert(
+                            matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint),
+                            revertMsg
+                        );
+                    });
+
+                    it(`should revert for E2T, mask out hint (fee >= E2T tradeAmt), networkBps: ${networkFeeBps.toString()}, platformBps: ${platformFeeBps.toString()}`, async() => {
+                        numMaskedReserves = 2;
+                        info = [ethSrcQty, networkFeeBps, platformFeeBps];
+                        
+                        hintedReserves = await getHintedReserves(
+                            matchingEngine, reserveInstances,
+                            undefined, 0, undefined, 0,
+                            MASK_OUT_HINTTYPE, numMaskedReserves, [], ethSrcQty,
+                            ethAddress, destToken.address
+                            );
+
+                        await expectRevert(
+                            matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint),
+                            revertMsg
+                        );
+                    });
+
+                    it(`should revert for T2E, split hint, networkBps: ${networkFeeBps.toString()}, platformBps: ${platformFeeBps.toString()}`, async() => {
+                        info = [srcQty, networkFeeBps, platformFeeBps];
+                        
+                        hintedReserves = await getHintedReserves(
+                            matchingEngine, reserveInstances,
+                            SPLIT_HINTTYPE, undefined, undefined, srcQty,
+                            undefined, 0, undefined, 0,
+                            srcToken.address, ethAddress
+                            );
+
+                        await expectRevert(
+                            matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint),
+                            revertMsg
+                        );
+                    });
+
+                    it(`should revert for E2T, split hint (calcRateFromQty error), networkBps: ${networkFeeBps.toString()}, platformBps: ${platformFeeBps.toString()}`, async() => {
+                        info = [ethSrcQty, networkFeeBps, platformFeeBps];
+                        
+                        hintedReserves = await getHintedReserves(
+                            matchingEngine, reserveInstances,
+                            undefined, 0, undefined, 0,
+                            SPLIT_HINTTYPE, undefined, undefined, ethSrcQty,
+                            ethAddress, destToken.address
+                            );
+                        
+                        await expectRevert(
+                            matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint),
+                            revertMsg
+                        );
+                    });
+                }
+            });
+
             describe("test fees > BPS", async() => {
                 let maxNum = (new BN(2).pow(new BN(256))).sub(new BN(1));
                 describe("T2E and E2T", async() => {

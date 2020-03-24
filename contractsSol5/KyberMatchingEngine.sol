@@ -188,14 +188,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             bytes8[] memory ids)
     {
         //initialisation
-        TradeData memory tData;
-        tData.tokenToEth.decimals = srcDecimals;
-        tData.ethToToken.decimals = destDecimals;
-        tData.networkFeeBps = info[uint(IKyberMatchingEngine.InfoIndex.networkFeeBps)];
-        tData.platformFeeBps = info[uint(IKyberMatchingEngine.InfoIndex.platformFeeBps)];
-        require(tData.platformFeeBps < BPS, "platformFee high");
-        require(tData.networkFeeBps < BPS / 2, "networkFee high");
-        require(tData.platformFeeBps + tData.networkFeeBps * 2 < BPS, "fees high");
+        TradeData memory tData = initAndValidateTradeData(srcDecimals, destDecimals, info);
 
         parseTradeDataHint(src, dest, tData, hint);
 
@@ -236,6 +229,21 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         calcRatesAndAmountsEthToToken(dest, tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei, tData);
 
         return packResults(tData);
+    }
+
+    function initAndValidateTradeData(
+        uint srcDecimals,
+        uint destDecimals,
+        uint[] memory info)
+    internal pure returns(TradeData memory tData) {
+        tData.tokenToEth.decimals = srcDecimals;
+        tData.ethToToken.decimals = destDecimals;
+        tData.networkFeeBps = info[uint(IKyberMatchingEngine.InfoIndex.networkFeeBps)];
+        tData.platformFeeBps = info[uint(IKyberMatchingEngine.InfoIndex.platformFeeBps)];
+        require(tData.platformFeeBps < BPS, "platformFee high");
+        require(tData.networkFeeBps < BPS / 2, "networkFee high");
+        require(tData.platformFeeBps + tData.networkFeeBps * 2 < BPS, "fees high");
+        return tData;
     }
 
     function listPairs(IKyberReserve reserve, IERC20 token, bool isTokenToEth, bool add) internal {
