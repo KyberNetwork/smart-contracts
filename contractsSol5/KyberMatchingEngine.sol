@@ -152,6 +152,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint platformFeeWei;
 
         uint networkFeeBps;
+        uint E2TRate;
 
         uint numFeePayingReserves;
         uint feePayingReservesBps; // what part of this trade is fee paying. for token to token - up to 200%
@@ -195,8 +196,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         parseTradeDataHint(src, dest, tData, hint);
 
         if (tData.failedIndex > 0) {
-            storeTradeReserveData(tData.tokenToEth, IKyberReserve(0), 0, false);
-            storeTradeReserveData(tData.ethToToken, IKyberReserve(0), 0, false);
+            storeSingleReserveData(tData.tokenToEth, IKyberReserve(0), 0, false);
+            storeSingleReserveData(tData.ethToToken, IKyberReserve(0), 0, false);
 
             return packResults(tData);
         }
@@ -205,29 +206,21 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         if (tData.tradeWei == 0) {
             //initialise ethToToken properties and store zero rate, will return zero rate since dest amounts are zero
-            storeTradeReserveData(tData.ethToToken, IKyberReserve(0), 0, false);
+            storeSingleReserveData(tData.ethToToken, IKyberReserve(0), 0, false);
             return packResults(tData);
         }
 
-        //if split reserves, add bps for ETH -> token
+        //calculate fees, E2T rates and actualDestAmount
         if (tData.ethToToken.splitValuesBps.length > 1) {
-            for (uint i = 0; i < tData.ethToToken.addresses.length; i++) {
-                //check if ETH->token split reserves are fee paying
-                tData.ethToToken.isFeePaying = getIsFeePayingReserves(tData.ethToToken.addresses);
-                if (tData.ethToToken.isFeePaying[i]) {
-                    tData.feePayingReservesBps += tData.ethToToken.splitValuesBps[i];
-                    tData.numFeePayingReserves++;
-                }
-            }
+            calcRatesAndAmountsEthToTokenSplit(dest, info[uint(IKyberMatchingEngine.InfoIndex.platformFeeBps)], tData);
+        } else {
+            calcRatesAndAmountsEthToTokenNonSplit(dest, info[uint(IKyberMatchingEngine.InfoIndex.platformFeeBps)], tData);
         }
 
-        //fee deduction
-        //ETH -> dest fee deduction has not occured for non-split ETH -> dest trade types
-        tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
-        tData.platformFeeWei = tData.tradeWei * info[uint(IKyberMatchingEngine.InfoIndex.platformFeeBps)] / BPS;
-
-        require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
-        calcRatesAndAmountsEthToToken(dest, tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei, tData);
+        //calc other destAmounts
+        tData.destAmountWithNetworkFee = calcDstQty(tData.tradeWei - tData.networkFeeWei, ETH_DECIMALS,
+            tData.ethToToken.decimals, tData.E2TRate);
+        tData.destAmountNoFee = calcDstQty(tData.tradeWei, ETH_DECIMALS, tData.ethToToken.decimals, tData.E2TRate);
 
         return packResults(tData);
     }
@@ -276,7 +269,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             new IKyberReserve[](1) : reservesPerTokenDest[address(dest)];
 
         // PERM is treated as no hint, so we just return
-        // relevant arrays will be initialised in storeTradeReserveData
+        // relevant arrays will be initialised in storeSingleReserveData
         if (hint.length == 0 || hint.length == 4) return;
 
         if (src == ETH_TOKEN_ADDRESS) {
@@ -354,7 +347,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
     /// @notice calculates and stores tradeWei, t2e feePayingReservesBps and no. of feePaying t2e reserves
     /// @dev t2e rate(s) are saved either in the getDestQtyAndFeeDataFromSplits function for split trade types,
-    /// or the storeTradeReserveData function for other types
+    /// or the storeSingleReserveData function for other types
     function calcRatesAndAmountsTokenToEth(IERC20 src, uint srcAmount, TradeData memory tData) internal view {
         IKyberReserve reserve;
         bool isFeePaying;
@@ -374,7 +367,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
                 tData.networkFeeBps
             );
             //save into tradeData
-            storeTradeReserveData(tData.tokenToEth, reserve, rate, isFeePaying);
+            storeSingleReserveData(tData.tokenToEth, reserve, rate, isFeePaying);
             tData.tradeWei = calcDstQty(srcAmount, tData.tokenToEth.decimals, ETH_DECIMALS, rate);
 
             //account for fees
@@ -438,7 +431,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @notice Stores reserve and rate information, either from searchBestRate function,
     /// or null reserve and zero rate due to exceptions (Eg. tradeWei is zero, invalid hint)
     /// @dev Re-initialises the relevant array lengths, and stores the information
-    function storeTradeReserveData(TradingReserves memory tradingReserves, IKyberReserve reserve, uint rate, 
+    function storeSingleReserveData(TradingReserves memory tradingReserves, IKyberReserve reserve, uint rate, 
         bool isFeePaying) 
         internal pure 
     {
@@ -501,52 +494,65 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         }
     }
 
-    function calcRatesAndAmountsEthToToken(IERC20 dest, uint actualTradeWei, TradeData memory tData) internal view {
-        IKyberReserve reserve;
-        uint rate;
-        bool isFeePaying;
-
-        // Eth to token
-        ///////////////
-        // if hinted reserves, find rates and save.
-        if (tData.ethToToken.splitValuesBps.length > 1) {
-            (tData.actualDestAmount, , ) = getDestQtyAndFeeDataFromSplits(tData.ethToToken, dest, actualTradeWei, 
-                false);
-            //calculate actual rate
-            rate = calcRateFromQty(actualTradeWei, tData.actualDestAmount, ETH_DECIMALS, tData.ethToToken.decimals);
-        } else {
-            //network fee for ETH -> token is in ETH amount
-            uint ethToTokenNetworkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS;
-            // search best reserve and its corresponding dest amount
-            // Have to search with tradeWei minus fees, because that is the actual src amount for ETH -> token trade
-            (reserve, rate, isFeePaying) = searchBestRate(
-                tData.ethToToken.addresses,
-                ETH_TOKEN_ADDRESS,
-                dest,
-                actualTradeWei,
-                ethToTokenNetworkFeeWei
-            );
-
-            //save into tradeData
-            storeTradeReserveData(tData.ethToToken, reserve, rate, isFeePaying);
-
-            // add to feePayingReservesBps if reserve is fee paying
-            if (isFeePaying) {
-                tData.networkFeeWei += ethToTokenNetworkFeeWei;
-                tData.feePayingReservesBps += BPS; //max percentage amount for ETH -> token
+    function calcRatesAndAmountsEthToTokenSplit(IERC20 dest, uint platformFeeBps, TradeData memory tData) internal view {
+        //get E2T fee paying info
+        tData.ethToToken.isFeePaying = getIsFeePayingReserves(tData.ethToToken.addresses);
+        for (uint i = 0; i < tData.ethToToken.addresses.length; i++) {
+            //check if ETH->token split reserves are fee paying
+            if (tData.ethToToken.isFeePaying[i]) {
+                tData.feePayingReservesBps += tData.ethToToken.splitValuesBps[i];
                 tData.numFeePayingReserves++;
             }
-
-            //take into account possible additional networkFee
-            require(tData.tradeWei >= tData.networkFeeWei + tData.platformFeeWei, "fees exceed trade amt");
-            tData.actualDestAmount = calcDstQty(tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei, 
-                ETH_DECIMALS, tData.ethToToken.decimals, rate);
         }
 
-        //finally, in both cases, we calculate destAmountWithNetworkFee and destAmountNoFee
-        tData.destAmountWithNetworkFee = calcDstQty(tData.tradeWei - tData.networkFeeWei, ETH_DECIMALS, 
-            tData.ethToToken.decimals, rate);
-        tData.destAmountNoFee = calcDstQty(tData.tradeWei, ETH_DECIMALS, tData.ethToToken.decimals, rate);
+        //calculate fees
+        tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
+        tData.platformFeeWei = tData.tradeWei * platformFeeBps / BPS;
+        require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
+        uint actualTradeWei = tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei;
+
+        (tData.actualDestAmount, , ) = getDestQtyAndFeeDataFromSplits(tData.ethToToken, dest, actualTradeWei, false);
+        //calculate actual rate
+        tData.E2TRate = calcRateFromQty(actualTradeWei, tData.actualDestAmount, ETH_DECIMALS, tData.ethToToken.decimals);
+    }
+
+    function calcRatesAndAmountsEthToTokenNonSplit(IERC20 dest, uint platformFeeBps, TradeData memory tData) internal view {
+        IKyberReserve reserve;
+        bool isFeePaying;
+
+        //fee calculation
+        //ETH -> dest fee deduction has not occured
+        tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
+        tData.platformFeeWei = tData.tradeWei * platformFeeBps / BPS;
+        require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
+        uint actualTradeWei = tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei;
+
+        //network fee for ETH -> token is in ETH amount
+        uint ethToTokenNetworkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS;
+        // search best reserve and its corresponding dest amount
+        // Have to search with tradeWei minus fees, because that is the actual src amount for ETH -> token trade
+        (reserve, tData.E2TRate, isFeePaying) = searchBestRate(
+            tData.ethToToken.addresses,
+            ETH_TOKEN_ADDRESS,
+            dest,
+            actualTradeWei,
+            ethToTokenNetworkFeeWei
+        );
+
+        //save into tradeData
+        storeSingleReserveData(tData.ethToToken, reserve, tData.E2TRate, isFeePaying);
+
+        // add to feePayingReservesBps if reserve is fee paying
+        if (isFeePaying) {
+            tData.networkFeeWei += ethToTokenNetworkFeeWei;
+            tData.feePayingReservesBps += BPS; //max percentage amount for ETH -> token
+            tData.numFeePayingReserves++;
+        }
+
+        //take into account possible additional networkFee
+        require(tData.tradeWei >= tData.networkFeeWei + tData.platformFeeWei, "fees exceed trade amt");
+        tData.actualDestAmount = calcDstQty(tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei,
+            ETH_DECIMALS, tData.ethToToken.decimals, tData.E2TRate);
     }
 
     struct BestReserveInfo {
