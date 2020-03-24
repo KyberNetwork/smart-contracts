@@ -145,6 +145,7 @@ contract('KyberFeeHandler', function(accounts) {
             
             await expectEvent(txResult, "RewardPaid", {
                 staker: user,
+                epoch: currentEpoch,
                 amountWei: rewardAmount.mul(claim).div(precisionUnits)
             });
         });
