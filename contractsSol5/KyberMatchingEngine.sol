@@ -235,7 +235,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint srcDecimals,
         uint destDecimals,
         uint[] memory info)
-    internal pure returns(TradeData memory tData) {
+    internal pure returns(TradeData memory tData)
+    {
         tData.tokenToEth.decimals = srcDecimals;
         tData.ethToToken.decimals = destDecimals;
         tData.networkFeeBps = info[uint(IKyberMatchingEngine.InfoIndex.networkFeeBps)];
