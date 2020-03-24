@@ -101,4 +101,9 @@ contract GenerousKyberNetwork is KyberNetwork {
         return (tData.actualDestAmount);
     }
     /* solhint-enable function-max-lines */
+
+    function removeKyberProxy(address networkProxy) external onlyAdmin {
+        // recude extra gas cost of deploying this contract
+        networkProxy;
+    }
 }
