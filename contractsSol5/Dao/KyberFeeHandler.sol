@@ -1,11 +1,11 @@
 pragma solidity 0.5.11;
 
-import "./utils/PermissionGroups2.sol";
-import "./utils/Utils4.sol";
-import "./IKyberDAO.sol";
-import "./IKyberFeeHandler.sol";
-import "./IKyberNetworkProxy.sol";
-import "./IBurnableToken.sol";
+import "../utils/PermissionGroups2.sol";
+import "../utils/Utils4.sol";
+import "../IKyberDAO.sol";
+import "../IKyberFeeHandler.sol";
+import "../IKyberNetworkProxy.sol";
+import "../IBurnableToken.sol";
 
 /*
  * @title Kyber fee handler
