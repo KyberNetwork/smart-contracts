@@ -1949,7 +1949,7 @@ contract('KyberMatchingEngine', function(accounts) {
                                 allReserves = allReserves.concat(actualResult.ids[j]);
                             }
                         }
-                        await Helper.increaseBlockNumberBySendingEther(accounts[9], accounts[9], 3);
+                        await Helper.increaseBlockNumber(3);
                     }
                     Helper.assertGreater(allReserves.length, new BN(1), "searchBestRate only selected 1 reserve");
                 });
@@ -1965,7 +1965,7 @@ contract('KyberMatchingEngine', function(accounts) {
                                 allReserves = allReserves.concat(actualResult.ids[j]);
                             }
                         }
-                        await Helper.increaseBlockNumberBySendingEther(accounts[9], accounts[9], 3);
+                        await Helper.increaseBlockNumber(3);
                     }
                     Helper.assertGreater(allReserves.length, new BN(1), "searchBestRate only selected 1 reserve");
                 });

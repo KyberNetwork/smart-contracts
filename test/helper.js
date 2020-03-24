@@ -1,6 +1,6 @@
 const Math = require('mathjs');
 const BN = web3.utils.BN;
-const { constants } = require('@openzeppelin/test-helpers');
+const { constants, time } = require('@openzeppelin/test-helpers');
 require("chai")
     .use(require("chai-as-promised"))
     .use(require("chai-bn")(BN))
@@ -259,8 +259,8 @@ module.exports.calcRateFromQty = function(srcQty, dstQty, srcDecimals, dstDecima
     }
 }
 
-module.exports.increaseBlockNumberBySendingEther = async function(sender, recv, blocks) {
-    for(let id = 0; id < blocks; id++) {
-        await this.sendEtherWithPromise(sender, recv, 0);
+module.exports.increaseBlockNumber = async function (blocks) {
+    for (let id = 0; id < blocks; id++) {
+        await time.advanceBlock();
     }
 }

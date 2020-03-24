@@ -39,7 +39,7 @@
   "devDependencies": {
     "@nomiclabs/buidler": "1.1.2",
     "@nomiclabs/buidler-web3": "1.1.2",
-    "@openzeppelin/test-helpers": "0.5.4",
+    "@openzeppelin/test-helpers": "^0.5.5",
     "chai": "4.2.0",
     "chai-bn": "0.2.0",
     "mv": "2.1.1",
