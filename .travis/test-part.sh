@@ -7,7 +7,7 @@ readonly test_part=${TEST_PART:-}
 
 case "$test_part" in
 Sol5)
-    npx buidler test --no-compile --config buidlerCoverageSol5.js
+    npx buidler test --no-compile --config buidlerConfigSol5.js
     ;;
 Coverage)
     if [[ $TRAVIS_EVENT_TYPE != "push" ]]; then
