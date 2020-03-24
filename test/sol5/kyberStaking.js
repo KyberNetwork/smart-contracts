@@ -3,6 +3,7 @@ const MockKyberDAO = artifacts.require("MockKyberDAOTestHandleWithdrawal.sol");
 const MockDAOWithdrawFailed = artifacts.require("MockKyberDaoWithdrawFailed.sol");
 const StakingContract = artifacts.require("MockStakingContract.sol");
 const MaliciousStaking = artifacts.require("MockKyberStakingMalicious.sol");
+const MaliciousDaoReentrancy = artifacts.require("MockMaliciousDaoReentrancy.sol");
 const Helper = require("../helper.js");
 
 const BN = web3.utils.BN;
@@ -634,12 +635,10 @@ contract('KyberStaking', function(accounts) {
             Helper.assertEqual(0, await stakingContract.getStakesValue(victor, 9), "stake at epoch 9 should be correct");
             Helper.assertEqual(0, await stakingContract.getLatestStakeBalance(victor), "latest stake balance should be correct");
 
-            try {
-                await stakingContract.withdraw(mulPrecision(10), {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.withdraw(mulPrecision(10), {from: victor}),
+                "withdraw: latest amount staked < withdrawal amount"
+            )
         });
 
         it("Test withdraw (partial + full), stakes change as expected - with delegation", async function() {
@@ -2328,12 +2327,10 @@ contract('KyberStaking', function(accounts) {
             await stakingContract.withdraw(mulPrecision(100), {from: victor});
 
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod);
-            try {
-                await stakingContract.withdraw(mulPrecision(100), {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                stakingContract.withdraw(mulPrecision(100), {from: victor}),
+                "withdraw: dao returns false for handle withdrawal"
+            )
         });
 
         it("Test withdraw should revert when DAO does not have handleWithdrawl func", async function() {
@@ -2349,12 +2346,34 @@ contract('KyberStaking', function(accounts) {
             await stakingContract.withdraw(mulPrecision(100), {from: victor});
             await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod);
 
-            try {
-                await stakingContract.withdraw(mulPrecision(100), {from: victor});
-                assert(false, "throw was expected in line above.")
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            // Transaction reverted: function call to a non-contract account
+            // so use unspecified here
+            await expectRevert.unspecified(
+                stakingContract.withdraw(mulPrecision(100), {from: victor})
+            )
+        });
+
+        it("Test withdraw should revert with re-entrancy", async() => {
+            await deployStakingContract(10, currentBlock + 10);
+            let maliciousDao = await MaliciousDaoReentrancy.new(10, currentBlock + 10, stakingContract.address, kncToken.address);
+            await stakingContract.updateDAOAddressAndRemoveSetter(maliciousDao.address, {from: daoSetter});
+
+            await kncToken.transfer(maliciousDao.address, mulPrecision(100));
+
+            await maliciousDao.deposit(mulPrecision(80));
+
+            // delay to epoch 1, so withdraw will call DAO to handle withdrawal
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+
+            // partial withdraw, dao will try to re-enter withdraw
+            await expectRevert(
+                maliciousDao.withdraw(mulPrecision(10)),
+                "ReentrancyGuard: reentrant call"
+            )
+
+            // full withdraw, no reentrant
+            await maliciousDao.withdraw(mulPrecision(80));
         });
 
         it("Test delegate should revert when delegate to address 0", async function() {
