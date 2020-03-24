@@ -157,7 +157,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         return true;
     }
 
-    event RewardPaid(address staker, uint amountWei);
+    event RewardPaid(address staker, uint epoch, uint amountWei);
 
     /// @dev only Dao can call a claim to staker rewards.
     /// @param staker address.
@@ -180,7 +180,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4 {
         (bool success, ) = staker.call.value(amount)("");
         require(success, "Transfer staker rewards failed.");
 
-        emit RewardPaid(staker, amount);
+        emit RewardPaid(staker, epoch, amount);
 
         return true;
     }
