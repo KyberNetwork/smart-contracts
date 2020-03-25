@@ -270,7 +270,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
     /// @param tradeType Trade hint type
     /// @param reserveIds Reserve IDs
     /// @param splits Reserve splits
-    /// @return returns a boolean if the data passed is valid
+    /// @return returns a HintError enum to indicate valid or invalid hint data
     function verifyData(
         TradeType tradeType,
         bytes8[] memory reserveIds,
