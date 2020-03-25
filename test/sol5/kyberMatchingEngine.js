@@ -1549,51 +1549,39 @@ contract('KyberMatchingEngine', function(accounts) {
 
             describe(`test revert if num mask out reserves > all reserves available`, async() => {
                 it("T2E", async() => {
-                    numMaskedReserves = 4;
                     info = [srcQty, zeroBN, zeroBN];
-
-                    hintedReserves = await getHintedReserves(
-                        matchingEngine, reserveInstances,
-                        MASK_OUT_HINTTYPE, numMaskedReserves, [], srcQty,
-                        undefined, 0, undefined, 0,
-                        srcToken.address, ethAddress,
-                        );
                     
-                    //modify hint to have additional reserve for mask out
-                    let tempHint = hintedReserves.hint;
-                    hintedReserves.hint = 
-                        tempHint.substring(0,4) //'0x' + opcode
-                        + '05' //numReserves
-                        + tempHint.substring(6,22) //first reserve ID
-                        + tempHint.substring(6); //everything else
+                    let reserveIds = [];
+                    for (const reserve of Object.values(reserveInstances)) {
+                        reserveIds.push(reserve.reserveId);
+                    };
+                    //additional reserve
+                    reserveIds = reserveIds.concat(reserveIds[0]);
+                    let hint = await matchingEngine.buildTokenToEthHint(
+                        MASK_OUT_HINTTYPE, reserveIds, [] 
+                    );
 
                     await expectRevert(
-                        matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hintedReserves.hint),
+                        matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hint),
                         "MASK_OUT_TOO_LONG"
                     );
                 });
 
                 it("E2T", async() => {
-                    numMaskedReserves = 4;
                     info = [srcQty, zeroBN, zeroBN];
 
-                    hintedReserves = await getHintedReserves(
-                        matchingEngine, reserveInstances,
-                        undefined, 0, undefined, 0,
-                        MASK_OUT_HINTTYPE, numMaskedReserves, [], ethSrcQty,
-                        ethAddress, destToken.address
-                        );
-                    
-                    //modify hint to have additional reserve for mask out
-                    let tempHint = hintedReserves.hint;
-                    hintedReserves.hint = 
-                        tempHint.substring(0,6) //'0x' + separator opcode + mask out opcode
-                        + '05' //numReserves
-                        + tempHint.substring(8,24) //first reserve ID
-                        + tempHint.substring(8); //everything else
+                    let reserveIds = [];
+                    for (const reserve of Object.values(reserveInstances)) {
+                        reserveIds.push(reserve.reserveId);
+                    };
+                    //additional reserve
+                    reserveIds = reserveIds.concat(reserveIds[0]);
+                    let hint = await matchingEngine.buildEthToTokenHint(
+                        MASK_OUT_HINTTYPE, reserveIds, [] 
+                    );
 
                     await expectRevert(
-                        matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hintedReserves.hint),
+                        matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hint),
                         "MASK_OUT_TOO_LONG"
                     );
                 });
@@ -1602,23 +1590,19 @@ contract('KyberMatchingEngine', function(accounts) {
                     numMaskedReserves = 4;
                     info = [srcQty, zeroBN, zeroBN];
 
-                    hintedReserves = await getHintedReserves(
-                        matchingEngine, reserveInstances,
-                        MASK_OUT_HINTTYPE, numMaskedReserves, [], srcQty,
-                        MASK_OUT_HINTTYPE, numMaskedReserves, [], ethSrcQty,
-                        srcToken.address, destToken.address
-                        );
-                    
-                    //modify hint to have additional reserve for mask out
-                    let tempHint = hintedReserves.hint;
-                    hintedReserves.hint = 
-                        tempHint.substring(0,4) //'0x' + opcode
-                        + '05' //numReserves
-                        + tempHint.substring(6,22) //first reserve ID
-                        + tempHint.substring(6); //everything else
+                    let reserveIds = [];
+                    for (const reserve of Object.values(reserveInstances)) {
+                        reserveIds.push(reserve.reserveId);
+                    };
+                    //additional reserve
+                    reserveIds = reserveIds.concat(reserveIds[0]);
+                    let hint = await matchingEngine.buildTokenToTokenHint(
+                        MASK_OUT_HINTTYPE, reserveIds, [],
+                        MASK_OUT_HINTTYPE, reserveIds, []
+                    );
                     
                     await expectRevert(
-                        matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hintedReserves.hint),
+                        matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint),
                         "MASK_OUT_TOO_LONG"
                     );
                 });
@@ -1671,14 +1655,12 @@ contract('KyberMatchingEngine', function(accounts) {
                 });
             });
 
-            it(`should return zero rate if hint is invalid`, async() => {
+            it(`should revert if hint is invalid`, async() => {
                 info = [srcQty, zeroBN, zeroBN];
                 let invalidHint = '0x78';
-                actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, invalidHint);
-                
-                for (let i = 0; i < actualResult.results; i++) {
-                    Helper.assertEqual(actualResult.results[i], zeroBN, "unexpected value");
-                }
+                await expectRevert.unspecified(
+                    matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, invalidHint)
+                );
             });
 
             describe(`should return zero destAmounts if T2E reserves all return zero rate`, async() => {
