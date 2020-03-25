@@ -92,22 +92,22 @@ contract('KyberMatchingEngine', function(accounts) {
         it("should not have unauthorized personnel set network contract", async() => {
             await expectRevert(
                 matchingEngine.setNetworkContract(network, {from: user}),
-                "ONLY_ADMIN"
+                "Only admin"
             );
 
             await expectRevert(
                 matchingEngine.setNetworkContract(network, {from: operator}),
-                "ONLY_ADMIN"
+                "Only admin"
             );
 
             await expectRevert(
                 matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: operator}),
-                "ONLY_ADMIN"
+                "Only admin"
             );
 
             await expectRevert(
                 matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: network}),
-                "ONLY_ADMIN"
+                "Only admin"
             );
         });
 

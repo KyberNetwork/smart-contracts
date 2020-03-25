@@ -69,21 +69,21 @@ contract('PermissionGroups2', function(accounts) {
         it("should revert request admin change for non-admin", async() => {
             await expectRevert(
                 permissionsInst.transferAdmin(user, {from: user}),
-                "ONLY_ADMIN"
+                "Only admin"
             );
         });
     
         it("should revert request admin change quickly for non-admin", async() => {
             await expectRevert(
                 permissionsInst.transferAdminQuickly(secondAdmin, {from: secondAdmin}),
-                "ONLY_ADMIN"
+                "Only admin"
             );
         })
     
         it("should revert claim admin if transferAdmin was not initialised", async() => {
             await expectRevert(
                 permissionsInst.claimAdmin({from: secondAdmin}),
-                "NOT_PENDING"
+                "not pending"
             );
         });
     
@@ -92,7 +92,7 @@ contract('PermissionGroups2', function(accounts) {
             Helper.assertEqual(await permissionsInst.admin(), secondAdmin, "failed to transfer admin");
             await expectRevert(
                 permissionsInst.transferAdminQuickly(secondAdmin, {from: mainAdmin}),
-                "ONLY_ADMIN"
+                "Only admin"
             );
     
             //and transfer back to mainAdmin
@@ -100,21 +100,21 @@ contract('PermissionGroups2', function(accounts) {
             Helper.assertEqual(await permissionsInst.admin(), mainAdmin, "failed to transfer admin");
             await expectRevert(
                 permissionsInst.transferAdminQuickly(mainAdmin, {from: secondAdmin}),
-                "ONLY_ADMIN"
+                "Only admin"
             );
         });
     
         it("should revert for transferring admin to zeroAddress", async() => {
             await expectRevert(
                 permissionsInst.transferAdmin(zeroAddress, {from: mainAdmin}),
-                "TRANS_ADD_0"
+                "New admin 0"
             );
         });
     
         it("should revert for transferring admin quickly to zeroAddress", async() => {
             await expectRevert(
                 permissionsInst.transferAdminQuickly(zeroAddress, {from: mainAdmin}),
-                "TRANSQ_ADD_0"
+                "Admin 0"
             );
         });
     
@@ -134,7 +134,7 @@ contract('PermissionGroups2', function(accounts) {
             Helper.assertEqual(await permissionsInst.admin(), pendingAdmin2);
             await expectRevert(
                 permissionsInst.claimAdmin({from: pendingAdmin1}),
-                "NOT_PENDING"
+                "not pending"
             );
         });
 
@@ -150,7 +150,7 @@ contract('PermissionGroups2', function(accounts) {
         it("should revert adding operator for non admin", async() => {
             await expectRevert(
                 permissionsInst.addOperator(operator, {from: secondAdmin}),
-                "ONLY_ADMIN"
+                "Only admin"
             );
         });
 
@@ -169,7 +169,7 @@ contract('PermissionGroups2', function(accounts) {
             await permissionsInst.addOperator(operator, {from: mainAdmin});
             await expectRevert(
                 permissionsInst.addOperator(operator, {from: mainAdmin}),
-                "OPRTR_EXIST"
+                "Operator exists"
             );
         });
 
@@ -178,7 +178,7 @@ contract('PermissionGroups2', function(accounts) {
             await permissionsInst.addOperator(operator, {from: mainAdmin});
             await expectRevert(
                 permissionsInst.setRate(newRate, {from: accounts[6]}),
-                "ONLY_OPRTR"
+                "Only operator"
             );
 
             let rate = await permissionsInst.rate();
@@ -196,7 +196,7 @@ contract('PermissionGroups2', function(accounts) {
         it("should revert removing non-existent operator", async() => {
             await expectRevert(
                 permissionsInst.removeOperator(operator, {from: mainAdmin}),
-                "OPRTR_NONE"
+                "Not operator"
             );
         });
 
@@ -204,7 +204,7 @@ contract('PermissionGroups2', function(accounts) {
             await permissionsInst.addOperator(operator, {from: mainAdmin});
             await expectRevert(
                 permissionsInst.removeOperator(operator, {from: secondAdmin}),
-                "ONLY_ADMIN"
+                "Only admin"
             );
         });
 
@@ -227,7 +227,7 @@ contract('PermissionGroups2', function(accounts) {
             }
             await expectRevert(
                 permissionsInst.addOperator(operator, {from: mainAdmin}),
-                "MAX_OPRTR_NUM"
+                "Max operators"
             );
         });
 
@@ -253,7 +253,7 @@ contract('PermissionGroups2', function(accounts) {
         it("should revert adding alerter for non admin", async() => {
             await expectRevert(
                 permissionsInst.addAlerter(user, {from: secondAdmin}),
-                "ONLY_ADMIN"
+                "Only admin"
             );
         });
 
@@ -271,7 +271,7 @@ contract('PermissionGroups2', function(accounts) {
             await permissionsInst.addAlerter(alerter, {from: mainAdmin});
             await expectRevert(
                 permissionsInst.addAlerter(alerter, {from: mainAdmin}),
-                "ALRTR_EXIST"
+                "Alerter exists"
             );
         });
 
@@ -286,7 +286,7 @@ contract('PermissionGroups2', function(accounts) {
     
             await expectRevert(
                 permissionsInst.stopTrade({from: user}),
-                "ONLY_ALRTR"
+                "Only alerter"
             );
         });
 
@@ -303,7 +303,7 @@ contract('PermissionGroups2', function(accounts) {
         it("should revert removing non-existent alerter", async() => {
             await expectRevert(
                 permissionsInst.removeAlerter(alerter, {from: mainAdmin}),
-                "ALRTR_NONE"
+                "Not alerter"
             );
         });
 
@@ -311,7 +311,7 @@ contract('PermissionGroups2', function(accounts) {
             await permissionsInst.addAlerter(alerter, {from: mainAdmin});
             await expectRevert(
                 permissionsInst.removeAlerter(alerter, {from: secondAdmin}),
-                "ONLY_ADMIN"
+                "Only admin"
             );
         });
 
@@ -334,7 +334,7 @@ contract('PermissionGroups2', function(accounts) {
             }
             await expectRevert(
                 permissionsInst.addAlerter(alerter, {from: mainAdmin}),
-                "MAX_ALRTR_NUM"
+                "Max alerters"
             );
         });
 
