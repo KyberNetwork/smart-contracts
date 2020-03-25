@@ -16,7 +16,7 @@ const nwHelper = require("./networkHelper.js");
 const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
-const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN, MAX_QTY} = require("../helper.js");
+const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN, MAX_QTY, MAX_RATE} = require("../helper.js");
 const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK,
     MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, ReserveType}  = require('./networkHelper.js');
 
@@ -1672,6 +1672,87 @@ contract('KyberNetwork', function(accounts) {
             actualFeeBPS = await tempNetwork.getAndUpdateNetworkFee.call();
             Helper.assertEqual(actualFeeBPS, feeBPS, "fee bps not correct");
             await tempNetwork.getAndUpdateNetworkFee.call();
+        });
+    });
+
+    describe("test trade", async function(){
+        before("global setup", async function () {
+            tempNetwork = await KyberNetwork.new(admin); //init reserves
+            tempTokens = []
+            // setup network
+            await tempNetwork.addOperator(operator, { from: admin });
+            await tempNetwork.addKyberProxy(networkProxy, { from: admin });
+
+            feeBPS = new BN(100);
+            expiryBlock = await Helper.getCurrentBlock() + 100;
+            DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlock);
+            await tempNetwork.setDAOContract(DAO.address, { from: admin });
+
+            // init feeHandler
+            KNC = await TestToken.new("kyber network crystal", "KNC", 18);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
+
+            // init matchingEngine
+            matchingEngine = await TradeLogic.new(admin);
+            await matchingEngine.setNetworkContract(tempNetwork.address, { from: admin });
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
+
+            await tempNetwork.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
+
+            //set params, enable network
+            await tempNetwork.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
+            await tempNetwork.setEnable(true, { from: admin });
+
+            result = await nwHelper.setupReserves(network, tokens, 1, 0, 0, 0, accounts, admin, operator);
+            reserveInstances = result.reserveInstances;
+
+            //add and list pair for reserve
+            await nwHelper.addReservesToNetwork(tempNetwork, reserveInstances, tokens, operator);
+
+            // set fixed rates
+            fixedTokensPerEther = precisionUnits.mul(new BN(20));
+            fixedEthersPerToken = precisionUnits.div(new BN(20));
+
+            for (const [key, value] of Object.entries(reserveInstances)) {
+                mockReserve = value.instance;
+                await mockReserve.setRate(tokens[0].address, MAX_RATE.div(new BN(2)), MAX_RATE.div(new BN(2)));
+                await mockReserve.setRate(tokens[1].address, MAX_RATE.div(new BN(2)), MAX_RATE.div(new BN(2)));
+            }
+
+        });
+
+        it("trade zero source amount", async function(){
+            srcQty = new BN(0);
+            srcToken = tokens[0];
+            destToken = tokens[1];
+            await expectRevert(
+                tempNetwork.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, destToken.address, taker,
+                    maxDestAmt, minConversionRate, platformWallet, platformFeeBps, emptyHint),
+                "0 srcAmt"
+            );
+        });
+
+        it("trade rate > MAX_RATE", async function(){
+            srcQty = new BN(10);
+            srcToken = tokens[0];
+            destToken = tokens[1];
+            await srcToken.transfer(tempNetwork.address, srcQty);
+            await expectRevert(
+                tempNetwork.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, destToken.address, taker,
+                    maxDestAmt, minConversionRate, platformWallet, platformFeeBps, emptyHint),
+                "rate > MAX_RATE"
+            );
+        });
+
+        it("trade rate < minConvRate", async function(){
+            srcQty = new BN(10);
+            srcToken = tokens[0];
+            await srcToken.transfer(tempNetwork.address, srcQty);
+            await expectRevert(
+                tempNetwork.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
+                    maxDestAmt, MAX_RATE, platformWallet, platformFeeBps, emptyHint),
+                "rate < minConvRate"
+            );
         });
     });
 });
