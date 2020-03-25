@@ -115,10 +115,4 @@ contract Utils4 {
     function minOf(uint x, uint y) internal pure returns(uint) {
         return x > y ? y : x;
     }
-
-    enum Module {
-        LOGIC, // trade logic
-        PROXY,
-        NETWORK // internal network
-    }
 }
