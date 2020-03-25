@@ -1,7 +1,7 @@
 #!/bin/sh
 ALL=false
 
-while getopts ":a:f:" arg; do
+while getopts "f:a" arg; do
   case $arg in
     a) ALL=true;;
     f) FILE=$OPTARG;;
@@ -10,7 +10,7 @@ done
 
 if [ -n "$FILE" ]; then
   npx buidler test --no-compile $FILE
-elif [ "$ALL" ]; then
+elif [ "$ALL" = true ]; then
   echo "Running all tests..."
   npx buidler test --no-compile
 else
