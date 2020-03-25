@@ -14,5 +14,5 @@ elif [ "$ALL" = true ]; then
   echo "Running all tests..."
   npx buidler test --no-compile
 else
-  npx buidler test --no-compile --config ./buidlerCoverageSol5.js
+  npx buidler test --no-compile --config ./buidlerConfigSol5.js
 fi
