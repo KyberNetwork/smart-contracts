@@ -20,14 +20,17 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         pure
         returns(bytes memory hint)
     {
-        bool valid = verifyData(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits);
-        require(valid, "Invalid data for hint");
+        HintErrors verified = verifyData(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits);
 
-        hint = abi.encode(
-            tokenToEthType,
-            tokenToEthReserveIds,
-            tokenToEthSplits
-        );
+        if (verified == HintErrors.NoError) {
+            hint = abi.encode(
+                tokenToEthType,
+                tokenToEthReserveIds,
+                tokenToEthSplits
+            );
+        } else {
+            throwHintError(verified);
+        }
     }
 
     /// @notice Builds the hint for a ETH to Token trade
@@ -44,14 +47,17 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         pure
         returns(bytes memory hint)
     {
-        bool valid = verifyData(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits);
-        require(valid, "Invalid data for hint");
+        HintErrors verified = verifyData(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits);
 
-        hint = abi.encode(
-            ethToTokenType,
-            ethToTokenReserveIds,
-            ethToTokenSplits
-        );
+        if (verified == HintErrors.NoError) {
+            hint = abi.encode(
+                ethToTokenType,
+                ethToTokenReserveIds,
+                ethToTokenSplits
+            );
+        } else {
+            throwHintError(verified);
+        }
     }
 
     /// @notice Builds the hint for a Token to Token trade
@@ -74,19 +80,23 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         pure
         returns(bytes memory hint)
     {
-        bool validT2E = verifyData(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits);
-        bool validE2T = verifyData(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits);
-        require(validT2E, "Invalid T2E data for hint");
-        require(validE2T, "Invalid E2T data for hint");
+        HintErrors verifiedT2E = verifyData(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits);
+        HintErrors verifiedE2T = verifyData(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits);
 
-        hint = abi.encode(
-            tokenToEthType,
-            tokenToEthReserveIds,
-            tokenToEthSplits,
-            ethToTokenType,
-            ethToTokenReserveIds,
-            ethToTokenSplits
-        );
+        if (verifiedT2E != HintErrors.NoError) {
+            throwHintError(verifiedT2E);
+        } else if (verifiedE2T != HintErrors.NoError) {
+            throwHintError(verifiedE2T);
+        } else {
+            hint = abi.encode(
+                tokenToEthType,
+                tokenToEthReserveIds,
+                tokenToEthSplits,
+                ethToTokenType,
+                ethToTokenReserveIds,
+                ethToTokenSplits
+            );
+        }
     }
 
     /// @notice Parses the hint for a Token to ETH trade
@@ -102,7 +112,11 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             uint[] memory tokenToEthSplits
         )
     {
-        (tokenToEthType, tokenToEthAddresses, tokenToEthSplits) = parseHint(hint);
+        HintErrors error;
+
+        (tokenToEthType, tokenToEthAddresses, tokenToEthSplits, error) = parseHint(hint);
+
+        if (error != HintErrors.NoError) throwHintError(error);
 
         tokenToEthReserveIds = new bytes8[](tokenToEthAddresses.length);
 
@@ -124,7 +138,11 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             uint[] memory ethToTokenSplits
         )
     {
-        (ethToTokenType, ethToTokenAddresses, ethToTokenSplits) = parseHint(hint);
+        HintErrors error;
+
+        (ethToTokenType, ethToTokenAddresses, ethToTokenSplits, error) = parseHint(hint);
+
+        if (error != HintErrors.NoError) throwHintError(error);
 
         ethToTokenReserveIds = new bytes8[](ethToTokenAddresses.length);
 
@@ -150,14 +168,19 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             uint[] memory ethToTokenSplits
         )
     {
+        HintErrors error;
+
         (
             tokenToEthType,
             tokenToEthAddresses,
             tokenToEthSplits,
             ethToTokenType,
             ethToTokenAddresses,
-            ethToTokenSplits
+            ethToTokenSplits,
+            error
         ) = parseHintT2T(hint);
+
+        if (error != HintErrors.NoError) throwHintError(error);
 
         tokenToEthReserveIds = new bytes8[](tokenToEthAddresses.length);
         ethToTokenReserveIds = new bytes8[](ethToTokenAddresses.length);
@@ -176,15 +199,16 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         returns(
             TradeType tradeType,
             IKyberReserve[] memory addresses,
-            uint[] memory splits
+            uint[] memory splits,
+            HintErrors verified
         )
     {
         bytes8[] memory reserveIds;
 
         (tradeType, reserveIds, splits) = abi.decode(hint, (TradeType, bytes8[], uint[]));
-        bool valid = verifyData(tradeType, reserveIds, splits);
+        verified = verifyData(tradeType, reserveIds, splits);
 
-        if (valid) {
+        if (verified == HintErrors.NoError) {
             addresses = new IKyberReserve[](reserveIds.length);
             
             for (uint i = 0; i < reserveIds.length; i++) {
@@ -204,7 +228,8 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             uint[] memory t2eSplits,
             TradeType e2tType,
             IKyberReserve[] memory e2tAddresses,
-            uint[] memory e2tSplits
+            uint[] memory e2tSplits,
+            HintErrors verified
         )
     {
         bytes8[] memory t2eReserveIds;
@@ -218,12 +243,13 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             e2tReserveIds,
             e2tSplits
         ) = abi.decode(hint, (TradeType, bytes8[], uint[], TradeType, bytes8[], uint[]));
-        bool validT2E = verifyData(t2eType, t2eReserveIds, t2eSplits);
-        bool validE2T = verifyData(e2tType, e2tReserveIds, e2tSplits);
+        HintErrors verifiedT2E = verifyData(t2eType, t2eReserveIds, t2eSplits);
+        HintErrors verifiedE2T = verifyData(e2tType, e2tReserveIds, e2tSplits);
 
-        if (validT2E && validE2T) {
+        if (verifiedT2E == HintErrors.NoError && verifiedE2T == HintErrors.NoError) {
             t2eAddresses = new IKyberReserve[](t2eReserveIds.length);
             e2tAddresses = new IKyberReserve[](e2tReserveIds.length);
+            verified = HintErrors.NoError;
             
             for (uint i = 0; i < t2eReserveIds.length; i++) {
                 t2eAddresses[i] = IKyberReserve(convertReserveIdToAddress(t2eReserveIds[i]));
@@ -234,6 +260,9 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         } else {
             t2eSplits = new uint[](0);
             e2tSplits = new uint[](0);
+
+            if (verifiedT2E != HintErrors.NoError) verified = verifiedT2E;
+            if (verifiedE2T != HintErrors.NoError) verified = verifiedE2T;
         }
     }
 
@@ -249,23 +278,36 @@ contract KyberHintHandler is IKyberHint, Utils4 {
     )
         internal
         pure
-        returns (bool)
+        returns (HintErrors)
     {
-        if (!(reserveIds.length > 0)) return false;
+        if (!(reserveIds.length > 0)) return HintErrors.ReserveIdZeroError;
         if (tradeType == TradeType.Split) {
-            if (reserveIds.length != splits.length) return false;
+            if (reserveIds.length != splits.length) return HintErrors.ReserveIdSplitsError;
 
             uint bpsSoFar;
             for (uint i = 0; i < splits.length; i++) {
                 bpsSoFar += splits[i];
             }
 
-            if (bpsSoFar != BPS) return false;
+            if (bpsSoFar != BPS) return HintErrors.TotalBPSError;
         } else {
-            if (splits.length != 0) return false;
+            if (splits.length != 0) return HintErrors.SplitsZeroError;
         }
 
-        return true;
+        return HintErrors.NoError;
+    }
+
+    /// @notice Throws error message to user to indicate error on hint
+    /// @param error Error type from HintErrors enum
+    function throwHintError(HintErrors error) internal pure {
+        if (error == HintErrors.ReserveIdZeroError)
+            revert("reserveIds cannot be empty");
+        if (error == HintErrors.ReserveIdSplitsError)
+            revert("reserveIds and splits length not equal");
+        if (error == HintErrors.TotalBPSError)
+            revert("splits total BPS does not amount to 10000BPS");
+        if (error == HintErrors.SplitsZeroError)
+            revert("splits cannot be empty");
     }
 
     function convertReserveIdToAddress(bytes8 reserveId) internal view returns (address);

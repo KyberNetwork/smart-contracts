@@ -572,7 +572,7 @@ contract('KyberHintHandler', function(accounts) {
             });
             
             Object.keys(TRADE_TYPES).forEach(tradeType => {
-                it(`should return no data for T2E hint for ${tradeType} due to invalid split value`, async() => {
+                it(`should revert for T2E hint for ${tradeType} due to invalid split value`, async() => {
                     t2eOpcode = TRADE_TYPES[tradeType];
 
                     if (tradeType == 'SPLIT') {
@@ -582,16 +582,16 @@ contract('KyberHintHandler', function(accounts) {
                     }
                     
                     const hint = buildHint(t2eOpcode, t2eReserves, t2eSplits);            
-                    const parseResult = await hintHandler.parseTokenToEthHint(hint);
-                    const expectedResult = parseHint(hint);
-    
-                    Helper.assertEqual(parseResult.tokenToEthType, expectedResult.tradeType);
-                    assert.deepEqual(parseResult.tokenToEthReserveIds, []);
-                    assert.deepEqual(parseResult.tokenToEthAddresses, []);
-                    Helper.assertEqual(parseResult.tokenToEthSplits, []);
+
+                    try {
+                        await hintHandler.parseTokenToEthHint(hint);
+                        assert(false, "throw was expected in line above.");
+                    } catch(e){
+                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                    }
                 });
 
-                it(`should return no data for T2E hint for ${tradeType} due to empty reserveIds`, async() => {
+                it(`should revert for T2E hint for ${tradeType} due to empty reserveIds`, async() => {
                     t2eOpcode = TRADE_TYPES[tradeType];
 
                     if (tradeType == 'SPLIT') {
@@ -600,30 +600,30 @@ contract('KyberHintHandler', function(accounts) {
                         t2eSplits = [];
                     }
                     
-                    const hint = buildHint(t2eOpcode, [], t2eSplits);            
-                    const parseResult = await hintHandler.parseTokenToEthHint(hint);
-                    const expectedResult = parseHint(hint);
-    
-                    Helper.assertEqual(parseResult.tokenToEthType, expectedResult.tradeType);
-                    assert.deepEqual(parseResult.tokenToEthReserveIds, []);
-                    assert.deepEqual(parseResult.tokenToEthAddresses, []);
-                    Helper.assertEqual(parseResult.tokenToEthSplits, []);
+                    const hint = buildHint(t2eOpcode, [], t2eSplits);
+
+                    try {
+                        await hintHandler.parseTokenToEthHint(hint);
+                        assert(false, "throw was expected in line above.");
+                    } catch(e){
+                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                    }
                 });
             });
 
             Object.keys(INVALID_SPLIT_BPS).forEach(invalidSplit => {
-                it(`should return no data for T2E hint for SPLITS due to ${invalidSplit}`, async() => {
+                it(`should revert for T2E hint for SPLITS due to ${invalidSplit}`, async() => {
                     t2eOpcode = SPLIT;
                     t2eSplits = INVALID_SPLIT_BPS[invalidSplit];
             
                     const hint = buildHint(t2eOpcode, t2eReserves, t2eSplits);            
-                    const parseResult = await hintHandler.parseTokenToEthHint(hint);
-                    const expectedResult = parseHint(hint);
-    
-                    Helper.assertEqual(parseResult.tokenToEthType, expectedResult.tradeType);
-                    assert.deepEqual(parseResult.tokenToEthReserveIds, []);
-                    assert.deepEqual(parseResult.tokenToEthAddresses, []);
-                    Helper.assertEqual(parseResult.tokenToEthSplits, []);
+                    
+                    try {
+                        await hintHandler.parseTokenToEthHint(hint);
+                        assert(false, "throw was expected in line above.");
+                    } catch(e){
+                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                    }
                 });
             });
 
@@ -648,7 +648,7 @@ contract('KyberHintHandler', function(accounts) {
             });
             
             Object.keys(TRADE_TYPES).forEach(tradeType => {
-                it(`should return no data for E2T hint for ${tradeType} due to invalid split value`, async() => {
+                it(`should revert for E2T hint for ${tradeType} due to invalid split value`, async() => {
                     e2tOpcode = TRADE_TYPES[tradeType];
 
                     if (tradeType == 'SPLIT') {
@@ -658,16 +658,16 @@ contract('KyberHintHandler', function(accounts) {
                     }
                     
                     const hint = buildHint(e2tOpcode, e2tReserves, e2tSplits);
-                    const parseResult = await hintHandler.parseEthToTokenHint(hint);
-                    const expectedResult = parseHint(hint);
-    
-                    Helper.assertEqual(parseResult.ethToTokenType, expectedResult.tradeType);
-                    assert.deepEqual(parseResult.ethToTokenReserveIds, []);
-                    assert.deepEqual(parseResult.ethToTokenAddresses, []);
-                    Helper.assertEqual(parseResult.ethToTokenSplits, []);
+                    
+                    try {
+                        await hintHandler.parseEthToTokenHint(hint);
+                        assert(false, "throw was expected in line above.");
+                    } catch(e){
+                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                    }
                 });
 
-                it(`should return no data for E2T hint for ${tradeType} due to empty reserveIds`, async() => {
+                it(`should revert for E2T hint for ${tradeType} due to empty reserveIds`, async() => {
                     e2tOpcode = TRADE_TYPES[tradeType];
 
                     if (tradeType == 'SPLIT') {
@@ -677,29 +677,29 @@ contract('KyberHintHandler', function(accounts) {
                     }
                     
                     const hint = buildHint(e2tOpcode, [], e2tSplits);
-                    const parseResult = await hintHandler.parseEthToTokenHint(hint);
-                    const expectedResult = parseHint(hint);
-    
-                    Helper.assertEqual(parseResult.ethToTokenType, expectedResult.tradeType);
-                    assert.deepEqual(parseResult.ethToTokenReserveIds, []);
-                    assert.deepEqual(parseResult.ethToTokenAddresses, []);
-                    Helper.assertEqual(parseResult.ethToTokenSplits, []);
+                    
+                    try {
+                        await hintHandler.parseEthToTokenHint(hint);
+                        assert(false, "throw was expected in line above.");
+                    } catch(e){
+                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                    }
                 });
             });
 
             Object.keys(INVALID_SPLIT_BPS).forEach(invalidSplit => {
-                it(`should return no data for E2T hint for SPLITS due to ${invalidSplit}`, async() => {
+                it(`should revert for E2T hint for SPLITS due to ${invalidSplit}`, async() => {
                     e2tOpcode = SPLIT;
                     e2tSplits = INVALID_SPLIT_BPS[invalidSplit];
             
                     const hint = buildHint(e2tOpcode, e2tReserves, e2tSplits);
-                    const parseResult = await hintHandler.parseEthToTokenHint(hint);
-                    const expectedResult = parseHint(hint);
-    
-                    Helper.assertEqual(parseResult.ethToTokenType, expectedResult.tradeType);
-                    assert.deepEqual(parseResult.ethToTokenReserveIds, []);
-                    assert.deepEqual(parseResult.ethToTokenAddresses, []);
-                    Helper.assertEqual(parseResult.ethToTokenSplits, []);
+                    
+                    try {
+                        await hintHandler.parseEthToTokenHint(hint);
+                        assert(false, "throw was expected in line above.");
+                    } catch(e){
+                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                    }
                 });
             });
 
@@ -726,7 +726,7 @@ contract('KyberHintHandler', function(accounts) {
 
             Object.keys(TRADE_TYPES).forEach(t2eTradeType => {
                 Object.keys(TRADE_TYPES).forEach(e2tTradeType => {
-                    it(`should return no data for T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to invalid split values`, async() => {
+                    it(`should revert for T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to invalid split values`, async() => {
                         t2eOpcode = TRADE_TYPES[t2eTradeType];
                         t2eSplits = [];
                         e2tOpcode = TRADE_TYPES[e2tTradeType];
@@ -752,20 +752,16 @@ contract('KyberHintHandler', function(accounts) {
                             e2tReserves,
                             e2tSplits,
                         );
-                        const parseResult = await hintHandler.parseTokenToTokenHint(hint);
-                        const expectedResult = parseHintT2T(hint);
-        
-                        Helper.assertEqual(parseResult.tokenToEthType, expectedResult.t2eType);
-                        assert.deepEqual(parseResult.tokenToEthReserveIds, []);
-                        assert.deepEqual(parseResult.tokenToEthAddresses, []);
-                        Helper.assertEqual(parseResult.tokenToEthSplits, []);
-                        Helper.assertEqual(parseResult.ethToTokenType, expectedResult.e2tType);
-                        assert.deepEqual(parseResult.ethToTokenReserveIds, []);
-                        assert.deepEqual(parseResult.ethToTokenAddresses, []);
-                        Helper.assertEqual(parseResult.ethToTokenSplits, []);
+                        
+                        try {
+                            await hintHandler.parseTokenToTokenHint(hint);
+                            assert(false, "throw was expected in line above.");
+                        } catch(e){
+                            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                        }
                     });
 
-                    it(`should return no data for T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to empty reserveIds`, async() => {
+                    it(`should revert for T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to empty reserveIds`, async() => {
                         t2eOpcode = TRADE_TYPES[t2eTradeType];
                         t2eSplits = [];
                         e2tOpcode = TRADE_TYPES[e2tTradeType];
@@ -791,24 +787,20 @@ contract('KyberHintHandler', function(accounts) {
                             [],
                             e2tSplits,
                         );
-                        const parseResult = await hintHandler.parseTokenToTokenHint(hint);
-                        const expectedResult = parseHintT2T(hint);
-        
-                        Helper.assertEqual(parseResult.tokenToEthType, expectedResult.t2eType);
-                        assert.deepEqual(parseResult.tokenToEthReserveIds, []);
-                        assert.deepEqual(parseResult.tokenToEthAddresses, []);
-                        Helper.assertEqual(parseResult.tokenToEthSplits, []);
-                        Helper.assertEqual(parseResult.ethToTokenType, expectedResult.e2tType);
-                        assert.deepEqual(parseResult.ethToTokenReserveIds, []);
-                        assert.deepEqual(parseResult.ethToTokenAddresses, []);
-                        Helper.assertEqual(parseResult.ethToTokenSplits, []);
+                        
+                        try {
+                            await hintHandler.parseTokenToTokenHint(hint);
+                            assert(false, "throw was expected in line above.");
+                        } catch(e){
+                            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                        }
                     });
                 });
             });
 
             Object.keys(TRADE_TYPES).forEach(e2tTradeType => {
                 Object.keys(INVALID_SPLIT_BPS).forEach(invalidSplit => {
-                    it(`should return no data for T2T hint for SPLIT, ${e2tTradeType} due to T2E Split ${invalidSplit}`, async() => {
+                    it(`should revert for T2T hint for SPLIT, ${e2tTradeType} due to T2E Split ${invalidSplit}`, async() => {
                         t2eOpcode = SPLIT;
                         t2eSplits = INVALID_SPLIT_BPS[invalidSplit];
                         e2tOpcode = TRADE_TYPES[e2tTradeType];
@@ -822,24 +814,20 @@ contract('KyberHintHandler', function(accounts) {
                             e2tReserves,
                             e2tSplits,
                         );
-                        const parseResult = await hintHandler.parseTokenToTokenHint(hint);
-                        const expectedResult = parseHintT2T(hint);
-        
-                        Helper.assertEqual(parseResult.tokenToEthType, expectedResult.t2eType);
-                        assert.deepEqual(parseResult.tokenToEthReserveIds, []);
-                        assert.deepEqual(parseResult.tokenToEthAddresses, []);
-                        Helper.assertEqual(parseResult.tokenToEthSplits, []);
-                        Helper.assertEqual(parseResult.ethToTokenType, expectedResult.e2tType);
-                        assert.deepEqual(parseResult.ethToTokenReserveIds, []);
-                        assert.deepEqual(parseResult.ethToTokenAddresses, []);
-                        Helper.assertEqual(parseResult.ethToTokenSplits, []);
+                        
+                        try {
+                            await hintHandler.parseTokenToTokenHint(hint);
+                            assert(false, "throw was expected in line above.");
+                        } catch(e){
+                            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                        }
                     });
                 });
             });
 
             Object.keys(TRADE_TYPES).forEach(t2eTradeType => {
                 Object.keys(INVALID_SPLIT_BPS).forEach(invalidSplit => {
-                    it(`should return no data for T2T hint for ${t2eTradeType}, SPLIT due to E2T Split ${invalidSplit}`, async() => {
+                    it(`should revert for T2T hint for ${t2eTradeType}, SPLIT due to E2T Split ${invalidSplit}`, async() => {
                         t2eOpcode = TRADE_TYPES[t2eTradeType];
                         t2eSplits = BPS_SPLIT
                         e2tOpcode = SPLIT;
@@ -853,23 +841,19 @@ contract('KyberHintHandler', function(accounts) {
                             e2tReserves,
                             e2tSplits,
                         );
-                        const parseResult = await hintHandler.parseTokenToTokenHint(hint);
-                        const expectedResult = parseHintT2T(hint);
-        
-                        Helper.assertEqual(parseResult.tokenToEthType, expectedResult.t2eType);
-                        assert.deepEqual(parseResult.tokenToEthReserveIds, []);
-                        assert.deepEqual(parseResult.tokenToEthAddresses, []);
-                        Helper.assertEqual(parseResult.tokenToEthSplits, []);
-                        Helper.assertEqual(parseResult.ethToTokenType, expectedResult.e2tType);
-                        assert.deepEqual(parseResult.ethToTokenReserveIds, []);
-                        assert.deepEqual(parseResult.ethToTokenAddresses, []);
-                        Helper.assertEqual(parseResult.ethToTokenSplits, []);
+                        
+                        try {
+                            await hintHandler.parseTokenToTokenHint(hint);
+                            assert(false, "throw was expected in line above.");
+                        } catch(e){
+                            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                        }
                     });
                 });
             });
 
             Object.keys(TRADE_TYPES).forEach(t2eTradeType => {
-                it(`should return no data for T2T hint for ${t2eTradeType}, INVALID TYPE`, async() => {
+                it(`should revert for T2T hint for ${t2eTradeType}, INVALID TYPE`, async() => {
                     t2eOpcode = TRADE_TYPES[t2eTradeType];
                     t2eSplits = [];
                     e2tOpcode = INVALID_HINT_TYPE;
@@ -900,7 +884,7 @@ contract('KyberHintHandler', function(accounts) {
             });
 
             Object.keys(TRADE_TYPES).forEach(e2tTradeType => {
-                it(`should return no data for T2T hint for INVALID TYPE, ${e2tTradeType}`, async() => {
+                it(`should revert for T2T hint for INVALID TYPE, ${e2tTradeType}`, async() => {
                     t2eOpcode = INVALID_HINT_TYPE;
                     t2eSplits = [];
                     e2tOpcode = TRADE_TYPES[e2tTradeType];

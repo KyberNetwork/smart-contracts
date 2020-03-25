@@ -11,6 +11,14 @@ interface IKyberHint {
         Split
     }
 
+    enum HintErrors {
+        NoError,
+        ReserveIdZeroError,
+        ReserveIdSplitsError,
+        SplitsZeroError,
+        TotalBPSError
+    }
+
     function buildTokenToEthHint(
         TradeType tokenToEthType,
         bytes8[] calldata tokenToEthReserveIds,
