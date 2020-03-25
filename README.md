@@ -18,7 +18,7 @@ For more details, please visit our [developer portal](https://developer.kyber.ne
 
 ### Example Commands
 `./tst.sh` (Run only sol5 tests)
-`./tst.sh -f ./test/kyberReserve.js` (Test only kyberReserve.js)
+`./tst.sh -f ./test/sol4/kyberReserve.js` (Test only kyberReserve.js)
 `./tst.sh -a` (Run both sol4 and sol5 tests)
 
 ### Example
