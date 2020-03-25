@@ -256,8 +256,13 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             if (reserveIds.length != splits.length) return false;
 
             uint bpsSoFar;
+            bytes8[] memory checkDuplicateIds = new bytes8[](reserveIds.length);
             for (uint i = 0; i < splits.length; i++) {
                 bpsSoFar += splits[i];
+                for (uint j = 0; j < checkDuplicateIds.length; j++) {
+                    if (reserveIds[i] == checkDuplicateIds[j]) return false;
+                }
+                checkDuplicateIds[i] = reserveIds[i];
             }
 
             if (bpsSoFar != BPS) return false;
