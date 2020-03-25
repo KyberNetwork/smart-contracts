@@ -264,3 +264,7 @@ module.exports.increaseBlockNumber = async function (blocks) {
         await time.advanceBlock();
     }
 }
+
+module.exports.increaseBlockNumberTo = async function(newBlock) {
+    await time.advanceBlockTo(newBlock);
+}
