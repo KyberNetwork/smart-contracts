@@ -229,6 +229,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
             emit ListReservePairs(reserve, token, ETH_TOKEN_ADDRESS, add);
         }
 
+        setDecimals(token);
+
         return true;
     }
 
