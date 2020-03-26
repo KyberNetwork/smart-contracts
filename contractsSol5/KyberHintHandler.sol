@@ -20,16 +20,16 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         pure
         returns(bytes memory hint)
     {
-        HintErrors verified = verifyData(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits);
+        HintErrors valid = verifyData(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits);
 
-        if (verified == HintErrors.NoError) {
+        if (valid == HintErrors.NoError) {
             hint = abi.encode(
                 tokenToEthType,
                 tokenToEthReserveIds,
                 tokenToEthSplits
             );
         } else {
-            throwHintError(verified);
+            throwHintError(valid);
         }
     }
 
@@ -47,16 +47,16 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         pure
         returns(bytes memory hint)
     {
-        HintErrors verified = verifyData(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits);
+        HintErrors valid = verifyData(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits);
 
-        if (verified == HintErrors.NoError) {
+        if (valid == HintErrors.NoError) {
             hint = abi.encode(
                 ethToTokenType,
                 ethToTokenReserveIds,
                 ethToTokenSplits
             );
         } else {
-            throwHintError(verified);
+            throwHintError(valid);
         }
     }
 
@@ -80,13 +80,13 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         pure
         returns(bytes memory hint)
     {
-        HintErrors verifiedT2E = verifyData(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits);
-        HintErrors verifiedE2T = verifyData(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits);
+        HintErrors validT2E = verifyData(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits);
+        HintErrors validE2T = verifyData(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits);
 
-        if (verifiedT2E != HintErrors.NoError) {
-            throwHintError(verifiedT2E);
-        } else if (verifiedE2T != HintErrors.NoError) {
-            throwHintError(verifiedE2T);
+        if (validT2E != HintErrors.NoError) {
+            throwHintError(validT2E);
+        } else if (validE2T != HintErrors.NoError) {
+            throwHintError(validE2T);
         } else {
             hint = abi.encode(
                 tokenToEthType,
@@ -200,15 +200,15 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             TradeType tradeType,
             IKyberReserve[] memory addresses,
             uint[] memory splits,
-            HintErrors verified
+            HintErrors valid
         )
     {
         bytes8[] memory reserveIds;
 
         (tradeType, reserveIds, splits) = abi.decode(hint, (TradeType, bytes8[], uint[]));
-        verified = verifyData(tradeType, reserveIds, splits);
+        valid = verifyData(tradeType, reserveIds, splits);
 
-        if (verified == HintErrors.NoError) {
+        if (valid == HintErrors.NoError) {
             addresses = new IKyberReserve[](reserveIds.length);
             
             for (uint i = 0; i < reserveIds.length; i++) {
@@ -229,7 +229,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             TradeType e2tType,
             IKyberReserve[] memory e2tAddresses,
             uint[] memory e2tSplits,
-            HintErrors verified
+            HintErrors valid
         )
     {
         bytes8[] memory t2eReserveIds;
@@ -243,13 +243,13 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             e2tReserveIds,
             e2tSplits
         ) = abi.decode(hint, (TradeType, bytes8[], uint[], TradeType, bytes8[], uint[]));
-        HintErrors verifiedT2E = verifyData(t2eType, t2eReserveIds, t2eSplits);
-        HintErrors verifiedE2T = verifyData(e2tType, e2tReserveIds, e2tSplits);
+        HintErrors validT2E = verifyData(t2eType, t2eReserveIds, t2eSplits);
+        HintErrors validE2T = verifyData(e2tType, e2tReserveIds, e2tSplits);
 
-        if (verifiedT2E == HintErrors.NoError && verifiedE2T == HintErrors.NoError) {
+        if (validT2E == HintErrors.NoError && validE2T == HintErrors.NoError) {
             t2eAddresses = new IKyberReserve[](t2eReserveIds.length);
             e2tAddresses = new IKyberReserve[](e2tReserveIds.length);
-            verified = HintErrors.NoError;
+            valid = HintErrors.NoError;
             
             for (uint i = 0; i < t2eReserveIds.length; i++) {
                 t2eAddresses[i] = IKyberReserve(convertReserveIdToAddress(t2eReserveIds[i]));
@@ -261,8 +261,8 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             t2eSplits = new uint[](0);
             e2tSplits = new uint[](0);
 
-            if (verifiedT2E != HintErrors.NoError) verified = verifiedT2E;
-            if (verifiedE2T != HintErrors.NoError) verified = verifiedE2T;
+            if (validT2E != HintErrors.NoError) valid = validT2E;
+            if (validE2T != HintErrors.NoError) valid = validE2T;
         }
     }
 
@@ -280,7 +280,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         pure
         returns (HintErrors)
     {
-        if (!(reserveIds.length > 0)) return HintErrors.ReserveIdZeroError;
+        if (!(reserveIds.length > 0)) return HintErrors.ReserveIdEmptyError;
         if (tradeType == TradeType.Split) {
             if (reserveIds.length != splits.length) return HintErrors.ReserveIdSplitsError;
 
@@ -291,7 +291,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
 
             if (bpsSoFar != BPS) return HintErrors.TotalBPSError;
         } else {
-            if (splits.length != 0) return HintErrors.SplitsZeroError;
+            if (splits.length != 0) return HintErrors.SplitsNotEmptyError;
         }
 
         return HintErrors.NoError;
@@ -300,14 +300,14 @@ contract KyberHintHandler is IKyberHint, Utils4 {
     /// @notice Throws error message to user to indicate error on hint
     /// @param error Error type from HintErrors enum
     function throwHintError(HintErrors error) internal pure {
-        if (error == HintErrors.ReserveIdZeroError)
+        if (error == HintErrors.ReserveIdEmptyError)
             revert("reserveIds cannot be empty");
         if (error == HintErrors.ReserveIdSplitsError)
-            revert("reserveIds and splits length not equal");
+            revert("reserveIds.length != splits.length");
         if (error == HintErrors.TotalBPSError)
-            revert("splits total BPS does not amount to 10000BPS");
-        if (error == HintErrors.SplitsZeroError)
-            revert("splits cannot be empty");
+            revert("total BPS != 10000BPS");
+        if (error == HintErrors.SplitsNotEmptyError)
+            revert("splits must be empty");
     }
 
     function convertReserveIdToAddress(bytes8 reserveId) internal view returns (address);
