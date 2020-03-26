@@ -192,9 +192,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         tData.ethToToken.decimals = destDecimals;
         tData.networkFeeBps = info[uint(IKyberMatchingEngine.InfoIndex.networkFeeBps)];
 
-        parseTradeDataHint(src, dest, tData, hint);
-
-        if (tData.failedIndex > 0) {
+        // Checks if parseTradeHint returns an invalid hint
+        if (!parseTradeHint(src, dest, tData, hint)) {
             storeTradeReserveData(tData.tokenToEth, IKyberReserve(0), 0, false);
             storeTradeReserveData(tData.ethToToken, IKyberReserve(0), 0, false);
 
@@ -260,7 +259,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     }
 
     /// @notice applies the hint (no hint, mask in, mask out, or split) and stores relevant information in tData
-    function parseTradeDataHint(
+    function parseTradeHint(
         IERC20 src,
         IERC20 dest,
         TradeData memory tData,
@@ -268,7 +267,10 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     )
         internal
         view
+        returns (bool)
     {
+        HintErrors error;
+
         // when to / from ETH, initialise empty array length 1, else set all reserves supporting t2e / e2t
         tData.tokenToEth.addresses = (src == ETH_TOKEN_ADDRESS) ?
             new IKyberReserve[](1) : reservesPerTokenSrc[address(src)];
@@ -277,22 +279,22 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         // PERM is treated as no hint, so we just return
         // relevant arrays will be initialised in storeTradeReserveData
-        if (hint.length == 0 || hint.length == 4) return;
+        if (hint.length == 0 || hint.length == 4) return true;
 
         if (src == ETH_TOKEN_ADDRESS) {
             (
                 tData.ethToToken.tradeType,
                 tData.ethToToken.addresses,
                 tData.ethToToken.splitValuesBps,
-                tData.failedIndex
-            ) = parseHintE2T(hint);
+                error
+            ) = parseHint(hint);
         } else if (dest == ETH_TOKEN_ADDRESS) {
             (
                 tData.tokenToEth.tradeType,
                 tData.tokenToEth.addresses,
                 tData.tokenToEth.splitValuesBps,
-                tData.failedIndex
-            ) = parseHintT2E(hint);
+                error
+            ) = parseHint(hint);
         } else {
             (
                 tData.tokenToEth.tradeType,
@@ -301,9 +303,11 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
                 tData.ethToToken.tradeType,
                 tData.ethToToken.addresses,
                 tData.ethToToken.splitValuesBps,
-                tData.failedIndex
+                error
             ) = parseHintT2T(hint);
         }
+
+        if (error != HintErrors.NoError) return false;
 
         if (tData.tokenToEth.tradeType == TradeType.MaskOut) {
             // t2e: apply masking out logic if mask out
@@ -323,6 +327,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             tData.ethToToken.rates = new uint[](tData.ethToToken.addresses.length);
             tData.ethToToken.isFeePaying = new bool[](tData.ethToToken.addresses.length);
         }
+
+        return true;
     }
 
     /// @notice Logic for masking out reserves
