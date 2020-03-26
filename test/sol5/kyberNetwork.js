@@ -9,6 +9,7 @@ const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const TradeLogic = artifacts.require("KyberMatchingEngine.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 const OtherMathcingEngine = artifacts.require("OtherMatchingEngine.sol");
+const NotPayableContract = artifacts.require("MockNotPayableContract.sol");
 
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -1752,6 +1753,53 @@ contract('KyberNetwork', function(accounts) {
                 tempNetwork.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, MAX_RATE, platformWallet, platformFeeBps, emptyHint),
                 "rate < minConvRate"
+            );
+        });
+    });
+
+    describe.only("test handle change edge case", async function(){
+        before("setup", async function(){
+            tempNetwork = await MockNetwork.new(admin);
+        });
+
+        it("test srcAmount equal to require srcAmount", async function(){
+            // src = ethAddress
+            srcAmount = new BN(10);
+            requiredSrcAmount = srcAmount;
+            result = await tempNetwork.mockHandleChange.call(ethAddress, srcAmount, requiredSrcAmount, admin);
+            Helper.assertEqual(result, true, "handle change not true");
+        });
+
+        it("test handle while don't have fund", async function(){
+            src = ethAddress;
+            srcAmount = new BN(10);
+            requiredSrcAmount = srcAmount.sub(new BN(1));
+            await expectRevert(
+                tempNetwork.mockHandleChange(src, srcAmount, requiredSrcAmount, admin),
+                "Send change failed"
+            );
+        });
+
+        it("test handle send to not payable contract", async function(){
+            src = ethAddress;
+            srcAmount = new BN(10);
+            sendBackAmount = new BN(1);
+            requiredSrcAmount = srcAmount.sub(sendBackAmount);
+            blockContract = await NotPayableContract.new();
+            Helper.sendEtherWithPromise(accounts[0], tempNetwork.address, sendBackAmount);
+            await expectRevert(
+                tempNetwork.mockHandleChange(src, srcAmount, requiredSrcAmount, blockContract.address),
+                "Send change failed"
+            );
+            Helper.assertEqual(
+                await Helper.getBalancePromise(tempNetwork.address),
+                sendBackAmount
+            );
+            // send back to account 0
+            await tempNetwork.mockHandleChange(src, srcAmount, requiredSrcAmount, accounts[0]);
+            Helper.assertEqual(
+                await Helper.getBalancePromise(tempNetwork.address),
+                0
             );
         });
     });

@@ -43,6 +43,10 @@ contract MockNetwork is KyberNetwork {
         return getNetworkFee();
     }
 
+    function mockHandleChange (IERC20 src, uint srcAmount, uint requiredSrcAmount, address payable trader) public returns (bool){
+        return handleChange(src, srcAmount, requiredSrcAmount, trader);
+    }
+
     // allow set zero contract
     function setContracts(IKyberFeeHandler _feeHandler,
         IKyberMatchingEngine _matchingEngine,
