@@ -1663,6 +1663,56 @@ contract('KyberMatchingEngine', function(accounts) {
                 );
             });
 
+            describe(`should return zero rates and amounts if duplicate reserve ID is used for split`, async() => {
+                it(`T2E`, async() => {
+                    let info = [srcQty, zeroBN, zeroBN];
+
+                    let reserveIds = [];
+                    for (const reserve of Object.values(reserveInstances)) {
+                        reserveIds.push(reserve.reserveId);
+                    };
+                    //duplicate reserve
+                    reserveIds = [reserveIds[0], reserveIds[0]];
+                    let splits = [new BN(5000).toString(), new BN(5000).toString()];
+                    let hint = encodeHint(SPLIT_HINTTYPE, reserveIds, splits);
+
+                    actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hint);
+                    assertZeroAmts(actualResult);
+                });
+
+                it(`E2T`, async() => {
+                    let info = [srcQty, zeroBN, zeroBN];
+
+                    let reserveIds = [];
+                    for (const reserve of Object.values(reserveInstances)) {
+                        reserveIds.push(reserve.reserveId);
+                    };
+                    //duplicate reserve
+                    reserveIds = [reserveIds[0], reserveIds[0]];
+                    let splits = [new BN(5000).toString(), new BN(5000).toString()];
+                    let hint = encodeHint(SPLIT_HINTTYPE, reserveIds, splits);
+
+                    actualResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hint);
+                    assertZeroAmts(actualResult);
+                });
+
+                it(`T2T`, async() => {
+                    let info = [srcQty, zeroBN, zeroBN];
+
+                    let reserveIds = [];
+                    for (const reserve of Object.values(reserveInstances)) {
+                        reserveIds.push(reserve.reserveId);
+                    };
+                    //duplicate reserve
+                    reserveIds = [reserveIds[0], reserveIds[0]];
+                    let splits = [new BN(5000).toString(), new BN(5000).toString()];
+                    let hint = encodeT2THint(SPLIT_HINTTYPE, reserveIds, splits);
+
+                    actualResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint);
+                    assertZeroAmts(actualResult);
+                });
+            });
+
             describe(`should return zero destAmounts if T2E reserves all return zero rate`, async() => {
                 before("set all T2E reserves to zero", async() => {
                     let i = 0;
@@ -3633,4 +3683,15 @@ function printCalcRatesAmtsResult(tradeResult) {
 
 function log(string) {
     console.log(string);
+}
+
+function encodeHint(tradeType, ids, splits) {
+    return web3.eth.abi.encodeParameters(['uint', 'bytes8[]', 'uint[]'], [tradeType, ids, splits]);
+}
+
+function encodeT2THint(tradeType, ids, splits) {
+    return web3.eth.abi.encodeParameters(
+        ['uint', 'bytes8[]', 'uint[]', 'uint', 'bytes8[]', 'uint[]'],
+        [tradeType, ids, splits, tradeType, ids, splits]
+    );
 }

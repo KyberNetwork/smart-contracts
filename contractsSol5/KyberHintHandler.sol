@@ -285,8 +285,13 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             if (reserveIds.length != splits.length) return HintErrors.ReserveIdSplitsError;
 
             uint bpsSoFar;
+            bytes8[] memory checkDuplicateIds = new bytes8[](reserveIds.length);
             for (uint i = 0; i < splits.length; i++) {
                 bpsSoFar += splits[i];
+                for (uint j = 0; j < checkDuplicateIds.length; j++) {
+                    if (reserveIds[i] == checkDuplicateIds[j]) return HintErrors.ReserveIdDupError;
+                }
+                checkDuplicateIds[i] = reserveIds[i];
             }
 
             if (bpsSoFar != BPS) return HintErrors.TotalBPSError;
@@ -305,9 +310,11 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         if (error == HintErrors.ReserveIdSplitsError)
             revert("reserveIds.length != splits.length");
         if (error == HintErrors.TotalBPSError)
-            revert("total BPS != 10000BPS");
+            revert("total BPS != 10000");
         if (error == HintErrors.SplitsNotEmptyError)
             revert("splits must be empty");
+        if (error == HintErrors.ReserveIdDupError)
+            revert("duplicate reserveId");
     }
 
     function convertReserveIdToAddress(bytes8 reserveId) internal view returns (address);
