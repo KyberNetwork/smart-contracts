@@ -173,6 +173,11 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         uint burnAmtWei
     );
 
+    struct WeiData {
+        uint rebate;
+        uint reward;
+    }
+    
 /// @dev handleFees function is called per trade on KyberNetwork. unless the trade is not involving any fees.
 /// @param rebateWallets a list of rebate wallets that are entitiled for fee with this trade.
 /// @param rebateBpsPerWallet percentage of rebate for each wallet, out of total rebate. BPS uints: 10000 = 100%
@@ -196,24 +201,26 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
             return true;
         }
 
+        WeiData memory weiData;
+        uint epoch;
         // Decoding BRR data
-        (uint rewardWei, uint rebateWei, uint epoch) = getRRWeiValues(feeBRR);
+        (weiData.reward, weiData.rebate, epoch) = getRRWeiValues(feeBRR);
 
         uint totalRebateBps;
         for (uint i = 0; i < rebateWallets.length; i++) {
             // Internal accounting for rebates per reserve wallet (rebatePerWallet)
-            rebatePerWallet[rebateWallets[i]] += rebateWei * rebateBpsPerWallet[i] / BPS;
+            rebatePerWallet[rebateWallets[i]] += weiData.rebate * rebateBpsPerWallet[i] / BPS;
             totalRebateBps += rebateBpsPerWallet[i];
         }
         require(totalRebateBps <= BPS);
 
-        rewardsPerEpoch[epoch] += rewardWei;
+        rewardsPerEpoch[epoch] += weiData.reward;
 
         // update balance for rewards, rebates, fee
-        totalPayoutBalance += (platformFeeWei + rewardWei + rebateWei);
+        totalPayoutBalance += (platformFeeWei + weiData.reward + weiData.rebate);
 
-        emit FeeDistributed(platformWallet, platformFeeWei, rewardWei, rebateWei, rebateWallets, rebateBpsPerWallet,
-            (feeBRR - rewardWei - rebateWei));
+        emit FeeDistributed(platformWallet, platformFeeWei, weiData.reward, weiData.rebate, rebateWallets, 
+            rebateBpsPerWallet, (feeBRR - weiData.reward - weiData.rebate));
 
         return true;
     }
