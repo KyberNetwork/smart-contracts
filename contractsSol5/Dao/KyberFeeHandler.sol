@@ -199,13 +199,10 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         // Decoding BRR data
         (uint rewardWei, uint rebateWei, uint epoch) = getRRWeiValues(feeBRR);
 
-        uint totalRebateBps;
         for (uint i = 0; i < rebateWallets.length; i++) {
             // Internal accounting for rebates per reserve wallet (rebatePerWallet)
             rebatePerWallet[rebateWallets[i]] += rebateWei * rebateBpsPerWallet[i] / BPS;
-            totalRebateBps += rebateBpsPerWallet[i];
         }
-        require(totalRebateBps <= BPS);
 
         rewardsPerEpoch[epoch] += rewardWei;
 
