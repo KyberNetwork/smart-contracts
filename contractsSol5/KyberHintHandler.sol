@@ -22,15 +22,13 @@ contract KyberHintHandler is IKyberHint, Utils4 {
     {
         HintErrors valid = verifyData(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits);
 
-        if (valid == HintErrors.NoError) {
-            hint = abi.encode(
-                tokenToEthType,
-                tokenToEthReserveIds,
-                tokenToEthSplits
-            );
-        } else {
-            throwHintError(valid);
-        }
+        if (valid != HintErrors.NoError) throwHintError(valid);
+
+        hint = abi.encode(
+            tokenToEthType,
+            tokenToEthReserveIds,
+            tokenToEthSplits
+        );
     }
 
     /// @notice Builds the hint for a ETH to Token trade
@@ -49,15 +47,13 @@ contract KyberHintHandler is IKyberHint, Utils4 {
     {
         HintErrors valid = verifyData(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits);
 
-        if (valid == HintErrors.NoError) {
-            hint = abi.encode(
-                ethToTokenType,
-                ethToTokenReserveIds,
-                ethToTokenSplits
-            );
-        } else {
-            throwHintError(valid);
-        }
+        if (valid != HintErrors.NoError) throwHintError(valid);
+
+        hint = abi.encode(
+            ethToTokenType,
+            ethToTokenReserveIds,
+            ethToTokenSplits
+        );
     }
 
     /// @notice Builds the hint for a Token to Token trade
@@ -83,20 +79,17 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         HintErrors validT2E = verifyData(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits);
         HintErrors validE2T = verifyData(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits);
 
-        if (validT2E != HintErrors.NoError) {
-            throwHintError(validT2E);
-        } else if (validE2T != HintErrors.NoError) {
-            throwHintError(validE2T);
-        } else {
-            hint = abi.encode(
-                tokenToEthType,
-                tokenToEthReserveIds,
-                tokenToEthSplits,
-                ethToTokenType,
-                ethToTokenReserveIds,
-                ethToTokenSplits
-            );
-        }
+        if (validT2E != HintErrors.NoError) throwHintError(validT2E);
+        if (validE2T != HintErrors.NoError) throwHintError(validE2T);
+
+        hint = abi.encode(
+            tokenToEthType,
+            tokenToEthReserveIds,
+            tokenToEthSplits,
+            ethToTokenType,
+            ethToTokenReserveIds,
+            ethToTokenSplits
+        );
     }
 
     /// @notice Parses the hint for a Token to ETH trade
