@@ -274,7 +274,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
     it("test first trade at epoch 1 records correct default data with different expiry block number", async function() {
         // delay to epoch 1
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(startBlock);
         Helper.assertEqual(1, await daoContract.getCurrentEpochNumber());
 
         let networkData = await network.getNetworkData();
@@ -314,7 +314,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await daoContract.vote(1, 2, {from: victor});
 
         // delay until end of campaign
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], minCampPeriod + 1);
+        await Helper.increaseBlockNumber(minCampPeriod + 1);
 
         let winningData = await daoContract.getCampaignWinningOptionAndValue(1);
         Helper.assertEqual(0, winningData.optionID);
@@ -322,7 +322,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
         // delay until epoch 2
         currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
         Helper.assertEqual(2, await daoContract.getCurrentEpochNumber());
 
         // make a first trade and check data changes as expected
@@ -380,11 +380,10 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await daoContract.vote(3, 1, {from: mike});
         await daoContract.vote(3, 2, {from: victor});
 
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], minCampPeriod);
+        await Helper.increaseBlockNumber(minCampPeriod);
 
         // delay until epoch 3
-        currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(2 * epochPeriod + startBlock);
         Helper.assertEqual(3, await daoContract.getCurrentEpochNumber());
 
         // make a first trade and check data changes as expected
@@ -442,11 +441,10 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await daoContract.vote(5, 1, {from: mike});
         await daoContract.vote(5, 1, {from: victor});
 
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], minCampPeriod);
+        await Helper.increaseBlockNumber(minCampPeriod);
 
         // delay until epoch 4
-        currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(3 * epochPeriod + startBlock);
         Helper.assertEqual(4, await daoContract.getCurrentEpochNumber());
 
         // make a first trade and check data changes as expected
@@ -489,11 +487,10 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await daoContract.vote(6, 1, {from: mike});
         await daoContract.vote(6, 1, {from: victor});
 
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], minCampPeriod);
+        await Helper.increaseBlockNumber(minCampPeriod);
 
         // delay until epoch 5
-        currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(4 * epochPeriod + startBlock);
         Helper.assertEqual(5, await daoContract.getCurrentEpochNumber());
 
         // make a first trade and check data changes as expected
@@ -545,11 +542,10 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await daoContract.vote(8, 1, {from: mike});
         await daoContract.vote(8, 2, {from: victor});
 
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], minCampPeriod);
+        await Helper.increaseBlockNumber(minCampPeriod);
 
         // delay until epoch 6
-        currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 5 * epochPeriod + startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(5 * epochPeriod + startBlock);
         Helper.assertEqual(6, await daoContract.getCurrentEpochNumber());
 
         // make a first trade and check data changes as expected
@@ -607,11 +603,10 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await daoContract.vote(10, 1, {from: mike});
         await daoContract.vote(10, 1, {from: victor});
 
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], minCampPeriod);
+        await Helper.increaseBlockNumber(minCampPeriod);
 
         // delay until epoch 7
-        currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 6 * epochPeriod + startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(6 * epochPeriod + startBlock);
         Helper.assertEqual(7, await daoContract.getCurrentEpochNumber());
 
         // make a first trade and check data changes as expected
@@ -638,8 +633,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         let curBrrData = await feeHandler.readBRRData();
 
         // delay until epoch 10
-        currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 9 * epochPeriod + startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(9 * epochPeriod + startBlock);
         Helper.assertEqual(10, await daoContract.getCurrentEpochNumber());
 
         // make a first trade and check data changes as expected
@@ -673,8 +667,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await daoContract.vote(11, 1, {from: victor});
 
         // delay until epoch 11
-        currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 10 * epochPeriod + startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(10 * epochPeriod + startBlock);
         Helper.assertEqual(11, await daoContract.getCurrentEpochNumber());
 
         // make a simple swap, make sure data is updated for epoch 4 with concluding campaign
@@ -722,8 +715,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await daoContract.vote(12, 1, {from: victor});
 
         // delay until epoch 12
-        currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 11 * epochPeriod + startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(11 * epochPeriod + startBlock);
         Helper.assertEqual(12, await daoContract.getCurrentEpochNumber());
 
         // make a first trade and check data changes as expected
@@ -750,8 +742,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await daoContract.vote(13, 1, {from: victor});
 
         // delay until epoch 13
-        currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 12 * epochPeriod + startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(12 * epochPeriod + startBlock);
         Helper.assertEqual(13, await daoContract.getCurrentEpochNumber());
 
         await networkProxy.swapEtherToToken(destToken.address, 1, {from: taker, value: ethSrcQty});
@@ -777,8 +768,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await daoContract.vote(14, 1, {from: victor});
 
         // delay until epoch 14
-        currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 13 * epochPeriod + startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(13 * epochPeriod + startBlock);
         Helper.assertEqual(14, await daoContract.getCurrentEpochNumber());
 
         // make a first trade and check data changes as expected
@@ -810,8 +800,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await daoContract.vote(15, 1, {from: victor});
 
         // delay until epoch 15
-        currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 14 * epochPeriod + startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(14 * epochPeriod + startBlock);
         Helper.assertEqual(15, await daoContract.getCurrentEpochNumber());
 
         // make a first trade and check data changes as expected
@@ -843,8 +832,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await daoContract.vote(16, 1, {from: victor});
 
         // delay until epoch 16
-        currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 15 * epochPeriod + startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(15 * epochPeriod + startBlock);
         Helper.assertEqual(16, await daoContract.getCurrentEpochNumber());
 
         // make a first trade and check data changes as expected
@@ -893,11 +881,11 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await daoContract.vote(18, 1, {from: mike});
         await daoContract.vote(18, 1, {from: victor});
 
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], minCampPeriod);
+        await Helper.increaseBlockNumber(minCampPeriod);
 
         // delay until epoch 18
         currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 17 * epochPeriod + startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(17 * epochPeriod + startBlock);
         Helper.assertEqual(18, await daoContract.getCurrentEpochNumber());
 
         // make a first trade and check data changes as expected
