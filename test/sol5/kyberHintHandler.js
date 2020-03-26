@@ -13,9 +13,9 @@ const TRADE_TYPES = {
     SPLIT,
 }
 const INVALID_SPLIT_BPS = {
-    MORE_THAN_10000BPS: {value: ['5000', '6000'], revertMsg: 'splits total BPS does not amount to 10000BPS'}, // more than 10000bps
-    LESS_THAN_10000BPS: {value: ['3000', '4000'], revertMsg: 'splits total BPS does not amount to 10000BPS'},// less than 10000bos
-    EMPTY_SPLITS: {value: [], revertMsg: 'reserveIds and splits length not equal'}
+    MORE_THAN_10000BPS: {value: ['5000', '6000'], revertMsg: 'total BPS != 10000'}, // more than 10000bps
+    LESS_THAN_10000BPS: {value: ['3000', '4000'], revertMsg: 'total BPS != 10000'},// less than 10000bos
+    EMPTY_SPLITS: {value: [], revertMsg: 'reserveIds.length != splits.length'}
 }
 const ID_TO_ADDRESS = {
     '0xff12345663820d8f': '0x63825c174ab367968EC60f061753D3bbD36A0D8F',
@@ -96,7 +96,7 @@ contract('KyberHintHandler', function(accounts) {
 
                     if (tradeType == 'SPLIT') {
                         t2eSplits = [];
-                        revertMsg = 'reserveIds and splits length not equal'
+                        revertMsg = 'reserveIds.length != splits.length'
                     } else {
                         t2eSplits = BPS_SPLIT;
                         revertMsg = 'splits must be empty';
@@ -185,7 +185,7 @@ contract('KyberHintHandler', function(accounts) {
 
                     if (tradeType == 'SPLIT') {
                         e2tSplits = [];
-                        revertMsg = 'reserveIds and splits length not equal'
+                        revertMsg = 'reserveIds.length != splits.length'
                     } else {
                         e2tSplits = BPS_SPLIT;
                         revertMsg = 'splits must be empty'
@@ -283,7 +283,7 @@ contract('KyberHintHandler', function(accounts) {
 
                         if (t2eTradeType == 'SPLIT') {
                             t2eSplits = [];
-                            revertMsg = 'reserveIds and splits length not equal'
+                            revertMsg = 'reserveIds.length != splits.length'
                         } else {
                             t2eSplits = BPS_SPLIT;
                             revertMsg = 'splits must be empty'
@@ -306,7 +306,7 @@ contract('KyberHintHandler', function(accounts) {
 
                         if (e2tTradeType == 'SPLIT') {
                             e2tSplits = [];
-                            revertMsg = 'reserveIds and splits length not equal'
+                            revertMsg = 'reserveIds.length != splits.length'
                         } else {
                             e2tSplits = BPS_SPLIT;
                             revertMsg = 'splits must be empty'
@@ -611,7 +611,7 @@ contract('KyberHintHandler', function(accounts) {
 
                     if (tradeType == 'SPLIT') {
                         t2eSplits = [];
-                        revertMsg = 'reserveIds and splits length not equal';
+                        revertMsg = 'reserveIds.length != splits.length';
                     } else {
                         t2eSplits = BPS_SPLIT;
                         revertMsg = 'splits must be empty';
@@ -680,7 +680,7 @@ contract('KyberHintHandler', function(accounts) {
 
                     if (tradeType == 'SPLIT') {
                         e2tSplits = [];
-                        revertMsg = 'reserveIds and splits length not equal';
+                        revertMsg = 'reserveIds.length != splits.length';
                     } else {
                         e2tSplits = BPS_SPLIT;
                         revertMsg = 'splits must be empty';
@@ -754,7 +754,7 @@ contract('KyberHintHandler', function(accounts) {
 
                         if (t2eTradeType == 'SPLIT') {
                             t2eSplits = [];
-                            revertMsg = 'reserveIds and splits length not equal'
+                            revertMsg = 'reserveIds.length != splits.length'
                         } else {
                             t2eSplits = BPS_SPLIT;
                             revertMsg = 'splits must be empty'
@@ -783,7 +783,7 @@ contract('KyberHintHandler', function(accounts) {
 
                         if (e2tTradeType == 'SPLIT') {
                             e2tSplits = [];
-                            revertMsg = 'reserveIds and splits length not equal'
+                            revertMsg = 'reserveIds.length != splits.length'
                         } else {
                             e2tSplits = BPS_SPLIT;
                             revertMsg = 'splits must be empty'
