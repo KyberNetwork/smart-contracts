@@ -4,7 +4,8 @@
         "APR": 2,
         "BRIDGE": 3,
         "UTILITY": 4,
-        "CUSTOM": 5
+        "CUSTOM": 5,
+        "ORDERBOOK": 6
     },
 
     "tokens": {
@@ -35,7 +36,8 @@
         "APR": true,
         "BRIDGE": false,
         "UTILITY": false,
-        "CUSTOM": true
+        "CUSTOM": true,
+        "ORDERBOOK": true
     },
 
     "reserves": [
@@ -103,15 +105,21 @@
     "wallets": [],
 
     "permission" : {
+        "DAO": {
+            "CampaignCreator": "0xddf05698718ba8ed1c9aba198d38a825a64d69e2"
+        },
+        "FeeHandler": {
+            "BurnConfigSetter": "0xea058bEa72a251039C2c9C9C103fD2a9335a781F"
+        },
         "MatchingEngine" : {
-            "admin" : "0xbDd33F411DA0B40018922a3BC69001B458227f5c",
-            "operators" : ["0xbDd33F411DA0B40018922a3BC69001B458227f5c","0xBE2F0354D970265BFc36D383af77F72736b81B54","0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA"],
-            "alerters" : ["0xbDd33F411DA0B40018922a3BC69001B458227f5c","0xBE2F0354D970265BFc36D383af77F72736b81B54","0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA"]
+            "admin" : "0xea058bEa72a251039C2c9C9C103fD2a9335a781F",
+            "operators" : ["0xbDd33F411DA0B40018922a3BC69001B458227f5c","0xBE2F0354D970265BFc36D383af77F72736b81B54","0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA","0x6E4843E90ecacd3a3BBcED74A5235363762D5100"],
+            "alerters" : ["0xbDd33F411DA0B40018922a3BC69001B458227f5c","0xBE2F0354D970265BFc36D383af77F72736b81B54","0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA","0x6E4843E90ecacd3a3BBcED74A5235363762D5100"]
         },
         "Network" : {
-            "admin" : "0xbDd33F411DA0B40018922a3BC69001B458227f5c",
-            "operators" : ["0xbDd33F411DA0B40018922a3BC69001B458227f5c","0xBE2F0354D970265BFc36D383af77F72736b81B54","0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA"],
-            "alerters" : ["0xbDd33F411DA0B40018922a3BC69001B458227f5c","0xBE2F0354D970265BFc36D383af77F72736b81B54","0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA"]
+            "admin" : "0xea058bEa72a251039C2c9C9C103fD2a9335a781F",
+            "operators" : ["0xbDd33F411DA0B40018922a3BC69001B458227f5c","0xBE2F0354D970265BFc36D383af77F72736b81B54","0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA","0x6E4843E90ecacd3a3BBcED74A5235363762D5100"],
+            "alerters" : ["0xbDd33F411DA0B40018922a3BC69001B458227f5c","0xBE2F0354D970265BFc36D383af77F72736b81B54","0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA","0x6E4843E90ecacd3a3BBcED74A5235363762D5100"]
         },
         "Proxy" : {
             "admin" : "0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA",
@@ -119,17 +127,14 @@
                          "0x9224016462B204C57Eb70e1D69652f60bcAF53A8",
                         "0x7985405a348baa90c92164b86b383c8f43ad2d96"],
             "alerters" : []
-        },
-        "DAO": {
-            "CampaignCreator": "0xBE2F0354D970265BFc36D383af77F72736b81B54"
         }
     },
 
     "max gas price" : 50000000000,
     "neg diff in bps" : 20,
     
-    "epoch period": 1000,
-    "start block": 7518770,
+    "epoch period": 200,
+    "start block": 7553600,
     "network fee bps": 30,
     "reward fee bps": 3850,
     "rebate bps": 3000,

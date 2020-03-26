@@ -9,7 +9,7 @@ npx buidler compile --config ./buidlerCoverageSol4.js
 
 if [ -n "$FILE" ]
 then
-    npx buidler coverage --config ./buidlerCoverageSol5.js --testfiles $FILE
+    npx buidler coverage --config ./buidlerConfigSol5.js --testfiles $FILE
 else
-    npx buidler coverage --config ./buidlerCoverageSol5.js
+    npx buidler coverage --config ./buidlerConfigSol5.js
 fi

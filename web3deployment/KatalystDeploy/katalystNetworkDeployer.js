@@ -120,6 +120,7 @@ let matchingEnginePermissions;
 let networkPermissions;
 let proxyPermissions;
 let daoCampaignCreator;
+let burnConfigSetter;
 
 //misc variables needed for contracts deployment, should be obtained from input json
 let isFeePaying;
@@ -176,6 +177,7 @@ function parseInput( jsonInput ) {
     networkPermissions = jsonInput.permission["Network"];
     proxyPermissions = jsonInput.permission["Proxy"];
     daoCampaignCreator = jsonInput.permission["DAO"]["CampaignCreator"]
+    burnConfigSetter = jsonInput.permission["FeeHandler"]["BurnConfigSetter"];
 
     //constants
     isFeePaying = jsonInput["isFeePaying"];
@@ -421,7 +423,7 @@ async function deployFeeHandlerContract(output) {
     console.log("deploying feeHandler");
     [feeHandlerAddress, feeHandlerContract] = await deployContract(
       output, "KyberFeeHandler.sol", "KyberFeeHandler", 
-      [sender, proxyAddress, networkAddress, kncTokenAddress, burnBlockInterval]
+      [sender, proxyAddress, networkAddress, kncTokenAddress, burnBlockInterval, burnConfigSetter]
     );
     console.log(`Fee Handler: ${feeHandlerAddress}`);
   } else {
@@ -517,7 +519,7 @@ async function setTempOperatorToNetwork() {
 async function setFeePayingDataInMatchingEngine() {
   console.log("set fee paying data: matching engine");
   await sendTx(matchingEngineContract.methods.setFeePayingPerReserveType(
-    isFeePaying["FPR"], isFeePaying["APR"], isFeePaying["BRIDGE"], isFeePaying["UTILITY"], isFeePaying["CUSTOM"]
+    isFeePaying["FPR"], isFeePaying["APR"], isFeePaying["BRIDGE"], isFeePaying["UTILITY"], isFeePaying["CUSTOM"], isFeePaying["ORDERBOOK"]
   ));
 }
 

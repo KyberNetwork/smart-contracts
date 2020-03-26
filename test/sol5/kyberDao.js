@@ -4,6 +4,7 @@ const StakingContract = artifacts.require("KyberStaking.sol");
 const MockFeeHandler = artifacts.require("MockFeeHandlerNoContructor.sol");
 const MockMaliciousDAO = artifacts.require("MockMaliciousDAO.sol");
 const MockFeeHandlerClaimRewardFailed = artifacts.require("MockFeeHandlerClaimRewardFailed.sol");
+const MockMaliciousFeeHandlerReentrancy = artifacts.require("MockMaliciousFeeHandlerReentrancy.sol");
 const Helper = require("../helper.js");
 
 const BN = web3.utils.BN;
@@ -146,8 +147,7 @@ contract('KyberDAO', function(accounts) {
         await deployContracts(20, currentBlock + 20, 8);
         await setupSimpleStakingData();
 
-        currentBlock = await Helper.getCurrentBlock();
-        await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+        await Helper.increaseBlockNumberTo(startBlock);
     }
 
     describe("#Handle Withdrawal tests", () => {
@@ -155,8 +155,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(20, currentBlock + 20, 10);
             await setupSimpleStakingData();
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock - 1);
+            await Helper.increaseBlockNumberTo(startBlock - 1);
 
             currentBlock = await Helper.getCurrentBlock();
             let link = web3.utils.fromAscii("https://kyberswap.com");
@@ -294,8 +293,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(100, currentBlock + 20, 10);
             await setupSimpleStakingData();
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock - 1);
+            await Helper.increaseBlockNumberTo(startBlock - 1);
 
             currentBlock = await Helper.getCurrentBlock();
             let link = web3.utils.fromAscii("https://kyberswap.com");
@@ -315,7 +313,7 @@ contract('KyberDAO', function(accounts) {
             });
 
             // deplay to start of first camp
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3);
+            await Helper.increaseBlockNumber(3);
             // vote for first campaign
             await daoContract.vote(1, 1, {from: victor});
 
@@ -389,7 +387,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(voteData.voteCounts[1], voteCount22, "option voted count is incorrect");
 
             // delay to end of campaign 1
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 5);
+            await Helper.increaseBlockNumber(5);
 
             // withdraw should change epoch points, but only camp2 vote data
             await stakingContract.withdraw(mulPrecision(100), {from: victor});
@@ -448,8 +446,7 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.delegate(mike, {from: victor});
             await stakingContract.delegate(victor, {from: loi});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             let link = web3.utils.fromAscii("https://kyberswap.com");
@@ -459,7 +456,7 @@ contract('KyberDAO', function(accounts) {
             );
 
             // deplay to start of first camp
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3);
+            await Helper.increaseBlockNumber(3);
 
             // vote for first campaign
             await daoContract.vote(1, 1, {from: mike});
@@ -531,7 +528,7 @@ contract('KyberDAO', function(accounts) {
                 0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
                 minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+            await Helper.increaseBlockNumber(2);
 
             await daoContract.vote(2, 1, {from: mike});
             totalEpochPoints.iadd(initMikeStake).iadd(initVictorStake).isub(victorWithdrewAmt);
@@ -570,8 +567,7 @@ contract('KyberDAO', function(accounts) {
 
             // delay until first camp is ended
             let data = await daoContract.getCampaignDetails(1);
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], data[2] - currentBlock);
+            await Helper.increaseBlockNumberTo(data[2]);
 
             await stakingContract.withdraw(mulPrecision(100), {from: victor});
 
@@ -701,8 +697,7 @@ contract('KyberDAO', function(accounts) {
                 minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -720,9 +715,8 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "should have network fee camp");
             Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
 
-            currentBlock = await Helper.getCurrentBlock();
             // deploy to epoch 3
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(2 * epochPeriod + startBlock);
             Helper.assertEqual(0, await daoContract.networkFeeCamp(3), "shouldn't have network fee camp");
             Helper.assertEqual(0, await daoContract.networkFeeCamp(2), "shouldn't have network fee camp");
 
@@ -739,7 +733,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(50, currentBlock + 3, 10);
 
             // delay to epoch 1
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3);
+            await Helper.increaseBlockNumber(3);
 
             Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
 
@@ -783,7 +777,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(50, currentBlock + 3, 10);
 
             // delay to epoch 1
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3);
+            await Helper.increaseBlockNumber(3);
 
             Helper.assertEqual(0, await daoContract.brrCampaign(1), "shouldn't have brr camp");
 
@@ -843,8 +837,7 @@ contract('KyberDAO', function(accounts) {
                 minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
             );
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -862,9 +855,8 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(1, await daoContract.brrCampaign(0), "should have brr camp");
             Helper.assertEqual(0, await daoContract.brrCampaign(1), "shouldn't have brr camp");
 
-            currentBlock = await Helper.getCurrentBlock();
             // deploy to epoch 3
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(2 * epochPeriod + startBlock);
 
             Helper.assertEqual(0, await daoContract.brrCampaign(2), "shouldn't have brr camp");
             Helper.assertEqual(0, await daoContract.brrCampaign(3), "shouldn't have brr camp");
@@ -920,8 +912,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(2, listCampIDs[1], "should have added 2 camps");
 
             // delay to epoch 1
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0],  startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -971,8 +962,7 @@ contract('KyberDAO', function(accounts) {
 
 
             // delay to next epoch, try to create fee campaign again
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
             currentBlock = await Helper.getCurrentBlock();
 
             // can not create new camp of network fee for current epoch as alr existed
@@ -1030,8 +1020,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(2, brrCamp, "brr camp is invalid");
 
             // delay to next epoch, try to create fee campaign again
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
             currentBlock = await Helper.getCurrentBlock();
 
             // can not create new camp of network fee for current epoch as alr existed
@@ -1244,6 +1233,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(30, currentBlock + 50, 10);
             currentBlock = await Helper.getCurrentBlock();
             // note: it is reverted as invalid opcode for campaign type, no message here
+            // running normal test and coverage are returning different type of exception
             try {
                 await daoContract.submitNewCampaign(
                     3, currentBlock + 3, currentBlock + 3 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -1340,9 +1330,8 @@ contract('KyberDAO', function(accounts) {
                 2, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
-            currentBlock = await Helper.getCurrentBlock();
             // jump to epoch 1
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock + 1);
+            await Helper.increaseBlockNumberTo(startBlock + 1);
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 4, currentBlock + 4 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -1383,9 +1372,8 @@ contract('KyberDAO', function(accounts) {
                 1, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
-            currentBlock = await Helper.getCurrentBlock();
             // jump to epoch 1
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock + 1);
+            await Helper.increaseBlockNumberTo(startBlock + 1);
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 4, currentBlock + 4 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -1500,13 +1488,13 @@ contract('KyberDAO', function(accounts) {
                 0, currentBlock + 2, currentBlock + 2 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
                 [1, 2, 3], '0x', {from: campCreator}
             );
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+            await Helper.increaseBlockNumber(2);
             // camp already running, can not cancel
             await expectRevert(
                 daoContract.cancelCampaign(1, {from: campCreator}),
                 "cancelCampaign: campaign alr started"
             )
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 10);
+            await Helper.increaseBlockNumber(10);
             // camp already ended, cancel cancel
             await expectRevert(
                 daoContract.cancelCampaign(1, {from: campCreator}),
@@ -1628,8 +1616,7 @@ contract('KyberDAO', function(accounts) {
                 Helper.assertEqual(listCamps[2], campCounts, "camp id for this epoch is incorrect");
 
                 // delay until new epoch
-                currentBlock = await Helper.getCurrentBlock();
-                await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], id * epochPeriod + startBlock - currentBlock);
+                await Helper.increaseBlockNumberTo(id * epochPeriod + startBlock);
             }
         });
 
@@ -1876,8 +1863,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(3, campIDs[1], "camp id for first epoch is wrong");
 
             // delay to epoch 1
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             await daoContract.cancelCampaign(4, {from: campCreator});
             // check camp ids
@@ -1924,8 +1910,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(3, await daoContract.networkFeeCamp(1), "network fee camp is wrong");
 
             // delay to next epoch
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             await daoContract.cancelCampaign(3, {from: campCreator});
             Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "network fee camp is wrong");
@@ -1975,8 +1960,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(3, await daoContract.brrCampaign(1), "brr camp is wrong");
 
             // delay to next epoch
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             await daoContract.cancelCampaign(3, {from: campCreator});
             Helper.assertEqual(0, await daoContract.brrCampaign(1), "brr camp is wrong");
@@ -1995,15 +1979,14 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(100, currentBlock + 20, 20);
             await setupSimpleStakingData();
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
                 0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+            await Helper.increaseBlockNumber(2);
 
             Helper.assertEqual(0, await daoContract.getTotalPoints(1), "total epoch points should be correct");
             let campPointsData = await daoContract.getCampaignVoteCountData(1);
@@ -2110,7 +2093,7 @@ contract('KyberDAO', function(accounts) {
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
                 minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], '0x', {from: campCreator}
             );
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+            await Helper.increaseBlockNumber(2);
 
             await daoContract.vote(2, 1, {from: victor});
 
@@ -2159,8 +2142,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(100, currentBlock + 20, 20);
             await setupSimpleStakingData();
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -2172,7 +2154,7 @@ contract('KyberDAO', function(accounts) {
                 2, currentBlock + 4, currentBlock + 4 + minCampPeriod,
                 0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+            await Helper.increaseBlockNumber(2);
 
             Helper.assertEqual(0, await daoContract.getTotalPoints(1), "total epoch points should be correct");
             let campPointsData = await daoContract.getCampaignVoteCountData(1);
@@ -2336,15 +2318,14 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.delegate(mike, {from: victor});
             await stakingContract.delegate(poolMaster, {from: mike});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
                 0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+            await Helper.increaseBlockNumber(2);
 
             // Check: initial data for epoch 1 and camp 1
             Helper.assertEqual(0, await daoContract.getTotalPoints(1), "total epoch points should be correct");
@@ -2486,7 +2467,7 @@ contract('KyberDAO', function(accounts) {
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
                 0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+            await Helper.increaseBlockNumber(2);
 
             // Check: vote for second camp
             await daoContract.vote(2, 1, {from: mike});
@@ -2536,9 +2517,8 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.deposit(mulPrecision(100), {from: victor});
             await stakingContract.withdraw(mulPrecision(100), {from: mike});
 
-            currentBlock = await Helper.getCurrentBlock();
             // delay to epoch 2
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             // Current data:
             // (mike + poolMaster) (has stake, no delegation)
@@ -2549,7 +2529,7 @@ contract('KyberDAO', function(accounts) {
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
                 0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+            await Helper.increaseBlockNumber(2);
 
             await daoContract.vote(3, 1, {from: poolMaster});
             await daoContract.vote(3, 2, {from: mike});
@@ -2590,7 +2570,7 @@ contract('KyberDAO', function(accounts) {
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
                 0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+            await Helper.increaseBlockNumber(2);
 
             await daoContract.vote(4, 2, {from: poolMaster});
 
@@ -2618,21 +2598,20 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.delegate(poolMaster, {from: mike});
             await stakingContract.delegate(poolMaster2, {from: loi});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
                 0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+            await Helper.increaseBlockNumber(2);
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
                 0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+            await Helper.increaseBlockNumber(2);
 
             await daoContract.vote(1, 1, {from: victor});
             await daoContract.vote(1, 2, {from: loi});
@@ -2751,21 +2730,20 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.delegate(poolMaster2, {from: loi});
 
             // delay to epoch 4
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(3 * epochPeriod + startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
                 0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+            await Helper.increaseBlockNumber(2);
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
                 2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
                 0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
             );
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2);
+            await Helper.increaseBlockNumber(2);
 
             let epochPoints = new BN(0);
             let campPoints1 = new BN(0);
@@ -2854,8 +2832,7 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.delegate(poolMaster, {from: victor});
             await stakingContract.delegate(poolMaster2, {from: loi});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -2941,7 +2918,7 @@ contract('KyberDAO', function(accounts) {
                 0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3);
+            await Helper.increaseBlockNumber(3);
             await expectRevert(
                 daoContract.vote(2, 1, {from: mike}),
                 "vote: campaign doesn't exist"
@@ -2965,12 +2942,12 @@ contract('KyberDAO', function(accounts) {
                 "vote: campaign not started"
             )
 
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3);
+            await Helper.increaseBlockNumber(3);
 
             // can note now
             await daoContract.vote(1, 1, {from: mike});
 
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], minCampPeriod);
+            await Helper.increaseBlockNumber(minCampPeriod);
 
             // camp alread ended
             await expectRevert(
@@ -2988,7 +2965,7 @@ contract('KyberDAO', function(accounts) {
                 0, 0, 0, [25, 50], '0x', {from: campCreator}
             );
 
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3);
+            await Helper.increaseBlockNumber(3);
 
             // can not vote for 0
             await expectRevert(
@@ -3017,8 +2994,7 @@ contract('KyberDAO', function(accounts) {
             // has both stake + delegated stake
             await stakingContract.delegate(poolMaster2, {from: loi});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -3056,8 +3032,7 @@ contract('KyberDAO', function(accounts) {
             let epochTotalReward = mulPrecision(1).div(new BN(2));
             await feeHandler.setEpochReward(1, {from: accounts[0], value: epochTotalReward});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 1 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
             let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
@@ -3111,8 +3086,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(20, currentBlock + 15, 10);
             await setupSimpleStakingData();
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             let mikeCurStake = new BN(0).add(initMikeStake);
             let victorCurStake = new BN(0).add(initVictorStake);
@@ -3157,8 +3131,7 @@ contract('KyberDAO', function(accounts) {
                 await stakingContract.deposit(mulPrecision(10), {from: loi});
                 loiCurStake.iadd(mulPrecision(10));
 
-                currentBlock = await Helper.getCurrentBlock();
-                await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], id * epochPeriod + startBlock - currentBlock);
+                await Helper.increaseBlockNumberTo(id * epochPeriod + startBlock);
 
                 let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
                 let victorPer = victorPoints.mul(precisionUnits).div(totalEpochPoints);
@@ -3205,8 +3178,7 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.delegate(poolMaster, {from: loi});
             await stakingContract.delegate(poolMaster2, {from: victor});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -3236,8 +3208,7 @@ contract('KyberDAO', function(accounts) {
             await feeHandler.setEpochReward(1, {from: accounts[0], value: epochTotalReward});
 
             // delay few epochs not doing anything
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(4 * epochPeriod + startBlock);
 
             let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
             let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
@@ -3271,8 +3242,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(15, currentBlock + 15, 5);
             await setupSimpleStakingData();
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -3303,8 +3273,7 @@ contract('KyberDAO', function(accounts) {
             )
 
             // delay to epoch 2
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             // now mike can claim reward for epoch 1
             await daoContract.claimReward(mike, 1);
@@ -3316,8 +3285,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(15, currentBlock + 15, 5);
             await setupSimpleStakingData();
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -3330,8 +3298,7 @@ contract('KyberDAO', function(accounts) {
             await feeHandler.setEpochReward(1, {from: accounts[0], value: precisionUnits.div(new BN(10))});
 
             // delay to epoch 2
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             await daoContract.claimReward(mike, 1);
 
@@ -3350,8 +3317,7 @@ contract('KyberDAO', function(accounts) {
 
             await feeHandler.setEpochReward(1, {from: accounts[0], value: precisionUnits.div(new BN(10))});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             await expectRevert(
                 daoContract.claimReward(mike, 1),
@@ -3368,8 +3334,7 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.delegate(mike, {from: victor});
 
             // delay to epoch 1
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -3384,8 +3349,7 @@ contract('KyberDAO', function(accounts) {
 
             await feeHandler.setEpochReward(1, {from: accounts[0], value: precisionUnits.div(new BN(10))});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             // no stake
             await expectRevert(
@@ -3410,8 +3374,7 @@ contract('KyberDAO', function(accounts) {
             await setupSimpleStakingData();
 
             // delay to epoch 1
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -3423,8 +3386,7 @@ contract('KyberDAO', function(accounts) {
 
             await feeHandler.setEpochReward(1, {from: accounts[0], value: precisionUnits.div(new BN(10))});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             // victor didn't vote
             await expectRevert(
@@ -3443,8 +3405,7 @@ contract('KyberDAO', function(accounts) {
             await setupSimpleStakingData();
 
             // delay to epoch 1
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -3456,8 +3417,7 @@ contract('KyberDAO', function(accounts) {
 
             await feeHandler.setEpochReward(1, {from: accounts[0], value: precisionUnits.div(new BN(10))});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             await expectRevert(
                 daoContract.claimReward(mike, 1),
@@ -3468,13 +3428,48 @@ contract('KyberDAO', function(accounts) {
             feeHandler = await MockFeeHandler.new();
         });
 
-        it("Test claim reward should revert when claim for epoch in the past that didn't do anything", async function() {
+        it("Test claim reward should revert fee handler tries to re-enter claim reward in DAO", async function() {
+            feeHandler = await MockMaliciousFeeHandlerReentrancy.new();
             await deployContracts(15, currentBlock + 15, 5);
             await setupSimpleStakingData();
 
             // delay to epoch 1
+            await Helper.increaseBlockNumberTo(startBlock);
+
             currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await daoContract.submitNewCampaign(
+                0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+                0, 0, 0, [25, 50], '0x', {from: campCreator}
+            );
+
+            await daoContract.vote(1, 1, {from: mike});
+
+            currentBlock = await Helper.getCurrentBlock();
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
+
+            await feeHandler.setKyberDAO(daoContract.address);
+            // set tries to re-enter claimReward func in DAO
+            await feeHandler.setNumberCalls(1);
+
+            await expectRevert(
+                daoContract.claimReward(mike, 1),
+                "ReentrancyGuard: reentrant call"
+            )
+
+            // no re-enter
+            await feeHandler.setNumberCalls(0);
+            await daoContract.claimReward(mike, 1);
+
+            feeHandler = await MockFeeHandler.new();
+        });
+
+        it("Test claim reward should revert when claim for epoch in the past that didn't do anything", async function() {
+            feeHandler = await MockFeeHandler.new();
+            await deployContracts(15, currentBlock + 15, 5);
+            await setupSimpleStakingData();
+
+            // delay to epoch 1
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -3486,8 +3481,7 @@ contract('KyberDAO', function(accounts) {
 
             await feeHandler.setEpochReward(1, {from: accounts[0], value: precisionUnits.div(new BN(10))});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 5 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(5 * epochPeriod + startBlock);
 
             await expectRevert(
                 daoContract.claimReward(mike, 4),
@@ -3888,7 +3882,7 @@ contract('KyberDAO', function(accounts) {
             poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
 
             // delay to make camp ended
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], minCampPeriod);
+            await Helper.increaseBlockNumber(minCampPeriod);
 
             // camp has ended, but if user withdrew, reward will be still deducted
             await stakingContract.withdraw(mulPrecision(100), {from: mike});
@@ -3940,8 +3934,7 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.delegate(poolMaster, {from: victor});
             await stakingContract.delegate(poolMaster, {from: loi});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -3995,8 +3988,7 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.delegate(poolMaster2, {from: loi});
             await stakingContract.delegate(poolMaster, {from: poolMaster2});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -4032,8 +4024,7 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.delegate(poolMaster2, {from: victor});
             await stakingContract.delegate(poolMaster2, {from: loi});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -4068,8 +4059,7 @@ contract('KyberDAO', function(accounts) {
             await setupSimpleStakingData();
             await stakingContract.delegate(poolMaster2, {from: victor});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             await stakingContract.delegate(poolMaster2, {from: loi});
 
@@ -4112,8 +4102,7 @@ contract('KyberDAO', function(accounts) {
             await setupSimpleStakingData();
             await stakingContract.delegate(poolMaster2, {from: victor});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             await stakingContract.delegate(poolMaster2, {from: loi});
 
@@ -4154,9 +4143,8 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.delegate(loi, {from: poolMaster2});
             await stakingContract.delegate(loi, {from: poolMaster});
 
-            currentBlock = await Helper.getCurrentBlock();
             // delay to epoch 5
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(4 * epochPeriod + startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -4197,8 +4185,7 @@ contract('KyberDAO', function(accounts) {
             await setupSimpleStakingData();
             await stakingContract.deposit(mulPrecision(100), {from: mike});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             // has stake, but no vote yet
             Helper.assertEqual(0, await daoContract.getStakerRewardPercentageInPrecision(mike, 0), "reward percentage is wrong");
@@ -4224,8 +4211,7 @@ contract('KyberDAO', function(accounts) {
 
             await stakingContract.deposit(mulPrecision(100), {from: mike});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -4260,8 +4246,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(10, currentBlock + 20, 5);
             await setupSimpleStakingData();
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 0%, c = 0, t = 0
@@ -4275,7 +4260,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(0, data[0], "option id should be 0");
             Helper.assertEqual(0, data[1], "option value should be 0");
 
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3);
+            await Helper.increaseBlockNumber(3);
 
             await daoContract.vote(1, 1, {from: mike});
 
@@ -4285,7 +4270,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(0, data[1], "option value should be 0");
 
             // delay until end of first camp
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 10);
+            await Helper.increaseBlockNumber(10);
 
             data = await daoContract.getCampaignWinningOptionAndValue(1);
             Helper.assertEqual(1, data[0], "winning option id is invalid");
@@ -4301,8 +4286,7 @@ contract('KyberDAO', function(accounts) {
 
             await deployContracts(10, currentBlock + 20, 5);
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 0%, c = 0, t = 0
@@ -4312,8 +4296,7 @@ contract('KyberDAO', function(accounts) {
             );
 
             // delay to end of this epocch
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
             Helper.assertEqual(0, data[0], "winning option id is invalid");
@@ -4333,8 +4316,7 @@ contract('KyberDAO', function(accounts) {
 
             await deployContracts(10, currentBlock + 20, 5);
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 0%, c = 0, t = 0
@@ -4344,8 +4326,7 @@ contract('KyberDAO', function(accounts) {
             );
 
             // delay to end of this epocch
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
             Helper.assertEqual(0, data[0], "winning option id is invalid");
@@ -4367,8 +4348,7 @@ contract('KyberDAO', function(accounts) {
                 await stakingContract.deposit(initMikeStake.sub(initVictorStake), {from: victor});
             }
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 0%, c = 0, t = 0
@@ -4381,8 +4361,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(1, 2, {from: victor});
 
             // delay to end of this epocch
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
             Helper.assertEqual(0, data[0], "winning option id is invalid");
@@ -4396,8 +4375,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(10, currentBlock + 20, 5);
             await setupSimpleStakingData();
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             // 20% of total supply
             currentBlock = await Helper.getCurrentBlock();
@@ -4419,8 +4397,7 @@ contract('KyberDAO', function(accounts) {
                 "total voted stake should be less than 20%"
             );
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
             Helper.assertEqual(0, data[0], "winning option id is invalid");
@@ -4433,8 +4410,7 @@ contract('KyberDAO', function(accounts) {
             // make sure mike has more stake than both victor and loi
             await stakingContract.deposit(initVictorStake.add(initLoiStake), {from: mike});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 0%, c = 0, t = 0
@@ -4447,8 +4423,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(1, 1, {from: victor});
             await daoContract.vote(1, 3, {from: loi});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
             Helper.assertEqual(2, data[0], "winning option id is invalid");
@@ -4464,8 +4439,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(20, currentBlock + 20, 5);
             await setupSimpleStakingData();
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 20%, c = 0, t = 0
@@ -4480,7 +4454,7 @@ contract('KyberDAO', function(accounts) {
 
             // delay to end of this epocch
             currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
             Helper.assertEqual(3, data[0], "winning option id is invalid");
@@ -4497,8 +4471,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(20, currentBlock + 20, 5);
             await setupSimpleStakingData();
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -4511,8 +4484,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(1, 3, {from: loi});
 
             // delay to end of this epocch
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             data = await daoContract.getCampaignWinningOptionAndValue(1);
             Helper.assertEqual(0, data[0], "winning option id is invalid");
@@ -4546,8 +4518,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(1, 2, {from: loi});
 
             // delay to end of this epocch
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             // no winning option
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
@@ -4580,8 +4551,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(1, 1, {from: loi});
 
             // delay to end of this epocch
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             // option 2 should win as it equals the threshold
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
@@ -4599,8 +4569,7 @@ contract('KyberDAO', function(accounts) {
 
             await simpleSetupToTestThreshold(6000, 3500, 500, 40);
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 20%, c = 100%, t = 1
@@ -4617,8 +4586,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(1, 1, {from: loi});
 
             // delay to end of this epocch
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             // option 1 should win as it equals the threshold
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
@@ -4636,8 +4604,7 @@ contract('KyberDAO', function(accounts) {
 
             await simpleSetupToTestThreshold(6000, 3500, 500, 40);
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 20%, c = 10%, t = 1
@@ -4654,8 +4621,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(1, 2, {from: loi});
 
             // delay to end of this epocch
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
             Helper.assertEqual(3, data[0], "winning option id is invalid");
@@ -4672,8 +4638,7 @@ contract('KyberDAO', function(accounts) {
 
             await simpleSetupToTestThreshold(6000, 3500, 500, 40);
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 20%, c = 200%, t = 1
@@ -4690,8 +4655,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(1, 1, {from: loi});
 
             // delay to end of this epocch
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
             Helper.assertEqual(0, data[0], "winning option id is invalid");
@@ -4708,8 +4672,7 @@ contract('KyberDAO', function(accounts) {
 
             await simpleSetupToTestThreshold(6000, 3500, 500, 40);
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             // min percentage: 20%, c = 100%, t = 0
@@ -4726,8 +4689,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(1, 2, {from: loi});
 
             // delay to end of this epocch
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             // all voted for option 1, however threshold is greater than 100%
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
@@ -4747,7 +4709,7 @@ contract('KyberDAO', function(accounts) {
 
             // delay to end of this epocch
             currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(2 * epochPeriod + startBlock);
 
             data = await daoContract.getCampaignWinningOptionAndValue(2);
             Helper.assertEqual(0, data[0], "winning option id is invalid");
@@ -4781,8 +4743,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(10, currentBlock + 10, 5);
 
             // delay to epoch 1
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
             // get fee data for epoch 1
             feeData = await daoContract.getLatestNetworkFeeData();
             Helper.assertEqual(defaultNetworkFee, feeData[0], "network fee default is wrong");
@@ -4794,8 +4755,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(epochPeriod + startBlock - 1, feeData[1], "expiry block number is wrong");
 
             // delay to epoch 4
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(3 * epochPeriod + startBlock);
             // get fee data for epoch 4
             feeData = await daoContract.getLatestNetworkFeeData();
             Helper.assertEqual(32, feeData[0], "network fee default is wrong");
@@ -4810,8 +4770,7 @@ contract('KyberDAO', function(accounts) {
             await setupSimpleStakingData();
 
             // delay to epoch 1
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -4827,8 +4786,7 @@ contract('KyberDAO', function(accounts) {
             );
             await daoContract.vote(2, 3, {from: mike});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
 
@@ -4867,8 +4825,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(epochPeriod + startBlock - 1, data[1], "expiry block number is wrong");
 
             // delay to epoch 2
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             Helper.assertEqual(1, await daoContract.networkFeeCamp(1), "should have network fee camp");
 
@@ -4895,8 +4852,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(1, 3, {from: loi});
 
             // delay to epoch 2
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             // no winning as same vote count
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
@@ -4928,8 +4884,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(2, 1, {from: loi});
 
             // delay to epoch 3
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(2 * epochPeriod + startBlock);
 
             // no winning as min percentage > total votes / total supply
             data = await daoContract.getCampaignWinningOptionAndValue(2);
@@ -4958,8 +4913,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(3, 2, {from: victor});
 
             // delay to epoch 4
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(3 * epochPeriod + startBlock);
 
             // no winning as most option voted percentage (59%) < threshold (60%)
             data = await daoContract.getCampaignWinningOptionAndValue(3);
@@ -4988,8 +4942,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(4, 1, {from: victor});
 
             // delay to epoch 5
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(4 * epochPeriod + startBlock);
 
             data = await daoContract.getCampaignWinningOptionAndValue(4);
             Helper.assertEqual(1, data[0], "winning option is wrong");
@@ -5022,8 +4975,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(5, 2, {from: victor});
 
             // delay to epoch 6
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 5 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(5 * epochPeriod + startBlock);
 
             // no winning as most option voted percentage (59%) < threshold (60%)
             data = await daoContract.getCampaignWinningOptionAndValue(5);
@@ -5053,8 +5005,7 @@ contract('KyberDAO', function(accounts) {
             await simpleSetupToTestThreshold(410, 410, 180, 40);
 
             // get at epoch 1, no camps
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
             await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, epochPeriod + startBlock - 1);
 
             // create camp, but not fee camp
@@ -5068,8 +5019,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(1, 1, {from: victor});
 
             // delay to epoch 2
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
             // check data
             await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, 2 * epochPeriod + startBlock - 1);
 
@@ -5084,14 +5034,12 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(2, 3, {from: victor});
 
             // delay to epoch 3
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(2 * epochPeriod + startBlock);
             // check data
             await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, 3 * epochPeriod + startBlock - 1);
 
             // delay few epoch, to epoch 5
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(4 * epochPeriod + startBlock);
 
             // create fee camp, has winning
             currentBlock = await Helper.getCurrentBlock();
@@ -5107,14 +5055,12 @@ contract('KyberDAO', function(accounts) {
             await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, 5 * epochPeriod + startBlock - 1);
 
             // delay to epoch 6
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 5 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(5 * epochPeriod + startBlock);
             // check data
             await daoContract.checkLatestNetworkFeeData(1, 6 * epochPeriod + startBlock - 1);
 
             // delay to next epoch
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 6 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(6 * epochPeriod + startBlock);
             // check data with no fee camp at previous epoch
             await daoContract.checkLatestNetworkFeeData(1, 7 * epochPeriod + startBlock - 1);
 
@@ -5174,8 +5120,7 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(10, currentBlock + 10, 5);
 
             // delay to epoch 1
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
             await daoContract.checkLatestBrrData(
                 reward, rebate, 10000 - rebate - reward, 1, epochPeriod + startBlock - 1
             );
@@ -5197,8 +5142,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(newBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
 
             // delay to epoch 4
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(3 * epochPeriod + startBlock);
             // get brr data for epoch 4
             await daoContract.checkLatestBrrData(
                 reward, rebate, 10000 - rebate - reward, 4, 4 * epochPeriod + startBlock - 1
@@ -5223,8 +5167,7 @@ contract('KyberDAO', function(accounts) {
             await setupSimpleStakingData();
 
             // delay to epoch 1
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
 
             currentBlock = await Helper.getCurrentBlock();
             await daoContract.submitNewCampaign(
@@ -5240,8 +5183,7 @@ contract('KyberDAO', function(accounts) {
             );
             await daoContract.vote(2, 3, {from: mike});
 
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
 
@@ -5299,8 +5241,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(epochPeriod + startBlock - 1, dataDecoded[4], "expiry block is wrong");
 
             // delay to epoch 2, winning option should take effect
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             dataDecoded = await daoContract.latestBRRDataDecoded();
             Helper.assertEqual(10000 - newRebate - newReward, dataDecoded[0], "burn is wrong");
@@ -5345,8 +5286,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(1, 3, {from: loi});
 
             // delay to epoch 2
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             // no winning as same vote count
             let data = await daoContract.getCampaignWinningOptionAndValue(1);
@@ -5387,8 +5327,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(2, 1, {from: loi});
 
             // delay to epoch 3
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(2 * epochPeriod + startBlock);
 
             // no winning as min percentage > total votes / total supply
             data = await daoContract.getCampaignWinningOptionAndValue(2);
@@ -5418,8 +5357,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(3, 2, {from: victor});
 
             // delay to epoch 4
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(3 * epochPeriod + startBlock);
 
             // no winning as most option voted percentage (59%) < threshold (60%)
             data = await daoContract.getCampaignWinningOptionAndValue(3);
@@ -5449,8 +5387,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(4, 1, {from: victor});
 
             // delay to epoch 5
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(4 * epochPeriod + startBlock);
 
             data = await daoContract.getCampaignWinningOptionAndValue(4);
             Helper.assertEqual(1, data[0], "winning option is wrong");
@@ -5477,8 +5414,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(5, 2, {from: victor});
 
             // delay to epoch 6
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 5 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(5 * epochPeriod + startBlock);
 
             // no winning as most option voted percentage (59%) < threshold (60%)
             data = await daoContract.getCampaignWinningOptionAndValue(5);
@@ -5508,8 +5444,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(false, await daoContract.shouldBurnRewardForEpoch(10), "should burn all reward result is wrong");
 
             // delay to epoch 2
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
 
             // create camp and vote
             currentBlock = await Helper.getCurrentBlock();
@@ -5527,8 +5462,7 @@ contract('KyberDAO', function(accounts) {
             Helper.assertEqual(false, await daoContract.shouldBurnRewardForEpoch(2), "should burn all reward result is wrong");
 
             // delay to epoch 4
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(3 * epochPeriod + startBlock);
 
             Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(1), "should burn all reward result is wrong");
             Helper.assertEqual(false, await daoContract.shouldBurnRewardForEpoch(2), "should burn all reward result is wrong");
@@ -5541,8 +5475,7 @@ contract('KyberDAO', function(accounts) {
             await setupSimpleStakingData();
 
             // delay to epoch 1
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(startBlock);
             Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(0), "should burn all reward result is wrong");
 
             // create camp
@@ -5553,8 +5486,7 @@ contract('KyberDAO', function(accounts) {
             );
 
             // delay to epoch 2
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(epochPeriod + startBlock);
             // has camp but no vote
             Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(1), "should burn all reward result is wrong");
 
@@ -5567,8 +5499,7 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(2, 1, {from: poolMaster});
 
             // delay to epoch 3
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 2 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(2 * epochPeriod + startBlock);
             // has camp, has vote but staker has 0 stake
             Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(2), "should burn all reward result is wrong");
 
@@ -5584,8 +5515,7 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.delegate(poolMaster, {from: loi});
 
             // delay to epoch 4
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 3 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(3 * epochPeriod + startBlock);
             // has camp, voted with staker has stakes, but then withdraw all
             Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(3), "should burn all reward result is wrong");
 
@@ -5599,8 +5529,7 @@ contract('KyberDAO', function(accounts) {
             await stakingContract.withdraw(initLoiStake, {from: loi});
 
             // delay to epoch 5
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 4 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(4 * epochPeriod + startBlock);
             // has camp, voted with staker has delegated stakes, but then withdraw all
             Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(4), "should burn all reward result is wrong");
 
@@ -5613,14 +5542,13 @@ contract('KyberDAO', function(accounts) {
             await daoContract.vote(5, 1, {from: victor});
 
             // delay to epoch 6
-            currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 5 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(5 * epochPeriod + startBlock);
             // has camp, voted with stakes, burn should be false
             Helper.assertEqual(false, await daoContract.shouldBurnRewardForEpoch(5), "should burn all reward result is wrong");
 
             // delay to epoch 6
             currentBlock = await Helper.getCurrentBlock();
-            await Helper.increaseBlockNumberBySendingEther(accounts[0], accounts[0], 6 * epochPeriod + startBlock - currentBlock);
+            await Helper.increaseBlockNumberTo(6 * epochPeriod + startBlock);
             // no camp, no reward
             Helper.assertEqual(true, await daoContract.shouldBurnRewardForEpoch(6), "should burn all reward result is wrong");
         });
@@ -5857,12 +5785,10 @@ contract('KyberDAO', function(accounts) {
             await deployContracts(10, currentBlock + 10, 10);
             let reward = 10001;
             let rebate = 0;
-            try {
-                await daoContract.getDataFromRewardAndRebateWithValidation(reward, rebate);
-                assert(false, "throw was expected in line above");
-            } catch (e) {
-                assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-            }
+            await expectRevert(
+                daoContract.getDataFromRewardAndRebateWithValidation(reward, rebate),
+                "reward plus rebate high"
+            )
 
             reward = 0;
             rebate = 10001;

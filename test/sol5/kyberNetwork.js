@@ -9,6 +9,7 @@ const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const TradeLogic = artifacts.require("KyberMatchingEngine.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 const OtherMathcingEngine = artifacts.require("OtherMatchingEngine.sol");
+const NotPayableContract = artifacts.require("MockNotPayableContract.sol");
 
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -16,7 +17,7 @@ const nwHelper = require("./networkHelper.js");
 const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
-const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN, MAX_QTY} = require("../helper.js");
+const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN, MAX_QTY, MAX_RATE} = require("../helper.js");
 const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK,
     MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, ReserveType}  = require('./networkHelper.js');
 
@@ -159,7 +160,7 @@ contract('KyberNetwork', function(accounts) {
         it("test only admin can add proxies", async() => {
             await expectRevert(
                 tempNetwork.addKyberProxy(proxy1, {from: operator}),
-                "ONLY_ADMIN"
+                "Only admin"
             );
         });
 
@@ -320,7 +321,7 @@ contract('KyberNetwork', function(accounts) {
             await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
         });
@@ -364,7 +365,7 @@ contract('KyberNetwork', function(accounts) {
             await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
         });
@@ -513,7 +514,7 @@ contract('KyberNetwork', function(accounts) {
             await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
         });
@@ -545,7 +546,7 @@ contract('KyberNetwork', function(accounts) {
             await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
             await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
@@ -620,7 +621,7 @@ contract('KyberNetwork', function(accounts) {
 
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
 
             // init matchingEngine
             matchingEngine = await TradeLogic.new(admin);
@@ -1286,7 +1287,7 @@ contract('KyberNetwork', function(accounts) {
 
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, tempNetwork.address, tempNetwork.address, KNC.address, burnBlockInterval);
+            feeHandler = await FeeHandler.new(DAO.address, tempNetwork.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
 
             // init matchingEngine
             maliciousMatchingEngine = await MockMatchingEngineManipulateRate.new(admin);
@@ -1489,7 +1490,7 @@ contract('KyberNetwork', function(accounts) {
 
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
 
             // init matchingEngine
             matchingEngine = await TradeLogic.new(admin);
@@ -1591,12 +1592,26 @@ contract('KyberNetwork', function(accounts) {
             );
         });
 
-        it("test can not trade when fee is too high", async () => {
+        it("test can not trade when platform fee is too high", async () => {
             let invalidPlatformFee = new BN(10001); // 10001 BPS = 100.01%
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, minConversionRate, platformWallet, invalidPlatformFee, emptyHint),
                 "platformFee high"
+            );
+        });
+
+        it("test can not trade when fees is too high", async () => {
+            let networkData = await network.getNetworkData();
+
+            Helper.assertGreater(networkData.networkFeeBps, new BN(0));
+            let invalidPlatformFee = BPS.sub(networkData.networkFeeBps);
+            // expect invalidPlatformFee + networkFee*2 > BPS
+
+            await expectRevert(
+                network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
+                    maxDestAmt, minConversionRate, platformWallet, invalidPlatformFee, emptyHint),
+                "fees high"
             );
         });
 
@@ -1624,6 +1639,181 @@ contract('KyberNetwork', function(accounts) {
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, minConversionRate, platformWallet, platformFee, emptyHint),
                 "srcTok low"
+            );
+        });
+    });
+
+    describe("test update Network fee", async function(){
+        let tempNetwork
+        beforeEach("setup", async function(){
+            tempNetwork = await MockNetwork.new(admin);
+        });
+
+        it("expiryBlock too large", async function(){
+            expirtyBlock = ((new BN(2)).pow(new BN(64))).add(new BN(1));
+            feeBPS = new BN(100);
+            await expectRevert(
+                tempNetwork.setNetworkFeeData(feeBPS, expirtyBlock),
+                "expiry overflow"
+            );
+        });
+
+        it("fee BPS too large", async function(){
+            expiryBlock = new BN(5000000);
+            feeBPS = (BPS.div(new BN(2))).add(new BN(1));
+            await expectRevert(
+                tempNetwork.setNetworkFeeData(feeBPS, expiryBlock),
+                "fees exceed BPS"
+            );
+        });
+
+        it("set expiry block", async function(){
+            currentBlock = await Helper.getCurrentBlock();
+            feeBPS = new BN(100);
+            expiryBlock = currentBlock + 10;
+            await tempNetwork.setNetworkFeeData(feeBPS, expiryBlock);
+            actualFeeBPS = await tempNetwork.getAndUpdateNetworkFee.call();
+            Helper.assertEqual(actualFeeBPS, feeBPS, "fee bps not correct");
+            Helper.assertEqual(await tempNetwork.mockGetNetworkFee(), feeBPS, "getNetworkfee not correct")
+        });
+
+        it("test get network fee from DAO", async function(){
+            currentBlock = await Helper.getCurrentBlock();
+            expiryBlock = currentBlock;
+            feeBPS = new BN(99);
+            DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlock);
+            await DAO.setNetworkFeeBps(feeBPS);
+            await tempNetwork.setDAOContract(DAO.address, {from: admin});
+            actualFeeBPS = await tempNetwork.getAndUpdateNetworkFee.call();
+            Helper.assertEqual(actualFeeBPS, feeBPS, "fee bps not correct");
+            await tempNetwork.getAndUpdateNetworkFee.call();
+        });
+    });
+
+    describe("test trade", async function(){
+        before("global setup", async function () {
+            tempNetwork = await KyberNetwork.new(admin); //init reserves
+            tempTokens = []
+            // setup network
+            await tempNetwork.addOperator(operator, { from: admin });
+            await tempNetwork.addKyberProxy(networkProxy, { from: admin });
+
+            feeBPS = new BN(100);
+            expiryBlock = await Helper.getCurrentBlock() + 100;
+            DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlock);
+            await tempNetwork.setDAOContract(DAO.address, { from: admin });
+
+            // init feeHandler
+            KNC = await TestToken.new("kyber network crystal", "KNC", 18);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
+
+            // init matchingEngine
+            matchingEngine = await TradeLogic.new(admin);
+            await matchingEngine.setNetworkContract(tempNetwork.address, { from: admin });
+            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
+
+            await tempNetwork.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
+
+            //set params, enable network
+            await tempNetwork.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
+            await tempNetwork.setEnable(true, { from: admin });
+
+            result = await nwHelper.setupReserves(network, tokens, 1, 0, 0, 0, accounts, admin, operator);
+            reserveInstances = result.reserveInstances;
+
+            //add and list pair for reserve
+            await nwHelper.addReservesToNetwork(tempNetwork, reserveInstances, tokens, operator);
+
+            // set fixed rates
+            fixedTokensPerEther = precisionUnits.mul(new BN(20));
+            fixedEthersPerToken = precisionUnits.div(new BN(20));
+
+            for (const [key, value] of Object.entries(reserveInstances)) {
+                mockReserve = value.instance;
+                await mockReserve.setRate(tokens[0].address, MAX_RATE.div(new BN(2)), MAX_RATE.div(new BN(2)));
+                await mockReserve.setRate(tokens[1].address, MAX_RATE.div(new BN(2)), MAX_RATE.div(new BN(2)));
+            }
+
+        });
+
+        it("trade zero source amount", async function(){
+            srcQty = new BN(0);
+            srcToken = tokens[0];
+            destToken = tokens[1];
+            await expectRevert(
+                tempNetwork.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, destToken.address, taker,
+                    maxDestAmt, minConversionRate, platformWallet, platformFeeBps, emptyHint),
+                "0 srcAmt"
+            );
+        });
+
+        it("trade rate > MAX_RATE", async function(){
+            srcQty = new BN(10);
+            srcToken = tokens[0];
+            destToken = tokens[1];
+            await srcToken.transfer(tempNetwork.address, srcQty);
+            await expectRevert(
+                tempNetwork.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, destToken.address, taker,
+                    maxDestAmt, minConversionRate, platformWallet, platformFeeBps, emptyHint),
+                "rate > MAX_RATE"
+            );
+        });
+
+        it("trade rate < minConvRate", async function(){
+            srcQty = new BN(10);
+            srcToken = tokens[0];
+            await srcToken.transfer(tempNetwork.address, srcQty);
+            await expectRevert(
+                tempNetwork.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
+                    maxDestAmt, MAX_RATE, platformWallet, platformFeeBps, emptyHint),
+                "rate < minConvRate"
+            );
+        });
+    });
+
+    describe("test handle change edge case", async function(){
+        before("setup", async function(){
+            tempNetwork = await MockNetwork.new(admin);
+        });
+
+        it("test srcAmount equal to require srcAmount", async function(){
+            // src = ethAddress
+            srcAmount = new BN(10);
+            requiredSrcAmount = srcAmount;
+            result = await tempNetwork.mockHandleChange.call(ethAddress, srcAmount, requiredSrcAmount, admin);
+            Helper.assertEqual(result, true, "handle change not true");
+        });
+
+        it("test handle while don't have fund", async function(){
+            src = ethAddress;
+            srcAmount = new BN(10);
+            requiredSrcAmount = srcAmount.sub(new BN(1));
+            await expectRevert(
+                tempNetwork.mockHandleChange(src, srcAmount, requiredSrcAmount, admin),
+                "Send change failed"
+            );
+        });
+
+        it("test handle send to not payable contract", async function(){
+            src = ethAddress;
+            srcAmount = new BN(10);
+            sendBackAmount = new BN(1);
+            requiredSrcAmount = srcAmount.sub(sendBackAmount);
+            blockContract = await NotPayableContract.new();
+            Helper.sendEtherWithPromise(accounts[0], tempNetwork.address, sendBackAmount);
+            await expectRevert(
+                tempNetwork.mockHandleChange(src, srcAmount, requiredSrcAmount, blockContract.address),
+                "Send change failed"
+            );
+            Helper.assertEqual(
+                await Helper.getBalancePromise(tempNetwork.address),
+                sendBackAmount
+            );
+            // send back to account 0
+            await tempNetwork.mockHandleChange(src, srcAmount, requiredSrcAmount, accounts[0]);
+            Helper.assertEqual(
+                await Helper.getBalancePromise(tempNetwork.address),
+                0
             );
         });
     });
