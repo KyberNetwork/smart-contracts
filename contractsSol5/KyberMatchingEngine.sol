@@ -224,7 +224,6 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
         tData.platformFeeWei = tData.tradeWei * tData.platformFeeBps / BPS;
 
-        // this line we can not reach full coverage due to networkFeeWei * 2 + platformFeeWei < BPS and feePayingReservesBps < 2 *BPS
         require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
         calcRatesAndAmountsEthToToken(dest, tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei, tData);
 
@@ -552,7 +551,6 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
                 tData.numFeePayingReserves++;
             }
 
-            // this line we can not reach full coverage due to networkFeeWei * 2 + platformFeeWei < BPS and feePayingReservesBps < 2 *BPS
             require(tData.tradeWei >= tData.networkFeeWei + tData.platformFeeWei, "fees exceed trade amt");
             //take into account possible additional networkFee
             tData.actualDestAmount = calcDstQty(tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei, 

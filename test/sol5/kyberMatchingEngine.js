@@ -1,6 +1,7 @@
 const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const KyberMatchingEngine = artifacts.require("KyberMatchingEngine.sol");
+const MockMatchEngine = artifacts.require("MockMatchEngine.sol");
 const MaliciousKyberEngine = artifacts.require("MaliciousMatchingEngine.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 
@@ -1980,6 +1981,52 @@ contract('KyberMatchingEngine', function(accounts) {
                         await reserve.instance.setRate(destToken.address, tokensPerEther, ethersPerToken);
                         i++;
                     }
+                });
+            });
+
+
+            describe("test revert if total fee is greater than tradeWei", async () => {
+                let matchingEngine;
+                before("setup mock matchingEngine", async () => {
+                    matchingEngine = await MockMatchEngine.new(admin);
+                    await matchingEngine.setNetworkContract(network, { from: admin });
+                    let rateHelper = await RateHelper.new(admin);
+                    await rateHelper.setContracts(matchingEngine.address, accounts[9], { from: admin });
+
+                    //init 4 mock reserves
+                    let result = await nwHelper.setupReserves(network, [srcToken, destToken], 4, 0, 0, 0, accounts, admin, operator);
+                    let reserveInstances = result.reserveInstances;
+                    await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, true, { from: admin });
+
+                    //add reserves, list token pairs
+                    for (reserve of Object.values(reserveInstances)) {
+                        await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, { from: network });
+                        await matchingEngine.listPairForReserve(reserve.address, srcToken.address, true, true, true, { from: network });
+                        await matchingEngine.listPairForReserve(reserve.address, destToken.address, true, true, true, { from: network });
+                    };
+                });
+
+
+                it("test revert if networkFeeWei + platformFeeWei >=  tradeWei (T2E)", async () => {
+                    let networkFeeBps = new BN(9999);
+                    let platformFeeBps = new BN(2);
+                    info = [srcQty, networkFeeBps, platformFeeBps];
+
+                    await expectRevert(
+                        matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint),
+                        "fees exceed trade amt"
+                    );
+                });
+
+                it("test revert if networkFee + platformFeeWei >=  tradeWei (T2T)", async () => {
+                    let networkFeeBps = new BN(2501);
+                    let platformFeeBps = new BN(5000);
+                    info = [srcQty, networkFeeBps, platformFeeBps];
+
+                    await expectRevert(
+                        matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, emptyHint),
+                        "fees exceed trade amt"
+                    );
                 });
             });
 
