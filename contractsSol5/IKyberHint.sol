@@ -13,10 +13,10 @@ interface IKyberHint {
 
     enum HintErrors {
         NoError,
-        ReserveIdZeroError,
+        ReserveIdEmptyError,
         ReserveIdSplitsError,
         ReserveIdDupError,
-        SplitsZeroError,
+        SplitsNotEmptyError,
         TotalBPSError
     }
 

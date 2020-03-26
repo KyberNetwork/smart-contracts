@@ -1,8 +1,7 @@
 const MockHintHandler = artifacts.require('MockHintHandler.sol');
 const Helper = require("../helper.js");
-const BN = web3.utils.BN;
+const { expectRevert } = require('@openzeppelin/test-helpers');
 
-const NO_HINT_TYPE = '';
 const INVALID_HINT_TYPE = '0x09';
 const MASK_IN = 0;
 const MASK_OUT = 1;
@@ -14,9 +13,9 @@ const TRADE_TYPES = {
     SPLIT,
 }
 const INVALID_SPLIT_BPS = {
-    MORE_THAN_10000BPS: ['5000', '6000'], // more than 10000bps
-    LESS_THAN_10000BPS: ['3000', '4000'], // less than 10000bos
-    EMPTY_SPLITS: [],
+    MORE_THAN_10000BPS: {value: ['5000', '6000'], revertMsg: 'splits total BPS does not amount to 10000BPS'}, // more than 10000bps
+    LESS_THAN_10000BPS: {value: ['3000', '4000'], revertMsg: 'splits total BPS does not amount to 10000BPS'},// less than 10000bos
+    EMPTY_SPLITS: {value: [], revertMsg: 'reserveIds and splits length not equal'}
 }
 const ID_TO_ADDRESS = {
     '0xff12345663820d8f': '0x63825c174ab367968EC60f061753D3bbD36A0D8F',
@@ -37,17 +36,13 @@ let t2eReserves;
 let t2eSplits;
 let t2eHintType;
 let hint;
+let revertMsg;
 
 contract('KyberHintHandler', function(accounts) {
-    before('one time init, admin account', async() => {
+    before('one time init, admin account and setup hint parser', async() => {
         admin = accounts[0];
-    });
-
-    it('should init hint parser', async function () {
         hintHandler = await MockHintHandler.new();
-    });
 
-    it('should init reserveAddressToId and reserveIdToAddresses mappings', async function () {
         const idToAddress = Object.keys(ID_TO_ADDRESS);
 
         for (var i = 0; i < idToAddress.length; i++) {
@@ -88,12 +83,10 @@ contract('KyberHintHandler', function(accounts) {
                         t2eSplits = [];
                     }
                     
-                    try {
-                        await hintHandler.buildTokenToEthHint(t2eOpcode, [], t2eSplits);                        
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert(
+                        hintHandler.buildTokenToEthHint(t2eOpcode, [], t2eSplits),
+                        'reserveIds cannot be empty'
+                    );
                 });
             });
 
@@ -103,43 +96,47 @@ contract('KyberHintHandler', function(accounts) {
 
                     if (tradeType == 'SPLIT') {
                         t2eSplits = [];
+                        revertMsg = 'reserveIds and splits length not equal'
                     } else {
                         t2eSplits = BPS_SPLIT;
+                        revertMsg = 'splits must be empty';
                     }
                     
-                    try {
-                        await hintHandler.buildTokenToEthHint(t2eOpcode, t2eReserves, t2eSplits);                        
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert(
+                        hintHandler.buildTokenToEthHint(t2eOpcode, t2eReserves, t2eSplits),
+                        revertMsg
+                    );
                 });
             });
 
             Object.keys(INVALID_SPLIT_BPS).forEach(invalidSplit => {
                 it(`should revert the T2E hint for SPLITS due to ${invalidSplit}`, async() => {
                     t2eOpcode = SPLIT;
-                    t2eSplits = INVALID_SPLIT_BPS[invalidSplit];
+                    t2eSplits = INVALID_SPLIT_BPS[invalidSplit].value;
             
-                    try {
-                        await hintHandler.buildTokenToEthHint(t2eOpcode, t2eReserves, t2eSplits);                        
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert(
+                        hintHandler.buildTokenToEthHint(t2eOpcode, t2eReserves, t2eSplits),
+                        INVALID_SPLIT_BPS[invalidSplit].revertMsg
+                    );
                 });
+            });
+
+            it('should revert the T2E hint for SPLITS due to duplicate reserve ID', async() => {
+                t2eOpcode = SPLIT;
+                let t2eDupReserves = ['0xff1234567a334f7d', '0xff1234567a334f7d'];
+                await expectRevert(
+                    hintHandler.buildTokenToEthHint(t2eOpcode, t2eDupReserves, BPS_SPLIT),
+                    'duplicate reserveId'
+                );
             });
 
             it('should revert the T2E hint for invalid hint type', async() => {
                 t2eOpcode = INVALID_HINT_TYPE;
                 t2eSplits = [];
 
-                try {
-                    await hintHandler.buildTokenToEthHint(t2eOpcode, t2eReserves, t2eSplits);                        
-                    assert(false, "throw was expected in line above.");
-                } catch(e){
-                    assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                }
+                await expectRevert.unspecified(
+                    hintHandler.buildTokenToEthHint(t2eOpcode, t2eReserves, t2eSplits)                        
+                );
             });
         });
 
@@ -175,12 +172,10 @@ contract('KyberHintHandler', function(accounts) {
                         e2tSplits = [];
                     }
                     
-                    try {
-                        await hintHandler.buildEthToTokenHint(e2tOpcode, [], e2tSplits);                        
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert(
+                        hintHandler.buildEthToTokenHint(e2tOpcode, [], e2tSplits),
+                        'reserveIds cannot be empty'
+                    );
                 });
             });
 
@@ -190,43 +185,47 @@ contract('KyberHintHandler', function(accounts) {
 
                     if (tradeType == 'SPLIT') {
                         e2tSplits = [];
+                        revertMsg = 'reserveIds and splits length not equal'
                     } else {
                         e2tSplits = BPS_SPLIT;
+                        revertMsg = 'splits must be empty'
                     }
                     
-                    try {
-                        await hintHandler.buildEthToTokenHint(e2tOpcode, e2tReserves, e2tSplits);                        
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert(
+                        hintHandler.buildEthToTokenHint(e2tOpcode, e2tReserves, e2tSplits),
+                        revertMsg
+                    );
                 });
             });
             
             Object.keys(INVALID_SPLIT_BPS).forEach(invalidSplit => {
                 it(`should revert the E2T hint for SPLITS due to ${invalidSplit}`, async() => {
                     e2tOpcode = SPLIT;
-                    e2tSplits = INVALID_SPLIT_BPS[invalidSplit];
+                    e2tSplits = INVALID_SPLIT_BPS[invalidSplit].value;
             
-                    try {
-                        await hintHandler.buildEthToTokenHint(e2tOpcode, e2tReserves, e2tSplits);                        
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert(
+                        hintHandler.buildEthToTokenHint(e2tOpcode, e2tReserves, e2tSplits),
+                        INVALID_SPLIT_BPS[invalidSplit].revertMsg
+                    );
                 });
+            });
+
+            it('should revert the E2T hint for SPLITS due to duplicate reserve ID', async() => {
+                e2tOpcode = SPLIT;
+                let e2tDupReserves = ['0xff1234567a334f7d', '0xff1234567a334f7d'];
+                await expectRevert(
+                    hintHandler.buildEthToTokenHint(e2tOpcode, e2tDupReserves, BPS_SPLIT),
+                    'duplicate reserveId'
+                );
             });
 
             it('should revert the E2T hint for invalid hint type', async() => {
                 e2tOpcode = INVALID_HINT_TYPE;
                 e2tSplits = [];
 
-                try {
-                    await hintHandler.buildEthToTokenHint(e2tOpcode, e2tReserves, e2tSplits);                        
-                    assert(false, "throw was expected in line above.");
-                } catch(e){
-                    assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                }
+                await expectRevert.unspecified(
+                    hintHandler.buildEthToTokenHint(e2tOpcode, e2tReserves, e2tSplits)
+                );
             });
         });
 
@@ -276,40 +275,53 @@ contract('KyberHintHandler', function(accounts) {
                         Helper.assertEqual(hintResult, expectedResult);
                     });
 
-                    it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to invalid split values`, async() => {
+                    it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to invalid T2E split values`, async() => {
                         t2eOpcode = TRADE_TYPES[t2eTradeType];
                         t2eSplits = [];
                         e2tOpcode = TRADE_TYPES[e2tTradeType];
-                        e2tSplits = [];
-    
+                        e2tSplits = (e2tTradeType == 'SPLIT') ? BPS_SPLIT : [];
+
                         if (t2eTradeType == 'SPLIT') {
                             t2eSplits = [];
+                            revertMsg = 'reserveIds and splits length not equal'
                         } else {
                             t2eSplits = BPS_SPLIT;
+                            revertMsg = 'splits must be empty'
                         }
 
-                        if (e2tTradeType == 'SPLIT') {
-                            e2tSplits = [];
-                        } else {
-                            e2tSplits = BPS_SPLIT;
-                        }
-                        
-                        try {
-                            await hintHandler.buildTokenToTokenHint(
-                                t2eOpcode,
-                                t2eReserves,
-                                t2eSplits,
-                                e2tOpcode,
-                                e2tReserves,
-                                e2tSplits,
-                            );
-                            assert(false, "throw was expected in line above.");
-                        } catch(e){
-                            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                        }
+                        await expectRevert(
+                            hintHandler.buildTokenToTokenHint(
+                                t2eOpcode, t2eReserves, t2eSplits,
+                                e2tOpcode, e2tReserves, e2tSplits
+                            ),
+                            revertMsg
+                        );
                     });
 
-                    it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to empty reserveIds`, async() => {
+                    it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to invalid E2T split values`, async() => {
+                        t2eOpcode = TRADE_TYPES[t2eTradeType];
+                        t2eSplits = (t2eTradeType == 'SPLIT') ? BPS_SPLIT : [];
+                        e2tOpcode = TRADE_TYPES[e2tTradeType];
+                        e2tSplits = [];
+
+                        if (e2tTradeType == 'SPLIT') {
+                            e2tSplits = [];
+                            revertMsg = 'reserveIds and splits length not equal'
+                        } else {
+                            e2tSplits = BPS_SPLIT;
+                            revertMsg = 'splits must be empty'
+                        }
+                        
+                        await expectRevert(
+                            hintHandler.buildTokenToTokenHint(
+                                t2eOpcode, t2eReserves, t2eSplits,
+                                e2tOpcode, e2tReserves, e2tSplits
+                            ),
+                            revertMsg
+                        );
+                    });
+
+                    it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to empty T2E reserveIds`, async() => {
                         t2eOpcode = TRADE_TYPES[t2eTradeType];
                         t2eSplits = [];
                         e2tOpcode = TRADE_TYPES[e2tTradeType];
@@ -327,19 +339,67 @@ contract('KyberHintHandler', function(accounts) {
                             e2tSplits = [];
                         }
                         
-                        try {
-                            await hintHandler.buildTokenToTokenHint(
-                                t2eOpcode,
-                                [],
-                                t2eSplits,
-                                e2tOpcode,
-                                [],
-                                e2tSplits,
-                            );
-                            assert(false, "throw was expected in line above.");
-                        } catch(e){
-                            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                        await expectRevert(
+                            hintHandler.buildTokenToTokenHint(
+                                t2eOpcode, [], t2eSplits,
+                                e2tOpcode, e2tReserves, e2tSplits,
+                            ),
+                            'reserveIds cannot be empty'
+                        );
+                    });
+
+                    it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to empty E2T reserveIds`, async() => {
+                        t2eOpcode = TRADE_TYPES[t2eTradeType];
+                        t2eSplits = [];
+                        e2tOpcode = TRADE_TYPES[e2tTradeType];
+                        e2tSplits = [];
+    
+                        if (t2eTradeType == 'SPLIT') {
+                            t2eSplits = BPS_SPLIT;
+                        } else {
+                            t2eSplits = [];
                         }
+
+                        if (e2tTradeType == 'SPLIT') {
+                            e2tSplits = BPS_SPLIT;
+                        } else {
+                            e2tSplits = [];
+                        }
+                        
+                        await expectRevert(
+                            hintHandler.buildTokenToTokenHint(
+                                t2eOpcode, t2eReserves, t2eSplits,
+                                e2tOpcode, [], e2tSplits,
+                            ),
+                            'reserveIds cannot be empty'
+                        );
+                    });
+
+                    it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to T2E & E2T empty reserveIds`, async() => {
+                        t2eOpcode = TRADE_TYPES[t2eTradeType];
+                        t2eSplits = [];
+                        e2tOpcode = TRADE_TYPES[e2tTradeType];
+                        e2tSplits = [];
+    
+                        if (t2eTradeType == 'SPLIT') {
+                            t2eSplits = BPS_SPLIT;
+                        } else {
+                            t2eSplits = [];
+                        }
+
+                        if (e2tTradeType == 'SPLIT') {
+                            e2tSplits = BPS_SPLIT;
+                        } else {
+                            e2tSplits = [];
+                        }
+                        
+                        await expectRevert(
+                            hintHandler.buildTokenToTokenHint(
+                                t2eOpcode, [], t2eSplits,
+                                e2tOpcode, [], e2tSplits,
+                            ),
+                            'reserveIds cannot be empty'
+                        );
                     });
                 });
             });
@@ -348,7 +408,7 @@ contract('KyberHintHandler', function(accounts) {
                 Object.keys(INVALID_SPLIT_BPS).forEach(invalidSplit => {
                     it(`should revert the T2T hint for SPLITS, ${tradeType} due to T2E ${invalidSplit}`, async() => {
                         t2eOpcode = SPLIT;
-                        t2eSplits = INVALID_SPLIT_BPS[invalidSplit];
+                        t2eSplits = INVALID_SPLIT_BPS[invalidSplit].value;
                         e2tOpcode = TRADE_TYPES[tradeType];
 
                         if (tradeType == 'SPLIT') {
@@ -357,19 +417,13 @@ contract('KyberHintHandler', function(accounts) {
                             e2tSplits = [];
                         }
                 
-                        try {
-                            await hintHandler.buildTokenToTokenHint(
-                                t2eOpcode,
-                                t2eReserves,
-                                t2eSplits,
-                                e2tOpcode,
-                                e2tReserves,
-                                e2tSplits,
-                            );
-                            assert(false, "throw was expected in line above.");
-                        } catch(e){
-                            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                        }
+                        await expectRevert(
+                            hintHandler.buildTokenToTokenHint(
+                                t2eOpcode, t2eReserves, t2eSplits,
+                                e2tOpcode, e2tReserves, e2tSplits
+                            ),
+                            INVALID_SPLIT_BPS[invalidSplit].revertMsg
+                        );
                     });
                 });
 
@@ -384,26 +438,19 @@ contract('KyberHintHandler', function(accounts) {
                         t2eSplits = [];
                     }
             
-                    try {
-                        await hintHandler.buildTokenToTokenHint(
-                            t2eOpcode,
-                            t2eReserves,
-                            t2eSplits,
-                            e2tOpcode,
-                            e2tReserves,
-                            e2tSplits,
-                        );
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert.unspecified(
+                        hintHandler.buildTokenToTokenHint(
+                            t2eOpcode, t2eReserves, t2eSplits,
+                            e2tOpcode, e2tReserves, e2tSplits
+                        )
+                    );
                 });
 
                 Object.keys(INVALID_SPLIT_BPS).forEach(invalidSplit => {
                     it(`should revert the T2T hint for ${tradeType}, SPLITS due to E2T ${invalidSplit}`, async() => {
                         t2eOpcode = TRADE_TYPES[tradeType];
                         e2tOpcode = SPLIT;
-                        e2tSplits = INVALID_SPLIT_BPS[invalidSplit];
+                        e2tSplits = INVALID_SPLIT_BPS[invalidSplit].value;
 
                         if (tradeType == 'SPLIT') {
                             t2eSplits = BPS_SPLIT;
@@ -411,19 +458,13 @@ contract('KyberHintHandler', function(accounts) {
                             t2eSplits = [];
                         }
                 
-                        try {
-                            await hintHandler.buildTokenToTokenHint(
-                                t2eOpcode,
-                                t2eReserves,
-                                t2eSplits,
-                                e2tOpcode,
-                                e2tReserves,
-                                e2tSplits,
-                            );
-                            assert(false, "throw was expected in line above.");
-                        } catch(e){
-                            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                        }
+                        await expectRevert(
+                            hintHandler.buildTokenToTokenHint(
+                                t2eOpcode, t2eReserves, t2eSplits,
+                                e2tOpcode, e2tReserves, e2tSplits
+                            ),
+                            INVALID_SPLIT_BPS[invalidSplit].revertMsg
+                        );
                     });
                 });
 
@@ -438,19 +479,12 @@ contract('KyberHintHandler', function(accounts) {
                         e2tSplits = [];
                     }
             
-                    try {
-                        await hintHandler.buildTokenToTokenHint(
-                            t2eOpcode,
-                            t2eReserves,
-                            t2eSplits,
-                            e2tOpcode,
-                            e2tReserves,
-                            e2tSplits,
-                        );
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert.unspecified(
+                        hintHandler.buildTokenToTokenHint(
+                            t2eOpcode, t2eReserves, t2eSplits,
+                            e2tOpcode, e2tReserves, e2tSplits
+                        )
+                    );
                 });
             });
         });
@@ -577,18 +611,18 @@ contract('KyberHintHandler', function(accounts) {
 
                     if (tradeType == 'SPLIT') {
                         t2eSplits = [];
+                        revertMsg = 'reserveIds and splits length not equal';
                     } else {
                         t2eSplits = BPS_SPLIT;
+                        revertMsg = 'splits must be empty';
                     }
                     
                     const hint = buildHint(t2eOpcode, t2eReserves, t2eSplits);            
 
-                    try {
-                        await hintHandler.parseTokenToEthHint(hint);
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert(
+                        hintHandler.parseTokenToEthHint(hint),
+                        revertMsg
+                    );
                 });
 
                 it(`should revert for T2E hint for ${tradeType} due to empty reserveIds`, async() => {
@@ -602,28 +636,24 @@ contract('KyberHintHandler', function(accounts) {
                     
                     const hint = buildHint(t2eOpcode, [], t2eSplits);
 
-                    try {
-                        await hintHandler.parseTokenToEthHint(hint);
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert(
+                        hintHandler.parseTokenToEthHint(hint),
+                        'reserveIds cannot be empty'
+                    );
                 });
             });
 
             Object.keys(INVALID_SPLIT_BPS).forEach(invalidSplit => {
                 it(`should revert for T2E hint for SPLITS due to ${invalidSplit}`, async() => {
                     t2eOpcode = SPLIT;
-                    t2eSplits = INVALID_SPLIT_BPS[invalidSplit];
+                    t2eSplits = INVALID_SPLIT_BPS[invalidSplit].value;
             
                     const hint = buildHint(t2eOpcode, t2eReserves, t2eSplits);            
                     
-                    try {
-                        await hintHandler.parseTokenToEthHint(hint);
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert(
+                        hintHandler.parseTokenToEthHint(hint),
+                        INVALID_SPLIT_BPS[invalidSplit].revertMsg
+                    );
                 });
             });
 
@@ -633,12 +663,9 @@ contract('KyberHintHandler', function(accounts) {
 
                 const hint = buildHint(t2eOpcode, t2eReserves, t2eSplits);
                 
-                try {
-                    await hintHandler.parseTokenToEthHint(hint);
-                    assert(false, "throw was expected in line above.");
-                } catch(e){
-                    assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                }
+                await expectRevert.unspecified(
+                    hintHandler.parseTokenToEthHint(hint)
+                );
             });
         });
 
@@ -653,18 +680,18 @@ contract('KyberHintHandler', function(accounts) {
 
                     if (tradeType == 'SPLIT') {
                         e2tSplits = [];
+                        revertMsg = 'reserveIds and splits length not equal';
                     } else {
                         e2tSplits = BPS_SPLIT;
+                        revertMsg = 'splits must be empty';
                     }
                     
                     const hint = buildHint(e2tOpcode, e2tReserves, e2tSplits);
                     
-                    try {
-                        await hintHandler.parseEthToTokenHint(hint);
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert(
+                        hintHandler.parseEthToTokenHint(hint),
+                        revertMsg
+                    );
                 });
 
                 it(`should revert for E2T hint for ${tradeType} due to empty reserveIds`, async() => {
@@ -678,28 +705,24 @@ contract('KyberHintHandler', function(accounts) {
                     
                     const hint = buildHint(e2tOpcode, [], e2tSplits);
                     
-                    try {
-                        await hintHandler.parseEthToTokenHint(hint);
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert(
+                        hintHandler.parseEthToTokenHint(hint),
+                        'reserveIds cannot be empty'
+                    );
                 });
             });
 
             Object.keys(INVALID_SPLIT_BPS).forEach(invalidSplit => {
                 it(`should revert for E2T hint for SPLITS due to ${invalidSplit}`, async() => {
                     e2tOpcode = SPLIT;
-                    e2tSplits = INVALID_SPLIT_BPS[invalidSplit];
+                    e2tSplits = INVALID_SPLIT_BPS[invalidSplit].value;
             
                     const hint = buildHint(e2tOpcode, e2tReserves, e2tSplits);
                     
-                    try {
-                        await hintHandler.parseEthToTokenHint(hint);
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert(
+                        hintHandler.parseEthToTokenHint(hint),
+                        INVALID_SPLIT_BPS[invalidSplit].revertMsg
+                    );
                 });
             });
 
@@ -709,12 +732,9 @@ contract('KyberHintHandler', function(accounts) {
 
                 const hint = buildHint(e2tOpcode, e2tReserves, e2tSplits);
                 
-                try {
-                    await hintHandler.parseEthToTokenHint(hint);
-                    assert(false, "throw was expected in line above.");
-                } catch(e){
-                    assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                }
+                await expectRevert.unspecified(
+                    hintHandler.parseEthToTokenHint(hint)
+                );
             });
         });
 
@@ -726,22 +746,47 @@ contract('KyberHintHandler', function(accounts) {
 
             Object.keys(TRADE_TYPES).forEach(t2eTradeType => {
                 Object.keys(TRADE_TYPES).forEach(e2tTradeType => {
-                    it(`should revert for T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to invalid split values`, async() => {
+                    it(`should revert for T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to invalid T2E split values`, async() => {
                         t2eOpcode = TRADE_TYPES[t2eTradeType];
                         t2eSplits = [];
                         e2tOpcode = TRADE_TYPES[e2tTradeType];
-                        e2tSplits = [];
-    
+                        e2tSplits = (e2tTradeType == 'SPLIT') ? BPS_SPLIT : [];
+
                         if (t2eTradeType == 'SPLIT') {
                             t2eSplits = [];
+                            revertMsg = 'reserveIds and splits length not equal'
                         } else {
                             t2eSplits = BPS_SPLIT;
+                            revertMsg = 'splits must be empty'
                         }
+
+                        const hint = buildHintT2T(
+                            t2eOpcode,
+                            t2eReserves,
+                            t2eSplits,
+                            e2tOpcode,
+                            e2tReserves,
+                            e2tSplits,
+                        );
+
+                        await expectRevert(
+                            hintHandler.parseTokenToTokenHint(hint),
+                            revertMsg
+                        );
+                    });
+
+                    it(`should revert for T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to invalid E2T split values`, async() => {
+                        t2eOpcode = TRADE_TYPES[t2eTradeType];
+                        t2eSplits = (t2eTradeType == 'SPLIT') ? BPS_SPLIT : [];
+                        e2tOpcode = TRADE_TYPES[e2tTradeType];
+                        e2tSplits = [];
 
                         if (e2tTradeType == 'SPLIT') {
                             e2tSplits = [];
+                            revertMsg = 'reserveIds and splits length not equal'
                         } else {
                             e2tSplits = BPS_SPLIT;
+                            revertMsg = 'splits must be empty'
                         }
                         
                         const hint = buildHintT2T(
@@ -753,15 +798,13 @@ contract('KyberHintHandler', function(accounts) {
                             e2tSplits,
                         );
                         
-                        try {
-                            await hintHandler.parseTokenToTokenHint(hint);
-                            assert(false, "throw was expected in line above.");
-                        } catch(e){
-                            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                        }
+                        await expectRevert(
+                            hintHandler.parseTokenToTokenHint(hint),
+                            revertMsg
+                        );
                     });
 
-                    it(`should revert for T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to empty reserveIds`, async() => {
+                    it(`should revert for T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to empty T2E reserveIds`, async() => {
                         t2eOpcode = TRADE_TYPES[t2eTradeType];
                         t2eSplits = [];
                         e2tOpcode = TRADE_TYPES[e2tTradeType];
@@ -784,16 +827,80 @@ contract('KyberHintHandler', function(accounts) {
                             [],
                             t2eSplits,
                             e2tOpcode,
+                            e2tReserves,
+                            e2tSplits,
+                        );
+                        
+                        await expectRevert(
+                            hintHandler.parseTokenToTokenHint(hint),
+                            'reserveIds cannot be empty'
+                        );
+                    });
+
+                    it(`should revert for T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to empty E2T reserveIds`, async() => {
+                        t2eOpcode = TRADE_TYPES[t2eTradeType];
+                        t2eSplits = [];
+                        e2tOpcode = TRADE_TYPES[e2tTradeType];
+                        e2tSplits = [];
+    
+                        if (t2eTradeType == 'SPLIT') {
+                            t2eSplits = BPS_SPLIT;
+                        } else {
+                            t2eSplits = [];
+                        }
+
+                        if (e2tTradeType == 'SPLIT') {
+                            e2tSplits = BPS_SPLIT;
+                        } else {
+                            e2tSplits = [];
+                        }
+                        
+                        const hint = buildHintT2T(
+                            t2eOpcode,
+                            t2eReserves,
+                            t2eSplits,
+                            e2tOpcode,
                             [],
                             e2tSplits,
                         );
                         
-                        try {
-                            await hintHandler.parseTokenToTokenHint(hint);
-                            assert(false, "throw was expected in line above.");
-                        } catch(e){
-                            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                        await expectRevert(
+                            hintHandler.parseTokenToTokenHint(hint),
+                            'reserveIds cannot be empty'
+                        );
+                    });
+
+                    it(`should revert for T2T hint for T2E ${t2eTradeType}, E2T ${e2tTradeType} due to empty T2E & E2T reserveIds`, async() => {
+                        t2eOpcode = TRADE_TYPES[t2eTradeType];
+                        t2eSplits = [];
+                        e2tOpcode = TRADE_TYPES[e2tTradeType];
+                        e2tSplits = [];
+    
+                        if (t2eTradeType == 'SPLIT') {
+                            t2eSplits = BPS_SPLIT;
+                        } else {
+                            t2eSplits = [];
                         }
+    
+                        if (e2tTradeType == 'SPLIT') {
+                            e2tSplits = BPS_SPLIT;
+                        } else {
+                            e2tSplits = [];
+                        }
+                        
+                        const hint = buildHintT2T(
+                            t2eOpcode,
+                            [],
+                            t2eSplits,
+                            e2tOpcode,
+                            [],
+                            e2tSplits,
+                        );
+                        
+                        await expectRevert(
+                            hintHandler.parseTokenToTokenHint(hint),
+                            'reserveIds cannot be empty'
+                        );
                     });
                 });
             });
@@ -802,9 +909,9 @@ contract('KyberHintHandler', function(accounts) {
                 Object.keys(INVALID_SPLIT_BPS).forEach(invalidSplit => {
                     it(`should revert for T2T hint for SPLIT, ${e2tTradeType} due to T2E Split ${invalidSplit}`, async() => {
                         t2eOpcode = SPLIT;
-                        t2eSplits = INVALID_SPLIT_BPS[invalidSplit];
+                        t2eSplits = INVALID_SPLIT_BPS[invalidSplit].value;
                         e2tOpcode = TRADE_TYPES[e2tTradeType];
-                        e2tSplits = BPS_SPLIT;
+                        e2tSplits = (e2tTradeType == 'SPLIT') ? BPS_SPLIT : [];
                 
                         const hint = buildHintT2T(
                             t2eOpcode,
@@ -815,12 +922,10 @@ contract('KyberHintHandler', function(accounts) {
                             e2tSplits,
                         );
                         
-                        try {
-                            await hintHandler.parseTokenToTokenHint(hint);
-                            assert(false, "throw was expected in line above.");
-                        } catch(e){
-                            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                        }
+                        await expectRevert(
+                            hintHandler.parseTokenToTokenHint(hint),
+                            INVALID_SPLIT_BPS[invalidSplit].revertMsg
+                        );
                     });
                 });
             });
@@ -829,9 +934,9 @@ contract('KyberHintHandler', function(accounts) {
                 Object.keys(INVALID_SPLIT_BPS).forEach(invalidSplit => {
                     it(`should revert for T2T hint for ${t2eTradeType}, SPLIT due to E2T Split ${invalidSplit}`, async() => {
                         t2eOpcode = TRADE_TYPES[t2eTradeType];
-                        t2eSplits = BPS_SPLIT
+                        t2eSplits = (t2eTradeType == 'SPLIT') ? BPS_SPLIT : [];
                         e2tOpcode = SPLIT;
-                        e2tSplits = INVALID_SPLIT_BPS[invalidSplit];
+                        e2tSplits = INVALID_SPLIT_BPS[invalidSplit].value;
                 
                         const hint = buildHintT2T(
                             t2eOpcode,
@@ -842,12 +947,10 @@ contract('KyberHintHandler', function(accounts) {
                             e2tSplits,
                         );
                         
-                        try {
-                            await hintHandler.parseTokenToTokenHint(hint);
-                            assert(false, "throw was expected in line above.");
-                        } catch(e){
-                            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                        }
+                        await expectRevert(
+                            hintHandler.parseTokenToTokenHint(hint),
+                            INVALID_SPLIT_BPS[invalidSplit].revertMsg
+                        );
                     });
                 });
             });
@@ -855,7 +958,7 @@ contract('KyberHintHandler', function(accounts) {
             Object.keys(TRADE_TYPES).forEach(t2eTradeType => {
                 it(`should revert for T2T hint for ${t2eTradeType}, INVALID TYPE`, async() => {
                     t2eOpcode = TRADE_TYPES[t2eTradeType];
-                    t2eSplits = [];
+                    t2eSplits = (t2eTradeType == 'SPLIT') ? BPS_SPLIT : [];
                     e2tOpcode = INVALID_HINT_TYPE;
                     e2tSplits = [];
 
@@ -874,12 +977,9 @@ contract('KyberHintHandler', function(accounts) {
                         e2tSplits,
                     );
 
-                    try {
-                        await hintHandler.parseTokenToTokenHint(hint);
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert.unspecified(
+                        hintHandler.parseTokenToTokenHint(hint)
+                    );
                 });
             });
 
@@ -888,7 +988,7 @@ contract('KyberHintHandler', function(accounts) {
                     t2eOpcode = INVALID_HINT_TYPE;
                     t2eSplits = [];
                     e2tOpcode = TRADE_TYPES[e2tTradeType];
-                    e2tSplits = [];
+                    e2tSplits = (e2tTradeType == 'SPLIT') ? BPS_SPLIT : [];
 
                     if (e2tTradeType == 'SPLIT') {
                         e2tSplits = BPS_SPLIT;
@@ -905,12 +1005,9 @@ contract('KyberHintHandler', function(accounts) {
                         e2tSplits,
                     );
                     
-                    try {
-                        await hintHandler.parseTokenToTokenHint(hint);
-                        assert(false, "throw was expected in line above.");
-                    } catch(e){
-                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
-                    }
+                    await expectRevert.unspecified(
+                        hintHandler.parseTokenToTokenHint(hint)
+                    );
                 });
             });
         });
