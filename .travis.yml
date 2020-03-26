@@ -6,11 +6,13 @@ node_js:
 
 before_install:
   - npm i -g npm
+  - npm i -g mocha-only-detector
+  - find test/ -name "*.js" -print0 | xargs -0 mocha-only-detector
 
 env:
   global:
     - COVERAGE_BRANCH=Katalyst
-  
+
 matrix:
   include:
     - env:
