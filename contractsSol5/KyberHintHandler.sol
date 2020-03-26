@@ -289,7 +289,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             for (uint i = 0; i < splits.length; i++) {
                 bpsSoFar += splits[i];
                 for (uint j = 0; j < checkDuplicateIds.length; j++) {
-                    if (reserveIds[i] == checkDuplicateIds[j]) return false;
+                    if (reserveIds[i] == checkDuplicateIds[j]) return HintErrors.ReserveIdDupError;
                 }
                 checkDuplicateIds[i] = reserveIds[i];
             }
@@ -312,7 +312,9 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         if (error == HintErrors.TotalBPSError)
             revert("splits total BPS does not amount to 10000BPS");
         if (error == HintErrors.SplitsZeroError)
-            revert("splits cannot be empty");
+            revert("splits must be empty");
+        if (error == HintErrors.ReserveIdDupError)
+            revert("duplicate reserveId");
     }
 
     function convertReserveIdToAddress(bytes8 reserveId) internal view returns (address);

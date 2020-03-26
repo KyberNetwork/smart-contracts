@@ -15,6 +15,7 @@ interface IKyberHint {
         NoError,
         ReserveIdZeroError,
         ReserveIdSplitsError,
+        ReserveIdDupError,
         SplitsZeroError,
         TotalBPSError
     }
