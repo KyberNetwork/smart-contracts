@@ -1591,12 +1591,26 @@ contract('KyberNetwork', function(accounts) {
             );
         });
 
-        it("test can not trade when fee is too high", async () => {
+        it("test can not trade when platform fee is too high", async () => {
             let invalidPlatformFee = new BN(10001); // 10001 BPS = 100.01%
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, minConversionRate, platformWallet, invalidPlatformFee, emptyHint),
                 "platformFee high"
+            );
+        });
+
+        it("test can not trade when fees is too high", async () => {
+            let networkData = await network.getNetworkData();
+            
+            Helper.assertGreater(networkData.networkFeeBps, new BN(0));
+            let invalidPlatformFee = BPS.sub(networkData.networkFeeBps);
+            // expect invalidPlatformFee + networkFee*2 > BPS
+            
+            await expectRevert(
+                network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
+                    maxDestAmt, minConversionRate, platformWallet, invalidPlatformFee, emptyHint),
+                "fees high"
             );
         });
 
