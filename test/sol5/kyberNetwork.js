@@ -1603,11 +1603,11 @@ contract('KyberNetwork', function(accounts) {
 
         it("test can not trade when fees is too high", async () => {
             let networkData = await network.getNetworkData();
-            
+
             Helper.assertGreater(networkData.networkFeeBps, new BN(0));
             let invalidPlatformFee = BPS.sub(networkData.networkFeeBps);
             // expect invalidPlatformFee + networkFee*2 > BPS
-            
+
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, minConversionRate, platformWallet, invalidPlatformFee, emptyHint),
@@ -1771,7 +1771,7 @@ contract('KyberNetwork', function(accounts) {
         });
     });
 
-    describe.only("test handle change edge case", async function(){
+    describe("test handle change edge case", async function(){
         before("setup", async function(){
             tempNetwork = await MockNetwork.new(admin);
         });
