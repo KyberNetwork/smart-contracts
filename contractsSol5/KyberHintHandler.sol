@@ -4,6 +4,21 @@ import "./utils/Utils4.sol";
 import "./IKyberHint.sol";
 
 
+/*
+*   @title Kyber Hint Handler contract
+*   The contract provides the following actions:
+*       - building hints
+*       - parsing hints
+*
+*       All external functions, build*Hint() and parse*Hint:
+*           - Will revert with error message if an error is found
+*           - parse*Hint() returns both reserveIds and reserveAddresses
+*       Internal functions parseHint() and parseHintT2T():
+*           - Is part of trade flow
+*           - Doesn't revert if error is found
+*           - If error is found, return no data such that the trade flow
+*             returns 0 rate for bad hint values
+*/
 contract KyberHintHandler is IKyberHint, Utils4 {
  
     /// @notice Builds the hint for a Token to ETH trade

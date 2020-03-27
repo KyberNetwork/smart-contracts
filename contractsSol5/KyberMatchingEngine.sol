@@ -5,6 +5,7 @@ import "./IKyberMatchingEngine.sol";
 import "./IKyberNetwork.sol";
 import "./KyberHintHandler.sol";
 
+
 /*
 *   @title Kyber matching engine contract
 *   Receives call from KyberNetwork for:
@@ -12,7 +13,7 @@ import "./KyberHintHandler.sol";
 *       - listing tokens
 *       - get rate
 *
-*       For get Rate calls mathcing engine will:
+*       For get Rate calls matching engine will:
 *           - parse hint to find if user wants specific reserves
 *           - search best reserve rate if required
 *           - calclutate trade amounts
