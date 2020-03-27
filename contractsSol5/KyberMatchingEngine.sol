@@ -191,8 +191,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         // Checks if parseTradeHint returns an invalid hint
         if (!parseTradeHint(src, dest, tData, hint)) {
-            storeTradeReserveData(tData.tokenToEth, IKyberReserve(0), 0, false);
-            storeTradeReserveData(tData.ethToToken, IKyberReserve(0), 0, false);
+            storeSingleReserveData(tData.tokenToEth, IKyberReserve(0), 0, false);
+            storeSingleReserveData(tData.ethToToken, IKyberReserve(0), 0, false);
 
             return packResults(tData);
         }
@@ -578,6 +578,13 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint numRelevantReserves;
     }
 
+    struct ReservesInfo {
+        uint[] bestResCandidates;
+        uint[] rates;
+        uint[] destAmounts;
+        bool[] feePayingPerReserve;
+    }
+
     /// @dev When calling this function, either src or dest MUST be ETH. Cannot search for token -> token
     /// @dev If the iterated reserve is fee paying, then we have to farther deduct the network fee from srcAmount
     /// @param reserveArr reserve candidates to be iterated over
@@ -603,33 +610,34 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         //return zero rate for empty reserve array (unlisted token)
         if (reserveArr.length == 0) return (IKyberReserve(0), 0, false);
 
-        uint[] memory rates = new uint[](reserveArr.length);
-        uint[] memory reserveCandidates = new uint[](reserveArr.length);
-        bool[] memory feePayingPerReserve = getIsFeePayingReserves(reserveArr);
+        ReservesInfo memory reserves;
+        reserves.rates = new uint[](reserveArr.length);
+        reserves.bestResCandidates = new uint[](reserveArr.length);
+        reserves.destAmounts = new uint[](reserveArr.length);
+        reserves.feePayingPerReserve = getIsFeePayingReserves(reserveArr);
 
         uint destAmount;
         uint srcAmountWithFee;
 
         for (uint i = 0; i < reserveArr.length; i++) {
             reserve = reserveArr[i];
-            isFeePaying = feePayingPerReserve[i];
+            isFeePaying = reserves.feePayingPerReserve[i];
             //for ETH -> token paying reserve, networkFee is specified in amount
             if (src == ETH_TOKEN_ADDRESS && isFeePaying) {
-                require(srcAmount > networkFee, "fee >= e2t tradeAmt");
                 srcAmountWithFee = srcAmount - networkFee;
             } else {
                 srcAmountWithFee = srcAmount;
             }
-            rates[i] = reserve.getConversionRate(
+            reserves.rates[i] = reserve.getConversionRate(
                 src,
                 dest,
                 srcAmountWithFee,
                 block.number);
 
-            destAmount = srcAmountWithFee * rates[i];
+            destAmount = srcAmountWithFee * reserves.rates[i];
              //for token -> ETH paying reserve, networkFee is specified in bps
-            destAmount = (dest == ETH_TOKEN_ADDRESS && isFeePaying) ? 
-                destAmount * (BPS - networkFee) / BPS : 
+            destAmount = (dest == ETH_TOKEN_ADDRESS && isFeePaying) ?
+                destAmount * (BPS - networkFee) / BPS :
                 destAmount;
 
             if (destAmount > bestReserve.destAmount) {
@@ -637,32 +645,33 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
                 bestReserve.destAmount = destAmount;
                 bestReserve.index = i;
             }
+
+            reserves.destAmounts[i] = destAmount;
         }
 
         if (bestReserve.destAmount == 0) return (reserveArr[bestReserve.index], 0, false);
 
-        reserveCandidates[0] = bestReserve.index;
+        reserves.bestResCandidates[0] = bestReserve.index;
 
         // if this reserve pays fee its actual rate is less. so smallestRelevantRate is smaller.
         bestReserve.destAmount = bestReserve.destAmount * BPS / (BPS + negligibleRateDiffBps);
 
         for (uint i = 0; i < reserveArr.length; i++) {
-
             if (i == bestReserve.index) continue;
-
-            isFeePaying = feePayingPerReserve[i];
-            srcAmountWithFee = ((src == ETH_TOKEN_ADDRESS) && isFeePaying) ? 
-                srcAmount - networkFee : 
-                srcAmount;
-            destAmount = srcAmountWithFee * rates[i];
-            destAmount = (dest == ETH_TOKEN_ADDRESS && isFeePaying) ? 
-                destAmount * (BPS - networkFee) / BPS : 
-                destAmount;
-
-            if (destAmount > bestReserve.destAmount) {
-                reserveCandidates[bestReserve.numRelevantReserves++] = i;
+            if (reserves.destAmounts[i] > bestReserve.destAmount) {
+                reserves.bestResCandidates[bestReserve.numRelevantReserves++] = i;
             }
         }
+
+        if (bestReserve.numRelevantReserves > 1) {
+            //when encountering small rate diff from bestRate. draw from relevant reserves
+            bestReserve.index = reserves.bestResCandidates[uint(blockhash(block.number-1)) % bestReserve.numRelevantReserves];
+        } else {
+            bestReserve.index = reserves.bestResCandidates[0];
+        }
+
+        return (reserveArr[bestReserve.index], reserves.rates[bestReserve.index], reserves.feePayingPerReserve[bestReserve.index]);
+    }
 
     function getIsFeePayingReserves(IKyberReserve[] memory reserves) internal view
         returns(bool[] memory feePayingArr)
