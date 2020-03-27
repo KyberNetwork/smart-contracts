@@ -527,7 +527,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             }
         }
 
-        uint actualTradeWei = calcAndSubtractFees(tData);
+        uint actualTradeWei = calcAndActualTradeWei(tData);
 
         (tData.actualDestAmount, , ) = getDestQtyAndFeeDataFromSplits(tData.ethToToken, dest, actualTradeWei, false);
         //calculate actual rate
@@ -537,7 +537,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @notice calculates the network and platform fee wei, and wei amount after fees
     /// @dev for E2T non-split trades, E2T network fees are not included when invoking this function.
     /// Will be added later in incrementFeePaying function
-    function calcAndSubtractFees(TradeData memory tData) internal pure returns (uint actualTradeWei) {
+    function calcAndActualTradeWei(TradeData memory tData) internal pure returns (uint actualTradeWei) {
         tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
         tData.platformFeeWei = tData.tradeWei * tData.platformFeeBps / BPS;
         require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
@@ -550,7 +550,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         //fee calculation
         //ETH -> dest fee deduction has not occured
-        uint actualTradeWei = calcAndSubtractFees(tData);
+        uint actualTradeWei = calcAndActualTradeWei(tData);
 
         //network fee for ETH -> token is in ETH amount
         uint ethToTokenNetworkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS;
