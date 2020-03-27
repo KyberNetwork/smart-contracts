@@ -3,6 +3,8 @@ const MockReserve = artifacts.require("MockReserve.sol");
 const MockDao = artifacts.require("MockDAO.sol");
 const MockGasHelper = artifacts.require("MockGasHelper.sol");
 const MockMatchingEngineManipulateRate = artifacts.require("MockMatchingEngineManipulateRate.sol");
+const MaliciousMatchingEngine2 = artifacts.require("MaliciousMatchingEngine2.sol");
+const MaliciousReserveNoTransferBack = artifacts.require("MaliciousReserveNoTransferBack.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const MockNetwork = artifacts.require("MockNetwork.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
@@ -1477,6 +1479,123 @@ contract('KyberNetwork', function(accounts) {
             let reserveEthBalAfter = await Helper.getBalancePromise(mockReserve.address);
             // all eth balance of reserve is gone
             Helper.assertEqual(reserveEthBalAfter, 0);
+        });
+    });
+
+    describe("test malicious matching engine 2 steals funds from network", async() => {
+        let tempNetwork;
+        let networkProxy;
+        let maliciousMatchingEngine;
+        let feeHandler;
+        let rateHelper;
+        let reserveInstances;
+        let user1;
+        let taker;
+
+        before("global setup ", async() => {
+            user1 = accounts[1];
+            networkProxy = accounts[3];
+            taker = accounts[2];
+
+            expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
+            DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+            await DAO.setNetworkFeeBps(networkFeeBps);
+
+            // init network
+            tempNetwork = await KyberNetwork.new(admin);
+
+            // init feeHandler
+            KNC = await TestToken.new("kyber network crystal", "KNC", 18);
+            feeHandler = await FeeHandler.new(DAO.address, tempNetwork.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
+
+            // init matchingEngine
+            maliciousMatchingEngine = await MaliciousMatchingEngine2.new(admin);
+            await maliciousMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
+            await maliciousMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
+
+            // init rateHelper
+            rateHelper = await RateHelper.new(admin);
+            await rateHelper.setContracts(maliciousMatchingEngine.address, DAO.address, {from: admin});
+
+            // init gas helper
+            // tests gasHelper when gasHelper != address(0), and when a trade is being done
+            gasHelperAdd = await MockGasHelper.new(platformWallet);
+
+            // setup network
+            await tempNetwork.addOperator(operator, {from: admin});
+            await tempNetwork.addKyberProxy(networkProxy, {from: admin});
+            await tempNetwork.setContracts(feeHandler.address, maliciousMatchingEngine.address, gasHelperAdd.address, {from: admin});
+            await tempNetwork.setDAOContract(DAO.address, {from: admin});
+            // set params, enable network
+            await tempNetwork.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
+            await tempNetwork.setEnable(true, {from: admin});
+            // update network fee from DAO
+            await tempNetwork.getAndUpdateNetworkFee();
+
+            let result = await nwHelper.setupReserves(tempNetwork, tokens, 1, 0, 0, 0, accounts, admin, operator);
+            reserveInstances = result.reserveInstances;
+            // add and list pair for reserve
+            await nwHelper.addReservesToNetwork(tempNetwork, reserveInstances, tokens, operator);
+        });
+
+        it("test malicious matching engine steals network's funds, reset network fee", async() => {
+            let maliciousReserve = await MaliciousReserveNoTransferBack.new();
+            await maliciousMatchingEngine.updateMaliciousReserve(maliciousReserve.address);
+
+            // transfer some dest token to network
+            // check after trade, all dest token are gone
+            // transfer 10 tokens
+            let destAmount = (new BN(10)).mul(new BN(10).pow(new BN(destDecimals)));
+            await destToken.transfer(tempNetwork.address, destAmount);
+
+            let srcEthQty = new BN(10).pow(new BN(ethDecimals));
+            let hint = await nwHelper.getHint(
+                rateHelper,
+                maliciousMatchingEngine,
+                reserveInstances,
+                EMPTY_HINTTYPE,
+                undefined,
+                ethAddress,
+                destToken.address,
+                srcEthQty
+            );
+
+            let networkDestBal = await destToken.balanceOf(tempNetwork.address);
+            Helper.assertGreater(networkDestBal, 0, "network should have some dest token");
+
+            // transfer to network 1 eth
+            await Helper.sendEtherWithPromise(accounts[0], tempNetwork.address, srcEthQty);
+            let networkEthBalBefore = await Helper.getBalancePromise(tempNetwork.address);
+            Helper.assertGreater(networkEthBalBefore, 0, "network should have some eth");
+
+            let maliciousReserveEthBalBefore = await Helper.getBalancePromise(maliciousReserve.address);
+
+            // do trade and check reserve balance
+            await tempNetwork.tradeWithHintAndFee(
+                taker,
+                ethAddress,
+                srcEthQty,
+                destToken.address,
+                user1,
+                maxDestAmt,
+                minConversionRate,
+                zeroAddress,
+                0,
+                hint,
+                {from: networkProxy, value: srcEthQty}
+            )
+
+            networkDestBal = await destToken.balanceOf(tempNetwork.address);
+            let networkEthBalAfter = await Helper.getBalancePromise(tempNetwork.address);
+            let maliciousReserveEthBalAfter = await Helper.getBalancePromise(maliciousReserve.address);
+
+            Helper.assertEqual(0, networkEthBalAfter, "eth is gone");
+            Helper.assertEqual(0, networkDestBal, "dest token is gone");
+            Helper.assertEqual(
+                maliciousReserveEthBalBefore.add(networkEthBalBefore).add(srcEthQty),
+                maliciousReserveEthBalAfter,
+                "all eth in network is transferred to malicious reserve"
+            )
         });
     });
 
