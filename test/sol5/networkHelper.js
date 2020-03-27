@@ -30,9 +30,9 @@ const type_fpr = "TYPE_FPR";
 const MASK_IN_HINTTYPE = 0;
 const MASK_OUT_HINTTYPE = 1;
 const SPLIT_HINTTYPE = 2;
-const EMPTY_HINTTYPE = 3;
+const EMPTY_HINTTYPE = '0x';
 
-const ReserveType = {NONE: 0, FPR: 1, APR: 2, BRIDGE: 3, UTILITY: 4};
+const ReserveType = {NONE: 0, FPR: 1, APR: 2, BRIDGE: 3, UTILITY: 4, CUSTOM: 5, ORDERBOOK: 6};
 
 //global variables
 //////////////////
@@ -144,7 +144,7 @@ async function setupNetwork
     let matchingEngine = await MatchingEngine.new(admin);
     await matchingEngine.setNetworkContract(network.address, { from: admin });
     await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
-    let feeHandler = await FeeHandler.new(DAOAddress, network.address, network.address, KNCAddress, burnBlockInterval);
+    let feeHandler = await FeeHandler.new(DAOAddress, network.address, network.address, KNCAddress, burnBlockInterval, DAOAddress);
     await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
     // set DAO contract
     await network.setDAOContract(DAOAddress, { from: admin });

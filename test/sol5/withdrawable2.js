@@ -49,7 +49,7 @@ contract('Withdrawable2', function(accounts) {
         it("should test withdraw token reject for non admin.", async function () {
             await expectRevert(
                 withdrawableInst.withdrawToken(token.address, tokenWithdrawAmt, user, {from: user}),
-                "ONLY_ADMIN"
+                "Only admin"
             );
         });
 
@@ -86,7 +86,7 @@ contract('Withdrawable2', function(accounts) {
             // try to withdraw the ether from withdrawableInst
             await expectRevert(
                 withdrawableInst.withdrawEther(etherWithdrawAmt, user, {from: user}),
-                "ONLY_ADMIN"
+                "Only admin"
             );
         });
 

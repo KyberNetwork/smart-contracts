@@ -152,6 +152,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint platformFeeWei;
 
         uint networkFeeBps;
+        uint platformFeeBps;
         uint E2TRate;
 
         uint numFeePayingReserves;
@@ -160,8 +161,6 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint destAmountNoFee;
         uint destAmountWithNetworkFee;
         uint actualDestAmount; // all fees
-
-        uint failedIndex; // index of error in hint
     }
 
     /// @notice Calculates all trade informatino to be returned back to network contract
@@ -188,16 +187,12 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             bytes8[] memory ids)
     {
         //initialisation
-        TradeData memory tData;
-        tData.tokenToEth.decimals = srcDecimals;
-        tData.ethToToken.decimals = destDecimals;
-        tData.networkFeeBps = info[uint(IKyberMatchingEngine.InfoIndex.networkFeeBps)];
+        TradeData memory tData = initAndValidateTradeData(srcDecimals, destDecimals, info);
 
-        parseTradeDataHint(src, dest, tData, hint);
-
-        if (tData.failedIndex > 0) {
-            storeSingleReserveData(tData.tokenToEth, IKyberReserve(0), 0, false);
-            storeSingleReserveData(tData.ethToToken, IKyberReserve(0), 0, false);
+        // Checks if parseTradeHint returns an invalid hint
+        if (!parseTradeHint(src, dest, tData, hint)) {
+            storeTradeReserveData(tData.tokenToEth, IKyberReserve(0), 0, false);
+            storeTradeReserveData(tData.ethToToken, IKyberReserve(0), 0, false);
 
             return packResults(tData);
         }
@@ -211,11 +206,10 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         }
 
         //calculate fees, E2T rates and actualDestAmount
-        if (tData.ethToToken.splitValuesBps.length > 1) {
-            calcRatesAndAmountsEthToTokenSplit(dest, info[uint(IKyberMatchingEngine.InfoIndex.platformFeeBps)], tData);
-        } else {
-            calcRatesAndAmountsEthToTokenNonSplit(dest, info[uint(IKyberMatchingEngine.InfoIndex.platformFeeBps)], tData);
-        }
+        (tData.ethToToken.splitValuesBps.length > 1) ?
+            calcRatesAndAmountsEthToTokenSplit(dest, tData)
+            :
+            calcRatesAndAmountsEthToTokenNonSplit(dest, tData);
 
         //calc other destAmounts
         tData.destAmountWithNetworkFee = calcDstQty(tData.tradeWei - tData.networkFeeWei, ETH_DECIMALS,
@@ -223,6 +217,22 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         tData.destAmountNoFee = calcDstQty(tData.tradeWei, ETH_DECIMALS, tData.ethToToken.decimals, tData.E2TRate);
 
         return packResults(tData);
+    }
+
+    function initAndValidateTradeData(
+        uint srcDecimals,
+        uint destDecimals,
+        uint[] memory info)
+    internal pure returns(TradeData memory tData)
+    {
+        tData.tokenToEth.decimals = srcDecimals;
+        tData.ethToToken.decimals = destDecimals;
+        tData.networkFeeBps = info[uint(IKyberMatchingEngine.InfoIndex.networkFeeBps)];
+        tData.platformFeeBps = info[uint(IKyberMatchingEngine.InfoIndex.platformFeeBps)];
+        require(tData.platformFeeBps < BPS, "platformFee high");
+        require(tData.networkFeeBps < BPS / 2, "networkFee high");
+        require(tData.platformFeeBps + tData.networkFeeBps * 2 < BPS, "fees high");
+        return tData;
     }
 
     function listPairs(IKyberReserve reserve, IERC20 token, bool isTokenToEth, bool add) internal {
@@ -253,7 +263,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     }
 
     /// @notice applies the hint (no hint, mask in, mask out, or split) and stores relevant information in tData
-    function parseTradeDataHint(
+    function parseTradeHint(
         IERC20 src,
         IERC20 dest,
         TradeData memory tData,
@@ -261,7 +271,10 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     )
         internal
         view
+        returns (bool)
     {
+        HintErrors error;
+
         // when to / from ETH, initialise empty array length 1, else set all reserves supporting t2e / e2t
         tData.tokenToEth.addresses = (src == ETH_TOKEN_ADDRESS) ?
             new IKyberReserve[](1) : reservesPerTokenSrc[address(src)];
@@ -270,22 +283,22 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         // PERM is treated as no hint, so we just return
         // relevant arrays will be initialised in storeSingleReserveData
-        if (hint.length == 0 || hint.length == 4) return;
+        if (hint.length == 0 || hint.length == 4) return true;
 
         if (src == ETH_TOKEN_ADDRESS) {
             (
                 tData.ethToToken.tradeType,
                 tData.ethToToken.addresses,
                 tData.ethToToken.splitValuesBps,
-                tData.failedIndex
-            ) = parseHintE2T(hint);
+                error
+            ) = parseHint(hint);
         } else if (dest == ETH_TOKEN_ADDRESS) {
             (
                 tData.tokenToEth.tradeType,
                 tData.tokenToEth.addresses,
                 tData.tokenToEth.splitValuesBps,
-                tData.failedIndex
-            ) = parseHintT2E(hint);
+                error
+            ) = parseHint(hint);
         } else {
             (
                 tData.tokenToEth.tradeType,
@@ -294,9 +307,11 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
                 tData.ethToToken.tradeType,
                 tData.ethToToken.addresses,
                 tData.ethToToken.splitValuesBps,
-                tData.failedIndex
+                error
             ) = parseHintT2T(hint);
         }
+
+        if (error != HintErrors.NoError) return false;
 
         if (tData.tokenToEth.tradeType == TradeType.MaskOut) {
             // t2e: apply masking out logic if mask out
@@ -316,6 +331,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             tData.ethToToken.rates = new uint[](tData.ethToToken.addresses.length);
             tData.ethToToken.isFeePaying = new bool[](tData.ethToToken.addresses.length);
         }
+
+        return true;
     }
 
     /// @notice Logic for masking out reserves
@@ -494,7 +511,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         }
     }
 
-    function calcRatesAndAmountsEthToTokenSplit(IERC20 dest, uint platformFeeBps, TradeData memory tData) internal view {
+    function calcRatesAndAmountsEthToTokenSplit(IERC20 dest, TradeData memory tData) internal view {
         //get E2T fee paying info
         tData.ethToToken.isFeePaying = getIsFeePayingReserves(tData.ethToToken.addresses);
         for (uint i = 0; i < tData.ethToToken.addresses.length; i++) {
@@ -507,7 +524,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         //calculate fees
         tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
-        tData.platformFeeWei = tData.tradeWei * platformFeeBps / BPS;
+        tData.platformFeeWei = tData.tradeWei * tData.platformFeeBps / BPS;
         require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
         uint actualTradeWei = tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei;
 
@@ -516,14 +533,14 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         tData.E2TRate = calcRateFromQty(actualTradeWei, tData.actualDestAmount, ETH_DECIMALS, tData.ethToToken.decimals);
     }
 
-    function calcRatesAndAmountsEthToTokenNonSplit(IERC20 dest, uint platformFeeBps, TradeData memory tData) internal view {
+    function calcRatesAndAmountsEthToTokenNonSplit(IERC20 dest, TradeData memory tData) internal view {
         IKyberReserve reserve;
         bool isFeePaying;
 
         //fee calculation
         //ETH -> dest fee deduction has not occured
         tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
-        tData.platformFeeWei = tData.tradeWei * platformFeeBps / BPS;
+        tData.platformFeeWei = tData.tradeWei * tData.platformFeeBps / BPS;
         require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
         uint actualTradeWei = tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei;
 
@@ -647,18 +664,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             }
         }
 
-        if (bestReserve.numRelevantReserves > 1) {
-            //when encountering small rate diff from bestRate. draw from relevant reserves
-            bestReserve.index = reserveCandidates[uint(blockhash(block.number-1)) % bestReserve.numRelevantReserves];
-        } else {
-            bestReserve.index = reserveCandidates[0];
-        }
-
-        return (reserveArr[bestReserve.index], rates[bestReserve.index], feePayingPerReserve[bestReserve.index]);
-    }
-
-    function getIsFeePayingReserves(IKyberReserve[] memory reserves) internal view 
-        returns(bool[] memory feePayingArr) 
+    function getIsFeePayingReserves(IKyberReserve[] memory reserves) internal view
+        returns(bool[] memory feePayingArr)
     {
         feePayingArr = new bool[](reserves.length);
 
