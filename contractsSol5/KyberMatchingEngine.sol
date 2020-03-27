@@ -388,10 +388,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             tData.tradeWei = calcDstQty(srcAmount, tData.tokenToEth.decimals, ETH_DECIMALS, rate);
 
             //account for fees
-            if (isFeePaying) {
-                tData.feePayingReservesBps = BPS; //max percentage amount for token -> ETH
-                tData.numFeePayingReserves++;
-            }
+            if (isFeePaying) incrementFeePaying(0, tData);
         }
     }
 
@@ -448,9 +445,9 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @notice Stores reserve and rate information, either from searchBestRate function,
     /// or null reserve and zero rate due to exceptions (Eg. tradeWei is zero, invalid hint)
     /// @dev Re-initialises the relevant array lengths, and stores the information
-    function storeSingleReserveData(TradingReserves memory tradingReserves, IKyberReserve reserve, uint rate, 
-        bool isFeePaying) 
-        internal pure 
+    function storeSingleReserveData(TradingReserves memory tradingReserves, IKyberReserve reserve, uint rate,
+        bool isFeePaying)
+        internal pure
     {
         //init arrays
         tradingReserves.addresses = new IKyberReserve[](1);
@@ -463,6 +460,14 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         tradingReserves.rates[0] = rate;
         tradingReserves.splitValuesBps[0] = BPS; //max percentage amount
         tradingReserves.isFeePaying[0] = isFeePaying;
+    }
+
+    /// @notice If reserve is fee paying, update feePayingReservesBps and no. of fee paying reserves
+    /// @param ethToTokenNetworkFeeWei 0 when called inside T2E, E2T network fee otherwise
+    function incrementFeePaying(uint ethToTokenNetworkFeeWei, TradeData memory tData) internal pure {
+        tData.networkFeeWei += ethToTokenNetworkFeeWei;
+        tData.feePayingReservesBps += BPS;
+        tData.numFeePayingReserves++;
     }
 
     /// @notice Packs the results from tData into the return arguments for calcRatesAndAmounts
@@ -522,15 +527,21 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             }
         }
 
-        //calculate fees
-        tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
-        tData.platformFeeWei = tData.tradeWei * tData.platformFeeBps / BPS;
-        require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
-        uint actualTradeWei = tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei;
+        uint actualTradeWei = calcAndSubtractFees(tData);
 
         (tData.actualDestAmount, , ) = getDestQtyAndFeeDataFromSplits(tData.ethToToken, dest, actualTradeWei, false);
         //calculate actual rate
         tData.E2TRate = calcRateFromQty(actualTradeWei, tData.actualDestAmount, ETH_DECIMALS, tData.ethToToken.decimals);
+    }
+
+    /// @notice calculates the network and platform fee wei, and wei amount after fees
+    /// @dev for E2T non-split trades, E2T network fees are not included when invoking this function.
+    /// Will be added later in incrementFeePaying function
+    function calcAndSubtractFees(TradeData memory tData) internal pure returns (uint actualTradeWei) {
+        tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
+        tData.platformFeeWei = tData.tradeWei * tData.platformFeeBps / BPS;
+        require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
+        actualTradeWei = tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei;
     }
 
     function calcRatesAndAmountsEthToTokenNonSplit(IERC20 dest, TradeData memory tData) internal view {
@@ -539,10 +550,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         //fee calculation
         //ETH -> dest fee deduction has not occured
-        tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feePayingReservesBps / BPS;
-        tData.platformFeeWei = tData.tradeWei * tData.platformFeeBps / BPS;
-        require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
-        uint actualTradeWei = tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei;
+        uint actualTradeWei = calcAndSubtractFees(tData);
 
         //network fee for ETH -> token is in ETH amount
         uint ethToTokenNetworkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS;
@@ -560,11 +568,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         storeSingleReserveData(tData.ethToToken, reserve, tData.E2TRate, isFeePaying);
 
         // add to feePayingReservesBps if reserve is fee paying
-        if (isFeePaying) {
-            tData.networkFeeWei += ethToTokenNetworkFeeWei;
-            tData.feePayingReservesBps += BPS; //max percentage amount for ETH -> token
-            tData.numFeePayingReserves++;
-        }
+        if (isFeePaying) incrementFeePaying(ethToTokenNetworkFeeWei, tData);
 
         //take into account possible additional networkFee
         require(tData.tradeWei >= tData.networkFeeWei + tData.platformFeeWei, "fees exceed trade amt");
