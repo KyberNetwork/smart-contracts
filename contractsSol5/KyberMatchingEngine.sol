@@ -37,7 +37,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     { /* empty body */ }
 
     modifier onlyNetwork() {
-        require(msg.sender == address(networkContract), "ONLY_NETWORK");
+        require(msg.sender == address(networkContract), "Only network");
         _;
     }
 

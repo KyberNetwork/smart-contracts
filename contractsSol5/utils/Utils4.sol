@@ -28,6 +28,8 @@ contract Utils4 {
     }
 
     function setDecimals(IERC20 token) internal {
+        if (decimals[address(token)] != 0) return; //already set
+
         if (token == ETH_TOKEN_ADDRESS)
             decimals[address(token)] = ETH_DECIMALS;
         else

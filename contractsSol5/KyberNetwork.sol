@@ -13,18 +13,16 @@ import "./IGasHelper.sol";
 
 /*
 *   @title Kyber Network main contract
-*   Interacts with a few contracts:
+*   Interacts with contracts:
 *       KyberDao: to retrieve fee data
 *       KyberFeeHandler: accumulate fees for the trade
-*       KyberMatchingEngine: match reserves and calculate trade data: rates, fees, wei value
+*       KyberMatchingEngine: parse user hint and match reserves.
 *
 *   Kyber network will call matching engine for:
-*       - add reserve
+*       - add / remove reserve
 *       - list tokens
 *       - get rate
 *       - trade.
-*
-*    Matching engine will do all the work of finding which reserve to trade with. Expected rates and fees.
 */
 
 contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
@@ -576,7 +574,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param srcAmount amount of src tokens
     /// @param tData main trade data object for trade info to be stored
     /// @param hint which reserves should be used for the trade
-    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcAmount, TradeData memory tData, bytes memory hint)
+    function calcTradeAmounts(IERC20 src, IERC20 dest, uint srcAmount, TradeData memory tData, bytes memory hint)
         internal view
     {
         //init info structure
@@ -604,30 +602,30 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
             srcAmount, tData.destAmountWithNetworkFee, tData.tokenToEth.decimals, tData.ethToToken.decimals);
     }
 
-    function unpackResults(
-        uint[] memory results,
-        IKyberReserve[] memory reserveAddresses,
-        uint[] memory rates,
-        uint[] memory splitValuesBps,
-        bool[] memory isFeePaying,
-        bytes8[] memory ids,
-        TradeData memory tData
-        ) internal pure
-    {
-        uint tokenToEthNumReserves = results[uint(IKyberMatchingEngine.ResultIndex.t2eNumReserves)];
+    // function unpackResults(
+    //     uint[] memory results,
+    //     IKyberReserve[] memory reserveAddresses,
+    //     uint[] memory rates,
+    //     uint[] memory splitValuesBps,
+    //     bool[] memory isFeePaying,
+    //     bytes8[] memory ids,
+    //     TradeData memory tData
+    //     ) internal pure
+    // {
+    //     uint tokenToEthNumReserves = results[uint(IKyberMatchingEngine.ResultIndex.t2eNumReserves)];
 
-        storeTradeData(tData.tokenToEth, reserveAddresses, rates, splitValuesBps, isFeePaying, ids, 0,
-            tokenToEthNumReserves);
-        storeTradeData(tData.ethToToken, reserveAddresses, rates, splitValuesBps, isFeePaying, ids,
-            tokenToEthNumReserves, reserveAddresses.length - tokenToEthNumReserves);
+    //     storeTradeData(tData.tokenToEth, reserveAddresses, rates, splitValuesBps, isFeePaying, ids, 0,
+    //         tokenToEthNumReserves);
+    //     storeTradeData(tData.ethToToken, reserveAddresses, rates, splitValuesBps, isFeePaying, ids,
+    //         tokenToEthNumReserves, reserveAddresses.length - tokenToEthNumReserves);
 
-        tData.tradeWei = results[uint(IKyberMatchingEngine.ResultIndex.tradeWei)];
-        tData.numFeePayingReserves = results[uint(IKyberMatchingEngine.ResultIndex.numFeePayingReserves)];
-        tData.feePayingReservesBps = results[uint(IKyberMatchingEngine.ResultIndex.feePayingReservesBps)];
-        tData.destAmountNoFee = results[uint(IKyberMatchingEngine.ResultIndex.destAmountNoFee)];
-        tData.destAmountWithNetworkFee = results[uint(IKyberMatchingEngine.ResultIndex.destAmountWithNetworkFee)];
-        tData.actualDestAmount = results[uint(IKyberMatchingEngine.ResultIndex.actualDestAmount)];
-    }
+    //     tData.tradeWei = results[uint(IKyberMatchingEngine.ResultIndex.tradeWei)];
+    //     tData.numFeePayingReserves = results[uint(IKyberMatchingEngine.ResultIndex.numFeePayingReserves)];
+    //     tData.feePayingReservesBps = results[uint(IKyberMatchingEngine.ResultIndex.feePayingReservesBps)];
+    //     tData.destAmountNoFee = results[uint(IKyberMatchingEngine.ResultIndex.destAmountNoFee)];
+    //     tData.destAmountWithNetworkFee = results[uint(IKyberMatchingEngine.ResultIndex.destAmountWithNetworkFee)];
+    //     tData.actualDestAmount = results[uint(IKyberMatchingEngine.ResultIndex.actualDestAmount)];
+    // }
 
     /// @notice Stores information inside tradingReserves
     /// @param tradingReserves Either tData.tokenToEth or tData.ethToToken. Object to store the information in
@@ -684,6 +682,9 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     {
         rebateWallets = new address[](tData.numFeePayingReserves);
         rebatePercentBps = new uint[](tData.numFeePayingReserves);
+        if (tData.numFeePayingReserves == 0) {
+            return(rebateWallets, rebatePercentBps);
+        }
 
         uint index;
 

@@ -48,20 +48,45 @@ interface IKyberMatchingEngine {
         external
         returns (bool);
 
-    function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcDecimals, uint destDecimals, uint[] calldata info, bytes calldata hint)
-        external view
-        returns (
-            uint[] memory results,
-            IKyberReserve[] memory reserveAddresses,
-            uint[] memory rates,
-            uint[] memory splitValuesBps,
-            bool[] memory isFeePaying,
-            bytes8[] memory ids
-        );
+    // function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcDecimals, uint destDecimals, uint[] calldata info, bytes calldata hint)
+    //     external view
+    //     returns (
+    //         uint[] memory results,
+    //         IKyberReserve[] memory reserveAddresses,
+    //         uint[] memory rates,
+    //         uint[] memory splitValuesBps,
+    //         bool[] memory isFeePaying,
+    //         bytes8[] memory ids
+    // );
 
     function getReserveDetails(address reserve) external view
         returns(bytes8 reserveId, ReserveType resType, bool isFeePaying);
 
     function getReservesPerTokenSrc(IERC20 token) external view returns(IKyberReserve[] memory reserves);
     function getReservesPerTokenDest(IERC20 token) external view returns(IKyberReserve[] memory reserves);
+
+    enum ExtraProcessing {
+        NotRequired,
+        NonSplitProcessing
+        /* any other process type? */
+    }
+
+    function getReserveList(IERC20 src, uint srcAmount, IERC20 dest, uint networkFee, bool isTokenToToken, 
+        bytes calldata hint) external view 
+        returns(
+            IKyberReserve[] memory reserveList,
+            uint[] memory splitValuesBps,
+            uint[] memory srcAmounts, /* Easy to validate, if stack too deep can remove  */
+            bool[] memory isFeePaying,
+            bytes8[] memory ids,
+            ExtraProcessing extraProcess
+        );
+
+    function doMatch(
+        IKyberReserve[] calldata reserveList, 
+        uint[] calldata rates, 
+        bool[] calldata isFeePaying,
+        uint[] calldata srcAmounts
+        ) external view 
+        returns(uint[] memory reserveIndexes);
 }
