@@ -212,7 +212,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
             rebatePerWallet[rebateWallets[i]] += weiData.rebate * rebateBpsPerWallet[i] / BPS;
             totalRebateBps += rebateBpsPerWallet[i];
         }
-        require(totalRebateBps <= BPS);
+        require(totalRebateBps <= BPS, "Total rebates too high");
 
         rewardsPerEpoch[epoch] += weiData.reward;
 
