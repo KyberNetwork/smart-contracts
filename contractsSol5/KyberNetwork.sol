@@ -44,9 +44,6 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     uint internal maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool internal isEnabled = false; // is network enabled
 
-    mapping(address=>bool) internal kyberProxyContracts;
-    address[] internal kyberProxyArray;
-    
     mapping(address=>address) public reserveRebateWallet;
 
     struct NetworkFeeData {
@@ -285,7 +282,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         if (_enable) {
             require(feeHandler != IKyberFeeHandler(0), "feeHandler 0");
             require(matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
-            require(kyberProxyArray.length > 0, "proxy 0");
+            require(kyberStorage.isKyberProxyAdded(), "proxy 0");
         }
         isEnabled = _enable;
 
@@ -297,41 +294,15 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
     /// @dev no. of KyberNetworkProxies are capped
     function addKyberProxy(address networkProxy) external onlyAdmin {
-        require(networkProxy != address(0), "proxy 0");
-        require(!kyberProxyContracts[networkProxy], "proxy exists");
-        require(kyberProxyArray.length < MAX_APPROVED_PROXIES, "Max 2 proxy");
-
-        kyberProxyArray.push(networkProxy);
-
-        kyberProxyContracts[networkProxy] = true;
+        require(kyberStorage.addKyberProxy(networkProxy, MAX_APPROVED_PROXIES));
         emit KyberProxyAdded(networkProxy);
     }
 
     function removeKyberProxy(address networkProxy) external onlyAdmin {
-        require(kyberProxyContracts[networkProxy], "proxy not found");
-
-        uint proxyIndex = 2 ** 255;
-
-        for (uint i = 0; i < kyberProxyArray.length; i++) {
-            if (kyberProxyArray[i] == networkProxy) {
-                proxyIndex = i;
-                break;
-            }
-        }
-
-        kyberProxyArray[proxyIndex] = kyberProxyArray[kyberProxyArray.length - 1];
-        kyberProxyArray.length--;
-
-        kyberProxyContracts[networkProxy] = false;
+        require(kyberStorage.removeKyberProxy(networkProxy));
         emit KyberProxyRemoved(networkProxy);
     }
 
-    /// @notice should be called off chain
-    /// @dev get an array of KyberNetworkProxies
-    /// @return An array of both KyberNetworkProxies
-    function getKyberProxies() external view returns(address[] memory proxies) {
-        return kyberProxyArray;
-    }
 
     //backward compatible
     /// @dev gets the expected and slippage rate for exchanging src -> dest token
@@ -900,7 +871,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @return true if tradeInput is valid
     function verifyTradeInputValid(TradeInput memory input, uint networkFeeBps) internal view returns(bool) {
         require(isEnabled, "!network");
-        require(kyberProxyContracts[msg.sender], "bad sender");
+        require(kyberStorage.isValidProxyContract(msg.sender), "bad sender");
         require(tx.gasprice <= maxGasPriceValue, "gas price");
         require(input.srcAmount <= MAX_QTY, "srcAmt > MAX_QTY");
         require(input.srcAmount != 0, "0 srcAmt");

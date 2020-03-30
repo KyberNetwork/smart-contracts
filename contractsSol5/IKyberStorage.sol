@@ -3,6 +3,7 @@ pragma solidity 0.5.11;
 import "./IKyberFeeHandler.sol";
 import "./IKyberMatchingEngine.sol";
 import "./IKyberDAO.sol";
+import "./IKyberNetworkProxy.sol";
 
 
 /// @title KyberStorage interface
@@ -26,4 +27,14 @@ contract IKyberStorage {
         external
         view
         returns (address[] reserveAddresses);
+
+    function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
+        external
+        returns (bool);
+
+    function removeKyberProxy(address networkProxy) external returns (bool);
+
+    function isKyberProxyAdded() external view returns (bool);
+
+    function isValidProxyContract(address c) external view returns (bool);
 }
