@@ -71,22 +71,29 @@ interface IKyberMatchingEngine {
         /* any other process type? */
     }
 
-    function getReserveList(IERC20 src, uint srcAmount, IERC20 dest, uint networkFee, bool isTokenToToken, 
+    function getReserveList(IERC20 src, uint srcAmount, IERC20 dest, bool isTokenToToken, 
         bytes calldata hint) external view 
         returns(
-            IKyberReserve[] memory reserveList,
+            bytes8[] memory reserveIds,
             uint[] memory splitValuesBps,
-            uint[] memory srcAmounts, /* Easy to validate, if stack too deep can remove  */
-            bool[] memory isFeePaying,
-            bytes8[] memory ids,
+            bool[] memory isFeeAccounted,
             ExtraProcessing extraProcess
         );
 
-    function doMatch(
-        IKyberReserve[] calldata reserveList, 
-        uint[] calldata rates, 
-        bool[] calldata isFeePaying,
-        uint[] calldata srcAmounts
+    function doMatchTokenToEth(
+        IERC20 src,
+        IERC20 dest,
+        uint[] calldata srcAmounts,
+        uint[] calldata feeAccountedBps, // 0 for no fee. networkFeeBps when has fee
+        uint[] calldata rates
+        ) external view 
+        returns(uint[] memory reserveIndexes);
+
+    function doMatchEthToToken(
+        IERC20 src,
+        IERC20 dest,
+        uint[] calldata srcAmounts,
+        uint[] calldata rates
         ) external view 
         returns(uint[] memory reserveIndexes);
 }
