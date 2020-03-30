@@ -817,22 +817,14 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         internal pure returns(bool)
     {
         uint totalSplitBps;
-        uint curReserveIdVal;
-        uint tempReserveIdVal;
 
         for(uint i = 0; i < tradingReserves.ids.length; i++) {
             if (tradingReserves.splitValuesBps[i] == 0 || tradingReserves.splitValuesBps[i] > BPS) {
                 return false; // invalid split
             }
             totalSplitBps += tradingReserves.splitValuesBps[i];
-            if (i == 0) {
-                curReserveIdVal = convertReserveIdToUint(tradingReserves.ids[i]);
-            } else {
-                tempReserveIdVal = convertReserveIdToUint(tradingReserves.ids[i]);
-                if (tempReserveIdVal <= curReserveIdVal) {
-                    return false; // ids must be increasing
-                }
-                curReserveIdVal = tempReserveIdVal;
+            if (i > 0 && (uint64(tradingReserves.ids[i]) <= uint64(tradingReserves.ids[i - 1]))) {
+                return false; // ids are not in increasing order
             }
         }
         return totalSplitBps == BPS;
@@ -1184,15 +1176,5 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         returns (address)
     {
         return reserveIdToAddresses[reserveId][0];
-    }
-
-    function convertReserveIdToUint(bytes8 reserveId) internal pure returns (uint) {
-        uint64 tempUint;
-
-        assembly {
-            tempUint := mload(add(add(reserveId, 0x8), 0))
-        }
-
-        return uint(tempUint);
     }
 }
