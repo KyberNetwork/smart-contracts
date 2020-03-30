@@ -18,22 +18,10 @@ interface IKyberMatchingEngine {
         LAST
     }
 
-    enum ResultIndex {
-        t2eNumReserves,
-        tradeWei,
-        numFeePayingReserves,
-        feePayingReservesBps,
-        destAmountNoFee,
-        destAmountWithNetworkFee,
-        actualDestAmount,
-        resultLength
-    }
-
-    enum InfoIndex {
-        srcAmount,
-        networkFeeBps,
-        platformFeeBps,
-        infoLength
+    enum ExtraProcessing {
+        NotRequired,
+        NonSplitProcessing
+        /* any other process type? */
     }
 
     function negligibleRateDiffBps() external view returns (uint);
@@ -48,45 +36,35 @@ interface IKyberMatchingEngine {
         external
         returns (bool);
 
-    // function calcRatesAndAmounts(IERC20 src, IERC20 dest, uint srcDecimals, uint destDecimals, uint[] calldata info, bytes calldata hint)
-    //     external view
-    //     returns (
-    //         uint[] memory results,
-    //         IKyberReserve[] memory reserveAddresses,
-    //         uint[] memory rates,
-    //         uint[] memory splitValuesBps,
-    //         bool[] memory isFeePaying,
-    //         bytes8[] memory ids
-    // );
-
     function getReserveDetails(address reserve) external view
         returns(bytes8 reserveId, ReserveType resType, bool isFeePaying);
 
-    function getReservesPerTokenSrc(IERC20 token) external view returns(IKyberReserve[] memory reserves);
-    function getReservesPerTokenDest(IERC20 token) external view returns(IKyberReserve[] memory reserves);
+    function getReservesPerTokenSrc(IERC20 token) external view returns(bytes8[] memory reserves);
+    function getReservesPerTokenDest(IERC20 token) external view returns(bytes8[] memory reserves);
 
-    enum ExtraProcessing {
-        NotRequired,
-        NonSplitProcessing
-        /* any other process type? */
-    }
-
-    function getReserveList(IERC20 src, uint srcAmount, IERC20 dest, uint networkFee, bool isTokenToToken, 
-        bytes calldata hint) external view 
+    function getReserveList(IERC20 src, IERC20 dest, bool isTokenToToken, bytes calldata hint)
+        external view
         returns(
-            IKyberReserve[] memory reserveList,
+            bytes8[] memory reserveIds,
             uint[] memory splitValuesBps,
-            uint[] memory srcAmounts, /* Easy to validate, if stack too deep can remove  */
-            bool[] memory isFeePaying,
-            bytes8[] memory ids,
+            bool[] memory isFeeAccounted,
             ExtraProcessing extraProcess
         );
 
-    function doMatch(
-        IKyberReserve[] calldata reserveList, 
-        uint[] calldata rates, 
-        bool[] calldata isFeePaying,
-        uint[] calldata srcAmounts
-        ) external view 
+    function doMatchTokenToEth(
+        IERC20 src,
+        IERC20 dest,
+        uint[] calldata srcAmounts,
+        uint[] calldata feeAccountedBps, // 0 for no fee. networkFeeBps when has fee
+        uint[] calldata rates
+        ) external view
+        returns(uint[] memory reserveIndexes);
+
+    function doMatchEthToToken(
+        IERC20 src,
+        IERC20 dest,
+        uint[] calldata srcAmounts,
+        uint[] calldata rates
+        ) external view
         returns(uint[] memory reserveIndexes);
 }
