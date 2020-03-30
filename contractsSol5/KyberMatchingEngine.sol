@@ -98,7 +98,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     function listPairs(IKyberReserve reserve, IERC20 token, bool isTokenToEth, bool add) internal {
         uint i;
         bytes8 reserveId = convertAddressToReserveId(address(reserve));
-        IKyberReserve[] storage reserveArr = reservesPerTokenDest[address(token)];
+        bytes8[] storage reserveArr = reservesPerTokenDest[address(token)];
 
         if (isTokenToEth) {
             reserveArr = reservesPerTokenSrc[address(token)];
@@ -139,20 +139,41 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
             isFeeAccounted = getIsFeeAccountingReserves(reserveIds);
             extraProcess = ExtraProcessing.NotRequired;
-            return;
+            return (reserveIds, splitValuesBps, isFeeAccounted, extraProcess);
         }
 
         TradeType tradeType;
-        bytes memory unpackedHint;
 
-        unpackedHint = (isTokenToToken) ? unpackT2THint(hint) : hint;
-        (
-            tradeType,
-            reserveIds,
-            splitValuesBps,
-            error
-        ) = parseHint(unpackedHint);
-        if (error != HintErrors.NoError) return ([], [], [], ExtraProcessing.NotRequired);
+        if (isTokenToToken) {
+            bytes memory unpackedHint;
+            if (src == ETH_TOKEN_ADDRESS) {
+                (, unpackedHint) = unpackT2THint(hint);
+                (
+                    tradeType,
+                    reserveIds,
+                    splitValuesBps,
+                    error
+                ) = parseHint(unpackedHint);
+            }
+            if (dest == ETH_TOKEN_ADDRESS) {
+                (unpackedHint, ) = unpackT2THint(hint);
+                (
+                    tradeType,
+                    reserveIds,
+                    splitValuesBps,
+                    error
+                ) = parseHint(unpackedHint);
+            }
+        } else {
+            (
+                tradeType,
+                reserveIds,
+                splitValuesBps,
+                error
+            ) = parseHint(hint);
+        }
+
+        if (error != HintErrors.NoError) return (new bytes8[](0), new uint[](0), new bool[](0), ExtraProcessing.NotRequired);
 
         if (tradeType == TradeType.MaskIn) {
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
@@ -219,13 +240,17 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     {
         src;
         dest;
+        reserveIndexes = new uint[](1);
 
         //use destAmounts for comparison, but return the best rate
         BestReserveInfo memory bestReserve;
         bestReserve.numRelevantReserves = 1; // assume always best reserve will be relevant
 
         //return zero rate for empty reserve array (unlisted token)?
-        if (rates.length == 0) return ([0]);
+        if (rates.length == 0) {
+            reserveIndexes[0] = 0;
+            return reserveIndexes;
+        }
 
         uint[] memory reserveCandidates = new uint[](rates.length);
         uint[] memory destAmounts = new uint[](rates.length);
@@ -242,7 +267,10 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             destAmounts[i] = destAmount;
         }
 
-        if (bestReserve.destAmount == 0) return (bestReserve.index);
+        if (bestReserve.destAmount == 0) {
+            reserveIndexes[0] = bestReserve.index;
+            return reserveIndexes;
+        }
 
         reserveCandidates[0] = bestReserve.index;
 
@@ -263,7 +291,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             bestReserve.index = reserveCandidates[0];
         }
 
-        return ([bestReserve.index]);
+        reserveIndexes[0] = bestReserve.index;
     }
 
     /// @dev Returns the index of the best rate from the rates array for E2T side
@@ -283,13 +311,17 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     {
         src;
         dest;
+        reserveIndexes = new uint[](1);
 
         //use destAmounts for comparison, but return the best rate
         BestReserveInfo memory bestReserve;
         bestReserve.numRelevantReserves = 1; // assume always best reserve will be relevant
 
         //return zero rate for empty reserve array (unlisted token)?
-        if (rates.length == 0) return ([0]);
+        if (rates.length == 0) {
+            reserveIndexes[0] = 0;
+            return reserveIndexes;
+        }
 
         uint[] memory reserveCandidates = new uint[](rates.length);
         uint[] memory destAmounts = new uint[](rates.length);
@@ -306,7 +338,10 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             destAmounts[i] = destAmount;
         }
 
-        if (bestReserve.destAmount == 0) return (bestReserve.index);
+        if (bestReserve.destAmount == 0) {
+            reserveIndexes[0] = bestReserve.index;
+            return reserveIndexes;
+        }
 
         reserveCandidates[0] = bestReserve.index;
 
@@ -327,7 +362,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             bestReserve.index = reserveCandidates[0];
         }
 
-        return ([bestReserve.index]);
+        reserveIndexes[0] = bestReserve.index;
     }
 
     function populateSplitValuesBps(uint length) internal pure returns (uint[] memory splitValuesBps) {
@@ -345,7 +380,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint feePayingData = feePayingPerType;
 
         for (uint i = 0; i < reserveIds.length; i++) {
-            feePayingArr[i] = (feePayingData & 1 << reserveType[address(reserveIds[i])] > 0);
+            feePayingArr[i] = (feePayingData & 1 << reserveType[reserveIds[i]] > 0);
         }
     }
 
