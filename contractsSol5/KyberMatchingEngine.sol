@@ -328,12 +328,12 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         return ([bestReserve.index]);
     }
 
-    function populateSplitValuesBps(uint length) internal pure returns (uint[] splitValuesBps) {
+    function populateSplitValuesBps(uint length) internal pure returns (uint[] memory splitValuesBps) {
         splitValuesBps = new uint[](length);
-        for (let uint i = 0; i < length; i++) {
+        for (uint i = 0; i < length; i++) {
             splitValuesBps[i] = BPS;
         }
-    };
+    }
 
     function getIsFeeAccountingReserves(bytes8[] memory reserveIds) internal view
         returns(bool[] memory feePayingArr)

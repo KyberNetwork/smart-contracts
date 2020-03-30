@@ -1,5 +1,7 @@
 pragma solidity 0.5.11;
 
+import "./IKyberFeeHandler.sol";
+import "./IKyberMatchingEngine.sol";
 
 contract IKyberStorage {
 
