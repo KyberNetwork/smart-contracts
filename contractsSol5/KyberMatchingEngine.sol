@@ -134,15 +134,6 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         )
     {
         HintErrors error;
-
-        // when to / from ETH, initialise empty array length 1, else set all reserves supporting t2e / e2t
-        tData.tokenToEth.addresses = (src == ETH_TOKEN_ADDRESS) ?
-            new IKyberReserve[](1) : reservesPerTokenSrc[address(src)];
-        tData.ethToToken.addresses = (dest == ETH_TOKEN_ADDRESS) ?
-            new IKyberReserve[](1) : reservesPerTokenDest[address(dest)];
-
-        // PERM is treated as no hint, so we just return
-        // relevant arrays will be initialised in storeTradeReserveData
         if (hint.length == 0 || hint.length == 4) {
             reserveIds = (dest == ETH_TOKEN_ADDRESS) ? reservesPerTokenSrc[address(src)] : reservesPerTokenDest[address(dest)];
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
@@ -151,50 +142,38 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             return;
         }
 
-        if (src == ETH_TOKEN_ADDRESS) {
-            (
-                tData.ethToToken.tradeType,
-                tData.ethToToken.addresses,
-                tData.ethToToken.splitValuesBps,
-                error
-            ) = parseHint(hint);
-        } else if (dest == ETH_TOKEN_ADDRESS) {
-            (
-                tData.tokenToEth.tradeType,
-                tData.tokenToEth.addresses,
-                tData.tokenToEth.splitValuesBps,
-                error
-            ) = parseHint(hint);
-        } else {
-            bytes memory t2eHint;
-            bytes memory e2tHint;
+        TradeType tradeType;
 
-            (t2eHint, e2tHint) = unpackT2THint(hint);
+        if (isTokenToToken) {
+            bytes memory unpackedHint;
+            if (src == ETH_TOKEN_ADDRESS) {
+                (, unpackedHint) = unpackT2THint(hint);
+                (
+                    tradeType,
+                    reserveIds,
+                    splitValuesBps,
+                    error
+                ) = parseHint(unpackedHint);
+            }
+            if (dest == ETH_TOKEN_ADDRESS) {
+                (unpackedHint, ) = unpackT2THint(hint);
+                (
+                    tradeType,
+                    reserveIds,
+                    splitValuesBps,
+                    error
+                ) = parseHint(unpackedHint);
+            }
+        } else {
             (
-                tData.tokenToEth.tradeType,
-                tData.tokenToEth.addresses,
-                tData.tokenToEth.splitValuesBps,
+                tradeType,
+                reserveIds,
+                splitValuesBps,
                 error
-            ) = parseHint(t2eHint);
-            (
-                tData.ethToToken.tradeType,
-                tData.ethToToken.addresses,
-                tData.ethToToken.splitValuesBps,
-                error
-            ) = parseHint(e2tHint);
+            ) = parseHint(hint);
         }
 
-        TradeType tradeType;
-        bytes memory unpackedHint;
-
-        unpackedHint = (isTokenToToken) ? unpackT2THint(hint) : hint;
-        (
-            tradeType,
-            reserveIds,
-            splitValuesBps,
-            error
-        ) = parseHint(unpackedHint);
-        if (error != HintErrors.NoError) return ([], [], [], ExtraProcessing.NotRequired);
+        if (error != HintErrors.NoError) return (new bytes8[](0), new uint[](0), new bool[](0), ExtraProcessing.NotRequired);
 
         if (tradeType == TradeType.MaskIn) {
             splitValuesBps = populateSplitValuesBps(reserveIds.length);

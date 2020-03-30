@@ -125,14 +125,14 @@ contract KyberHintHandler is IKyberHint, Utils4 {
     {
         HintErrors error;
 
-        (tokenToEthType, tokenToEthAddresses, tokenToEthSplits, error) = parseHint(hint);
+        (tokenToEthType, tokenToEthReserveIds, tokenToEthSplits, error) = parseHint(hint);
 
         if (error != HintErrors.NoError) throwHintError(error);
 
-        tokenToEthReserveIds = new bytes8[](tokenToEthAddresses.length);
+        tokenToEthAddresses = new IKyberReserve[](tokenToEthReserveIds.length);
 
-        for (uint i = 0; i < tokenToEthAddresses.length; i++) {
-            tokenToEthReserveIds[i] = convertAddressToReserveId(address(tokenToEthAddresses[i]));
+        for (uint i = 0; i < tokenToEthReserveIds.length; i++) {
+            tokenToEthAddresses[i] = IKyberReserve(convertReserveIdToAddress(tokenToEthReserveIds[i]));
         }
     }
 
@@ -151,14 +151,14 @@ contract KyberHintHandler is IKyberHint, Utils4 {
     {
         HintErrors error;
 
-        (ethToTokenType, ethToTokenAddresses, ethToTokenSplits, error) = parseHint(hint);
+        (ethToTokenType, ethToTokenReserveIds, ethToTokenSplits, error) = parseHint(hint);
 
         if (error != HintErrors.NoError) throwHintError(error);
 
-        ethToTokenReserveIds = new bytes8[](ethToTokenAddresses.length);
+        ethToTokenAddresses = new IKyberReserve[](ethToTokenReserveIds.length);
 
-        for (uint i = 0; i < ethToTokenAddresses.length; i++) {
-            ethToTokenReserveIds[i] = convertAddressToReserveId(address(ethToTokenAddresses[i]));
+        for (uint i = 0; i < ethToTokenReserveIds.length; i++) {
+            ethToTokenAddresses[i] = IKyberReserve(convertReserveIdToAddress(ethToTokenReserveIds[i]));
         }
     }
 
@@ -188,7 +188,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
 
         (
             tokenToEthType,
-            tokenToEthAddresses,
+            tokenToEthReserveIds,
             tokenToEthSplits,
             t2eError
         ) = parseHint(t2eHint);
@@ -196,47 +196,41 @@ contract KyberHintHandler is IKyberHint, Utils4 {
 
         (
             ethToTokenType,
-            ethToTokenAddresses,
+            ethToTokenReserveIds,
             ethToTokenSplits,
             e2tError
         ) = parseHint(e2tHint);
         if (e2tError != HintErrors.NoError) throwHintError(e2tError);
 
-        tokenToEthReserveIds = new bytes8[](tokenToEthAddresses.length);
-        ethToTokenReserveIds = new bytes8[](ethToTokenAddresses.length);
+        tokenToEthAddresses = new IKyberReserve[](tokenToEthReserveIds.length);
+        ethToTokenAddresses = new IKyberReserve[](ethToTokenReserveIds.length);
 
-        for (uint i = 0; i < tokenToEthAddresses.length; i++) {
-            tokenToEthReserveIds[i] = convertAddressToReserveId(address(tokenToEthAddresses[i]));
+        for (uint i = 0; i < tokenToEthReserveIds.length; i++) {
+            tokenToEthAddresses[i] = IKyberReserve(convertReserveIdToAddress(tokenToEthReserveIds[i]));
         }
-        for (uint i = 0; i < ethToTokenAddresses.length; i++) {
-            ethToTokenReserveIds[i] = convertAddressToReserveId(address(ethToTokenAddresses[i]));
+        for (uint i = 0; i < ethToTokenReserveIds.length; i++) {
+            ethToTokenAddresses[i] = IKyberReserve(convertReserveIdToAddress(ethToTokenReserveIds[i]));
         }
     }
 
     /// @notice Parses or decodes the Token to ETH or ETH to Token bytes hint
     /// @param hint Token to ETH or ETH to Token trade hint
-    /// @return returns the trade type, reserve addresses, and reserve splits
+    /// @return returns the trade type, reserve IDs, and reserve splits
     function parseHint(bytes memory hint)
         internal
-        view
+        pure
         returns(
             TradeType tradeType,
-            IKyberReserve[] memory addresses,
+            bytes8[] memory reserveIds,
             uint[] memory splits,
             HintErrors valid
         )
     {
-        bytes8[] memory reserveIds;
-
         (tradeType, reserveIds, splits) = abi.decode(hint, (TradeType, bytes8[], uint[]));
         valid = verifyData(tradeType, reserveIds, splits);
 
         if (valid == HintErrors.NoError) {
-            addresses = new IKyberReserve[](reserveIds.length);
-            
-            for (uint i = 0; i < reserveIds.length; i++) {
-                addresses[i] = IKyberReserve(convertReserveIdToAddress(reserveIds[i]));
-            }
+            reserveIds = new bytes8[](reserveIds.length);
         } else {
             splits = new uint[](0);
         }
