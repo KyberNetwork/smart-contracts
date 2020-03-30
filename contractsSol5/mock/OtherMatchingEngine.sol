@@ -31,7 +31,7 @@ contract OtherMatchingEngine is KyberMatchingEngine {
         }
 
         reserveAddressToId[reserve] = reserveId;
-        reserveType[reserve] = uint256(resType);
+        reserveType[reserveId] = uint256(resType);
         return true;
     }
 

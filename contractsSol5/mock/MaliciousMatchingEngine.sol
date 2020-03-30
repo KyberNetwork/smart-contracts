@@ -92,4 +92,14 @@ contract MaliciousMatchingEngine is KyberMatchingEngine {
 
         return (reserveArr[bestReserve.index], rates[bestReserve.index], feePayingPerReserve[bestReserve.index]);
     }
+
+    function getIsFeePayingReserves(IKyberReserve[] memory reserves) internal view
+        returns(bool[] memory feePayingArr)
+    {
+        feePayingArr = new bool[](reserves.length);
+
+        for (uint i = 0; i < reserves.length; i++) {
+            feePayingArr[i] = (feePayingPerType & (1 << reserveType[reserveAddressToId[address(reserves[i])]])) > 0;
+        }
+    }
 }

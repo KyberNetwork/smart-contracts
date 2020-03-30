@@ -57,6 +57,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     function addReserve(address reserve, bytes8 reserveId, ReserveType resType) external
         onlyNetwork returns (bool)
     {
+        reserve;
         require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad type");
         require(feePayingPerType != 0xffffffff, "Fee paying not set");
 
