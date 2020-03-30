@@ -270,6 +270,15 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         emit KyberNetworkParamsSet(maxGasPriceValue, _negligibleRateDiffBps);
     }
 
+    event KyberStorageUpdated(IKyberStorage newStorage);
+    function setKyberStorage(IKyberStorage _kyberStorage) external onlyAdmin {
+        require(_kyberStorage != IKyberStorage(0), "storage 0");
+        if (kyberStorage != _kyberStorage) {
+            kyberStorage = _kyberStorage;
+            emit KyberStorageUpdated(_kyberStorage);
+        }
+    }
+
     event KyberNetworkSetEnable(bool isEnabled);
 
     function setEnable(bool _enable) external onlyAdmin {

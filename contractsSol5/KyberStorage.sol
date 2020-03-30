@@ -5,7 +5,6 @@ import "./IKyberDAO.sol";
 import "./IKyberFeeHandler.sol";
 import "./IKyberMatchingEngine.sol";
 import "./IKyberNetwork.sol";
-import "./utils/PermissionGroups2.sol";
 
 
 /**
@@ -13,7 +12,7 @@ import "./utils/PermissionGroups2.sol";
  *   Receives call from KyberNetwork for:
  *   - record contract changes for matchingEngine, feeHandler, reserves and kyberDAO
  */
-contract KyberStorage is IKyberStorage, PermissionGroups2 {
+contract KyberStorage is IKyberStorage {
     // store current and previous contracts.
     IKyberFeeHandler[] internal feeHandler;
     IKyberDAO[] internal kyberDAO;
@@ -27,12 +26,8 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         _;
     }
 
-    event KyberNetworkUpdate(IKyberNetwork newNetwork);
-
-    function setNetworkContract(IKyberNetwork _network) external onlyAdmin {
-        require(_network != IKyberNetwork(0), "network 0");
+    constructor(IKyberNetwork _network) public {
         network = _network;
-        emit KyberNetworkUpdate(_network);
     }
 
     function setContracts(
@@ -100,7 +95,7 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         }
         require(reserveIndex != 2**255, "reserve ?");
         reserves[reserveIndex] = reserves[reserves.length - 1];
-        reserves.length--;
+        reserves.pop();
     }
 
     /// @notice should be called off chain
