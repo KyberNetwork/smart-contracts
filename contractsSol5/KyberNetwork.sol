@@ -654,12 +654,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade amt");
 
         uint actualTradeWei = tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei;
-        (tData.actualDestAmount, ,) = getDestQtyAndFeeData(
-            tData.ethToToken,
-            token,
-            actualTradeWei,
-            false
-        );
+        (tData.actualDestAmount, ,) = getDestQtyAndFeeData(tData.ethToToken, token, actualTradeWei, false);
 
         uint finalRate = calcRateFromQty(actualTradeWei, tData.actualDestAmount, ETH_DECIMALS, tData.ethToToken.decimals);
         tData.destAmountWithNetworkFee = calcDstQty(
@@ -718,20 +713,9 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
         uint[] memory selectedIndexes;
         if (isTokenToEth) {
-            selectedIndexes = matchingEngine.doMatchTokenToEth(
-                token,
-                ETH_TOKEN_ADDRESS,
-                srcAmounts,
-                feeAccountedBps,
-                rates
-            );
+            selectedIndexes = matchingEngine.doMatchTokenToEth(token, ETH_TOKEN_ADDRESS, srcAmounts, feeAccountedBps, rates);
         } else {
-            selectedIndexes = matchingEngine.doMatchEthToToken(
-                ETH_TOKEN_ADDRESS,
-                token,
-                srcAmounts,
-                rates
-            );
+            selectedIndexes = matchingEngine.doMatchEthToToken(ETH_TOKEN_ADDRESS, token, srcAmounts, rates);
         }
 
         tradingReserves.ids = new bytes8[](selectedIndexes.length);
