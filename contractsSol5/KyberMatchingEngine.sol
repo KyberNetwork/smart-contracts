@@ -311,15 +311,22 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
                 error
             ) = parseHint(hint);
         } else {
+            bytes memory t2eHint;
+            bytes memory e2tHint;
+
+            (t2eHint, e2tHint) = unpackT2THint(hint);
             (
                 tData.tokenToEth.tradeType,
                 tData.tokenToEth.addresses,
                 tData.tokenToEth.splitValuesBps,
+                error
+            ) = parseHint(t2eHint);
+            (
                 tData.ethToToken.tradeType,
                 tData.ethToToken.addresses,
                 tData.ethToToken.splitValuesBps,
                 error
-            ) = parseHintT2T(hint);
+            ) = parseHint(e2tHint);
         }
 
         if (error != HintErrors.NoError) return false;
