@@ -21,56 +21,6 @@ contract MockMatchingEngineManipulateRate is KyberMatchingEngine {
     }
 
     // Try to manipulate rate when get rate from reserve
-    /// @notice Calculates the resulting destQty for split trades. For src -> ETH, it additionally returns
-    /// the feePayingReservesBps and numFeePayingReserves. ETH -> dest does not need this information,
-    /// as they would be calculated and accounted for before this function is called.
-    /// @dev Should any reserve return a zero rate, then we nullify the trade by returning zero destQty
-    function getDestQtyAndFeeDataFromSplits(
-        TradingReserves memory tradingReserves,
-        IERC20 token,
-        uint tradeAmt,
-        bool isTokenToEth
-    )
-        internal
-        view
-        returns (uint destQty, uint feePayingReservesBps, uint numFeePayingReserves)
-    {
-        IKyberReserve reserve;
-        uint splitAmount;
-        uint amountSoFar;
-        uint destAmount;
-        tradingReserves.isFeePaying = getIsFeePayingReserves(tradingReserves.addresses);
-
-        for (uint i = 0; i < tradingReserves.addresses.length; i++) {
-            reserve = tradingReserves.addresses[i];
-            //calculate split and corresponding trade amounts
-            splitAmount = (i == tradingReserves.splitValuesBps.length - 1) ?
-                                (tradeAmt - amountSoFar) :
-                                tradingReserves.splitValuesBps[i] * tradeAmt / BPS;
-            amountSoFar += splitAmount;
-            if (isTokenToEth) {
-                (tradingReserves.rates[i], destAmount) = getRateFromReserve(reserve, token, ETH_TOKEN_ADDRESS, splitAmount);
-                //if zero rate for any split reserve, return zero destQty
-                if (tradingReserves.rates[i] == 0) {
-                    return (0, 0, 0);
-                }
-                destQty += destAmount;
-                if (tradingReserves.isFeePaying[i]) {
-                    feePayingReservesBps += tradingReserves.splitValuesBps[i];
-                    numFeePayingReserves++;
-                }
-            } else {
-                (tradingReserves.rates[i], destAmount) = getRateFromReserve(reserve, ETH_TOKEN_ADDRESS, token, splitAmount);
-                //if zero rate for any split reserve, return zero destQty
-                if (tradingReserves.rates[i] == 0) {
-                    return (0, 0, 0);
-                }
-                destQty += destAmount;
-            }
-        }
-    }
-
-    // Try to manipulate rate when get rate from reserve
     /// @dev When calling this function, either src or dest MUST be ETH. Cannot search for token -> token
     /// @dev If the iterated reserve is fee paying, then we have to farther deduct the network fee from srcAmount
     /// @param reserveArr reserve candidates to be iterated over
@@ -176,6 +126,16 @@ contract MockMatchingEngineManipulateRate is KyberMatchingEngine {
             );
             rate = rate * uint(10000 + changePriceInBps) / 10000;
             destAmount = calcDestAmount(src, dest, srcAmount, rate);
+        }
+    }
+
+    function getIsFeePayingReserves(IKyberReserve[] memory reserves) internal view
+        returns(bool[] memory feePayingArr)
+    {
+        feePayingArr = new bool[](reserves.length);
+
+        for (uint i = 0; i < reserves.length; i++) {
+            feePayingArr[i] = (feePayingPerType & (1 << reserveType[reserveAddressToId[address(reserves[i])]])) > 0;
         }
     }
 }

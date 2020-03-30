@@ -139,7 +139,7 @@ contract KyberStorage is IKyberStorage {
         view
         returns (address[] memory reserveAddresses)
     {
-        reserveAddresses = new bytes8[](reserveIds.length);
+        reserveAddresses = new address[](reserveIds.length);
         for (uint256 i = 0; i < reserveIds.length; i++) {
             reserveAddresses[i] = reserveIdToAddresses[reserveIds[i]][0];
         }

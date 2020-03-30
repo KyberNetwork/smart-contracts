@@ -63,7 +63,8 @@ contract KyberRateHelper is IKyberRateHelper, Withdrawable2, Utils4 {
         Amounts memory A;
 
         A.srcAmount = optionalBuyAmount > 0 ? optionalBuyAmount : 1000;
-        buyReserves = matchingEngine.getReservesPerTokenDest(token);
+        // TODO: Fix it
+        // buyReserves = matchingEngine.getReservesPerTokenDest(token);
         buyRates = new uint[](buyReserves.length);
         bool[] memory isFeePaying = getIsFeePayingReserves(buyReserves);
 
@@ -82,7 +83,8 @@ contract KyberRateHelper is IKyberRateHelper, Withdrawable2, Utils4 {
         }
 
         A.srcAmount = optionalSellAmount > 0 ? optionalSellAmount : 1000;
-        sellReserves = matchingEngine.getReservesPerTokenSrc(token);
+        // TODO: Fix it
+        // sellReserves = matchingEngine.getReservesPerTokenSrc(token);
         sellRates = new uint[](sellReserves.length);
         isFeePaying = getIsFeePayingReserves(sellReserves);
 
