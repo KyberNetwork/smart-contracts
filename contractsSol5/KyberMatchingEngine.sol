@@ -140,7 +140,9 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             extraProcess = ExtraProcessing.NotRequired;
         }
 
-        bytes unpackedHint;
+        TradeType tradeType;
+        bytes memory unpackedHint;
+
         unpackedHint = (isTokenToToken) ? unpackT2THint(hint) : hint;
         (
             tradeType,
@@ -152,7 +154,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         // if mask out, apply masking out logic
         if (tradeType == TradeType.MaskOut) {
-            bytes8[] allReserves = (dest == ETH_TOKEN_ADDRESS) ? reservesPerTokenSrc[address(src)] : reservesPerTokenDest[address(dest)];
+            bytes8[] memory allReserves = (dest == ETH_TOKEN_ADDRESS) ? reservesPerTokenSrc[address(src)] : reservesPerTokenDest[address(dest)];
             reserveIds = maskOutReserves(allReserves, reserveIds);
         }
 
@@ -322,18 +324,6 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         return ([bestReserve.index]);
     }
-
-    /// @dev When calling this function, either src or dest MUST be ETH. Cannot search for token -> token
-    /// @dev If the iterated reserve is fee paying, then we have to farther deduct the network fee from srcAmount
-    /// @param reserveArr reserve candidates to be iterated over
-    /// @param src source token.
-    /// @param dest destination token.
-    /// @param srcAmount For src -> ETH, user srcAmount. For ETH -> dest, it's tradeWei minus deducted fees.
-    ///     notice, t2e network fee not deducted yet, till we know if e2t reseve is fee paying.
-    /// @param networkFee will be used differently for token -> ETH / ETH -> token
-    ///     For src -> ETH, network fee = networkFeeBps
-    ///     For ETH -> dest, network fee = tradeWei * networkFeeBps / BPS instead of networkFeeBps,
-    ///     because the srcAmount passed is not tradeWei. Hence, networkFee has to be calculated beforehand
 
     function getIsFeeAccountingReserves(bytes8[] memory reserveIds) internal view
         returns(bool[] memory feePayingArr)
