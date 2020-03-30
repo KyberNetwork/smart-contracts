@@ -298,8 +298,6 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             revert("total BPS != 10000");
         if (error == HintErrors.SplitsNotEmptyError)
             revert("splits must be empty");
-        if (error == HintErrors.ReserveIdDupError)
-            revert("duplicate reserveId");
     }
 
     function convertReserveIdToAddress(bytes8 reserveId) internal view returns (address);
