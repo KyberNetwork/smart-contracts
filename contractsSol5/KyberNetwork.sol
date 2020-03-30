@@ -172,7 +172,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param reserve The reserve address.
     /// @param startIndex to search in reserve array.
     function removeReserve(address reserve, uint startIndex) public onlyOperator returns(bool) {
-        bytes8 reserveId = matchingEngine[0].removeReserve(reserve);
+        bytes8 reserveId = matchingEngine.removeReserve(reserve);
 
         require(kyberStorage.removeReserve(reserve, startIndex));
 
@@ -201,7 +201,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         onlyOperator
         returns(bool)
     {
-        require(matchingEngine[0].listPairForReserve(IKyberReserve(reserve), token, ethToToken, tokenToEth, add));
+        require(matchingEngine.listPairForReserve(IKyberReserve(reserve), token, ethToToken, tokenToEth, add));
 
         if (ethToToken) {
             emit ListReservePairs(reserve, ETH_TOKEN_ADDRESS, token, add);
