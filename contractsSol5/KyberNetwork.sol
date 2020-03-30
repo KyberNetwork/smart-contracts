@@ -9,6 +9,7 @@ import "./IKyberReserve.sol";
 import "./IKyberFeeHandler.sol";
 import "./IKyberDAO.sol";
 import "./IKyberMatchingEngine.sol";
+import "./IKyberStorage.sol";
 import "./IGasHelper.sol";
 
 /*
@@ -33,9 +34,10 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     uint  internal constant DEFAULT_NETWORK_FEE_BPS = 25;    // till we read value from DAO
     uint  internal constant MAX_APPROVED_PROXIES = 2;        // limit number of proxies that can trade here.
 
-    IKyberFeeHandler[]      internal feeHandler;
-    IKyberDAO[]             internal kyberDAO;
-    IKyberMatchingEngine[]  internal matchingEngine;
+    IKyberFeeHandler        public   feeHandler;
+    IKyberDAO               public   kyberDAO;
+    IKyberMatchingEngine    public   matchingEngine;
+    IKyberStorage           public   kyberStorage;
     IGasHelper              internal gasHelper;
 
     NetworkFeeData internal networkFeeData; // data is feeBps and expiry block
@@ -43,9 +45,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     bool internal isEnabled = false; // is network enabled
 
     mapping(address=>bool) internal kyberProxyContracts;
-    address[] internal kyberProxyArray;
 
-    IKyberReserve[] internal reserves;
     mapping(address=>address) public reserveRebateWallet;
 
     struct NetworkFeeData {
@@ -154,8 +154,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         address payable rebateWallet)
         external onlyOperator returns(bool)
     {
-        require(matchingEngine[0].addReserve(reserve, reserveId, reserveType));
-        reserves.push(IKyberReserve(reserve));
+        require(matchingEngine.addReserve(reserve, reserveId, reserveType));
+        require(kyberStorage.addReserve(reserve));
 
         reserveRebateWallet[reserve] = rebateWallet;
 
@@ -171,21 +171,9 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param reserve The reserve address.
     /// @param startIndex to search in reserve array.
     function removeReserve(address reserve, uint startIndex) public onlyOperator returns(bool) {
-        bytes8 reserveId = matchingEngine[0].removeReserve(reserve);
+        bytes8 reserveId = matchingEngine.removeReserve(reserve);
 
-        uint reserveIndex = 2 ** 255;
-
-        for (uint i = startIndex; i < reserves.length; i++) {
-            if (reserves[i] == IKyberReserve(reserve)) {
-                reserveIndex = i;
-                break;
-            }
-        }
-
-        require(reserveIndex != 2 ** 255, "reserve ?");
-
-        reserves[reserveIndex] = reserves[reserves.length - 1];
-        reserves.length--;
+        require(kyberStorage.removeReserve(reserve, startIndex));
 
         reserveRebateWallet[reserve] = address(0);
 
@@ -212,7 +200,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         onlyOperator
         returns(bool)
     {
-        require(matchingEngine[0].listPairForReserve(IKyberReserve(reserve), token, ethToToken, tokenToEth, add));
+        require(matchingEngine.listPairForReserve(IKyberReserve(reserve), token, ethToToken, tokenToEth, add));
 
         if (ethToToken) {
             emit ListReservePairs(reserve, ETH_TOKEN_ADDRESS, token, add);
@@ -244,66 +232,60 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     {
         require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
         require(_matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
-
-        if ((feeHandler.length == 0) || (_feeHandler != feeHandler[0])) {
-
-            if (feeHandler.length > 0) {
-                feeHandler.push(feeHandler[0]);
-                feeHandler[0] = _feeHandler;
-            } else {
-                feeHandler.push(_feeHandler);
-            }
-
+        if (feeHandler != _feeHandler) {
+            feeHandler = _feeHandler;
             emit FeeHandlerUpdated(_feeHandler);
         }
 
-        if (matchingEngine.length == 0 || _matchingEngine != matchingEngine[0]) {
-            if (matchingEngine.length > 0) {
-                matchingEngine.push(matchingEngine[0]);
-                matchingEngine[0] = _matchingEngine;
-            } else {
-                matchingEngine.push(_matchingEngine);
-            }
-
+        if (matchingEngine != _matchingEngine) {
+            matchingEngine = _matchingEngine;
             emit MatchingEngineUpdated(_matchingEngine);
         }
 
         if ((_gasHelper != IGasHelper(0)) && (_gasHelper != gasHelper)) {
-            emit GasHelperUpdated(_gasHelper);
             gasHelper = _gasHelper;
+            emit GasHelperUpdated(_gasHelper);
         }
+
+        require(kyberStorage.setContracts(_feeHandler, _matchingEngine));
     }
 
     event KyberDAOUpdated(IKyberDAO newDAO);
 
     function setDAOContract(IKyberDAO _kyberDAO) external onlyAdmin {
         require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
-
-        if (kyberDAO.length > 0) {
-            kyberDAO.push(kyberDAO[0]);
-            kyberDAO[0] = _kyberDAO;
-        } else {
-            kyberDAO.push(_kyberDAO);
+        if (kyberDAO != _kyberDAO) {
+            kyberDAO = _kyberDAO;
+            require(kyberStorage.setDAOContract(_kyberDAO));
+            emit KyberDAOUpdated(_kyberDAO);
         }
-
-        emit KyberDAOUpdated(_kyberDAO);
     }
 
     event KyberNetworkParamsSet(uint maxGasPrice, uint negligibleRateDiffBps);
 
     function setParams(uint _maxGasPrice, uint _negligibleRateDiffBps) external onlyAdmin {
         maxGasPriceValue = _maxGasPrice;
-        require(matchingEngine[0].setNegligbleRateDiffBps(_negligibleRateDiffBps));
+        require(matchingEngine.setNegligbleRateDiffBps(_negligibleRateDiffBps));
         emit KyberNetworkParamsSet(maxGasPriceValue, _negligibleRateDiffBps);
+    }
+
+    event KyberStorageUpdated(IKyberStorage newStorage);
+
+    function setKyberStorage(IKyberStorage _kyberStorage) external onlyAdmin {
+        require(_kyberStorage != IKyberStorage(0), "storage 0");
+        if (kyberStorage != _kyberStorage) {
+            kyberStorage = _kyberStorage;
+            emit KyberStorageUpdated(_kyberStorage);
+        }
     }
 
     event KyberNetworkSetEnable(bool isEnabled);
 
     function setEnable(bool _enable) external onlyAdmin {
         if (_enable) {
-            require(feeHandler[0] != IKyberFeeHandler(0), "feeHandler 0");
-            require(matchingEngine[0] != IKyberMatchingEngine(0), "matchingEngine 0");
-            require(kyberProxyArray.length > 0, "proxy 0");
+            require(feeHandler != IKyberFeeHandler(0), "feeHandler 0");
+            require(matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
+            require(kyberStorage.isKyberProxyAdded(), "proxy 0");
         }
         isEnabled = _enable;
 
@@ -317,46 +299,21 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     function addKyberProxy(address networkProxy) external onlyAdmin {
         require(networkProxy != address(0), "proxy 0");
         require(!kyberProxyContracts[networkProxy], "proxy exists");
-        require(kyberProxyArray.length < MAX_APPROVED_PROXIES, "Max 2 proxy");
-
-        kyberProxyArray.push(networkProxy);
+        require(kyberStorage.addKyberProxy(networkProxy, MAX_APPROVED_PROXIES));
 
         kyberProxyContracts[networkProxy] = true;
+
         emit KyberProxyAdded(networkProxy);
     }
 
     function removeKyberProxy(address networkProxy) external onlyAdmin {
         require(kyberProxyContracts[networkProxy], "proxy not found");
 
-        uint proxyIndex = 2 ** 255;
+        require(kyberStorage.removeKyberProxy(networkProxy));
 
-        for (uint i = 0; i < kyberProxyArray.length; i++) {
-            if (kyberProxyArray[i] == networkProxy) {
-                proxyIndex = i;
-                break;
-            }
-        }
-
-        kyberProxyArray[proxyIndex] = kyberProxyArray[kyberProxyArray.length - 1];
-        kyberProxyArray.length--;
-
-        kyberProxyContracts[networkProxy] = false;
         emit KyberProxyRemoved(networkProxy);
     }
 
-    /// @notice should be called off chain
-    /// @dev get an array of all reserves
-    /// @return An array of all reserves
-    function getReserves() external view returns(IKyberReserve[] memory) {
-        return reserves;
-    }
-
-    /// @notice should be called off chain
-    /// @dev get an array of KyberNetworkProxies
-    /// @return An array of both KyberNetworkProxies
-    function getKyberProxies() external view returns(address[] memory proxies) {
-        return kyberProxyArray;
-    }
 
     //backward compatible
     /// @dev gets the expected and slippage rate for exchanging src -> dest token
@@ -459,18 +416,6 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         tData.ethToToken.decimals = getDecimals(dest);
     }
 
-    /// @notice should be called off chain
-    /// @dev returns list of DAO, feeHandler and matchingEngine contracts used
-    /// @dev index 0 is currently used contract address, indexes > 0 are older versions
-    function getContracts() external view
-        returns(
-            IKyberDAO[] memory daoAddresses,
-            IKyberFeeHandler[] memory feeHandlerAddresses,
-            IKyberMatchingEngine[] memory matchingEngineAddresses)
-    {
-        return(kyberDAO, feeHandler, matchingEngine);
-    }
-
     /// @notice returns some data about the network
     /// @param negligibleDiffBps Neligible rate difference (in basis pts) when searching best rate
     /// @param networkFeeBps Network fees to be charged (in basis pts)
@@ -482,7 +427,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         uint expiryBlock)
     {
         (networkFeeBps, expiryBlock) = readNetworkFeeData();
-        negligibleDiffBps = matchingEngine[0].negligibleRateDiffBps();
+        negligibleDiffBps = matchingEngine.negligibleRateDiffBps();
         return(negligibleDiffBps, networkFeeBps, expiryBlock);
     }
 
@@ -590,7 +535,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         bool[] memory isFeePaying;
         bytes8[] memory ids;
 
-        (results, reserveAddresses, rates, splitValuesBps, isFeePaying, ids) = matchingEngine[0].calcRatesAndAmounts(
+        (results, reserveAddresses, rates, splitValuesBps, isFeePaying, ids) = matchingEngine.calcRatesAndAmounts(
             src, dest, tData.tokenToEth.decimals, tData.ethToToken.decimals, info, hint);
 
         unpackResults(results, reserveAddresses, rates, splitValuesBps, isFeePaying, ids, tData);
@@ -670,7 +615,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
         // Send total fee amount to fee handler with reserve data.
         require(
-            feeHandler[0].handleFees.value(sentFee)(rebateWallets, rebatePercentBps,
+            feeHandler.handleFees.value(sentFee)(rebateWallets, rebatePercentBps,
             tData.input.platformWallet, tData.platformFeeWei),
             "handle fee fail"
         );
@@ -962,8 +907,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         uint expiryBlock;
         (networkFeeBps, expiryBlock) = readNetworkFeeData();
 
-        if (expiryBlock < block.number && kyberDAO.length > 0) {
-            (networkFeeBps, expiryBlock) = kyberDAO[0].getLatestNetworkFeeData();
+        if (expiryBlock < block.number && kyberDAO != IKyberDAO(0)) {
+            (networkFeeBps, expiryBlock) = kyberDAO.getLatestNetworkFeeData();
         }
     }
 
@@ -976,8 +921,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
         (networkFeeBps, expiryBlock) = readNetworkFeeData();
 
-        if (expiryBlock < block.number && kyberDAO.length > 0) {
-            (networkFeeBps, expiryBlock) = kyberDAO[0].getLatestNetworkFeeDataWithCache();
+        if (expiryBlock < block.number && kyberDAO != IKyberDAO(0)) {
+            (networkFeeBps, expiryBlock) = kyberDAO.getLatestNetworkFeeDataWithCache();
             updateNetworkFee(expiryBlock, networkFeeBps);
         }
     }
