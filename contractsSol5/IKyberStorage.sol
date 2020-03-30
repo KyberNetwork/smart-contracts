@@ -23,10 +23,10 @@ contract IKyberStorage {
         external
         returns (bool);
 
-    function convertReserveIdToAddress(bytes8[] reserveIds)
+    function convertReserveIdToAddress(bytes8[] calldata reserveIds)
         external
         view
-        returns (address[] reserveAddresses);
+        returns (address[] memory reserveAddresses);
 
     function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
         external

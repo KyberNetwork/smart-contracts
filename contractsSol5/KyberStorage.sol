@@ -135,10 +135,10 @@ contract KyberStorage is IKyberStorage {
         return reserves;
     }
 
-    function convertReserveIdToAddress(bytes8[] reserveIds)
+    function convertReserveIdToAddress(bytes8[] calldata reserveIds)
         external
         view
-        returns (address[] reserveAddresses)
+        returns (address[] memory reserveAddresses)
     {
         reserveAddresses = new bytes8[](reserveIds.length);
         for (uint256 i = 0; i < reserveIds.length; i++) {
