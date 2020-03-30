@@ -21,7 +21,6 @@ contract KyberStorage is IKyberStorage {
     IKyberMatchingEngine[] internal matchingEngine;
     IKyberReserve[] internal reserves;
     IKyberNetworkProxy[] internal kyberProxyArray;
-    mapping(address => bool) internal kyberProxyContracts;
 
     mapping(bytes8 => address[]) public reserveIdToAddresses;
     mapping(address => bytes8) internal reserveAddressToId;
@@ -152,13 +151,10 @@ contract KyberStorage is IKyberStorage {
         onlyNetwork
         returns (bool)
     {
-        require(networkProxy != address(0), "proxy 0");
-        require(!kyberProxyContracts[networkProxy], "proxy exists");
         require(kyberProxyArray.length < max_approved_proxies, "Max 2 proxy");
 
         kyberProxyArray.push(IKyberNetworkProxy(networkProxy));
 
-        kyberProxyContracts[networkProxy] = true;
         return true;
     }
 
@@ -167,8 +163,6 @@ contract KyberStorage is IKyberStorage {
         onlyNetwork
         returns (bool)
     {
-        require(kyberProxyContracts[networkProxy], "proxy not found");
-
         uint256 proxyIndex = 2**255;
 
         for (uint256 i = 0; i < kyberProxyArray.length; i++) {
@@ -182,7 +176,6 @@ contract KyberStorage is IKyberStorage {
             1];
         kyberProxyArray.pop();
 
-        kyberProxyContracts[networkProxy] = false;
         return true;
     }
 
@@ -199,9 +192,5 @@ contract KyberStorage is IKyberStorage {
 
     function isKyberProxyAdded() external view returns (bool) {
         return (kyberProxyArray.length > 0);
-    }
-
-    function isValidProxyContract(address c) external view returns (bool) {
-        return kyberProxyContracts[c];
     }
 }

@@ -35,6 +35,4 @@ contract IKyberStorage {
     function removeKyberProxy(address networkProxy) external returns (bool);
 
     function isKyberProxyAdded() external view returns (bool);
-
-    function isValidProxyContract(address c) external view returns (bool);
 }

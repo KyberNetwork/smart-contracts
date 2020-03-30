@@ -44,6 +44,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     uint internal maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool internal isEnabled = false; // is network enabled
 
+    mapping(address=>bool) internal kyberProxyContracts;
+
     mapping(address=>address) public reserveRebateWallet;
 
     struct NetworkFeeData {
@@ -245,7 +247,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
             emit GasHelperUpdated(_gasHelper);
         }
 
-        kyberStorage.setContracts(_feeHandler, _matchingEngine);
+        require(kyberStorage.setContracts(_feeHandler, _matchingEngine));
     }
 
     event KyberDAOUpdated(IKyberDAO newDAO);
@@ -254,7 +256,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
         if (kyberDAO != _kyberDAO) {
             kyberDAO = _kyberDAO;
-            kyberStorage.setDAOContract(_kyberDAO);
+            require(kyberStorage.setDAOContract(_kyberDAO));
             emit KyberDAOUpdated(_kyberDAO);
         }
     }
@@ -263,11 +265,12 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
     function setParams(uint _maxGasPrice, uint _negligibleRateDiffBps) external onlyAdmin {
         maxGasPriceValue = _maxGasPrice;
-        require(matchingEngine[0].setNegligbleRateDiffBps(_negligibleRateDiffBps));
+        require(matchingEngine.setNegligbleRateDiffBps(_negligibleRateDiffBps));
         emit KyberNetworkParamsSet(maxGasPriceValue, _negligibleRateDiffBps);
     }
 
     event KyberStorageUpdated(IKyberStorage newStorage);
+
     function setKyberStorage(IKyberStorage _kyberStorage) external onlyAdmin {
         require(_kyberStorage != IKyberStorage(0), "storage 0");
         if (kyberStorage != _kyberStorage) {
@@ -294,12 +297,20 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
     /// @dev no. of KyberNetworkProxies are capped
     function addKyberProxy(address networkProxy) external onlyAdmin {
+        require(networkProxy != address(0), "proxy 0");
+        require(!kyberProxyContracts[networkProxy], "proxy exists");
         require(kyberStorage.addKyberProxy(networkProxy, MAX_APPROVED_PROXIES));
+
+        kyberProxyContracts[networkProxy] = true;
+
         emit KyberProxyAdded(networkProxy);
     }
 
     function removeKyberProxy(address networkProxy) external onlyAdmin {
+        require(kyberProxyContracts[networkProxy], "proxy not found");
+
         require(kyberStorage.removeKyberProxy(networkProxy));
+
         emit KyberProxyRemoved(networkProxy);
     }
 
@@ -871,7 +882,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @return true if tradeInput is valid
     function verifyTradeInputValid(TradeInput memory input, uint networkFeeBps) internal view returns(bool) {
         require(isEnabled, "!network");
-        require(kyberStorage.isValidProxyContract(msg.sender), "bad sender");
+        require(kyberProxyContracts[msg.sender], "bad sender");
         require(tx.gasprice <= maxGasPriceValue, "gas price");
         require(input.srcAmount <= MAX_QTY, "srcAmt > MAX_QTY");
         require(input.srcAmount != 0, "0 srcAmt");
