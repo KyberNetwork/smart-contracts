@@ -154,6 +154,10 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         ) = parseHint(unpackedHint);
         if (error != HintErrors.NoError) return ([], [], [], ExtraProcessing.NotRequired);
 
+        if (tradeType == TradeType.MaskIn) {
+            splitValuesBps = populateSplitValuesBps(reserveIds.length);
+        }
+
         // if mask out, apply masking out logic
         if (tradeType == TradeType.MaskOut) {
             bytes8[] memory allReserves = (dest == ETH_TOKEN_ADDRESS) ? reservesPerTokenSrc[address(src)] : reservesPerTokenDest[address(dest)];
