@@ -6,13 +6,6 @@ import "./IERC20.sol";
 /// @title Kyber Network interface
 interface IKyberNetwork {
 
-    // backward compatible: don't modify
-    function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
-        returns (uint expectedRate, uint worstRate);
-
-    function tradeWithHint(address trader, ERC20 src, uint srcAmount, ERC20 dest, address destAddress,
-        uint maxDestAmount, uint minConversionRate, address walletId, bytes calldata hint) external payable returns(uint);
-
     function enabled() external view returns(bool);
     function maxGasPrice() external view returns(uint);
 
