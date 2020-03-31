@@ -702,7 +702,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
                 feeAccountedBps[i] = isFeeCounted[i] ? networkFee : 0;
             } else {
                 require(srcAmount >= networkFee, "srcAmount is less than networkFee");
-                srcAmounts[i] = (srcAmount - networkFee) * splitValuesBps[i] / BPS;
+                srcAmounts[i] = isFeeCounted[i] ? (srcAmount - networkFee) * splitValuesBps[i] / BPS :
+                    srcAmount * splitValuesBps[i] / BPS;
             }
 
             rates[i] = reserve.getConversionRate(
