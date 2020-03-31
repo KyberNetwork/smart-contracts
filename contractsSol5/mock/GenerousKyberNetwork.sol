@@ -102,7 +102,7 @@ contract GenerousKyberNetwork is KyberNetwork {
     }
     /* solhint-enable function-max-lines */
 
-    function removeKyberProxy(address networkProxy) external onlyAdmin {
+    function removeKyberProxy(address networkProxy) external {
         // reduce extra gas cost of deploying this contract
         networkProxy;
     }

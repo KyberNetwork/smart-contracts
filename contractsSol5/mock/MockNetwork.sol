@@ -52,7 +52,7 @@ contract MockNetwork is KyberNetwork {
         IKyberMatchingEngine _matchingEngine,
         IGasHelper _gasHelper
     )
-        external onlyAdmin
+        external
     {
         // require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
         // require(_matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
