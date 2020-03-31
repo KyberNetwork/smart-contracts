@@ -650,6 +650,9 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         require(tradingReserves.ids.length == tradingReserves.isFeePaying.length, "ids and feePaying mismatch");
 
         if (extraProcess != IKyberMatchingEngine.ExtraProcessing.NotRequired) {
+            tradingReserves.rates = new uint[](tradingReserves.ids.length);
+            tradingReserves.addresses = new IKyberReserve[](tradingReserves.ids.length);
+        } else {
             getTradeDataExtraProcessing(
                 tradingReserves,
                 token,
