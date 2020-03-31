@@ -1,6 +1,6 @@
 pragma  solidity 0.5.11;
 
-import "./utils/Withdrawable2.sol";
+import "./utils/Withdrawable3.sol";
 import "./utils/Utils4.sol";
 import "./utils/zeppelin/ReentrancyGuard.sol";
 import "./utils/zeppelin/SafeERC20.sol";
@@ -26,7 +26,7 @@ import "./IGasHelper.sol";
 *       - trade.
 */
 
-contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
+contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
 
     using SafeERC20 for IERC20;
 
@@ -55,7 +55,7 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         uint16 feeBps;
     }
 
-    constructor(address _admin) public Withdrawable2(_admin) {
+    constructor(address _admin) public Withdrawable3(_admin) {
         updateNetworkFee(block.number, DEFAULT_NETWORK_FEE_BPS);
     }
 
@@ -154,8 +154,9 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param rebateWallet Rebate wallet address for this reserve.
     function addReserve(address reserve, bytes8 reserveId, IKyberMatchingEngine.ReserveType reserveType,
         address payable rebateWallet)
-        external onlyOperator returns(bool)
+        external returns(bool)
     {
+        onlyOperator();
         require(matchingEngine.addReserve(reserve, reserveId, reserveType));
         require(kyberStorage.addReserve(reserve, reserveId));
 
@@ -179,7 +180,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @dev removes a reserve from Kyber network.
     /// @param reserve The reserve address.
     /// @param startIndex to search in reserve array.
-    function removeReserve(address reserve, uint startIndex) public onlyOperator returns(bool) {
+    function removeReserve(address reserve, uint startIndex) public returns(bool) {
+        onlyOperator();
         bytes8 reserveId = matchingEngine.removeReserve(reserve);
 
         require(kyberStorage.removeReserve(reserve, startIndex));
@@ -195,7 +197,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         return true;
     }
 
-    function rmReserve(address reserve) external onlyOperator returns(bool) {
+    function rmReserve(address reserve) external returns(bool) {
+        onlyOperator();
         return removeReserve(reserve, 0);
     }
 
@@ -210,9 +213,9 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param add If true then list this pair, otherwise unlist it.
     function listPairForReserve(address reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add)
         external
-        onlyOperator
         returns(bool)
     {
+        onlyOperator();
         require(matchingEngine.listPairForReserve(IKyberReserve(reserve), token, ethToToken, tokenToEth, add));
 
         if (ethToToken) {
@@ -241,8 +244,9 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         IKyberMatchingEngine _matchingEngine,
         IGasHelper _gasHelper
     )
-        external onlyAdmin
+        external
     {
+        onlyAdmin();
         require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
         require(_matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
         if (feeHandler != _feeHandler) {
@@ -265,7 +269,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
     event KyberDAOUpdated(IKyberDAO newDAO);
 
-    function setDAOContract(IKyberDAO _kyberDAO) external onlyAdmin {
+    function setDAOContract(IKyberDAO _kyberDAO) external {
+        onlyAdmin();
         require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
         if (kyberDAO != _kyberDAO) {
             kyberDAO = _kyberDAO;
@@ -276,7 +281,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
     event KyberNetworkParamsSet(uint maxGasPrice, uint negligibleRateDiffBps);
 
-    function setParams(uint _maxGasPrice, uint _negligibleRateDiffBps) external onlyAdmin {
+    function setParams(uint _maxGasPrice, uint _negligibleRateDiffBps) external {
+        onlyAdmin();
         maxGasPriceValue = _maxGasPrice;
         require(matchingEngine.setNegligbleRateDiffBps(_negligibleRateDiffBps));
         emit KyberNetworkParamsSet(maxGasPriceValue, _negligibleRateDiffBps);
@@ -284,7 +290,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
     event KyberStorageUpdated(IKyberStorage newStorage);
 
-    function setKyberStorage(IKyberStorage _kyberStorage) external onlyAdmin {
+    function setKyberStorage(IKyberStorage _kyberStorage) external {
+        onlyAdmin();
         require(_kyberStorage != IKyberStorage(0), "storage 0");
         if (kyberStorage != _kyberStorage) {
             kyberStorage = _kyberStorage;
@@ -294,7 +301,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
 
     event KyberNetworkSetEnable(bool isEnabled);
 
-    function setEnable(bool _enable) external onlyAdmin {
+    function setEnable(bool _enable) external {
+        onlyAdmin();
         if (_enable) {
             require(feeHandler != IKyberFeeHandler(0), "feeHandler 0");
             require(matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
@@ -309,7 +317,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
     event KyberProxyRemoved(address proxy);
 
     /// @dev no. of KyberNetworkProxies are capped
-    function addKyberProxy(address networkProxy) external onlyAdmin {
+    function addKyberProxy(address networkProxy) external {
+        onlyAdmin();
         require(networkProxy != address(0), "proxy 0");
         require(!kyberProxyContracts[networkProxy], "proxy exists");
         require(kyberStorage.addKyberProxy(networkProxy, MAX_APPROVED_PROXIES));
@@ -319,7 +328,8 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         emit KyberProxyAdded(networkProxy);
     }
 
-    function removeKyberProxy(address networkProxy) external onlyAdmin {
+    function removeKyberProxy(address networkProxy) external {
+        onlyAdmin();
         require(kyberProxyContracts[networkProxy], "proxy not found");
 
         require(kyberStorage.removeKyberProxy(networkProxy));
