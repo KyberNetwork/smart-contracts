@@ -17,15 +17,15 @@ contract PermissionGroups3 {
     }
 
     function onlyAdmin() internal view {
-        require(msg.sender == admin);
+        require(msg.sender == admin, "Only admin");
     }
 
     function onlyOperator() internal view {
-        require(operators[msg.sender]);
+        require(operators[msg.sender], "Only operator");
     }
 
     function onlyAlerter() internal view {
-        require(alerters[msg.sender]);
+        require(alerters[msg.sender], "Only alerter");
     }
 
     function getOperators () external view returns(address[] memory) {
