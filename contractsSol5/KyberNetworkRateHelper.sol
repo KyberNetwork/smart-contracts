@@ -83,7 +83,7 @@ contract KyberNetworkRateHelper is IKyberNetworkRateHelper, Utils4 {
             bytes8[] memory ids
         )
     {
-        require(token == ETH_TOKEN_ADDRESS, "should not call eth-eth");
+        require(token != ETH_TOKEN_ADDRESS, "should not call eth-eth");
 
         TradingReserves memory tradingReserves;
         tradingReserves.decimals = tokenDecimals;
@@ -175,6 +175,7 @@ contract KyberNetworkRateHelper is IKyberNetworkRateHelper, Utils4 {
                 }
             }
         }
+        require(actualSrcAmount > 0, "src amount is 0");
 
         for(uint i = 0; i < tradingReserves.ids.length; i++) {
             tradingReserves.addresses[i] = IKyberReserve(convertReserveIdToAddress(tradingReserves.ids[i]));

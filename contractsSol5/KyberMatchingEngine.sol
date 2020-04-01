@@ -57,11 +57,48 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     function addReserve(address reserve, bytes8 reserveId, ReserveType resType) external
         onlyNetwork returns (bool)
     {
-        reserve;
+        require(reserveAddressToId[reserve] == bytes8(0), "reserve has id");
+        require(reserveId != 0, "reserveId = 0");
         require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad type");
         require(feePayingPerType != 0xffffffff, "Fee paying not set");
 
+        if (reserveIdToAddresses[reserveId].length == 0) {
+            reserveIdToAddresses[reserveId].push(reserve);
+        } else {
+            require(reserveIdToAddresses[reserveId][0] == address(0), "reserveId taken");
+            reserveIdToAddresses[reserveId][0] = reserve;
+        }
+
+        reserveAddressToId[reserve] = reserveId;
+
         reserveType[reserveId] = uint(resType);
+        return true;
+    }
+
+    function removeReserve(address reserve) external onlyNetwork returns (bytes8) {
+        require(reserveAddressToId[reserve] != bytes8(0), "reserve -> 0 reserveId");
+        bytes8 reserveId = convertAddressToReserveId(reserve);
+
+        reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
+        reserveIdToAddresses[reserveId][0] = address(0);
+        reserveAddressToId[reserve] = bytes8(0);
+
+        return reserveId;
+    }
+
+    function listPairForReserve(IKyberReserve reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add) 
+        external onlyNetwork returns (bool) 
+    {
+        require(reserveAddressToId[address(reserve)] != bytes8(0), "reserve -> 0 reserveId");
+        if (ethToToken) {
+            listPairs(IKyberReserve(reserve), token, false, add);
+        }
+
+        if (tokenToEth) {
+            listPairs(IKyberReserve(reserve), token, true, add);
+        }
+
+        setDecimals(token);
         return true;
     }
 
@@ -88,12 +125,20 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         isFeePaying = (feePayingPerType & (1 << reserveType[reserveId])) > 0;
     }
 
-    function getReservesPerTokenSrc(IERC20 token) external view returns(bytes8[] memory reserves) {
-        reserves = reservesPerTokenSrc[address(token)];
+    function getReservesPerTokenSrc(IERC20 token) external view returns(IKyberReserve[] memory reserves) {
+        bytes8[] memory reserveIDs = reservesPerTokenSrc[address(token)];
+        reserves = new IKyberReserve[](reserveIDs.length);
+        for(uint i = 0; i < reserveIDs.length; i++) {
+            reserves[i] = IKyberReserve(convertReserveIdToAddress(reserveIDs[i]));
+        }
     }
 
-    function getReservesPerTokenDest(IERC20 token) external view returns(bytes8[] memory reserves) {
-        reserves = reservesPerTokenDest[address(token)];
+    function getReservesPerTokenDest(IERC20 token) external view returns(IKyberReserve[] memory reserves) {
+        bytes8[] memory reserveIDs = reservesPerTokenDest[address(token)];
+        reserves = new IKyberReserve[](reserveIDs.length);
+        for(uint i = 0; i < reserveIDs.length; i++) {
+            reserves[i] = IKyberReserve(convertReserveIdToAddress(reserveIDs[i]));
+        }
     }
 
     function listPairs(IKyberReserve reserve, IERC20 token, bool isTokenToEth, bool add) internal {
@@ -139,7 +184,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             reserveIds = (dest == ETH_TOKEN_ADDRESS) ? reservesPerTokenSrc[address(src)] : reservesPerTokenDest[address(dest)];
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
             isFeeAccounted = getIsFeeAccountingReserves(reserveIds);
-            extraProcess = ExtraProcessing.NotRequired;
+            extraProcess = ExtraProcessing.NonSplitProcessing;
             return (reserveIds, splitValuesBps, isFeeAccounted, extraProcess);
         }
 
