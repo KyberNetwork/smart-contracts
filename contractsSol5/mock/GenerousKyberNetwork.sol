@@ -27,7 +27,7 @@ contract GenerousKyberNetwork is KyberNetwork {
 
         // amounts excluding fees
         // destAmount = printGas("start to calc", destAmount, Module.NETWORK);
-        calcRatesAndAmounts(tData.input.src, tData.input.dest, tData.input.srcAmount, tData, hint);
+        calcRatesAndAmounts(tData, hint);
         // destAmount = printGas("calcRatesAndAmounts", destAmount, Module.NETWORK);
 
         require(tData.rateOnlyNetworkFee > 0, "0 rate");

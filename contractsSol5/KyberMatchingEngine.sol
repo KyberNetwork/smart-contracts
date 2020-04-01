@@ -54,10 +54,9 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         networkContract = _networkContract;
     }
 
-    function addReserve(address reserve, bytes8 reserveId, ReserveType resType) external
+    function addReserve(bytes8 reserveId, ReserveType resType) external
         onlyNetwork returns (bool)
     {
-        reserve;
         require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad type");
         require(feePayingPerType != 0xffffffff, "Fee paying not set");
 
@@ -228,7 +227,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @param srcAmounts array of srcAmounts for each rate provided
     /// @param feeAccountedBps Fees charged in BPS, to be deducted from calculated destAmount
     /// @param rates rates provided by reserves
-    function doMatchTokenToEth(
+    function doMatch(
         IERC20 src,
         IERC20 dest,
         uint[] calldata srcAmounts,
@@ -259,77 +258,6 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         for (uint i = 0; i < rates.length; i++) {
             destAmount = srcAmounts[i] * rates[i] * (BPS - feeAccountedBps[i]) / BPS;
-            if (destAmount > bestReserve.destAmount) {
-                //best rate is highest rate
-                bestReserve.destAmount = destAmount;
-                bestReserve.index = i;
-            }
-
-            destAmounts[i] = destAmount;
-        }
-
-        if (bestReserve.destAmount == 0) {
-            reserveIndexes[0] = bestReserve.index;
-            return reserveIndexes;
-        }
-
-        reserveCandidates[0] = bestReserve.index;
-
-        // if this reserve pays fee its actual rate is less. so smallestRelevantRate is smaller.
-        bestReserve.destAmount = bestReserve.destAmount * BPS / (BPS + negligibleRateDiffBps);
-
-        for (uint i = 0; i < rates.length; i++) {
-            if (i == bestReserve.index) continue;
-            if (destAmounts[i] > bestReserve.destAmount) {
-                reserveCandidates[bestReserve.numRelevantReserves++] = i;
-            }
-        }
-
-        if (bestReserve.numRelevantReserves > 1) {
-            //when encountering small rate diff from bestRate. draw from relevant reserves
-            bestReserve.index = reserveCandidates[uint(blockhash(block.number-1)) % bestReserve.numRelevantReserves];
-        } else {
-            bestReserve.index = reserveCandidates[0];
-        }
-
-        reserveIndexes[0] = bestReserve.index;
-    }
-
-    /// @dev Returns the index of the best rate from the rates array for E2T side
-    /// @param src source token (not needed)
-    /// @param dest destination token not needed)
-    /// @param srcAmounts array of srcAmounts (after fees) for each rate provided
-    /// @param rates rates provided by reserves
-    function doMatchEthToToken(
-        IERC20 src,
-        IERC20 dest,
-        uint[] calldata srcAmounts,
-        uint[] calldata rates
-    ) external view
-    returns (
-        uint[] memory reserveIndexes
-        )
-    {
-        src;
-        dest;
-        reserveIndexes = new uint[](1);
-
-        //use destAmounts for comparison, but return the best rate
-        BestReserveInfo memory bestReserve;
-        bestReserve.numRelevantReserves = 1; // assume always best reserve will be relevant
-
-        //return zero rate for empty reserve array (unlisted token)?
-        if (rates.length == 0) {
-            reserveIndexes[0] = 0;
-            return reserveIndexes;
-        }
-
-        uint[] memory reserveCandidates = new uint[](rates.length);
-        uint[] memory destAmounts = new uint[](rates.length);
-        uint destAmount;
-
-        for (uint i = 0; i < rates.length; i++) {
-            destAmount = srcAmounts[i] * rates[i];
             if (destAmount > bestReserve.destAmount) {
                 //best rate is highest rate
                 bestReserve.destAmount = destAmount;
