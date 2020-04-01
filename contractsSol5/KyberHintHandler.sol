@@ -35,13 +35,14 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         pure
         returns(bytes memory hint)
     {
-        HintErrors valid = verifyData(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits);
+        bytes8[] memory seqT2EReserveIds = ensureReserveIdSeq(tokenToEthReserveIds);
 
+        HintErrors valid = verifyData(tokenToEthType, seqT2EReserveIds, tokenToEthSplits);
         if (valid != HintErrors.NoError) throwHintError(valid);
 
         hint = abi.encode(
             tokenToEthType,
-            tokenToEthReserveIds,
+            seqT2EReserveIds,
             tokenToEthSplits
         );
     }
@@ -60,13 +61,14 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         pure
         returns(bytes memory hint)
     {
-        HintErrors valid = verifyData(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits);
+        bytes8[] memory seqE2TReserveIds = ensureReserveIdSeq(ethToTokenReserveIds);
 
+        HintErrors valid = verifyData(ethToTokenType, seqE2TReserveIds, ethToTokenSplits);
         if (valid != HintErrors.NoError) throwHintError(valid);
 
         hint = abi.encode(
             ethToTokenType,
-            ethToTokenReserveIds,
+            seqE2TReserveIds,
             ethToTokenSplits
         );
     }
@@ -91,20 +93,23 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         pure
         returns(bytes memory hint)
     {
-        HintErrors validT2E = verifyData(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits);
-        HintErrors validE2T = verifyData(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits);
+        bytes8[] memory seqT2EReserveIds = ensureReserveIdSeq(tokenToEthReserveIds);
+        bytes8[] memory seqE2TReserveIds = ensureReserveIdSeq(ethToTokenReserveIds);
 
+        HintErrors validT2E = verifyData(tokenToEthType, seqT2EReserveIds, tokenToEthSplits);
         if (validT2E != HintErrors.NoError) throwHintError(validT2E);
+
+        HintErrors validE2T = verifyData(ethToTokenType, seqE2TReserveIds, ethToTokenSplits);
         if (validE2T != HintErrors.NoError) throwHintError(validE2T);
 
         bytes memory t2eHint = abi.encode(
             tokenToEthType,
-            tokenToEthReserveIds,
+            seqT2EReserveIds,
             tokenToEthSplits
         );
         bytes memory e2tHint = abi.encode(
             ethToTokenType,
-            ethToTokenReserveIds,
+            seqE2TReserveIds,
             ethToTokenSplits
         );
         hint = abi.encode(t2eHint, e2tHint);
@@ -248,6 +253,29 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         )
     {
         (t2eHint, e2tHint) = abi.decode(hint, (bytes, bytes));
+    }
+
+    /// @notice Ensures that the reserveIds passed when building hints are in increasing sequence
+    /// @param reserveIds Reserve IDs
+    /// @return returns a bytes8[] with reserveIds in increasing sequence
+    function ensureReserveIdSeq(
+        bytes8[] memory reserveIds
+    )
+        internal
+        pure
+        returns (bytes8[] memory)
+    {
+        for(uint i = 0; i < reserveIds.length; i++) {
+            for (uint j = i+1; j < reserveIds.length; j++) {
+                if (uint64(reserveIds[i]) > (uint64(reserveIds[j]))) {
+                    bytes8 temp = reserveIds[i];
+                    reserveIds[i] = reserveIds[j];
+                    reserveIds[j] = temp;
+                }
+            }
+        }
+
+        return reserveIds;
     }
 
     /// @notice Ensures that the data passed when building/parsing hints is valid
