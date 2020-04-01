@@ -9,12 +9,12 @@ contract OtherMatchingEngine is KyberMatchingEngine {
     }
 
 // return false instead of revert
-    function addReserve(address reserve, bytes8 reserveId, ReserveType resType)
+    function addReserve(address reserve, bytes32 reserveId, ReserveType resType)
         external
         onlyNetwork
         returns (bool)
     {
-        if (reserveAddressToId[reserve] != bytes8(0)) return false;
+        if (reserveAddressToId[reserve] != bytes32(0)) return false;
         if (reserveId == 0) return false;
         if (resType == ReserveType.NONE) return false;
         if (uint256(resType) > uint256(ReserveType.LAST)) return false;
@@ -38,19 +38,19 @@ contract OtherMatchingEngine is KyberMatchingEngine {
     function removeReserve(address reserve)
         external
         onlyNetwork
-        returns (bytes8)
+        returns (bytes32)
     {
         // return zero id instead of revert
-        if (reserveAddressToId[reserve] == bytes8(0)) {
-            return bytes8(0); // return id 0 instead of revert
+        if (reserveAddressToId[reserve] == bytes32(0)) {
+            return bytes32(0); // return id 0 instead of revert
         }
-        bytes8 reserveId = reserveAddressToId[reserve];
+        bytes32 reserveId = reserveAddressToId[reserve];
 
         reserveIdToAddresses[reserveId].push(
             reserveIdToAddresses[reserveId][0]
         );
         reserveIdToAddresses[reserveId][0] = address(0);
-        reserveAddressToId[reserve] = bytes8(0);
+        reserveAddressToId[reserve] = bytes32(0);
 
         return reserveId;
     }
@@ -62,7 +62,7 @@ contract OtherMatchingEngine is KyberMatchingEngine {
         bool tokenToEth,
         bool add
     ) external onlyNetwork returns (bool) {
-        if(reserveAddressToId[address(reserve)] == bytes8(0)) return false; // return false instead of revert
+        if(reserveAddressToId[address(reserve)] == bytes32(0)) return false; // return false instead of revert
         if (ethToToken) {
             listPairs(IKyberReserve(reserve), token, false, add);
         }

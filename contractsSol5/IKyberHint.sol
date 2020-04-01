@@ -21,7 +21,7 @@ interface IKyberHint {
 
     function buildTokenToEthHint(
         TradeType tokenToEthType,
-        bytes8[] calldata tokenToEthReserveIds,
+        bytes32[] calldata tokenToEthReserveIds,
         uint[] calldata tokenToEthSplits
     )
         external
@@ -30,7 +30,7 @@ interface IKyberHint {
 
     function buildEthToTokenHint(
         TradeType ethToTokenType,
-        bytes8[] calldata ethToTokenReserveIds,
+        bytes32[] calldata ethToTokenReserveIds,
         uint[] calldata ethToTokenSplits
     )
         external
@@ -39,10 +39,10 @@ interface IKyberHint {
 
     function buildTokenToTokenHint(
         TradeType tokenToEthType,
-        bytes8[] calldata tokenToEthReserveIds,
+        bytes32[] calldata tokenToEthReserveIds,
         uint[] calldata tokenToEthSplits,
         TradeType ethToTokenType,
-        bytes8[] calldata ethToTokenReserveIds,
+        bytes32[] calldata ethToTokenReserveIds,
         uint[] calldata ethToTokenSplits
     )
         external
@@ -54,7 +54,7 @@ interface IKyberHint {
         view
         returns(
             TradeType tokenToEthType,
-            bytes8[] memory tokenToEthReserveIds,
+            bytes32[] memory tokenToEthReserveIds,
             IKyberReserve[] memory tokenToEthAddresses,
             uint[] memory tokenToEthSplits
         );
@@ -64,7 +64,7 @@ interface IKyberHint {
         view
         returns(
             TradeType ethToTokenType,
-            bytes8[] memory ethToTokenReserveIds,
+            bytes32[] memory ethToTokenReserveIds,
             IKyberReserve[] memory ethToTokenAddresses,
             uint[] memory ethToTokenSplits
         );
@@ -74,11 +74,11 @@ interface IKyberHint {
         view
         returns(
             TradeType tokenToEthType,
-            bytes8[] memory tokenToEthReserveIds,
+            bytes32[] memory tokenToEthReserveIds,
             IKyberReserve[] memory tokenToEthAddresses,
             uint[] memory tokenToEthSplits,
             TradeType ethToTokenType,
-            bytes8[] memory ethToTokenReserveIds,
+            bytes32[] memory ethToTokenReserveIds,
             IKyberReserve[] memory ethToTokenAddresses,
             uint[] memory ethToTokenSplits
         );

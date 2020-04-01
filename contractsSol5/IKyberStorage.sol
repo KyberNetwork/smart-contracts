@@ -15,7 +15,7 @@ contract IKyberStorage {
 
     function setDAOContract(IKyberDAO _kyberDAO) external returns (bool);
 
-    function addReserve(address reserve, bytes8 reserveId)
+    function addReserve(address reserve, bytes32 reserveId)
         external
         returns (bool);
 
@@ -23,7 +23,7 @@ contract IKyberStorage {
         external
         returns (bool);
 
-    function convertReserveIdToAddress(bytes8[] calldata reserveIds)
+    function convertReserveIdToAddress(bytes32[] calldata reserveIds)
         external
         view
         returns (address[] memory reserveAddresses);
