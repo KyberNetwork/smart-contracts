@@ -234,9 +234,8 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         (tradeType, reserveIds, splits) = abi.decode(hint, (TradeType, bytes8[], uint[]));
         valid = verifyData(tradeType, reserveIds, splits);
 
-        if (valid == HintErrors.NoError) {
-            reserveIds = new bytes8[](reserveIds.length);
-        } else {
+        if (valid != HintErrors.NoError) {
+            reserveIds = new bytes8[](0);
             splits = new uint[](0);
         }
     }
