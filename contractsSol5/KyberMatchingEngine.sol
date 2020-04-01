@@ -131,7 +131,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             bytes8[] memory reserveIds,
             uint[] memory splitValuesBps,
             bool[] memory isFeeAccounted,
-            ProcessingWithRate processWithRate
+            ProcessWithRate processWithRate
         )
     {
         HintErrors error;
@@ -139,7 +139,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             reserveIds = (dest == ETH_TOKEN_ADDRESS) ? reservesPerTokenSrc[address(src)] : reservesPerTokenDest[address(dest)];
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
             isFeeAccounted = getIsFeeAccountingReserves(reserveIds);
-            processWithRate = ProcessingWithRate.Required;
+            processWithRate = ProcessWithRate.Required;
             return (reserveIds, splitValuesBps, isFeeAccounted, processWithRate);
         }
 
@@ -174,7 +174,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             ) = parseHint(hint);
         }
 
-        if (error != HintErrors.NoError) return (new bytes8[](0), new uint[](0), new bool[](0), ProcessingWithRate.NotRequired);
+        if (error != HintErrors.NoError) return (new bytes8[](0), new uint[](0), new bool[](0), ProcessWithRate.NotRequired);
 
         if (tradeType == TradeType.MaskIn) {
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
@@ -186,7 +186,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         }
 
         isFeeAccounted = getIsFeeAccountingReserves(reserveIds);
-        processWithRate = (tradeType == TradeType.Split) ? ProcessingWithRate.NotRequired : ProcessingWithRate.NonSplitProcessing;
+        processWithRate = (tradeType == TradeType.Split) ? ProcessWithRate.NotRequired : ProcessWithRate.Required;
     }
 
     /// @notice Logic for masking out reserves

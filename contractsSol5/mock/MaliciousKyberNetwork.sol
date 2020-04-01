@@ -121,7 +121,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
         uint srcAmountSoFar;
 
         for(uint i = 0; i < reservesData.addresses.length; i++) {
-            uint splitAmount = i == (reservesData.splitValuesBps.length - 1) ? (amount - srcAmountSoFar) : reservesData.splitValuesBps[i] * amount / BPS;
+            uint splitAmount = i == (reservesData.splitsBps.length - 1) ? (amount - srcAmountSoFar) : reservesData.splitsBps[i] * amount / BPS;
             srcAmountSoFar += splitAmount;
             callValue = (src == ETH_TOKEN_ADDRESS)? splitAmount : 0;
 

@@ -18,9 +18,9 @@ interface IKyberMatchingEngine {
         LAST
     }
 
-    enum ProcessingWithRate {
+    enum ProcessWithRate {
         NotRequired,
-        NonSplitProcessing
+        Required
         /* any other process type? */
     }
 
@@ -48,7 +48,7 @@ interface IKyberMatchingEngine {
             bytes8[] memory reserveIds,
             uint[] memory splitValuesBps,
             bool[] memory isFeeAccounted,
-            ProcessingWithRate processWithRate
+            ProcessWithRate processWithRate
         );
 
     function doMatchTokenToEth(
