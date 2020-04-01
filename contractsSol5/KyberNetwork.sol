@@ -47,7 +47,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     mapping(address=>bool) internal kyberProxyContracts;
 
     // mapping reserve ID to address, keeps an array of all previous reserve addresses with this ID
-    mapping(bytes8=>address[]) public reserveIdToAddresses;
+    mapping(bytes8=>address) public reserveIdToAddresses;
     mapping(address=>address) public reserveRebateWallet;
 
     struct NetworkFeeData {
@@ -130,13 +130,8 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         require(matchingEngine.addReserve(reserve, reserveId, reserveType));
         require(kyberStorage.addReserve(reserve, reserveId));
 
-        if (reserveIdToAddresses[reserveId].length == 0) {
-            reserveIdToAddresses[reserveId].push(reserve);
-        } else {
-            require(reserveIdToAddresses[reserveId][0] == address(0), "reserveId taken");
-            reserveIdToAddresses[reserveId][0] = reserve;
-        }
-
+        reserveIdToAddresses[reserveId] = reserve;
+        
         reserveRebateWallet[reserve] = rebateWallet;
 
         emit AddReserveToNetwork(reserve, reserveId, reserveType, rebateWallet, true);
@@ -155,10 +150,9 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         bytes8 reserveId = matchingEngine.removeReserve(reserve);
 
         require(kyberStorage.removeReserve(reserve, startIndex));
-        require(reserveIdToAddresses[reserveId][0] == reserve, "reserve and id mismatch");
+        require(reserveIdToAddresses[reserveId] == reserve, "reserve and id mismatch");
 
-        reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
-        reserveIdToAddresses[reserveId][0] = address(0);
+        reserveIdToAddresses[reserveId] = address(0);
 
         reserveRebateWallet[reserve] = address(0);
 
@@ -1036,7 +1030,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         view
         returns (IKyberReserve reserve)
     {
-        reserve = IKyberReserve(reserveIdToAddresses[reserveId][0]);
+        reserve = IKyberReserve(reserveIdToAddresses[reserveId]);
         require (reserve != IKyberReserve(0), "reserve not listed");
     }
 }
