@@ -234,9 +234,8 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         (tradeType, reserveIds, splits) = abi.decode(hint, (TradeType, bytes32[], uint[]));
         valid = verifyData(tradeType, reserveIds, splits);
 
-        if (valid == HintErrors.NoError) {
-            reserveIds = new bytes32[](reserveIds.length);
-        } else {
+        if (valid != HintErrors.NoError) {
+            reserveIds = new bytes32[](0);
             splits = new uint[](0);
         }
     }
@@ -271,6 +270,8 @@ contract KyberHintHandler is IKyberHint, Utils4 {
                     bytes32 temp = reserveIds[i];
                     reserveIds[i] = reserveIds[j];
                     reserveIds[j] = temp;
+                } else if (reserveIds[i] == reserveIds[j]) {
+                    throwHintError(HintErrors.ReserveIdDupError);
                 }
             }
         }
@@ -312,6 +313,8 @@ contract KyberHintHandler is IKyberHint, Utils4 {
     /// @notice Throws error message to user to indicate error on hint
     /// @param error Error type from HintErrors enum
     function throwHintError(HintErrors error) internal pure {
+        if (error == HintErrors.ReserveIdDupError)
+            revert("duplicate reserveId");
         if (error == HintErrors.ReserveIdEmptyError)
             revert("reserveIds cannot be empty");
         if (error == HintErrors.ReserveIdSplitsError)
