@@ -8,6 +8,8 @@ const MockNetwork = artifacts.require("MockNetwork.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const TradeLogic = artifacts.require("KyberMatchingEngine.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
+const KyberStorage = artifacts.require("KyberStorage.sol");
+const NetworkRateHelper = artifacts.require("KyberNetworkRateHelper.sol");
 const OtherMathcingEngine = artifacts.require("OtherMatchingEngine.sol");
 const NotPayableContract = artifacts.require("MockNotPayableContract.sol");
 
@@ -36,6 +38,7 @@ let platformFeeArray = [zeroBN, new BN(50), new BN(100)];
 
 let admin;
 let network;
+let networkRateHelper;
 let DAO;
 let networkProxy;
 let feeHandler;
@@ -103,6 +106,7 @@ contract('KyberNetwork', function(accounts) {
         network = await KyberNetwork.new(admin);
         // set proxy same as network
         proxyForFeeHandler = network;
+        networkRateHelper = await NetworkRateHelper.new(network.address);
 
         //init tokens
         for (let i = 0; i < numTokens; i++) {
@@ -130,6 +134,8 @@ contract('KyberNetwork', function(accounts) {
 
     describe("should test adding contracts, and adding / removing proxy.", async() => {
         let tempNetwork;
+        let tempStorage;
+        let tempNetworkRateHelper;
         let proxy1 = accounts[9];
         let proxy2 = accounts[8];
         let proxy3 = accounts[7];
@@ -145,6 +151,9 @@ contract('KyberNetwork', function(accounts) {
 
         beforeEach("create new network", async() =>{
             tempNetwork = await KyberNetwork.new(admin);
+            tempStorage = await KyberStorage.new(tempNetwork.address);
+            await tempNetwork.setKyberStorage(tempStorage.address, {from: admin});
+            tempNetworkRateHelper = await NetworkRateHelper.new(tempNetwork.address);
         })
 
         it("test can add max two proxies", async() => {
@@ -183,11 +192,11 @@ contract('KyberNetwork', function(accounts) {
         it("test added proxies returned in get proxies.", async() => {
             await tempNetwork.addKyberProxy(proxy1, {from: admin});
 
-            let rxProxy = await tempNetwork.getKyberProxies();
+            let rxProxy = await tempStorage.getKyberProxies();
             Helper.assertEqual(rxProxy[0], proxy1);
 
             await tempNetwork.addKyberProxy(proxy2, {from: admin});
-            rxProxy = await tempNetwork.getKyberProxies();
+            rxProxy = await tempStorage.getKyberProxies();
             Helper.assertEqual(rxProxy[0], proxy1);
             Helper.assertEqual(rxProxy[1], proxy2);
         });
@@ -196,7 +205,7 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.addKyberProxy(proxy1, {from: admin});
             await tempNetwork.removeKyberProxy(proxy1, {from: admin});
 
-            let rxProxy = await tempNetwork.getKyberProxies();
+            let rxProxy = await tempStorage.getKyberProxies();
             Helper.assertEqual(rxProxy.length, 0);
 
             await tempNetwork.addKyberProxy(proxy1, {from: admin});
@@ -204,7 +213,7 @@ contract('KyberNetwork', function(accounts) {
 
             await tempNetwork.removeKyberProxy(proxy1, {from: admin});
 
-            rxProxy = await tempNetwork.getKyberProxies();
+            rxProxy = await tempStorage.getKyberProxies();
             Helper.assertEqual(rxProxy[0], proxy2);
         });
 
@@ -241,14 +250,14 @@ contract('KyberNetwork', function(accounts) {
             expectEvent(txResult, 'KyberDAOUpdated', {
                 newDAO : dao1
             });
-            let contracts = await tempNetwork.getContracts();
+            let contracts = await tempStorage.getContracts();
             Helper.assertEqual(contracts.daoAddresses[0], dao1);
 
             txResult = await tempNetwork.setDAOContract(dao2, {from: admin});
             expectEvent(txResult, 'KyberDAOUpdated', {
                 newDAO : dao2
             });
-            contracts = await tempNetwork.getContracts();
+            contracts = await tempStorage.getContracts();
             Helper.assertEqual(contracts.daoAddresses[0], dao2);
             Helper.assertEqual(contracts.daoAddresses[1], dao1);
 
@@ -256,45 +265,45 @@ contract('KyberNetwork', function(accounts) {
             expectEvent(txResult, 'KyberDAOUpdated', {
                 newDAO : dao3
             });
-            contracts = await tempNetwork.getContracts();
+            contracts = await tempStorage.getContracts();
             Helper.assertEqual(contracts.daoAddresses[0], dao3);
             Helper.assertEqual(contracts.daoAddresses[1], dao1);
             Helper.assertEqual(contracts.daoAddresses[2], dao2);
         });
 
         it("add a few matchingEngine + feeHandler contracts, see event + updated in getter.", async() => {
-            let txResult = await tempNetwork.setContracts(handler1, matchingEngine1, zeroAddress, {from: admin});
+            let txResult = await tempNetwork.setContracts(handler1, matchingEngine1, zeroAddress, tempNetworkRateHelper.address, {from: admin});
             expectEvent(txResult, 'MatchingEngineUpdated', {
                 matchingEngine : matchingEngine1
             });
             expectEvent(txResult, 'FeeHandlerUpdated', {
                 newHandler : handler1
             });
-            let contracts = await tempNetwork.getContracts();
+            let contracts = await tempStorage.getContracts();
             Helper.assertEqual(contracts.feeHandlerAddresses[0], handler1);
             Helper.assertEqual(contracts.matchingEngineAddresses[0], matchingEngine1);
 
-            txResult = await tempNetwork.setContracts(handler1, matchingEngine2, zeroAddress, {from: admin});
+            txResult = await tempNetwork.setContracts(handler1, matchingEngine2, zeroAddress, tempNetworkRateHelper.address, {from: admin});
             expectEvent(txResult, 'MatchingEngineUpdated', {
                 matchingEngine : matchingEngine2
             });
-            contracts = await tempNetwork.getContracts();
+            contracts = await tempStorage.getContracts();
             Helper.assertEqual(contracts.feeHandlerAddresses[0], handler1);
             Helper.assertEqual(contracts.matchingEngineAddresses[0], matchingEngine2);
             Helper.assertEqual(contracts.matchingEngineAddresses[1], matchingEngine1);
 
-            txResult = await tempNetwork.setContracts(handler2, matchingEngine2, zeroAddress, {from: admin});
+            txResult = await tempNetwork.setContracts(handler2, matchingEngine2, zeroAddress, tempNetworkRateHelper.address, {from: admin});
             expectEvent(txResult, 'FeeHandlerUpdated', {
                 newHandler : handler2
             });
-            contracts = await tempNetwork.getContracts();
+            contracts = await tempStorage.getContracts();
             Helper.assertEqual(contracts.feeHandlerAddresses[0], handler2);
             Helper.assertEqual(contracts.feeHandlerAddresses[1], handler1);
             Helper.assertEqual(contracts.matchingEngineAddresses[0], matchingEngine2);
             Helper.assertEqual(contracts.matchingEngineAddresses[1], matchingEngine1);
 
-            await tempNetwork.setContracts(handler3, matchingEngine3, zeroAddress, {from: admin});
-            contracts = await tempNetwork.getContracts();
+            await tempNetwork.setContracts(handler3, matchingEngine3, zeroAddress, tempNetworkRateHelper.address, {from: admin});
+            contracts = await tempStorage.getContracts();;
             Helper.assertEqual(contracts.feeHandlerAddresses[0], handler3);
             Helper.assertEqual(contracts.feeHandlerAddresses[1], handler1);
             Helper.assertEqual(contracts.feeHandlerAddresses[2], handler2);
@@ -315,6 +324,9 @@ contract('KyberNetwork', function(accounts) {
         })
         beforeEach("global setup", async function(){
             tempNetwork = await KyberNetwork.new(admin);
+            let tempNetworkRateHelper = await NetworkRateHelper.new(tempNetwork.address);
+            let tempStorage = await KyberStorage.new(tempNetworkRateHelper.address);
+            await tempNetwork.setKyberStorage(tempStorage.address, {from: admin});
 
             await tempNetwork.addOperator(operator, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
@@ -328,14 +340,21 @@ contract('KyberNetwork', function(accounts) {
 
         it("set empty fee handler contract", async function(){
             await expectRevert(
-                tempNetwork.setContracts(zeroAddress, tempMatchingEngine.address, gasHelperAdd, {from: admin}),
+                tempNetwork.setContracts(zeroAddress, tempMatchingEngine.address, gasHelperAdd, tempNetworkRateHelper.address, {from: admin}),
                 "feeHandler 0"
             );
         });
 
         it("set empty matching engine contract", async function(){
             await expectRevert(
-                tempNetwork.setContracts(feeHandler.address, zeroAddress, gasHelperAdd, {from: admin}),
+                tempNetwork.setContracts(feeHandler.address, zeroAddress, gasHelperAdd, tempNetworkRateHelper.address, {from: admin}),
+                "matchingEngine 0"
+            );
+        });
+
+        it("set empty network rate helper contract", async function(){
+            await expectRevert(
+                tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, zeroAddress, {from: admin}),
                 "matchingEngine 0"
             );
         });
@@ -350,6 +369,8 @@ contract('KyberNetwork', function(accounts) {
 
     describe("should test events declared in network contract", async() => {
         let tempNetwork;
+        let tempNetworkRateHelper;
+        let tempStorage;
         let tempMatchingEngine;
         let mockReserve;
         let feeHandler;
@@ -357,8 +378,12 @@ contract('KyberNetwork', function(accounts) {
 
         before("global setup ", async() => {
             tempNetwork = await KyberNetwork.new(admin);
+            tempNetworkRateHelper = await NetworkRateHelper.new(tempNetwork.address);
+            tempStorage = await KyberStorage.new(tempNetwork.address);
             tempMatchingEngine = await TradeLogic.new(admin);
             mockReserve = await MockReserve.new();
+
+            await tempNetwork.setKyberStorage(tempStorage.address, {from: admin});
 
             await tempNetwork.addOperator(operator, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
@@ -383,7 +408,7 @@ contract('KyberNetwork', function(accounts) {
         it("Set contracts", async() => {
             gasHelperAdd = accounts[9];
 
-            let txResult = await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
+            let txResult = await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, tempNetworkRateHelper.address, {from: admin});
             expectEvent(txResult, 'FeeHandlerUpdated', {
                 newHandler: feeHandler.address
             });
@@ -639,7 +664,7 @@ contract('KyberNetwork', function(accounts) {
             // setup network
             await network.addOperator(operator, {from: admin});
             await network.addKyberProxy(networkProxy, {from: admin});
-            await network.setContracts(feeHandler.address, matchingEngine.address, gasHelperAdd.address, {from: admin});
+            await network.setContracts(feeHandler.address, matchingEngine.address, gasHelperAdd.address, networkRateHelper.address, {from: admin});
             await network.setDAOContract(DAO.address, {from: admin});
             //set params, enable network
             await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
@@ -1499,6 +1524,7 @@ contract('KyberNetwork', function(accounts) {
         before("initialise network", async () => {
             // init network
             network = await KyberNetwork.new(admin);
+            networkRateHelper = await NetworkRateHelper.new(network.address);
             // // set proxy same as network
             // proxyForFeeHandler = network;
 
@@ -1517,7 +1543,7 @@ contract('KyberNetwork', function(accounts) {
             // setup network
             await network.addOperator(operator, { from: admin });
             await network.addKyberProxy(networkProxy, { from: admin });
-            await network.setContracts(feeHandler.address, matchingEngine.address, gasHelperAdd.address, { from: admin });
+            await network.setContracts(feeHandler.address, matchingEngine.address, gasHelperAdd.address, networkRateHelper.address, { from: admin });
             await network.setDAOContract(DAO.address, { from: admin });
 
             //set params, enable network

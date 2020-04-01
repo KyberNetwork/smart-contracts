@@ -56,6 +56,7 @@ contract KyberStorage is IKyberStorage {
         } else {
             matchingEngine.push(_matchingEngine);
         }
+        return true;
     }
 
     function setDAOContract(IKyberDAO _kyberDAO)
@@ -69,6 +70,7 @@ contract KyberStorage is IKyberStorage {
         } else {
             kyberDAO.push(_kyberDAO);
         }
+        return true;
     }
 
     /// @notice should be called off chain
@@ -125,6 +127,7 @@ contract KyberStorage is IKyberStorage {
         );
         reserveIdToAddresses[reserveId][0] = address(0);
         reserveAddressToId[reserve] = bytes8(0);
+        return true;
     }
 
     /// @notice should be called off chain

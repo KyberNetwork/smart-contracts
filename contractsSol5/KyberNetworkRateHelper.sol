@@ -1,19 +1,18 @@
 pragma  solidity 0.5.11;
 
-import "./utils/Withdrawable2.sol";
 import "./utils/Utils4.sol";
 import "./IKyberNetworkRateHelper.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberMatchingEngine.sol";
 
 
-contract KyberNetworkRateHelper is IKyberNetworkRateHelper, Withdrawable2, Utils4 {
+contract KyberNetworkRateHelper is IKyberNetworkRateHelper, Utils4 {
     IKyberMatchingEngine public matchingEngine;
     address public kyberNetwork;
     // mapping reserve ID to address, keeps an array of all previous reserve addresses with this ID
     mapping(bytes8=>address[]) public reserveIdToAddresses;
 
-    constructor(address _admin, address _kyberNetwork) public Withdrawable2(_admin) {
+    constructor(address _kyberNetwork) public {
         require(_kyberNetwork != address(0), "network is 0");
         kyberNetwork = _kyberNetwork;
     }
