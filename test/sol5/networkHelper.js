@@ -138,14 +138,14 @@ async function setupReserves
 
 module.exports.setupNetwork = setupNetwork;
 async function setupNetwork
-    (network, networkProxyAddress, KNCAddress, DAOAddress, tokens, accounts, admin, operator){
+    (network, networkProxyAddress, KNCAddress, DAOAddress, networkRateHelperAddress, tokens, accounts, admin, operator){
     await network.addOperator(operator, { from: admin });
     //init matchingEngine, feeHandler
     let matchingEngine = await MatchingEngine.new(admin);
     await matchingEngine.setNetworkContract(network.address, { from: admin });
     await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
     let feeHandler = await FeeHandler.new(DAOAddress, network.address, network.address, KNCAddress, burnBlockInterval, DAOAddress);
-    await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
+    await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, networkRateHelperAddress, { from: admin });
     // set DAO contract
     await network.setDAOContract(DAOAddress, { from: admin });
     // point proxy to network
