@@ -234,9 +234,8 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         if (rateHelper != _rateHelper) {
             rateHelper = _rateHelper;
             emit RateHelperUpdated(_rateHelper);
+            rateHelper.setMatchingEngineContract(_matchingEngine);
         }
-
-        rateHelper.setMatchingEngineContract(_matchingEngine);
 
         require(kyberStorage.setContracts(_feeHandler, _matchingEngine));
     }
@@ -557,12 +556,10 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
                                 tData.input.srcAmount * tData.tokenToEth.splitValuesBps[i] / BPS;
             amountSoFar += splitAmount;
             destAmount = calcDstQty(splitAmount, tData.tokenToEth.decimals, ETH_DECIMALS, tData.tokenToEth.rates[i]);
+            tData.tradeWei += destAmount;
             if (tData.tokenToEth.isFeePaying[i]) {
                 tData.feePayingReservesBps += tData.tokenToEth.splitValuesBps[i];
                 tData.numFeePayingReserves++;
-                tData.tradeWei += destAmount * (BPS - tData.tokenToEth.splitValuesBps[i]) / BPS;
-            } else {
-                tData.tradeWei += destAmount;
             }
         }
     }

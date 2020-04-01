@@ -5,9 +5,11 @@ import "./IKyberNetwork.sol";
 import "./IKyberMatchingEngine.sol";
 
 interface IKyberNetworkRateHelper {
+
     function addReserve(address reserve, bytes8 reserveId) external returns (bool);
     function removeReserve(address reserve, bytes8 reserveId) external returns (bool);
     function setMatchingEngineContract(IKyberMatchingEngine _newMatchingEngine) external;
+
     function calculateTradeData(
         IERC20 token,
         uint srcAmount,

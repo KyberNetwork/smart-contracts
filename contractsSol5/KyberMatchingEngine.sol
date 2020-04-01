@@ -153,7 +153,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         for (i = 0; i < reserveArr.length; i++) {
             if (reserveId == reserveArr[i]) {
                 if (add) {
-                    break; //already added
+                    // already added
+                    return;
                 } else {
                     //remove
                     reserveArr[i] = reserveArr[reserveArr.length - 1];
@@ -163,7 +164,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             }
         }
 
-        if (add && i == reserveArr.length) {
+        if (add) {
             //if reserve wasn't found add it
             reserveArr.push(reserveId);
         }

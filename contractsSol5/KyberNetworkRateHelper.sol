@@ -47,7 +47,7 @@ contract KyberNetworkRateHelper is IKyberNetworkRateHelper, Utils4 {
         uint decimals;
     }
 
-    function addReserve(address reserve, bytes8 reserveId) external returns (bool) {
+    function addReserve(address reserve, bytes8 reserveId) external onlyKyberNetwork returns (bool) {
         if (reserveIdToAddresses[reserveId].length == 0) {
             reserveIdToAddresses[reserveId].push(reserve);
         } else {
@@ -57,11 +57,13 @@ contract KyberNetworkRateHelper is IKyberNetworkRateHelper, Utils4 {
         return true;
     }
 
-    function removeReserve(address reserve, bytes8 reserveId) external returns (bool) {
+    function removeReserve(address reserve, bytes8 reserveId) external onlyKyberNetwork returns (bool) {
         require(reserveIdToAddresses[reserveId][0] == reserve, "reserve and id mismatch");
 
         reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
         reserveIdToAddresses[reserveId][0] = address(0);
+
+        return true;
     }
 
     /// @notice calculate trade data and store them into tData
