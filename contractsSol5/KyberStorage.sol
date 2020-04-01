@@ -62,7 +62,6 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         } else {
             matchingEngine.push(newMatchingEngine);
         }
-
         return true;
     }
 
@@ -77,7 +76,6 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         } else {
             kyberDAO.push(_kyberDAO);
         }
-
         return true;
     }
 
