@@ -130,7 +130,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             bytes8[] memory reserveIds,
             uint[] memory splitValuesBps,
             bool[] memory isFeeAccounted,
-            ExtraProcessing extraProcess
+            ProcessingWithRate processWithRate
         )
     {
         HintErrors error;
@@ -138,8 +138,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             reserveIds = (dest == ETH_TOKEN_ADDRESS) ? reservesPerTokenSrc[address(src)] : reservesPerTokenDest[address(dest)];
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
             isFeeAccounted = getIsFeeAccountingReserves(reserveIds);
-            extraProcess = ExtraProcessing.NotRequired;
-            return (reserveIds, splitValuesBps, isFeeAccounted, extraProcess);
+            processWithRate = ProcessingWithRate.Required;
+            return (reserveIds, splitValuesBps, isFeeAccounted, processWithRate);
         }
 
         TradeType tradeType;
@@ -173,7 +173,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             ) = parseHint(hint);
         }
 
-        if (error != HintErrors.NoError) return (new bytes8[](0), new uint[](0), new bool[](0), ExtraProcessing.NotRequired);
+        if (error != HintErrors.NoError) return (new bytes8[](0), new uint[](0), new bool[](0), ProcessingWithRate.NotRequired);
 
         if (tradeType == TradeType.MaskIn) {
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
@@ -185,7 +185,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         }
 
         isFeeAccounted = getIsFeeAccountingReserves(reserveIds);
-        extraProcess = (tradeType == TradeType.Split) ? ExtraProcessing.NotRequired : ExtraProcessing.NonSplitProcessing;
+        processWithRate = (tradeType == TradeType.Split) ? ProcessingWithRate.NotRequired : ProcessingWithRate.NonSplitProcessing;
     }
 
     /// @notice Logic for masking out reserves

@@ -18,7 +18,7 @@ interface IKyberMatchingEngine {
         LAST
     }
 
-    enum ExtraProcessing {
+    enum ProcessingWithRate {
         NotRequired,
         NonSplitProcessing
         /* any other process type? */
@@ -48,7 +48,7 @@ interface IKyberMatchingEngine {
             bytes8[] memory reserveIds,
             uint[] memory splitValuesBps,
             bool[] memory isFeeAccounted,
-            ExtraProcessing extraProcess
+            ProcessingWithRate processWithRate
         );
 
     function doMatch(
