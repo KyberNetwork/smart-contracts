@@ -760,7 +760,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     }
 
     function calcTradeSrcAmount(uint srcDecimals, uint destDecimals, uint destAmount, uint[] memory rates,
-                                uint[] memory splitsBps)
+        uint[] memory splitsBps)
         internal pure returns (uint srcAmount)
     {
         uint destAmountSoFar;
@@ -827,7 +827,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
 
         require(rateWithNetworkFee > 0, "0 rate");
         require(rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
-        require(rateWithNetworkFee >= tData.input.minConversionRate, "rate < minConvRate");
+        require(rateWithNetworkFee >= tData.input.minConversionRate, "rate < min Rate");
 
         if (gasHelper != IGasHelper(0)) {
             (bool success, ) = address(gasHelper).call(
@@ -970,7 +970,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param networkFeeBps network fee in bps.
     /// @return true if tradeInput is valid
     function verifyTradeInputValid(TradeInput memory input, uint networkFeeBps) internal view returns(bool) {
-        require(isEnabled, "!network");
+        require(isEnabled, "network disabled");
         require(kyberProxyContracts[msg.sender], "bad sender");
         require(tx.gasprice <= maxGasPriceValue, "gas price");
         require(input.srcAmount <= MAX_QTY, "srcAmt > MAX_QTY");
@@ -983,9 +983,9 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         if (input.src == ETH_TOKEN_ADDRESS) {
             require(msg.value == input.srcAmount, "bad Eth qty");
         } else {
-            require(msg.value == 0, "big Eth qty");
+            require(msg.value == 0, "Eth not 0");
             //funds should have been moved to this contract already.
-            require(input.src.balanceOf(address(this)) >= input.srcAmount, "srcTok low");
+            require(input.src.balanceOf(address(this)) >= input.srcAmount, "no tokens");
         }
 
         return true;
