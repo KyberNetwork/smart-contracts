@@ -234,7 +234,10 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         (tradeType, reserveIds, splits) = abi.decode(hint, (TradeType, bytes8[], uint[]));
         valid = verifyData(tradeType, reserveIds, splits);
 
-        if (valid != HintErrors.NoError) splits = new uint[](0);
+        if (valid != HintErrors.NoError) {
+            reserveIds = new bytes8[](0);
+            splits = new uint[](0);
+        }
     }
 
     /// @notice Unpacks the Token to Token hint to Token to ETH and ETH to Token hints
