@@ -660,7 +660,6 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
             );
 
             if (tradingReserves.isFeeAccounted[i]) {
-                
                 if (src == ETH_TOKEN_ADDRESS) {
                     networkFeeWei += tData.tradeWei * tData.networkFeeBps / BPS * tradingReserves.splitsBps[i] / BPS;
                 } else {
@@ -678,7 +677,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         tData.feeAccountedBps += feeAccountedBps;
 
         if (dest == ETH_TOKEN_ADDRESS) {
-            networkFeeWei = feeAccountedBps * destAmount * tData.networkFeeBps / BPS;
+            networkFeeWei = destAmount * tData.networkFeeBps / BPS * feeAccountedBps / BPS;
         }
     }
 
