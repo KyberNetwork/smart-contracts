@@ -173,6 +173,10 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         processWithRate = (tradeType == TradeType.Split) ? ProcessWithRate.NotRequired : ProcessWithRate.Required;
     }
 
+    function getNegligibleRateDiffBps() external view returns(uint) {
+        return negligibleRateDiffBps;
+    }
+
     /// @notice Logic for masking out reserves
     /// @param allReservesPerToken arrary of reserveIds that support the t2e or e2t side of the trade
     /// @param maskedOutReserves array of reserveIds to be excluded from allReservesPerToken
@@ -296,5 +300,13 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         for (uint i = 0; i < reserveIds.length; i++) {
             feePayingArr[i] = (feePayingData & 1 << reserveType[reserveIds[i]] > 0);
         }
+    }
+
+    function convertReserveIdToAddress(bytes32 reserveId) internal view returns (address) {
+        return kyberStorage.convertReserveIdToAddress(reserveId);
+    }
+
+    function convertAddressToReserveId(address reserveAddress) internal view returns (bytes32) {
+        return kyberStorage.convertReserveAddresstoId(reserveAddress);
     }
 }

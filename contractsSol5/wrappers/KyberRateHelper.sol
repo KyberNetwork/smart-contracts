@@ -105,7 +105,7 @@ contract KyberRateHelper is IKyberRateHelper, Withdrawable2, Utils4 {
         feePayingArr = new bool[](reserves.length);
 
         for (uint i = 0; i < reserves.length; i++) {
-            (, , feePayingArr[i]) = matchingEngine.getReserveDetails(address(reserves[i]));
+            (, , feePayingArr[i]) = matchingEngine.getReserveDetailsByAddress(address(reserves[i]));
         }
     }
 }

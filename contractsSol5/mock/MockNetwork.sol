@@ -74,6 +74,6 @@ contract MockNetwork is KyberNetwork {
             emit GasHelperUpdated(_gasHelper);
         }
 
-        require(kyberStorage.setContracts(_feeHandler, _matchingEngine));
+        require(kyberStorage.setContracts(_feeHandler, address(_matchingEngine)));
     }
 }

@@ -25,7 +25,7 @@ interface IKyberMatchingEngine {
         /* any other process type? */
     }
 
-    function negligibleRateDiffBps() external view returns (uint);
+    function getNegligibleRateDiffBps() external view returns (uint);
 
     function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external returns (bool);
 
@@ -35,15 +35,11 @@ interface IKyberMatchingEngine {
 
     function removeReserve(bytes32 reserveId) external returns (bool);
 
-    function listPairForReserve(IKyberReserve reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add)
-        external
-        returns (bool);
-
-    function getReserveDetails(address reserve) external view
+    function getReserveDetailsByAddress(address reserve) external view
         returns(bytes32 reserveId, ReserveType resType, bool isFeePaying);
 
-    function getReservesPerTokenSrc(IERC20 token) external view returns(bytes32[] memory reserves);
-    function getReservesPerTokenDest(IERC20 token) external view returns(bytes32[] memory reserves);
+    function getReserveDetailsById(bytes32 reserveId) external view
+        returns(address reserveAddress, ReserveType resType, bool isFeePaying);
 
     function getReserveList(IERC20 src, IERC20 dest, bool isTokenToToken, bytes calldata hint)
         external view

@@ -1,11 +1,9 @@
 pragma solidity 0.5.11;
 
 import "./IKyberStorage.sol";
-import "./IKyberDAO.sol";
 import "./IKyberFeeHandler.sol";
 import "./IKyberMatchingEngine.sol";
 import "./IKyberNetwork.sol";
-import "./IKyberNetworkProxy.sol";
 import "./utils/PermissionGroups2.sol";
 
 
@@ -43,8 +41,10 @@ contract KyberStorage is IKyberStorage {
 
     function setContracts(
         IKyberFeeHandler _feeHandler,
-        IKyberMatchingEngine _matchingEngine
+        address _matchingEngine
     ) external onlyNetwork returns (bool) {
+        IKyberMatchingEngine newMatchingEngine = IKyberMatchingEngine(_matchingEngine);
+
         if (feeHandler.length > 0) {
             feeHandler.push(feeHandler[0]);
             feeHandler[0] = _feeHandler;
@@ -54,10 +54,12 @@ contract KyberStorage is IKyberStorage {
 
         if (matchingEngine.length > 0) {
             matchingEngine.push(matchingEngine[0]);
-            matchingEngine[0] = _matchingEngine;
+            matchingEngine[0] = newMatchingEngine;
         } else {
-            matchingEngine.push(_matchingEngine);
+            matchingEngine.push(newMatchingEngine);
         }
+
+        return true;
     }
 
     function setDAOContract(IKyberDAO _kyberDAO)
@@ -71,6 +73,8 @@ contract KyberStorage is IKyberStorage {
         } else {
             kyberDAO.push(_kyberDAO);
         }
+
+        return true;
     }
 
     /// @notice should be called off chain
@@ -105,6 +109,7 @@ contract KyberStorage is IKyberStorage {
         
         reserves.push(IKyberReserve(reserve));
         reserveAddressToId[reserve] = reserveId;
+        
         return true;
     }
 

@@ -4,6 +4,7 @@ const Helper = require("../helper.js");
 const Reserve = artifacts.require("KyberReserve.sol");
 const ConversionRates = artifacts.require("ConversionRates.sol");
 const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
+const KyberStorage = artifacts.require("KyberStorage.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 
@@ -141,11 +142,12 @@ async function setupNetwork
     (network, networkProxyAddress, KNCAddress, DAOAddress, tokens, accounts, admin, operator){
     await network.addOperator(operator, { from: admin });
     //init matchingEngine, feeHandler
-    let matchingEngine = await MatchingEngine.new(admin);
+    const matchingEngine = await MatchingEngine.new(admin);
+    const storage =  await KyberStorage.new(network.address);
     await matchingEngine.setNetworkContract(network.address, { from: admin });
     await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
     let feeHandler = await FeeHandler.new(DAOAddress, network.address, network.address, KNCAddress, burnBlockInterval, DAOAddress);
-    await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
+    await network.setContracts(feeHandler.address, matchingEngine.address, storage.address, zeroAddress, { from: admin });
     // set DAO contract
     await network.setDAOContract(DAOAddress, { from: admin });
     // point proxy to network

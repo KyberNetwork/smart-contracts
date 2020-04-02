@@ -5,6 +5,7 @@ const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
+const KyberStorage = artifacts.require("KyberStorage.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 const GenerousNetwork = artifacts.require("GenerousKyberNetwork.sol");
 const GenerousNetwork2 = artifacts.require("GenerousKyberNetwork2.sol");
@@ -31,6 +32,7 @@ let admin;
 let alerter;
 let networkProxy;
 let network;
+let storage;
 let DAO;
 let feeHandler;
 let matchingEngine;
@@ -81,6 +83,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //deploy network
         network = await KyberNetwork.new(admin);
+        storage = await KyberStorage.new(network.address);
 
         // init proxy
         networkProxy = await KyberNetworkProxy.new(admin);
@@ -115,9 +118,9 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //setup network
         ///////////////
+        await network.setContracts(feeHandler.address, matchingEngine.address, storage.address, zeroAddress, {from: admin});
         await network.addKyberProxy(networkProxy.address, {from: admin});
         await network.addOperator(operator, {from: admin});
-        await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
         await network.setDAOContract(DAO.address, {from: admin});
 
         //add and list pair for reserve

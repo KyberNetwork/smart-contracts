@@ -202,10 +202,12 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
 
     event FeeHandlerUpdated(IKyberFeeHandler newHandler);
     event MatchingEngineUpdated(IKyberMatchingEngine matchingEngine);
+    event KyberStorageUpdated(IKyberStorage newStorage);
     event GasHelperUpdated(IGasHelper gasHelper);
 
     function setContracts(IKyberFeeHandler _feeHandler,
         IKyberMatchingEngine _matchingEngine,
+        IKyberStorage _kyberStorage,
         IGasHelper _gasHelper
     )
         external
@@ -213,6 +215,14 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         onlyAdmin();
         require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
         require(_matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
+        require(_kyberStorage != IKyberStorage(0), "storage 0");
+
+        if (kyberStorage != _kyberStorage) {
+            kyberStorage = _kyberStorage;
+            require(_matchingEngine.setKyberStorage(_kyberStorage));
+            emit KyberStorageUpdated(_kyberStorage);
+        }
+
         if (feeHandler != _feeHandler) {
             feeHandler = _feeHandler;
             emit FeeHandlerUpdated(_feeHandler);
@@ -228,7 +238,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
             emit GasHelperUpdated(_gasHelper);
         }
 
-        require(kyberStorage.setContracts(_feeHandler, _matchingEngine));
+        require(kyberStorage.setContracts(_feeHandler, address(_matchingEngine)), "set contract fail");
     }
 
     event KyberDAOUpdated(IKyberDAO newDAO);
@@ -250,18 +260,6 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         maxGasPriceValue = _maxGasPrice;
         require(matchingEngine.setNegligbleRateDiffBps(_negligibleRateDiffBps));
         emit KyberNetworkParamsSet(maxGasPriceValue, _negligibleRateDiffBps);
-    }
-
-    event KyberStorageUpdated(IKyberStorage newStorage);
-
-    function setKyberStorage(IKyberStorage _kyberStorage) external {
-        onlyAdmin();
-        require(_kyberStorage != IKyberStorage(0), "storage 0");
-        if (kyberStorage != _kyberStorage) {
-            kyberStorage = _kyberStorage;
-            require(matchingEngine.setKyberStorage(_kyberStorage));
-            emit KyberStorageUpdated(_kyberStorage);
-        }
     }
 
     event KyberNetworkSetEnable(bool isEnabled);
@@ -381,7 +379,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         uint expiryBlock)
     {
         (networkFeeBps, expiryBlock) = readNetworkFeeData();
-        negligibleDiffBps = matchingEngine.negligibleRateDiffBps();
+        negligibleDiffBps = matchingEngine.getNegligibleRateDiffBps();
         return(negligibleDiffBps, networkFeeBps, expiryBlock);
     }
 
