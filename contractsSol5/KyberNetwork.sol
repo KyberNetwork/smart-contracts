@@ -47,7 +47,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     mapping(address=>bool) internal kyberProxyContracts;
 
     // mapping reserve ID to address, keeps an array of all previous reserve addresses with this ID
-    mapping(bytes8=>address[]) public reserveIdToAddresses;
+    mapping(bytes32=>address[]) public reserveIdToAddresses;
     mapping(address=>address) public reserveRebateWallet;
 
     struct NetworkFeeData {
@@ -111,7 +111,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
 
     event AddReserveToNetwork (
         address indexed reserve,
-        bytes8 indexed reserveId,
+        bytes32 indexed reserveId,
         IKyberMatchingEngine.ReserveType reserveType,
         address indexed rebateWallet,
         bool add);
@@ -122,7 +122,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param reserveId The reserve ID in 8 bytes. 1st byte is reserve type.
     /// @param reserveType Type of the reserve out of enum ReserveType
     /// @param rebateWallet Rebate wallet address for this reserve.
-    function addReserve(address reserve, bytes8 reserveId, IKyberMatchingEngine.ReserveType reserveType,
+    function addReserve(address reserve, bytes32 reserveId, IKyberMatchingEngine.ReserveType reserveType,
         address payable rebateWallet)
         external returns(bool)
     {
@@ -144,7 +144,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         return true;
     }
 
-    event RemoveReserveFromNetwork(address reserve, bytes8 indexed reserveId);
+    event RemoveReserveFromNetwork(address reserve, bytes32 indexed reserveId);
 
     /// @notice can be called only by operator
     /// @dev removes a reserve from Kyber network.
@@ -152,7 +152,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param startIndex to search in reserve array.
     function removeReserve(address reserve, uint startIndex) public returns(bool) {
         onlyOperator();
-        bytes8 reserveId = matchingEngine.removeReserve(reserve);
+        bytes32 reserveId = matchingEngine.removeReserve(reserve);
 
         require(kyberStorage.removeReserve(reserve, startIndex));
         require(reserveIdToAddresses[reserveId][0] == reserve, "reserve and id mismatch");
@@ -410,7 +410,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param decimals Token decimals. Src decimals when for src -> ETH, dest decimals when ETH -> dest
     struct TradingReserves {
         IKyberReserve[] addresses;
-        bytes8[] ids;
+        bytes32[] ids;
         uint[] rates;
         bool[] isFeePaying;
         uint[] splitValuesBps;
@@ -624,7 +624,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         uint srcAmount,
         bool isTokenToEth,
         uint networkFee, // bps in case t2e, wei value in case e2t
-        bytes8[] memory reserveIDs,
+        bytes32[] memory reserveIDs,
         uint[] memory splitValuesBps,
         bool[] memory isFeeCounted
     )
@@ -667,7 +667,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
             selectedIndexes = matchingEngine.doMatchEthToToken(ETH_TOKEN_ADDRESS, token, srcAmounts, rates);
         }
 
-        tradingReserves.ids = new bytes8[](selectedIndexes.length);
+        tradingReserves.ids = new bytes32[](selectedIndexes.length);
         tradingReserves.addresses = new IKyberReserve[](selectedIndexes.length);
         tradingReserves.splitValuesBps = new uint[](selectedIndexes.length);
         tradingReserves.isFeePaying = new bool[](selectedIndexes.length);
@@ -757,7 +757,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
                 return false; // invalid split
             }
             totalSplitBps += tradingReserves.splitValuesBps[i];
-            if (i > 0 && (uint64(tradingReserves.ids[i]) <= uint64(tradingReserves.ids[i - 1]))) {
+            if (i > 0 && (uint(tradingReserves.ids[i]) <= uint(tradingReserves.ids[i - 1]))) {
                 return false; // ids are not in increasing order
             }
         }
@@ -880,7 +880,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
 
     event KyberTrade(address indexed trader, IERC20 src, IERC20 dest, uint srcAmount, uint dstAmount,
         address destAddress, uint ethWeiValue, uint networkFeeWei, uint customPlatformFeeWei,
-        bytes8[] t2eIds, bytes8[] e2tIds, bytes hint);
+        bytes32[] t2eIds, bytes32[] e2tIds, bytes hint);
 
     /* solhint-disable function-max-lines */
     //  Most of the lines here are functions calls spread over multiple lines. We find this function readable enough
@@ -905,7 +905,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         if (gasHelper != IGasHelper(0)) {
             (bool success, ) = address(gasHelper).call(
                 abi.encodeWithSignature(
-                    "freeGas(address,address,address,uint256,bytes8[],bytes8[])",
+                    "freeGas(address,address,address,uint256,bytes32[],bytes32[])",
                     tData.input.platformWallet,
                     tData.input.src,
                     tData.input.dest,
@@ -1104,7 +1104,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         networkFeeData.feeBps = uint16(feeBps);
     }
 
-    function convertReserveIdToAddress(bytes8 reserveId)
+    function convertReserveIdToAddress(bytes32 reserveId)
         internal
         view
         returns (address)
