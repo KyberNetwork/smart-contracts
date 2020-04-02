@@ -74,9 +74,9 @@ contract KyberNetworkRateHelper is IKyberNetworkRateHelper, Utils4 {
         bool isTokenToEth,
         bool isTokenToToken,
         uint networkFeeValue,
-        bytes calldata hint
+        bytes memory hint
     )
-        external view
+        public view
         returns (
             IKyberReserve[] memory reserveAddresses,
             uint[] memory rates,
