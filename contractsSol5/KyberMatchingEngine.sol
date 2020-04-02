@@ -25,7 +25,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     IKyberNetwork   public networkContract;
     IKyberStorage   public kyberStorage;
 
-    mapping(bytes8=>uint)        internal reserveType;           //type from enum ReserveType
+    mapping(bytes32=>uint) internal reserveType;           //type from enum ReserveType
 
     uint internal feePayingPerType = 0xffffffff;
 
@@ -58,7 +58,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         return true;
     }
 
-    function addReserve(bytes8 reserveId, ReserveType resType) external onlyNetwork returns (bool) {
+    function addReserve(bytes32 reserveId, ReserveType resType) external onlyNetwork returns (bool) {
         require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad type");
         require(feePayingPerType != 0xffffffff, "Fee paying not set");
 
@@ -66,7 +66,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         return true;
     }
 
-    function removeReserve(bytes8 reserveId) external onlyNetwork returns (bool) {
+    function removeReserve(bytes32 reserveId) external onlyNetwork returns (bool) {
         reserveType[reserveId] = uint(ReserveType.NONE);
         return true;
     }
@@ -87,14 +87,14 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     }
 
     function getReserveDetailsByAddress(address reserve) external view
-        returns(bytes8 reserveId, ReserveType resType, bool isFeePaying)
+        returns(bytes32 reserveId, ReserveType resType, bool isFeePaying)
     {
         reserveId = kyberStorage.convertReserveAddresstoId(reserve);
         resType = ReserveType(reserveType[reserveId]);
         isFeePaying = (feePayingPerType & (1 << reserveType[reserveId])) > 0;
     }
 
-    function getReserveDetailsById(bytes8 reserveId) external view
+    function getReserveDetailsById(bytes32 reserveId) external view
         returns(address reserveAddress, ReserveType resType, bool isFeePaying)
     {
         reserveAddress = kyberStorage.convertReserveIdToAddress(reserveId);
@@ -106,7 +106,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         external
         view
         returns (
-            bytes8[] memory reserveIds,
+            bytes32[] memory reserveIds,
             uint[] memory splitValuesBps,
             bool[] memory isFeeAccounted,
             ProcessWithRate processWithRate
@@ -155,13 +155,13 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             ) = parseHint(hint);
         }
 
-        if (error != HintErrors.NoError) return (new bytes8[](0), new uint[](0), new bool[](0), ProcessWithRate.NotRequired);
+        if (error != HintErrors.NoError) return (new bytes32[](0), new uint[](0), new bool[](0), ProcessWithRate.NotRequired);
 
         if (tradeType == TradeType.MaskIn) {
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
         } else if (tradeType == TradeType.MaskOut) {
             // if mask out, apply masking out logic
-            bytes8[] memory allReserves = (dest == ETH_TOKEN_ADDRESS) ?
+            bytes32[] memory allReserves = (dest == ETH_TOKEN_ADDRESS) ?
                 kyberStorage.getReservesPerTokenSrc(address(src)) :
                 kyberStorage.getReservesPerTokenDest(address(dest));
 
@@ -177,19 +177,19 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @param allReservesPerToken arrary of reserveIds that support the t2e or e2t side of the trade
     /// @param maskedOutReserves array of reserveIds to be excluded from allReservesPerToken
     /// @return Returns an array of reserveIds that can be used for the trade
-    function maskOutReserves(bytes8[] memory allReservesPerToken, bytes8[] memory maskedOutReserves)
-        internal pure returns (bytes8[] memory filteredReserves)
+    function maskOutReserves(bytes32[] memory allReservesPerToken, bytes32[] memory maskedOutReserves)
+        internal pure returns (bytes32[] memory filteredReserves)
     {
         require(allReservesPerToken.length >= maskedOutReserves.length, "MASK_OUT_TOO_LONG");
-        filteredReserves = new bytes8[](allReservesPerToken.length - maskedOutReserves.length);
+        filteredReserves = new bytes32[](allReservesPerToken.length - maskedOutReserves.length);
         uint currentResultIndex = 0;
 
         for (uint i = 0; i < allReservesPerToken.length; i++) {
-            bytes8 reserveId = allReservesPerToken[i];
+            bytes32 reserveId = allReservesPerToken[i];
             bool notMaskedOut = true;
 
             for (uint j = 0; j < maskedOutReserves.length; j++) {
-                bytes8 maskedOutReserveId = maskedOutReserves[j];
+                bytes32 maskedOutReserveId = maskedOutReserves[j];
                 if (reserveId == maskedOutReserveId) {
                     notMaskedOut = false;
                     break;
@@ -286,7 +286,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         }
     }
 
-    function getIsFeeAccountingReserves(bytes8[] memory reserveIds) internal view
+    function getIsFeeAccountingReserves(bytes32[] memory reserveIds) internal view
         returns(bool[] memory feePayingArr)
     {
         feePayingArr = new bool[](reserveIds.length);

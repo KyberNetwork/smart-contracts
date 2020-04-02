@@ -22,10 +22,10 @@ contract KyberStorage is IKyberStorage {
     IKyberReserve[] internal reserves;
     IKyberNetworkProxy[] internal kyberProxyArray;
 
-    mapping(bytes8 => address[]) internal reserveIdToAddresses;
-    mapping(address => bytes8)   internal reserveAddressToId;
-    mapping(address=>bytes8[])   internal reservesPerTokenSrc;   // reserves supporting token to eth
-    mapping(address=>bytes8[])   internal reservesPerTokenDest;  // reserves support eth to token
+    mapping(bytes32 => address[]) internal reserveIdToAddresses;
+    mapping(address => bytes32)   internal reserveAddressToId;
+    mapping(address=>bytes32[])   internal reservesPerTokenSrc;   // reserves supporting token to eth
+    mapping(address=>bytes32[])   internal reservesPerTokenDest;  // reserves support eth to token
 
     IKyberNetwork public network;
 
@@ -88,12 +88,12 @@ contract KyberStorage is IKyberStorage {
         return (kyberDAO, feeHandler, matchingEngine);
     }
 
-    function addReserve(address reserve, bytes8 reserveId)
+    function addReserve(address reserve, bytes32 reserveId)
         external
         onlyNetwork
         returns (bool)
     {
-        require(reserveAddressToId[reserve] == bytes8(0), "reserve has id");
+        require(reserveAddressToId[reserve] == bytes32(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
         if (reserveIdToAddresses[reserveId].length == 0) {
             reserveIdToAddresses[reserveId].push(reserve);
@@ -110,7 +110,7 @@ contract KyberStorage is IKyberStorage {
     function removeReserve(address reserve, uint startIndex)
         external
         onlyNetwork
-        returns (bytes8 reserveId)
+        returns (bytes32 reserveId)
     {
         uint reserveIndex = 2**255;
         for (uint i = startIndex; i < reserves.length; i++) {
@@ -124,16 +124,15 @@ contract KyberStorage is IKyberStorage {
         reserves.pop();
         // remove reserve from mapping to address
         require(
-            reserveAddressToId[reserve] != bytes8(0),
+            reserveAddressToId[reserve] != bytes32(0),
             "reserve -> 0 reserveId"
         );
-
         reserveId = reserveAddressToId[reserve];
 
         //update reserve mappings
         reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
         reserveIdToAddresses[reserveId][0] = address(0);
-        reserveAddressToId[reserve] = bytes8(0);
+        reserveAddressToId[reserve] = bytes32(0);
 
         return reserveId;
     }
@@ -141,8 +140,8 @@ contract KyberStorage is IKyberStorage {
     function listPairForReserve(address reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add)
         external onlyNetwork returns (bool)
     {
-        bytes8 reserveId = reserveAddressToId[reserve];
-        require(reserveId != bytes8(0), "reserveId = 0");
+        bytes32 reserveId = reserveAddressToId[reserve];
+        require(reserveId != bytes32(0), "reserveId = 0");
 
         if (ethToToken) {
             listPairs(reserveId, token, false, add);
@@ -155,9 +154,9 @@ contract KyberStorage is IKyberStorage {
         return true;   
     }
 
-    function listPairs(bytes8 reserveId, IERC20 token, bool isTokenToEth, bool add) internal {
+    function listPairs(bytes32 reserveId, IERC20 token, bool isTokenToEth, bool add) internal {
         uint i;
-        bytes8[] storage reserveArr = reservesPerTokenDest[address(token)];
+        bytes32[] storage reserveArr = reservesPerTokenDest[address(token)];
 
         if (isTokenToEth) {
             reserveArr = reservesPerTokenSrc[address(token)];
@@ -189,25 +188,25 @@ contract KyberStorage is IKyberStorage {
         return reserves;
     }
 
-    function convertReserveAddresstoId(address reserve) external view returns (bytes8 reserveId) {
+    function convertReserveAddresstoId(address reserve) external view returns (bytes32 reserveId) {
         return reserveAddressToId[reserve];
     }
 
-    function convertReserveIdToAddress(bytes8 reserveId) external view returns (address reserve) {
+    function convertReserveIdToAddress(bytes32 reserveId) external view returns (address reserve) {
         return reserveIdToAddresses[reserveId][0];
     }
 
     function convertReserveAddressestoIds(address[] calldata reserveAddresses)
         external
         view
-        returns (bytes8[] memory reserveIds) {
-        reserveIds = new bytes8[](reserveAddresses.length);
+        returns (bytes32[] memory reserveIds) {
+        reserveIds = new bytes32[](reserveAddresses.length);
         for (uint i = 0; i < reserveAddresses.length; i++) {
             reserveIds[i] = reserveAddressToId[reserveAddresses[i]];
         }
     }
 
-    function convertReserveIdsToAddresses(bytes8[] calldata reserveIds)
+    function convertReserveIdsToAddresses(bytes32[] calldata reserveIds)
         external
         view
         returns (address[] memory reserveAddresses)
@@ -218,11 +217,11 @@ contract KyberStorage is IKyberStorage {
         }
     }
 
-    function getReservesPerTokenSrc(address token) external view returns (bytes8[] memory reserveIds) {
+    function getReservesPerTokenSrc(address token) external view returns (bytes32[] memory reserveIds) {
         return reservesPerTokenSrc[token];
     }
 
-    function getReservesPerTokenDest(address token) external view returns (bytes8[] memory reserveIds) {
+    function getReservesPerTokenDest(address token) external view returns (bytes32[] memory reserveIds) {
         return reservesPerTokenDest[token];
     }
 
