@@ -18,11 +18,11 @@ const INVALID_SPLIT_BPS = {
     EMPTY_SPLITS: {value: [], revertMsg: 'reserveIds.length != splits.length'}
 }
 const ID_TO_ADDRESS = {
-    '0xff12345663820d8f': '0x63825c174ab367968EC60f061753D3bbD36A0D8F',
-    '0xff1234567a334f7d': '0x7a3370075a54B187d7bD5DceBf0ff2B5552d4F7D',
-    '0xaa12345616709a5d': '0x1670DFb52806DE7789D5cF7D5c005cf7083f9A5D',
-    '0xaa00000031E04C7F': '0x31E085Afd48a1d6e51Cc193153d625e8f0514C7F',
-    '0xcc12345675fff057': '0x75fF6BeC6Ed398FA80EA1596cef422D64681F057',
+    '0xff12345663820d8f000000000000000000000000000000000000000000000000': '0x63825c174ab367968EC60f061753D3bbD36A0D8F',
+    '0xff1234567a334f7d000000000000000000000000000000000000000000000000': '0x7a3370075a54B187d7bD5DceBf0ff2B5552d4F7D',
+    '0xaa12345616709a5d000000000000000000000000000000000000000000000000': '0x1670DFb52806DE7789D5cF7D5c005cf7083f9A5D',
+    '0xaa00000031E04C7F000000000000000000000000000000000000000000000000': '0x31E085Afd48a1d6e51Cc193153d625e8f0514C7F',
+    '0xcc12345675fff057000000000000000000000000000000000000000000000000': '0x75fF6BeC6Ed398FA80EA1596cef422D64681F057',
 };
 
 let hintHandler;
@@ -451,7 +451,6 @@ contract('KyberHintHandler', function(accounts) {
                     t2eSplits = (tradeType == 'SPLIT') ? BPS_SPLIT : [];
 
                     hint = buildHint(t2eHintType, t2eReserves, t2eSplits);
-                    hint2 = await hintHandler.buildTokenToEthHint(t2eHintType, t2eReserves, t2eSplits);
             
                     const parseResult = await hintHandler.parseTokenToEthHint(hint);
                     const expectedResult = parseHint(hint);
@@ -981,7 +980,7 @@ contract('KyberHintHandler', function(accounts) {
 function buildHint(tradeType, reserveIds, splits) {
     reserveIds.sort();
     return web3.eth.abi.encodeParameters(
-        ['uint8', 'bytes8[]', 'uint[]'],
+        ['uint8', 'bytes32[]', 'uint[]'],
         [tradeType, reserveIds, splits],
     );
 }
@@ -998,7 +997,7 @@ function buildHintT2T(t2eType, t2eReserveIds, t2eSplits, e2tType, e2tReserveIds,
 function parseHint(hint) {
     let addresses = [];
     const params = web3.eth.abi.decodeParameters(
-        ['uint8', 'bytes8[]', 'uint[]'],
+        ['uint8', 'bytes32[]', 'uint[]'],
         hint,
     );
 

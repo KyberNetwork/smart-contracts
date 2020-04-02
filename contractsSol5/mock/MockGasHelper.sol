@@ -17,8 +17,8 @@ contract MockGasHelper is IGasHelper {
         IERC20 src,
         IERC20 dest,
         uint tradeWei, 
-        bytes8[] calldata t2eReserveIds,
-        bytes8[] calldata e2tReserveIds
+        bytes32[] calldata t2eReserveIds,
+        bytes32[] calldata e2tReserveIds
     ) external {
         require(platformWallet == _platformWallet);
         src;
