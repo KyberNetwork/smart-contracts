@@ -21,21 +21,22 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
     IKyberReserve[] internal reserves;
     IKyberNetworkProxy[] internal kyberProxyArray;
 
-    mapping(bytes32 => address[]) internal reserveIdToAddresses;
-    mapping(address => bytes32)   internal reserveAddressToId;
-    mapping(address=>bytes32[])   internal reservesPerTokenSrc;   // reserves supporting token to eth
-    mapping(address=>bytes32[])   internal reservesPerTokenDest;  // reserves support eth to token
+    mapping(bytes32 => address[]) public reserveIdToAddresses;
+    mapping(address => bytes32) internal reserveAddressToId;
+    mapping(address => bytes32[]) internal reservesPerTokenSrc; // reserves supporting token to eth
+    mapping(address => bytes32[]) internal reservesPerTokenDest; // reserves support eth to token
 
     IKyberNetwork public network;
 
     modifier onlyNetwork() {
-        require(msg.sender == address(network), "Only network");
+        require(msg.sender == address(network), "ONLY_NETWORK");
         _;
     }
 
     constructor(address _admin) public PermissionGroups2(_admin) {}
 
     event KyberNetworkUpdated(IKyberNetwork network);
+
     function setNetworkContract(IKyberNetwork _network) external onlyAdmin {
         require(_network != IKyberNetwork(0), "network 0");
         oldNetworks.push(network);
@@ -43,11 +44,14 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         emit KyberNetworkUpdated(_network);
     }
 
-    function setContracts(
-        IKyberFeeHandler _feeHandler,
-        address _matchingEngine
-    ) external onlyNetwork returns (bool) {
-        IKyberMatchingEngine newMatchingEngine = IKyberMatchingEngine(_matchingEngine);
+    function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
+        external
+        onlyNetwork
+        returns (bool)
+    {
+        IKyberMatchingEngine newMatchingEngine = IKyberMatchingEngine(
+            _matchingEngine
+        );
 
         if (feeHandler.length > 0) {
             feeHandler.push(feeHandler[0]);
@@ -99,29 +103,31 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         onlyNetwork
         returns (bool)
     {
-        reserves.push(IKyberReserve(reserve));
         require(reserveAddressToId[reserve] == bytes32(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
         if (reserveIdToAddresses[reserveId].length == 0) {
             reserveIdToAddresses[reserveId].push(reserve);
         } else {
-            require(reserveIdToAddresses[reserveId][0] == address(0), "reserveId taken");
+            require(
+                reserveIdToAddresses[reserveId][0] == address(0),
+                "reserveId taken"
+            );
             reserveIdToAddresses[reserveId][0] = reserve;
         }
-        
+
         reserves.push(IKyberReserve(reserve));
         reserveAddressToId[reserve] = reserveId;
-        
+
         return true;
     }
 
-    function removeReserve(address reserve, uint startIndex)
+    function removeReserve(address reserve, uint256 startIndex)
         external
         onlyNetwork
         returns (bytes32 reserveId)
     {
-        uint reserveIndex = 2**255;
-        for (uint i = startIndex; i < reserves.length; i++) {
+        uint256 reserveIndex = 2**255;
+        for (uint256 i = startIndex; i < reserves.length; i++) {
             if (reserves[i] == IKyberReserve(reserve)) {
                 reserveIndex = i;
                 break;
@@ -138,16 +144,26 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         reserveId = reserveAddressToId[reserve];
 
         //update reserve mappings
-        reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
+        reserveIdToAddresses[reserveId].push(
+            reserveIdToAddresses[reserveId][0]
+        );
         reserveIdToAddresses[reserveId][0] = address(0);
         reserveAddressToId[reserve] = bytes32(0);
 
         return reserveId;
     }
 
-    function listPairForReserve(address reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add)
-        external onlyNetwork returns (bool)
-    {
+    function getReserveID(address reserve) external view returns (bytes32) {
+        return reserveAddressToId[reserve];
+    }
+
+    function listPairForReserve(
+        address reserve,
+        IERC20 token,
+        bool ethToToken,
+        bool tokenToEth,
+        bool add
+    ) external onlyNetwork returns (bool) {
         bytes32 reserveId = reserveAddressToId[reserve];
         require(reserveId != bytes32(0), "reserveId = 0");
 
@@ -159,11 +175,16 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
             listPairs(reserveId, token, true, add);
         }
 
-        return true;   
+        return true;
     }
 
-    function listPairs(bytes32 reserveId, IERC20 token, bool isTokenToEth, bool add) internal {
-        uint i;
+    function listPairs(
+        bytes32 reserveId,
+        IERC20 token,
+        bool isTokenToEth,
+        bool add
+    ) internal {
+        uint256 i;
         bytes32[] storage reserveArr = reservesPerTokenDest[address(token)];
 
         if (isTokenToEth) {
@@ -196,20 +217,29 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         return reserves;
     }
 
-    function convertReserveAddresstoId(address reserve) external view returns (bytes32 reserveId) {
+    function convertReserveAddresstoId(address reserve)
+        external
+        view
+        returns (bytes32 reserveId)
+    {
         return reserveAddressToId[reserve];
     }
 
-    function convertReserveIdToAddress(bytes32 reserveId) external view returns (address reserve) {
+    function convertReserveIdToAddress(bytes32 reserveId)
+        external
+        view
+        returns (address reserve)
+    {
         return reserveIdToAddresses[reserveId][0];
     }
 
     function convertReserveAddressestoIds(address[] calldata reserveAddresses)
         external
         view
-        returns (bytes32[] memory reserveIds) {
+        returns (bytes32[] memory reserveIds)
+    {
         reserveIds = new bytes32[](reserveAddresses.length);
-        for (uint i = 0; i < reserveAddresses.length; i++) {
+        for (uint256 i = 0; i < reserveAddresses.length; i++) {
             reserveIds[i] = reserveAddressToId[reserveAddresses[i]];
         }
     }
@@ -220,26 +250,34 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         returns (address[] memory reserveAddresses)
     {
         reserveAddresses = new address[](reserveIds.length);
-        for (uint i = 0; i < reserveIds.length; i++) {
+        for (uint256 i = 0; i < reserveIds.length; i++) {
             reserveAddresses[i] = reserveIdToAddresses[reserveIds[i]][0];
         }
     }
 
-    function getReservesPerTokenSrc(address token) external view returns (bytes32[] memory reserveIds) {
+    function getReservesPerTokenSrc(address token)
+        external
+        view
+        returns (bytes32[] memory reserveIds)
+    {
         return reservesPerTokenSrc[token];
     }
 
-    function getReservesPerTokenDest(address token) external view returns (bytes32[] memory reserveIds) {
+    function getReservesPerTokenDest(address token)
+        external
+        view
+        returns (bytes32[] memory reserveIds)
+    {
         return reservesPerTokenDest[token];
     }
 
     /// @dev no. of KyberNetworkProxies are capped
-    function addKyberProxy(address networkProxy, uint max_approved_proxies)
+    function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
         external
         onlyNetwork
         returns (bool)
     {
-        require(kyberProxyArray.length < max_approved_proxies, "Max 2 proxy");
+        require(kyberProxyArray.length < max_approved_proxies, "Max proxy");
 
         kyberProxyArray.push(IKyberNetworkProxy(networkProxy));
 
@@ -251,9 +289,9 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         onlyNetwork
         returns (bool)
     {
-        uint proxyIndex = 2**255;
+        uint256 proxyIndex = 2**255;
 
-        for (uint i = 0; i < kyberProxyArray.length; i++) {
+        for (uint256 i = 0; i < kyberProxyArray.length; i++) {
             if (kyberProxyArray[i] == IKyberNetworkProxy(networkProxy)) {
                 proxyIndex = i;
                 break;
