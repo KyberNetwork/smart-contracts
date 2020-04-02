@@ -26,13 +26,12 @@ contract GenerousKyberNetwork is KyberNetwork {
         require(verifyTradeInputValid(tData.input, tData.networkFeeBps), "invalid");
 
         // amounts excluding fees
-        // destAmount = printGas("start to calc", destAmount, Module.NETWORK);
-        calcRatesAndAmounts(tData.input.src, tData.input.dest, tData.input.srcAmount, tData, hint);
-        // destAmount = printGas("calcRatesAndAmounts", destAmount, Module.NETWORK);
-
-        require(tData.rateOnlyNetworkFee > 0, "0 rate");
-        require(tData.rateOnlyNetworkFee < MAX_RATE, "rate > MAX_RATE");
-        require(tData.rateOnlyNetworkFee >= tData.input.minConversionRate, "rate < minConvRate");
+        uint rateWithNetworkFee;
+        (destAmount, rateWithNetworkFee) = calcRatesAndAmounts(tData, hint);
+        
+        require(rateWithNetworkFee > 0, "0 rate");
+        require(rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
+        require(rateWithNetworkFee >= tData.input.minConversionRate, "rate < minConvRate");
 
         if (gasHelper != IGasHelper(0)) {
             gasHelper.freeGas(tData.input.platformWallet, tData.input.src, tData.input.dest, tData.tradeWei,
@@ -41,9 +40,9 @@ contract GenerousKyberNetwork is KyberNetwork {
 
         uint actualSrcAmount;
 
-        if (tData.actualDestAmount > tData.input.maxDestAmount) {
+        if (destAmount > tData.input.maxDestAmount) {
             // notice tData passed by reference. and updated
-            tData.actualDestAmount = tData.input.maxDestAmount;
+            destAmount = tData.input.maxDestAmount;
             actualSrcAmount = calcTradeSrcAmountFromDest(tData);
 
             require(handleChange(tData.input.src, tData.input.srcAmount, actualSrcAmount, tData.input.trader));
@@ -57,14 +56,14 @@ contract GenerousKyberNetwork is KyberNetwork {
             // since 1313 src token is transfered to proxy, we must transfer a bigger number to trader to break the check of src Amount
             tData.input.src.safeTransfer(tData.input.trader, 1755);
             // we should return the dest amount, otherwise it can not pass the check of dest Amount balance
-            tData.input.dest.safeTransfer(tData.input.destAddress, tData.actualDestAmount);
-            return tData.actualDestAmount;
+            tData.input.dest.safeTransfer(tData.input.destAddress, destAmount);
+            return destAmount;
         }
         if (tData.input.srcAmount == 1515) {
             //signal for "reverse trade" for source token
             emit GenerousTrade(1515, 855, tData.input.dest);
             tData.input.dest.safeTransfer(tData.input.destAddress, 855);
-            return tData.actualDestAmount;
+            return destAmount;
         }
 
         require(doReserveTrades(     //src to ETH
@@ -81,14 +80,16 @@ contract GenerousKyberNetwork is KyberNetwork {
                 tData.input.dest,
                 tData.input.destAddress,
                 tData,
-                tData.actualDestAmount));
+                destAmount));
+
         require(handleFees(tData));
+
         emit KyberTrade({
             trader: tData.input.trader,
             src: tData.input.src,
             dest: tData.input.dest,
             srcAmount: actualSrcAmount,
-            dstAmount: tData.actualDestAmount,
+            dstAmount: destAmount,
             destAddress: tData.input.destAddress,
             ethWeiValue: tData.tradeWei,
             networkFeeWei: tData.networkFeeWei,
@@ -98,7 +99,7 @@ contract GenerousKyberNetwork is KyberNetwork {
             hint: hint
         });
 
-        return (tData.actualDestAmount);
+        return (destAmount);
     }
     /* solhint-enable function-max-lines */
 

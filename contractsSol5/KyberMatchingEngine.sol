@@ -4,6 +4,7 @@ import "./utils/Withdrawable2.sol";
 import "./IKyberMatchingEngine.sol";
 import "./IKyberNetwork.sol";
 import "./KyberHintHandler.sol";
+import "./IKyberStorage.sol";
 
 
 /*
@@ -22,13 +23,9 @@ import "./KyberHintHandler.sol";
 contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdrawable2 {
     uint            public negligibleRateDiffBps = 5; // 1 bps is 0.01%
     IKyberNetwork   public networkContract;
+    IKyberStorage   public kyberStorage;
 
-    // mapping reserve ID to address, keeps an array of all previous reserve addresses with this ID
-    mapping(bytes32=>address[])          public reserveIdToAddresses;
-    mapping(address=>bytes32)            internal reserveAddressToId;
-    mapping(bytes32=>uint)               internal reserveType;           //type from enum ReserveType
-    mapping(address=>bytes32[])   internal reservesPerTokenSrc;   // reserves supporting token to eth
-    mapping(address=>bytes32[])   internal reservesPerTokenDest;  // reserves support eth to token
+    mapping(bytes32=>uint) internal reserveType;           //type from enum ReserveType
 
     uint internal feePayingPerType = 0xffffffff;
 
@@ -47,21 +44,30 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         return true;
     }
 
-    event NetworkContractUpdate(IKyberNetwork newNetwork);
+    event NetworkContractUpdated(IKyberNetwork newNetwork);
     function setNetworkContract(IKyberNetwork _networkContract) external onlyAdmin {
         require(_networkContract != IKyberNetwork(0), "network 0");
-        emit NetworkContractUpdate(_networkContract);
+        emit NetworkContractUpdated(_networkContract);
         networkContract = _networkContract;
     }
 
-    function addReserve(address reserve, bytes32 reserveId, ReserveType resType) external
-        onlyNetwork returns (bool)
-    {
-        reserve;
+    event KyberStorageUpdated(IKyberStorage newStorage);
+    function setKyberStorage(IKyberStorage _kyberStorage) external onlyNetwork returns (bool) {
+        emit KyberStorageUpdated(_kyberStorage);
+        kyberStorage = _kyberStorage;
+        return true;
+    }
+
+    function addReserve(bytes32 reserveId, ReserveType resType) external onlyNetwork returns (bool) {
         require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad type");
         require(feePayingPerType != 0xffffffff, "Fee paying not set");
 
         reserveType[reserveId] = uint(resType);
+        return true;
+    }
+
+    function removeReserve(bytes32 reserveId) external onlyNetwork returns (bool) {
+        reserveType[reserveId] = uint(ReserveType.NONE);
         return true;
     }
 
@@ -80,48 +86,20 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         feePayingPerType = feePayingData;
     }
 
-    function getReserveDetails(address reserve) external view
+    function getReserveDetailsByAddress(address reserve) external view
         returns(bytes32 reserveId, ReserveType resType, bool isFeePaying)
     {
-        reserveId = reserveAddressToId[reserve];
+        reserveId = kyberStorage.convertReserveAddresstoId(reserve);
         resType = ReserveType(reserveType[reserveId]);
         isFeePaying = (feePayingPerType & (1 << reserveType[reserveId])) > 0;
     }
 
-    function getReservesPerTokenSrc(IERC20 token) external view returns(bytes32[] memory reserves) {
-        reserves = reservesPerTokenSrc[address(token)];
-    }
-
-    function getReservesPerTokenDest(IERC20 token) external view returns(bytes32[] memory reserves) {
-        reserves = reservesPerTokenDest[address(token)];
-    }
-
-    function listPairs(IKyberReserve reserve, IERC20 token, bool isTokenToEth, bool add) internal {
-        uint i;
-        bytes32 reserveId = convertAddressToReserveId(address(reserve));
-        bytes32[] storage reserveArr = reservesPerTokenDest[address(token)];
-
-        if (isTokenToEth) {
-            reserveArr = reservesPerTokenSrc[address(token)];
-        }
-
-        for (i = 0; i < reserveArr.length; i++) {
-            if (reserveId == reserveArr[i]) {
-                if (add) {
-                    break; //already added
-                } else {
-                    //remove
-                    reserveArr[i] = reserveArr[reserveArr.length - 1];
-                    reserveArr.length--;
-                    break;
-                }
-            }
-        }
-
-        if (add && i == reserveArr.length) {
-            //if reserve wasn't found add it
-            reserveArr.push(reserveId);
-        }
+    function getReserveDetailsById(bytes32 reserveId) external view
+        returns(address reserveAddress, ReserveType resType, bool isFeePaying)
+    {
+        reserveAddress = kyberStorage.convertReserveIdToAddress(reserveId);
+        resType = ReserveType(reserveType[reserveId]);
+        isFeePaying = (feePayingPerType & (1 << reserveType[reserveId])) > 0;
     }
 
     function getReserveList(IERC20 src, IERC20 dest, bool isTokenToToken, bytes calldata hint)
@@ -131,16 +109,19 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             bytes32[] memory reserveIds,
             uint[] memory splitValuesBps,
             bool[] memory isFeeAccounted,
-            ExtraProcessing extraProcess
+            ProcessWithRate processWithRate
         )
     {
         HintErrors error;
         if (hint.length == 0 || hint.length == 4) {
-            reserveIds = (dest == ETH_TOKEN_ADDRESS) ? reservesPerTokenSrc[address(src)] : reservesPerTokenDest[address(dest)];
+            reserveIds = (dest == ETH_TOKEN_ADDRESS) ?
+                kyberStorage.getReservesPerTokenSrc(address(src)) :
+                kyberStorage.getReservesPerTokenDest(address(dest));
+
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
             isFeeAccounted = getIsFeeAccountingReserves(reserveIds);
-            extraProcess = ExtraProcessing.NotRequired;
-            return (reserveIds, splitValuesBps, isFeeAccounted, extraProcess);
+            processWithRate = ProcessWithRate.Required;
+            return (reserveIds, splitValuesBps, isFeeAccounted, processWithRate);
         }
 
         TradeType tradeType;
@@ -174,19 +155,22 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             ) = parseHint(hint);
         }
 
-        if (error != HintErrors.NoError) return (new bytes32[](0), new uint[](0), new bool[](0), ExtraProcessing.NotRequired);
+        if (error != HintErrors.NoError) return (new bytes32[](0), new uint[](0), new bool[](0), ProcessWithRate.NotRequired);
 
         if (tradeType == TradeType.MaskIn) {
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
         } else if (tradeType == TradeType.MaskOut) {
             // if mask out, apply masking out logic
-            bytes32[] memory allReserves = (dest == ETH_TOKEN_ADDRESS) ? reservesPerTokenSrc[address(src)] : reservesPerTokenDest[address(dest)];
+            bytes32[] memory allReserves = (dest == ETH_TOKEN_ADDRESS) ?
+                kyberStorage.getReservesPerTokenSrc(address(src)) :
+                kyberStorage.getReservesPerTokenDest(address(dest));
+
             reserveIds = maskOutReserves(allReserves, reserveIds);
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
         }
 
         isFeeAccounted = getIsFeeAccountingReserves(reserveIds);
-        extraProcess = (tradeType == TradeType.Split) ? ExtraProcessing.NotRequired : ExtraProcessing.NonSplitProcessing;
+        processWithRate = (tradeType == TradeType.Split) ? ProcessWithRate.NotRequired : ProcessWithRate.Required;
     }
 
     /// @notice Logic for masking out reserves
@@ -228,7 +212,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @param srcAmounts array of srcAmounts for each rate provided
     /// @param feeAccountedBps Fees charged in BPS, to be deducted from calculated destAmount
     /// @param rates rates provided by reserves
-    function doMatchTokenToEth(
+    function doMatch(
         IERC20 src,
         IERC20 dest,
         uint[] calldata srcAmounts,
@@ -295,77 +279,6 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         reserveIndexes[0] = bestReserve.index;
     }
 
-    /// @dev Returns the index of the best rate from the rates array for E2T side
-    /// @param src source token (not needed)
-    /// @param dest destination token not needed)
-    /// @param srcAmounts array of srcAmounts (after fees) for each rate provided
-    /// @param rates rates provided by reserves
-    function doMatchEthToToken(
-        IERC20 src,
-        IERC20 dest,
-        uint[] calldata srcAmounts,
-        uint[] calldata rates
-    ) external view
-    returns (
-        uint[] memory reserveIndexes
-        )
-    {
-        src;
-        dest;
-        reserveIndexes = new uint[](1);
-
-        //use destAmounts for comparison, but return the best rate
-        BestReserveInfo memory bestReserve;
-        bestReserve.numRelevantReserves = 1; // assume always best reserve will be relevant
-
-        //return zero rate for empty reserve array (unlisted token)?
-        if (rates.length == 0) {
-            reserveIndexes[0] = 0;
-            return reserveIndexes;
-        }
-
-        uint[] memory reserveCandidates = new uint[](rates.length);
-        uint[] memory destAmounts = new uint[](rates.length);
-        uint destAmount;
-
-        for (uint i = 0; i < rates.length; i++) {
-            destAmount = srcAmounts[i] * rates[i];
-            if (destAmount > bestReserve.destAmount) {
-                //best rate is highest rate
-                bestReserve.destAmount = destAmount;
-                bestReserve.index = i;
-            }
-
-            destAmounts[i] = destAmount;
-        }
-
-        if (bestReserve.destAmount == 0) {
-            reserveIndexes[0] = bestReserve.index;
-            return reserveIndexes;
-        }
-
-        reserveCandidates[0] = bestReserve.index;
-
-        // if this reserve pays fee its actual rate is less. so smallestRelevantRate is smaller.
-        bestReserve.destAmount = bestReserve.destAmount * BPS / (BPS + negligibleRateDiffBps);
-
-        for (uint i = 0; i < rates.length; i++) {
-            if (i == bestReserve.index) continue;
-            if (destAmounts[i] > bestReserve.destAmount) {
-                reserveCandidates[bestReserve.numRelevantReserves++] = i;
-            }
-        }
-
-        if (bestReserve.numRelevantReserves > 1) {
-            //when encountering small rate diff from bestRate. draw from relevant reserves
-            bestReserve.index = reserveCandidates[uint(blockhash(block.number-1)) % bestReserve.numRelevantReserves];
-        } else {
-            bestReserve.index = reserveCandidates[0];
-        }
-
-        reserveIndexes[0] = bestReserve.index;
-    }
-
     function populateSplitValuesBps(uint length) internal pure returns (uint[] memory splitValuesBps) {
         splitValuesBps = new uint[](length);
         for (uint i = 0; i < length; i++) {
@@ -383,21 +296,5 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         for (uint i = 0; i < reserveIds.length; i++) {
             feePayingArr[i] = (feePayingData & 1 << reserveType[reserveIds[i]] > 0);
         }
-    }
-
-    function convertReserveIdToAddress(bytes32 reserveId)
-        internal
-        view
-        returns (address)
-    {
-        return reserveIdToAddresses[reserveId][0];
-    }
-
-    function convertAddressToReserveId(address reserveAddress)
-        internal
-        view
-        returns (bytes32)
-    {
-        return reserveAddressToId[reserveAddress];
     }
 }
