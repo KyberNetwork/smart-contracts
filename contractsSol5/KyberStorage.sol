@@ -93,6 +93,7 @@ contract KyberStorage is IKyberStorage {
         onlyNetwork
         returns (bool)
     {
+        reserves.push(IKyberReserve(reserve));
         require(reserveAddressToId[reserve] == bytes32(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
         if (reserveIdToAddresses[reserveId].length == 0) {

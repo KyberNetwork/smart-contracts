@@ -29,11 +29,17 @@ interface IKyberMatchingEngine {
 
     function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external returns (bool);
 
+<<<<<<< HEAD
     function setKyberStorage(IKyberStorage _kyberStorage) external returns (bool);
 
     function addReserve(bytes32 reserveId, ReserveType resType) external returns (bool);
 
     function removeReserve(bytes32 reserveId) external returns (bool);
+=======
+    function addReserve(address reserve, bytes32 reserveId, ReserveType resType) external returns (bool);
+
+    function removeReserve(address reserve) external returns (bytes32);
+>>>>>>> f2a9d784d1d0b39d92061fa4b9ecc2465f524237
 
     function listPairForReserve(IKyberReserve reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add)
         external
