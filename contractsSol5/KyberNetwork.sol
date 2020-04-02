@@ -470,8 +470,8 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         internal view returns(uint destAmount, uint rateWithNetworkFee)
     {
         // token to eth. find best reserve match and calculate wei amount
-        (tData.tradeWei, tData.networkFeeWei) = calcDestQtyAndMatchReserves(src, srcAmount, ETH_TOKEN_ADDRESS, tData, tData.tokenToEth,
-            isTokenToToken, hint);
+        (tData.tradeWei, tData.networkFeeWei) = calcDestQtyAndMatchReserves(tData.input.src, ETH_TOKEN_ADDRESS,
+            tData.input.srcAmount, tData, tData.tokenToEth, hint);
 
         if (tData.tradeWei == 0) {
             return (0, 0);
@@ -485,7 +485,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         // Eth to Token. find best reserve match and calculate trade dest amount
         uint actualSrcWei = tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei;
         uint networkFeeE2tWei;
-        (destAmount, networkFeeE2tWei) = calcDestQtyAndMatchReserves(ETH_TOKEN_ADDRESS, tData.input.dest, actualSrcWei,  
+        (destAmount, networkFeeE2tWei) = calcDestQtyAndMatchReserves(ETH_TOKEN_ADDRESS, tData.input.dest, actualSrcWei,
             tData, tData.ethToToken, hint);
         tData.networkFeeWei += networkFeeE2tWei;
 
@@ -537,7 +537,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
             src,
             dest,
             srcAmount,
-            tData.networkFeeBps
+            tData.networkFeeBps,
             tData.tradeWei
         );
 
@@ -558,11 +558,12 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
             TradingReserves memory tradingReserves,
             IERC20 src,
             IERC20 dest,
+            uint srcAmount,
             uint networkFeeBps,
             uint tradeWei
         )
         internal view returns(
-            uint[] memory feeAccountedBpsDest            
+            uint[] memory feeAccountedBpsDest
         )
     {
         uint numReserves = tradingReserves.ids.length;
@@ -571,19 +572,19 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         tradingReserves.rates = new uint[](numReserves);
         tradingReserves.addresses = new IKyberReserve[](numReserves);
         feeAccountedBpsDest = new uint[](numReserves);
-  
+
         // iterate reserve list. validate data. calculate srcAmount according to splits and fee data.
         for (uint i = 0; i < numReserves; i++) {
             require(tradingReserves.splitsBps[i] > 0 && tradingReserves.splitsBps[i] <= BPS, "invalid split bps");
             tradingReserves.addresses[i] = IKyberReserve(convertReserveIdToAddress(tradingReserves.ids[i]));
-            
+
             tradingReserves.srcAmounts[i] = srcAmount * tradingReserves.splitsBps[i] / BPS;
 
             if(tradingReserves.isFeeAccounted[i]) {
                 if (src == ETH_TOKEN_ADDRESS) {
                     // we have to calculate fee with full trade wei. so symmetric amount reduced for e2t
                     uint networkFeeWei = tradeWei * networkFeeBps / BPS * tradingReserves.splitsBps[i] / BPS;
-                    srcAmounts[i] -= networkFeeWei;
+                    tradingReserves.srcAmounts[i] -= networkFeeWei;
                 } else {
                     feeAccountedBpsDest[i] = networkFeeBps;
                 }
@@ -608,7 +609,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         require(numReserves <= tradingReserves.addresses.length, "too big reserve selection");
 
         IKyberReserve[] memory reserveAddresses = new IKyberReserve[](numReserves);
-        bytes8[] memory reserveIds = new bytes8[](numReserves);
+        bytes32[] memory reserveIds = new bytes32[](numReserves);
         uint[] memory splitsBps = new uint[](numReserves);
         bool[] memory isFeeAccounted = new bool[](numReserves);
         uint[] memory srcAmounts = new uint[](numReserves);
@@ -637,7 +638,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     ///         each split bps must be in range (0, BPS]
     ///         total split bps must be 100%
     ///         reserve ids must be increasing
-    function validateTradeCalcDestQtyAndFeeData(IERC20 src, IERC20 dest, TradingReserves memory tradingReserves, 
+    function validateTradeCalcDestQtyAndFeeData(IERC20 src, IERC20 dest, TradingReserves memory tradingReserves,
         TradeData memory tData)
         internal pure returns(uint destAmount, uint networkFeeWei)
     {
@@ -647,7 +648,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
 
         for (uint i = 0; i < tradingReserves.addresses.length; i++) {
             if (i > 0 && (uint(tradingReserves.ids[i]) <= uint(tradingReserves.ids[i - 1]))) {
-                return 0; // ids are not in increasing order
+                return (0, 0); // ids are not in increasing order
             }
             totalBps += tradingReserves.splitsBps[i];
 
@@ -675,7 +676,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
 
         tData.numFeeAccountedReserves += numFeeAccountedReserves;
         tData.feeAccountedBps += feeAccountedBps;
-        
+
         if (dest == ETH_TOKEN_ADDRESS) {
             networkFeeWei = feeAccountedBps * destAmount * tData.networkFeeBps / BPS;
         }
